@@ -1,3 +1,5 @@
+import { MultiPicker } from "@/components/ui/multi-picker";
+import { Combobox } from "@/components/ui/combobox";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -11,18 +13,6 @@ import { useCreateErrorType } from "@/hooks/useCreateErrorType";
 import { useCreateDocument } from "@/hooks/useCreateDocument";
 import { getCookie } from "@/lib/utils";
 import { schemas } from "@/lib/api/generated";
-import {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandInput,
-    CommandItem,
-    CommandGroup,
-    CommandEmpty,
-} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -42,9 +32,8 @@ import {
     FormMessage,
     FormDescription,
 } from "@/components/ui/form";
-import { Check, ChevronsUpDown, Loader2, Plus, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -126,16 +115,6 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
     const stepId = React.useMemo(() => part?.step?.id || part?.step, [part?.step]);
     const partTypeId = React.useMemo(() => part?.part_type?.id || part?.part_type, [part?.part_type]);
 
-    const [operatorPopoverOpen, setOperatorPopoverOpen] = React.useState(false);
-    const [machinePopoverOpen, setMachinePopoverOpen] = React.useState(false);
-    const [errorTypesPopoverOpen, setErrorTypesPopoverOpen] = React.useState(false);
-    const [detectedByPopoverOpen, setDetectedByPopoverOpen] = React.useState(false);
-    const [verifiedByPopoverOpen, setVerifiedByPopoverOpen] = React.useState(false);
-    const [operatorSearch, setOperatorSearch] = React.useState("");
-    const [machineSearch, setMachineSearch] = React.useState("");
-    const [errorTypesSearch, setErrorTypesSearch] = React.useState("");
-    const [detectedBySearch, setDetectedBySearch] = React.useState("");
-    const [verifiedBySearch, setVerifiedBySearch] = React.useState("");
     const [newErrorDialogOpen, setNewErrorDialogOpen] = React.useState(false);
     const [newErrorName, setNewErrorName] = React.useState("");
     const [newErrorExample, setNewErrorExample] = React.useState("");
@@ -266,26 +245,6 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
         }
     };
 
-    const filteredOperators = operators.filter((op) =>
-        `${op.first_name} ${op.last_name}`.toLowerCase().includes(operatorSearch.toLowerCase())
-    );
-
-    const filteredMachines = machines.filter((m) =>
-        m.name.toLowerCase().includes(machineSearch.toLowerCase())
-    );
-
-    const filteredErrorTypes = errorTypes?.results?.filter((et) =>
-        et.error_name.toLowerCase().includes(errorTypesSearch.toLowerCase())
-    ) ?? [];
-
-    const filteredDetectedBy = operators.filter((op) =>
-        `${op.first_name} ${op.last_name}`.toLowerCase().includes(detectedBySearch.toLowerCase())
-    );
-
-    const filteredVerifiedBy = operators.filter((op) =>
-        `${op.first_name} ${op.last_name}`.toLowerCase().includes(verifiedBySearch.toLowerCase())
-    );
-
     const handleCreateErrorType = async () => {
         if (!newErrorName.trim()) {
             toast.error("Error name is required");
@@ -319,56 +278,16 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel required={required.operator}>Operators</FormLabel>
-                            <Popover open={operatorPopoverOpen} onOpenChange={setOperatorPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={operatorPopoverOpen}
-                                            className="w-full justify-between"
-                                        >
-                                            {field.value.length > 0
-                                                ? `${field.value.length} operator${field.value.length > 1 ? 's' : ''} selected`
-                                                : "Select operators"
-                                            }
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder="Search operators..."
-                                            value={operatorSearch}
-                                            onValueChange={setOperatorSearch}
-                                        />
-                                        <CommandEmpty>No operators found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {filteredOperators.map((operator) => {
-                                                const isSelected = field.value.includes(operator.id);
-                                                return (
-                                                    <CommandItem
-                                                        key={operator.id}
-                                                        onSelect={() => {
-                                                            const updated = isSelected
-                                                                ? field.value.filter((id) => id !== operator.id)
-                                                                : [...field.value, operator.id];
-                                                            field.onChange(updated);
-                                                        }}
-                                                    >
-                                                        <Checkbox
-                                                            checked={isSelected}
-                                                            className="mr-2"
-                                                        />
-                                                        {operator.first_name} {operator.last_name}
-                                                    </CommandItem>
-                                                );
-                                            })}
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <MultiPicker
+                                label="Operators"
+                                hideLabel
+                                items={operators.map((op) => ({ id: op.id, label: `${op.first_name} ${op.last_name}` }))}
+                                selected={field.value}
+                                onChange={field.onChange}
+                                placeholder="Select operators"
+                                searchPlaceholder="Search operators..."
+                                emptyHint="No operators found."
+                            />
                             <FormDescription>
                                 Select all operators involved in this quality check
                             </FormDescription>
@@ -384,53 +303,16 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel required={required.production_equipment}>Machine</FormLabel>
-                            <Popover open={machinePopoverOpen} onOpenChange={setMachinePopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={machinePopoverOpen}
-                                            className="w-full justify-between"
-                                        >
-                                            {field.value
-                                                ? machines.find((machine) => machine.id === field.value)?.name
-                                                : "Select machine"
-                                            }
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder="Search machines..."
-                                            value={machineSearch}
-                                            onValueChange={setMachineSearch}
-                                        />
-                                        <CommandEmpty>No machines found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {filteredMachines.map((machine) => (
-                                                <CommandItem
-                                                    key={machine.id}
-                                                    onSelect={() => {
-                                                        field.onChange(machine.id);
-                                                        setMachinePopoverOpen(false);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            field.value === machine.id ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {machine.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                                <Combobox
+                                    value={field.value || null}
+                                    onChange={(v) => v && field.onChange(v)}
+                                    options={machines.map((m) => ({ value: m.id, label: m.name }))}
+                                    placeholder="Select machine"
+                                    searchPlaceholder="Search machines..."
+                                    emptyText="No machines found."
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -469,90 +351,22 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel>Error Types</FormLabel>
-                            <Popover open={errorTypesPopoverOpen} onOpenChange={setErrorTypesPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={errorTypesPopoverOpen}
-                                            className="w-full justify-between"
-                                        >
-                                            {field.value && field.value.length > 0
-                                                ? `${field.value.length} error type${field.value.length > 1 ? 's' : ''} selected`
-                                                : "Select error types"
-                                            }
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder="Search error types..."
-                                            value={errorTypesSearch}
-                                            onValueChange={setErrorTypesSearch}
-                                        />
-                                        <CommandEmpty>
-                                            <div className="flex flex-col items-center gap-2 py-6">
-                                                <p className="text-sm text-muted-foreground">No error types found.</p>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setErrorTypesPopoverOpen(false);
-                                                        setNewErrorDialogOpen(true);
-                                                    }}
-                                                    className="gap-1"
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                    Add New Error Type
-                                                </Button>
-                                            </div>
-                                        </CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {filteredErrorTypes.map((errorType) => {
-                                                const isSelected = field.value?.includes(String(errorType.id)) ?? false;
-                                                return (
-                                                    <CommandItem
-                                                        key={errorType.id}
-                                                        onSelect={() => {
-                                                            const updated = isSelected
-                                                                ? (field.value?.filter((id: string) => id !== String(errorType.id)) ?? [])
-                                                                : [...(field.value ?? []), String(errorType.id)];
-                                                            field.onChange(updated);
-                                                        }}
-                                                    >
-                                                        <Checkbox
-                                                            checked={isSelected}
-                                                            className="mr-2"
-                                                        />
-                                                        <div className="flex flex-col">
-                                                            <span>{errorType.error_name}</span>
-                                                            {errorType.error_example && (
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {errorType.error_example}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </CommandItem>
-                                                );
-                                            })}
-                                            <CommandItem
-                                                onSelect={() => {
-                                                    setErrorTypesPopoverOpen(false);
-                                                    setNewErrorDialogOpen(true);
-                                                }}
-                                                className="border-t"
-                                            >
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Add New Error Type
-                                            </CommandItem>
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <MultiPicker
+                                label="Error types"
+                                hideLabel
+                                items={(errorTypes?.results ?? []).map((et) => ({
+                                    id: String(et.id), label: et.error_name, ...(et.error_example ? { description: et.error_example } : {}),
+                                }))}
+                                selected={field.value ?? []}
+                                onChange={field.onChange}
+                                placeholder="Select error types"
+                                searchPlaceholder="Search error types..."
+                                emptyHint="No error types found."
+                                action={{
+                                    label: (q) => `Add new error type${q ? ` "${q}"` : ""}`,
+                                    onSelect: (q) => { if (q) setNewErrorName(q); setNewErrorDialogOpen(true); },
+                                }}
+                            />
                             <FormDescription>
                                 Select error types for this part or add a new one
                             </FormDescription>
@@ -614,53 +428,16 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Detected By</FormLabel>
-                                <Popover open={detectedByPopoverOpen} onOpenChange={setDetectedByPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={detectedByPopoverOpen}
-                                                className="w-full justify-between"
-                                            >
-                                                {field.value
-                                                    ? `${operators.find((op) => op.id === field.value)?.first_name} ${operators.find((op) => op.id === field.value)?.last_name}`
-                                                    : "Select inspector"
-                                                }
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search..."
-                                                value={detectedBySearch}
-                                                onValueChange={setDetectedBySearch}
-                                            />
-                                            <CommandEmpty>No employees found.</CommandEmpty>
-                                            <CommandGroup className="max-h-64 overflow-auto">
-                                                {filteredDetectedBy.map((emp) => (
-                                                    <CommandItem
-                                                        key={emp.id}
-                                                        onSelect={() => {
-                                                            field.onChange(emp.id);
-                                                            setDetectedByPopoverOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                field.value === emp.id ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {emp.first_name} {emp.last_name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value == null ? null : String(field.value)}
+                                        onChange={(v) => v && field.onChange(Number(v))}
+                                        options={operators.map((op) => ({ value: String(op.id), label: `${op.first_name} ${op.last_name}` }))}
+                                        placeholder="Select inspector"
+                                        searchPlaceholder="Search..."
+                                        emptyText="No employees found."
+                                    />
+                                </FormControl>
                                 <FormDescription>
                                     Inspector who detected the defect
                                 </FormDescription>
@@ -676,53 +453,16 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Verified By</FormLabel>
-                                <Popover open={verifiedByPopoverOpen} onOpenChange={setVerifiedByPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={verifiedByPopoverOpen}
-                                                className="w-full justify-between"
-                                            >
-                                                {field.value
-                                                    ? `${operators.find((op) => op.id === field.value)?.first_name} ${operators.find((op) => op.id === field.value)?.last_name}`
-                                                    : "Select verifier (optional)"
-                                                }
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search..."
-                                                value={verifiedBySearch}
-                                                onValueChange={setVerifiedBySearch}
-                                            />
-                                            <CommandEmpty>No employees found.</CommandEmpty>
-                                            <CommandGroup className="max-h-64 overflow-auto">
-                                                {filteredVerifiedBy.map((emp) => (
-                                                    <CommandItem
-                                                        key={emp.id}
-                                                        onSelect={() => {
-                                                            field.onChange(emp.id);
-                                                            setVerifiedByPopoverOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                field.value === emp.id ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {emp.first_name} {emp.last_name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value == null ? null : String(field.value)}
+                                        onChange={(v) => v && field.onChange(Number(v))}
+                                        options={operators.map((op) => ({ value: String(op.id), label: `${op.first_name} ${op.last_name}` }))}
+                                        placeholder="Select verifier (optional)"
+                                        searchPlaceholder="Search..."
+                                        emptyText="No employees found."
+                                    />
+                                </FormControl>
                                 <FormDescription>
                                     Second signature for critical inspections
                                 </FormDescription>

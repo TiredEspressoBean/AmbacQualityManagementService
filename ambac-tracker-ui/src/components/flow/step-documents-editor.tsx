@@ -1,20 +1,18 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Upload, Trash2, Loader2, ExternalLink, FileIcon, ChevronsUpDown, Check } from 'lucide-react';
+import { FileText, Upload, Trash2, Loader2, ExternalLink, FileIcon } from 'lucide-react';
 import { useRetrieveDocuments } from '@/hooks/useRetrieveDocuments';
 import { useCreateDocument } from '@/hooks/useCreateDocument';
 import { useDeleteDocuments } from '@/hooks/useDeleteDocuments';
 import { useRetrieveDocumentTypes } from '@/hooks/useRetrieveDocumentTypes';
 import { useContentTypeMapping } from '@/hooks/useContentTypes';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -50,7 +48,6 @@ export function StepDocumentsEditor({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedDocType, setSelectedDocType] = useState<string>('');
   const [fileName, setFileName] = useState('');
-  const [docTypeOpen, setDocTypeOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { getContentTypeId, isLoading: contentTypesLoading } = useContentTypeMapping();
@@ -177,47 +174,16 @@ export function StepDocumentsEditor({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="doc-type" className="text-xs">Document Type</Label>
-                  <Popover open={docTypeOpen} onOpenChange={setDocTypeOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={docTypeOpen}
-                        className="w-full justify-between font-normal"
-                      >
-                        {selectedDocType
-                          ? documentTypes.find((dt) => String(dt.id) === selectedDocType)?.name || 'Select type...'
-                          : 'Select type...'}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search types..." />
-                        <CommandList>
-                          <CommandEmpty>No document type found.</CommandEmpty>
-                          {documentTypes.map((dt) => (
-                            <CommandItem
-                              key={dt.id}
-                              value={`${dt.name} ${dt.code}`}
-                              onSelect={() => {
-                                setSelectedDocType(String(dt.id));
-                                setDocTypeOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedDocType === String(dt.id) ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {dt.name} ({dt.code})
-                            </CommandItem>
-                          ))}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Combobox
+                    id="doc-type"
+                    contentClassName="w-[240px]"
+                    value={selectedDocType || null}
+                    onChange={(v) => setSelectedDocType(v ?? '')}
+                    options={documentTypes.map((dt) => ({ value: String(dt.id), label: `${dt.name} (${dt.code})` }))}
+                    placeholder="Select type..."
+                    searchPlaceholder="Search types..."
+                    emptyText="No document type found."
+                  />
                 </div>
 
                 <div className="space-y-2">

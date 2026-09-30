@@ -1,4 +1,5 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -83,7 +84,7 @@ export function LifeLimitDefinitionFormPage() {
             saving={create.isPending || update.isPending}
             submitLabel={mode === "edit" ? "Save changes" : "Create life limit"}
             onSubmit={submit}
-            footer={mode === "edit" && id ? <RecordHistoryCard endpoint="LifeLimitDefinitions" id={id} model="lifelimitdefinition" /> : undefined}
+            footer={mode === "edit" && id ? <div className="space-y-6"><RecordHistoryCard endpoint="LifeLimitDefinitions" id={id} model="lifelimitdefinition" /><RecordArchiveCard endpoint="LifeLimitDefinitions" id={id} model="lifelimitdefinition" /></div> : undefined}
         >
             <Card>
                 <CardHeader>

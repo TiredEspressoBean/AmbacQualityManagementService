@@ -1,17 +1,15 @@
 "use client"
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { Schema } from "@/lib/api/types"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Check, ChevronsUpDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useParams } from "@tanstack/react-router"
 import { useInfiniteQuery, infiniteQueryOptions } from "@tanstack/react-query"
@@ -94,8 +92,6 @@ export default function EditQualityReportFormPage() {
     const [partSearch, setPartSearch] = useState("");
     const [stepSearch, setStepSearch] = useState("");
     const [machineSearch, setMachineSearch] = useState("");
-    const [detectedBySearch, setDetectedBySearch] = useState("");
-    const [verifiedBySearch, setVerifiedBySearch] = useState("");
 
     // Fetch parts, steps, and equipment for dropdowns
     const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch });
@@ -106,13 +102,6 @@ export default function EditQualityReportFormPage() {
     const steps = stepsData?.results ?? [];
     const equipment = equipmentData?.results ?? [];
 
-    // Filtered employee lists
-    const filteredDetectedBy = employees.filter((emp) =>
-        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(detectedBySearch.toLowerCase())
-    );
-    const filteredVerifiedBy = employees.filter((emp) =>
-        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(verifiedBySearch.toLowerCase())
-    );
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
@@ -238,53 +227,22 @@ export default function EditQualityReportFormPage() {
                         control={form.control}
                         name="part"
                         render={({ field }) => {
-                            const selectedPart = parts.find((p) => p.id === field.value);
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.part}>Part</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selectedPart ? `${selectedPart.ERP_id} - ${selectedPart.part_type_name}` : "Select a part"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={partSearch}
-                                                    onValueChange={setPartSearch}
-                                                    placeholder="Search parts..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No parts found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {parts.map((p) => (
-                                                            <CommandItem
-                                                                key={p.id}
-                                                                value={p.ERP_id}
-                                                                onSelect={() => {
-                                                                    form.setValue("part", p.id);
-                                                                    setPartSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", p.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {p.ERP_id} - {p.part_type_name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            contentClassName="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => v && form.setValue("part", v)}
+                                            options={parts.map((p) => ({ value: p.id, label: p.ERP_id, ...(p.part_type_name ? { description: p.part_type_name } : {}) }))}
+                                            onSearch={setPartSearch}
+                                            placeholder="Select a part"
+                                            searchPlaceholder="Search parts..."
+                                            emptyText="No parts found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>The part being inspected</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -297,56 +255,22 @@ export default function EditQualityReportFormPage() {
                         control={form.control}
                         name="step"
                         render={({ field }) => {
-                            const selectedStep = steps.find((s) => s.id === field.value);
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.step}>Process Step</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selectedStep
-                                                        ? selectedStep.name
-                                                        : "Select a step"
-                                                    }
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={stepSearch}
-                                                    onValueChange={setStepSearch}
-                                                    placeholder="Search steps..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No steps found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {steps.map((s) => (
-                                                            <CommandItem
-                                                                key={s.id}
-                                                                value={s.name}
-                                                                onSelect={() => {
-                                                                    form.setValue("step", s.id);
-                                                                    setStepSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", s.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {s.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            contentClassName="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => v && form.setValue("step", v)}
+                                            options={steps.map((s) => ({ value: s.id, label: s.name, ...(s.part_type_name ? { description: s.part_type_name } : {}) }))}
+                                            onSearch={setStepSearch}
+                                            placeholder="Select a step"
+                                            searchPlaceholder="Search steps..."
+                                            emptyText="No steps found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>The process step where inspection occurred</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -359,65 +283,23 @@ export default function EditQualityReportFormPage() {
                         control={form.control}
                         name="production_equipment"
                         render={({ field }) => {
-                            const selectedMachine = equipment.find((e) => e.id === field.value);
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Machine/Equipment</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selectedMachine ? selectedMachine.name : "Select equipment (optional)"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={machineSearch}
-                                                    onValueChange={setMachineSearch}
-                                                    placeholder="Search equipment..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No equipment found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                form.setValue("production_equipment", undefined);
-                                                                setMachineSearch("");
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", !field.value ? "opacity-100" : "opacity-0")}
-                                                            />
-                                                            No equipment
-                                                        </CommandItem>
-                                                        {equipment.map((e) => (
-                                                            <CommandItem
-                                                                key={e.id}
-                                                                value={e.name}
-                                                                onSelect={() => {
-                                                                    form.setValue("production_equipment", e.id);
-                                                                    setMachineSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", e.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {e.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            contentClassName="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => form.setValue("production_equipment", v ?? undefined)}
+                                            options={equipment.map((e) => ({ value: e.id, label: e.name }))}
+                                            onSearch={setMachineSearch}
+                                            clearLabel="No equipment"
+                                            placeholder="Select equipment (optional)"
+                                            searchPlaceholder="Search equipment..."
+                                            emptyText="No equipment found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>Equipment used during inspection (optional)</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -451,56 +333,21 @@ export default function EditQualityReportFormPage() {
                         control={form.control}
                         name="detected_by"
                         render={({ field }) => {
-                            const selectedEmployee = employees.find((emp) => emp.id === field.value);
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Detected By</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selectedEmployee
-                                                        ? `${selectedEmployee.first_name} ${selectedEmployee.last_name}`
-                                                        : "Select inspector"
-                                                    }
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={detectedBySearch}
-                                                    onValueChange={setDetectedBySearch}
-                                                    placeholder="Search employees..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No employees found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {filteredDetectedBy.map((emp) => (
-                                                            <CommandItem
-                                                                key={emp.id}
-                                                                value={`${emp.first_name} ${emp.last_name}`}
-                                                                onSelect={() => {
-                                                                    form.setValue("detected_by", emp.id);
-                                                                    setDetectedBySearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", emp.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {emp.first_name} {emp.last_name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            contentClassName="w-[300px]"
+                                            value={field.value == null ? null : String(field.value)}
+                                            onChange={(v) => v && form.setValue("detected_by", Number(v))}
+                                            options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                            placeholder="Select inspector"
+                                            searchPlaceholder="Search employees..."
+                                            emptyText="No employees found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>Person who performed the inspection</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -513,56 +360,21 @@ export default function EditQualityReportFormPage() {
                         control={form.control}
                         name="verified_by"
                         render={({ field }) => {
-                            const selectedEmployee = employees.find((emp) => emp.id === field.value);
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Verified By</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selectedEmployee
-                                                        ? `${selectedEmployee.first_name} ${selectedEmployee.last_name}`
-                                                        : "Select verifier"
-                                                    }
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={verifiedBySearch}
-                                                    onValueChange={setVerifiedBySearch}
-                                                    placeholder="Search employees..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No employees found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {filteredVerifiedBy.map((emp) => (
-                                                            <CommandItem
-                                                                key={emp.id}
-                                                                value={`${emp.first_name} ${emp.last_name}`}
-                                                                onSelect={() => {
-                                                                    form.setValue("verified_by", emp.id);
-                                                                    setVerifiedBySearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", emp.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {emp.first_name} {emp.last_name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            contentClassName="w-[300px]"
+                                            value={field.value == null ? null : String(field.value)}
+                                            onChange={(v) => v && form.setValue("verified_by", Number(v))}
+                                            options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                            placeholder="Select verifier"
+                                            searchPlaceholder="Search employees..."
+                                            emptyText="No employees found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>Person who verified the inspection</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -624,6 +436,11 @@ export default function EditQualityReportFormPage() {
                     </Button>
                 </form>
             </Form>
+            {mode === "edit" && qualityReportId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="QualityReports" id={qualityReportId} model="qualityreports" />
+                </div>
+            )}
         </div>
     );
 }

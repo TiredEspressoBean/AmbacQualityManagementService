@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect, useMemo, useRef, useCallback, type ComponentProps } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,23 +17,7 @@ import { useUpdateHeatMapAnnotation } from "@/hooks/useUpdateHeatMapAnnotation";
 import { useHeatMapFacets } from "@/hooks/useHeatMapFacets";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import {
-    Loader2,
-    AlertTriangle,
-    Maximize,
-    Minimize,
-    Box,
-    Layers,
-    ArrowLeft,
-    FileWarning,
-    ChevronRight,
-    Check,
-    ChevronsUpDown,
-    Search,
-    Pencil,
-    Save,
-    X,
-} from "lucide-react";
+import { Loader2, AlertTriangle, Maximize, Minimize, Box, Layers, ArrowLeft, FileWarning, ChevronRight, Search, Pencil, Save, X } from "lucide-react";
 import * as THREE from "three";
 import { api } from "@/lib/api/generated";
 import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
@@ -85,20 +70,6 @@ const workordersForHeatmapOptions = (resolvedPartTypeId: string | undefined) => 
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useGLTF } from "@react-three/drei";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import { matchKey } from "@/lib/query-filters";
 
 // Helper to normalize media URLs to relative paths (for Vite proxy to work)
@@ -186,6 +157,7 @@ function HeatMapSelection({
     const [partTypeSearch, setPartTypeSearch] = useState("");
     const [rawPartSearch, setRawPartSearch] = useState("");
     const [partSearch, setPartSearch] = useState("");
+    // The lists load only while their picker is open.
     const [partTypeOpen, setPartTypeOpen] = useState(false);
     const [partOpen, setPartOpen] = useState(false);
 
@@ -394,53 +366,18 @@ function HeatMapSelection({
                                         {/* Part Type Combobox */}
                                         <div className="space-y-1.5 min-w-[200px]">
                                             <Label className="text-sm">Part Type</Label>
-                                            <Popover open={partTypeOpen} onOpenChange={setPartTypeOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={partTypeOpen}
-                                                        className="w-full justify-between font-normal"
-                                                    >
-                                                        {selectedPartTypeName || "Select part type..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[200px] p-0">
-                                                    <Command shouldFilter={false}>
-                                                        <CommandInput
-                                                            placeholder="Search part types..."
-                                                            value={rawPartTypeSearch}
-                                                            onValueChange={setRawPartTypeSearch}
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>No part type found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {(partTypesSearchData ?? []).map((pt) => (
-                                                                    <CommandItem
-                                                                        key={pt.id}
-                                                                        value={pt.name}
-                                                                        onSelect={() => {
-                                                                            setSelectedPartTypeForPart(pt.id);
-                                                                            setSelectedPartId(null);
-                                                                            setRawPartTypeSearch("");
-                                                                            setPartTypeOpen(false);
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                selectedPartTypeForPart === pt.id ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        {pt.name}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <Combobox
+                                                contentClassName="w-[240px]"
+                                                value={selectedPartTypeForPart}
+                                                onChange={(v) => { setSelectedPartTypeForPart(v); setSelectedPartId(null); }}
+                                                options={(partTypesSearchData ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                                onSearch={setRawPartTypeSearch}
+                                                selectedLabel={selectedPartTypeName || undefined}
+    onOpenChange={setPartTypeOpen}
+                                                placeholder="Select part type..."
+                                                searchPlaceholder="Search part types..."
+                                                emptyText="No part type found."
+                                            />
                                         </div>
 
                                         {/* Part Combobox */}
@@ -449,56 +386,19 @@ function HeatMapSelection({
                                             {isLoadingParts ? (
                                                 <Skeleton className="h-10 w-full" />
                                             ) : (
-                                                <Popover open={partOpen} onOpenChange={setPartOpen}>
-                                                    <PopoverTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            role="combobox"
-                                                            aria-expanded={partOpen}
-                                                            disabled={!selectedPartTypeForPart}
-                                                            className="w-full justify-between font-normal"
-                                                        >
-                                                            {selectedPartName || (selectedPartTypeForPart ? "Select part..." : "Select part type first")}
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[200px] p-0">
-                                                        <Command shouldFilter={false}>
-                                                            <CommandInput
-                                                                placeholder="Search parts..."
-                                                                value={rawPartSearch}
-                                                                onValueChange={setRawPartSearch}
-                                                            />
-                                                            <CommandList>
-                                                                <CommandEmpty>No parts found.</CommandEmpty>
-                                                                <CommandGroup>
-                                                                    {(partsData ?? []).map((part) => {
-                                                                        const partName = part.ERP_id || `Part #${part.id}`;
-                                                                        return (
-                                                                            <CommandItem
-                                                                                key={part.id}
-                                                                                value={partName}
-                                                                                onSelect={() => {
-                                                                                    setSelectedPartId(part.id);
-                                                                                    setRawPartSearch("");
-                                                                                    setPartOpen(false);
-                                                                                }}
-                                                                            >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        selectedPartId === part.id ? "opacity-100" : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {partName}
-                                                                            </CommandItem>
-                                                                        );
-                                                                    })}
-                                                                </CommandGroup>
-                                                            </CommandList>
-                                                        </Command>
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <Combobox
+                                                    contentClassName="w-[240px]"
+                                                    value={selectedPartId}
+                                                    onChange={(v) => v && setSelectedPartId(v)}
+                                                    options={(partsData ?? []).map((part) => ({ value: String(part.id), label: part.ERP_id || `Part #${part.id}` }))}
+                                                    onSearch={setRawPartSearch}
+                                                    selectedLabel={selectedPartName || undefined}
+    onOpenChange={setPartOpen}
+                                                    disabled={!selectedPartTypeForPart}
+                                                    placeholder={selectedPartTypeForPart ? "Select part..." : "Select part type first"}
+                                                    searchPlaceholder="Search parts..."
+                                                    emptyText="No parts found."
+                                                />
                                             )}
                                         </div>
 

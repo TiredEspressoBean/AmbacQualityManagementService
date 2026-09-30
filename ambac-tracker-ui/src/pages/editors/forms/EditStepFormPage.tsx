@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
@@ -473,7 +474,7 @@ export default function StepFormPage() {
                 </div>)}
             {mode === "edit" && stepId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="Steps" id={stepId} model="steps" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="Steps" id={stepId} model="steps" />{/* A step in a process is removed there: archiving the row would pull it out of every version sharing it. */}{!lockedToProcess && <RecordArchiveCard endpoint="Steps" id={stepId} model="steps" />}</div>
                 </div>
             )}
         </div>

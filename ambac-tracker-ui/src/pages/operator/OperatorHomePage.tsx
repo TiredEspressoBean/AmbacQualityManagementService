@@ -24,6 +24,7 @@
  * As each backend lands (queue aggregate first), swap the matching PreviewLock
  * for real data.
  */
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -34,13 +35,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-    Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-    AlertTriangle, BookOpen, Check, ChevronsUpDown, Clock, Hand, Lock, Megaphone, PlayCircle, ScanLine, StickyNote, Timer, Wrench, XCircle,
-} from "lucide-react";
+import { AlertTriangle, BookOpen, Clock, Hand, Lock, Megaphone, PlayCircle, ScanLine, StickyNote, Timer, Wrench, XCircle } from "lucide-react";
 
 import { api } from "@/lib/api/generated";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
@@ -285,7 +280,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const [blockOpen, setBlockOpen] = useState(false);
     const [problemOpen, setProblemOpen] = useState(false);
     const [problemBranch, setProblemBranch] = useState<"machine" | "job" | null>(null);
-    const [areaOpen, setAreaOpen] = useState(false);
     // Combobox label — either "All my stations", a specific station, or a
     // gentle empty state when the user has no memberships yet.
     const areaLabel = memberships.length === 0
@@ -320,44 +314,25 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 {/* Station scope — LIVE: driven by the user's WorkCenter memberships
                     (see Documents/WORK_CENTER_DESIGN.md Phase 2). Picked station
                     persists per-user in localStorage. */}
-                <Popover open={areaOpen} onOpenChange={setAreaOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" aria-expanded={areaOpen}
-                            className="h-12 w-56 shrink-0 justify-between"
-                            disabled={memberships.length === 0}>
-                            <span className="truncate">{areaLabel}</span>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-0" align="end">
-                        <Command>
-                            <CommandInput placeholder="Work center…" />
-                            <CommandList>
-                                <CommandEmpty>Nothing matches.</CommandEmpty>
-                                {memberships.length > 0 && (
-                                    <CommandGroup>
-                                        <CommandItem value="All my stations" onSelect={() => { setActiveWc("all"); setAreaOpen(false); }}>
-                                            <Check className={`mr-2 h-4 w-4 ${activeWcId === "all" ? "opacity-100" : "opacity-0"}`} />
-                                            <span className="min-w-0 flex-1 truncate">All my stations</span>
-                                            <span className="ml-2 text-xs text-muted-foreground">{memberships.length}</span>
-                                        </CommandItem>
-                                        {memberships.map((m) => (
-                                            <CommandItem
-                                                key={m.work_center}
-                                                value={`${m.work_center_code} ${m.work_center_name}`}
-                                                onSelect={() => { setActiveWc(m.work_center); setAreaOpen(false); }}
-                                            >
-                                                <Check className={`mr-2 h-4 w-4 ${m.work_center === activeWcId ? "opacity-100" : "opacity-0"}`} />
-                                                <span className="min-w-0 flex-1 truncate">{m.work_center_name}</span>
-                                                {m.is_primary && <span className="ml-2 text-[10px] text-muted-foreground">primary</span>}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                )}
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                <Combobox
+                    className="h-12 w-56 shrink-0"
+                    contentClassName="w-64"
+                    value={activeWcId}
+                    onChange={(v) => v && setActiveWc(v)}
+                    options={memberships.length === 0 ? [] : [
+                        { value: "all", label: "All my stations", description: `${memberships.length} work centers` },
+                        ...memberships.map((m) => ({
+                            value: m.work_center, label: m.work_center_name,
+                            keywords: [m.work_center_code],
+                            ...(m.is_primary ? { description: "primary" } : {}),
+                        })),
+                    ]}
+                    selectedLabel={areaLabel}
+                    disabled={memberships.length === 0}
+                    placeholder={areaLabel}
+                    searchPlaceholder="Work center…"
+                    emptyText="Nothing matches."
+                />
                 {/* Clock cluster — LIVE: TimeEntry clock_in/out; Break/Lunch pause labor. */}
                 <div className="flex shrink-0 items-center gap-3">
                     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

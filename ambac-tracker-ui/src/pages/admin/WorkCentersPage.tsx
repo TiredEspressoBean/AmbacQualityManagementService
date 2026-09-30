@@ -1,3 +1,7 @@
+import { endpointFn } from "@/lib/api/endpoint-fn";
+import { getCookie } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 /**
  * Work Centers — admin surface for the routing/surface primitive that anchors
  * operator / QA / receiving / OSP work. See Documents/WORK_CENTER_DESIGN.md.
@@ -33,11 +37,11 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { matchKey } from "@/lib/query-filters";
 import { DataIOButtons } from "@/components/data-io-buttons";
 
-const workCentersAdminOptions = (search: string) =>
+const workCentersAdminOptions = (search: string, includeArchived = false) =>
     queryOptions({
-        queryKey: ["work-centers", "admin", search] as const,
+        queryKey: ["work-centers", "admin", search, includeArchived] as const,
         queryFn: () => api.api_WorkCenters_list({
-            queries: { limit: 100, ...(search ? { search } : {}) },
+            queries: { limit: 100, ...(search ? { search } : {}), ...(includeArchived ? { include_archived: "true" } : {}) },
         }),
     });
 
@@ -78,13 +82,15 @@ export default function WorkCentersPage() {
     const [search, setSearch] = useState("");
     const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
     const [detail, setDetail] = useState<WorkCenter | null>(null);
+    const [showArchived, setShowArchived] = useState(false);
+    const [historyFor, setHistoryFor] = useState<WorkCenter | null>(null);
     // Work centers are routing master data (authoring tier). Everyone can view;
     // create/edit/archive render only for holders of the WC authoring perms.
     const { has } = usePermissionSet();
     const canCreate = has("add_workcenter");
     const canEdit = has("change_workcenter");
 
-    const { data: page, isLoading } = useQuery(workCentersAdminOptions(search));
+    const { data: page, isLoading } = useQuery(workCentersAdminOptions(search, showArchived));
     const rows: WorkCenter[] = page?.results ?? [];
 
     const createMut = useMutation({
@@ -118,6 +124,20 @@ export default function WorkCentersPage() {
             toast.success("Archived.");
         },
         onError: (e: unknown) => toast.error(`Couldn't archive: ${(e as Error).message}`),
+    });
+    const restoreMut = useMutation({
+        // An archived row is hidden from the detail route unless asked for.
+        mutationFn: (id: string) =>
+            // The typed client doesn't declare the flag on detail routes; the API reads it.
+            (endpointFn("WorkCenters", "partial_update") as (d: unknown, c: unknown) => Promise<unknown>)(
+                { archived: false },
+                { params: { id }, queries: { include_archived: "true" }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
+            ),
+        onSuccess: () => {
+            qc.invalidateQueries(matchKey(["work-centers"]));
+            toast.success("Restored.");
+        },
+        onError: (e: unknown) => toast.error(`Couldn't restore: ${(e as Error).message}`),
     });
 
     const openCreate = () => setDraft({ ...EMPTY_DRAFT, open: true });
@@ -166,6 +186,9 @@ export default function WorkCentersPage() {
 
     return (
         <div className="mx-auto max-w-6xl space-y-4 p-4">
+            <Link to="/Edit" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                Data Management
+            </Link>
             <div className="flex items-center gap-3">
                 <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-2xl font-semibold tracking-tight">
                     <MapPin className="h-6 w-6 text-muted-foreground" /> Work Centers
@@ -178,6 +201,10 @@ export default function WorkCentersPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                </div>
+                <div className="flex items-center gap-2">
+                    <Switch id="wc-show-archived" checked={showArchived} onCheckedChange={setShowArchived} />
+                    <Label htmlFor="wc-show-archived" className="text-sm font-normal">Show archived</Label>
                 </div>
                 <DataIOButtons
                     endpoint="WorkCenters"
@@ -282,6 +309,7 @@ export default function WorkCentersPage() {
                                                 {canEdit && (
                                                     <DropdownMenuItem onClick={() => openEdit(wc)}>Edit</DropdownMenuItem>
                                                 )}
+                                                <DropdownMenuItem onClick={() => setHistoryFor(wc)}>History</DropdownMenuItem>
                                                 {canEdit && !archived && (
                                                     <DropdownMenuItem
                                                         className="text-destructive"
@@ -289,6 +317,9 @@ export default function WorkCentersPage() {
                                                     >
                                                         Archive
                                                     </DropdownMenuItem>
+                                                )}
+                                                {canEdit && archived && (
+                                                    <DropdownMenuItem onClick={() => restoreMut.mutate(wc.id)}>Restore</DropdownMenuItem>
                                                 )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -305,6 +336,16 @@ export default function WorkCentersPage() {
                 open={detail != null}
                 onOpenChange={(v) => !v && setDetail(null)}
             />
+
+            <Dialog open={!!historyFor} onOpenChange={(v) => !v && setHistoryFor(null)}>
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{historyFor?.name}</DialogTitle>
+                        <DialogDescription>Every change to this work center.</DialogDescription>
+                    </DialogHeader>
+                    {historyFor && <RecordHistoryCard endpoint="WorkCenters" id={historyFor.id} model="workcenter" />}
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={draft.open} onOpenChange={(v) => !v && setDraft(EMPTY_DRAFT)}>
                 <DialogContent className="sm:max-w-md">

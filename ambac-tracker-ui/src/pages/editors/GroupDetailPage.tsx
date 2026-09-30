@@ -1,3 +1,4 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useState, useMemo } from "react";
 import { useParams, Link } from "@tanstack/react-router";
 import { useTenantGroup } from "@/hooks/useTenantGroup";
@@ -577,6 +578,11 @@ export function GroupDetailPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+            {groupId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="TenantGroups" id={groupId} model="tenantgroup" />
+                </div>
+            )}
         </div>
     );
 }

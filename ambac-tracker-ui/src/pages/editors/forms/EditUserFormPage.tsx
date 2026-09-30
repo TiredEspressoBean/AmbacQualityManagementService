@@ -1,4 +1,5 @@
 "use client";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
@@ -542,6 +543,11 @@ export default function UserFormPage() {
                     </div>
                 </form>
             </Form>
+            {mode === "edit" && userId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="User" id={String(userId)} model="user" />
+                </div>
+            )}
         </div>
     );
 }

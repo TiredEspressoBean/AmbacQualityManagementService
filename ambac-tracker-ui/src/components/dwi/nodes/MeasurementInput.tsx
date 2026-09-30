@@ -4,32 +4,19 @@
  * Linked spec dropdown which autofills the rest. Operator sees a numeric
  * input and a live in-spec / out-of-spec badge.
  */
-import { useRef, useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
+import { useRef } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
     ReactNodeViewRenderer,
     type NodeViewProps,
 } from "@tiptap/react";
-import { Ruler, Check, ChevronsUpDown } from "lucide-react";
+import { Ruler } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import {
     Select,
     SelectContent,
@@ -37,7 +24,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { NodeCard } from "../shared/NodeCard";
 import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
@@ -120,12 +106,8 @@ export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewPro
         stepId ? { step: stepId } : undefined,
     );
     const defs = (defsResp?.results ?? []) as MeasurementDefShape[];
-    const [pickerOpen, setPickerOpen] = useState(false);
 
     const defLabel = (d: MeasurementDefShape) => d.label ?? `Measurement ${d.id}`;
-    const selectedDef = defs.find(
-        (d) => String(d.id) === a.measurement_definition_id,
-    );
 
     const pickDefinition = (id: string) => {
         const def = defs.find((d) => String(d.id) === id);
@@ -154,52 +136,16 @@ export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewPro
         <div className="space-y-3">
             <div className="space-y-1">
                 <Label className="text-xs">Linked measurement spec</Label>
-                <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={pickerOpen}
-                            className="h-8 w-full justify-between text-sm font-normal"
-                        >
-                            <span className={cn("truncate", !selectedDef && "text-muted-foreground")}>
-                                {selectedDef ? defLabel(selectedDef) : "— pick to autofill —"}
-                            </span>
-                            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[260px] p-0" align="start">
-                        <Command>
-                            <CommandInput placeholder="Search measurements…" className="text-sm" />
-                            <CommandList>
-                                <CommandEmpty>No measurements for this step.</CommandEmpty>
-                                <CommandGroup>
-                                    {defs.map((d) => (
-                                        <CommandItem
-                                            key={String(d.id)}
-                                            value={defLabel(d)}
-                                            onSelect={() => {
-                                                pickDefinition(String(d.id));
-                                                setPickerOpen(false);
-                                            }}
-                                            className="text-sm"
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-3.5 w-3.5",
-                                                    a.measurement_definition_id === String(d.id)
-                                                        ? "opacity-100"
-                                                        : "opacity-0",
-                                                )}
-                                            />
-                                            {defLabel(d)}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                <Combobox
+                    className="h-8 text-sm"
+                    contentClassName="w-[260px]"
+                    value={a.measurement_definition_id || null}
+                    onChange={(v) => v && pickDefinition(v)}
+                    options={defs.map((d) => ({ value: String(d.id), label: defLabel(d) }))}
+                    placeholder="— pick to autofill —"
+                    searchPlaceholder="Search measurements…"
+                    emptyText="No measurements for this step."
+                />
                 {a.measurement_definition_id && (
                     <button
                         type="button"

@@ -1,17 +1,15 @@
 "use client"
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { Combobox } from "@/components/ui/combobox";
 import {useEffect, useState} from "react"
 import {toast} from "sonner"
 import {useForm, type Resolver} from "react-hook-form"
 import {zodResolver} from "@hookform/resolvers/zod"
 import {z} from "zod"
-import {cn} from "@/lib/utils"
 import {Button} from "@/components/ui/button"
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form"
 import {Input} from "@/components/ui/input"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
-import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList} from "@/components/ui/command"
-import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover"
-import {Check, ChevronsUpDown} from "lucide-react"
 import {Checkbox} from "@/components/ui/checkbox"
 
 import {useRetrieveOrders} from '@/hooks/useRetrieveOrders.ts'
@@ -234,43 +232,23 @@ export default function PartFormPage() {
                         name="order"
                         render={({field}) => (<FormItem className="flex flex-col">
                             <FormLabel>Order</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                        >
-                                            {field.value ? orders?.results.find((o) => o.id === field.value)?.name ?? selectedOrder?.name ?? "Loading..." : "Select an order"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[300px] p-0">
-                                    <Command>
-                                        <CommandInput value={search} onValueChange={setSearch}
-                                                      placeholder="Search orders..."/>
-                                        <CommandList>
-                                            <CommandEmpty>No orders found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {(orders?.results ?? []).map((order) => {
-                                                    return (<CommandItem
-                                                        key={order.id}
-                                                        value={`${order.name} ${order.customer_first_name} ${order.customer_last_name}`}
-                                                        onSelect={() => form.setValue("order", order.id)}
-                                                    >
-                                                        <Check
-                                                            className={cn("mr-2 h-4 w-4", order.id === field.value ? "opacity-100" : "opacity-0")}
-                                                        />
-                                                        {order.name}
-                                                    </CommandItem>)
-                                                })}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                                <Combobox
+                                    className="w-[300px]"
+                                    contentClassName="w-[300px]"
+                                    value={field.value ?? null}
+                                    onChange={(v) => v && form.setValue("order", v)}
+                                    options={(orders?.results ?? []).map((o) => ({
+                                        value: o.id, label: o.name,
+                                        keywords: [o.customer_first_name ?? "", o.customer_last_name ?? ""],
+                                    }))}
+                                    onSearch={setSearch}
+                                    selectedLabel={selectedOrder?.name}
+                                    placeholder="Select an order"
+                                    searchPlaceholder="Search orders..."
+                                    emptyText="No orders found."
+                                />
+                            </FormControl>
                             <FormMessage/>
                         </FormItem>)}
                     />
@@ -279,50 +257,22 @@ export default function PartFormPage() {
                         control={form.control}
                         name="part_type"
                         render={({field}) => {
-                            const selectedPartType = partTypes?.results.find(pt => pt.id === field.value)
                             return (<FormItem className="flex flex-col">
                                 <FormLabel required={required.part_type}>Part Type</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                            >
-                                                {selectedPartType?.name ?? "Select a part type"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput
-                                                value={partTypeSearch}
-                                                onValueChange={setPartTypeSearch}
-                                                placeholder="Search part types..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No part types found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {partTypes?.results.map((pt) => (<CommandItem
-                                                        key={pt.id}
-                                                        value={pt.name}
-                                                        onSelect={() => {
-                                                            form.setValue("part_type", pt.id)
-                                                            setPartTypeSearch("")
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn("mr-2 h-4 w-4", pt.id === field.value ? "opacity-100" : "opacity-0")}
-                                                        />
-                                                        {pt.name}
-                                                    </CommandItem>))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        contentClassName="w-[300px]"
+                                        value={field.value ?? null}
+                                        onChange={(v) => v && form.setValue("part_type", v)}
+                                        options={(partTypes?.results ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                        onSearch={setPartTypeSearch}
+                                        selectedLabel={part?.part_type_name ?? undefined}
+                                        placeholder="Select a part type"
+                                        searchPlaceholder="Search part types..."
+                                        emptyText="No part types found."
+                                    />
+                                </FormControl>
                                 <FormMessage/>
                             </FormItem>)
                         }}
@@ -331,50 +281,17 @@ export default function PartFormPage() {
                     {/* Process Selector - For filtering steps only, not part of form data */}
                     <div className="flex flex-col space-y-2">
                         <FormLabel>Process (for filtering steps)</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button 
-                                    variant="outline" 
-                                    role="combobox" 
-                                    className={cn(
-                                        "w-[300px] justify-between",
-                                        !selectedPartType && "text-muted-foreground"
-                                    )}
-                                    disabled={!selectedPartType}
-                                >
-                                    {selectedProcess 
-                                        ? processes?.results.find((p) => p.id === selectedProcess)?.name ?? "Loading..." 
-                                        : selectedPartType ? "Select a process to filter steps" : "Select part type first"
-                                    }
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search processes..."/>
-                                    <CommandList>
-                                        <CommandEmpty>No processes found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {(processes?.results ?? []).map((process) => (
-                                                <CommandItem
-                                                    key={process.id}
-                                                    value={process.name}
-                                                    onSelect={() => setSelectedProcess(process.id)}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4", 
-                                                            process.id === selectedProcess ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {process.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                        <Combobox
+                            className="w-[300px]"
+                            contentClassName="w-[300px]"
+                            value={selectedProcess ?? null}
+                            onChange={(v) => setSelectedProcess(v ?? undefined)}
+                            options={(processes?.results ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                            disabled={!selectedPartType}
+                            placeholder={selectedPartType ? "Select a process to filter steps" : "Select part type first"}
+                            searchPlaceholder="Search processes..."
+                            emptyText="No processes found."
+                        />
                         <FormDescription>
                             This helps filter the step choices. The process is determined automatically from the selected step.
                         </FormDescription>
@@ -385,40 +302,19 @@ export default function PartFormPage() {
                         name="step"
                         render={({field}) => (<FormItem className="flex flex-col">
                             <FormLabel required={required.step}>Step</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                        >
-                                            {field.value ? steps?.results.find((s) => s.id === field.value)?.description ?? "Loading..." : "Select a step"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[300px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search steps..."/>
-                                        <CommandList>
-                                            <CommandEmpty>No steps found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {steps?.results.map((step) => (<CommandItem
-                                                    key={step.id}
-                                                    value={String(step.id)} // use step.id, not name
-                                                    onSelect={() => form.setValue("step", step.id)}
-                                                >
-                                                    <Check
-                                                        className={cn("mr-2 h-4 w-4", field.value === step.id ? "opacity-100" : "opacity-0")}
-                                                    />
-                                                    {step.description}
-                                                </CommandItem>))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                                <Combobox
+                                    className="w-[300px]"
+                                    contentClassName="w-[300px]"
+                                    value={field.value ?? null}
+                                    onChange={(v) => v && form.setValue("step", v)}
+                                    options={(steps?.results ?? []).map((s) => ({ value: String(s.id), label: s.description || s.name }))}
+                                    selectedLabel={part?.step_name ?? undefined}
+                                    placeholder="Select a step"
+                                    searchPlaceholder="Search steps..."
+                                    emptyText="No steps found."
+                                />
+                            </FormControl>
                             <FormMessage/>
                         </FormItem>)}
                     />
@@ -427,51 +323,22 @@ export default function PartFormPage() {
                         control={form.control}
                         name="work_order"
                         render={({field}) => {
-                            const selected = workOrders?.results.find((wo) => wo.id === field.value);
 
                             return (<FormItem className="flex flex-col">
                                 <FormLabel>Work Order</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                            >
-                                                {selected ? selected.ERP_id : "Select a work order"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput
-                                                value={workOrderSearch}
-                                                onValueChange={setWorkOrderSearch}
-                                                placeholder="Search work orders..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No work orders found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {workOrders?.results.map((wo) => (<CommandItem
-                                                        key={wo.id}
-                                                        value={wo.ERP_id}
-                                                        onSelect={() => {
-                                                            form.setValue("work_order", wo.id);
-                                                            setWorkOrderSearch("");
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn("mr-2 h-4 w-4", wo.id === field.value ? "opacity-100" : "opacity-0")}
-                                                        />
-                                                        {wo.ERP_id}
-                                                    </CommandItem>))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        contentClassName="w-[300px]"
+                                        value={field.value ?? null}
+                                        onChange={(v) => v && form.setValue("work_order", v)}
+                                        options={(workOrders?.results ?? []).map((wo) => ({ value: wo.id, label: wo.ERP_id }))}
+                                        onSearch={setWorkOrderSearch}
+                                        placeholder="Select a work order"
+                                        searchPlaceholder="Search work orders..."
+                                        emptyText="No work orders found."
+                                    />
+                                </FormControl>
                                 <FormMessage/>
                             </FormItem>);
                         }}
@@ -505,7 +372,11 @@ export default function PartFormPage() {
                     <h3 className="text-lg font-semibold">Attach Documents</h3>
                     <DocumentUploader objectId={partId} contentType="parts"/>
                 </div>)}
+            {mode === "edit" && partId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Parts" id={partId} model="parts" />
+                </div>
+            )}
         </div>
-
     )
 }

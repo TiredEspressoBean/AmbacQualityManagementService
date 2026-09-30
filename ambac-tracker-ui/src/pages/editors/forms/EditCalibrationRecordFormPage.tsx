@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
@@ -29,15 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
 import { ReportButton } from "@/components/reports/ReportButton";
@@ -101,7 +94,6 @@ export default function EditCalibrationRecordFormPage() {
     const recordId = params.id !== "new" ? params.id : undefined;
 
     const [equipmentSearch, setEquipmentSearch] = useState("");
-    const [equipmentOpen, setEquipmentOpen] = useState(false);
 
     const { data: record, isLoading: isLoadingRecord } = useRetrieveCalibrationRecord(recordId || "");
 
@@ -223,63 +215,20 @@ export default function EditCalibrationRecordFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Equipment {required.equipment && "*"}</FormLabel>
-                                <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value
-                                                    ? equipmentList.find((e: any) => e.id === field.value)?.name ||
-                                                      "Select equipment"
-                                                    : "Select equipment"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search equipment..."
-                                                value={equipmentSearch}
-                                                onValueChange={setEquipmentSearch}
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No equipment found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {equipmentList.map((equip: any) => (
-                                                        <CommandItem
-                                                            key={equip.id}
-                                                            value={equip.name}
-                                                            onSelect={() => {
-                                                                field.onChange(equip.id);
-                                                                setEquipmentOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    field.value === equip.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {equip.name}
-                                                            {equip.serial_number && (
-                                                                <span className="text-muted-foreground ml-2">
-                                                                    ({equip.serial_number})
-                                                                </span>
-                                                            )}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value || null}
+                                        onChange={(v) => v && field.onChange(v)}
+                                        options={equipmentList.map((e: { id: string; name: string; serial_number?: string | null }) => ({
+                                            value: e.id, label: e.name, ...(e.serial_number ? { description: e.serial_number } : {}),
+                                        }))}
+                                        onSearch={setEquipmentSearch}
+                                        selectedLabel={(record?.equipment_info as { name?: string } | undefined)?.name}
+                                        placeholder="Select equipment"
+                                        searchPlaceholder="Search equipment..."
+                                        emptyText="No equipment found."
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

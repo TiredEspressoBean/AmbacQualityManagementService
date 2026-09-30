@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -346,7 +347,7 @@ export default function EditFixtureFormPage() {
       </Card>
         {mode === "edit" && fixtureId && (
             <div className="max-w-3xl mx-auto py-6">
-                <RecordHistoryCard endpoint="Fixtures" id={fixtureId} model="fixture" />
+                <div className="space-y-6"><RecordHistoryCard endpoint="Fixtures" id={fixtureId} model="fixture" /><RecordArchiveCard endpoint="Fixtures" id={fixtureId} model="fixture" /></div>
             </div>
         )}
     </div>

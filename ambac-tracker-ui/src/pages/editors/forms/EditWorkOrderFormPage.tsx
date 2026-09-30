@@ -1,5 +1,7 @@
 "use client"
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
@@ -22,9 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from "lucide-react"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { useParams } from "@tanstack/react-router"
 
 import { useRetrieveOrders } from '@/hooks/useRetrieveOrders'
@@ -246,47 +247,22 @@ export default function WorkOrderFormPage() {
                     control={form.control}
                     name="related_order"
                     render={({field}) => {
-                        const selectedOrder = orders?.results.find((o) => o.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.related_order}>Related Order</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                            >
-                                                {selectedOrder?.name || "Select an order"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput value={search} onValueChange={setSearch}
-                                                          placeholder="Search orders..."/>
-                                            <CommandList>
-                                                <CommandEmpty>No orders found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {orders?.results.map((order) => (
-                                                        <CommandItem
-                                                            key={order.id}
-                                                            value={order.name}
-                                                            onSelect={() => form.setValue("related_order", order.id)}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", order.id === field.value ? "opacity-100" : "opacity-0")}
-                                                            />
-                                                            {order.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        value={field.value ?? null}
+                                        onChange={(v) => v && form.setValue("related_order", v)}
+                                        options={(orders?.results ?? []).map((o) => ({ value: o.id, label: o.name }))}
+                                        onSearch={setSearch}
+                                        selectedLabel={(workOrder?.related_order_info as { name?: string } | null)?.name}
+                                        placeholder="Select an order"
+                                        searchPlaceholder="Search orders..."
+                                        emptyText="No orders found."
+                                    />
+                                </FormControl>
                                 <FormDescription>The customer order this work order is attached to</FormDescription>
                                 <FormMessage/>
                             </FormItem>
@@ -298,64 +274,23 @@ export default function WorkOrderFormPage() {
                     control={form.control}
                     name="process"
                     render={({ field }) => {
-                        const selectedProcess = processes?.results.find((p) => p.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.process}>Process</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                            >
-                                                {selectedProcess?.name || "Select a process (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput
-                                                value={processSearch}
-                                                onValueChange={setProcessSearch}
-                                                placeholder="Search processes..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No processes found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    <CommandItem
-                                                        onSelect={() => {
-                                                            form.setValue("process", undefined)
-                                                            setProcessSearch("")
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn("mr-2 h-4 w-4", !field.value ? "opacity-100" : "opacity-0")}
-                                                        />
-                                                        No process
-                                                    </CommandItem>
-                                                    {processes?.results.map((process) => (
-                                                        <CommandItem
-                                                            key={process.id}
-                                                            value={`${process.name}__${process.id}`}
-                                                            onSelect={() => {
-                                                                form.setValue("process", process.id)
-                                                                setProcessSearch("")
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", process.id === field.value ? "opacity-100" : "opacity-0")}
-                                                            />
-                                                            {process.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        value={field.value ?? null}
+                                        onChange={(v) => form.setValue("process", v ?? undefined)}
+                                        options={(processes?.results ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                                        onSearch={setProcessSearch}
+                                        clearLabel="No process"
+                                        selectedLabel={workOrder?.process_info?.name ?? undefined}
+                                        placeholder="Select a process (optional)"
+                                        searchPlaceholder="Search processes..."
+                                        emptyText="No processes found."
+                                    />
+                                </FormControl>
                                 <FormDescription>The manufacturing process this work order follows</FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -408,6 +343,11 @@ export default function WorkOrderFormPage() {
                     <h3 className="text-lg font-semibold">Attach Documents</h3>
                     <DocumentUploader objectId={workOrderId} contentType="workorder"/>
                 </div>)}
+            {mode === "edit" && workOrderId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="WorkOrders" id={workOrderId} model="workorder" />
+                </div>
+            )}
         </div>
     )
 }

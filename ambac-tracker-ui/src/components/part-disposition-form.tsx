@@ -1,3 +1,5 @@
+import { MultiPicker } from "@/components/ui/multi-picker";
+import { Combobox } from "@/components/ui/combobox";
 import * as React from "react";
 import {Button} from "@/components/ui/button";
 import {toast} from "sonner";
@@ -11,14 +13,13 @@ import {useQualityReports} from "@/hooks/useQualityReports";
 import {useRetrieveParts} from "@/hooks/parts";
 import {cn, getCookie} from "@/lib/utils";
 import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
-import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from "@/components/ui/command";
 import {Textarea} from "@/components/ui/textarea";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Collapsible, CollapsibleContent, CollapsibleTrigger} from "@/components/ui/collapsible";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
-import {Calendar as CalendarIcon, Check, ChevronsUpDown, ChevronDown, Loader2, AlertTriangle, ExternalLink} from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
 import {format} from "date-fns";
 import {Calendar} from "@/components/ui/calendar";
 import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
@@ -87,14 +88,6 @@ const employeeOptionsInfiniteOptions = () =>
     });
 
 export default function PartDispositionForm({part, disposition, onClose}: { part: any; disposition?: any; onClose?: () => void }) {
-    const [assignedToPopoverOpen, setAssignedToPopoverOpen] = React.useState(false);
-    const [completedByPopoverOpen, setCompletedByPopoverOpen] = React.useState(false);
-    const [containmentByPopoverOpen, setContainmentByPopoverOpen] = React.useState(false);
-    const [partPopoverOpen, setPartPopoverOpen] = React.useState(false);
-    const [qualityReportsPopoverOpen, setQualityReportsPopoverOpen] = React.useState(false);
-    const [assignedToSearch, setAssignedToSearch] = React.useState("");
-    const [completedBySearch, setCompletedBySearch] = React.useState("");
-    const [containmentBySearch, setContainmentBySearch] = React.useState("");
     const [partSearch, setPartSearch] = React.useState("");
     const [qualityReportSearch, setQualityReportSearch] = React.useState("");
     // Collapsible state for containment section - expanded by default for critical
@@ -192,11 +185,8 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
         }
     };
 
-    const filteredAssignedTo = employees.filter((emp) => `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(assignedToSearch.toLowerCase()));
 
-    const filteredCompletedBy = employees.filter((emp) => `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(completedBySearch.toLowerCase()));
 
-    const filteredContainmentBy = employees.filter((emp) => `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(containmentBySearch.toLowerCase()));
 
     return (
         <Form {...form}>
@@ -326,55 +316,16 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 render={({field}) => (
                     <FormItem className="flex flex-col">
                         <FormLabel>Assigned To</FormLabel>
-                        <Popover open={assignedToPopoverOpen} onOpenChange={setAssignedToPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={assignedToPopoverOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {field.value
-                                            ? employees.find((emp) => emp.id === field.value)?.first_name + " " + employees.find((emp) => emp.id === field.value)?.last_name
-                                            : "Select employee"
-                                        }
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder="Search employees..."
-                                        value={assignedToSearch}
-                                        onValueChange={setAssignedToSearch}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>No employees found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {filteredAssignedTo.map((employee) => (
-                                                <CommandItem
-                                                    key={employee.id}
-                                                    onSelect={() => {
-                                                        field.onChange(employee.id);
-                                                        setAssignedToPopoverOpen(false);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            field.value === employee.id ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {employee.first_name} {employee.last_name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                            <Combobox
+                                value={field.value == null ? null : String(field.value)}
+                                onChange={(v) => v && field.onChange(Number(v))}
+                                options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                placeholder="Select employee"
+                                searchPlaceholder="Search..."
+                                emptyText="No employees found."
+                            />
+                        </FormControl>
                         <FormDescription>Who this resolution is assigned to</FormDescription>
                         <FormMessage/>
                     </FormItem>
@@ -438,34 +389,16 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                             render={({field}) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Completed By</FormLabel>
-                                    <Popover open={containmentByPopoverOpen} onOpenChange={setContainmentByPopoverOpen}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                    {field.value
-                                                        ? employees.find((emp) => emp.id === field.value)?.first_name + " " + employees.find((emp) => emp.id === field.value)?.last_name
-                                                        : "Select employee"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search..." value={containmentBySearch} onValueChange={setContainmentBySearch}/>
-                                                <CommandList>
-                                                    <CommandEmpty>No employees found.</CommandEmpty>
-                                                    <CommandGroup className="max-h-64 overflow-auto">
-                                                        {filteredContainmentBy.map((employee) => (
-                                                            <CommandItem key={employee.id} onSelect={() => { field.onChange(employee.id); setContainmentByPopoverOpen(false); }}>
-                                                                <Check className={cn("mr-2 h-4 w-4", field.value === employee.id ? "opacity-100" : "opacity-0")}/>
-                                                                {employee.first_name} {employee.last_name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            value={field.value == null ? null : String(field.value)}
+                                            onChange={(v) => v && field.onChange(Number(v))}
+                                            options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                            placeholder="Select employee"
+                                            searchPlaceholder="Search..."
+                                            emptyText="No employees found."
+                                        />
+                                    </FormControl>
                                     <FormMessage/>
                                 </FormItem>
                             )}
@@ -621,55 +554,16 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 render={({field}) => (
                     <FormItem className="flex flex-col">
                         <FormLabel>Resolution Completed By</FormLabel>
-                        <Popover open={completedByPopoverOpen} onOpenChange={setCompletedByPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={completedByPopoverOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {field.value
-                                            ? employees.find((emp) => emp.id === field.value)?.first_name + " " + employees.find((emp) => emp.id === field.value)?.last_name
-                                            : "Select employee"
-                                        }
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder="Search employees..."
-                                        value={completedBySearch}
-                                        onValueChange={setCompletedBySearch}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>No employees found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {filteredCompletedBy.map((employee) => (
-                                                <CommandItem
-                                                    key={employee.id}
-                                                    onSelect={() => {
-                                                        field.onChange(employee.id);
-                                                        setCompletedByPopoverOpen(false);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            field.value === employee.id ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {employee.first_name} {employee.last_name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                            <Combobox
+                                value={field.value == null ? null : String(field.value)}
+                                onChange={(v) => v && field.onChange(Number(v))}
+                                options={employees.map((emp) => ({ value: String(emp.id), label: `${emp.first_name} ${emp.last_name}` }))}
+                                placeholder="Select employee"
+                                searchPlaceholder="Search..."
+                                emptyText="No employees found."
+                            />
+                        </FormControl>
                         <FormDescription>
                             Who completed the resolution or may verify that the resolution has been completed
                         </FormDescription>
@@ -714,55 +608,18 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 render={({field}) => (
                     <FormItem className="flex flex-col">
                         <FormLabel>Related Part</FormLabel>
-                        <Popover open={partPopoverOpen} onOpenChange={setPartPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={partPopoverOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {field.value
-                                            ? parts.find((p) => p.id === field.value)?.ERP_id || `Part #${field.value}`
-                                            : "Select part"
-                                        }
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder="Search parts..."
-                                        value={partSearch}
-                                        onValueChange={setPartSearch}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>No parts found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {parts.map((p) => (
-                                                <CommandItem
-                                                    key={p.id}
-                                                    onSelect={() => {
-                                                        field.onChange(p.id);
-                                                        setPartPopoverOpen(false);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            field.value === p.id ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {p.ERP_id} - {p.part_type_name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                            <Combobox
+                                value={field.value || null}
+                                onChange={(v) => v && field.onChange(v)}
+                                options={parts.map((p) => ({ value: p.id, label: p.ERP_id, ...(p.part_type_name ? { description: p.part_type_name } : {}) }))}
+                                onSearch={setPartSearch}
+                                selectedLabel={field.value ? `Part #${field.value}` : undefined}
+                                placeholder="Select part"
+                                searchPlaceholder="Search parts..."
+                                emptyText="No parts found."
+                            />
+                        </FormControl>
                         <FormDescription>The part that this disposition is related to</FormDescription>
                         <FormMessage/>
                     </FormItem>
@@ -774,87 +631,25 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 render={({field}) => (
                     <FormItem className="flex flex-col">
                         <FormLabel>Quality Reports</FormLabel>
-                        <Popover open={qualityReportsPopoverOpen} onOpenChange={setQualityReportsPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        aria-expanded={qualityReportsPopoverOpen}
-                                        className="w-full justify-between"
-                                    >
-                                        {field.value && field.value.length > 0
-                                            ? `${field.value.length} report${field.value.length > 1 ? 's' : ''} selected`
-                                            : "Select quality reports"
-                                        }
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder="Search quality reports..."
-                                        value={qualityReportSearch}
-                                        onValueChange={setQualityReportSearch}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>No quality reports found.</CommandEmpty>
-                                        <CommandGroup className="max-h-64 overflow-auto">
-                                            {qualityReports.map((qr) => (
-                                                <CommandItem
-                                                    key={qr.id}
-                                                    onSelect={() => {
-                                                        const currentValue = field.value || [];
-                                                        const newValue = currentValue.includes(qr.id)
-                                                            ? currentValue.filter((id) => id !== qr.id)
-                                                            : [...currentValue, qr.id];
-                                                        field.onChange(newValue);
-                                                    }}
-                                                >
-                                                    <Check
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            field.value?.includes(qr.id) ? "opacity-100" : "opacity-0"
-                                                        )}
-                                                    />
-                                                    Report #{qr.id} - Part #{qr.part} - {qr.created_at ? format(new Date(qr.created_at), 'MMM dd, yyyy') : 'No date'}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {field.value && field.value.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                                <p className="text-sm font-medium text-muted-foreground">Selected Reports:</p>
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                    {field.value.map(id => {
-                                        const report = qualityReports.find(qr => qr.id === id);
-                                        if (!report) return <li key={id}>#{id}</li>;
-                                        const dateStr = report.created_at ? format(new Date(report.created_at), 'MMM dd, yyyy') : 'No date';
-                                        return (
-                                            <li key={id} className="flex items-center gap-2">
-                                                <span className="font-mono">#{id}</span>
-                                                <span>-</span>
-                                                <span>Part #{report.part}</span>
-                                                <span>-</span>
-                                                <span>{dateStr}</span>
-                                                <span className={`px-2 py-0.5 rounded text-xs ${
-                                                    report.status === 'PASS' ? 'bg-green-100 text-green-800' :
-                                                    report.status === 'FAIL' ? 'bg-red-100 text-red-800' :
-                                                    'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                    {report.status}
-                                                </span>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </div>
-                        )}
-                        <FormDescription>Quality reports that this disposition is related to</FormDescription>
+                        <MultiPicker
+                            label="Quality reports"
+                            hideLabel
+                            items={qualityReports.map((qr) => ({
+                                id: qr.id,
+                                label: `Report #${qr.id}`,
+                                description: [
+                                    `Part #${qr.part}`,
+                                    qr.created_at ? format(new Date(qr.created_at), "MMM dd, yyyy") : null,
+                                    qr.status,
+                                ].filter(Boolean).join(" · "),
+                            }))}
+                            selected={field.value ?? []}
+                            onChange={field.onChange}
+                            onSearch={setQualityReportSearch}
+                            placeholder="Select quality reports"
+                            searchPlaceholder="Search quality reports..."
+                            emptyHint="No quality reports found."
+                        />
                         <FormMessage/>
                     </FormItem>
                 )}

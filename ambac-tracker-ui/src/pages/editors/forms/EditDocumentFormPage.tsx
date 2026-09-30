@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
@@ -23,21 +24,7 @@ import {
     FileUploaderContent,
     FileUploaderItem,
 } from "@/components/ui/file-upload";
-import { CloudUpload, Paperclip, Check, ChevronsUpDown, Loader2, FileType, Download, Eye, Plus } from "lucide-react";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { CloudUpload, Paperclip, Loader2, FileType, Download, Eye, Plus } from "lucide-react";
 import { useRetrieveParts } from "@/hooks/parts";
 import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses";
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps";
@@ -156,12 +143,10 @@ function DocumentPreviewCard({ document }: { document: any }) {
 export default function DocumentFormPage() {
     const navigate = useNavigate();
     const [files, setFiles] = useState<File[] | null>(null);
-    const [contentTypeSearch, setContentTypeSearch] = useState("");
     const [objectSearch, setObjectSearch] = useState("");
     const [rawObjectSearch, setRawObjectSearch] = useState("");
     const [documentTypeSearch, setDocumentTypeSearch] = useState("");
     const [documentTypeDialogOpen, setDocumentTypeDialogOpen] = useState(false);
-    const [documentTypePopoverOpen, setDocumentTypePopoverOpen] = useState(false);
 
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
@@ -458,95 +443,31 @@ export default function DocumentFormPage() {
                         control={form.control}
                         name="document_type"
                         render={({ field }) => {
-                            const selected = documentTypes.find((dt) => dt.id === field.value);
                             return (
                                 <FormItem>
                                     <FormLabel>Document Type</FormLabel>
-                                    <Popover open={documentTypePopoverOpen} onOpenChange={setDocumentTypePopoverOpen}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selected ? `${selected.name} (${selected.code})` : "Select document type"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[400px] p-0">
-                                            <Command shouldFilter={false}>
-                                                <CommandInput
-                                                    value={documentTypeSearch}
-                                                    onValueChange={setDocumentTypeSearch}
-                                                    placeholder="Search or type a new name..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>
-                                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                                            No document types match.
-                                                        </div>
-                                                    </CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                form.setValue("document_type", null);
-                                                                setDocumentTypeSearch("");
-                                                                setDocumentTypePopoverOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    !field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            None
-                                                        </CommandItem>
-                                                        {documentTypes.map((dt) => (
-                                                            <CommandItem
-                                                                key={dt.id}
-                                                                value={dt.id.toString()}
-                                                                onSelect={() => {
-                                                                    form.setValue("document_type", dt.id);
-                                                                    setDocumentTypeSearch("");
-                                                                    setDocumentTypePopoverOpen(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        dt.id === field.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                <div>
-                                                                    <span className="font-medium">{dt.name}</span>
-                                                                    <span className="text-muted-foreground ml-2">({dt.code})</span>
-                                                                </div>
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                    <CommandGroup heading="Actions">
-                                                        <CommandItem
-                                                            value="__create_new_document_type__"
-                                                            onSelect={() => {
-                                                                setDocumentTypePopoverOpen(false);
-                                                                setDocumentTypeDialogOpen(true);
-                                                            }}
-                                                        >
-                                                            <Plus className="mr-2 h-4 w-4" />
-                                                            <span className="font-medium">
-                                                                Create new document type
-                                                                {documentTypeSearch.trim() ? ` "${documentTypeSearch.trim()}"` : ""}
-                                                            </span>
-                                                        </CommandItem>
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            contentClassName="w-[400px]"
+                                            value={field.value ?? null}
+                                            onChange={(v) => form.setValue("document_type", v)}
+                                            options={documentTypes.map((dt) => ({ value: dt.id, label: `${dt.name} (${dt.code})` }))}
+                                            onSearch={setDocumentTypeSearch}
+                                            clearLabel="None"
+                                            selectedLabel={(() => {
+                                                const info = document?.document_type_info as { name?: string; code?: string } | null | undefined;
+                                                return info?.name ? `${info.name}${info.code ? ` (${info.code})` : ""}` : undefined;
+                                            })()}
+                                            placeholder="Select document type"
+                                            searchPlaceholder="Search or type a new name..."
+                                            emptyText="No document types match."
+                                            action={{
+                                                icon: <Plus className="mr-2 h-4 w-4" />,
+                                                label: (q) => `Create new document type${q ? ` "${q}"` : ""}`,
+                                                onSelect: () => setDocumentTypeDialogOpen(true),
+                                            }}
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         Categorize this document (e.g., SOP, Work Instruction, Drawing).
                                         Don't see what you need? Use "Create new" inside the picker.
@@ -608,73 +529,28 @@ export default function DocumentFormPage() {
                         control={form.control}
                         name="content_type"
                         render={({ field }) => {
-                            const selected = contentTypeOptions.find((opt: { id?: number; model?: string }) => opt.id === field.value);
                             return (
                                 <FormItem>
                                     <FormLabel>Link To (Optional)</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selected ? getContentTypeLabel(selected.model) : "Select object type"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[400px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={contentTypeSearch}
-                                                    onValueChange={setContentTypeSearch}
-                                                    placeholder="Search..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No options found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                form.setValue("content_type", undefined);
-                                                                form.setValue("object_id", undefined);
-                                                                setContentTypeSearch("");
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    !field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            None (standalone document)
-                                                        </CommandItem>
-                                                        {contentTypeOptions.map((opt: { id?: number; model?: string }) => (
-                                                            <CommandItem
-                                                                key={opt.id}
-                                                                value={getContentTypeLabel(opt.model ?? "")}
-                                                                onSelect={() => {
-                                                                    form.setValue("content_type", opt.id != null ? String(opt.id) : undefined);
-                                                                    form.setValue("object_id", undefined);
-                                                                    setContentTypeSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        String(opt.id) === field.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {getContentTypeLabel(opt.model ?? "")}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            contentClassName="w-[400px]"
+                                            value={field.value ?? null}
+                                            onChange={(v) => {
+                                                form.setValue("content_type", v ?? undefined);
+                                                form.setValue("object_id", undefined);
+                                            }}
+                                            options={contentTypeOptions
+                                                .filter((opt: { id?: number }) => opt.id != null)
+                                                .map((opt: { id?: number; model?: string }) => ({
+                                                    value: String(opt.id), label: getContentTypeLabel(opt.model ?? ""),
+                                                }))}
+                                            clearLabel="None (standalone document)"
+                                            placeholder="Select object type"
+                                            searchPlaceholder="Search..."
+                                            emptyText="No options found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         Attach this document to a specific record
                                     </FormDescription>
@@ -690,58 +566,23 @@ export default function DocumentFormPage() {
                             control={form.control}
                             name="object_id"
                             render={({ field }) => {
-                                const selected = objects?.find((obj: { id: string | number }) => obj.id === field.value);
                                 return (
                                     <FormItem>
                                         <FormLabel>Select {getContentTypeLabel(selectedContentTypeModel || "")}</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                                    >
-                                                        {selected
-                                                            ? getObjectDisplayName(selected, selectedContentTypeModel)
-                                                            : "Select record"}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[400px] p-0">
-                                                <Command shouldFilter={false}>
-                                                    <CommandInput
-                                                        value={rawObjectSearch}
-                                                        onValueChange={setRawObjectSearch}
-                                                        placeholder="Search..."
-                                                    />
-                                                    <CommandList>
-                                                        <CommandEmpty>No items found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {objects?.map((obj: { id: string | number }) => (
-                                                                <CommandItem
-                                                                    key={obj.id}
-                                                                    value={obj.id.toString()}
-                                                                    onSelect={() => {
-                                                                        form.setValue("object_id", String(obj.id));
-                                                                        setRawObjectSearch("");
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            obj.id === field.value ? "opacity-100" : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    {getObjectDisplayName(obj, selectedContentTypeModel)}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
+                                        <FormControl>
+                                            <Combobox
+                                                contentClassName="w-[400px]"
+                                                value={field.value ?? null}
+                                                onChange={(v) => v && form.setValue("object_id", v)}
+                                                options={(objects ?? []).map((obj: { id: string | number }) => ({
+                                                    value: String(obj.id), label: getObjectDisplayName(obj, selectedContentTypeModel),
+                                                }))}
+                                                onSearch={setRawObjectSearch}
+                                                placeholder="Select record"
+                                                searchPlaceholder="Search..."
+                                                emptyText="No items found."
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 );

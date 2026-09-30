@@ -3,7 +3,15 @@
 // standing daily breaks (break_windows): the 09:00 facility break and lunch are
 // shift properties subtracted every day, not calendar events.
 import { useEffect, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { History, Plus, Trash2, X } from "lucide-react";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { api } from "@/lib/api/generated";
+import { endpointFn } from "@/lib/api/endpoint-fn";
+import { matchKey } from "@/lib/query-filters";
+import { getCookie } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +47,49 @@ const parseBreaks = (v: unknown): BreakWindow[] =>
 
 let draftSeq = 0;
 
-export function ShiftsSettingsTab() {
+/** Every shift including archived ones — the archived list reads it. */
+const allShiftsOptions = () =>
+  queryOptions({
+    queryKey: ["shifts", "with-archived"] as const,
+    queryFn: () => api.api_Shifts_list({ queries: { ordering: "start_time", limit: 200, include_archived: "true" } as never }),
+  });
+
+/** Archived shifts, each restorable — on the Data Management page, not the schedule dialog. */
+function ArchivedShifts() {
+  const qc = useQueryClient();
+  const { data } = useQuery(allShiftsOptions());
+  const archived = (data?.results ?? []).filter((s) => (s as { archived?: boolean }).archived);
+  const restore = useMutation({
+    mutationFn: (id: string) =>
+      // The typed client doesn't declare the flag on detail routes; the API reads it.
+      (endpointFn("Shifts", "partial_update") as (d: unknown, c: unknown) => Promise<unknown>)(
+        { archived: false },
+        { params: { id }, queries: { include_archived: "true" }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
+      ),
+    onSuccess: () => { qc.invalidateQueries(matchKey(["shifts"])); toast.success("Shift restored"); },
+    onError: () => toast.error("Couldn't restore that shift."),
+  });
+  if (archived.length === 0) return null;
+  return (
+    <div className="grid gap-2 border-t pt-3">
+      <p className="text-sm font-medium">Archived shifts</p>
+      {archived.map((s) => (
+        <div key={s.id} className="flex items-center justify-between rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+          <span>{s.name}{s.code ? ` · ${s.code}` : ""}</span>
+          <Button size="sm" variant="ghost" className="h-7" disabled={restore.isPending} onClick={() => restore.mutate(s.id)}>
+            Restore
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ShiftsSettingsTab({ manage = false }: {
+  /** The Data Management page: also list archived shifts to restore. */
+  manage?: boolean;
+} = {}) {
+  const [historyFor, setHistoryFor] = useState<Row | null>(null);
   const { data, isLoading } = useShifts();
   const save = useSaveShift();
   const del = useDeleteShift();
@@ -260,6 +310,12 @@ export function ShiftsSettingsTab() {
               <Button size="sm" className="h-7" onClick={() => saveRow(r)} disabled={save.isPending}>
                 Save
               </Button>
+              {r.id && (
+                <Button size="icon" variant="ghost" className="h-7 w-7" title="History" aria-label={`History of ${r.name}`}
+                  onClick={() => setHistoryFor(r)}>
+                  <History className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 size="icon"
                 variant="ghost"
@@ -278,6 +334,18 @@ export function ShiftsSettingsTab() {
       <Button variant="outline" size="sm" className="w-fit" onClick={addRow}>
         <Plus className="mr-1 h-4 w-4" /> Add shift
       </Button>
+
+      {manage && <ArchivedShifts />}
+
+      <Dialog open={!!historyFor} onOpenChange={(v) => !v && setHistoryFor(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{historyFor?.name}</DialogTitle>
+            <DialogDescription>Every revision of this shift.</DialogDescription>
+          </DialogHeader>
+          {historyFor?.id && <RecordHistoryCard endpoint="Shifts" id={historyFor.id} model="shift" />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

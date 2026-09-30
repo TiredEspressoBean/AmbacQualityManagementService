@@ -1,3 +1,5 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -204,6 +206,11 @@ export function ReceivingInspectionPlanEditorPage() {
       <MeasurementsEditor stepId={stepId} stepName={stepName} open={measurementsOpen} onOpenChange={setMeasurementsOpen} />
       <StepSamplingEditor stepId={stepId} stepName={stepName} open={samplingOpen} onOpenChange={setSamplingOpen} />
       <StepDocumentsEditor stepId={stepId} stepName={stepName} open={documentsOpen} onOpenChange={setDocumentsOpen} />
+        {stepId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <div className="space-y-6"><RecordHistoryCard endpoint="Steps" id={stepId} model="steps" /><RecordArchiveCard endpoint="Steps" id={stepId} model="steps" listPath="/production/receiving-plans" thingName="receiving inspection plan" /></div>
+            </div>
+        )}
     </div>
   );
 }

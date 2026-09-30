@@ -1,4 +1,5 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -301,7 +302,7 @@ export default function CompanyFormPage() {
             </Form>
             {mode === "edit" && companyId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="Companies" id={companyId} model="companies" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="Companies" id={companyId} model="companies" /><RecordArchiveCard endpoint="Companies" id={companyId} model="companies" /></div>
                 </div>
             )}
         </div>

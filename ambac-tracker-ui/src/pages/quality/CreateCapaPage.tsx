@@ -1,5 +1,7 @@
 "use client"
 
+import { MultiPicker } from "@/components/ui/multi-picker";
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { useForm } from "react-hook-form"
@@ -22,9 +24,8 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarIcon, Check, ChevronsUpDown, ArrowLeft } from "lucide-react"
+import { Calendar as CalendarIcon, ArrowLeft } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
@@ -40,9 +41,8 @@ import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders"
 import { useQualityReports } from "@/hooks/useQualityReports"
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions"
 import { schemas } from "@/lib/api/generated"
-import { Badge } from "@/components/ui/badge"
 import { isFieldRequired } from "@/lib/zod-config"
-import { X, ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 
@@ -522,58 +522,20 @@ function CreateCapaForm() {
                                     control={form.control}
                                     name="assigned_to"
                                     render={({ field }) => {
-                                        const selectedUser = users?.results?.find((u) => u.id === field.value)
                                         return (
                                             <FormItem className="flex flex-col">
                                                 <FormLabel>Assigned To</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                className={cn(
-                                                                    "justify-between",
-                                                                    !field.value && "text-muted-foreground"
-                                                                )}
-                                                            >
-                                                                {selectedUser?.username || selectedUser?.email || "Select assignee (optional)"}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[300px] p-0">
-                                                        <Command>
-                                                            <CommandInput
-                                                                value={userSearch}
-                                                                onValueChange={setUserSearch}
-                                                                placeholder="Search users..."
-                                                            />
-                                                            <CommandList>
-                                                                <CommandEmpty>No users found.</CommandEmpty>
-                                                                <CommandGroup>
-                                                                    {users?.results?.map((user) => (
-                                                                        <CommandItem
-                                                                            key={user.id}
-                                                                            value={user.username || user.email}
-                                                                            onSelect={() => {
-                                                                                form.setValue("assigned_to", user.id)
-                                                                            }}
-                                                                        >
-                                                                            <Check
-                                                                                className={cn(
-                                                                                    "mr-2 h-4 w-4",
-                                                                                    user.id === field.value ? "opacity-100" : "opacity-0"
-                                                                                )}
-                                                                            />
-                                                                            {user.username || user.email}
-                                                                        </CommandItem>
-                                                                    ))}
-                                                                </CommandGroup>
-                                                            </CommandList>
-                                                        </Command>
-                                                    </PopoverContent>
-                                                </Popover>
+                                                <FormControl>
+                                                    <Combobox
+                                                        value={field.value == null ? null : String(field.value)}
+                                                        onChange={(v) => v && form.setValue("assigned_to", Number(v))}
+                                                        options={(users?.results ?? []).map((u) => ({ value: String(u.id), label: u.username || u.email || `User #${u.id}` }))}
+                                                        onSearch={setUserSearch}
+                                                        placeholder="Select assignee (optional)"
+                                                        searchPlaceholder="Search users..."
+                                                        emptyText="No users found."
+                                                    />
+                                                </FormControl>
                                                 <FormDescription>
                                                     Who is responsible for this CAPA?
                                                 </FormDescription>
@@ -640,58 +602,20 @@ function CreateCapaForm() {
                                         control={form.control}
                                         name="part"
                                         render={({ field }) => {
-                                            const selectedPart = parts?.results?.find((p) => p.id === field.value)
                                             return (
                                                 <FormItem className="flex flex-col">
                                                     <FormLabel>Part</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn(
-                                                                        "justify-between",
-                                                                        !field.value && "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    {selectedPart?.ERP_id || "Select part"}
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[250px] p-0">
-                                                            <Command shouldFilter={false}>
-                                                                <CommandInput
-                                                                    value={partSearch}
-                                                                    onValueChange={setPartSearch}
-                                                                    placeholder="Search parts by ERP ID..."
-                                                                />
-                                                                <CommandList>
-                                                                    <CommandEmpty>No parts found.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {parts?.results?.map((part) => (
-                                                                            <CommandItem
-                                                                                key={part.id}
-                                                                                value={String(part.id)}
-                                                                                onSelect={() => {
-                                                                                    form.setValue("part", part.id)
-                                                                                }}
-                                                                            >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        part.id === field.value ? "opacity-100" : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {part.ERP_id}
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Combobox
+                                                            value={field.value || null}
+                                                            onChange={(v) => v && form.setValue("part", v)}
+                                                            options={(parts?.results ?? []).map((p) => ({ value: p.id, label: p.ERP_id }))}
+                                                            onSearch={setPartSearch}
+                                                            placeholder="Select part"
+                                                            searchPlaceholder="Search parts by ERP ID..."
+                                                            emptyText="No parts found."
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )
@@ -703,58 +627,20 @@ function CreateCapaForm() {
                                         control={form.control}
                                         name="step"
                                         render={({ field }) => {
-                                            const selectedStep = steps?.results?.find((s) => s.id === field.value)
                                             return (
                                                 <FormItem className="flex flex-col">
                                                     <FormLabel>Process Step</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn(
-                                                                        "justify-between",
-                                                                        !field.value && "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    {selectedStep?.name || "Select step"}
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[250px] p-0">
-                                                            <Command>
-                                                                <CommandInput
-                                                                    value={stepSearch}
-                                                                    onValueChange={setStepSearch}
-                                                                    placeholder="Search steps..."
-                                                                />
-                                                                <CommandList>
-                                                                    <CommandEmpty>No steps found.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {steps?.results?.map((step) => (
-                                                                            <CommandItem
-                                                                                key={step.id}
-                                                                                value={step.name}
-                                                                                onSelect={() => {
-                                                                                    form.setValue("step", step.id)
-                                                                                }}
-                                                                            >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        step.id === field.value ? "opacity-100" : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {step.name}
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Combobox
+                                                            value={field.value || null}
+                                                            onChange={(v) => v && form.setValue("step", v)}
+                                                            options={(steps?.results ?? []).map((s) => ({ value: s.id, label: s.name }))}
+                                                            onSearch={setStepSearch}
+                                                            placeholder="Select step"
+                                                            searchPlaceholder="Search steps..."
+                                                            emptyText="No steps found."
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )
@@ -766,58 +652,20 @@ function CreateCapaForm() {
                                         control={form.control}
                                         name="work_order"
                                         render={({ field }) => {
-                                            const selectedWorkOrder = workOrders?.results?.find((w) => w.id === field.value)
                                             return (
                                                 <FormItem className="flex flex-col">
                                                     <FormLabel>Work Order</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    role="combobox"
-                                                                    className={cn(
-                                                                        "justify-between",
-                                                                        !field.value && "text-muted-foreground"
-                                                                    )}
-                                                                >
-                                                                    {selectedWorkOrder?.ERP_id || "Select work order"}
-                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[250px] p-0">
-                                                            <Command>
-                                                                <CommandInput
-                                                                    value={workOrderSearch}
-                                                                    onValueChange={setWorkOrderSearch}
-                                                                    placeholder="Search work orders..."
-                                                                />
-                                                                <CommandList>
-                                                                    <CommandEmpty>No work orders found.</CommandEmpty>
-                                                                    <CommandGroup>
-                                                                        {workOrders?.results?.map((wo) => (
-                                                                            <CommandItem
-                                                                                key={wo.id}
-                                                                                value={wo.ERP_id}
-                                                                                onSelect={() => {
-                                                                                    form.setValue("work_order", wo.id)
-                                                                                }}
-                                                                            >
-                                                                                <Check
-                                                                                    className={cn(
-                                                                                        "mr-2 h-4 w-4",
-                                                                                        wo.id === field.value ? "opacity-100" : "opacity-0"
-                                                                                    )}
-                                                                                />
-                                                                                {wo.ERP_id}
-                                                                            </CommandItem>
-                                                                        ))}
-                                                                    </CommandGroup>
-                                                                </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Combobox
+                                                            value={field.value || null}
+                                                            onChange={(v) => v && form.setValue("work_order", v)}
+                                                            options={(workOrders?.results ?? []).map((w) => ({ value: w.id, label: w.ERP_id }))}
+                                                            onSearch={setWorkOrderSearch}
+                                                            placeholder="Select work order"
+                                                            searchPlaceholder="Search work orders..."
+                                                            emptyText="No work orders found."
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )
@@ -833,18 +681,6 @@ function CreateCapaForm() {
                                 control={form.control}
                                 name="quality_reports"
                                 render={({ field }) => {
-                                    const selectedReports = field.value || []
-                                    const toggleReport = (reportId: string) => {
-                                        if (selectedReports.includes(reportId)) {
-                                            form.setValue("quality_reports", selectedReports.filter(id => id !== reportId))
-                                        } else {
-                                            form.setValue("quality_reports", [...selectedReports, reportId])
-                                        }
-                                    }
-                                    const removeReport = (reportId: string) => {
-                                        form.setValue("quality_reports", selectedReports.filter(id => id !== reportId))
-                                    }
-
                                     return (
                                         <FormItem className="space-y-4">
                                             <div>
@@ -854,91 +690,21 @@ function CreateCapaForm() {
                                                 </FormDescription>
                                             </div>
 
-                                            {/* Selected reports display */}
-                                            {selectedReports.length > 0 && (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {selectedReports.map((reportId) => {
-                                                        const report = qualityReports?.results?.find(r => r.id === reportId)
-                                                        return (
-                                                            <Badge
-                                                                key={reportId}
-                                                                variant="secondary"
-                                                                className="flex items-center gap-1 px-2 py-1"
-                                                            >
-                                                                <span>
-                                                                    {report ? `#${reportId} - ${report.status}` : `Report #${reportId}`}
-                                                                </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeReport(reportId)}
-                                                                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                                                                >
-                                                                    <X className="h-3 w-3" />
-                                                                </button>
-                                                            </Badge>
-                                                        )
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            {/* Searchable dropdown to add reports */}
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button
-                                                            variant="outline"
-                                                            role="combobox"
-                                                            className={cn(
-                                                                "w-full justify-between",
-                                                                selectedReports.length === 0 && "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {selectedReports.length > 0
-                                                                ? `${selectedReports.length} report${selectedReports.length > 1 ? 's' : ''} selected`
-                                                                : "Search and add quality reports..."
-                                                            }
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[400px] p-0" align="start">
-                                                    <Command shouldFilter={false}>
-                                                        <CommandInput
-                                                            value={qualityReportSearch}
-                                                            onValueChange={setQualityReportSearch}
-                                                            placeholder="Search quality reports by ID, status, or description..."
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>No quality reports found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {qualityReports?.results?.map((report) => (
-                                                                    <CommandItem
-                                                                        key={report.id}
-                                                                        value={String(report.id)}
-                                                                        onSelect={() => toggleReport(report.id)}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                selectedReports.includes(report.id) ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-medium">
-                                                                                Report #{report.id} - {report.status}
-                                                                            </span>
-                                                                            <span className="text-xs text-muted-foreground">
-                                                                                {report.description ? report.description.substring(0, 50) : 'No description'}
-                                                                                {report.description && report.description.length > 50 ? '...' : ''}
-                                                                            </span>
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <MultiPicker
+                                                label="Quality reports"
+                                                hideLabel
+                                                items={(qualityReports?.results ?? []).map((r) => ({
+                                                    id: r.id,
+                                                    label: `Report #${r.id} - ${r.status}`,
+                                                    ...(r.description ? { description: r.description.length > 50 ? `${r.description.slice(0, 50)}…` : r.description } : {}),
+                                                }))}
+                                                selected={field.value ?? []}
+                                                onChange={(ids) => form.setValue("quality_reports", ids)}
+                                                onSearch={setQualityReportSearch}
+                                                placeholder="Search and add quality reports..."
+                                                searchPlaceholder="Search quality reports by ID, status, or description..."
+                                                emptyHint="No quality reports found."
+                                            />
                                             <FormMessage />
                                         </FormItem>
                                     )
@@ -952,18 +718,6 @@ function CreateCapaForm() {
                                 control={form.control}
                                 name="dispositions"
                                 render={({ field }) => {
-                                    const selectedDispositions = field.value || []
-                                    const toggleDisposition = (dispositionId: string) => {
-                                        if (selectedDispositions.includes(dispositionId)) {
-                                            form.setValue("dispositions", selectedDispositions.filter(id => id !== dispositionId))
-                                        } else {
-                                            form.setValue("dispositions", [...selectedDispositions, dispositionId])
-                                        }
-                                    }
-                                    const removeDisposition = (dispositionId: string) => {
-                                        form.setValue("dispositions", selectedDispositions.filter(id => id !== dispositionId))
-                                    }
-
                                     return (
                                         <FormItem className="space-y-4">
                                             <div>
@@ -973,90 +727,21 @@ function CreateCapaForm() {
                                                 </FormDescription>
                                             </div>
 
-                                            {/* Selected dispositions display */}
-                                            {selectedDispositions.length > 0 && (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {selectedDispositions.map((dispositionId) => {
-                                                        const disposition = dispositions?.results?.find(d => d.id === dispositionId)
-                                                        return (
-                                                            <Badge
-                                                                key={dispositionId}
-                                                                variant="secondary"
-                                                                className="flex items-center gap-1 px-2 py-1"
-                                                            >
-                                                                <span>
-                                                                    {disposition ? `#${dispositionId} - ${disposition.disposition_type}` : `Disposition #${dispositionId}`}
-                                                                </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeDisposition(dispositionId)}
-                                                                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                                                                >
-                                                                    <X className="h-3 w-3" />
-                                                                </button>
-                                                            </Badge>
-                                                        )
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            {/* Searchable dropdown to add dispositions */}
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button
-                                                            variant="outline"
-                                                            role="combobox"
-                                                            className={cn(
-                                                                "w-full justify-between",
-                                                                selectedDispositions.length === 0 && "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {selectedDispositions.length > 0
-                                                                ? `${selectedDispositions.length} disposition${selectedDispositions.length > 1 ? 's' : ''} selected`
-                                                                : "Search and add dispositions..."
-                                                            }
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[400px] p-0" align="start">
-                                                    <Command>
-                                                        <CommandInput
-                                                            value={dispositionSearch}
-                                                            onValueChange={setDispositionSearch}
-                                                            placeholder="Search dispositions..."
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>No dispositions found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {dispositions?.results?.map((disposition) => (
-                                                                    <CommandItem
-                                                                        key={disposition.id}
-                                                                        value={`${disposition.id} ${disposition.disposition_type}`}
-                                                                        onSelect={() => toggleDisposition(disposition.id)}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                selectedDispositions.includes(disposition.id) ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-medium">
-                                                                                Disposition #{disposition.id}
-                                                                            </span>
-                                                                            <span className="text-xs text-muted-foreground">
-                                                                                Type: {disposition.disposition_type}
-                                                                            </span>
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <MultiPicker
+                                                label="Dispositions"
+                                                hideLabel
+                                                items={(dispositions?.results ?? []).map((d) => ({
+                                                    id: d.id,
+                                                    label: `Disposition #${d.id}`,
+                                                    ...(d.disposition_type ? { description: `Type: ${d.disposition_type}` } : {}),
+                                                }))}
+                                                selected={field.value ?? []}
+                                                onChange={(ids) => form.setValue("dispositions", ids)}
+                                                onSearch={setDispositionSearch}
+                                                placeholder="Search and add dispositions..."
+                                                searchPlaceholder="Search dispositions..."
+                                                emptyHint="No dispositions found."
+                                            />
                                             <FormMessage />
                                         </FormItem>
                                     )

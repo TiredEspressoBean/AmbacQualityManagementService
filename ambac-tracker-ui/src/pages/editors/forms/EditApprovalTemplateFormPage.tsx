@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm, useWatch, type Resolver, type UseFormReturn } from "react-hook-form";
@@ -579,7 +580,7 @@ export default function ApprovalTemplateFormPage() {
             </Form>
             {mode === "edit" && templateId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="ApprovalTemplates" id={templateId} model="approvaltemplate" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="ApprovalTemplates" id={templateId} model="approvaltemplate" /><RecordArchiveCard endpoint="ApprovalTemplates" id={templateId} model="approvaltemplate" /></div>
                 </div>
             )}
         </div>

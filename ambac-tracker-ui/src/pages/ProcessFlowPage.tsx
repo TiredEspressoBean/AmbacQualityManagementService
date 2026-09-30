@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ReactFlowProvider, type Node, type Edge } from '@xyflow/react';
 import { validateProcessFlow, type ValidationResult } from '@/lib/process-validation';
@@ -5,9 +6,7 @@ import { ValidationPanel } from '@/components/flow/validation-panel';
 import '@xyflow/react/dist/style.css';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn, getCookie } from '@/lib/utils';
+import { getCookie } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/generated';
 import { matchKey } from '@/lib/query-filters';
@@ -48,31 +47,7 @@ import {
   DEMO_MODES,
   type DemoMode,
 } from '@/lib/demo-data/process-flow-demo';
-import {
-  Save,
-  RotateCcw,
-  Plus,
-  FileText,
-  Package,
-  Route,
-  BarChart3,
-  ClipboardCheck,
-  X,
-  Circle,
-  Play,
-  GitBranch,
-  RefreshCw,
-  Clock,
-  CheckCircle,
-  MoreVertical,
-  Copy,
-  FileEdit,
-  Archive,
-  ShieldCheck,
-  Settings,
-  ChevronsUpDown,
-  Check,
-} from 'lucide-react';
+import { Save, RotateCcw, Plus, FileText, Package, Route, BarChart3, ClipboardCheck, X, Circle, Play, GitBranch, RefreshCw, Clock, CheckCircle, MoreVertical, Copy, FileEdit, Archive, ShieldCheck, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,7 +93,6 @@ export default function ProcessFlowPage() {
   const initialProcessId = searchParams.id || 'demo';
 
   const [selectedProcessId, setSelectedProcessId] = useState<string>(initialProcessId);
-  const [processSelectOpen, setProcessSelectOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -1053,85 +1027,29 @@ export default function ProcessFlowPage() {
                 </>
               )}
 
-              <Popover open={processSelectOpen} onOpenChange={setProcessSelectOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={processSelectOpen}
-                    className="w-[350px] justify-between font-normal"
-                  >
-                    <span className="truncate">
-                      {selectedProcessId === 'demo'
-                        ? 'Demo: Remanufacturing Process'
-                        : (processes as { id: string | number; name: string }[]).find(
-                            (p) => String(p.id) === selectedProcessId
-                          )?.name || 'Select a process...'}
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[350px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search processes..." />
-                    <CommandList>
-                      <CommandEmpty>No process found.</CommandEmpty>
-                      <CommandGroup heading="Demo">
-                        <CommandItem
-                          value="demo remanufacturing"
-                          onSelect={() => {
-                            setSelectedProcessId('demo');
-                            setSelectedNode(null);
-                            setEditMode(false);
-                            setHasChanges(false);
-                            setLocalSteps(null);
-                            setProcessSelectOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedProcessId === 'demo' ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <Badge variant="secondary" className="mr-2 text-xs">Demo</Badge>
-                          Remanufacturing Process
-                        </CommandItem>
-                      </CommandGroup>
-                      <CommandGroup heading="Processes">
-                        {processesLoading ? (
-                          <div className="p-2">
-                            <Skeleton className="h-4 w-full" />
-                          </div>
-                        ) : (
-                          (processes as { id: string; name: string; status?: string }[]).map((p) => (
-                            <CommandItem
-                              key={p.id}
-                              value={p.name}
-                              onSelect={() => {
-                                setSelectedProcessId(p.id.toString());
-                                setSelectedNode(null);
-                                setEditMode(false);
-                                setHasChanges(false);
-                                setLocalSteps(null);
-                                setProcessSelectOpen(false);
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedProcessId === p.id.toString() ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {p.name}
-                            </CommandItem>
-                          ))
-                        )}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Combobox
+                className="w-[350px]"
+                contentClassName="w-[350px]"
+                value={selectedProcessId || null}
+                onChange={(v) => {
+                  if (!v) return;
+                  setSelectedProcessId(v);
+                  setSelectedNode(null);
+                  setEditMode(false);
+                  setHasChanges(false);
+                  setLocalSteps(null);
+                }}
+                options={[
+                  { value: 'demo', label: 'Demo: Remanufacturing Process', group: 'Demo' },
+                  ...(processes as { id: string | number; name: string }[]).map((p) => ({
+                    value: String(p.id), label: p.name, group: 'Processes',
+                  })),
+                ]}
+                loading={processesLoading}
+                placeholder="Select a process..."
+                searchPlaceholder="Search processes..."
+                emptyText="No process found."
+              />
 
               {/* Process Actions */}
               {!isDemo && processId && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,11 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
@@ -39,48 +35,18 @@ function EquipmentCombobox({
   onChange: (next: string | null) => void;
   equipments: Array<{ id: string; name: string }>;
 }) {
-  const [open, setOpen] = useState(false);
-  const selected = equipments.find((e) => String(e.id) === value);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <FormControl>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn("w-full justify-between font-normal", !selected && "text-muted-foreground")}
-          >
-            <span className="truncate">{selected ? selected.name : "None"}</span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </FormControl>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search equipment..." />
-          <CommandList>
-            <CommandEmpty>No equipment found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem value="__none__" onSelect={() => { onChange(null); setOpen(false); }}>
-                <Check className={cn("mr-2 h-4 w-4", !selected ? "opacity-100" : "opacity-0")} />
-                None (visual / no instrument)
-              </CommandItem>
-              {equipments.map((eq) => (
-                <CommandItem
-                  key={eq.id}
-                  value={eq.name}
-                  onSelect={() => { onChange(String(eq.id)); setOpen(false); }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === String(eq.id) ? "opacity-100" : "opacity-0")} />
-                  {eq.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <FormControl>
+      <Combobox
+        value={value ?? null}
+        onChange={onChange}
+        options={equipments.map((eq) => ({ value: String(eq.id), label: eq.name }))}
+        clearLabel="None (visual / no instrument)"
+        placeholder="None"
+        searchPlaceholder="Search equipment..."
+        emptyText="No equipment found."
+      />
+    </FormControl>
   );
 }
 

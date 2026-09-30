@@ -1,5 +1,6 @@
 "use client"
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
 import {Plus, Pencil, Trash2} from "lucide-react";
@@ -375,7 +376,7 @@ export default function PartTypeFormPage() {
             </div>)}
         {mode === "edit" && partTypeId && (
             <div className="max-w-3xl mx-auto py-6">
-                <RecordHistoryCard endpoint="PartTypes" id={partTypeId} model="parttypes" />
+                <div className="space-y-6"><RecordHistoryCard endpoint="PartTypes" id={partTypeId} model="parttypes" /><RecordArchiveCard endpoint="PartTypes" id={partTypeId} model="parttypes" /></div>
             </div>)}
         {mode === "edit" && partTypeId && (
 

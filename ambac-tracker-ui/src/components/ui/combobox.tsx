@@ -33,6 +33,8 @@ export interface ComboboxOption {
     label: string;
     /** Secondary text under the label (a part number, a part type). */
     description?: string;
+    /** Heading to list the option under; options without one come first, unheaded. */
+    group?: string;
     /** Extra text the local search matches on, beside the label. */
     keywords?: string[];
     disabled?: boolean;
@@ -58,17 +60,33 @@ export interface ComboboxProps
     contentClassName?: string;
     /** Free text: offer what's typed as a value of its own. The value is the text. */
     allowCreate?: boolean;
+    /** A row under the options that runs something instead of choosing ("Create new
+     *  document type"). Gets the search text; the list closes. */
+    action?: { label: (query: string) => string; onSelect: (query: string) => void; icon?: React.ReactNode };
+    /** Told when the list opens or closes — for a list that only loads while open. */
+    onOpenChange?: (open: boolean) => void;
+}
+
+/** Options in heading order (first appearance), unheaded ones first. */
+function groupOptions(options: ComboboxOption[]): [string | undefined, ComboboxOption[]][] {
+    const groups = new Map<string | undefined, ComboboxOption[]>([[undefined, []]]);
+    for (const o of options) {
+        if (!groups.has(o.group)) groups.set(o.group, []);
+        groups.get(o.group)!.push(o);
+    }
+    return [...groups].filter(([, items]) => items.length > 0);
 }
 
 export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(function Combobox(
     {
         value, onChange, options, placeholder = "Select…", searchPlaceholder = "Search…",
         emptyText = "No matches.", onSearch, loading = false, clearLabel, selectedLabel,
-        contentClassName, className, disabled, allowCreate = false, ...buttonProps
+        contentClassName, className, disabled, allowCreate = false, action, onOpenChange, ...buttonProps
     },
     ref,
 ) {
-    const [open, setOpen] = React.useState(false);
+    const [open, setOpenState] = React.useState(false);
+    const setOpen = (o: boolean) => { setOpenState(o); onOpenChange?.(o); };
     const [query, setQuery] = React.useState("");
 
     // Remember labels as they pass through, so a selection outlives the page or
@@ -136,7 +154,10 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(funct
                                     <span className="text-muted-foreground">{clearLabel}</span>
                                 </CommandItem>
                             )}
-                            {!loading && options.map((o) => (
+                        </CommandGroup>
+                        {!loading && groupOptions(options).map(([heading, items]) => (
+                            <CommandGroup key={heading ?? "__none__"} {...(heading ? { heading } : {})}>
+                            {items.map((o) => (
                                 <CommandItem
                                     key={o.value}
                                     // cmdk matches on `value`; keep it unique and searchable.
@@ -154,7 +175,16 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(funct
                                     </span>
                                 </CommandItem>
                             ))}
-                        </CommandGroup>
+                            </CommandGroup>
+                        ))}
+                        {action && (
+                            <CommandGroup heading="Actions">
+                                <CommandItem value="__action__" onSelect={() => { setOpen(false); action.onSelect(typed); }}>
+                                    {action.icon ?? <span className="mr-2 h-4 w-4" />}
+                                    <span className="font-medium">{action.label(typed)}</span>
+                                </CommandItem>
+                            </CommandGroup>
+                        )}
                     </CommandList>
                 </Command>
             </PopoverContent>

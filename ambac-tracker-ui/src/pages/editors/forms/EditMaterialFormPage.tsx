@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -39,6 +40,7 @@ const formSchema = schemas.MaterialRequest.pick({
   description: true,
   unit_of_measure: true,
   purchase_lead_time_days: true,
+  safety_stock: true,
   is_active: true,
 });
 type FormValues = z.infer<typeof formSchema>;
@@ -76,6 +78,7 @@ export default function EditMaterialFormPage() {
         description: m.description ?? "",
         unit_of_measure: m.unit_of_measure ?? "EA",
         purchase_lead_time_days: m.purchase_lead_time_days ?? null,
+        safety_stock: m.safety_stock ?? null,
         is_active: m.is_active ?? true,
       };
     }
@@ -90,6 +93,7 @@ export default function EditMaterialFormPage() {
       description: "",
       unit_of_measure: "EA",
       purchase_lead_time_days: null,
+      safety_stock: null,
       is_active: true,
     },
     values: loadedValues,
@@ -223,6 +227,32 @@ export default function EditMaterialFormPage() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="safety_stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Safety stock</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="any"
+                        placeholder="None"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Held back from planning: the requirements report nets demand against stock
+                      above this, and flags a shortage before it's reached.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Preferred supplier combobox (optional) */}
               <FormItem>
                 <FormLabel>Preferred supplier</FormLabel>
@@ -284,7 +314,7 @@ export default function EditMaterialFormPage() {
       </Card>
         {mode === "edit" && materialId && (
             <div className="max-w-3xl mx-auto py-6">
-                <RecordHistoryCard endpoint="Materials" id={materialId} model="material" />
+                <div className="space-y-6"><RecordHistoryCard endpoint="Materials" id={materialId} model="material" /><RecordArchiveCard endpoint="Materials" id={materialId} model="material" /></div>
             </div>
         )}
     </div>

@@ -1,3 +1,4 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
@@ -412,6 +413,11 @@ export function CoreDetailPage() {
                     )}
                 </CardContent>
             </Card>
+            {id && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Cores" id={id} model="core" />
+                </div>
+            )}
         </div>
     );
 }

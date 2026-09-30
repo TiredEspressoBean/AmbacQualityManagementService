@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
@@ -28,15 +29,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
 import { useRetrieveTrainingRecord } from "@/hooks/useRetrieveTrainingRecord";
@@ -79,6 +72,18 @@ const LEVEL_OPTIONS = [
     { value: 4, label: "Level 4 — Expert", hint: "Can train / sign off others" },
 ] as const;
 
+type UserLike = { id: number; username?: string | null; first_name?: string | null; last_name?: string | null };
+const userOption = (u: UserLike) => ({
+    value: String(u.id),
+    label: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : (u.username ?? `User #${u.id}`),
+    ...(u.first_name && u.last_name && u.username ? { description: u.username } : {}),
+});
+/** A record's `*_info` block's display name, when it has one. */
+const infoName = (info: unknown): string | undefined => {
+    const i = info as { name?: string; full_name?: string; username?: string } | null | undefined;
+    return i?.full_name || i?.name || i?.username || undefined;
+};
+
 export default function EditTrainingRecordFormPage() {
     const params = useParams({ strict: false });
     const navigate = useNavigate();
@@ -86,11 +91,8 @@ export default function EditTrainingRecordFormPage() {
     const recordId = params.id !== "new" ? params.id : undefined;
 
     const [trainingTypeSearch, setTrainingTypeSearch] = useState("");
-    const [trainingTypeOpen, setTrainingTypeOpen] = useState(false);
     const [userSearch, setUserSearch] = useState("");
-    const [userOpen, setUserOpen] = useState(false);
     const [trainerSearch, setTrainerSearch] = useState("");
-    const [trainerOpen, setTrainerOpen] = useState(false);
 
     const { data: record, isLoading: isLoadingRecord } = useRetrieveTrainingRecord(recordId || "");
 
@@ -196,60 +198,18 @@ export default function EditTrainingRecordFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Trainee {required.user && "*"}</FormLabel>
-                                <Popover open={userOpen} onOpenChange={setUserOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value
-                                                    ? users.find((u) => u.id === field.value)?.username ||
-                                                      `User ${field.value}`
-                                                    : "Select trainee"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search users..."
-                                                value={userSearch}
-                                                onValueChange={setUserSearch}
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No users found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {users.map((user) => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.username}
-                                                            onSelect={() => {
-                                                                field.onChange(user.id);
-                                                                setUserOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    field.value === user.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {user.first_name && user.last_name
-                                                                ? `${user.first_name} ${user.last_name} (${user.username})`
-                                                                : user.username}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value == null ? null : String(field.value)}
+                                        onChange={(v) => v && field.onChange(Number(v))}
+                                        options={users.map(userOption)}
+                                        onSearch={setUserSearch}
+                                        selectedLabel={infoName(record?.user_info)}
+                                        placeholder="Select trainee"
+                                        searchPlaceholder="Search users..."
+                                        emptyText="No users found."
+                                    />
+                                </FormControl>
                                 <FormDescription>The person who completed the training</FormDescription>
                                 <FormMessage />
                             </FormItem>
@@ -263,58 +223,18 @@ export default function EditTrainingRecordFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Training Type {required.training_type && "*"}</FormLabel>
-                                <Popover open={trainingTypeOpen} onOpenChange={setTrainingTypeOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value
-                                                    ? trainingTypes.find((t) => t.id === field.value)?.name ||
-                                                      "Select type"
-                                                    : "Select training type"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search training types..."
-                                                value={trainingTypeSearch}
-                                                onValueChange={setTrainingTypeSearch}
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No training types found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {trainingTypes.map((type) => (
-                                                        <CommandItem
-                                                            key={type.id}
-                                                            value={type.name}
-                                                            onSelect={() => {
-                                                                field.onChange(type.id);
-                                                                setTrainingTypeOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    field.value === type.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {type.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value || null}
+                                        onChange={(v) => v && field.onChange(v)}
+                                        options={trainingTypes.map((t) => ({ value: t.id, label: t.name }))}
+                                        onSearch={setTrainingTypeSearch}
+                                        selectedLabel={infoName(record?.training_type_info)}
+                                        placeholder="Select training type"
+                                        searchPlaceholder="Search training types..."
+                                        emptyText="No training types found."
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -434,75 +354,19 @@ export default function EditTrainingRecordFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Trainer</FormLabel>
-                                <Popover open={trainerOpen} onOpenChange={setTrainerOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn(
-                                                    "justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                            >
-                                                {field.value
-                                                    ? users.find((u) => u.id === field.value)?.username ||
-                                                      `User ${field.value}`
-                                                    : "Select trainer (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search users..."
-                                                value={trainerSearch}
-                                                onValueChange={setTrainerSearch}
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No users found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    <CommandItem
-                                                        value="__none__"
-                                                        onSelect={() => {
-                                                            field.onChange(null);
-                                                            setTrainerOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                !field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        No trainer
-                                                    </CommandItem>
-                                                    {users.map((user) => (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            value={user.username}
-                                                            onSelect={() => {
-                                                                field.onChange(user.id);
-                                                                setTrainerOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    field.value === user.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {user.first_name && user.last_name
-                                                                ? `${user.first_name} ${user.last_name} (${user.username})`
-                                                                : user.username}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value == null ? null : String(field.value)}
+                                        onChange={(v) => field.onChange(v === null ? null : Number(v))}
+                                        options={users.map(userOption)}
+                                        onSearch={setTrainerSearch}
+                                        clearLabel="No trainer"
+                                        selectedLabel={infoName(record?.trainer_info)}
+                                        placeholder="Select trainer (optional)"
+                                        searchPlaceholder="Search users..."
+                                        emptyText="No users found."
+                                    />
+                                </FormControl>
                                 <FormDescription>Person who conducted the training</FormDescription>
                                 <FormMessage />
                             </FormItem>

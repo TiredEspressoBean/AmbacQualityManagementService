@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -268,7 +269,7 @@ export default function ErrorTypeFormPage() {
             </Form>
             {mode === "edit" && errorTypeId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="Error-types" id={errorTypeId} model="qualityerrorslist" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="Error-types" id={errorTypeId} model="qualityerrorslist" /><RecordArchiveCard endpoint="Error-types" id={errorTypeId} model="qualityerrorslist" /></div>
                 </div>
             )}
         </div>

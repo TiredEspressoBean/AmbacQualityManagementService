@@ -1,3 +1,5 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -358,6 +360,11 @@ export default function ThreeDModelFormPage() {
                                 : "Upload Model"}
                     </Button>
                 </form>
+                {mode === "edit" && modelId && (
+                    <div className="max-w-3xl mx-auto py-6">
+                        <div className="space-y-6"><RecordHistoryCard endpoint="ThreeDModels" id={modelId} model="threedmodel" /><RecordArchiveCard endpoint="ThreeDModels" id={modelId} model="threedmodel" /></div>
+                    </div>
+                )}
             </Form>
     );
 }

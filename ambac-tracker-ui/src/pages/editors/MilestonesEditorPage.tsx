@@ -1,7 +1,9 @@
+import { endpointFn } from "@/lib/api/endpoint-fn";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Loader2, Pencil, History, Archive, ArchiveRestore } from "lucide-react";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,7 @@ type MilestoneTemplate = {
     name: string;
     description: string;
     is_default: boolean;
+    archived?: boolean;
     milestones: Milestone[];
 };
 
@@ -180,7 +183,23 @@ function MilestoneRow({
 export function MilestonesEditorPage() {
     const [editing, setEditing] = useState<MilestoneTemplate | null | undefined>(undefined);
     const queryClient = useQueryClient();
-    const { data: templates, isLoading } = useListMilestoneTemplates();
+    const [showArchived, setShowArchived] = useState(false);
+    const [historyFor, setHistoryFor] = useState<MilestoneTemplate | null>(null);
+    // `include_archived` isn't in the endpoint's declared queries; the API reads it.
+    const { data: templates, isLoading } = useListMilestoneTemplates(
+        (showArchived ? { include_archived: "true" } : undefined) as never);
+    const setArchived = useMutation({
+        mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+            (endpointFn("MilestoneTemplates", "partial_update") as (d: unknown, c: unknown) => Promise<unknown>)(
+                { archived },
+                { params: { id }, queries: { include_archived: "true" }, headers: { "X-CSRFToken": getCookie("csrftoken") } },
+            ),
+        onSuccess: (_d, v) => {
+            queryClient.invalidateQueries(matchKey(["milestoneTemplates"]));
+            toast.success(v.archived ? "Template archived" : "Template restored");
+        },
+        onError: () => toast.error("Couldn't change that template."),
+    });
     const [, setSaving] = useState(false);
 
     // The action sets pagination_class=None, so the response is a bare array and
@@ -293,11 +312,26 @@ export function MilestonesEditorPage() {
                             Define the business stages orders pass through. Shown as a progress bar on the customer portal.
                         </p>
                     </div>
-                    <Button size="sm" onClick={() => setEditing(null)}>
-                        <Plus className="h-4 w-4 mr-1" /> New template
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <Switch id="mt-show-archived" checked={showArchived} onCheckedChange={setShowArchived} />
+                            <Label htmlFor="mt-show-archived" className="text-sm font-normal">Show archived</Label>
+                        </div>
+                        <Button size="sm" onClick={() => setEditing(null)}>
+                            <Plus className="h-4 w-4 mr-1" /> New template
+                        </Button>
+                    </div>
                 </div>
             </div>
+            <Dialog open={!!historyFor} onOpenChange={(v) => !v && setHistoryFor(null)}>
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{historyFor?.name}</DialogTitle>
+                        <DialogDescription>Every revision of this template.</DialogDescription>
+                    </DialogHeader>
+                    {historyFor && <RecordHistoryCard endpoint="MilestoneTemplates" id={historyFor.id} model="milestonetemplate" />}
+                </DialogContent>
+            </Dialog>
             {editing !== undefined && (
                 <TemplateDialog
                     key={editing?.id ?? "new"}
@@ -335,12 +369,29 @@ export function MilestonesEditorPage() {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {template.archived && <Badge variant="outline">Archived</Badge>}
                                         {template.is_default && (
                                             <Badge variant="secondary">Default</Badge>
                                         )}
                                         <Button variant="ghost" size="icon" className="h-8 w-8"
-                                            aria-label={`Edit ${template.name}`} onClick={() => setEditing(template)}>
-                                            <Pencil className="h-4 w-4" />
+                                            aria-label={`History of ${template.name}`} onClick={() => setHistoryFor(template)}>
+                                            <History className="h-4 w-4" />
+                                        </Button>
+                                        {!template.archived && (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8"
+                                                aria-label={`Edit ${template.name}`} onClick={() => setEditing(template)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        <Button variant="ghost" size="icon" className="h-8 w-8"
+                                            aria-label={template.archived ? `Restore ${template.name}` : `Archive ${template.name}`}
+                                            disabled={setArchived.isPending}
+                                            onClick={() => {
+                                                if (template.archived || window.confirm(`Archive ${template.name}? Orders using it keep it; new orders can't pick it.`)) {
+                                                    setArchived.mutate({ id: template.id, archived: !template.archived });
+                                                }
+                                            }}>
+                                            {template.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                                         </Button>
                                     </div>
                                 </div>

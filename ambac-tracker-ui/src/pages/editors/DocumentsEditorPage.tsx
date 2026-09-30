@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState } from "react";
 import { useRetrieveDocuments, documentsOptions, documentsMetadataOptions } from "@/hooks/useRetrieveDocuments";
 import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
@@ -6,21 +7,7 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { EditDocumentsActionsCell } from "@/components/edit-documents-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { FileSignature, Check, ChevronsUpDown, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { FileSignature, X } from "lucide-react";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -73,7 +60,6 @@ export function DocumentsEditorPage() {
     const navigate = useNavigate();
     const [needsMyApproval, setNeedsMyApproval] = useState(false);
     const [documentTypeId, setDocumentTypeId] = useState<string | null>(null);
-    const [docTypePickerOpen, setDocTypePickerOpen] = useState(false);
     const [docTypeSearch, setDocTypeSearch] = useState("");
 
     const { data: documentTypesData } = useRetrieveDocumentTypes({ search: docTypeSearch });
@@ -82,7 +68,6 @@ export function DocumentsEditorPage() {
         name: string;
         code: string;
     }>;
-    const selectedDocumentType = documentTypes.find((dt) => dt.id === documentTypeId);
 
     const filterToolbar = (
         <div className="flex flex-wrap items-center gap-2">
@@ -95,72 +80,20 @@ export function DocumentsEditorPage() {
                 <FileSignature className="h-4 w-4" />
                 Needs My Approval
             </Button>
-            <Popover open={docTypePickerOpen} onOpenChange={setDocTypePickerOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant={documentTypeId ? "default" : "outline"}
-                        size="sm"
-                        role="combobox"
-                        aria-expanded={docTypePickerOpen}
-                        className={cn("gap-2", !documentTypeId && "text-muted-foreground")}
-                    >
-                        {selectedDocumentType
-                            ? `${selectedDocumentType.name} (${selectedDocumentType.code})`
-                            : "All document types"}
-                        <ChevronsUpDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-72 p-0" align="start">
-                    <Command shouldFilter={false}>
-                        <CommandInput
-                            value={docTypeSearch}
-                            onValueChange={setDocTypeSearch}
-                            placeholder="Search document types…"
-                        />
-                        <CommandList>
-                            <CommandEmpty>No document types found.</CommandEmpty>
-                            <CommandGroup>
-                                <CommandItem
-                                    value="__all__"
-                                    onSelect={() => {
-                                        setDocumentTypeId(null);
-                                        setDocTypePickerOpen(false);
-                                        setDocTypeSearch("");
-                                    }}
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            !documentTypeId ? "opacity-100" : "opacity-0",
-                                        )}
-                                    />
-                                    All document types
-                                </CommandItem>
-                                {documentTypes.map((dt) => (
-                                    <CommandItem
-                                        key={dt.id}
-                                        value={dt.id}
-                                        onSelect={() => {
-                                            setDocumentTypeId(dt.id);
-                                            setDocTypePickerOpen(false);
-                                            setDocTypeSearch("");
-                                        }}
-                                    >
-                                        <Check
-                                            className={cn(
-                                                "mr-2 h-4 w-4",
-                                                dt.id === documentTypeId ? "opacity-100" : "opacity-0",
-                                            )}
-                                        />
-                                        <span className="font-medium">{dt.name}</span>
-                                        <span className="ml-2 text-muted-foreground">({dt.code})</span>
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
+            <Combobox
+                variant={documentTypeId ? "default" : "outline"}
+                size="sm"
+                className="w-auto gap-2"
+                contentClassName="w-72"
+                value={documentTypeId}
+                onChange={setDocumentTypeId}
+                options={documentTypes.map((dt) => ({ value: dt.id, label: `${dt.name} (${dt.code})` }))}
+                onSearch={setDocTypeSearch}
+                clearLabel="All document types"
+                placeholder="All document types"
+                searchPlaceholder="Search document types…"
+                emptyText="No document types found."
+            />
             {documentTypeId && (
                 <Button
                     variant="ghost"

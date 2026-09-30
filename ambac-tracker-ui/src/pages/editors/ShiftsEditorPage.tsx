@@ -18,7 +18,7 @@ export function ShiftsEditorPage() {
                     inside them.
                 </p>
             </div>
-            <ShiftsSettingsTab />
+            <ShiftsSettingsTab manage />
         </div>
     );
 }

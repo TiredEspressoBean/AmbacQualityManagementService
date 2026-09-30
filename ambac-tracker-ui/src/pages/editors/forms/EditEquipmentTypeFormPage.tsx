@@ -1,6 +1,7 @@
 "use client";
 
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -283,7 +284,7 @@ export default function EquipmentTypeFormPage() {
             )}
             {mode === "edit" && equipmentTypeId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="Equipment-types" id={equipmentTypeId} model="equipmenttype" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="Equipment-types" id={equipmentTypeId} model="equipmenttype" /><RecordArchiveCard endpoint="Equipment-types" id={equipmentTypeId} model="equipmenttype" /></div>
                 </div>
             )}
         </Form>

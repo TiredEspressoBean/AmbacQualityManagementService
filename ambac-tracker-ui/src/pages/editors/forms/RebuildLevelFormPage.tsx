@@ -1,4 +1,5 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -262,7 +263,7 @@ export function RebuildLevelFormPage() {
             </div>
             {mode === "edit" && id && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <RecordHistoryCard endpoint="RebuildScopePresets" id={id} model="rebuildscopepreset" />
+                    <div className="space-y-6"><RecordHistoryCard endpoint="RebuildScopePresets" id={id} model="rebuildscopepreset" /><RecordArchiveCard endpoint="RebuildScopePresets" id={id} model="rebuildscopepreset" /></div>
                 </div>
             )}
         </div>

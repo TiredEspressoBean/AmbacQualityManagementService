@@ -612,6 +612,10 @@ export function ModelEditorPage<T extends { id: string | number }>({
     );
 
     const items = Array.isArray(data?.results) ? data.results : [];
+    // Only rows that carry `archived` can be shown archived and restored; a model
+    // with its own lifecycle (deactivated users, deprecated processes) doesn't.
+    // Unknown until a row loads, so an empty table keeps the switch.
+    const tracksArchived = items.length === 0 || items.some((i) => "archived" in (i as object));
     const total = data?.count || 0;
     const page = Math.floor(offset / limit) + 1;
     const pageCount = Math.ceil(total / limit);
@@ -680,7 +684,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                     </Select>
                 ))}
 
-                {apiEndpoint && (
+                {apiEndpoint && tracksArchived && (
                     <div className="flex items-center gap-2">
                         <Switch id={`show-archived-${apiEndpoint}`} checked={showArchived} onCheckedChange={setShowArchived} />
                         <Label htmlFor={`show-archived-${apiEndpoint}`} className="text-sm font-normal">Show archived</Label>

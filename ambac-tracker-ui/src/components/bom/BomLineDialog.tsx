@@ -1,7 +1,7 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
 
 import {
   Dialog,
@@ -22,16 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import { useMaterialOptions } from "@/hooks/useMaterials";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { useCreateBomLine, useUpdateBomLine } from "@/hooks/useBom";
@@ -81,7 +71,6 @@ export function BomLineDialog({
   const [refDes, setRefDes] = useState("");
   const [optional, setOptional] = useState(false);
   const [consumedStepId, setConsumedStepId] = useState<string>(NO_STEP);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Hydrate on open (create → defaults; edit → the line's values).
   useEffect(() => {
@@ -142,7 +131,6 @@ export function BomLineDialog({
     return [...materials, ...boughtParts];
   }, [source, materialsData, partTypesData]);
 
-  const selected = options.find((o) => o.key === componentId);
 
   // Switching Make/Buy clears the component (the eligible set changes).
   function pickSource(s: Source) {
@@ -218,37 +206,14 @@ export function BomLineDialog({
           {/* Component picker (list depends on source) */}
           <div className="grid gap-1.5">
             <Label>{source === "BUY" ? "Purchased component" : "Part Type"}</Label>
-            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="justify-between">
-                  {selected ? selected.name : `Select a ${source === "BUY" ? "component to buy" : "part type"}…`}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search…" />
-                  <CommandList>
-                    <CommandEmpty>Nothing found.</CommandEmpty>
-                    <CommandGroup>
-                      {options.map((o) => (
-                        <CommandItem
-                          key={o.key}
-                          value={o.name}
-                          onSelect={() => { setComponentId(o.key); setPickerOpen(false); }}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", o.key === componentId ? "opacity-100" : "opacity-0")} />
-                          <span className="flex-1">{o.name}</span>
-                          {o.hint && (
-                            <span className="ml-2 text-xs text-muted-foreground">{o.hint}</span>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <Combobox
+              value={componentId}
+              onChange={setComponentId}
+              options={options.map((o) => ({ value: o.key, label: o.name, ...(o.hint ? { description: o.hint } : {}) }))}
+              placeholder={`Select a ${source === "BUY" ? "component to buy" : "part type"}…`}
+              searchPlaceholder="Search…"
+              emptyText="Nothing found."
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">

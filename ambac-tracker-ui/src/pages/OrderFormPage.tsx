@@ -1,5 +1,7 @@
 "use client";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -8,7 +10,7 @@ import { z } from "zod";
 import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Send, ChevronDown, Eye, EyeOff, Settings } from "lucide-react";
+import { CalendarIcon, Send, ChevronDown, Eye, EyeOff, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,14 +30,6 @@ import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 import { useRetrieveOrder } from '@/hooks/useRetrieveOrder';
@@ -86,9 +80,6 @@ export default function OrderFormPage() {
     const navigate = useNavigate();
     const matchRoute = useMatchRoute();
     const [companySearch, setCompanySearch] = useState("");
-    const [customerSearch, setCustomerSearch] = useState("");
-    const [companyOpen, setCompanyOpen] = useState(false);
-    const [customerOpen, setCustomerOpen] = useState(false);
     const [newNote, setNewNote] = useState("");
     const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
     const [notesExpanded, setNotesExpanded] = useState(false);
@@ -213,8 +204,6 @@ export default function OrderFormPage() {
         );
     }
 
-    const selectedCustomer = customers?.find((c) => c.id === form.watch("customer"));
-    const selectedCompany = companies?.results?.find((c) => c.id === form.watch("company"));
 
     return (
         <div className="max-w-4xl mx-auto py-10">
@@ -253,58 +242,18 @@ export default function OrderFormPage() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.company}>Company</FormLabel>
-                                    <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={companyOpen}
-                                                    className={cn(
-                                                        "w-full justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {selectedCompany
-                                                        ? selectedCompany.name
-                                                        : "Select company"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0" align="start">
-                                            <Command>
-                                                <CommandInput
-                                                    value={companySearch}
-                                                    onValueChange={setCompanySearch}
-                                                    placeholder="Search companies..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No companies found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {companies?.results?.map((company) => (
-                                                            <CommandItem
-                                                                key={company.id}
-                                                                value={company.name}
-                                                                onSelect={() => {
-                                                                    form.setValue("company", company.id);
-                                                                    setCompanyOpen(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        company.id === field.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {company.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            value={field.value ?? null}
+                                            onChange={(v) => v && form.setValue("company", v)}
+                                            options={(companies?.results ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                                            onSearch={setCompanySearch}
+                                            selectedLabel={(order?.company_info as { name?: string } | null | undefined)?.name}
+                                            placeholder="Select company"
+                                            searchPlaceholder="Search companies..."
+                                            emptyText="No companies found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         The company placing this order
                                     </FormDescription>
@@ -319,58 +268,19 @@ export default function OrderFormPage() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.customer}>Customer</FormLabel>
-                                    <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={customerOpen}
-                                                    className={cn(
-                                                        "w-full justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {selectedCustomer
-                                                        ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}`
-                                                        : "Select customer"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0" align="start">
-                                            <Command>
-                                                <CommandInput
-                                                    value={customerSearch}
-                                                    onValueChange={setCustomerSearch}
-                                                    placeholder="Search customers..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No customers found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {customers?.map((customer) => (
-                                                            <CommandItem
-                                                                key={customer.id}
-                                                                value={`${customer.first_name} ${customer.last_name}`}
-                                                                onSelect={() => {
-                                                                    form.setValue("customer", customer.id);
-                                                                    setCustomerOpen(false);
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        customer.id === field.value ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {`${customer.first_name} ${customer.last_name}`}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            value={field.value == null ? null : String(field.value)}
+                                            onChange={(v) => v && form.setValue("customer", Number(v))}
+                                            options={customers.map((c) => ({
+                                                value: String(c.id), label: `${c.first_name} ${c.last_name}`,
+                                                ...(c.email ? { description: c.email } : {}),
+                                            }))}
+                                            placeholder="Select customer"
+                                            searchPlaceholder="Search customers..."
+                                            emptyText="No customers found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         The customer contact for this order
                                     </FormDescription>
@@ -641,6 +551,11 @@ export default function OrderFormPage() {
                 <div className="mt-8 space-y-4">
                     <h3 className="text-lg font-semibold">Attach Documents</h3>
                     <DocumentUploader objectId={orderId} contentType="orders" />
+                </div>
+            )}
+            {isEditing && orderId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Orders" id={orderId} model="orders" />
                 </div>
             )}
         </div>
