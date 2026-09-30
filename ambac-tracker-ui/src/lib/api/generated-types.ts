@@ -4684,6 +4684,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         get: operations["api_LifeLimitDefinitions_list"];
         put?: never;
@@ -4694,6 +4698,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         post: operations["api_LifeLimitDefinitions_create"];
         delete?: never;
@@ -4716,6 +4724,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         get: operations["api_LifeLimitDefinitions_retrieve"];
         /**
@@ -4725,6 +4737,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         put: operations["api_LifeLimitDefinitions_update"];
         post?: never;
@@ -4735,6 +4751,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         delete: operations["api_LifeLimitDefinitions_destroy"];
         options?: never;
@@ -4746,6 +4766,10 @@ export interface paths {
          *     - Flight Cycles (hard_limit=20000)
          *     - Shelf Life (is_calendar_based=True, hard_limit=365 days)
          *     - Shot Count (soft_limit=400000, hard_limit=500000)
+         *
+         *     Import/export is one row per definition; its part-type links import on the
+         *     PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+         *     the API's does (the importer follows LifeLimitDefinitionSerializer.update).
          */
         patch: operations["api_LifeLimitDefinitions_partial_update"];
         trace?: never;
@@ -4761,6 +4785,91 @@ export interface paths {
         put?: never;
         /** @description Create a new revision of a LifeLimitDefinition. Returns the new version with incremented version number. PartTypeLifeLimit children are copied to the new version. */
         post: operations["api_LifeLimitDefinitions_revisions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_LifeLimitDefinitions_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_LifeLimitDefinitions_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_LifeLimitDefinitions_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_LifeLimitDefinitions_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/LifeLimitDefinitions/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_LifeLimitDefinitions_import_template_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5750,97 +5859,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/MigrationBatches/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Loads of go-live history. Each import makes one batch; each batch is verified once,
-         *     by someone other than the person who loaded it.
-         */
-        get: operations["api_MigrationBatches_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/MigrationBatches/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Loads of go-live history. Each import makes one batch; each batch is verified once,
-         *     by someone other than the person who loaded it.
-         */
-        get: operations["api_MigrationBatches_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/MigrationBatches/{id}/verify/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Sign the batch off as checked against its source. */
-        post: operations["api_MigrationBatches_verify_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/MigrationBatches/import/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Load one file of history as a new batch (create-only). */
-        post: operations["api_MigrationBatches_import_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/MigrationBatches/template/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description A CSV header for one kind of history. */
-        get: operations["api_MigrationBatches_template_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/MilestoneTemplates/": {
         parameters: {
             query?: never;
@@ -5903,10 +5921,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         get: operations["api_Milestones_list"];
         put?: never;
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         post: operations["api_Milestones_create"];
         delete?: never;
         options?: never;
@@ -5921,17 +5945,114 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         get: operations["api_Milestones_retrieve"];
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         put: operations["api_Milestones_update"];
         post?: never;
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         delete: operations["api_Milestones_destroy"];
         options?: never;
         head?: never;
-        /** @description CRUD for milestones within templates. Admin-only. */
+        /**
+         * @description CRUD for milestones within templates. Admin-only. Also milestone template
+         *     import/export, one sheet of milestones.
+         */
         patch: operations["api_Milestones_partial_update"];
+        trace?: never;
+    };
+    "/api/Milestones/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_Milestones_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Milestones/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Milestones_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Milestones/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Milestones_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Milestones/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Milestones_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Milestones/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Milestones_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/NotificationEventTypes/": {
@@ -9537,62 +9658,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         get: operations["api_Sampling_rules_list"];
         put?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         post: operations["api_Sampling_rules_create"];
         delete?: never;
         options?: never;
@@ -9607,120 +9676,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         get: operations["api_Sampling_rules_retrieve"];
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         put: operations["api_Sampling_rules_update"];
         post?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         delete: operations["api_Sampling_rules_destroy"];
         options?: never;
         head?: never;
-        /**
-         * @description Mixin that filters all querysets to the current tenant and applies user permissions.
-         *
-         *     This is the primary mixin for most ViewSets. It:
-         *     - Enforces tenant-scoped permissions (TenantModelPermissions)
-         *     - Filters queryset to current tenant
-         *     - Applies for_user() filtering (permission-based data scoping)
-         *     - Auto-assigns tenant on create
-         *     - Prevents cross-tenant access
-         *
-         *     Permission Enforcement:
-         *     - GET/HEAD/OPTIONS -> view_{model} permission
-         *     - POST -> add_{model} permission
-         *     - PUT/PATCH -> change_{model} permission
-         *     - DELETE -> delete_{model} permission
-         *
-         *     Superusers bypass both permission checks and tenant filtering.
-         *
-         *     Query parameters:
-         *     - include_archived=true: Include soft-deleted records (default: false)
-         *     - tenant=<uuid>: (superuser only) Filter to specific tenant
-         *
-         *     Usage:
-         *         class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-         *             queryset = Order.objects.all()
-         *             serializer_class = OrderSerializer
-         */
+        /** @description Sampling rules — and sampling ruleset import/export, one sheet of rules. */
         patch: operations["api_Sampling_rules_partial_update"];
         trace?: never;
     };
@@ -9733,6 +9698,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_Sampling_rules_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Sampling-rules/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Sampling_rules_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Sampling-rules/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Sampling_rules_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Sampling-rules/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Sampling_rules_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Sampling-rules/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Sampling_rules_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -23159,11 +23192,6 @@ export interface components {
             certificate_of_conformance?: string | null;
             storage_location?: string;
             readonly child_lot_count: number;
-            /** Format: uuid */
-            readonly migration_batch: string | null;
-            /** @description For migrated stock: where its certificate / traceability record lives. */
-            readonly source_reference: string;
-            readonly is_migrated: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -23512,51 +23540,6 @@ export interface components {
             value_numeric?: number | null;
             value_pass_fail?: (components["schemas"]["ValuePassFailEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             archived?: boolean;
-        };
-        MigrationBatch: {
-            /** Format: uuid */
-            readonly id: string;
-            readonly kind: components["schemas"]["MigrationBatchKindEnum"];
-            /** @description The system this history came from (e.g. 'Legacy HR — Workday'). */
-            readonly source_system: string;
-            readonly notes: string;
-            readonly row_count: number;
-            readonly imported_by: number;
-            readonly imported_by_email: string;
-            /** Format: date-time */
-            readonly created_at: string;
-            /** @description Who checked the load against the source (quantities against the go-live count, a sample of records against the originals). Not the loader. */
-            readonly verified_by: number | null;
-            readonly verified_by_email: string | null;
-            /** Format: date-time */
-            readonly verified_at: string | null;
-            readonly verification_notes: string;
-            readonly is_verified: boolean;
-        };
-        /**
-         * @description * `TRAINING_RECORDS` - Training records
-         *     * `MATERIAL_LOTS` - Material lots
-         * @enum {string}
-         */
-        MigrationBatchKindEnum: "TRAINING_RECORDS" | "MATERIAL_LOTS";
-        MigrationImportRequestRequest: {
-            /** Format: binary */
-            file: string;
-            kind: components["schemas"]["MigrationBatchKindEnum"];
-            source_system: string;
-            notes?: string;
-        };
-        MigrationImportResponse: {
-            batch: components["schemas"]["MigrationBatch"];
-            summary: {
-                [key: string]: unknown;
-            };
-            results: {
-                [key: string]: unknown;
-            }[];
-        };
-        MigrationVerifyRequestRequest: {
-            notes?: string;
         };
         /** @description Single milestone within a template. */
         Milestone: {
@@ -24715,21 +24698,6 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["MeasurementDefinition"][];
-        };
-        PaginatedMigrationBatchList: {
-            /** @example 123 */
-            count: number;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=400&limit=100
-             */
-            next?: string | null;
-            /**
-             * Format: uri
-             * @example http://api.example.org/accounts/?offset=200&limit=100
-             */
-            previous?: string | null;
-            results: components["schemas"]["MigrationBatch"][];
         };
         PaginatedNotificationFeedItemList: {
             /** @example 123 */
@@ -34918,11 +34886,6 @@ export interface components {
             notes?: string;
             readonly status: string;
             readonly is_current: boolean;
-            /** Format: uuid */
-            readonly migration_batch: string | null;
-            /** @description Where the original record lives, for migrated history (e.g. 'HR system, cert #4471'). */
-            readonly source_reference: string;
-            readonly is_migrated: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -37372,6 +37335,7 @@ export interface operations {
         parameters: {
             query?: {
                 bom?: string;
+                bom__part_type?: string;
                 component_type?: string;
                 is_optional?: boolean;
                 /** @description Number of results to return per page. */
@@ -45909,6 +45873,164 @@ export interface operations {
             };
         };
     };
+    api_LifeLimitDefinitions_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_LifeLimitDefinitions_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_LifeLimitDefinitions_select_options_retrieve: {
         parameters: {
             query?: never;
@@ -47505,126 +47627,6 @@ export interface operations {
             };
         };
     };
-    api_MigrationBatches_list: {
-        parameters: {
-            query?: {
-                /** @description Number of results to return per page. */
-                limit?: number;
-                /** @description The initial index from which to return the results. */
-                offset?: number;
-                /** @description Which field to use when ordering the results. */
-                ordering?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedMigrationBatchList"];
-                };
-            };
-        };
-    };
-    api_MigrationBatches_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Migration batch. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MigrationBatch"];
-                };
-            };
-        };
-    };
-    api_MigrationBatches_verify_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Migration batch. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["MigrationVerifyRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MigrationVerifyRequestRequest"];
-                "multipart/form-data": components["schemas"]["MigrationVerifyRequestRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MigrationBatch"];
-                };
-            };
-        };
-    };
-    api_MigrationBatches_import_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["MigrationImportRequestRequest"];
-            };
-        };
-        responses: {
-            207: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MigrationImportResponse"];
-                };
-            };
-        };
-    };
-    api_MigrationBatches_template_retrieve: {
-        parameters: {
-            query: {
-                kind: "MATERIAL_LOTS" | "TRAINING_RECORDS";
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/csv": string;
-                };
-            };
-        };
-    };
     api_MilestoneTemplates_list: {
         parameters: {
             query?: {
@@ -47940,6 +47942,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Milestone"];
+                };
+            };
+        };
+    };
+    api_Milestones_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Milestones_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Milestones_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Milestones_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Milestones_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
                 };
             };
         };
@@ -53979,6 +54139,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_Sampling_rules_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Sampling_rules_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Sampling_rules_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Sampling_rules_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };

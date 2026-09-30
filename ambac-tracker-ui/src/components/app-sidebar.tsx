@@ -13,7 +13,6 @@ import {
     Database,
     Factory,
     FileCheck,
-    FileInput,
     FileSignature,
     Files,
     Flame,
@@ -30,6 +29,7 @@ import {
     PackageSearch,
     BadgeCheck,
     Repeat,
+    Ruler,
     Timer,
     Recycle,
     Hammer,
@@ -130,6 +130,7 @@ const qualityPages = [
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },
     { name: "Calibrations", url: "/quality/calibrations", icon: Gauge },
+    { name: "Measurements", url: "/quality/measurement-definitions", icon: Ruler },
     { name: "Heat Map", url: "/heatmap", icon: Flame },
 ]
 
@@ -187,8 +188,6 @@ export function AppSidebar({
         ...(isUserAdmin ? [{ name: "Data Management", url: "/Edit", icon: Database }] : []),
         ...(isPlatformStaff || hasAny('view_auditlog', 'view_logentry')
             ? [{ name: "Audit Log", url: "/admin/audit-log", icon: History }] : []),
-        ...(isPlatformStaff || hasAny('view_migrationbatch')
-            ? [{ name: "Go-live History", url: "/admin/go-live-history", icon: FileInput }] : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- hasAny is stable per permission load
     ], [isUserAdmin, isPlatformStaff, permissionsLoading])
     const showAdmin = adminPages.length > 0

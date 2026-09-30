@@ -8,7 +8,6 @@ type Lot = Schema<"MaterialLot">;
 // surface so a held lot is never silently unlabeled.
 export const HOLD_LABELS: Record<string, string> = {
     SUPPLIER_UNQUALIFIED: "Unqualified supplier",
-    MIGRATED_UNTRACEABLE: "Migrated without traceability",
     PART_UNAPPROVED: "Unapproved part",
     SHELF_LIFE_EXPIRED: "Shelf life expired",
     AWAITING_COC: "Awaiting CoC",

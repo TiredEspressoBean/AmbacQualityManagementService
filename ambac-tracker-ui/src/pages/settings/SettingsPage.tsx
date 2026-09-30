@@ -23,6 +23,7 @@ import {
     Users,
     Shield,
     Bell,
+    Contact,
     Link2,
     CreditCard,
     Settings2,
@@ -93,6 +94,12 @@ const settingsCards: SettingsCard[] = [
         icon: Bell,
         href: "/settings/notification-rules",
         requiresAdmin: true,
+    },
+    {
+        title: "External Contacts",
+        description: "People at your customers who receive customer-scoped notifications",
+        icon: Contact,
+        href: "/settings/notifications/external-contacts",
     },
     {
         title: "Integrations",

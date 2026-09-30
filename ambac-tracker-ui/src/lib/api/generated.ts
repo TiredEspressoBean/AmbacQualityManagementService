@@ -3595,12 +3595,6 @@ export type MaterialLot = {
    */
   string | undefined;
   child_lot_count: number;
-  migration_batch: string | null;
-  /**
-   * For migrated stock: where its certificate / traceability record lives.
-   */
-  source_reference: string;
-  is_migrated: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -3917,52 +3911,6 @@ export type MeasurementResultRequest = {
     | (ValuePassFailEnum | BlankEnum | NullEnum | null)
     | undefined;
   archived?: boolean | undefined;
-};
-export type MigrationBatch = {
-  id: string;
-  kind: MigrationBatchKindEnum;
-  /**
-   * The system this history came from (e.g. 'Legacy HR — Workday').
-   */
-  source_system: string;
-  notes: string;
-  row_count: number;
-  imported_by: number;
-  imported_by_email: string;
-  created_at: string;
-  /**
-   * Who checked the load against the source (quantities against the go-live count, a sample of records against the originals). Not the loader.
-   */
-  verified_by: number | null;
-  verified_by_email: string | null;
-  verified_at: string | null;
-  verification_notes: string;
-  is_verified: boolean;
-};
-export type MigrationBatchKindEnum =
-  /**
-   * * `TRAINING_RECORDS` - Training records
-   * `MATERIAL_LOTS` - Material lots
-   *
-   * @enum TRAINING_RECORDS, MATERIAL_LOTS
-   */
-  "TRAINING_RECORDS" | "MATERIAL_LOTS";
-export type MigrationImportRequestRequest = {
-  file: string;
-  kind: MigrationBatchKindEnum;
-  /**
-   * @minLength 1
-   */
-  source_system: string;
-  notes?: /**
-   * @minLength 1
-   */
-  string | undefined;
-};
-export type MigrationImportResponse = {
-  batch: MigrationBatch;
-  summary: {};
-  results: Array<{}>;
 };
 export type MilestoneTemplate = {
   id: string;
@@ -5716,25 +5664,6 @@ export type PaginatedMeasurementDefinitionList = {
     (string | null)
     | undefined;
   results: Array<MeasurementDefinition>;
-};
-export type PaginatedMigrationBatchList = {
-  /**
-   * @example 123
-   */
-  count: number;
-  next?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=400&limit=100"
-     */
-    (string | null)
-    | undefined;
-  previous?:
-    | /**
-     * @example "http://api.example.org/accounts/?offset=200&limit=100"
-     */
-    (string | null)
-    | undefined;
-  results: Array<MigrationBatch>;
 };
 export type PaginatedNotificationFeedItemList = {
   /**
@@ -10142,12 +10071,6 @@ export type TrainingRecord = {
   notes?: string | undefined;
   status: string;
   is_current: boolean;
-  migration_batch: string | null;
-  /**
-   * Where the original record lives, for migrated history (e.g. 'HR system, cert #4471').
-   */
-  source_reference: string;
-  is_migrated: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -19310,9 +19233,6 @@ const MaterialLot = z.object({
   certificate_of_conformance: z.string().url().nullish(),
   storage_location: z.string().max(100).optional(),
   child_lot_count: z.number().int(),
-  migration_batch: z.string().uuid().nullable(),
-  source_reference: z.string(),
-  is_migrated: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19730,42 +19650,6 @@ const PatchedMeasurementDefinitionRequest = z
     backup_equipment: z.string().uuid().nullable(),
   })
   .partial();
-const MigrationBatchKindEnum = z.enum(["TRAINING_RECORDS", "MATERIAL_LOTS"]);
-const MigrationBatch = z.object({
-  id: z.string().uuid(),
-  kind: MigrationBatchKindEnum,
-  source_system: z.string(),
-  notes: z.string(),
-  row_count: z.number().int(),
-  imported_by: z.number().int(),
-  imported_by_email: z.string(),
-  created_at: z.string().datetime({ offset: true }),
-  verified_by: z.number().int().nullable(),
-  verified_by_email: z.string().nullable(),
-  verified_at: z.string().datetime({ offset: true }).nullable(),
-  verification_notes: z.string(),
-  is_verified: z.boolean(),
-});
-const PaginatedMigrationBatchList = z.object({
-  count: z.number().int(),
-  next: z.string().url().nullish(),
-  previous: z.string().url().nullish(),
-  results: z.array(MigrationBatch),
-});
-const MigrationVerifyRequestRequest = z
-  .object({ notes: z.string().min(1) })
-  .partial();
-const MigrationImportRequestRequest = z.object({
-  file: z.instanceof(File),
-  kind: MigrationBatchKindEnum,
-  source_system: z.string().min(1),
-  notes: z.string().min(1).optional(),
-});
-const MigrationImportResponse = z.object({
-  batch: MigrationBatch,
-  summary: z.object({}).partial().passthrough(),
-  results: z.array(z.object({}).partial().passthrough()),
-});
 const Milestone = z.object({
   id: z.string().uuid(),
   template: z.string().uuid(),
@@ -23702,9 +23586,6 @@ const TrainingRecord = z.object({
   notes: z.string().optional(),
   status: z.string(),
   is_current: z.boolean(),
-  migration_batch: z.string().uuid().nullable(),
-  source_reference: z.string(),
-  is_migrated: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -26432,12 +26313,6 @@ export const schemas = {
   PaginatedMeasurementDefinitionList,
   MeasurementDefinitionRequest,
   PatchedMeasurementDefinitionRequest,
-  MigrationBatchKindEnum,
-  MigrationBatch,
-  PaginatedMigrationBatchList,
-  MigrationVerifyRequestRequest,
-  MigrationImportRequestRequest,
-  MigrationImportResponse,
   Milestone,
   MilestoneTemplate,
   MilestoneTemplateRequest,
@@ -28560,6 +28435,11 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
     parameters: [
       {
         name: "bom",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "bom__part_type",
         type: "Query",
         schema: z.string().uuid().optional(),
       },
@@ -36556,7 +36436,11 @@ keep running (only PlantCalendarException stops machines).`,
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36596,7 +36480,11 @@ Tenants define their own life tracking rules here:
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36616,7 +36504,11 @@ Tenants define their own life tracking rules here:
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36636,7 +36528,11 @@ Tenants define their own life tracking rules here:
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36661,7 +36557,11 @@ Tenants define their own life tracking rules here:
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36686,7 +36586,11 @@ Tenants define their own life tracking rules here:
 Tenants define their own life tracking rules here:
 - Flight Cycles (hard_limit&#x3D;20000)
 - Shelf Life (is_calendar_based&#x3D;True, hard_limit&#x3D;365 days)
-- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)`,
+- Shot Count (soft_limit&#x3D;400000, hard_limit&#x3D;500000)
+
+Import/export is one row per definition; its part-type links import on the
+PartTypeLifeLimits endpoint. A content edit from a file makes a new version, as
+the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).`,
     requestFormat: "json",
     parameters: [
       {
@@ -36716,6 +36620,108 @@ Tenants define their own life tracking rules here:
       },
     ],
     response: LifeLimitDefinition,
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/export/:export_format/",
+    alias: "api_LifeLimitDefinitions_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/LifeLimitDefinitions/import-preview/",
+    alias: "api_LifeLimitDefinitions_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/import-status/:task_id/",
+    alias: "api_LifeLimitDefinitions_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/LifeLimitDefinitions/import-template/:template_format/",
+    alias: "api_LifeLimitDefinitions_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/LifeLimitDefinitions/import/",
+    alias: "api_LifeLimitDefinitions_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -36823,7 +36829,10 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
       },
     ],
     response: LifeTracking,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "put",
     path: "/api/LifeTracking/:id/",
@@ -36929,10 +36938,7 @@ Supports increment, reset (overhaul), and per-instance limit overrides.`,
       },
     ],
     response: LifeTracking,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/LifeTracking/:id/reset/",
@@ -38101,101 +38107,10 @@ Usage:
   },
   {
     method: "get",
-    path: "/api/MigrationBatches/",
-    alias: "api_MigrationBatches_list",
-    description: `Loads of go-live history. Each import makes one batch; each batch is verified once,
-by someone other than the person who loaded it.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "offset",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "ordering",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: PaginatedMigrationBatchList,
-  },
-  {
-    method: "get",
-    path: "/api/MigrationBatches/:id/",
-    alias: "api_MigrationBatches_retrieve",
-    description: `Loads of go-live history. Each import makes one batch; each batch is verified once,
-by someone other than the person who loaded it.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: MigrationBatch,
-  },
-  {
-    method: "post",
-    path: "/api/MigrationBatches/:id/verify/",
-    alias: "api_MigrationBatches_verify_create",
-    description: `Sign the batch off as checked against its source.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ notes: z.string().min(1) }).partial(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: MigrationBatch,
-  },
-  {
-    method: "post",
-    path: "/api/MigrationBatches/import/",
-    alias: "api_MigrationBatches_import_create",
-    description: `Load one file of history as a new batch (create-only).`,
-    requestFormat: "form-data",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: MigrationImportRequestRequest,
-      },
-    ],
-    response: MigrationImportResponse,
-  },
-  {
-    method: "get",
-    path: "/api/MigrationBatches/template/",
-    alias: "api_MigrationBatches_template_retrieve",
-    description: `A CSV header for one kind of history.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "kind",
-        type: "Query",
-        schema: z.enum(["MATERIAL_LOTS", "TRAINING_RECORDS"]),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
     path: "/api/Milestones/",
     alias: "api_Milestones_list",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38210,7 +38125,8 @@ by someone other than the person who loaded it.`,
     method: "post",
     path: "/api/Milestones/",
     alias: "api_Milestones_create",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38225,7 +38141,8 @@ by someone other than the person who loaded it.`,
     method: "get",
     path: "/api/Milestones/:id/",
     alias: "api_Milestones_retrieve",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38240,7 +38157,8 @@ by someone other than the person who loaded it.`,
     method: "put",
     path: "/api/Milestones/:id/",
     alias: "api_Milestones_update",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38260,7 +38178,8 @@ by someone other than the person who loaded it.`,
     method: "patch",
     path: "/api/Milestones/:id/",
     alias: "api_Milestones_partial_update",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38280,7 +38199,8 @@ by someone other than the person who loaded it.`,
     method: "delete",
     path: "/api/Milestones/:id/",
     alias: "api_Milestones_destroy",
-    description: `CRUD for milestones within templates. Admin-only.`,
+    description: `CRUD for milestones within templates. Admin-only. Also milestone template
+import/export, one sheet of milestones.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38290,6 +38210,108 @@ by someone other than the person who loaded it.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Milestones/export/:export_format/",
+    alias: "api_Milestones_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Milestones/import-preview/",
+    alias: "api_Milestones_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Milestones/import-status/:task_id/",
+    alias: "api_Milestones_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Milestones/import-template/:template_format/",
+    alias: "api_Milestones_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Milestones/import/",
+    alias: "api_Milestones_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -41358,7 +41380,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/Parts/:id/complete_step/",
@@ -41509,10 +41534,7 @@ points route automatically from the QualityReport and don&#x27;t use this.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Parts/:id/rework_status/",
@@ -46318,31 +46340,7 @@ Usage:
     method: "get",
     path: "/api/Sampling-rules/",
     alias: "api_Sampling_rules_list",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46394,31 +46392,7 @@ Usage:
     method: "post",
     path: "/api/Sampling-rules/",
     alias: "api_Sampling_rules_create",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46433,31 +46407,7 @@ Usage:
     method: "get",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_retrieve",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46472,31 +46422,7 @@ Usage:
     method: "put",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_update",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46516,31 +46442,7 @@ Usage:
     method: "patch",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_partial_update",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46560,31 +46462,7 @@ Usage:
     method: "delete",
     path: "/api/Sampling-rules/:id/",
     alias: "api_Sampling_rules_destroy",
-    description: `Mixin that filters all querysets to the current tenant and applies user permissions.
-
-This is the primary mixin for most ViewSets. It:
-- Enforces tenant-scoped permissions (TenantModelPermissions)
-- Filters queryset to current tenant
-- Applies for_user() filtering (permission-based data scoping)
-- Auto-assigns tenant on create
-- Prevents cross-tenant access
-
-Permission Enforcement:
-- GET/HEAD/OPTIONS -&gt; view_{model} permission
-- POST -&gt; add_{model} permission
-- PUT/PATCH -&gt; change_{model} permission
-- DELETE -&gt; delete_{model} permission
-
-Superusers bypass both permission checks and tenant filtering.
-
-Query parameters:
-- include_archived&#x3D;true: Include soft-deleted records (default: false)
-- tenant&#x3D;&lt;uuid&gt;: (superuser only) Filter to specific tenant
-
-Usage:
-    class OrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-        queryset &#x3D; Order.objects.all()
-        serializer_class &#x3D; OrderSerializer`,
+    description: `Sampling rules — and sampling ruleset import/export, one sheet of rules.`,
     requestFormat: "json",
     parameters: [
       {
@@ -46624,6 +46502,78 @@ Usage:
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Sampling-rules/import-preview/",
+    alias: "api_Sampling_rules_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Sampling-rules/import-status/:task_id/",
+    alias: "api_Sampling_rules_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Sampling-rules/import-template/:template_format/",
+    alias: "api_Sampling_rules_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Sampling-rules/import/",
+    alias: "api_Sampling_rules_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
   },
   {
     method: "get",
@@ -47017,7 +46967,10 @@ marks the schedule stale; the next Solve forms/optimizes the batch.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/ScheduledTasks/bulk-reassign-machine/",
@@ -47186,10 +47139,7 @@ PATCH updates the subset provided, gated on change_optimizationconfig
 action_permissions applies per action, not per HTTP method.`,
     requestFormat: "json",
     response: OptimizationConfig,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/Schedules/config/",
@@ -52379,7 +52329,10 @@ Allows tenant admins to:
       },
     ],
     response: PaginatedTenantGroupList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/TenantGroups/",
@@ -52575,10 +52528,7 @@ POST: Add member (user_id required, facility_id/company_id optional)`,
       },
     ],
     response: z.object({ status: z.string() }),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TenantGroups/:id/permissions/",
@@ -56835,7 +56785,10 @@ Accepts the following POST parameters: username, email, password1, password2.`,
       },
     ],
     response: Register,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/auth/registration/resend-email/",
@@ -56971,7 +56924,7 @@ function getCsrfToken(): string | null {
 // In production, this will be replaced at build time with the actual backend URL
 const BASE_URL = import.meta.env.VITE_API_TARGET;
 
-// Endpoint aliases are split across 6 Zodios clients (see
+// Endpoint aliases are split across 7 Zodios clients (see
 // scripts/split-api-client.cjs for why). They share one axios instance, so
 // `api.axios`, the interceptors below and CSRF handling are unchanged.
 function zodiosOptions(axiosInstance?: unknown): ZodiosOptions {
@@ -57010,6 +56963,9 @@ const client4 = BASE_URL
 const client5 = BASE_URL
   ? new Zodios(BASE_URL, endpoints5, zodiosOptions(sharedAxios))
   : new Zodios(endpoints5, zodiosOptions(sharedAxios));
+const client6 = BASE_URL
+  ? new Zodios(BASE_URL, endpoints6, zodiosOptions(sharedAxios))
+  : new Zodios(endpoints6, zodiosOptions(sharedAxios));
 
 export const api = Object.assign(
   { axios: sharedAxios },
@@ -57019,12 +56975,14 @@ export const api = Object.assign(
   client3,
   client4,
   client5,
+  client6,
 ) as unknown as typeof client0 &
   typeof client1 &
   typeof client2 &
   typeof client3 &
   typeof client4 &
-  typeof client5;
+  typeof client5 &
+  typeof client6;
 
 // Axios interceptor to refresh CSRF token before each request
 api.axios.interceptors.request.use((config) => {
@@ -57092,6 +57050,7 @@ export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
   const c3 = new Zodios(baseUrl, endpoints3, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   const c4 = new Zodios(baseUrl, endpoints4, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   const c5 = new Zodios(baseUrl, endpoints5, merge({ axiosInstance: c0.axios } as ZodiosOptions));
+  const c6 = new Zodios(baseUrl, endpoints6, merge({ axiosInstance: c0.axios } as ZodiosOptions));
   return Object.assign(
     { axios: c0.axios },
     c0,
@@ -57100,10 +57059,12 @@ export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
     c3,
     c4,
     c5,
+    c6,
   ) as unknown as typeof client0 &
     typeof client1 &
     typeof client2 &
     typeof client3 &
     typeof client4 &
-    typeof client5;
+    typeof client5 &
+    typeof client6;
 }

@@ -45,6 +45,7 @@ import {useCreateBom, useReleaseBom, useCreateBomRevision, useDeleteBomLine} fro
 import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
 import {DataIOButtons} from "@/components/data-io-buttons";
 import {hasEndpoint} from "@/lib/api/endpoint-fn";
+import {PartTypeLifeLimitsPanel} from "@/components/life-limits/PartTypeLifeLimitsPanel";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -358,6 +359,10 @@ export default function PartTypeFormPage() {
                 <BomPanel partTypeId={partTypeId} />
             </div>)}
         {mode === "edit" && partTypeId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <PartTypeLifeLimitsPanel partTypeId={partTypeId} />
+            </div>)}
+        {mode === "edit" && partTypeId && (
 
             <div className="max-w-3xl mx-auto py-6">
                 <h3 className="text-lg font-semibold">Attach Documents</h3>
@@ -457,14 +462,14 @@ function BomPanel({partTypeId}: {partTypeId: string}) {
                             </Button>
                         )}
                         {/* One sheet of lines, the BOM named on every row. The export is
-                            scoped to the BOM shown here (the BOMLines `bom` filter);
-                            with no BOM yet it exports every current BOM. */}
+                            this part type's current BOMs (the BOMLines `bom__part_type`
+                            filter) — empty, not the whole tenant, when it has none yet. */}
                         <DataIOButtons
                             endpoint="BOMLines"
                             displayName="BOM Lines"
                             invalidateKeys={[["BOMs"]]}
                             allowImport={canAuthor}
-                            {...(chosen ? {queryParams: {bom: String(chosen.id)}} : {})}
+                            queryParams={{bom__part_type: partTypeId}}
                         />
                         <ReportButton
                             reportType="bom_report"

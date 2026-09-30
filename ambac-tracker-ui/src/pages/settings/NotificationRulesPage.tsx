@@ -13,7 +13,7 @@
  */
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bell, Building2, CalendarClock, Pencil, Plus, Trash2, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Bell, Building2, CalendarClock, Contact, Pencil, Plus, Trash2, User as UserIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,7 +135,16 @@ export function NotificationRulesPage() {
                             </p>
                         </div>
                     </div>
-                    {newButton}
+                    <div className="flex shrink-0 items-center gap-2">
+                        {/* Customer-side recipients the customer-scoped rules and schedules pick from. */}
+                        <Button variant="outline" asChild>
+                            <Link to="/settings/notifications/external-contacts">
+                                <Contact className="h-4 w-4 mr-2" />
+                                External contacts
+                            </Link>
+                        </Button>
+                        {newButton}
+                    </div>
                 </div>
             </div>
 
