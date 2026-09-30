@@ -39,6 +39,7 @@ from pydantic import BaseModel
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg
 
 
@@ -175,5 +176,5 @@ def build_part_id_label_context(part, tenant) -> PartIdLabelContext:
         barcode_svg=barcode_svg,
         qr_svg=qr_svg,
         tenant_name=tenant.name,
-        print_date=date.today(),
+        print_date=tenant_today(tenant),
     )

@@ -3840,11 +3840,16 @@ class PartTypeViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Data
         ]
 
         # 30-day FPY trend (one point per day; null fpy on days with no data).
-        end_date = timezone.now().date()
+        # Plant days: bounded and bucketed on the plant's clock, not UTC's.
+        from datetime import datetime as _dt, time as _time
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        tz = plant_tz(self.tenant)
+        end_date = tenant_today(self.tenant)
         start_date = end_date - timedelta(days=29)
         daily = reports.filter(
-            created_at__date__gte=start_date, created_at__date__lte=end_date,
-        ).annotate(date=TruncDate('created_at')).values('date').annotate(
+            created_at__gte=_dt.combine(start_date, _time.min, tzinfo=tz),
+            created_at__lt=_dt.combine(end_date + timedelta(days=1), _time.min, tzinfo=tz),
+        ).annotate(date=TruncDate('created_at', tzinfo=tz)).values('date').annotate(
             t=Count('id'), p=Count('id', filter=Q(status='PASS')),
         )
         by_date = {d['date']: d for d in daily}

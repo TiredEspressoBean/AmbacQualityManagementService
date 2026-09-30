@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 class SourceRow(BaseModel):
@@ -116,7 +117,7 @@ class RequirementsAdapter(ReportAdapter):
 
         req = sourcing_requirements(tenant)
         return RequirementsContext(
-            generated_date=datetime.date.today(),
+            generated_date=tenant_today(tenant),
             tenant_name=tenant.name,
             source=[SourceRow(**r) for r in req["source"]],
             recover=[RecoverRow(**r) for r in req.get("recover", [])],
@@ -125,4 +126,4 @@ class RequirementsAdapter(ReportAdapter):
         )
 
     def get_filename(self, validated_params) -> str:
-        return f"requirements_{datetime.date.today().isoformat()}.pdf"
+        return f"requirements_{tenant_today().isoformat()}.pdf"

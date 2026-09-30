@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 from Tracker.reports.services.barcodes import render_barcode_svg, render_qr_svg
 
 
@@ -328,7 +329,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> WorkOrderTravelerContext:
         from Tracker.models.mes_lite import ProcessStep, Parts, WorkOrder
 
-        today = datetime.date.today()
+        today = tenant_today(tenant)
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         wo = (

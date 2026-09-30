@@ -1431,13 +1431,13 @@ class CapaTasksSerializer(SecureModelMixin):
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_overdue(self, obj):
-        """Check if task is overdue"""
-        from django.utils import timezone
+        """Check if task is overdue (on the plant's clock)"""
+        from Tracker.services.core.clock import tenant_today
         if not obj.due_date:
             return False
         if obj.status == 'COMPLETED':
             return False
-        return obj.due_date < timezone.now().date()
+        return obj.due_date < tenant_today(obj.tenant)
 
     @extend_schema_field(serializers.DictField())
     def get_documents_info(self, obj):

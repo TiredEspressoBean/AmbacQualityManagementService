@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date
-
 from django.utils import timezone
+
+from Tracker.services.core.clock import tenant_today
 
 
 # =========================================================================
@@ -56,7 +56,7 @@ def mark_document_obsolete(document, user):
         )
 
     document.status = 'OBSOLETE'
-    document.obsolete_date = date.today()
+    document.obsolete_date = tenant_today(document.tenant)
     document.save()
 
 

@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import plant_tz, tenant_today
 
 
 class LaborHoursRow(BaseModel):
@@ -60,16 +61,18 @@ class LaborHoursAdapter(ReportAdapter):
 
         start_d: datetime.date = validated_params["start"]
         end_d: datetime.date = validated_params["end"]
-        # operator_hours takes aware datetimes; cover the full end day.
-        start_dt = timezone.make_aware(datetime.datetime.combine(start_d, datetime.time.min))
+        # operator_hours takes aware datetimes; cover the full end day. The days are
+        # plant days, so midnight is the plant's midnight, not UTC's.
+        tz = plant_tz(tenant)
+        start_dt = timezone.make_aware(datetime.datetime.combine(start_d, datetime.time.min), tz)
         end_dt = timezone.make_aware(
-            datetime.datetime.combine(end_d + datetime.timedelta(days=1), datetime.time.min))
+            datetime.datetime.combine(end_d + datetime.timedelta(days=1), datetime.time.min), tz)
 
         rows_raw = operator_hours(tenant, start_dt, end_dt)
         rows = [LaborHoursRow(name=r["name"], on_shift_hours=r["on_shift_hours"],
                               direct_hours=r["direct_hours"]) for r in rows_raw]
         return LaborHoursContext(
-            generated_date=datetime.date.today(),
+            generated_date=tenant_today(tenant),
             start_date=start_d, end_date=end_d,
             tenant_name=tenant.name,
             rows=rows,

@@ -32,6 +32,7 @@ from Tracker.serializers.core import (
 )
 from Tracker.serializers.dms import DocumentsSerializer, DocumentTypeSerializer
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
+from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin, NonTenantModelViewSet
 from .mixins import CSVImportMixin, DataExportMixin
 
@@ -1664,9 +1665,8 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
 
         Returns documents where review_date <= today.
         """
-        from datetime import date
         queryset = self.get_queryset().filter(
-            review_date__lte=date.today(),
+            review_date__lte=tenant_today(self.tenant),
             status='RELEASED'
         ).order_by('review_date')
 
@@ -1729,8 +1729,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         needs_my_uuid_ids = [UUID(oid) for oid in needs_my_approval_ids if oid]
 
         # DMS Compliance: Count documents due for review
-        from datetime import date
-        today = date.today()
+        today = tenant_today(self.tenant)
         due_for_review_count = queryset.filter(
             review_date__lte=today,
             status='RELEASED'

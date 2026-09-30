@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +124,7 @@ class CalibrationDueAdapter(ReportAdapter):
         from Tracker.models import CalibrationRecord
         from Tracker.models.mes_standard import Equipments
 
-        today = datetime.date.today()
+        today = tenant_today(tenant)
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         # Fetch all equipment in this tenant that have at least one
@@ -186,5 +187,5 @@ class CalibrationDueAdapter(ReportAdapter):
         )
 
     def get_filename(self, validated_params) -> str:
-        today = datetime.date.today()
+        today = tenant_today()
         return f"calibration_due_report_{today.isoformat()}.pdf"

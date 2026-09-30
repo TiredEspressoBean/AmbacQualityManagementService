@@ -13,6 +13,8 @@ import logging
 from django.db import transaction
 from django.utils import timezone
 
+from Tracker.services.core.clock import tenant_today
+
 from Tracker.models import QuarantineDisposition
 
 logger = logging.getLogger(__name__)
@@ -173,7 +175,7 @@ def decide_disposition(
         disposition.customer_approval_received = True
         disposition.customer_approval_reference = reference
         disposition.customer_approval_date = (
-            (customer_approval or {}).get('date') or timezone.now().date()
+            (customer_approval or {}).get('date') or tenant_today(disposition.tenant)
         )
 
     disposition.disposition_type = disposition_type

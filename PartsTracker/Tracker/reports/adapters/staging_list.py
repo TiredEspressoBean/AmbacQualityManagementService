@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 class StagingMaterialRow(BaseModel):
@@ -151,11 +152,11 @@ class StagingListAdapter(ReportAdapter):
             total_jobs=sum(s.job_count for s in stations),
             total_short=sum(s.short_count for s in stations),
             tenant_name=tenant.name,
-            generated_date=datetime.date.today(),
+            generated_date=tenant_today(tenant),
         )
 
     def get_filename(self, validated_params) -> str:
-        return f"staging_list_{datetime.date.today():%Y%m%d}.pdf"
+        return f"staging_list_{tenant_today():%Y%m%d}.pdf"
 
 
 def _num(value) -> str:

@@ -29,6 +29,7 @@ Usage:
 from dataclasses import dataclass, field
 from django.db import models, transaction
 from django.utils import timezone
+from Tracker.services.core.clock import tenant_today
 
 
 # ---- Versioning ------------------------------------------------------------
@@ -280,7 +281,7 @@ def get_user_current_levels(user, lineage=None):
     """
     from Tracker.models import TrainingRecord
 
-    today = timezone.now().date()
+    today = tenant_today(user.tenant_id)
 
     # tenant-safe: scoped to a specific user; users belong to one tenant
     current_records = TrainingRecord.objects.filter(archived=False,
@@ -349,7 +350,7 @@ def check_training_authorization(
             expired_record = TrainingRecord.objects.filter(archived=False,
                 user=user,
                 training_type_id__in=_lineage_ids(lineage, training_type.id),  # tenant-safe: ids from the tenant-filtered lineage
-                expires_date__lt=timezone.now().date()
+                expires_date__lt=tenant_today(user.tenant_id)
             ).order_by('-expires_date').first()
 
             if expired_record:
@@ -407,7 +408,7 @@ def get_qualified_users_for_step(step, process=None, equipment_type=None, tenant
             qs = qs.filter(tenant=tenant)
         return qs
 
-    today = timezone.now().date()
+    today = tenant_today(tenant or next(iter(required)).tenant_id)
 
     # Each requirement has its own level threshold, so we can't use a single
     # distinct-count; intersect the qualifying user sets per (type, min_level).
@@ -655,7 +656,7 @@ def notify_expiring_training(record) -> bool:
         return False
     if _training_superseded(record):
         return False
-    days = (record.expires_date - timezone.now().date()).days
+    days = (record.expires_date - tenant_today(record.tenant)).days
     if days < 0:
         _emit_training_expired(record)
         return True

@@ -391,6 +391,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         from datetime import date, datetime, time, timedelta
         from django.utils import timezone
         from Tracker.services.mes.labor_report import operator_hours as _report
+        from Tracker.services.core.clock import plant_tz, tenant_today
 
         def _parse(s, default):
             if not s:
@@ -400,11 +401,14 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             except ValueError:
                 return default
 
-        today = timezone.localdate()
+        # The range is plant days: "today" and each day's midnight bounds are on the
+        # plant's clock, so a shift clocked at 7 pm in a UTC-5 plant counts today.
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
         start_d = _parse(request.query_params.get('start'), today - timedelta(days=7))
         end_d = _parse(request.query_params.get('end'), today)
-        start_dt = timezone.make_aware(datetime.combine(start_d, time.min))
-        end_dt = timezone.make_aware(datetime.combine(end_d + timedelta(days=1), time.min))
+        start_dt = timezone.make_aware(datetime.combine(start_d, time.min), tz)
+        end_dt = timezone.make_aware(datetime.combine(end_d + timedelta(days=1), time.min), tz)
         return Response({'rows': _report(self.tenant, start_dt, end_dt)})
 
     @extend_schema(responses={200: inline_serializer(

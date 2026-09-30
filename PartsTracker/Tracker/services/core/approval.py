@@ -23,6 +23,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 
+from Tracker.services.core.clock import tenant_today
+
 logger = logging.getLogger(__name__)
 
 from Tracker.models import (
@@ -185,7 +187,7 @@ def create_approval_from_template(
         sequence_type=template.approval_sequence,
         threshold=template.default_threshold if template.approval_flow_type == ApprovalFlows.THRESHOLD else None,
         delegation_policy=template.delegation_policy,
-        escalation_day=timezone.now().date() + timedelta(days=template.escalation_days) if template.escalation_days else None,
+        escalation_day=tenant_today(tenant) + timedelta(days=template.escalation_days) if template.escalation_days else None,
         escalate_to=template.escalate_to,
         due_date=timezone.now() + timedelta(days=template.default_due_days),
     )

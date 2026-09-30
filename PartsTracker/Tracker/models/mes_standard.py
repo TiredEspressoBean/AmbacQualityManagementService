@@ -113,9 +113,13 @@ class EquipmentQuerySet(SecureQuerySet):
         """Equipment that is in service."""
         return self.filter(status=EquipmentStatus.IN_SERVICE)
 
-    def calibration_overdue(self):
-        """Equipment with overdue calibration."""
-        from django.utils import timezone
+    def calibration_overdue(self, tenant=None):
+        """Equipment with overdue calibration.
+
+        "Today" is the plant's day; `tenant` defaults to the current tenant
+        (ContextVar) — pass it explicitly from code that spans tenants.
+        """
+        from Tracker.services.core.clock import tenant_today
         from django.db.models import OuterRef, Subquery
         from Tracker.models.qms import CalibrationRecord
 
@@ -125,11 +129,11 @@ class EquipmentQuerySet(SecureQuerySet):
 
         return self.requiring_calibration().annotate(
             _latest_due=Subquery(latest_due)
-        ).filter(_latest_due__lt=timezone.now().date())
+        ).filter(_latest_due__lt=tenant_today(tenant))
 
-    def calibration_due_soon(self, within_days=30):
-        """Equipment with calibration due within N days."""
-        from django.utils import timezone
+    def calibration_due_soon(self, within_days=30, tenant=None):
+        """Equipment with calibration due within N days (plant's day; see above)."""
+        from Tracker.services.core.clock import tenant_today
         from datetime import timedelta
         from django.db.models import OuterRef, Subquery
         from Tracker.models.qms import CalibrationRecord
@@ -138,8 +142,8 @@ class EquipmentQuerySet(SecureQuerySet):
             equipment=OuterRef('pk')
         ).order_by('-calibration_date').values('due_date')[:1]
 
-        cutoff = timezone.now().date() + timedelta(days=within_days)
-        today = timezone.now().date()
+        today = tenant_today(tenant)
+        cutoff = today + timedelta(days=within_days)
 
         return self.requiring_calibration().annotate(
             _latest_due=Subquery(latest_due)
@@ -161,11 +165,11 @@ class EquipmentManager(SecureManager):
     def operational(self):
         return self.get_queryset().operational()
 
-    def calibration_overdue(self):
-        return self.get_queryset().calibration_overdue()
+    def calibration_overdue(self, tenant=None):
+        return self.get_queryset().calibration_overdue(tenant=tenant)
 
-    def calibration_due_soon(self, within_days=30):
-        return self.get_queryset().calibration_due_soon(within_days)
+    def calibration_due_soon(self, within_days=30, tenant=None):
+        return self.get_queryset().calibration_due_soon(within_days, tenant=tenant)
 
 
 class Equipments(SecureModel):

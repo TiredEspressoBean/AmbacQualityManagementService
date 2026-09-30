@@ -1,7 +1,6 @@
 # viewsets/calibration.py - Calibration Management ViewSets
 from datetime import timedelta
 
-from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, inline_serializer
 from rest_framework import viewsets, filters, serializers
@@ -14,6 +13,7 @@ from Tracker.serializers.calibration import (
     CalibrationRecordSerializer,
     CalibrationStatsSerializer,
 )
+from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin
 from .core import ListMetadataMixin
 from Tracker.serializers.csv_import import (
@@ -103,7 +103,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         # Filter by computed status if provided
         status_filter = self.request.query_params.get('status')
         if status_filter:
-            today = timezone.now().date()
+            today = tenant_today(self.tenant)
             thirty_days = today + timedelta(days=30)
 
             if status_filter == 'current':
@@ -135,7 +135,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     def due_soon(self, request):
         """Return calibration records due within N days (latest per equipment)."""
         days = int(request.query_params.get('days', 30))
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
         cutoff = today + timedelta(days=days)
 
         qs = self.get_queryset()
@@ -159,7 +159,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     @action(detail=False, methods=['get'], url_path='overdue')
     def overdue(self, request):
         """Return all overdue calibration records (latest per equipment)."""
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
 
         qs = self.get_queryset()
         if hasattr(qs, 'latest_per_equipment'):
@@ -182,7 +182,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
         """Return calibration statistics summary."""
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
         thirty_days = today + timedelta(days=30)
 
         # Get base queryset with tenant scoping

@@ -9,7 +9,7 @@ Provides comprehensive API endpoints for the Analysis/Dashboard page:
 - Recent failed inspections
 - Open dispositions
 """
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from collections import defaultdict
 
 from django.db.models import Count, Q, F
@@ -31,7 +31,19 @@ from Tracker.models import (
     Steps,
     PartTypes,
 )
+from Tracker.services.core.clock import plant_tz, tenant_today
 from .base import TenantAwareMixin
+
+
+def _day_start(day, tz):
+    """Midnight starting `day` on the plant's clock, as an aware datetime.
+
+    The date-range endpoints bound `created_at` with these rather than with
+    `created_at__date`, which buckets on the server's (UTC) day: a report made at
+    7:30 pm in a UTC-5 plant is "tomorrow" in UTC and fell outside a range that
+    ends today on the plant's clock.
+    """
+    return datetime.combine(day, time.min, tzinfo=tz)
 
 
 class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
@@ -75,7 +87,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             "current_fpy": 93.5
         }
         """
-        today = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
         seven_days_ago = today - timedelta(days=7)
 
         # Active CAPAs (not closed)
@@ -112,7 +125,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
 
         # Current FPY (7-day average)
         recent_reports = self.qs_for_user(QualityReports).filter(
-            created_at__date__gte=seven_days_ago,
+            created_at__gte=_day_start(seven_days_ago, tz),
             archived=False,
         )
         total_recent = recent_reports.count()
@@ -159,16 +172,17 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         }
         """
         days = int(request.query_params.get('days', 30))
-        end_date = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        end_date = tenant_today(self.tenant)
         start_date = end_date - timedelta(days=days - 1)
 
         # Get daily counts
         daily_stats = self.qs_for_user(QualityReports).filter(
-            created_at__date__gte=start_date,
-            created_at__date__lte=end_date,
+            created_at__gte=_day_start(start_date, tz),
+            created_at__lt=_day_start(end_date + timedelta(days=1), tz),
             archived=False,
         ).annotate(
-            date=TruncDate('created_at')
+            date=TruncDate('created_at', tzinfo=tz)
         ).values('date').annotate(
             total=Count('id'),
             passed=Count('id', filter=Q(status='PASS'))
@@ -701,17 +715,20 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         }
         """
         days = int(request.query_params.get('days', 30))
-        end_date = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        end_date = tenant_today(self.tenant)
         start_date = end_date - timedelta(days=days - 1)
+        range_start = _day_start(start_date, tz)
+        range_end = _day_start(end_date + timedelta(days=1), tz)
 
         # NCRs created per day (failed quality reports)
         created_by_day = self.qs_for_user(QualityReports).filter(
-            created_at__date__gte=start_date,
-            created_at__date__lte=end_date,
+            created_at__gte=range_start,
+            created_at__lt=range_end,
             status='FAIL',
             archived=False,
         ).annotate(
-            date=TruncDate('created_at')
+            date=TruncDate('created_at', tzinfo=tz)
         ).values('date').annotate(
             count=Count('id')
         )
@@ -719,12 +736,12 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
 
         # NCRs closed per day (dispositions closed)
         closed_by_day = self.qs_for_user(QuarantineDisposition).filter(
-            updated_at__date__gte=start_date,
-            updated_at__date__lte=end_date,
+            updated_at__gte=range_start,
+            updated_at__lt=range_end,
             current_state='CLOSED',
             archived=False,
         ).annotate(
-            date=TruncDate('updated_at')
+            date=TruncDate('updated_at', tzinfo=tz)
         ).values('date').annotate(
             count=Count('id')
         )
@@ -855,7 +872,8 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             "overdue_count": 2
         }
         """
-        today = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
 
         # Get open dispositions (NCRs not yet closed)
         open_dispositions = self.qs_for_user(QuarantineDisposition).filter(
@@ -876,7 +894,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         overdue_count = 0
 
         for created_at in open_dispositions:
-            age = (today - created_at.date()).days
+            age = (today - created_at.astimezone(tz).date()).days
             total_age += age
 
             if age > 14:
@@ -930,13 +948,14 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             ]
         }
         """
-        today = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
         data = []
 
         # 1. NCRs open > 7 days
         old_ncrs = self.qs_for_user(QuarantineDisposition).filter(
             archived=False,
-            created_at__date__lt=(today - timedelta(days=7)),
+            created_at__lt=_day_start(today - timedelta(days=7), tz),
         ).exclude(
             current_state='CLOSED'
         ).count()
@@ -1484,13 +1503,14 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         defect_type = request.query_params.get('defect_type')
         process = request.query_params.get('process')
         part_type = request.query_params.get('part_type')
-        end_date = timezone.now().date()
+        tz = plant_tz(self.tenant)
+        end_date = tenant_today(self.tenant)
         start_date = end_date - timedelta(days=days - 1)
 
         # Get daily defect counts
         trend_qs = self.qs_for_user(QualityReports).filter(
-            created_at__date__gte=start_date,
-            created_at__date__lte=end_date,
+            created_at__gte=_day_start(start_date, tz),
+            created_at__lt=_day_start(end_date + timedelta(days=1), tz),
             status='FAIL',
             archived=False,
         )
@@ -1507,7 +1527,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         # distinct() matters once errors (m2m) is joined: a report with two
         # matching error rows would otherwise be counted twice for that day.
         daily_counts = trend_qs.annotate(
-            date=TruncDate('created_at')
+            date=TruncDate('created_at', tzinfo=tz)
         ).values('date').annotate(
             count=Count('id', distinct=True)
         ).order_by('date')

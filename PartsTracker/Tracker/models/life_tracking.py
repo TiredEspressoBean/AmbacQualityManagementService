@@ -333,7 +333,8 @@ class LifeTracking(SecureModel):
     def current_value(self):
         """Current value - calculated for calendar, accumulated for others."""
         if self.definition.is_calendar_based and self.reference_date:
-            days = (timezone.now().date() - self.reference_date).days
+            from Tracker.services.core.clock import tenant_today
+            days = (tenant_today(self.tenant) - self.reference_date).days
             unit = self.definition.unit.lower()
             if unit in ('months', 'month'):
                 return Decimal(days) / Decimal('30.44')

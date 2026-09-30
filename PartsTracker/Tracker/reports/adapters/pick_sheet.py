@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 class PickDrop(BaseModel):
@@ -133,11 +134,11 @@ class PickSheetAdapter(ReportAdapter):
             total_short=sum(1 for r in rows if r.is_short),
             total_kits=len(kits),
             tenant_name=tenant.name,
-            generated_date=datetime.date.today(),
+            generated_date=tenant_today(tenant),
         )
 
     def get_filename(self, validated_params) -> str:
-        return f"pick_sheet_{datetime.date.today():%Y%m%d}.pdf"
+        return f"pick_sheet_{tenant_today():%Y%m%d}.pdf"
 
 
 def _num(value) -> str:

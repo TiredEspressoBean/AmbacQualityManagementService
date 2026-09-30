@@ -4,6 +4,7 @@ import time
 import logging
 from typing import List, Dict, Any
 
+from Tracker.services.core.clock import plant_tz, tenant_today
 from Tracker.utils.tenant_context import (
     tenant_context,
     get_tenant_for_object,
@@ -11,6 +12,33 @@ from Tracker.utils.tenant_context import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _plant_today_by_tenant():
+    """A `tenant_id -> today on that plant's clock` lookup, memoised for one task run.
+
+    For beat tasks that iterate `.all_tenants`: each row is judged on ITS plant's day,
+    resolved once per tenant rather than once per row. The ContextVar is never
+    consulted -- the tenant id is always passed."""
+    cache = {}
+
+    def today_for(tenant_id):
+        if tenant_id not in cache:
+            cache[tenant_id] = tenant_today(tenant_id)
+        return cache[tenant_id]
+    return today_for
+
+
+def _plant_day_bounds():
+    """(earliest, latest) day any plant on Earth can be on right now.
+
+    Civil zones run UTC-12 .. UTC+14. A cross-tenant query prefiltered to this span
+    can't miss a row; each row is then checked exactly against its own plant's day
+    (`_plant_today_by_tenant`)."""
+    from datetime import timedelta
+    from django.utils import timezone
+    now = timezone.now()
+    return (now - timedelta(hours=12)).date(), (now + timedelta(hours=14)).date()
 
 
 # ============================================================================
@@ -705,7 +733,6 @@ def check_capa_reminders():
 
     logger.info("Checking CAPA reminders")
 
-    today = timezone.now().date()
     created_count = 0
     skipped_count = 0
 
@@ -722,6 +749,7 @@ def check_capa_reminders():
 
     # Process each active tenant
     for tenant in Tenant.objects.filter(is_active=True):
+        today = tenant_today(tenant)  # this plant's day, not the UTC day
         with tenant_context(tenant.id):
             # Get open CAPAs with due dates and assigned users
             open_capas = CAPA.objects.filter(
@@ -968,9 +996,9 @@ def escalate_approvals():
     """
     from .models import ApprovalRequest, Approval_Status_Type, NotificationTask as NotificationTaskModel, Tenant
     from django.contrib.contenttypes.models import ContentType
+    from datetime import datetime, time
     from django.utils import timezone
 
-    today = timezone.now().date()
     created_count = 0
     skipped_count = 0
 
@@ -978,6 +1006,10 @@ def escalate_approvals():
 
     # Process each active tenant
     for tenant in Tenant.objects.filter(is_active=True):
+        today = tenant_today(tenant)  # this plant's day, not the UTC day
+        # "Already sent today" = since midnight on the plant's clock (a `__date`
+        # lookup would take the day in the server's timezone instead).
+        day_start = datetime.combine(today, time.min, tzinfo=plant_tz(tenant))
         with tenant_context(tenant.id):
             escalation_approvals = ApprovalRequest.objects.filter(
                 status=Approval_Status_Type.PENDING,
@@ -997,7 +1029,7 @@ def escalate_approvals():
                     related_content_type=approval_ct,
                     related_object_id=str(approval.id),
                     status='SENT',
-                    last_sent_at__date=today
+                    last_sent_at__gte=day_start
                 ).exists()
 
                 if already_sent:
@@ -1162,9 +1194,7 @@ def check_overdue_capas(self):
     from .models import CAPA, CapaTasks, CapaStatus, Tenant
     from django.core.mail import send_mail
     from django.conf import settings
-    from django.utils import timezone
 
-    today = timezone.now().date()
     total_capa_reminders = 0
     total_task_reminders = 0
     total_overdue_capas = 0
@@ -1174,6 +1204,7 @@ def check_overdue_capas(self):
     active_tenants = Tenant.objects.filter(is_active=True)
 
     for tenant in active_tenants:
+        today = tenant_today(tenant)  # this plant's day, not the UTC day
         with tenant_context(tenant.id):
             # Check overdue CAPAs (filter by computed_status since status is now derived)
             overdue_capas = [
@@ -1629,19 +1660,23 @@ def expire_supplier_qualifications():
     """Celery Beat task: flip active SupplierQualifications past their expiry_date
     to EXPIRED. Cross-tenant via `.all_tenants`; each expire runs in its tenant
     context. Returns a summary for observability."""
-    from django.utils import timezone
     from Tracker.models import SupplierQualification
     from Tracker.services.qms import supplier_qualification as svc
 
-    today = timezone.now().date()
+    # Prefilter to what could be past expiry on SOME plant's clock, then check each
+    # row against its own plant's day.
+    _, latest_day = _plant_day_bounds()
+    today_for = _plant_today_by_tenant()
     expired = 0
     due = (
         SupplierQualification.all_tenants
         .filter(status__in=SupplierQualification.ACTIVE_STATUSES,
-                expiry_date__isnull=False, expiry_date__lt=today)
+                expiry_date__isnull=False, expiry_date__lt=latest_day)
         .iterator()
     )
     for qual in due:
+        if not qual.expiry_date < today_for(qual.tenant_id):
+            continue
         with tenant_context(str(qual.tenant_id)):
             svc.expire(qual)
             expired += 1
@@ -1657,21 +1692,24 @@ def notify_expiring_qualifications():
     runs don't spam. Cross-tenant via `.all_tenants`; each emit runs in its tenant
     context. Returns a summary for observability."""
     from datetime import timedelta
-    from django.utils import timezone
     from Tracker.models import SupplierQualification
     from Tracker.services.qms import supplier_qualification as svc
 
-    today = timezone.now().date()
-    horizon = today + timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
+    window = timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
+    earliest_day, latest_day = _plant_day_bounds()
+    today_for = _plant_today_by_tenant()
     notified = 0
     due = (
         SupplierQualification.all_tenants
         .filter(status__in=SupplierQualification.ACTIVE_STATUSES,
                 expiry_date__isnull=False,
-                expiry_date__gte=today, expiry_date__lte=horizon)
+                expiry_date__gte=earliest_day, expiry_date__lte=latest_day + window)
         .iterator()
     )
     for qual in due:
+        today = today_for(qual.tenant_id)
+        if not today <= qual.expiry_date <= today + window:
+            continue
         with tenant_context(str(qual.tenant_id)):
             if svc.notify_expiring_soon(qual):
                 notified += 1
@@ -1688,21 +1726,26 @@ def notify_expiring_training():
     runs don't spam, and skips records already superseded by a renewal. Cross-tenant
     via `.all_tenants`; each emit runs in its tenant context."""
     from datetime import timedelta
-    from django.utils import timezone
     from Tracker.models import TrainingRecord
     from Tracker.services import training as svc
 
-    today = timezone.now().date()
-    horizon = today + timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
-    lookback = today - timedelta(days=svc._EXPIRED_LOOKBACK_DAYS)
+    ahead = timedelta(days=max(svc._EXPIRY_REMINDER_DAYS))
+    behind = timedelta(days=svc._EXPIRED_LOOKBACK_DAYS)
+    earliest_day, latest_day = _plant_day_bounds()
+    today_for = _plant_today_by_tenant()
     notified = 0
     due = (
         TrainingRecord.all_tenants
-        .filter(expires_date__isnull=False, expires_date__gte=lookback, expires_date__lte=horizon)
+        .filter(expires_date__isnull=False,
+                expires_date__gte=earliest_day - behind,
+                expires_date__lte=latest_day + ahead)
         .select_related('user', 'training_type')
         .iterator()
     )
     for rec in due:
+        today = today_for(rec.tenant_id)
+        if not today - behind <= rec.expires_date <= today + ahead:
+            continue
         with tenant_context(str(rec.tenant_id)):
             if svc.notify_expiring_training(rec):
                 notified += 1
@@ -1743,19 +1786,23 @@ def expire_part_approvals():
     """Celery Beat task: flip active PartApprovals past their expiry_date to
     EXPIRED. Cross-tenant via `.all_tenants`; each expire runs in its tenant
     context. Returns a summary for observability."""
-    from django.utils import timezone
     from Tracker.models import PartApproval
     from Tracker.services.qms import part_approval as svc
 
-    today = timezone.now().date()
+    # Prefilter to what could be past expiry on SOME plant's clock, then check each
+    # row against its own plant's day.
+    _, latest_day = _plant_day_bounds()
+    today_for = _plant_today_by_tenant()
     expired = 0
     due = (
         PartApproval.all_tenants
         .filter(status__in=PartApproval.ACTIVE_STATUSES,
-                expiry_date__isnull=False, expiry_date__lt=today)
+                expiry_date__isnull=False, expiry_date__lt=latest_day)
         .iterator()
     )
     for approval in due:
+        if not approval.expiry_date < today_for(approval.tenant_id):
+            continue
         with tenant_context(str(approval.tenant_id)):
             svc.expire(approval)
             expired += 1

@@ -23,6 +23,7 @@ from Tracker.models.mes_lite import (
     StepExecution,
     WorkOrderStatus,
 )
+from Tracker.services.core.clock import tenant_today
 from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
 
 
@@ -163,7 +164,7 @@ def _cascade_work_order_completion_for_subject(wo) -> None:
     else:
         wo.workorder_status = WorkOrderStatus.COMPLETED
 
-    wo.true_completion = timezone.now().date()
+    wo.true_completion = tenant_today(wo.tenant)
     wo.save(update_fields=['workorder_status', 'true_completion'])
 
 

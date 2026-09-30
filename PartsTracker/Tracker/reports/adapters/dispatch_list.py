@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +150,7 @@ class DispatchListAdapter(ReportAdapter):
     def build_context(self, validated_params, user, tenant) -> DispatchListContext:
         from Tracker.models.mes_lite import Parts, WorkOrder
 
-        today = datetime.date.today()
+        today = tenant_today(tenant)
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         # Fetch all Parts that are actively in production (non-terminal, non-complete)
@@ -265,5 +266,5 @@ class DispatchListAdapter(ReportAdapter):
         )
 
     def get_filename(self, validated_params) -> str:
-        today = datetime.date.today()
+        today = tenant_today()
         return f"dispatch_list_{today.isoformat()}.pdf"

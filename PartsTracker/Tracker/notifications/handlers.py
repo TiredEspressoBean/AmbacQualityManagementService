@@ -15,6 +15,8 @@ from django.utils import timezone
 from django.conf import settings
 from django.db.models import Avg
 
+from Tracker.services.core.clock import plant_tz, tenant_today
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,8 +48,8 @@ def build_capa_context(task) -> Optional[Dict[str, Any]]:
         # Handle both date and datetime
         due = capa.due_date
         if hasattr(due, 'date'):
-            due = due.date()
-        days_until = (due - timezone.now().date()).days
+            due = timezone.localtime(due, plant_tz(capa.tenant)).date() if timezone.is_aware(due) else due.date()
+        days_until = (due - tenant_today(capa.tenant)).days
         is_overdue = days_until < 0
 
     # Get CAPA number - could be capa_number or disposition_number depending on model
@@ -147,7 +149,11 @@ def build_approval_escalation_context(task) -> Optional[Dict[str, Any]]:
 
     days_overdue = 0
     if approval_request.due_date:
-        delta = timezone.now().date() - approval_request.due_date
+        # due_date is a DateTimeField: compare plant days, not a date to a datetime
+        # (which raised TypeError).
+        tz = plant_tz(approval_request.tenant)
+        due_day = timezone.localtime(approval_request.due_date, tz).date()
+        delta = tenant_today(approval_request.tenant) - due_day
         days_overdue = max(0, delta.days)
 
     return {

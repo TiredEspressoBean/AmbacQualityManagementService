@@ -21,6 +21,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from Tracker.models import PartApproval
+from Tracker.services.core.clock import tenant_today
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,7 @@ class PartApprovalStatus:
 
 def _active_qs(part_type, supplier):
     from django.db.models import Q
-    today = timezone.now().date()
+    today = tenant_today(supplier.tenant_id)
     return (
         PartApproval.objects
         .filter(archived=False, part_type=part_type, supplier=supplier,
@@ -68,7 +69,7 @@ def resolve_status(*, part_type, supplier) -> PartApprovalStatus:
         return PartApprovalStatus(False, None, None, None, None, None)
     days = None
     if record.expiry_date:
-        days = (record.expiry_date - timezone.now().date()).days
+        days = (record.expiry_date - tenant_today(record.tenant)).days
     return PartApprovalStatus(
         approved=True, status=record.status, approval_type=record.approval_type,
         expiry_date=record.expiry_date, days_to_expiry=days, record_id=str(record.id),
@@ -99,7 +100,7 @@ def grant(approval, *, user=None, conditional=False, effective_date=None, expiry
     if approval.status == 'DISQUALIFIED':
         raise ValueError("A disqualified part approval must be re-opened, not granted.")
     approval.status = 'CONDITIONAL' if conditional else 'APPROVED'
-    approval.effective_date = effective_date or approval.effective_date or timezone.now().date()
+    approval.effective_date = effective_date or approval.effective_date or tenant_today(approval.tenant)
     if expiry_date is not None:
         approval.expiry_date = expiry_date
     if user and getattr(user, 'is_authenticated', False):

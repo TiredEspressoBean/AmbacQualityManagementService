@@ -912,14 +912,9 @@ def plant_tz(tenant):
     should not take the scheduler down for everyone, and the fallback is exactly the
     old behaviour.
     """
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-    name = getattr(tenant, 'default_timezone', None)
-    if not name:
-        return timezone.get_current_timezone()
-    try:
-        return ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError):
-        return timezone.get_current_timezone()
+    # One plant clock for the whole app: services.core.clock.
+    from Tracker.services.core.clock import plant_tz as _plant_tz
+    return _plant_tz(tenant)
 
 
 def _combine_in(tz, day, t):

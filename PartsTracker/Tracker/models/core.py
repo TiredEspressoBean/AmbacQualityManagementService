@@ -3341,26 +3341,26 @@ class Documents(SecureModel):
     @property
     def is_due_for_review(self):
         """Check if document is due for periodic review"""
-        from datetime import date
+        from Tracker.services.core.clock import tenant_today
         if not self.review_date:
             return False
-        return date.today() >= self.review_date
+        return tenant_today(self.tenant) >= self.review_date
 
     @property
     def is_past_retention(self):
         """Check if document is past its retention period (can be archived/deleted)"""
-        from datetime import date
+        from Tracker.services.core.clock import tenant_today
         if not self.retention_until:
             return False
-        return date.today() > self.retention_until
+        return tenant_today(self.tenant) > self.retention_until
 
     @property
     def days_until_review(self):
         """Days until next review (negative if overdue)"""
-        from datetime import date
+        from Tracker.services.core.clock import tenant_today
         if not self.review_date:
             return None
-        return (self.review_date - date.today()).days
+        return (self.review_date - tenant_today(self.tenant)).days
 
     def calculate_compliance_dates(self, effective_date=None):
         """
@@ -3370,10 +3370,11 @@ class Documents(SecureModel):
         Args:
             effective_date: Override effective date (defaults to today)
         """
-        from datetime import date, timedelta
+        from datetime import timedelta
+        from Tracker.services.core.clock import tenant_today
 
         if not effective_date:
-            effective_date = date.today()
+            effective_date = tenant_today(self.tenant)
 
         self.effective_date = effective_date
 

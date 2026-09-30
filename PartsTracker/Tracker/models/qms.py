@@ -1331,9 +1331,9 @@ class CAPA(SecureModel):
         an "assigned_to changed" predicate.
         """
         if not self.capa_number:
-            from django.utils import timezone
-            # Use initiated_date if it exists, otherwise use today
-            initiated_date = self.initiated_date if hasattr(self, 'initiated_date') and self.initiated_date else timezone.now().date()
+            from Tracker.services.core.clock import tenant_today
+            # Use initiated_date if it exists, otherwise today on the plant's clock
+            initiated_date = self.initiated_date if hasattr(self, 'initiated_date') and self.initiated_date else tenant_today(self.tenant)
             self.capa_number = self.generate_capa_number(self.capa_type, initiated_date, self.tenant)
 
         # Snapshot the previously-persisted assignee on update so the post_save
@@ -1552,8 +1552,9 @@ class CAPA(SecureModel):
         if not self.due_date:
             return False
 
-        # Check if due date has passed
-        today = timezone.now().date()
+        # Check if due date has passed (on the plant's clock)
+        from Tracker.services.core.clock import tenant_today
+        today = tenant_today(self.tenant)
         return today > self.due_date
 
     def request_approval(self, user):
@@ -1722,7 +1723,8 @@ class CapaTasks(SecureModel):
         if self.status == CapaTaskStatus.COMPLETED or self.due_date is None:
             return (False, 0)
 
-        today = timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        today = tenant_today(self.tenant)
         if today > self.due_date:
             return (True, (today - self.due_date).days)
 
@@ -2407,14 +2409,16 @@ class TrainingRecord(SecureModel):
         """Returns True if training has not expired."""
         if not self.expires_date:
             return True
-        return self.expires_date >= timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        return self.expires_date >= tenant_today(self.tenant)
 
     @property
     def status(self):
         """Returns 'CURRENT', 'EXPIRING_SOON', or 'EXPIRED'."""
         if not self.expires_date:
             return 'CURRENT'
-        today = timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        today = tenant_today(self.tenant)
         if self.expires_date < today:
             return 'EXPIRED'
         from datetime import timedelta
@@ -2559,21 +2563,27 @@ class CalibrationRecordQuerySet(SecureQuerySet):
     chaining from SecureQuerySet.
     """
 
-    def due_soon(self, within_days=30):
+    # "Today" is the plant's day. `tenant` defaults to the current request/task
+    # tenant (ContextVar); pass it explicitly from code that spans tenants.
+
+    def due_soon(self, within_days=30, tenant=None):
         """Calibration records with due date within N days."""
         from datetime import timedelta
-        cutoff = timezone.now().date() + timedelta(days=within_days)
-        today = timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        today = tenant_today(tenant)
+        cutoff = today + timedelta(days=within_days)
         return self.filter(due_date__lte=cutoff, due_date__gte=today)
 
-    def overdue(self):
+    def overdue(self, tenant=None):
         """Calibration records past due date."""
-        return self.filter(due_date__lt=timezone.now().date())
+        from Tracker.services.core.clock import tenant_today
+        return self.filter(due_date__lt=tenant_today(tenant))
 
-    def current(self):
+    def current(self, tenant=None):
         """Calibration records that are current (not overdue, not failed)."""
+        from Tracker.services.core.clock import tenant_today
         return self.filter(
-            due_date__gte=timezone.now().date()
+            due_date__gte=tenant_today(tenant)
         ).exclude(result='FAIL')
 
     def for_equipment(self, equipment):
@@ -2598,14 +2608,14 @@ class CalibrationRecordManager(SecureManager):
     def get_queryset(self):
         return CalibrationRecordQuerySet(self.model, using=self._db)
 
-    def due_soon(self, within_days=30):
-        return self.get_queryset().due_soon(within_days)
+    def due_soon(self, within_days=30, tenant=None):
+        return self.get_queryset().due_soon(within_days, tenant=tenant)
 
-    def overdue(self):
-        return self.get_queryset().overdue()
+    def overdue(self, tenant=None):
+        return self.get_queryset().overdue(tenant=tenant)
 
-    def current(self):
-        return self.get_queryset().current()
+    def current(self, tenant=None):
+        return self.get_queryset().current(tenant=tenant)
 
     def for_equipment(self, equipment):
         return self.get_queryset().for_equipment(equipment)
@@ -2732,14 +2742,16 @@ class CalibrationRecord(SecureModel):
         """Returns True if calibration has not expired and passed."""
         if self.result == self.CalibrationResult.FAIL:
             return False
-        return self.due_date >= timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        return self.due_date >= tenant_today(self.tenant)
 
     @property
     def status(self) -> str:
         """Returns 'CURRENT', 'DUE_SOON', 'OVERDUE', or 'FAILED'."""
         if self.result == self.CalibrationResult.FAIL:
             return 'FAILED'
-        today = timezone.now().date()
+        from Tracker.services.core.clock import tenant_today
+        today = tenant_today(self.tenant)
         if self.due_date < today:
             return 'OVERDUE'
         from datetime import timedelta
@@ -2750,7 +2762,8 @@ class CalibrationRecord(SecureModel):
     @property
     def days_until_due(self) -> int:
         """Days until calibration due. Negative if overdue."""
-        return (self.due_date - timezone.now().date()).days
+        from Tracker.services.core.clock import tenant_today
+        return (self.due_date - tenant_today(self.tenant)).days
 
     @property
     def days_overdue(self) -> int | None:

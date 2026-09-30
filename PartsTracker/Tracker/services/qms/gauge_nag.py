@@ -17,6 +17,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from Tracker.services.core.clock import tenant_today
+
 DEFAULT_USED_WITHIN_DAYS = 7
 DEFAULT_DUE_WITHIN_DAYS = 7
 
@@ -40,7 +42,7 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
     if not used_ids:
         return []
 
-    today = timezone.now().date()
+    today = tenant_today(user.tenant_id)
     due_cutoff = today + timedelta(days=due_within_days)
 
     records = (CalibrationRecord.objects  # tenant-safe: .objects auto-scopes

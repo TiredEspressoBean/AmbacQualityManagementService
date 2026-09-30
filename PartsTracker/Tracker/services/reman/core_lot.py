@@ -55,8 +55,8 @@ def receive_core_lot(*, tenant, core_type, quantity, received_by, customer=None,
         ValueError: quantity is not a positive whole number, or the customer's units
             must be received individually.
     """
-    from django.utils import timezone
     from Tracker.models import MaterialLot
+    from Tracker.services.core.clock import tenant_today
     from Tracker.services.reman.core import resolve_fulfilment_mode
     from Tracker.utils.sequences import generate_next_sequence
 
@@ -75,11 +75,12 @@ def receive_core_lot(*, tenant, core_type, quantity, received_by, customer=None,
             "so each must be received individually with its own identity"
         )
 
+    today = tenant_today(tenant)
     if not lot_number:
         lot_number = generate_next_sequence(
             queryset=MaterialLot.objects,
             number_field='lot_number',
-            prefix=f"CORELOT-{timezone.now().year}-",
+            prefix=f"CORELOT-{today.year}-",
             padding=4,
             tenant=tenant,
         )
@@ -89,7 +90,7 @@ def receive_core_lot(*, tenant, core_type, quantity, received_by, customer=None,
         material_type=core_type,
         supplier=customer,
         supplier_lot_number=source_reference,
-        received_date=received_date or timezone.now().date(),
+        received_date=received_date or today,
         received_by=received_by,
         quantity=qty,
         quantity_remaining=qty,

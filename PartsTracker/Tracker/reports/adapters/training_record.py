@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +190,7 @@ class TrainingRecordAdapter(ReportAdapter):
             expired_count=expired_count,
             no_expiry_count=no_expiry_count,
             tenant_name=tenant.name,
-            generated_date=date.today().isoformat(),
+            generated_date=tenant_today(tenant).isoformat(),
         )
 
     def get_filename(self, validated_params) -> str:

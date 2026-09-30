@@ -2,7 +2,6 @@
 from datetime import timedelta
 
 from django.db.models import Q
-from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, inline_serializer
 from rest_framework import viewsets, status, filters, serializers
@@ -23,6 +22,7 @@ from Tracker.serializers.training import (
     JobRoleSerializer,
 )
 from Tracker.services.training import build_training_matrix
+from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin
 from .core import ListMetadataMixin
 from .mixins import CSVImportMixin, DataExportMixin
@@ -125,7 +125,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
         # Filter by computed status if provided
         status_filter = self.request.query_params.get('status')
         if status_filter:
-            today = timezone.now().date()
+            today = tenant_today(self.tenant)
             thirty_days = today + timedelta(days=30)
 
             if status_filter == 'current':
@@ -176,7 +176,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
     def expiring_soon(self, request):
         """Return training records expiring within N days."""
         days = int(request.query_params.get('days', 30))
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
         cutoff = today + timedelta(days=days)
 
         qs = self.get_queryset().filter(
@@ -196,7 +196,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
     @action(detail=False, methods=['get'], url_path='expired')
     def expired(self, request):
         """Return all expired training records."""
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
         qs = self.get_queryset().filter(expires_date__lt=today).order_by('-expires_date')
         page = self.paginate_queryset(qs)
         if page is not None:
@@ -218,7 +218,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
         """Return training statistics summary."""
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
         thirty_days = today + timedelta(days=30)
 
         qs = self.get_queryset()

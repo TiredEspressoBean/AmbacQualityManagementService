@@ -175,9 +175,8 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
         locked.received_by = received_by
         # The shop floor's day (Tenant.default_timezone), not UTC's: a receipt at 8 pm
         # in a UTC-5 plant was dated tomorrow.
-        from Tracker.services.scheduling.data import plant_tz
-        locked.received_date = received_date or timezone.now().astimezone(
-            plant_tz(locked.tenant)).date()
+        from Tracker.services.core.clock import tenant_today
+        locked.received_date = received_date or tenant_today(locked.tenant)
         locked.save(update_fields=[
             "lot_number", "received_by", "received_date",
             "quantity", "quantity_remaining", "updated_at",

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from Tracker.services.core.clock import tenant_today
 
 from Tracker.models import (
     ApprovalRequest,
@@ -93,7 +94,7 @@ def transition_capa(capa: CAPA, new_status, user, notes: str | None = None) -> C
 
     capa.status = new_status.value
     if new_status == CapaStatus.CLOSED:
-        capa.completed_date = timezone.now().date()
+        capa.completed_date = tenant_today(capa.tenant)
     capa.save()
 
     # tenant auto-filled from ContextVar via SecureModel.save() — no
@@ -141,7 +142,7 @@ def complete_capa_task(
 
     if task.completion_mode == CapaTaskCompletionMode.SINGLE_OWNER:
         task.status = CapaTaskStatus.COMPLETED
-        task.completed_date = timezone.now().date()
+        task.completed_date = tenant_today(task.tenant)
         task.completed_by = user
         task.completion_notes = notes
         if task.requires_signature:
@@ -165,7 +166,7 @@ def complete_capa_task(
         if task.completion_mode == CapaTaskCompletionMode.ANY_ASSIGNEE:
             if assignees.filter(status=CapaTaskStatus.COMPLETED).exists():
                 task.status = CapaTaskStatus.COMPLETED
-                task.completed_date = timezone.now().date()
+                task.completed_date = tenant_today(task.tenant)
                 task.completed_by = user
                 if task.requires_signature:
                     task.completion_signature = signature_data
@@ -174,7 +175,7 @@ def complete_capa_task(
             completed = assignees.filter(status=CapaTaskStatus.COMPLETED).count()
             if total > 0 and completed == total:
                 task.status = CapaTaskStatus.COMPLETED
-                task.completed_date = timezone.now().date()
+                task.completed_date = tenant_today(task.tenant)
                 task.completed_by = user
                 if task.requires_signature:
                     task.completion_signature = signature_data
@@ -218,7 +219,7 @@ def verify_capa_effectiveness(
             )
 
     verification.verified_by = user
-    verification.verification_date = timezone.now().date()
+    verification.verification_date = tenant_today(capa.tenant)
     verification.effectiveness_result = (
         EffectivenessResult.CONFIRMED if confirmed else EffectivenessResult.NOT_EFFECTIVE
     )
@@ -231,7 +232,7 @@ def verify_capa_effectiveness(
 
     if verification.effectiveness_result == EffectivenessResult.CONFIRMED:
         capa.status = CapaStatus.CLOSED
-        capa.completed_date = timezone.now().date()
+        capa.completed_date = tenant_today(capa.tenant)
         capa.save(update_fields=['status', 'completed_date'])
 
         CapaStatusTransition.objects.create(
@@ -269,7 +270,7 @@ def verify_capa_effectiveness(
             task_type=CapaTaskType.CORRECTIVE,
             description=f"Review and update RCA due to failed verification: {notes}",
             assigned_to=capa.assigned_to,
-            due_date=timezone.now().date() + timezone.timedelta(days=30),
+            due_date=tenant_today(capa.tenant) + timezone.timedelta(days=30),
         )
 
     return verification

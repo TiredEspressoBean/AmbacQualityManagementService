@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 # ---------------------------------------------------------------------------
@@ -98,8 +99,9 @@ class CheckingAidsParamsSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 
 
-def _today() -> datetime.date:
-    return datetime.date.today()
+def _today(tenant=None) -> datetime.date:
+    """Today on the plant's clock (the current tenant's when none is given)."""
+    return tenant_today(tenant)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +126,7 @@ class CheckingAidsAdapter(ReportAdapter):
         from Tracker.models import CalibrationRecord
         from Tracker.models.mes_standard import Equipments
 
-        today = _today()
+        today = _today(tenant)
         part_number = (validated_params or {}).get("part_number") or None
         if part_number == "":
             part_number = None

@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from Tracker.models import SupplierQualification
+from Tracker.services.core.clock import tenant_today
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class QualificationStatus:
 # ---------------------------------------------------------------------------
 
 def _active_qs(supplier):
-    today = timezone.now().date()
+    today = tenant_today(supplier.tenant_id)
     return (
         SupplierQualification.objects
         .filter(archived=False, supplier=supplier, status__in=SupplierQualification.ACTIVE_STATUSES)
@@ -86,7 +87,7 @@ def resolve_status(*, supplier, part_type=None, commodity=None, special_process=
         return QualificationStatus(False, None, None, None, None, None)
     days = None
     if record.expiry_date:
-        days = (record.expiry_date - timezone.now().date()).days
+        days = (record.expiry_date - tenant_today(record.tenant)).days
     return QualificationStatus(
         qualified=True, status=record.status, basis=record.basis or None,
         expiry_date=record.expiry_date, days_to_expiry=days, record_id=str(record.id),
@@ -117,7 +118,7 @@ def grant(qualification, *, user=None, conditional=False, effective_date=None, e
     if qualification.status == 'DISQUALIFIED':
         raise ValueError("A disqualified supplier must be re-opened, not granted.")
     qualification.status = 'CONDITIONAL' if conditional else 'APPROVED'
-    qualification.effective_date = effective_date or qualification.effective_date or timezone.now().date()
+    qualification.effective_date = effective_date or qualification.effective_date or tenant_today(qualification.tenant)
     if expiry_date is not None:
         qualification.expiry_date = expiry_date
     if user and getattr(user, 'is_authenticated', False):
@@ -175,7 +176,7 @@ def notify_expiring_soon(qualification) -> bool:
     window) so each threshold notifies once, not daily. Returns True if emitted."""
     if qualification.expiry_date is None:
         return False
-    days = (qualification.expiry_date - timezone.now().date()).days
+    days = (qualification.expiry_date - tenant_today(qualification.tenant)).days
     window = next((d for d in _EXPIRY_REMINDER_DAYS if days <= d), None)
     if window is None:
         return False

@@ -44,6 +44,7 @@ from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .core import ListMetadataMixin
 from .mixins import CSVImportMixin, DataExportMixin
 from .base import TenantScopedMixin
+from Tracker.services.core.clock import tenant_today
 from .mixins import SecondPersonMixin
 
 
@@ -793,7 +794,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             # / prefetch_related applied above.
             queryset = queryset.exclude(status=CapaStatus.CLOSED).filter(
                 due_date__isnull=False,
-                due_date__lt=timezone.now().date(),
+                due_date__lt=tenant_today(self.tenant),
             )
 
         # Filter for CAPAs needing current user's approval
@@ -829,7 +830,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         """Auto-generate CAPA number and set initiated_by"""
         from django.utils import timezone
         capa_type = serializer.validated_data.get('capa_type')
-        initiated_date = timezone.now().date()
+        initiated_date = tenant_today(self.tenant)
         serializer.save(
             initiated_by=self.request.user,
             capa_number=CAPA.generate_capa_number(capa_type, initiated_date)
@@ -897,7 +898,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             super().get_queryset()
         ).prefetch_related('tasks', 'rca_records', 'verifications')
         capas = list(base_queryset)
-        today = timezone.now().date()
+        today = tenant_today(self.tenant)
 
         # Count by computed status
         by_status = {
@@ -1044,7 +1045,7 @@ class CapaTasksViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
             # COMPLETED, has a due date, and that date has passed.
             queryset = queryset.exclude(status=CapaTaskStatus.COMPLETED).filter(
                 due_date__isnull=False,
-                due_date__lt=timezone.now().date(),
+                due_date__lt=tenant_today(self.tenant),
             )
 
         return queryset
@@ -2154,7 +2155,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         if fpi_scope == 'PER_SHIFT':
             shift_date = request.data.get('shift_date')
             if not shift_date:
-                shift_date = timezone.now().date()
+                shift_date = tenant_today(self.tenant)
             lookup['shift_date'] = shift_date
 
         if fpi_scope == 'PER_EQUIPMENT':
@@ -2201,7 +2202,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             create_data['designated_part'] = designated
 
         if fpi_scope == 'PER_SHIFT':
-            create_data['shift_date'] = lookup.get('shift_date', timezone.now().date())
+            create_data['shift_date'] = lookup.get('shift_date', tenant_today(self.tenant))
 
         if fpi_scope == 'PER_EQUIPMENT' and 'equipment' in lookup:
             create_data['equipment'] = lookup['equipment']

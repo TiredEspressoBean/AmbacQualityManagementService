@@ -47,6 +47,7 @@ from Tracker.serializers.qms import (
 from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
 from Tracker.services.qms import inspection_inbox
+from Tracker.services.core.clock import tenant_today
 from .base import TenantScopedMixin
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from .core import ListMetadataMixin
@@ -1087,7 +1088,7 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return Response({'detail': 'Only draft BOMs can be released'}, status=status.HTTP_400_BAD_REQUEST)
 
         bom.status = 'RELEASED'
-        bom.effective_date = timezone.now().date()
+        bom.effective_date = tenant_today(self.tenant)
         bom.approved_by = request.user
         bom.approved_at = timezone.now()
         bom.save()
@@ -1104,7 +1105,7 @@ class BOMViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if bom.status == 'OBSOLETE':
             return Response({'detail': 'BOM is already obsolete'}, status=status.HTTP_400_BAD_REQUEST)
         bom.status = 'OBSOLETE'
-        bom.obsolete_date = timezone.now().date()
+        bom.obsolete_date = tenant_today(self.tenant)
         bom.save()
         return Response(BOMSerializer(bom, context={'request': request}).data)
 

@@ -21,8 +21,9 @@ from types import SimpleNamespace
 from typing import Any
 
 from django.template.loader import render_to_string
-from django.utils import timezone
 from rest_framework import serializers
+
+from Tracker.services.core.clock import tenant_today
 
 from .base import RenderedContent, ScheduledContentProvider
 
@@ -133,7 +134,7 @@ class CustomerActiveOrdersProvider(ScheduledContentProvider):
         context: dict[str, Any] = {
             "customer": _greeting_namespace(recipient),
             "orders": order_summaries,
-            "week_ending": timezone.now().date(),
+            "week_ending": tenant_today(tenant),
             "total_orders": len(order_summaries),
         }
 

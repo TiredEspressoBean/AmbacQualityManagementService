@@ -51,6 +51,7 @@ from pydantic import BaseModel, Field
 from rest_framework import serializers
 
 from Tracker.reports.adapters.base import ReportAdapter
+from Tracker.services.core.clock import tenant_today
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +203,7 @@ class PickListAdapter(ReportAdapter):
         from Tracker.services.scheduling.manual_move import _process_graph
         from Tracker.services.scheduling.routing import resolve_route
 
-        today = datetime.date.today()
+        today = tenant_today(tenant)
 
         # tenant-safe: explicit tenant filter (defense-in-depth)
         wo = (

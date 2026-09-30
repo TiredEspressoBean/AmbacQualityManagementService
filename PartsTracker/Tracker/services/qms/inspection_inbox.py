@@ -28,6 +28,8 @@ from __future__ import annotations
 from django.db.models import Count, Min, Q
 from django.utils import timezone
 
+from Tracker.services.core.clock import tenant_today
+
 # Receiving-dock aging buckets (hours). First-pass conventions — revisit when
 # demand linkage (needed-by-WO) exists to rank by production need instead.
 _AGE_ORANGE_HOURS = 24
@@ -53,10 +55,10 @@ def _age_tone(age_hours) -> str:
     return "green"
 
 
-def _wo_due_tone(expected_completion) -> tuple[str, str]:
+def _wo_due_tone(expected_completion, today) -> tuple[str, str]:
+    """`today` is the plant's day (`tenant_today`), resolved once by the caller."""
     if expected_completion is None:
         return "gray", "no date"
-    today = timezone.now().date()
     if expected_completion < today:
         return "red", f"WO due {expected_completion.isoformat()}"
     if (expected_completion - today).days <= _WO_DUE_SOON_DAYS:
@@ -192,8 +194,10 @@ def _in_process_rows():
                       "work_order__ERP_id", "work_order__expected_completion",
                       "step__name", "part_type__name")
               .annotate(qty=Count("id"), oldest=Min("updated_at")))
+    # The request's tenant (ContextVar) — every row here is .objects-scoped to it.
+    today = tenant_today()
     for g in groups:
-        tone, label = _wo_due_tone(g["work_order__expected_completion"])
+        tone, label = _wo_due_tone(g["work_order__expected_completion"], today)
         yield {
             "type": "in_process",
             "subject_kind": "operation",
