@@ -1,5 +1,6 @@
 "use client";
 
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -278,6 +279,11 @@ export default function EquipmentTypeFormPage() {
                         title="Required training to operate"
                         description="Certifications operators must hold to use equipment of this type — applied wherever this equipment is used."
                     />
+                </div>
+            )}
+            {mode === "edit" && equipmentTypeId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Equipment-types" id={equipmentTypeId} model="equipmenttype" />
                 </div>
             )}
         </Form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -20,17 +21,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useParams } from "@tanstack/react-router";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown } from "lucide-react";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     Select,
@@ -82,7 +72,6 @@ export default function UserFormPage() {
     const mode = params.id ? "edit" : "create";
     const userId = params.id ? Number(params.id) : undefined;
     const [companySearch, setCompanySearch] = useState("");
-    const [open, setOpen] = useState(false);
 
     const { data: user, isLoading: isLoadingUser } = useRetrieveUser(
         { params: { id: userId as number } },
@@ -273,7 +262,6 @@ export default function UserFormPage() {
         );
     }
 
-    const selectedCompany = companies?.results.find((company) => company.id === form.watch("parent_company_id"));
 
     return (
         <div className="max-w-3xl mx-auto py-10">
@@ -392,77 +380,20 @@ export default function UserFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.parent_company_id}>Company</FormLabel>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={open}
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                disabled={isLoadingCompanies}
-                                            >
-                                                {isLoadingCompanies
-                                                    ? "Loading..."
-                                                    : selectedCompany
-                                                        ? selectedCompany.name
-                                                        : "Select a company (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command>
-                                            <CommandInput
-                                                value={companySearch}
-                                                onValueChange={setCompanySearch}
-                                                placeholder="Search companies..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No companies found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {/* Option to clear selection */}
-                                                    <CommandItem
-                                                        onSelect={() => {
-                                                            form.setValue("parent_company_id", undefined);
-                                                            setOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                !field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        No company
-                                                    </CommandItem>
-
-                                                    {companies?.results.map((company) => (
-                                                        <CommandItem
-                                                            key={company.id}
-                                                            value={company.name}
-                                                            onSelect={() => {
-                                                                form.setValue("parent_company_id", company.id);
-                                                                setOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    company.id === field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {company.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value ?? null}
+                                        onChange={(v) => field.onChange(v ?? undefined)}
+                                        options={(companies?.results ?? []).map((c) => ({ value: c.id, label: c.name }))}
+                                        onSearch={setCompanySearch}
+                                        loading={isLoadingCompanies}
+                                        clearLabel="No company"
+                                        selectedLabel={user?.parent_company?.name ?? undefined}
+                                        placeholder="Select a company (optional)"
+                                        searchPlaceholder="Search companies..."
+                                        emptyText="No companies found."
+                                    />
+                                </FormControl>
                                 <FormDescription>
                                     Associate this user with a company, or leave blank for no company
                                 </FormDescription>

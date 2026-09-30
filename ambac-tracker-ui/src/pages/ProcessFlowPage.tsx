@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ReactFlowProvider, type Node, type Edge } from '@xyflow/react';
 import { validateProcessFlow, type ValidationResult } from '@/lib/process-validation';
 import { ValidationPanel } from '@/components/flow/validation-panel';
@@ -7,7 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
+import { cn, getCookie } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api/generated';
+import { matchKey } from '@/lib/query-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -18,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FlowCanvas, StepEditorPanel } from '@/components/flow';
 import type { StepData as StepWithOrder } from '@/components/flow/use-steps-to-flow';
+import { buildNodesAndEdges } from '@/components/flow/use-steps-to-flow';
 type StepData = StepWithOrder;
 import { useRetrieveProcesses } from '@/hooks/useRetrieveProcesses';
 import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps';
@@ -109,7 +113,7 @@ function formatDuration(ms: number): string {
 
 export default function ProcessFlowPage() {
   // Read process ID from URL query param (e.g., /process-flow?id=5)
-  const searchParams = useSearch({ strict: false }) as { id?: string };
+  const searchParams = useSearch({ strict: false }) as { id?: string; step?: string };
   const navigate = useNavigate();
   const initialProcessId = searchParams.id || 'demo';
 
@@ -285,6 +289,19 @@ export default function ProcessFlowPage() {
       });
     }
   }, [baseStepsFromSource, localSteps, localProcessProps, processWithSteps]);
+
+  // `?step=` opens that step in the side panel once the process has loaded — once,
+  // so clicking elsewhere afterwards isn't undone.
+  const focusStepId = searchParams.step;
+  const focusedStepRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusStepId || focusedStepRef.current === focusStepId || steps.length === 0) return;
+    const node = buildNodesAndEdges(steps).nodes.find((n) => n.id === focusStepId);
+    if (node) {
+      focusedStepRef.current = focusStepId;
+      setSelectedNode(node);
+    }
+  }, [focusStepId, steps]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -547,6 +564,34 @@ export default function ProcessFlowPage() {
 
   // Quick-add reject edge from the step panel. Appends to pendingRejectEdges,
   // which is merged into the canvas's stepEdges source (see mergedStepEdges).
+  // Before a dialog on the step panel edits anything hung off a step (measurements,
+  // sampling, training, machines, documents, substeps), the draft takes its own copy
+  // of the step if another process version shares it — once; after that the draft's
+  // copy is returned. A new copy's id replaces the old one everywhere unsaved canvas
+  // state holds it, so the next graph save names the draft's row.
+  const queryClient = useQueryClient();
+  const ensureOwnStep = useCallback(async (stepId: string): Promise<string> => {
+    if (!processId || isDemo) return stepId;
+    const res = await api.api_Processes_with_steps_draft_step_create(
+      { step: stepId },
+      { params: { id: processId }, headers: { 'X-CSRFToken': getCookie('csrftoken') } },
+    );
+    if (!res.copied) return stepId;
+    const newId = String(res.step);
+    const swap = (id: string) => (id === stepId ? newId : id);
+    setLocalSteps((prev) => prev?.map((s) => (s.id === stepId ? { ...s, id: newId } : s)) ?? prev);
+    setLocalEdges((prev) => prev?.map((e) => ({ ...e, source: swap(e.source), target: swap(e.target) })) ?? prev);
+    setPendingRejectEdges((prev) => prev.map((e) => ({ ...e, from_step: swap(e.from_step), to_step: swap(e.to_step) })));
+    setSelectedNode((prev) => {
+      if (!prev || prev.id !== stepId) return prev;
+      const data = prev.data as { step?: StepData };
+      return { ...prev, id: newId, data: { ...prev.data, step: data.step ? { ...data.step, id: newId } : data.step } };
+    });
+    await queryClient.invalidateQueries(matchKey(['process-with-steps']));
+    toast.info('This draft now has its own copy of the step. Other versions of the process keep theirs.');
+    return newId;
+  }, [processId, isDemo, queryClient]);
+
   const handleAddRejectEdge = useCallback((targetId: string) => {
     const sourceId = selectedNode?.id;
     if (!sourceId) return;
@@ -1343,6 +1388,7 @@ export default function ProcessFlowPage() {
                     rejectDestinations={rejectInfo?.destinations}
                     rejectRoutes={rejectInfo?.routes}
                     onAddRejectEdge={handleAddRejectEdge}
+                    onEnsureOwnStep={editMode && !isDemo ? ensureOwnStep : undefined}
                   />
                 ) : (
                   <Card>

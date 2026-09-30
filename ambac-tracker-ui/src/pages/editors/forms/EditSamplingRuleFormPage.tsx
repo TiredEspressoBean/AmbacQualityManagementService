@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
@@ -30,14 +31,6 @@ import { useCreateSamplingRule } from "@/hooks/useCreateSamplingRule";
 import { useUpdateSamplingRule } from "@/hooks/useUpdateSamplingRule";
 import { useRetrieveSamplingRulesSets } from "@/hooks/useRetrieveSamplingRulesSets";
 import { useDebounce } from "@/hooks/useDebounce";
-import {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-} from "@/components/ui/popover";
-import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import {ruleTypes, ruleTypesEnum} from "@/lib/RuleTypesEnum.ts"
 import {schemas} from "@/lib/api/generated";
 import {isFieldRequired} from "@/lib/zod-config";
@@ -148,52 +141,21 @@ export default function SamplingRuleFormPage() {
                     control={form.control}
                     name="ruleset"
                     render={({ field }) => {
-                        const selected = ruleSets.results.find(rs => rs.id === field.value);
 
                         return (
                             <FormItem>
                                 <FormLabel required={required.ruleset}>Rule Set</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-full justify-between", !selected && "text-muted-foreground")}
-                                        >
-                                            {selected ? selected.name : "Select Rule Set"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                        <Command>
-                                            <CommandInput
-                                                placeholder="Search rule sets..."
-                                                value={rulesetQuery}
-                                                onValueChange={setRulesetQuery}
-                                            />
-                                            <CommandEmpty>No rule sets found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {ruleSets.results.map(rs => (
-                                                    <CommandItem
-                                                        key={rs.id}
-                                                        value={rs.name}
-                                                        onSelect={() => {
-                                                            form.setValue("ruleset", rs.id);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                rs.id === field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {rs.name}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value ?? null}
+                                        onChange={(v) => field.onChange(v ?? undefined)}
+                                        options={ruleSets.results.map((rs) => ({ value: rs.id, label: rs.name }))}
+                                        onSearch={setRulesetQuery}
+                                        placeholder="Select Rule Set"
+                                        searchPlaceholder="Search rule sets..."
+                                        emptyText="No rule sets found."
+                                    />
+                                </FormControl>
                                 <FormDescription>Rule set this rule belongs to.</FormDescription>
                                 <FormMessage />
                             </FormItem>

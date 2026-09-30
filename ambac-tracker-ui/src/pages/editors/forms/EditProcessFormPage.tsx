@@ -1,5 +1,6 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
 import {FormProvider, useFieldArray, useForm, type Resolver} from "react-hook-form";
@@ -9,10 +10,6 @@ import {Button} from "@/components/ui/button";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
-import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
-import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from "@/components/ui/command";
-import {Check, ChevronsUpDown} from "lucide-react";
-import {cn} from "@/lib/utils";
 import {useParams} from "@tanstack/react-router";
 
 import {useRetrieveProcessWithSteps} from "@/hooks/useRetrieveProcessWithSteps.ts";
@@ -293,43 +290,17 @@ export default function ProcessFormPage() {
                         name="part_type"
                         render={({field}) => (<FormItem className="flex flex-col">
                             <FormLabel required={required.part_type}>Part Type</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            className={cn("w-[200px] justify-between", !field.value && "text-muted-foreground")}
-                                        >
-                                            {field.value ? partTypes?.results.find((pt) => pt.id === field.value)?.name : "Select part type"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[200px] p-0">
-                                    <Command>
-                                        <CommandInput
-                                            placeholder="Search part type..."
-                                            onValueChange={setPartTypeSearch}
-                                        />
-                                        <CommandList>
-                                            <CommandEmpty>No part type found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {partTypes?.results.map((pt) => (<CommandItem
-                                                    key={pt.id}
-                                                    value={pt.name}
-                                                    onSelect={() => form.setValue("part_type", pt.id)}
-                                                >
-                                                    <Check
-                                                        className={cn("mr-2 h-4 w-4", pt.id === field.value ? "opacity-100" : "opacity-0")}
-                                                    />
-                                                    {pt.name}
-                                                </CommandItem>))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <FormControl>
+                                <Combobox
+                                    value={field.value ?? null}
+                                    onChange={(v) => field.onChange(v ?? undefined)}
+                                    options={(partTypes?.results ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                    onSearch={setPartTypeSearch}
+                                    placeholder="Select part type"
+                                    searchPlaceholder="Search part type..."
+                                    emptyText="No part type found."
+                                />
+                            </FormControl>
                             <FormDescription>Select the part type this process is associated with.</FormDescription>
                             <FormMessage/>
                         </FormItem>)}

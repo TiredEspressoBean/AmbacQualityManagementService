@@ -1,5 +1,7 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -24,17 +26,6 @@ import { useParams } from "@tanstack/react-router";
 import { useRetrieveErrorType } from "@/hooks/useRetrieveErrorType";
 import { useCreateErrorType } from "@/hooks/useCreateErrorType";
 import { useUpdateErrorType } from "@/hooks/useUpdateErrorType";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown } from "lucide-react";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
@@ -65,7 +56,6 @@ export default function ErrorTypeFormPage() {
     const mode = params.id ? "edit" : "create";
     const errorTypeId = params.id;
     const [partTypeSearch, setPartTypeSearch] = useState("");
-    const [open, setOpen] = useState(false);
 
     const { data: errorType, isLoading: isLoadingErrorType } = useRetrieveErrorType(
         { params: { id: errorTypeId! } },
@@ -150,7 +140,6 @@ export default function ErrorTypeFormPage() {
         );
     }
 
-    const selectedPartType = partTypes?.results.find((pt) => pt.id === form.watch("part_type"));
 
     return (
         <div className="max-w-3xl mx-auto py-10">
@@ -215,77 +204,20 @@ export default function ErrorTypeFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.part_type}>Part Type</FormLabel>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={open}
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                disabled={isLoadingPartTypes}
-                                            >
-                                                {isLoadingPartTypes
-                                                    ? "Loading..."
-                                                    : selectedPartType
-                                                        ? selectedPartType.name
-                                                        : "Select a part type (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command>
-                                            <CommandInput
-                                                value={partTypeSearch}
-                                                onValueChange={setPartTypeSearch}
-                                                placeholder="Search part types..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No part types found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {/* Option to clear selection */}
-                                                    <CommandItem
-                                                        onSelect={() => {
-                                                            form.setValue("part_type", undefined);
-                                                            setOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                !field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        No specific part type
-                                                    </CommandItem>
-
-                                                    {partTypes?.results.map((pt) => (
-                                                        <CommandItem
-                                                            key={pt.id}
-                                                            value={pt.name}
-                                                            onSelect={() => {
-                                                                form.setValue("part_type", pt.id);
-                                                                setOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    pt.id === field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {pt.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value ?? null}
+                                        onChange={(v) => field.onChange(v ?? undefined)}
+                                        options={(partTypes?.results ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                        onSearch={setPartTypeSearch}
+                                        loading={isLoadingPartTypes}
+                                        clearLabel="No specific part type"
+                                        selectedLabel={errorType?.part_type_name ?? undefined}
+                                        placeholder="Select a part type (optional)"
+                                        searchPlaceholder="Search part types..."
+                                        emptyText="No part types found."
+                                    />
+                                </FormControl>
                                 <FormDescription>
                                     Link this error to a specific part type, or leave blank for general errors
                                 </FormDescription>
@@ -334,6 +266,11 @@ export default function ErrorTypeFormPage() {
                     </div>
                 </form>
             </Form>
+            {mode === "edit" && errorTypeId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Error-types" id={errorTypeId} model="qualityerrorslist" />
+                </div>
+            )}
         </div>
     );
 }

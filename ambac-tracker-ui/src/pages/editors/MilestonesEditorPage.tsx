@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Loader2, Pencil } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
@@ -32,6 +37,68 @@ type MilestoneTemplate = {
     is_default: boolean;
     milestones: Milestone[];
 };
+
+/** Create or rename a template: its name, description, and whether new orders get it. */
+function TemplateDialog({ template, open, onOpenChange }: {
+    template: MilestoneTemplate | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const queryClient = useQueryClient();
+    const [name, setName] = useState(template?.name ?? "");
+    const [description, setDescription] = useState(template?.description ?? "");
+    const [isDefault, setIsDefault] = useState(template?.is_default ?? false);
+    const headers = { "X-CSRFToken": getCookie("csrftoken") };
+    const save = useMutation({
+        mutationFn: () => {
+            const data = { name: name.trim(), description, is_default: isDefault };
+            return template
+                ? api.api_MilestoneTemplates_partial_update(data, { params: { id: template.id }, headers })
+                : api.api_MilestoneTemplates_create(data, { headers });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries(matchKey(["milestoneTemplates"]));
+            toast.success(template ? "Template saved" : "Template created");
+            onOpenChange(false);
+        },
+        onError: () => toast.error(template ? "Failed to save template" : "Failed to create template"),
+    });
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>{template ? "Edit template" : "New milestone template"}</DialogTitle>
+                    <DialogDescription>
+                        A set of stages an order moves through, shown to the customer as a progress bar.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="mt-name">Name</Label>
+                        <Input id="mt-name" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="mt-desc">Description</Label>
+                        <Textarea id="mt-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border p-3">
+                        <div>
+                            <Label htmlFor="mt-default">Default for new orders</Label>
+                            <p className="text-xs text-muted-foreground">Orders created without a template get this one.</p>
+                        </div>
+                        <Switch id="mt-default" checked={isDefault} onCheckedChange={setIsDefault} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={() => save.mutate()} disabled={!name.trim() || save.isPending}>
+                        {save.isPending ? "Saving…" : template ? "Save" : "Create template"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 function MilestoneRow({
     milestone,
@@ -111,6 +178,7 @@ function MilestoneRow({
 }
 
 export function MilestonesEditorPage() {
+    const [editing, setEditing] = useState<MilestoneTemplate | null | undefined>(undefined);
     const queryClient = useQueryClient();
     const { data: templates, isLoading } = useListMilestoneTemplates();
     const [, setSaving] = useState(false);
@@ -218,11 +286,26 @@ export function MilestonesEditorPage() {
                     <ArrowLeft className="h-4 w-4 mr-1" />
                     Back to Data Management
                 </Link>
-                <h1 className="text-2xl font-bold">Order Milestones</h1>
-                <p className="text-sm text-muted-foreground">
-                    Define the business stages orders pass through. Shown as a progress bar on the customer portal.
-                </p>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold">Order Milestones</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Define the business stages orders pass through. Shown as a progress bar on the customer portal.
+                        </p>
+                    </div>
+                    <Button size="sm" onClick={() => setEditing(null)}>
+                        <Plus className="h-4 w-4 mr-1" /> New template
+                    </Button>
+                </div>
             </div>
+            {editing !== undefined && (
+                <TemplateDialog
+                    key={editing?.id ?? "new"}
+                    template={editing}
+                    open
+                    onOpenChange={(o) => { if (!o) setEditing(undefined); }}
+                />
+            )}
 
             {safeTemplates.length === 0 ? (
                 /* Empty state */
@@ -231,9 +314,11 @@ export function MilestonesEditorPage() {
                         <p className="text-muted-foreground mb-4">No milestone templates yet</p>
                         <p className="text-sm text-muted-foreground mb-4">
                             Milestones are created automatically when you connect a CRM integration,
-                            or you can create them manually.
+                            or you can start a template here.
                         </p>
-                        {/* TODO: Add "Create Template" button when manual creation is implemented */}
+                        <Button size="sm" onClick={() => setEditing(null)}>
+                            <Plus className="h-4 w-4 mr-1" /> New template
+                        </Button>
                     </CardContent>
                 </Card>
             ) : (
@@ -249,9 +334,15 @@ export function MilestonesEditorPage() {
                                             <CardDescription>{template.description}</CardDescription>
                                         )}
                                     </div>
-                                    {template.is_default && (
-                                        <Badge variant="secondary">Default</Badge>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {template.is_default && (
+                                            <Badge variant="secondary">Default</Badge>
+                                        )}
+                                        <Button variant="ghost" size="icon" className="h-8 w-8"
+                                            aria-label={`Edit ${template.name}`} onClick={() => setEditing(template)}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                                 {/* Column headers */}
                                 <div className="flex items-center gap-2 pt-3 text-xs text-muted-foreground border-b pb-2">

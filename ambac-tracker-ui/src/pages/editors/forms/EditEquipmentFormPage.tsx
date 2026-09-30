@@ -1,5 +1,8 @@
 "use client";
+import { LocationCombobox } from "@/components/locations/LocationCombobox";
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -32,19 +35,12 @@ import { useRetrieveEquipment } from "@/hooks/useRetrieveEquipment";
 import { useCreateEquipment } from "@/hooks/useCreateEquipment";
 import { useUpdateEquipment } from "@/hooks/useUpdateEquipment";
 import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown } from "lucide-react";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MachineEligibilityTable } from "@/components/scheduling/MachineEligibilityTable";
+import { ChangeoversTable } from "@/components/scheduling/ChangeoversTable";
+import { EquipmentCalibrationHistory } from "@/components/equipment/EquipmentCalibrationHistory";
 
 const EQUIPMENT_STATUS_OPTIONS = schemas.EquipmentsStatusEnum.options;
 
@@ -83,7 +79,6 @@ export default function EquipmentFormPage() {
     const mode = params.id ? "edit" : "create";
     const equipmentId = params.id;
     const [equipmentTypeSearch, setEquipmentTypeSearch] = useState("");
-    const [open, setOpen] = useState(false);
 
     const { data: equipment, isLoading: isLoadingEquipment } = useRetrieveEquipment(
         { params: { id: equipmentId! } },
@@ -191,7 +186,6 @@ export default function EquipmentFormPage() {
         );
     }
 
-    const selectedEquipmentType = equipmentTypes?.results.find((et) => et.id === form.watch("equipment_type"));
 
     return (
         <div className="max-w-3xl mx-auto py-10">
@@ -235,76 +229,20 @@ export default function EquipmentFormPage() {
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.equipment_type}>Equipment Type</FormLabel>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                aria-expanded={open}
-                                                className={cn(
-                                                    "w-full justify-between",
-                                                    !field.value && "text-muted-foreground"
-                                                )}
-                                                disabled={isLoadingEquipmentTypes}
-                                            >
-                                                {isLoadingEquipmentTypes
-                                                    ? "Loading..."
-                                                    : selectedEquipmentType
-                                                        ? selectedEquipmentType.name
-                                                        : "Select an equipment type (optional)"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0" align="start">
-                                        <Command>
-                                            <CommandInput
-                                                value={equipmentTypeSearch}
-                                                onValueChange={setEquipmentTypeSearch}
-                                                placeholder="Search equipment types..."
-                                            />
-                                            <CommandList>
-                                                <CommandEmpty>No equipment types found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    <CommandItem
-                                                        onSelect={() => {
-                                                            form.setValue("equipment_type", undefined);
-                                                            setOpen(false);
-                                                        }}
-                                                    >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                !field.value ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        No specific equipment type
-                                                    </CommandItem>
-
-                                                    {equipmentTypes?.results.map((et) => (
-                                                        <CommandItem
-                                                            key={et.id}
-                                                            value={et.name}
-                                                            onSelect={() => {
-                                                                form.setValue("equipment_type", et.id);
-                                                                setOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    et.id === field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {et.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        value={field.value ?? null}
+                                        onChange={(v) => field.onChange(v ?? undefined)}
+                                        options={(equipmentTypes?.results ?? []).map((et) => ({ value: et.id, label: et.name }))}
+                                        onSearch={setEquipmentTypeSearch}
+                                        loading={isLoadingEquipmentTypes}
+                                        clearLabel="No specific equipment type"
+                                        selectedLabel={equipment?.equipment_type_name ?? undefined}
+                                        placeholder="Select an equipment type (optional)"
+                                        searchPlaceholder="Search equipment types..."
+                                        emptyText="No equipment types found."
+                                    />
+                                </FormControl>
                                 <FormDescription>
                                     Categorize this equipment by type, or leave blank for general equipment
                                 </FormDescription>
@@ -372,7 +310,8 @@ export default function EquipmentFormPage() {
                                 <FormItem>
                                     <FormLabel required={required.location}>Location</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="e.g. Building A, Bay 3" {...field} value={field.value ?? ""} />
+                                        <LocationCombobox value={field.value ?? ""} onChange={field.onChange}
+                                            placeholder="e.g. Building A, Bay 3" />
                                     </FormControl>
                                     <FormDescription>
                                         Physical location of the equipment
@@ -560,6 +499,43 @@ export default function EquipmentFormPage() {
                     </div>
                 </form>
             </Form>
+
+            {mode === "edit" && equipmentId && (
+                <div className="mt-8 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Steps it can run</CardTitle>
+                            <CardDescription>
+                                The scheduler only places a step on machines listed for it. Moves to new
+                                revisions of this machine.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent><MachineEligibilityTable owner={{ equipment: equipmentId }} /></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Changeovers</CardTitle>
+                            <CardDescription>
+                                Minutes to reconfigure this machine when it switches from one step to another.
+                                Switching back the other way is its own row.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent><ChangeoversTable equipmentId={equipmentId} /></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Calibration</CardTitle>
+                            <CardDescription>The latest calibrations recorded against this machine.</CardDescription>
+                        </CardHeader>
+                        <CardContent><EquipmentCalibrationHistory equipmentId={equipmentId} /></CardContent>
+                    </Card>
+                </div>
+            )}
+            {mode === "edit" && equipmentId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Equipment" id={equipmentId} model="equipments" />
+                </div>
+            )}
         </div>
     );
 }

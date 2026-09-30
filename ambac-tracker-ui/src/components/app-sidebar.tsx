@@ -4,7 +4,6 @@ import {
     BookOpen,
     Bot,
     CalendarDays,
-    Cog,
     CalendarRange,
     CheckSquare,
     ClipboardList,
@@ -28,13 +27,9 @@ import {
     PackageCheck,
     PackageSearch,
     BadgeCheck,
-    Repeat,
-    Ruler,
-    Timer,
     Recycle,
     Hammer,
     Boxes,
-    Layers,
     Settings,
     ShieldCheck,
     Truck,
@@ -59,6 +54,7 @@ import { LoginLink } from "@/components/login-link-sidebar"
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks"
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
+import { DATA_MANAGEMENT_VIEW_PERMS } from "@/lib/data-management/tables"
 
 // Home - the landing page (available to all authenticated users, no header)
 const homePages: Page[] = [
@@ -87,11 +83,6 @@ const schedulingPages = [
     { name: "Staging List", url: "/production/staging", icon: PackageCheck },
     { name: "Operator Hours", url: "/production/labor-hours", icon: Clock },
     { name: "Requirements", url: "/production/requirements", icon: ClipboardList },
-    // Setup data the solver reads: standard times, which machines run a step, and
-    // the changeover matrix.
-    { name: "Step Timings", url: "/production/step-timings", icon: Timer },
-    { name: "Machine Eligibility", url: "/production/step-equipment-affinities", icon: Cog },
-    { name: "Changeovers", url: "/production/work-center-changeovers", icon: Repeat },
 ]
 
 // Supply - inbound material + suppliers (staff only, collapsible). "Materials"
@@ -115,10 +106,6 @@ const remanPages = [
     { name: "Core Lots", url: "/reman/core-lots", icon: Boxes },
     { name: "Ready to Rebuild", url: "/reman/rebuild-queue", icon: Hammer },
     { name: "Components", url: "/reman/components", icon: Wrench },
-    // Engineering master data, but it lives in the reman group because reman is the
-    // only thing that consumes it and nobody would look for it under Processes.
-    { name: "Repair Codes", url: "/editor/repair-codes", icon: ClipboardList },
-    { name: "Rebuild Levels", url: "/editor/rebuild-levels", icon: Layers },
 ]
 
 // Quality - QMS (staff only, collapsible)
@@ -130,7 +117,6 @@ const qualityPages = [
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },
     { name: "Calibrations", url: "/quality/calibrations", icon: Gauge },
-    { name: "Measurements", url: "/quality/measurement-definitions", icon: Ruler },
     { name: "Heat Map", url: "/heatmap", icon: Flame },
 ]
 
@@ -142,9 +128,9 @@ const toolsPages = [
 ]
 
 // Admin - Configuration/CRUD (collapsible). Items are individually
-// permission-gated in the component — e.g. Work Centers is shop-floor master
-// data a Production Manager maintains (change_workcenter) without holding the
-// user-management perms the rest of the section needs.
+// permission-gated in the component. The sidebar holds what runs the business day
+// to day or week to week; shared config touched monthly or yearly (work centers,
+// step timings, repair codes…) lives in Data Management only.
 
 // Help - available to all authenticated users (at top of nav)
 const helpPages: Page[] = [
@@ -183,9 +169,11 @@ export function AppSidebar({
             { name: "Settings", url: "/settings", icon: Settings },
             { name: "User Management", url: "/admin/users", icon: Users },
         ] : []),
-        ...(isPlatformStaff || hasAny('change_workcenter', 'add_workcenter')
-            ? [{ name: "Work Centers", url: "/admin/work-centers", icon: Factory }] : []),
-        ...(isUserAdmin ? [{ name: "Data Management", url: "/Edit", icon: Database }] : []),
+        // Data Management lists each table the user can view, so it shows to anyone who
+        // can view one — a Production Manager maintaining work centers or step timings
+        // needs it without holding user-admin perms.
+        ...(isPlatformStaff || hasAny(...DATA_MANAGEMENT_VIEW_PERMS)
+            ? [{ name: "Data Management", url: "/Edit", icon: Database }] : []),
         ...(isPlatformStaff || hasAny('view_auditlog', 'view_logentry')
             ? [{ name: "Audit Log", url: "/admin/audit-log", icon: History }] : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- hasAny is stable per permission load

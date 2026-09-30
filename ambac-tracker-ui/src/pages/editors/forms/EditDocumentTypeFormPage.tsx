@@ -1,5 +1,6 @@
 "use client";
 
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -304,6 +305,11 @@ export default function DocumentTypeFormPage() {
                     </div>
                 </form>
             </Form>
+            {mode === "edit" && documentTypeId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="DocumentTypes" id={documentTypeId} model="documenttype" />
+                </div>
+            )}
         </div>
     );
 }

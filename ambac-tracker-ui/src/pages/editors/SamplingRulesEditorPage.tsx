@@ -1,7 +1,8 @@
 import { useRetrieveSamplingRules, samplingRulesOptions, samplingRulesMetadataOptions } from "@/hooks/useRetrieveSamplingRules";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
-import { EditSamplingRuleActionsCell } from "@/components/edit-sample-rule-action-cell.tsx";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -44,9 +45,9 @@ function useSamplingRuleList({
     return useRetrieveSamplingRules(queries);
 }
 
+// A rule always belongs to one rule set, and is edited there: rules are versioned
+// with their set, so this page lists them and opens the set.
 export function SamplingRulesEditorPage() {
-    const navigate = useNavigate();
-
     return (
         <ModelEditorPage
             title="Sampling Rules"
@@ -60,8 +61,13 @@ export function SamplingRulesEditorPage() {
                 col({ header: "Value", renderCell: (rule) => rule.value ?? "-", priority: 2 }),
                 col({ header: "Created At", renderCell: (rule) => new Date(rule.created_at).toLocaleString(), priority: 4 }),
             ]}
-            renderActions={(rule) => <EditSamplingRuleActionsCell ruleId={rule.id} />} // temporary until a dedicated component is created
-            onCreate={() => navigate({ to: "/SamplingRuleForm/create" })}
+            renderActions={(rule) => rule.ruleset ? (
+                <Button asChild variant="ghost" size="icon" title="Edit in its rule set">
+                    <Link to="/SamplingRuleSetForm/edit/$id" params={{ id: String(rule.ruleset) }}>
+                        <Pencil className="h-4 w-4" />
+                    </Link>
+                </Button>
+            ) : null}
         />
     );
 }

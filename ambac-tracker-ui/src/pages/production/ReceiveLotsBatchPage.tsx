@@ -1,3 +1,4 @@
+import { LocationCombobox } from "@/components/locations/LocationCombobox";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -184,7 +185,10 @@ export function ReceiveLotsBatchPage() {
                                         <TableCell><Input value={r.unit_of_measure} onChange={(ev) => setCell(idx, "unit_of_measure", ev.target.value)} className="w-16" /></TableCell>
                                         <TableCell><Input type="date" value={r.received_date} onChange={(ev) => setCell(idx, "received_date", ev.target.value)} className={e.received_date ? "border-destructive" : ""} /></TableCell>
                                         <TableCell><Input value={r.supplier_lot_number} onChange={(ev) => setCell(idx, "supplier_lot_number", ev.target.value)} /></TableCell>
-                                        <TableCell><Input value={r.storage_location} onChange={(ev) => setCell(idx, "storage_location", ev.target.value)} /></TableCell>
+                                        <TableCell className="min-w-44">
+                                            <LocationCombobox aria-label={`Storage location, row ${idx + 1}`} value={r.storage_location}
+                                                onChange={(v) => setCell(idx, "storage_location", v)} placeholder="Location" />
+                                        </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="sm" onClick={() => setRows((p) => p.filter((_, i) => i !== idx))} disabled={rows.length === 1}>✕</Button>
                                         </TableCell>

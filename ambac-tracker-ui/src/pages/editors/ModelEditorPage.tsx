@@ -19,7 +19,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
-import { ExternalLink, Plus } from "lucide-react";
+import { ArchiveRestore, ExternalLink, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { getCookie } from "@/lib/utils";
+import { ALL_TABLES } from "@/lib/data-management/tables";
 import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { endpointFn } from "@/lib/api/endpoint-fn";
 import { DataExportMenu } from "@/components/data-export-menu";
@@ -316,7 +323,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
         const params = new URLSearchParams(window.location.search);
         const filters: Record<string, string> = {};
         params.forEach((value, key) => {
-            if (["offset", "limit", "ordering", "search"].includes(key)) return;
+            if (["offset", "limit", "ordering", "search", "new"].includes(key)) return;
             filters[key] = value;
         });
         return filters;
@@ -330,6 +337,8 @@ export function ModelEditorPage<T extends { id: string | number }>({
         return new URLSearchParams(window.location.search).get("search") ?? "";
     });
     const [activeFilters, setActiveFilters] = useState<Record<string, string>>(initialFilters);
+    // Deleting archives a row, so "deleted" rows are still here to find and restore.
+    const [showArchived, setShowArchived] = useState(false);
     const debouncedSearch = useDebounce(search, 500);
     const queryClient = useQueryClient();
 
@@ -379,12 +388,16 @@ export function ModelEditorPage<T extends { id: string | number }>({
         return result;
     }, [activeFilters, metadata]);
 
+    const listFilters = useMemo(
+        () => (showArchived ? { ...typedFilters, include_archived: "true" } : typedFilters) as Record<string, string>,
+        [typedFilters, showArchived],
+    );
     const { data, isLoading, error } = useList({
         offset,
         limit,
         ordering,
         search: debouncedSearch,
-        filters: typedFilters as Record<string, string>,
+        filters: listFilters,
     });
 
     // Build search placeholder from metadata
@@ -394,7 +407,58 @@ export function ModelEditorPage<T extends { id: string | number }>({
 
     useEffect(() => {
         setOffset(0);
-    }, [debouncedSearch, ordering, activeFilters]);
+    }, [debouncedSearch, ordering, activeFilters, showArchived]);
+
+    // A table listed in Data Management links back to it.
+    const inDataManagement = !!apiEndpoint && ALL_TABLES.some((t) => t.endpoint === apiEndpoint);
+    const canRestore = allows(metadata?.permissions?.change);
+    const [restoring, setRestoring] = useState<string | number | null>(null);
+    const restore = async (item: T) => {
+        const patch = apiEndpoint ? endpointFn(apiEndpoint, "partial_update") : undefined;
+        if (typeof patch !== "function") return;
+        setRestoring(item.id);
+        try {
+            // An archived row is hidden from the detail route too unless asked for.
+            await patch({ archived: false }, {
+                params: { id: String(item.id) },
+                queries: { include_archived: "true" },
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+            });
+            toast.success("Restored");
+            // Pages key their lists their own way (not always [modelName]); what's on
+            // screen is the list, so refetch that.
+            queryClient.invalidateQueries({ type: "active" });
+        } catch {
+            toast.error("Couldn't restore it — another row may now hold its name or key.");
+        } finally {
+            setRestoring(null);
+        }
+    };
+    const isArchived = (item: T) => (item as { archived?: boolean }).archived === true;
+
+    // Bulk archive, the Django admin's "delete selected". Only on Data Management
+    // tables, and not where a page draws its own selection column (a header cell
+    // that is a control) — Cores has its own bulk bar.
+    const destroyFn = apiEndpoint ? endpointFn(apiEndpoint, "destroy") : undefined;
+    const bulkEnabled = inDataManagement && typeof destroyFn === "function"
+        && allows(metadata?.permissions?.delete) && !columns.some((c) => c.headerCell);
+    const [selected, setSelected] = useState<Set<string | number>>(new Set());
+    const [archiving, setArchiving] = useState(false);
+    useEffect(() => { setSelected(new Set()); }, [offset, debouncedSearch, ordering, activeFilters, showArchived]);
+    const archiveSelected = async () => {
+        if (typeof destroyFn !== "function" || selected.size === 0) return;
+        if (!window.confirm(`Archive ${selected.size} ${selected.size === 1 ? "row" : "rows"}? They can be restored with "Show archived".`)) return;
+        setArchiving(true);
+        const headers = { "X-CSRFToken": getCookie("csrftoken") };
+        const results = await Promise.allSettled([...selected].map((id) =>
+            destroyFn(undefined, { params: { id: String(id) }, headers })));
+        const failed = results.filter((r) => r.status === "rejected").length;
+        setArchiving(false);
+        setSelected(new Set());
+        queryClient.invalidateQueries({ type: "active" });
+        if (failed) toast.error(`${failed} couldn't be archived — something still depends on them.`);
+        else toast.success(`Archived ${results.length}`);
+    };
 
     // Notify parent (used by selection-toolbar consumers like CoresEditorPage
     // to mirror the current page's rows without lifting list state).
@@ -557,6 +621,11 @@ export function ModelEditorPage<T extends { id: string | number }>({
         // is responsible for its own breathing room from the sidebar/chrome.
         <div className="space-y-4 p-6 pb-24">
             {/* Title */}
+            {inDataManagement && !hideTitle && (
+                <Link to="/Edit" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                    Data Management
+                </Link>
+            )}
             {!hideTitle && (
                 <div className="flex items-baseline gap-3">
                     <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
@@ -597,7 +666,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                         onValueChange={(val) => handleFilterChange(filter.name, val)}
                         value={activeFilters[filter.name] || '__all__'}
                     >
-                        <SelectTrigger className="w-[160px]">
+                        <SelectTrigger className="w-[160px] xl:hidden">
                             <SelectValue placeholder={filter.display} />
                         </SelectTrigger>
                         <SelectContent>
@@ -610,6 +679,13 @@ export function ModelEditorPage<T extends { id: string | number }>({
                         </SelectContent>
                     </Select>
                 ))}
+
+                {apiEndpoint && (
+                    <div className="flex items-center gap-2">
+                        <Switch id={`show-archived-${apiEndpoint}`} checked={showArchived} onCheckedChange={setShowArchived} />
+                        <Label htmlFor={`show-archived-${apiEndpoint}`} className="text-sm font-normal">Show archived</Label>
+                    </div>
+                )}
 
                 {/* Right-aligned action group: create + import/export + any extra. */}
                 <div className="ml-auto flex flex-shrink-0 items-center gap-2">
@@ -634,6 +710,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                         ordering,
                                         search: debouncedSearch,
                                         ...activeFilters,
+                                        ...(showArchived ? { include_archived: "true" } : {}),
                                     }}
                                 />
                             )}
@@ -648,15 +725,38 @@ export function ModelEditorPage<T extends { id: string | number }>({
                 </div>
             </div>
 
+            {selected.size > 0 && (
+                <div className="flex items-center gap-3 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                    <span className="tabular-nums">{selected.size} selected</span>
+                    <Button size="sm" variant="outline" disabled={archiving} onClick={() => void archiveSelected()}>
+                        {archiving ? "Archiving…" : "Archive selected"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+                </div>
+            )}
+
             {/* Table with responsive columns via CSS breakpoints. The wrapper
                 makes the table horizontally scrollable on narrow screens and
                 the rightmost action column (Actions if present, else Details)
                 is sticky-right so it stays visible while scrolling. */}
+            <div className="flex items-start gap-6">
+            <div className="min-w-0 flex-1 space-y-4">
             <div className="relative w-full overflow-x-auto rounded-md border">
                 <Table>
                     <TableCaption className="sr-only">{title} list</TableCaption>
                     <TableHeader>
                         <TableRow>
+                            {bulkEnabled && (
+                                <TableHead className="w-10">
+                                    <Checkbox
+                                        aria-label="Select every row on this page"
+                                        checked={items.length > 0 && items.filter((i) => !isArchived(i)).every((i) => selected.has(i.id))}
+                                        onCheckedChange={(v) => setSelected(v === true
+                                            ? new Set(items.filter((i) => !isArchived(i)).map((i) => i.id))
+                                            : new Set())}
+                                    />
+                                </TableHead>
+                            )}
                             {columns.map((col, i) => (
                                 <TableHead key={i} className={getPriorityClass(col.priority)}>
                                     {col.headerCell ?? col.header}
@@ -684,9 +784,28 @@ export function ModelEditorPage<T extends { id: string | number }>({
                     </TableHeader>
                     <TableBody>
                         {items.map((item) => (
-                            <TableRow key={item.id}>
+                            <TableRow key={item.id} className={isArchived(item) ? "text-muted-foreground" : undefined}
+                                data-state={selected.has(item.id) ? "selected" : undefined}>
+                                {bulkEnabled && (
+                                    <TableCell className="w-10">
+                                        {!isArchived(item) && (
+                                            <Checkbox
+                                                aria-label="Select row"
+                                                checked={selected.has(item.id)}
+                                                onCheckedChange={(v) => setSelected((prev) => {
+                                                    const next = new Set(prev);
+                                                    if (v === true) next.add(item.id); else next.delete(item.id);
+                                                    return next;
+                                                })}
+                                            />
+                                        )}
+                                    </TableCell>
+                                )}
                                 {columns.map((col, j) => (
                                     <TableCell key={j} className={getPriorityClass(col.priority)}>
+                                        {j === 0 && isArchived(item) && (
+                                            <Badge variant="outline" className="mr-2">Archived</Badge>
+                                        )}
                                         {col.renderCell(item)}
                                     </TableCell>
                                 ))}
@@ -703,7 +822,14 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                 )}
                                 {renderActions && (
                                     <TableCell className="sticky right-0 z-10 bg-background text-right space-x-2 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]">
-                                        {renderActions(item)}
+                                        {isArchived(item) ? (
+                                            canRestore && (
+                                                <Button variant="ghost" size="sm" disabled={restoring === item.id}
+                                                    onClick={() => void restore(item)}>
+                                                    <ArchiveRestore className="mr-1 h-4 w-4" /> Restore
+                                                </Button>
+                                            )
+                                        ) : renderActions(item)}
                                     </TableCell>
                                 )}
                             </TableRow>
@@ -711,7 +837,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                         {items.length === 0 && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={columns.length + (showDetailsLink ? 1 : 0) + (renderActions ? 1 : 0)}
+                                    colSpan={columns.length + (bulkEnabled ? 1 : 0) + (showDetailsLink ? 1 : 0) + (renderActions ? 1 : 0)}
                                     className="h-24 text-center text-muted-foreground"
                                 >
                                     No {title.toLowerCase()} found
@@ -752,6 +878,47 @@ export function ModelEditorPage<T extends { id: string | number }>({
                     </div>
                 </div>
             )}
+            </div>
+
+            {/* Filter panel beside the table on wide screens, the way the Django admin
+                lists its filters; narrower screens keep the toolbar dropdowns. */}
+            {filterableFields.length > 0 && (
+                <aside className="hidden w-56 shrink-0 overflow-hidden rounded-md border xl:block" aria-label="Filters">
+                    <div className="flex h-9 items-center justify-between border-b bg-muted/60 px-3">
+                        <h2 className="text-xs font-semibold uppercase tracking-wider">Filter</h2>
+                        {Object.keys(activeFilters).length > 0 && (
+                            <button type="button" className="text-xs text-muted-foreground hover:underline"
+                                onClick={() => setActiveFilters({})}>Clear</button>
+                        )}
+                    </div>
+                    <div className="space-y-4 p-3">
+                        {filterableFields.map((filter) => {
+                            const current = activeFilters[filter.name];
+                            const options = [{ value: "__all__", label: "All" }, ...(filter.choices ?? [])];
+                            return (
+                                <div key={filter.name} className="space-y-1">
+                                    <h3 className="text-xs font-semibold text-muted-foreground">By {filter.display.toLowerCase()}</h3>
+                                    <ul className="space-y-0.5">
+                                        {options.map((o) => {
+                                            const on = (current ?? "__all__") === o.value;
+                                            return (
+                                                <li key={o.value}>
+                                                    <button type="button" aria-pressed={on}
+                                                        onClick={() => handleFilterChange(filter.name, o.value)}
+                                                        className={`w-full rounded px-1.5 py-0.5 text-left text-sm hover:bg-muted ${on ? "font-semibold" : "text-muted-foreground"}`}>
+                                                        {o.label}
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </aside>
+            )}
+            </div>
         </div>
     );
 }

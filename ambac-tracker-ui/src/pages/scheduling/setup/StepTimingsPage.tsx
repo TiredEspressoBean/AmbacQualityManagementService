@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +18,6 @@ function useStepTimingsList({ offset, limit, ordering, search, filters }: {
 }
 
 export function StepTimingsPage() {
-    const navigate = useNavigate();
     const allows = useAllows();
     const del = useDeleteStepTiming();
 
@@ -39,7 +37,7 @@ export function StepTimingsPage() {
             headerContent={
                 <p className="text-sm text-muted-foreground">
                     A step's standard times — what the scheduler and rough-cut capacity size
-                    every operation from. One row per step.
+                    every operation from. One row per step, edited on the step.
                 </p>
             }
             columns={[
@@ -59,7 +57,7 @@ export function StepTimingsPage() {
             renderActions={(t) => (
                 <RowActions
                     label={`timing for ${t.step_name}`}
-                    editTo={`/production/step-timings/${t.id}/edit`}
+                    editTo={`/StepForm/edit/${t.step}`}
                     canEdit={allows("change_steptiming")}
                     canDelete={allows("delete_steptiming")}
                     onDelete={() => del.mutate(t.id, {
@@ -68,7 +66,6 @@ export function StepTimingsPage() {
                     })}
                 />
             )}
-            onCreate={() => navigate({ to: "/production/step-timings/new" })}
         />
     );
 }

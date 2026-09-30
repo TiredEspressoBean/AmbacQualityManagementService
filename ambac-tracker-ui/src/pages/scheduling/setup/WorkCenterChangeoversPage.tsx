@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
@@ -17,7 +16,6 @@ function useChangeoversList({ offset, limit, ordering, search, filters }: {
 }
 
 export function WorkCenterChangeoversPage() {
-    const navigate = useNavigate();
     const allows = useAllows();
     const del = useDeleteChangeover();
 
@@ -36,7 +34,7 @@ export function WorkCenterChangeoversPage() {
             headerContent={
                 <p className="text-sm text-muted-foreground">
                     Minutes to reconfigure a machine when it switches from running one step to
-                    another. One row per machine, from step and to step.
+                    another. One row per machine, from step and to step, edited on the machine.
                 </p>
             }
             columns={[
@@ -57,7 +55,7 @@ export function WorkCenterChangeoversPage() {
             renderActions={(c) => (
                 <RowActions
                     label={`changeover ${c.from_step_name} to ${c.to_step_name} on ${c.equipment_name}`}
-                    editTo={`/production/work-center-changeovers/${c.id}/edit`}
+                    editTo={`/EquipmentForm/edit/${c.equipment}`}
                     canEdit={allows("change_workcenterchangeover")}
                     canDelete={allows("delete_workcenterchangeover")}
                     onDelete={() => del.mutate(c.id, {
@@ -66,7 +64,6 @@ export function WorkCenterChangeoversPage() {
                     })}
                 />
             )}
-            onCreate={() => navigate({ to: "/production/work-center-changeovers/new" })}
         />
     );
 }

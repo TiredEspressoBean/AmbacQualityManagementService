@@ -1,3 +1,4 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 /** Create / edit one external contact (a customer-side notification recipient). */
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -83,6 +84,7 @@ export function ExternalContactFormPage() {
             saving={create.isPending || update.isPending}
             submitLabel={mode === "edit" ? "Save changes" : "Create contact"}
             onSubmit={submit}
+            footer={mode === "edit" && id ? <RecordHistoryCard endpoint="notifications/external-contacts" id={id} model="externalcontact" /> : undefined}
         >
             <Card>
                 <CardHeader>

@@ -37,6 +37,8 @@ export type CreateCapaSearchParams = z.infer<typeof CreateCapaSearch>;
 /** Process flow viewer — `?id=` selects the process to render. */
 export const ProcessFlowSearch = z.object({
     id: z.string().uuid().optional(),
+    /** A step to open in the side panel — how Data Management's step rows land here. */
+    step: z.string().uuid().optional().catch(undefined),
 });
 export type ProcessFlowSearchParams = z.infer<typeof ProcessFlowSearch>;
 

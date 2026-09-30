@@ -88,12 +88,14 @@ export const useReceiveExpectedLot = () => {
             lot_number: string;
             quantity?: string | null;
             received_date?: string | null;
+            storage_location?: string;
         }) =>
             api.api_MaterialLots_receive_create(
                 {
                     lot_number: vars.lot_number,
                     ...(vars.quantity ? { quantity: vars.quantity } : {}),
                     ...(vars.received_date ? { received_date: vars.received_date } : {}),
+                    ...(vars.storage_location ? { storage_location: vars.storage_location } : {}),
                 },
                 { params: { id: vars.id }, headers: csrf() },
             ),

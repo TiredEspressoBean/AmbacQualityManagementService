@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,6 @@ function useAffinitiesList({ offset, limit, ordering, search, filters }: {
 }
 
 export function StepEquipmentAffinitiesPage() {
-    const navigate = useNavigate();
     const allows = useAllows();
     const del = useDeleteStepAffinity();
 
@@ -36,7 +34,8 @@ export function StepEquipmentAffinitiesPage() {
             headerContent={
                 <p className="text-sm text-muted-foreground">
                     Which machines can run a step, and how well. A machine's own cycle time,
-                    when set, overrides the step's standard cycle on that machine.
+                    when set, overrides the step's standard cycle on that machine. Edited on the
+                    machine, or on the step in its process.
                 </p>
             }
             columns={[
@@ -62,7 +61,7 @@ export function StepEquipmentAffinitiesPage() {
             renderActions={(a) => (
                 <RowActions
                     label={`${a.equipment_name} for ${a.step_name}`}
-                    editTo={`/production/step-equipment-affinities/${a.id}/edit`}
+                    editTo={`/EquipmentForm/edit/${a.equipment}`}
                     canEdit={allows("change_stepequipmentaffinity")}
                     canDelete={allows("delete_stepequipmentaffinity")}
                     onDelete={() => del.mutate(a.id, {
@@ -71,7 +70,6 @@ export function StepEquipmentAffinitiesPage() {
                     })}
                 />
             )}
-            onCreate={() => navigate({ to: "/production/step-equipment-affinities/new" })}
         />
     );
 }

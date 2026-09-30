@@ -67,7 +67,9 @@ function useProcessList({
 }
 
 export function ProcessEditorPage() {
-    const [wizardOpen, setWizardOpen] = useState(false);
+    // `?new=1` (Data Management's Add) opens the wizard straight away.
+    const [wizardOpen, setWizardOpen] = useState(
+        () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("new"));
     return (
         <>
             <ModelEditorPage

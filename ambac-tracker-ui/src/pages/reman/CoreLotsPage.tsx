@@ -1,3 +1,4 @@
+import { LocationCombobox } from "@/components/locations/LocationCombobox";
 /** Core lots — cores received in bulk, counted but not yet identified.
  *
  * Some cores arrive one by one with serials; some arrive forty to a pallet. The second
@@ -163,8 +164,8 @@ function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                         </div>
                         <div className="grid gap-1">
                             <Label>Storage location</Label>
-                            <Input value={location} onChange={(e) => setLocation(e.target.value)}
-                                   placeholder="Optional" />
+                            <LocationCombobox value={location} onChange={setLocation}
+                                              placeholder="Optional — choose or type a location" />
                         </div>
                     </div>
                     <div className="grid gap-1">

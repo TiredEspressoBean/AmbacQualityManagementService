@@ -1,5 +1,7 @@
 "use client"
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useCreateSamplingRuleSet } from "@/hooks/useCreateSamplingRuleSet"
 import { useUpdateSamplingRuleSet } from "@/hooks/useUpdateSamplingRuleSet"
 import { useRetrieveSamplingRuleSet } from "@/hooks/useRetrieveSamplingRuleSet"
@@ -12,7 +14,6 @@ import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
     Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,
@@ -21,13 +22,6 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies"
-import {
-    Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-    Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
-} from "@/components/ui/command"
-import { Check, ChevronsUpDown } from "lucide-react"
 
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes"
 import { useRetrieveProcesses } from "@/hooks/useRetrieveProcesses"
@@ -225,50 +219,28 @@ export default function SamplingRuleSetsFormPage() {
                     control={form.control}
                     name="part_type"
                     render={({field}) => {
-                        const selected = partTypes?.results.find(pt => pt.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.part_type}>Part Type</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button variant="outline" role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}>
-                                                {selected?.name ?? "Select a part type"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput value={partTypeSearch} onValueChange={setPartTypeSearch}
-                                                          placeholder="Search part types..."/>
-                                            <CommandList>
-                                                <CommandEmpty>No part types found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {partTypes?.results.map((pt) => (
-                                                        <CommandItem
-                                                            key={pt.id}
-                                                            value={`${pt.name}__${pt.id}`}
-                                                            onSelect={() => {
-                                                                form.setValue("part_type", pt.id)
-                                                                form.setValue("process", "")
-                                                                form.setValue("step", "")
-                                                                setSelectedPartTypeId(pt.id)
-                                                                setSelectedProcessId(null)
-                                                                setPartTypeSearch("")
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", pt.id === field.value ? "opacity-100" : "opacity-0")}/>
-                                                            {pt.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        value={field.value || null}
+                                        onChange={(v) => {
+                                            if (!v) return
+                                            form.setValue("part_type", v)
+                                            form.setValue("process", "")
+                                            form.setValue("step", "")
+                                            setSelectedPartTypeId(v)
+                                            setSelectedProcessId(null)
+                                        }}
+                                        options={(partTypes?.results ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                        onSearch={setPartTypeSearch}
+                                        placeholder="Select a part type"
+                                        searchPlaceholder="Search part types..."
+                                        emptyText="No part types found."
+                                    />
+                                </FormControl>
                                 <FormDescription>Choose the part type this rule set is for</FormDescription>
                                 <FormMessage/>
                             </FormItem>
@@ -280,48 +252,26 @@ export default function SamplingRuleSetsFormPage() {
                     control={form.control}
                     name="process"
                     render={({field}) => {
-                        const selected = processes?.results.find(p => p.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.process}>Process</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button variant="outline" role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}>
-                                                {selected?.name ?? "Select a process"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput value={processSearch} onValueChange={setProcessSearch}
-                                                          placeholder="Search processes..."/>
-                                            <CommandList>
-                                                <CommandEmpty>No processes found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {processes?.results.map((p) => (
-                                                        <CommandItem
-                                                            key={p.id}
-                                                            value={`${p.name}__${p.id}`}
-                                                            onSelect={() => {
-                                                                form.setValue("process", p.id)
-                                                                form.setValue("step", "")
-                                                                setSelectedProcessId(p.id)
-                                                                setProcessSearch("")
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", p.id === field.value ? "opacity-100" : "opacity-0")}/>
-                                                            {p.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        value={field.value || null}
+                                        onChange={(v) => {
+                                            if (!v) return
+                                            form.setValue("process", v)
+                                            form.setValue("step", "")
+                                            setSelectedProcessId(v)
+                                        }}
+                                        options={(processes?.results ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                                        onSearch={setProcessSearch}
+                                        placeholder="Select a process"
+                                        searchPlaceholder="Search processes..."
+                                        emptyText="No processes found."
+                                    />
+                                </FormControl>
                                 <FormDescription>Choose the process this rule set is related to</FormDescription>
                                 <FormMessage/>
                             </FormItem>
@@ -333,46 +283,21 @@ export default function SamplingRuleSetsFormPage() {
                     control={form.control}
                     name="step"
                     render={({field}) => {
-                        const selected = steps?.results.find(s => s.id === field.value)
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel required={required.step}>Step</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button variant="outline" role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}>
-                                                {selected?.name ?? "Select a step"}
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput value={stepSearch} onValueChange={setStepSearch}
-                                                          placeholder="Search steps..."/>
-                                            <CommandList>
-                                                <CommandEmpty>No steps found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {steps?.results.map((s) => (
-                                                        <CommandItem
-                                                            key={s.id}
-                                                            value={`${s.name}__${s.id}`}
-                                                            onSelect={() => {
-                                                                form.setValue("step", s.id)
-                                                                setStepSearch("")
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn("mr-2 h-4 w-4", s.id === field.value ? "opacity-100" : "opacity-0")}/>
-                                                            {s.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                <FormControl>
+                                    <Combobox
+                                        className="w-[300px]"
+                                        value={field.value || null}
+                                        onChange={(v) => v && form.setValue("step", v)}
+                                        options={(steps?.results ?? []).map((s) => ({ value: s.id, label: s.name }))}
+                                        onSearch={setStepSearch}
+                                        placeholder="Select a step"
+                                        searchPlaceholder="Search steps..."
+                                        emptyText="No steps found."
+                                    />
+                                </FormControl>
                                 <FormDescription>Select the step this rule set applies to</FormDescription>
                                 <FormMessage/>
                             </FormItem>
@@ -675,6 +600,11 @@ export default function SamplingRuleSetsFormPage() {
 
                 <Button type="submit">Submit</Button>
             </form>
+            {mode === "edit" && ruleSetId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Sampling-rule-sets" id={ruleSetId} model="samplingruleset" />
+                </div>
+            )}
         </Form>
     )
 }

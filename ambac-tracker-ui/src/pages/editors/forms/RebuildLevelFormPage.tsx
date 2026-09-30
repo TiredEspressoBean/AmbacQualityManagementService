@@ -1,5 +1,6 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 
@@ -31,7 +32,9 @@ export function RebuildLevelFormPage() {
     const { data: codesData } = useRetrieveRepairCodes({ limit: 200 });
 
     const [name, setName] = useState("");
-    const [coreType, setCoreType] = useState("");
+    // "New level" on a part type's form arrives with that type chosen.
+    const search = useSearch({ strict: false }) as { core_type?: string };
+    const [coreType, setCoreType] = useState(search.core_type ?? "");
     const [isDefault, setIsDefault] = useState(false);
     const [codeIds, setCodeIds] = useState<Set<string>>(new Set());
     const [notes, setNotes] = useState("");
@@ -257,6 +260,11 @@ export function RebuildLevelFormPage() {
                     Cancel
                 </Button>
             </div>
+            {mode === "edit" && id && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="RebuildScopePresets" id={id} model="rebuildscopepreset" />
+                </div>
+            )}
         </div>
     );
 }

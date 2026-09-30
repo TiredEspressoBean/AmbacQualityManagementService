@@ -1,11 +1,12 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -22,16 +23,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 import {
@@ -69,14 +60,12 @@ export default function EditMaterialFormPage() {
   const update = useUpdateMaterial();
 
   // Preferred-supplier combobox (nullable FK) — kept out of RHF like the fixture form.
-  const [supOpen, setSupOpen] = useState(false);
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name" });
   const suppliers = useMemo(
     () => (companiesData?.results ?? []).map((c) => ({ id: String(c.id), name: c.name })),
     [companiesData]
   );
-  const selectedSupplier = suppliers.find((s) => s.id === supplierId);
 
   const loadedValues = useMemo<FormValues | undefined>(() => {
     if (mode === "edit" && material) {
@@ -237,41 +226,15 @@ export default function EditMaterialFormPage() {
               {/* Preferred supplier combobox (optional) */}
               <FormItem>
                 <FormLabel>Preferred supplier</FormLabel>
-                <Popover open={supOpen} onOpenChange={setSupOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-full justify-between">
-                      {selectedSupplier ? selectedSupplier.name : "None"}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Search suppliers…" />
-                      <CommandList>
-                        <CommandEmpty>No companies found.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value="__none__"
-                            onSelect={() => { setSupplierId(null); setSupOpen(false); }}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", supplierId == null ? "opacity-100" : "opacity-0")} />
-                            None
-                          </CommandItem>
-                          {suppliers.map((s) => (
-                            <CommandItem
-                              key={s.id}
-                              value={s.name}
-                              onSelect={() => { setSupplierId(s.id); setSupOpen(false); }}
-                            >
-                              <Check className={cn("mr-2 h-4 w-4", s.id === supplierId ? "opacity-100" : "opacity-0")} />
-                              {s.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <Combobox
+                  value={supplierId}
+                  onChange={setSupplierId}
+                  options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                  clearLabel="None"
+                  placeholder="None"
+                  searchPlaceholder="Search suppliers…"
+                  emptyText="No companies found."
+                />
                 <FormDescription>Where this is normally bought (optional).</FormDescription>
               </FormItem>
 
@@ -319,6 +282,11 @@ export default function EditMaterialFormPage() {
           </Form>
         </CardContent>
       </Card>
+        {mode === "edit" && materialId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <RecordHistoryCard endpoint="Materials" id={materialId} model="material" />
+            </div>
+        )}
     </div>
   );
 }

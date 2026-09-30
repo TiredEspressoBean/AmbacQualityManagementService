@@ -1,4 +1,5 @@
 "use client"
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
 import {Plus, Pencil, Trash2} from "lucide-react";
@@ -46,6 +47,8 @@ import {useRetrieveSteps} from "@/hooks/useRetrieveSteps";
 import {DataIOButtons} from "@/components/data-io-buttons";
 import {hasEndpoint} from "@/lib/api/endpoint-fn";
 import {PartTypeLifeLimitsPanel} from "@/components/life-limits/PartTypeLifeLimitsPanel";
+import { DisassemblyBomPanel } from "@/components/reman/DisassemblyBomPanel";
+import { RebuildLevelsPanel } from "@/components/reman/RebuildLevelsPanel";
 
 const supplierPickerOptions = () =>
     queryOptions({
@@ -361,6 +364,18 @@ export default function PartTypeFormPage() {
         {mode === "edit" && partTypeId && (
             <div className="max-w-3xl mx-auto py-6">
                 <PartTypeLifeLimitsPanel partTypeId={partTypeId} />
+            </div>)}
+        {mode === "edit" && partTypeId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <DisassemblyBomPanel partTypeId={partTypeId} />
+            </div>)}
+        {mode === "edit" && partTypeId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <RebuildLevelsPanel partTypeId={partTypeId} />
+            </div>)}
+        {mode === "edit" && partTypeId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <RecordHistoryCard endpoint="PartTypes" id={partTypeId} model="parttypes" />
             </div>)}
         {mode === "edit" && partTypeId && (
 

@@ -1,11 +1,13 @@
 "use client";
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
@@ -28,16 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 import {
@@ -81,8 +73,6 @@ export default function EditFixtureFormPage() {
   const update = useUpdateFixture();
 
   // Cascading Process → Step picker state.
-  const [procOpen, setProcOpen] = useState(false);
-  const [stepOpen, setStepOpen] = useState(false);
   const [processId, setProcessId] = useState<string | undefined>();
   const [selected, setSelected] = useState<SelStep[]>([]);
 
@@ -296,71 +286,29 @@ export default function EditFixtureFormPage() {
             <div className="space-y-3 rounded-md border p-3">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {/* Process combobox */}
-              <Popover open={procOpen} onOpenChange={setProcOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="justify-between">
-                    {selectedProcess ? selectedProcess.name : "Select a process…"}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search processes…" />
-                    <CommandList>
-                      <CommandEmpty>No processes found.</CommandEmpty>
-                      <CommandGroup>
-                        {processes.map((p) => (
-                          <CommandItem
-                            key={p.id}
-                            value={p.name}
-                            onSelect={() => { setProcessId(p.id); setProcOpen(false); }}
-                          >
-                            <Check className={cn("mr-2 h-4 w-4", p.id === processId ? "opacity-100" : "opacity-0")} />
-                            {p.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Combobox
+                value={processId ?? null}
+                onChange={(v) => setProcessId(v ?? undefined)}
+                options={processes.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Select a process…"
+                searchPlaceholder="Search processes…"
+                emptyText="No processes found."
+              />
 
               {/* Step combobox (steps of the chosen process) */}
-              <Popover open={stepOpen} onOpenChange={setStepOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="justify-between"
-                    disabled={!processId}
-                  >
-                    {processId ? "Add a step…" : "Pick a process first"}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search steps…" />
-                    <CommandList>
-                      <CommandEmpty>No steps in this process.</CommandEmpty>
-                      <CommandGroup>
-                        {processSteps.map((s) => (
-                          <CommandItem
-                            key={s.id}
-                            value={s.name}
-                            onSelect={() => { addStep(s); setStepOpen(false); }}
-                          >
-                            <Check
-                              className={cn("mr-2 h-4 w-4", selected.some((x) => x.id === s.id) ? "opacity-100" : "opacity-0")}
-                            />
-                            {s.order}. {s.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <Combobox
+                value={null}
+                onChange={(v) => { const s = processSteps.find((x) => x.id === v); if (s) addStep(s); }}
+                options={processSteps.map((s) => ({
+                  value: s.id, label: `${s.order}. ${s.name}`,
+                  disabled: selected.some((x) => x.id === s.id),
+                  description: selected.some((x) => x.id === s.id) ? "Added" : undefined,
+                }))}
+                disabled={!processId}
+                placeholder={processId ? "Add a step…" : "Pick a process first"}
+                searchPlaceholder="Search steps…"
+                emptyText="No steps in this process."
+              />
             </div>
 
             {selected.length > 0 ? (
@@ -396,6 +344,11 @@ export default function EditFixtureFormPage() {
       </Form>
         </CardContent>
       </Card>
+        {mode === "edit" && fixtureId && (
+            <div className="max-w-3xl mx-auto py-6">
+                <RecordHistoryCard endpoint="Fixtures" id={fixtureId} model="fixture" />
+            </div>
+        )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -292,6 +293,11 @@ export function RepairCodeFormPage() {
                     Cancel
                 </Button>
             </div>
+            {mode === "edit" && id && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="RepairCodes" id={id} model="repaircode" />
+                </div>
+            )}
         </div>
     );
 }

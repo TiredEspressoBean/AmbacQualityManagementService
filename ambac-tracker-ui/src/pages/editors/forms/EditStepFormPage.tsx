@@ -1,11 +1,12 @@
 "use client"
 
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
     Form,
@@ -18,30 +19,21 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { Check, ChevronsUpDown } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes"
 import { useCreateStep } from "@/hooks/useCreateStep"
 import { useRetrieveStepWithSamplingRules } from "@/hooks/useRetrieveStepWithSamplingRules"
 import { useUpdateStep } from "@/hooks/useUpdateStep"
-import { useParams } from "@tanstack/react-router"
+import { Link, useParams } from "@tanstack/react-router"
 import SamplingRulesEditor from "@/components/SamplingRulesEditor.tsx";
 import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { StepTimingFields } from "@/components/scheduling/StepTimingFields"
+import { MachineEligibilityTable } from "@/components/scheduling/MachineEligibilityTable"
+import { useRetrieveStep } from "@/hooks/useRetrieveStep"
+import { Workflow } from "lucide-react"
 import { schemas } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
@@ -90,13 +82,24 @@ export default function StepFormPage() {
     const stepId = params.id
 
     const [partTypeSearch, setPartTypeSearch] = useState("")
-    const [, setSelectedPartTypeId] = useState<string | null>(null)
 
     const { data: partTypes } = useRetrievePartTypes({ search: partTypeSearch })
     const { data: step } = useRetrieveStepWithSamplingRules(
         { params: { id: stepId! } },
         { enabled: mode === "edit" && !!stepId }
     )
+
+    // The processes using this step row. A row is shared by a process, its later
+    // versions and its copies, so its content is edited in a process — which
+    // versions it for that process alone. Saved here, with no process, the edit
+    // made a version nothing used. Timing and machines below stay editable: they
+    // are scheduling data on the row, not the controlled content.
+    const { data: stepRow } = useRetrieveStep(
+        { params: { id: stepId! } },
+        { enabled: mode === "edit" && !!stepId }
+    )
+    const owners = stepRow?.processes ?? []
+    const lockedToProcess = mode === "edit" && owners.length > 0
 
     const createStep = useCreateStep()
     const updateStep = useUpdateStep()
@@ -138,7 +141,6 @@ export default function StepFormPage() {
                 tighten_after: stepWithRules.active_ruleset?.tighten_after ?? undefined,
                 fallback_duration: stepWithRules.active_ruleset?.fallback_duration ?? undefined,
             } as unknown as FormValues)
-            setSelectedPartTypeId(step.part_type)
         }
     }, [mode, step, form])
 
@@ -246,8 +248,30 @@ export default function StepFormPage() {
     return (
         <div>
             <Form {...form}>
-                <h1 className="text-3xl font-bold tracking-tight">{mode === "edit" ? "Edit Step" : "Create Step"}</h1>
+                <h1 className="text-3xl font-bold tracking-tight">
+                    {lockedToProcess ? "Step" : mode === "edit" ? "Edit Step" : "Create Step"}
+                </h1>
+                {lockedToProcess && (
+                    <div className="max-w-3xl mx-auto mt-6 rounded-md border bg-muted/40 p-4 space-y-3">
+                        <p className="text-sm">
+                            This step is part of {owners.length === 1 ? "a process" : `${owners.length} processes`}.
+                            Its content is edited there, so every other version of the process keeps the
+                            step as it was. Timing and machines can be changed below.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {owners.map((p) => (
+                                <Button key={p.id} asChild size="sm" variant={p.is_current_version ? "default" : "outline"}>
+                                    <Link to="/process-flow" search={{ id: p.id, step: stepId }}>
+                                        <Workflow className="mr-1 h-4 w-4" />
+                                        Edit in {p.name} · v{p.version}{p.is_current_version ? "" : " (superseded)"}
+                                    </Link>
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto py-10">
+                    <fieldset disabled={lockedToProcess} className="contents">
 
                     <FormField
                         control={form.control}
@@ -298,54 +322,22 @@ export default function StepFormPage() {
                         control={form.control}
                         name="part_type"
                         render={({field}) => {
-                            const selected = partTypes?.results.find(pt => pt.id === field.value)
                             return (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.part_type}>Part Type</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn("w-[300px] justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {selected?.name ?? "Select a part type"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput
-                                                    value={partTypeSearch}
-                                                    onValueChange={setPartTypeSearch}
-                                                    placeholder="Search part types..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No part types found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {partTypes?.results.map((pt) => (
-                                                            <CommandItem
-                                                                key={pt.id}
-                                                                value={pt.name}
-                                                                onSelect={() => {
-                                                                    form.setValue("part_type", pt.id)
-                                                                    setSelectedPartTypeId(pt.id)
-                                                                    setPartTypeSearch("")
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn("mr-2 h-4 w-4", pt.id === field.value ? "opacity-100" : "opacity-0")}
-                                                                />
-                                                                {pt.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => field.onChange(v ?? "")}
+                                            options={(partTypes?.results ?? []).map((pt) => ({ value: pt.id, label: pt.name }))}
+                                            onSearch={setPartTypeSearch}
+                                            selectedLabel={step?.part_type_info?.name as string | undefined}
+                                            placeholder="Select a part type"
+                                            searchPlaceholder="Search part types..."
+                                            emptyText="No part types found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>Choose the part type this step belongs to</FormDescription>
                                     <FormMessage/>
                                 </FormItem>
@@ -438,23 +430,52 @@ export default function StepFormPage() {
                         )}
                     />
 
-                    <Button type="submit" disabled={createStep.isPending || updateStep.isPending}>
-                        {mode === "edit"
-                            ? updateStep.isPending
-                                ? "Saving..."
-                                : "Save Changes"
-                            : createStep.isPending
-                                ? "Creating..."
-                                : "Create Step"}
-                    </Button>
+                    </fieldset>
+                    {!lockedToProcess && (
+                        <Button type="submit" disabled={createStep.isPending || updateStep.isPending}>
+                            {mode === "edit"
+                                ? updateStep.isPending
+                                    ? "Saving..."
+                                    : "Save Changes"
+                                : createStep.isPending
+                                    ? "Creating..."
+                                    : "Create Step"}
+                        </Button>
+                    )}
                 </form>
             </Form>
 
+            {mode === "edit" && stepId && (
+                <div className="max-w-3xl mx-auto py-6 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Timing</CardTitle>
+                            <CardDescription>
+                                Standard times the scheduler and rough-cut capacity size this step from.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent><StepTimingFields stepId={stepId} /></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Machines</CardTitle>
+                            <CardDescription>
+                                The machines that can run this step, and how well.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent><MachineEligibilityTable owner={{ step: stepId }} /></CardContent>
+                    </Card>
+                </div>)}
             {mode === "edit" && stepId && (
                 <div className="max-w-3xl mx-auto py-6">
                     <h3 className="text-lg font-semibold">Attach Documents</h3>
                     <DocumentUploader objectId={stepId} contentType="steps"/>
                 </div>)}
+            {mode === "edit" && stepId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="Steps" id={stepId} model="steps" />
+                </div>
+            )}
         </div>
     )
 }

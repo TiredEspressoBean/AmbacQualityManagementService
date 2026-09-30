@@ -1,3 +1,4 @@
+import { LocationCombobox } from "@/components/locations/LocationCombobox";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -58,12 +59,14 @@ export function ReceiveExpectedLotDialog({
     const [lotNumber, setLotNumber] = useState("");
     const [quantity, setQuantity] = useState(orderedQuantity ?? "");
     const [receivedDate, setReceivedDate] = useState(today());
+    const [location, setLocation] = useState("");
     const receive = useReceiveExpectedLot();
 
     const reset = () => {
         setLotNumber("");
         setQuantity(orderedQuantity ?? "");
         setReceivedDate(today());
+        setLocation("");
     };
 
     const qtyValid = quantity !== "" && Number(quantity) > 0;
@@ -78,6 +81,7 @@ export function ReceiveExpectedLotDialog({
                 lot_number: lotNumber.trim(),
                 quantity,
                 received_date: receivedDate,
+                storage_location: location.trim(),
             },
             {
                 onSuccess: (data: unknown) => {
@@ -166,6 +170,11 @@ export function ReceiveExpectedLotDialog({
                                 onChange={(e) => setReceivedDate(e.target.value)}
                             />
                         </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="rel-location">Put away at</Label>
+                        <LocationCombobox id="rel-location" value={location} onChange={setLocation}
+                            placeholder="Optional — choose or type a location" />
                     </div>
                 </div>
 

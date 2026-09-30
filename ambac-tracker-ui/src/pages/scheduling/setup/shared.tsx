@@ -1,14 +1,12 @@
 /** Pieces shared by the scheduling-setup editors (step timings, machine eligibility,
  *  changeovers): row actions, step / machine pickers, and the form-page frame. */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { useRetrieveSteps } from "@/hooks/useRetrieveSteps";
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
@@ -79,43 +77,36 @@ export function toastApiError(err: unknown, fields: string[] = []) {
 export function StepSelect({ value, onChange, placeholder = "Select a step", disabled }: {
     value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
 }) {
-    const { data } = useRetrieveSteps({ limit: 500 });
-    const steps = useMemo(() => data?.results ?? [], [data]);
+    const [search, setSearch] = useState("");
+    const { data, isLoading } = useRetrieveSteps({ limit: 50, is_current_version: true, ...(search ? { search } : {}) });
+    const options = useMemo(() => (data?.results ?? []).map((s) => ({
+        value: String(s.id), label: s.name, description: s.part_type_name ?? undefined,
+    })), [data]);
     return (
-        <Select value={value} onValueChange={(v) => v && onChange(v)} {...(disabled ? { disabled } : {})}>
-            <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
-            <SelectContent>
-                {steps.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                        {s.name}{s.part_type_name ? ` · ${s.part_type_name}` : ""}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <Combobox value={value || null} onChange={(v) => v && onChange(v)} options={options}
+            onSearch={setSearch} loading={isLoading} placeholder={placeholder}
+            searchPlaceholder="Search steps…" emptyText="No steps match." disabled={disabled} />
     );
 }
 
 export function EquipmentSelect({ value, onChange, disabled }: {
     value: string; onChange: (v: string) => void; disabled?: boolean;
 }) {
-    const { data } = useRetrieveEquipments({ limit: 500 });
-    const machines = useMemo(() => data?.results ?? [], [data]);
+    const [search, setSearch] = useState("");
+    const { data, isLoading } = useRetrieveEquipments({ limit: 50, ...(search ? { search } : {}) });
+    const options = useMemo(() => (data?.results ?? []).map((m) => ({
+        value: String(m.id), label: m.name, description: m.serial_number || undefined,
+    })), [data]);
     return (
-        <Select value={value} onValueChange={(v) => v && onChange(v)} {...(disabled ? { disabled } : {})}>
-            <SelectTrigger><SelectValue placeholder="Select a machine" /></SelectTrigger>
-            <SelectContent>
-                {machines.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                        {m.name}{m.serial_number ? ` · ${m.serial_number}` : ""}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <Combobox value={value || null} onChange={(v) => v && onChange(v)} options={options}
+            onSearch={setSearch} loading={isLoading} placeholder="Select a machine"
+            searchPlaceholder="Search machines…" emptyText="No machines match." disabled={disabled} />
     );
 }
 
-/** Page frame for a create/edit form: back arrow, title, body, save/cancel. */
-export function SetupFormFrame({ title, description, backTo, loading, saving, submitLabel, onSubmit, children }: {
+/** Page frame for a create/edit form: back arrow, title, body, save/cancel, then
+ *  an optional footer (a record's history) below the buttons. */
+export function SetupFormFrame({ title, description, backTo, loading, saving, submitLabel, onSubmit, children, footer }: {
     title: string;
     description: string;
     backTo: string;
@@ -124,6 +115,7 @@ export function SetupFormFrame({ title, description, backTo, loading, saving, su
     submitLabel: string;
     onSubmit: () => void;
     children: React.ReactNode;
+    footer?: React.ReactNode;
 }) {
     const navigate = useNavigate();
     if (loading) {
@@ -156,6 +148,7 @@ export function SetupFormFrame({ title, description, backTo, loading, saving, su
                     Cancel
                 </Button>
             </div>
+            {footer}
         </div>
     );
 }

@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -21,21 +22,7 @@ import {
     FileUploaderContent,
     FileUploaderItem,
 } from "@/components/ui/file-upload";
-import { CloudUpload, Paperclip, Check, ChevronsUpDown } from "lucide-react";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { CloudUpload, Paperclip } from "lucide-react";
 import { useParams } from "@tanstack/react-router";
 
 import { useRetrieveThreeDModel } from "@/hooks/useRetrieveThreeDModel";
@@ -302,84 +289,23 @@ export default function ThreeDModelFormPage() {
                         control={form.control}
                         name="part_type"
                         render={({ field }) => {
-                            const selected = partTypesData?.results?.find(
-                                (pt: any) => String(pt.id) === field.value
-                            );
-                            // Use fetched part type data if not found in search results
-                            const displayName = selected?.name
-                                || (field.value && selectedPartTypeData?.name)
-                                || "Select part type";
                             return (
                                 <FormItem>
                                     <FormLabel required={required.part_type}>Part Type</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn(
-                                                        "w-[300px] justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {displayName}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command shouldFilter={false}>
-                                                <CommandInput
-                                                    value={rawPartTypeSearch}
-                                                    onValueChange={setRawPartTypeSearch}
-                                                    placeholder="Search part types..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No part types found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                form.setValue("part_type", "");
-                                                                setPartTypeSearch("");
-                                                                setRawPartTypeSearch("");
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    !field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            None
-                                                        </CommandItem>
-                                                        {partTypesData?.results?.map((partType) => (
-                                                            <CommandItem
-                                                                key={partType.id}
-                                                                value={partType.id.toString()}
-                                                                onSelect={() => {
-                                                                    form.setValue("part_type", String(partType.id));
-                                                                    setPartTypeSearch("");
-                                                                    setRawPartTypeSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        String(partType.id) === field.value
-                                                                            ? "opacity-100"
-                                                                            : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {partType.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => form.setValue("part_type", v ?? "")}
+                                            options={(partTypesData?.results ?? []).map((pt) => ({ value: String(pt.id), label: pt.name }))}
+                                            onSearch={setRawPartTypeSearch}
+                                            clearLabel="None"
+                                            selectedLabel={selectedPartTypeData?.name ?? undefined}
+                                            placeholder="Select part type"
+                                            searchPlaceholder="Search part types..."
+                                            emptyText="No part types found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         Required for traceability - links this 3D model to a part type for quality inspection
                                     </FormDescription>
@@ -393,84 +319,23 @@ export default function ThreeDModelFormPage() {
                         control={form.control}
                         name="step"
                         render={({ field }) => {
-                            const selected = stepsData?.results?.find(
-                                (s: any) => String(s.id) === field.value
-                            );
-                            // Use fetched step data if not found in search results
-                            const displayName = selected?.name
-                                || (field.value && selectedStepData?.name)
-                                || "Select step";
                             return (
                                 <FormItem>
                                     <FormLabel required={required.step}>Step</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    className={cn(
-                                                        "w-[300px] justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {displayName}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command shouldFilter={false}>
-                                                <CommandInput
-                                                    value={rawStepSearch}
-                                                    onValueChange={setRawStepSearch}
-                                                    placeholder="Search steps..."
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No steps found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            value="none"
-                                                            onSelect={() => {
-                                                                form.setValue("step", "");
-                                                                setStepSearch("");
-                                                                setRawStepSearch("");
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    !field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            None
-                                                        </CommandItem>
-                                                        {stepsData?.results?.map((step) => (
-                                                            <CommandItem
-                                                                key={step.id}
-                                                                value={step.id.toString()}
-                                                                onSelect={() => {
-                                                                    form.setValue("step", String(step.id));
-                                                                    setStepSearch("");
-                                                                    setRawStepSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        String(step.id) === field.value
-                                                                            ? "opacity-100"
-                                                                            : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {step.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            className="w-[300px]"
+                                            value={field.value || null}
+                                            onChange={(v) => form.setValue("step", v ?? "")}
+                                            options={(stepsData?.results ?? []).map((s) => ({ value: String(s.id), label: s.name }))}
+                                            onSearch={setRawStepSearch}
+                                            clearLabel="None"
+                                            selectedLabel={selectedStepData?.name ?? undefined}
+                                            placeholder="Select step"
+                                            searchPlaceholder="Search steps..."
+                                            emptyText="No steps found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         Associate this model with a specific step in a process
                                     </FormDescription>

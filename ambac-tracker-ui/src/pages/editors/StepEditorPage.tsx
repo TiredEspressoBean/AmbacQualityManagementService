@@ -1,7 +1,6 @@
 import { useRetrieveSteps, stepsOptions, stepsMetadataOptions } from "@/hooks/useRetrieveSteps.ts";
-import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
-import { EditStepActionsCell } from "@/components/edit-step-action-cell.tsx";
+import { StepInProcessActions } from "@/components/process/StepInProcessActions";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -12,6 +11,9 @@ const DEFAULT_LIST_PARAMS = {
     offset: 0,
     limit: 25,
     search: "",
+    // The endpoint spans versions; a superseded step lives on only in the process
+    // versions that still point at it, and is reached through them.
+    is_current_version: true,
 };
 
 // Prefetch function for route loader
@@ -39,13 +41,12 @@ function useStepsList({
         limit,
         ordering,
         search,
+        is_current_version: true,
         ...filters,
     });
 }
 
 export function StepsEditorPage() {
-    const navigate = useNavigate();
-
     return (
         <ModelEditorPage
             title="Steps"
@@ -56,8 +57,14 @@ export function StepsEditorPage() {
                 col({ header: "Description", renderCell: (step) => step.description, priority: 5 }),
                 col({ header: "Part Type", renderCell: (step) => step.part_type_name || step.part_type, priority: 2 }),
             ]}
-            renderActions={(step) => <EditStepActionsCell stepId={step.id} />}
-            onCreate={() => navigate({ to: "/StepForm/create" })}
+            renderActions={(step) => <StepInProcessActions stepId={step.id} processes={step.processes ?? []} />}
+            headerContent={
+                <p className="text-sm text-muted-foreground">
+                    Steps are added, edited and removed in their process. A process, its later
+                    versions and its copies share step rows, so editing in the process keeps
+                    every other version as it was.
+                </p>
+            }
         />
     );
 }

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm, useWatch, type Resolver, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,21 +27,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { useRetrieveApprovalTemplate } from "@/hooks/useRetrieveApprovalTemplate";
@@ -137,16 +124,10 @@ export default function ApprovalTemplateFormPage() {
         { enabled: mode === "edit" && !!templateId }
     );
 
-    const [groupSearch, setGroupSearch] = useState("");
-    const [groupPopoverOpen, setGroupPopoverOpen] = useState(false);
 
     const { data: groups } = useTenantGroups();
     const groupsList = Array.isArray(groups?.results) ? groups.results : groups?.results || [];
 
-    // Filter groups based on search
-    const filteredGroups = groupsList.filter((group: { name: string }) =>
-        group.name.toLowerCase().includes(groupSearch.toLowerCase())
-    );
 
     const form = useForm<FormValues>({
         // zod `.default()` on default_approvers/default_groups/escalate_to makes the
@@ -471,72 +452,17 @@ export default function ApprovalTemplateFormPage() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel required={required.auto_assign_by_role}>Auto-assign to Group</FormLabel>
-                                    <Popover open={groupPopoverOpen} onOpenChange={setGroupPopoverOpen}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={groupPopoverOpen}
-                                                    className={cn(
-                                                        "w-full justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {field.value || "Select group (optional)"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0" align="start">
-                                            <Command>
-                                                <CommandInput
-                                                    placeholder="Search groups..."
-                                                    value={groupSearch}
-                                                    onValueChange={setGroupSearch}
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No groups found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        <CommandItem
-                                                            onSelect={() => {
-                                                                field.onChange(null);
-                                                                setGroupPopoverOpen(false);
-                                                                setGroupSearch("");
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    !field.value ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            None
-                                                        </CommandItem>
-                                                        {filteredGroups.map((group) => (
-                                                            <CommandItem
-                                                                key={group.id}
-                                                                value={group.name}
-                                                                onSelect={() => {
-                                                                    field.onChange(group.name);
-                                                                    setGroupPopoverOpen(false);
-                                                                    setGroupSearch("");
-                                                                }}
-                                                            >
-                                                                <Check
-                                                                    className={cn(
-                                                                        "mr-2 h-4 w-4",
-                                                                        field.value === group.name ? "opacity-100" : "opacity-0"
-                                                                    )}
-                                                                />
-                                                                {group.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <FormControl>
+                                        <Combobox
+                                            value={field.value ?? null}
+                                            onChange={(v) => field.onChange(v)}
+                                            options={groupsList.map((g: { name: string }) => ({ value: g.name, label: g.name }))}
+                                            clearLabel="None"
+                                            placeholder="None"
+                                            searchPlaceholder="Search groups..."
+                                            emptyText="No groups found."
+                                        />
+                                    </FormControl>
                                     <FormDescription>
                                         Automatically assign approvers from this group
                                     </FormDescription>
@@ -651,6 +577,11 @@ export default function ApprovalTemplateFormPage() {
                     </div>
                 </form>
             </Form>
+            {mode === "edit" && templateId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="ApprovalTemplates" id={templateId} model="approvaltemplate" />
+                </div>
+            )}
         </div>
     );
 }

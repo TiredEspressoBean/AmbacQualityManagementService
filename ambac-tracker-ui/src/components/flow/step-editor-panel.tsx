@@ -13,8 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DurationInput } from '@/components/ui/duration-input';
-import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown, GraduationCap } from 'lucide-react';
+import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown, GraduationCap, Cog } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
 import { useSubsteps } from '@/hooks/useSubsteps';
 import type { StepData } from './use-steps-to-flow';
 import { useRetrieveMeasurementDefinitions } from '@/hooks/useRetrieveMeasurementDefinitions';
@@ -26,6 +27,8 @@ import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
+import { StepMachinesEditor } from './step-machines-editor';
+import { stepAffinitiesOptions } from '@/hooks/useSchedulingSetup';
 import { StepBomSection } from './StepBomSection';
 import { useTrainingRequirements } from '@/hooks/useTrainingRequirements';
 import { parseDurationToMinutes, formatMinutesToDuration, formatDurationDisplay } from '@/lib/duration-utils';
@@ -86,6 +89,10 @@ export interface StepEditorPanelProps {
   rejectRoutes?: { id: string; label: string }[];
   /** Create a reject (ALTERNATE) edge from this step to the given target. */
   onAddRejectEdge?: (targetId: string) => void;
+  /** Editing a draft: returns the step row the draft owns for this step — the same
+   *  one, or a copy made now because another process version shares it. Dialogs and
+   *  the substep editor write to that row. Omitted when viewing. */
+  onEnsureOwnStep?: (stepId: string) => Promise<string>;
 }
 
 /** The fields this panel reads off a flow node's `data`.
@@ -132,7 +139,7 @@ type StepNodeData = {
   outsideProcessLeadDays?: number | string;
 };
 
-export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId, rejectDestinations, rejectRoutes, onAddRejectEdge }: StepEditorPanelProps) {
+export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId, rejectDestinations, rejectRoutes, onAddRejectEdge, onEnsureOwnStep }: StepEditorPanelProps) {
   const navigate = useNavigate();
   const [rejectTarget, setRejectTarget] = useState<string>('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -173,6 +180,23 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const [samplingOpen, setSamplingOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
+  const [machinesOpen, setMachinesOpen] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+
+  // Open a dialog (or run `then`) on the draft's own copy of the step, so what it
+  // saves stays with this draft. Viewing, or a step not yet saved, opens as is.
+  const withOwnStep = async (then: (ownId: string) => void) => {
+    if (!stepId) return;
+    if (!onEnsureOwnStep || !editable || !stepIdIsUuid) { then(stepId); return; }
+    setClaiming(true);
+    try {
+      then(await onEnsureOwnStep(stepId));
+    } catch {
+      toast.error("Couldn't prepare this step for editing. Save the process and try again.");
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   // Get content type ID for steps
   const { getContentTypeId, isLoading: contentTypesLoading } = useContentTypeMapping();
@@ -218,6 +242,13 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
     { enabled: stepIdIsUuid, retry: false }
   );
   const trainingReqCount = stepIdIsUuid ? (trainingReqResponse?.count ?? 0) : 0;
+
+  // Machines that can run this step (StepEquipmentAffinity rows).
+  const { data: affinitiesResponse } = useQuery({
+    ...stepAffinitiesOptions({ step: stepId, limit: 1 }),
+    enabled: stepIdIsUuid,
+  });
+  const machineCount = stepIdIsUuid ? (affinitiesResponse?.count ?? 0) : 0;
 
   // Vendor options for an outside-process (subcontract) receiving node.
   const { data: companiesData } = useRetrieveCompanies(
@@ -770,7 +801,8 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setMeasurementsOpen(true)}
+                    onClick={() => void withOwnStep(() => setMeasurementsOpen(true))}
+                    disabled={claiming}
                     title={editable ? "Configure measurements" : "View measurements"}
                   >
                     {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -792,7 +824,8 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setSamplingOpen(true)}
+                    onClick={() => void withOwnStep(() => setSamplingOpen(true))}
+                    disabled={claiming}
                     title={editable ? "Configure sampling rules" : "View sampling rules"}
                   >
                     {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -814,7 +847,8 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setDocumentsOpen(true)}
+                    onClick={() => void withOwnStep(() => setDocumentsOpen(true))}
+                    disabled={claiming}
                     title={editable ? "Configure documents" : "View documents"}
                   >
                     {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -836,8 +870,32 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setTrainingOpen(true)}
+                    onClick={() => void withOwnStep(() => setTrainingOpen(true))}
+                    disabled={claiming}
                     title={editable ? "Configure required training" : "View required training"}
+                  >
+                    {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                )}
+              </div>
+
+              {/* Machines — which machines can run this step (scheduling). */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <Cog className="h-4 w-4 text-muted-foreground" />
+                  <span>Machines</span>
+                  {machineCount > 0 && (
+                    <Badge variant="secondary" className="text-xs">{machineCount}</Badge>
+                  )}
+                </div>
+                {stepIdIsUuid && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => void withOwnStep(() => setMachinesOpen(true))}
+                    disabled={claiming}
+                    title={editable ? "Configure machines" : "View machines"}
                   >
                     {editable ? <Settings className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -859,12 +917,13 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() =>
+                    disabled={claiming}
+                    onClick={() => void withOwnStep((ownId) =>
                       navigate({
                         to: '/editor/processes/$processId/steps/$stepId/substeps',
-                        params: { processId, stepId },
+                        params: { processId, stepId: ownId },
                       })
-                    }
+                    )}
                     title={editable ? 'Edit substeps' : 'View substeps'}
                   >
                     <ArrowRight className="h-4 w-4" />
@@ -874,7 +933,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
 
               {!stepId && editable && (
                 <p className="text-xs text-muted-foreground">
-                  Save process to configure measurements, sampling, documents, training, and substeps
+                  Save process to configure measurements, sampling, documents, training, machines, and substeps
                 </p>
               )}
             </div>
@@ -1117,6 +1176,15 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               onOpenChange={setTrainingOpen}
               readOnly={!editable}
             />
+            {stepIdIsUuid && (
+              <StepMachinesEditor
+                stepId={stepId}
+                stepName={data.label || 'Step'}
+                open={machinesOpen}
+                onOpenChange={setMachinesOpen}
+                readOnly={!editable}
+              />
+            )}
           </>
         )}
 

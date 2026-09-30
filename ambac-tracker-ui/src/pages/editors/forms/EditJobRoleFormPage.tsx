@@ -1,5 +1,6 @@
 "use client";
 
+import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -146,6 +147,11 @@ export default function EditJobRoleFormPage() {
             {mode === "edit" && roleId && (
                 <div className="mt-8">
                     <TrainingRequirementsEditor scope={{ job_role: roleId }} />
+                </div>
+            )}
+            {mode === "edit" && roleId && (
+                <div className="max-w-3xl mx-auto py-6">
+                    <RecordHistoryCard endpoint="JobRoles" id={roleId} model="jobrole" />
                 </div>
             )}
         </div>
