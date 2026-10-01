@@ -5599,6 +5599,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/dock-metrics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Receiving's own numbers: receipts per day, lots waiting and for how long, time
+         *     to a decision, holds by reason, and rejects in pieces.
+         */
+        get: operations["api_MaterialLots_dock_metrics_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/expected-receipt/": {
         parameters: {
             query?: never;
@@ -21771,6 +21791,34 @@ export interface components {
          * @enum {string}
          */
         DispositionTypeEnum: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+        /** @description Receiving's own numbers over the last `days` days. */
+        DockMetrics: {
+            days: number;
+            receipts: components["schemas"]["DockReceiptDay"][];
+            lots_received: number;
+            awaiting_decision: number;
+            oldest_wait_days: number | null;
+            decided: number;
+            /** Format: double */
+            median_inspection_hours: number | null;
+            /** Format: double */
+            median_days_to_decision: number | null;
+            held_now: components["schemas"]["DockReasonCount"][];
+            holds_released: components["schemas"]["DockReasonCount"][];
+            lots_rejected: number;
+            /** Format: double */
+            pieces_rejected: number;
+            ppm_rejected: number | null;
+        };
+        DockReasonCount: {
+            reason: string;
+            lots: number;
+        };
+        DockReceiptDay: {
+            /** Format: date */
+            date: string;
+            lots: number;
+        };
         DocumentLinkDetachRequestRequest: {
             content_type: number;
             object_id: string;
@@ -48615,6 +48663,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialLotBulkCreateError"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_dock_metrics_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Window in days (default 30, at most 365). */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockMetrics"];
                 };
             };
         };

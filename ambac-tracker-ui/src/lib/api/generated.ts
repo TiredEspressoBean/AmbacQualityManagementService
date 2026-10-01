@@ -2332,6 +2332,29 @@ export type ScaleEnum =
    * @enum small, medium, large
    */
   "small" | "medium" | "large";
+export type DockMetrics = {
+  days: number;
+  receipts: Array<DockReceiptDay>;
+  lots_received: number;
+  awaiting_decision: number;
+  oldest_wait_days: number | null;
+  decided: number;
+  median_inspection_hours: number | null;
+  median_days_to_decision: number | null;
+  held_now: Array<DockReasonCount>;
+  holds_released: Array<DockReasonCount>;
+  lots_rejected: number;
+  pieces_rejected: number;
+  ppm_rejected: number | null;
+};
+export type DockReceiptDay = {
+  date: string;
+  lots: number;
+};
+export type DockReasonCount = {
+  reason: string;
+  lots: number;
+};
 export type Documents = {
   id: string;
   classification?:
@@ -20792,6 +20815,26 @@ const MaterialLotBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
+const DockReceiptDay = z.object({ date: z.string(), lots: z.number().int() });
+const DockReasonCount = z.object({
+  reason: z.string(),
+  lots: z.number().int(),
+});
+const DockMetrics = z.object({
+  days: z.number().int(),
+  receipts: z.array(DockReceiptDay),
+  lots_received: z.number().int(),
+  awaiting_decision: z.number().int(),
+  oldest_wait_days: z.number().int().nullable(),
+  decided: z.number().int(),
+  median_inspection_hours: z.number().nullable(),
+  median_days_to_decision: z.number().nullable(),
+  held_now: z.array(DockReasonCount),
+  holds_released: z.array(DockReasonCount),
+  lots_rejected: z.number().int(),
+  pieces_rejected: z.number(),
+  ppm_rejected: z.number().int().nullable(),
+});
 const ExpectedReceiptImportRequestRequest = z.object({
   file: z.instanceof(File),
 });
@@ -27831,6 +27874,9 @@ export const schemas = {
   MaterialLotBulkCreateRequest,
   MaterialLotBulkCreateResponse,
   MaterialLotBulkCreateError,
+  DockReceiptDay,
+  DockReasonCount,
+  DockMetrics,
   ExpectedReceiptImportRequestRequest,
   ExpectedReceiptImportRowResultOutcomeEnum,
   ExpectedReceiptImportRowResult,
@@ -39381,6 +39427,22 @@ they just ordered against a list of shortages.`,
     response: z.array(MaterialLot),
   },
   {
+    method: "get",
+    path: "/api/MaterialLots/dock-metrics/",
+    alias: "api_MaterialLots_dock_metrics_retrieve",
+    description: `Receiving&#x27;s own numbers: receipts per day, lots waiting and for how long, time
+to a decision, holds by reason, and rejects in pieces.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: DockMetrics,
+  },
+  {
     method: "post",
     path: "/api/MaterialLots/expected-receipt/",
     alias: "api_MaterialLots_expected_receipt_create",
@@ -42912,7 +42974,10 @@ availability (plant closures still win).`,
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OvertimeWindows/import-template/:template_format/",
@@ -42927,10 +42992,7 @@ availability (plant closures still win).`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/OvertimeWindows/import/",
@@ -48640,7 +48702,10 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Sampling-rule-sets/metadata/",
@@ -48648,10 +48713,7 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Sampling-rules/",
@@ -53984,7 +54046,10 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: SubstepResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "put",
     path: "/api/SubstepResponses/:id/",
@@ -54004,10 +54069,7 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: SubstepResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/SubstepResponses/:id/",
@@ -58704,7 +58766,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedWorkOrderListList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/WorkOrders/",
@@ -58725,10 +58790,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrder,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkOrders/:id/",

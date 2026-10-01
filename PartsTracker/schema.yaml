@@ -14827,6 +14827,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLotBulkCreateError'
           description: ''
+  /api/MaterialLots/dock-metrics/:
+    get:
+      operationId: api_MaterialLots_dock_metrics_retrieve
+      description: |-
+        Receiving's own numbers: receipts per day, lots waiting and for how long, time
+        to a decision, holds by reason, and rejects in pieces.
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: Window in days (default 30, at most 365).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DockMetrics'
+          description: ''
   /api/MaterialLots/expected-receipt/:
     post:
       operationId: api_MaterialLots_expected_receipt_create
@@ -51721,6 +51745,84 @@ components:
         * `SCRAP` - Scrap
         * `USE_AS_IS` - Use As Is
         * `RETURN_TO_SUPPLIER` - Return to Supplier
+    DockMetrics:
+      type: object
+      description: Receiving's own numbers over the last `days` days.
+      properties:
+        days:
+          type: integer
+        receipts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockReceiptDay'
+        lots_received:
+          type: integer
+        awaiting_decision:
+          type: integer
+        oldest_wait_days:
+          type: integer
+          nullable: true
+        decided:
+          type: integer
+        median_inspection_hours:
+          type: number
+          format: double
+          nullable: true
+        median_days_to_decision:
+          type: number
+          format: double
+          nullable: true
+        held_now:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockReasonCount'
+        holds_released:
+          type: array
+          items:
+            $ref: '#/components/schemas/DockReasonCount'
+        lots_rejected:
+          type: integer
+        pieces_rejected:
+          type: number
+          format: double
+        ppm_rejected:
+          type: integer
+          nullable: true
+      required:
+      - awaiting_decision
+      - days
+      - decided
+      - held_now
+      - holds_released
+      - lots_received
+      - lots_rejected
+      - median_days_to_decision
+      - median_inspection_hours
+      - oldest_wait_days
+      - pieces_rejected
+      - ppm_rejected
+      - receipts
+    DockReasonCount:
+      type: object
+      properties:
+        reason:
+          type: string
+        lots:
+          type: integer
+      required:
+      - lots
+      - reason
+    DockReceiptDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        lots:
+          type: integer
+      required:
+      - date
+      - lots
     DocumentLinkDetachRequestRequest:
       type: object
       properties:

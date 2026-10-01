@@ -36,6 +36,7 @@ import {
     Users,
     Wrench,
     Workflow,
+    BarChart3,
 } from "lucide-react"
 
 import { NavPages, NavPagesCollapsible, type Page } from "@/components/nav-pages"
@@ -93,6 +94,7 @@ const inventoryPages = [
     { name: "Incoming Inspection", url: "/production/incoming", icon: PackageSearch },
     { name: "Outside Processing", url: "/production/outside-processing", icon: Truck },
     { name: "Materials", url: "/production/material-lots", icon: Package },
+    { name: "Receiving Metrics", url: "/production/receiving-metrics", icon: BarChart3 },
     { name: "Receiving Inspection Plans", url: "/production/receiving-plans", icon: ClipboardCheck },
     { name: "Supplier Quality", url: "/production/supplier-quality", icon: ShieldCheck },
     { name: "Approved Suppliers", url: "/production/supplier-qualifications", icon: BadgeCheck },

@@ -36,7 +36,7 @@ from Tracker.serializers.mes_standard import (
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
-    LotTraceSerializer,
+    LotTraceSerializer, DockMetricsSerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -1039,6 +1039,22 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
             'disposition_id': str(disposition.id),
             'disposition_number': disposition.disposition_number,
         }, context={'request': request}).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter(name='days', type=OpenApiTypes.INT, required=False,
+                                     description="Window in days (default 30, at most 365).")],
+        responses={200: DockMetricsSerializer})
+    @action(detail=False, methods=['get'], url_path='dock-metrics',
+            pagination_class=None, filter_backends=[])
+    def dock_metrics(self, request):
+        """Receiving's own numbers: receipts per day, lots waiting and for how long, time
+        to a decision, holds by reason, and rejects in pieces."""
+        from Tracker.services.mes.dock_metrics import dock_metrics
+        try:
+            days = max(1, min(365, int(request.query_params.get('days', 30))))
+        except ValueError:
+            days = 30
+        return Response(DockMetricsSerializer(dock_metrics(request.tenant, days=days)).data)
 
     @extend_schema(responses={200: LotTraceSerializer})
     @action(detail=True, methods=['get'])

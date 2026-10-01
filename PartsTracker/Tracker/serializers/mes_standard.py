@@ -654,6 +654,33 @@ class LotTraceSerializer(serializers.Serializer):
     customers = serializers.ListField(child=serializers.CharField())
 
 
+class DockReceiptDaySerializer(serializers.Serializer):
+    date = serializers.DateField()
+    lots = serializers.IntegerField()
+
+
+class DockReasonCountSerializer(serializers.Serializer):
+    reason = serializers.CharField()
+    lots = serializers.IntegerField()
+
+
+class DockMetricsSerializer(serializers.Serializer):
+    """Receiving's own numbers over the last `days` days."""
+    days = serializers.IntegerField()
+    receipts = DockReceiptDaySerializer(many=True)
+    lots_received = serializers.IntegerField()
+    awaiting_decision = serializers.IntegerField()
+    oldest_wait_days = serializers.IntegerField(allow_null=True)
+    decided = serializers.IntegerField()
+    median_inspection_hours = serializers.FloatField(allow_null=True)
+    median_days_to_decision = serializers.FloatField(allow_null=True)
+    held_now = DockReasonCountSerializer(many=True)
+    holds_released = DockReasonCountSerializer(many=True)
+    lots_rejected = serializers.IntegerField()
+    pieces_rejected = serializers.FloatField()
+    ppm_rejected = serializers.IntegerField(allow_null=True)
+
+
 class ReleaseHoldSerializer(serializers.Serializer):
     """Lift a receiving hold. The reason is kept on record beside the decision."""
     reason = serializers.CharField(allow_blank=False)
