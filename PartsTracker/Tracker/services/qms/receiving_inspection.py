@@ -43,15 +43,24 @@ HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out
 SELF_CLEARING_HOLDS = (HOLD_AWAITING_COC, HOLD_AWAITING_HEAT_NUMBER, HOLD_SHELF_LIFE_EXPIRED)
 
 
-def resolve_receiving_step(part_type):
-    """The current RECEIVING step for a part type, or None. Receiving plans (RIPs) are
-    keyed to PartTypes; a purchased Material has none, so return None (dock-to-stock)."""
-    from Tracker.models import PartTypes, Steps
-    if not isinstance(part_type, PartTypes):
+def resolve_receiving_step(item):
+    """The current RECEIVING step (RIP) for a bought part type or a raw material, or
+    None when it has none (the lot goes dock-to-stock)."""
+    from Tracker.models import Material, PartTypes, Steps
+    if isinstance(item, PartTypes):
+        qs = Steps.objects.filter(archived=False, part_type=item, step_type="RECEIVING")
+    elif isinstance(item, Material):
+        qs = Steps.objects.filter(archived=False, material=item, step_type="RECEIVING")  # tenant-safe: FK to a tenant-scoped Material
+    else:
         return None
-    qs = Steps.objects.filter(archived=False, part_type=part_type, step_type="RECEIVING")
     # Prefer the current version when the versioning flag is present.
     return qs.filter(is_current_version=True).first() or qs.first()
+
+
+def resolve_receiving_step_for_lot(lot):
+    """The receiving plan a lot is inspected against — its part type's or its raw
+    material's — or None."""
+    return resolve_receiving_step(lot.item)
 
 
 def resolve_sampling_ruleset(step, supplier):
@@ -68,16 +77,18 @@ def resolve_sampling_ruleset(step, supplier):
 # steps that live ON a process (OSP returns, in-workflow receiving nodes) belong
 # to that process and are authored in the flow editor — they are NOT RIPs here.
 
-def create_standalone_receiving_plan(part_type, name="", user=None):
-    """Create a process-free RECEIVING step (a purchased-material RIP) for a part type.
-    Deliberately does NOT reuse an in-process RECEIVING step — those belong to their
-    process; a RIP is always standalone."""
-    from Tracker.models import Steps
+def create_standalone_receiving_plan(item, name="", user=None):
+    """Create a process-free RECEIVING step (a purchased-material RIP) for a bought part
+    type or a raw material. Deliberately does NOT reuse an in-process RECEIVING step —
+    those belong to their process; a RIP is always standalone."""
+    from Tracker.models import Material, Steps
+    is_material = isinstance(item, Material)
     return Steps.objects.create(
-        tenant=part_type.tenant,
-        part_type=part_type,
+        tenant=item.tenant,
+        part_type=None if is_material else item,
+        material=item if is_material else None,
         step_type="RECEIVING",
-        name=name or f"Receiving - {part_type.name}",
+        name=name or f"Receiving - {item.name}",
         description="Incoming inspection plan for purchased material.",
     )
 
@@ -98,9 +109,9 @@ def _plan_for(lot, step):
 
 def sample_plan_for_lot(lot):
     """Resolve + compute the sample plan for a lot (read-only; used by the endpoint)."""
-    step = resolve_receiving_step(lot.material_type)
+    step = resolve_receiving_step_for_lot(lot)
     if step is None:
-        raise ValueError("No RECEIVING step configured for this part type.")
+        raise ValueError("No receiving inspection plan for this item.")
     return _plan_for(lot, step)
 
 
@@ -146,10 +157,10 @@ def route_received_lot(lot, user, *, waive=()):
     # life so downstream gates and the queue read is_blocked, not the raw scalar.
     from Tracker.services.life_tracking.shelf_life import attach_shelf_life
     attach_shelf_life(lot)
-    # Raw-material lots (lot.material set, no material_type part) have no PartTypes-keyed
-    # receiving plan / supplier-qual / part-approval gate yet — those gates are keyed to
-    # lot.material_type (a buyable part). The paperwork gates (CoC, heat number) read the
-    # lot's item, so they apply to both. (Raw-material RIPs are a follow-on.)
+    # Raw-material lots (lot.material set) and bought-part lots (lot.material_type) both
+    # get a receiving plan and the supplier-qualification gate (a material qualifies by
+    # commodity). Part approval (PPAP / FAI) is for parts only — bulk stock has no part
+    # design to approve. The paperwork gates read the lot's item, so apply to both.
     # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
     # for this part type is quarantined and flagged rather than flowing to stock.
     if HOLD_SUPPLIER_UNQUALIFIED not in waive and _held_for_unqualified_supplier(lot):
@@ -168,7 +179,7 @@ def route_received_lot(lot, user, *, waive=()):
         return None
     if HOLD_AWAITING_HEAT_NUMBER not in waive and _held_for_missing(lot, HOLD_AWAITING_HEAT_NUMBER):
         return None
-    step = resolve_receiving_step(lot.material_type) if lot.material_type_id else None
+    step = resolve_receiving_step_for_lot(lot)
     if step is None:
         inventory.mark_dock_to_stock(lot)
         return None
@@ -182,12 +193,22 @@ def _held_for_unqualified_supplier(lot) -> bool:
     """Soft-hold a received lot whose part type requires supplier qualification and
     whose supplier has no active qualification covering it. Quarantines + emits
     `supplier.unqualified`. Returns True when the lot was held."""
-    part_type = lot.material_type if lot.material_type_id else None
-    if part_type is None or not getattr(part_type, "requires_supplier_qualification", False):
-        return False
-
     from Tracker.services.qms.supplier_qualification import is_supplier_qualified
-    if is_supplier_qualified(supplier=lot.supplier, part_type=part_type):
+    part_type = lot.material_type if lot.material_type_id else None
+    material = lot.material if lot.material_id else None
+    if part_type is not None:
+        if not getattr(part_type, "requires_supplier_qualification", False):
+            return False
+        if is_supplier_qualified(supplier=lot.supplier, part_type=part_type):
+            return False
+    elif material is not None:
+        # Bulk stock qualifies a supplier by commodity; with none set, any active
+        # qualification of the supplier will do.
+        if not material.requires_supplier_qualification:
+            return False
+        if is_supplier_qualified(supplier=lot.supplier, commodity=material.commodity or None):
+            return False
+    else:
         return False
 
     inventory.quarantine_lot(lot)
@@ -211,7 +232,8 @@ def _emit_supplier_unqualified(lot) -> None:
         supplier_id=str(supplier.id) if supplier else None,
         supplier_name=supplier.name if supplier else "",
         part_type_id=str(part_type.id) if part_type else None,
-        part_type_name=part_type.name if part_type else "",
+        # A raw material's lot has no part type; name the material so the message reads.
+        part_type_name=part_type.name if part_type else lot.item_name,
     )
     emit(
         "supplier.unqualified",
@@ -369,9 +391,9 @@ def open_inspection(lot, user):
             f"Lot {lot.lot_number} is {lot.status}; an inspection can only be "
             f"opened on a RECEIVED lot."
         )
-    step = resolve_receiving_step(lot.material_type)
+    step = resolve_receiving_step_for_lot(lot)
     if step is None:
-        raise ValueError("No RECEIVING step configured for this part type.")
+        raise ValueError("No receiving inspection plan for this item.")
 
     sp = _plan_for(lot, step)
     # For a Z1.9 variables plan, snapshot k + the measured characteristic so the

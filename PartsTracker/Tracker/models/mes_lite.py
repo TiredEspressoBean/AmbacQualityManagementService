@@ -646,8 +646,18 @@ class Steps(SecureModel):
     come from `Tracker.models.dwi.SequencingMode` ('sequential' or 'free_order').
     Default 'sequential' is a no-op for Steps with no substeps."""
 
-    part_type = models.ForeignKey(PartTypes, related_name='steps', on_delete=models.PROTECT)
-    """Reference to the `PartTypes` this step applies to. Used for filtering and scoping."""
+    part_type = models.ForeignKey(PartTypes, related_name='steps', on_delete=models.PROTECT,
+                                  null=True, blank=True)
+    """Reference to the `PartTypes` this step applies to. Used for filtering and scoping.
+    Set on every step but one kind: a Receiving Inspection Plan for a raw material, which
+    is keyed to `material` instead (see the CheckConstraint in Meta)."""
+
+    material = models.ForeignKey(
+        'Tracker.Material', related_name='receiving_plans', on_delete=models.PROTECT,
+        null=True, blank=True,
+        help_text="For a Receiving Inspection Plan of a raw material (bulk stock): the "
+                  "material it inspects. Only a RECEIVING step may carry one.")
+    """The raw material a standalone RECEIVING step (RIP) inspects, when not a part type."""
 
     work_center = models.ForeignKey(
         'Tracker.WorkCenter',
@@ -900,9 +910,22 @@ class Steps(SecureModel):
         verbose_name_plural = 'Steps'
         verbose_name = 'Step'
         ordering = ['part_type', 'name']
+        constraints = [
+            # Every step belongs to a part type — except a raw material's receiving
+            # plan, which belongs to the material. Never both, never neither.
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(part_type__isnull=False) & models.Q(material__isnull=True))
+                    | (models.Q(part_type__isnull=True) & models.Q(material__isnull=False)
+                       & models.Q(step_type='RECEIVING'))
+                ),
+                name='step_part_type_xor_receiving_material',
+            ),
+        ]
 
     def __str__(self):
-        return f"{self.name} ({self.part_type.name})"
+        owner = self.part_type or self.material
+        return f"{self.name} ({owner.name})" if owner is not None else self.name
 
     def get_processes(self):
         """Get all processes that include this step."""

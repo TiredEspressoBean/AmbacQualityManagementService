@@ -31,7 +31,7 @@
  * and the spike file can be deleted.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, Link, useBlocker } from "@tanstack/react-router";
+import { useParams, Link, useBlocker, useRouterState } from "@tanstack/react-router";
 import {
     SubstepEditor,
     OperatorResponseContext,
@@ -148,6 +148,7 @@ type PendingEdits = {
     is_critical?: boolean;
     allow_not_applicable?: boolean;
     scope?: "sampled" | "batch";
+    once_per_lot?: boolean;
 };
 
 /**
@@ -170,6 +171,7 @@ type PendingCreate = {
     is_critical: boolean;
     allow_not_applicable: boolean;
     scope: "sampled" | "batch";
+    once_per_lot: boolean;
 };
 
 let _tempIdCounter = 0;
@@ -177,6 +179,9 @@ const nextTempId = () => `__new_${Date.now()}_${++_tempIdCounter}`;
 
 export function SubstepEditorPage() {
     const params = useParams({ strict: false }) as Partial<RouteParams>;
+    // A receiving plan's substeps are authored here too; only they get "Once per lot".
+    const isReceivingPlan = useRouterState({ select: (st) => st.location.pathname })
+        .includes("/receiving-plans/");
     const stepId = params.stepId;
     const processId = params.processId;
 
@@ -375,6 +380,7 @@ export function SubstepEditorPage() {
                     is_critical: draft.is_critical,
                     allow_not_applicable: draft.allow_not_applicable,
                     scope: draft.scope,
+                    once_per_lot: draft.once_per_lot,
                 });
             }
 
@@ -447,6 +453,7 @@ export function SubstepEditorPage() {
             is_critical: false,
             allow_not_applicable: false,
             scope: "sampled",
+            once_per_lot: false,
             ...seed,
         };
         setPendingCreates((prev) => [...prev, draft]);
@@ -634,6 +641,7 @@ export function SubstepEditorPage() {
                         <div className="space-y-2">
                             {sortedSubsteps.map((s) => (
                                 <SubstepRow
+                                    showOncePerLot={isReceivingPlan}
                                     key={s.id}
                                     substep={s}
                                     expanded={expandedId === s.id}
@@ -675,6 +683,7 @@ export function SubstepEditorPage() {
                                 first, then reorder. */}
                             {pendingCreates.map((draft) => (
                                 <PendingCreateRow
+                                    showOncePerLot={isReceivingPlan}
                                     key={draft.tempId}
                                     draft={draft}
                                     expanded={expandedId === draft.tempId}
@@ -733,6 +742,7 @@ export function SubstepEditorPage() {
 // ============================================================================
 
 function SubstepRow({
+    showOncePerLot = false,
     substep,
     expanded,
     pending,
@@ -749,6 +759,7 @@ function SubstepRow({
     onDrop,
     onDragEnd,
 }: {
+    showOncePerLot?: boolean;
     substep: Substep;
     expanded: boolean;
     pending: PendingEdits | undefined;
@@ -866,6 +877,7 @@ function SubstepRow({
             </button>
             {expanded && (
                 <SubstepExpandedBody
+                    showOncePerLot={showOncePerLot}
                     substep={substep}
                     pending={pending}
                     editable={editable}
@@ -883,6 +895,7 @@ function SubstepRow({
 // ============================================================================
 
 function SubstepExpandedBody({
+    showOncePerLot = false,
     substep,
     pending,
     editable,
@@ -890,6 +903,7 @@ function SubstepExpandedBody({
     onTogglePendingDelete,
     onPendingChange,
 }: {
+    showOncePerLot?: boolean;
     substep: Substep;
     pending: PendingEdits | undefined;
     editable: boolean;
@@ -909,6 +923,8 @@ function SubstepExpandedBody({
     const workingAllowNa =
         pending?.allow_not_applicable ?? (substep.allow_not_applicable ?? false);
     const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
+    const workingOncePerLot =
+        pending?.once_per_lot ?? ((substep as { once_per_lot?: boolean }).once_per_lot ?? false);
     const workingBody =
         (pending?.body_blocks as object | undefined) ??
         (substep.body_blocks ?? { type: "doc", content: [] });
@@ -1087,6 +1103,24 @@ function SubstepExpandedBody({
                     </Label>
                 </div>
 
+                {showOncePerLot && (
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id={`once-per-lot-${substep.id}`}
+                            checked={workingOncePerLot}
+                            disabled={!editable}
+                            onCheckedChange={(v) => mergePending({ once_per_lot: v })}
+                        />
+                        <Label
+                            htmlFor={`once-per-lot-${substep.id}`}
+                            className="text-xs"
+                            title="Asked once for the lot, not on every sampled unit — e.g. 'Is the CoC present and correct?'"
+                        >
+                            Once per lot
+                        </Label>
+                    </div>
+                )}
+
                 <Button
                     variant={isPendingDelete ? "outline" : "ghost"}
                     size="sm"
@@ -1159,6 +1193,7 @@ function SubstepExpandedBody({
  * draft and this row collapses (replaced by the resulting real Substep).
  */
 function PendingCreateRow({
+    showOncePerLot = false,
     draft,
     expanded,
     editable,
@@ -1166,6 +1201,7 @@ function PendingCreateRow({
     onChange,
     onRemove,
 }: {
+    showOncePerLot?: boolean;
     draft: PendingCreate;
     expanded: boolean;
     editable: boolean;
@@ -1309,6 +1345,20 @@ function PendingCreateRow({
                                 Allow N/A
                             </Label>
                         </div>
+                        {showOncePerLot && (
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id={`once-per-lot-${draft.tempId}`}
+                                    checked={draft.once_per_lot}
+                                    disabled={!editable}
+                                    onCheckedChange={(v) => onChange({ once_per_lot: v })}
+                                />
+                                <Label htmlFor={`once-per-lot-${draft.tempId}`} className="text-xs"
+                                    title="Asked once for the lot, not on every sampled unit">
+                                    Once per lot
+                                </Label>
+                            </div>
+                        )}
                         <Button
                             variant="ghost"
                             size="sm"

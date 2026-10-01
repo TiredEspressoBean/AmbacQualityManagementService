@@ -264,6 +264,11 @@ export function MaterialsPage() {
                                     {inStock && (
                                         <DropdownMenuItem onSelect={() => setAdjustLot(l)}>Adjust quantity…</DropdownMenuItem>
                                     )}
+                                    {/* The retained evidence of release (ISO 9001 §8.6). */}
+                                    <DropdownMenuItem onSelect={() => void downloadReport("receiving_inspection_record",
+                                        { lot_id: String(l.id) })}>
+                                        Inspection record (PDF)
+                                    </DropdownMenuItem>
                                     {canExtend(l) && (
                                         <DropdownMenuItem onSelect={() => setExtendLot(l)}>Extend shelf life…</DropdownMenuItem>
                                     )}

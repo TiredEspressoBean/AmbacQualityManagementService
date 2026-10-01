@@ -1227,6 +1227,8 @@ class StepsSerializer(SecureModelMixin):
     part_type_info = serializers.SerializerMethodField()
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     work_center_name = serializers.CharField(source="work_center.name", read_only=True, allow_null=True)
+    # A raw material's receiving plan carries the material, not a part type.
+    material_name = serializers.CharField(source="material.name", read_only=True, allow_null=True)
     timing = StepTimingSerializer(required=False, allow_null=True)
     # The process versions using this step row. A row is shared by a process, its
     # later versions and its duplicates (that sharing is what keeps each version's
@@ -1256,7 +1258,7 @@ class StepsSerializer(SecureModelMixin):
             'requires_qa_signoff', 'sampling_required', 'min_sampling_rate', 'pass_threshold',
             # First Piece Inspection
             'requires_first_piece_inspection',
-            'part_type', 'part_type_info', 'part_type_name',
+            'part_type', 'part_type_info', 'part_type_name', 'material', 'material_name',
             # Work-center routing (Documents/WORK_CENTER_DESIGN.md)
             'work_center', 'work_center_name',
             # Workflow engine - step type
@@ -1295,7 +1297,20 @@ class StepsSerializer(SecureModelMixin):
         read_only_fields = (
             'created_at', 'updated_at', 'part_type_info', 'part_type_name',
             'work_center_name', 'version', 'is_current_version',
+            # Set only by creating a raw material's receiving plan
+            # (`create_receiving_plan`), never by editing a step.
+            'material', 'material_name',
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # `part_type` is nullable for one kind of step only — a raw material's
+        # receiving plan. Anywhere else, clearing it would reach the database's
+        # check constraint as a 500.
+        if 'part_type' in attrs and attrs['part_type'] is None:
+            if self.instance is None or self.instance.material_id is None:
+                raise serializers.ValidationError({'part_type': 'A step needs its part type.'})
+        return attrs
 
     @extend_schema_field(StepProcessRefSerializer(many=True))
     def get_processes(self, obj):

@@ -40,7 +40,11 @@ import type { Schema } from "@/lib/api/types";
 import { isFieldRequired } from "@/lib/zod-config";
 import { api } from "@/lib/api/generated";
 
-type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "part_type" | "requires_first_piece_inspection" | "operation_number"> & {
+// part_type is nullable on the API only for a raw material's receiving plan, which this
+// form never edits — here it is always a chosen part type.
+type FormValues = Pick<Schema<"StepsRequest">, "name" | "description" | "requires_first_piece_inspection" | "operation_number"> & {
+    part_type: string
+
     rules: { rule_type: string; value: string | number | null; order: number }[]
     fallback_rules?: { rule_type: string; value: string | number | null; order: number }[]
     tighten_after?: number
@@ -134,7 +138,7 @@ export default function StepFormPage() {
             form.reset({
                 name: step.name ?? "",
                 description: step.description ?? "",
-                part_type: step.part_type,
+                part_type: step.part_type ?? "",
                 requires_first_piece_inspection: stepWithRules.requires_first_piece_inspection ?? false,
                 operation_number: stepWithRules.operation_number ?? "",
                 rules: stepWithRules.active_ruleset?.rules ?? [],

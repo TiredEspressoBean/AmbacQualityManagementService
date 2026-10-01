@@ -473,7 +473,10 @@ class SamplingRuleSet(SecureModel):
 
     _is_versioned = True  # ISO 9001 4.4, AIAG PPAP #7
 
-    part_type = models.ForeignKey('Tracker.PartTypes', on_delete=models.CASCADE)
+    # Null only for the sampling of a raw material's receiving plan, whose step carries
+    # the material instead; `step` identifies the plan either way.
+    part_type = models.ForeignKey('Tracker.PartTypes', on_delete=models.CASCADE,
+                                  null=True, blank=True)
     process = models.ForeignKey(
         'Tracker.Processes',
         on_delete=models.CASCADE,
@@ -1441,6 +1444,18 @@ class Material(SecureModel):
                   "with instead of at the last unit. Does not block issuing — a picker "
                   "can always draw the physical stock.")
     is_active = models.BooleanField(default=True)
+    # Supplier control for bulk stock. Part types qualify a supplier for that part; a
+    # raw material qualifies by commodity ("elastomer seals", "4140 bar") — a
+    # COMMODITY-scope SupplierQualification whose label matches.
+    requires_supplier_qualification = models.BooleanField(
+        default=False,
+        help_text="Hold received lots from a supplier with no active qualification for "
+                  "this material's commodity (or none at all, when no commodity is set).")
+    commodity = models.CharField(
+        max_length=100, blank=True,
+        help_text="The commodity a supplier is qualified for when they supply this, e.g. "
+                  "'Elastomer seals'. Matches a commodity-scope supplier qualification.")
+
     # Receiving controls — the same four on PartTypes.
     purchase_unit = models.CharField(
         max_length=10, choices=PURCHASE_UNIT_CHOICES, default="STOCK",

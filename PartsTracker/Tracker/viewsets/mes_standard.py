@@ -882,7 +882,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
             sp = receiving_inspection.sample_plan_for_lot(lot)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        step = receiving_inspection.resolve_receiving_step(lot.material_type)
+        step = receiving_inspection.resolve_receiving_step_for_lot(lot)
         chars = [
             {'id': m.id, 'label': m.label, 'unit': m.unit or '', 'type': m.type,
              'nominal': float(m.nominal) if m.nominal is not None else None,

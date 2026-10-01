@@ -20,6 +20,7 @@ import { RejectDispositionDialog, type RejectDispositionValues } from "@/compone
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { FileText } from "lucide-react";
@@ -243,6 +244,8 @@ export function ReceivingInspectionPage() {
                             <Button variant="outline" size="sm" onClick={() => setDocsOpen(true)}>
                                 <FileText className="h-4 w-4 mr-1" /> Documents
                             </Button>
+                            <ReportButton reportType="receiving_inspection_record" params={{ lot_id: lotId }}
+                                label="Record" size="sm" variant="outline" allowEmail />
                         </div>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
@@ -256,8 +259,8 @@ export function ReceivingInspectionPage() {
                     <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} />
                     {noPlan && (
                         <p className="text-sm text-destructive">
-                            No RECEIVING step configured for this part type. Add a Receiving Inspection step to its
-                            process (and a sampling ruleset) first.
+                            No receiving inspection plan for this item. Create one under Supply → Receiving
+                            Inspection Plans, then open the inspection.
                         </p>
                     )}
                     {samplePlan && (

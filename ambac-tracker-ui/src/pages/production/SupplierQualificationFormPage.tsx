@@ -22,7 +22,16 @@ const SCOPE_TYPES = [
     { value: "COMMODITY", label: "Commodity" },
     { value: "SPECIAL_PROCESS", label: "Special Process" },
 ];
-const BASES = ["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL"];
+const BASES = ["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL", "CERTIFICATION"];
+// A certificate the supplier holds: one qualification record per certificate, so its
+// expiry drives the same reminders and sweeps as any other qualification.
+const CERTIFICATIONS: { value: string; label: string }[] = [
+    { value: "ISO9001", label: "ISO 9001" },
+    { value: "IATF16949", label: "IATF 16949" },
+    { value: "AS9100", label: "AS9100" },
+    { value: "NADCAP", label: "Nadcap" },
+    { value: "OTHER", label: "Other" },
+];
 
 export function SupplierQualificationFormPage() {
     const navigate = useNavigate();
@@ -47,6 +56,8 @@ export function SupplierQualificationFormPage() {
     const [partType, setPartType] = useState("");
     const [scopeLabel, setScopeLabel] = useState("");
     const [basis, setBasis] = useState<Basis>("");
+    type CertType = NonNullable<Parameters<typeof api.api_SupplierQualifications_create>[0]["certification_type"]>;
+    const [certType, setCertType] = useState<CertType>("");
     const [effectiveDate, setEffectiveDate] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
     const [notes, setNotes] = useState("");
@@ -59,6 +70,7 @@ export function SupplierQualificationFormPage() {
         setPartType(existing.part_type ? String(existing.part_type) : "");
         setScopeLabel(existing.scope_label ?? "");
         setBasis(existing.basis ?? "");
+        setCertType(existing.certification_type ?? "");
         setEffectiveDate(existing.effective_date ?? "");
         setExpiryDate(existing.expiry_date ?? "");
         setNotes(existing.notes ?? "");
@@ -70,6 +82,7 @@ export function SupplierQualificationFormPage() {
         if (!supplier) return toast.error("Supplier is required");
         if (isPartTypeScope && !partType) return toast.error("Part type is required for PART_TYPE scope");
         if (!isPartTypeScope && !scopeLabel) return toast.error("Scope label is required");
+        if (basis === "CERTIFICATION" && !certType) return toast.error("Say which certificate");
 
         // Inferred, not Record<string, unknown> -- see PartApprovalFormPage.
         const body = {
@@ -77,6 +90,7 @@ export function SupplierQualificationFormPage() {
             part_type: isPartTypeScope ? partType : null,
             scope_label: isPartTypeScope ? "" : scopeLabel,
             basis,
+            certification_type: basis === "CERTIFICATION" ? certType : "",
             effective_date: effectiveDate || null,
             expiry_date: expiryDate || null,
             notes,
@@ -163,6 +177,21 @@ export function SupplierQualificationFormPage() {
                         )}
                     </div>
 
+                    {basis === "CERTIFICATION" && (
+                        <div className="space-y-1.5">
+                            <Label>Certificate</Label>
+                            <Select value={certType || "NONE"} onValueChange={(v) => setCertType(v === "NONE" ? "" : (v as CertType))}>
+                                <SelectTrigger className="max-w-xs"><SelectValue placeholder="Which certificate?" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="NONE">—</SelectItem>
+                                    {CERTIFICATIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Set the expiry to the certificate&rsquo;s — reminders go out before it lapses.
+                            </p>
+                        </div>
+                    )}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                             <Label>Basis</Label>

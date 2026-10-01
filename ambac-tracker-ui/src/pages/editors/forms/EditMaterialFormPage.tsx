@@ -44,6 +44,8 @@ const formSchema = schemas.MaterialRequest.pick({
   unit_of_measure: true,
   purchase_lead_time_days: true,
   safety_stock: true,
+  requires_supplier_qualification: true,
+  commodity: true,
   is_active: true,
 });
 type FormValues = z.infer<typeof formSchema>;
@@ -84,6 +86,8 @@ export default function EditMaterialFormPage() {
         unit_of_measure: m.unit_of_measure ?? "EA",
         purchase_lead_time_days: m.purchase_lead_time_days ?? null,
         safety_stock: m.safety_stock ?? null,
+        requires_supplier_qualification: m.requires_supplier_qualification ?? false,
+        commodity: m.commodity ?? "",
         is_active: m.is_active ?? true,
       };
     }
@@ -99,6 +103,8 @@ export default function EditMaterialFormPage() {
       unit_of_measure: "EA",
       purchase_lead_time_days: null,
       safety_stock: null,
+      requires_supplier_qualification: false,
+      commodity: "",
       is_active: true,
     },
     values: loadedValues,
@@ -277,6 +283,43 @@ export default function EditMaterialFormPage() {
 
               <ReceivingControlsFields value={receiving} onChange={setReceiving}
                 stockUnit={form.watch("unit_of_measure") || "EA"} />
+
+              <div className="grid grid-cols-1 gap-4 rounded-md border p-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="requires_supplier_qualification"
+                  render={({ field }) => (
+                    <FormItem className="flex items-start justify-between gap-4 md:col-span-2">
+                      <div>
+                        <FormLabel>Requires a qualified supplier</FormLabel>
+                        <FormDescription>
+                          Hold lots from a supplier with no active qualification for this
+                          material&rsquo;s commodity (or none at all, with no commodity set).
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="commodity"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Commodity</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Elastomer seals" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormDescription>
+                        Matches a commodity-scope supplier qualification with the same name.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

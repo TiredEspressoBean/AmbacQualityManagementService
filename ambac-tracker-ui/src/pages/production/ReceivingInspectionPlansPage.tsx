@@ -11,10 +11,9 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PackagePlus, Settings } from "lucide-react";
 import { useCreateReceivingPlan } from "@/hooks/useReceivingPlans";
-import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
+import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/receiving/StockItemCombobox";
 
 const receivingPlansOptions = (queries: Record<string, unknown>) =>
   queryOptions({
@@ -26,8 +25,8 @@ const receivingPlansOptions = (queries: Record<string, unknown>) =>
 const col = createColumnHelper<Schema<"Steps">>();
 
 /**
- * Receiving Inspection Plans (RIPs) — purchased-material incoming inspection, by
- * part type, process-free. Each row is a standalone RECEIVING step; configuring it
+ * Receiving Inspection Plans (RIPs) — purchased-material incoming inspection, for a
+ * bought part type or a raw material, process-free. Each row is a standalone RECEIVING step; configuring it
  * opens the same characteristics + sampling editors as the flow canvas. In-process
  * RECEIVING steps belong to their process and are excluded server-side.
  *
@@ -49,18 +48,20 @@ export function ReceivingInspectionPlansPage() {
   const navigate = useNavigate();
   const createPlan = useCreateReceivingPlan();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [partType, setPartType] = useState<string>("");
-  const { data: partTypes } = useRetrievePartTypes({ limit: 200 });
+  // "m:<id>" / "p:<id>" — a raw material or a bought part (StockItemCombobox's encoding).
+  const [item, setItem] = useState<string>("");
+  const stockItems = useStockItems();
 
   const handleCreate = () => {
-    if (!partType) return;
+    if (!item) return;
+    const { material, material_type } = stockItemFields(item);
     createPlan.mutate(
-      { part_type: partType },
+      material ? { material } : { part_type: material_type },
       {
         onSuccess: (step: { id?: string }) => {
           toast.success("Receiving plan created");
           setDialogOpen(false);
-          setPartType("");
+          setItem("");
           if (step?.id) navigate({ to: "/production/receiving-plans/$stepId", params: { stepId: String(step.id) } });
         },
         onError: () => toast.error("Could not create receiving plan"),
@@ -82,9 +83,16 @@ export function ReceivingInspectionPlansPage() {
         sortOptions={[
           { label: "Name (A–Z)", value: "name" },
           { label: "Part type", value: "part_type__name" },
+          { label: "Material", value: "material__name" },
         ]}
         columns={[
           col({ header: "Plan", renderCell: (s) => <span className="font-medium">{s.name}</span> }),
+          // A plan inspects a bought part or a raw material — never both.
+          col({
+            header: "Inspects",
+            renderCell: (s) => s.part_type_name
+              ?? (s.material_name ? <span>{s.material_name} <span className="text-xs text-muted-foreground">material</span></span> : "—"),
+          }),
         ]}
         renderActions={(s) => (
           <Button
@@ -106,22 +114,19 @@ export function ReceivingInspectionPlansPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>New Receiving Inspection Plan</DialogTitle>
-            <DialogDescription>Pick the part type this plan inspects on receipt.</DialogDescription>
+            <DialogDescription>
+              Pick what this plan inspects on receipt — a bought part, or a raw material such as bar
+              stock or seals.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 py-1">
-            <Label>Part type</Label>
-            <Select value={partType} onValueChange={setPartType}>
-              <SelectTrigger><SelectValue placeholder="Choose a part type…" /></SelectTrigger>
-              <SelectContent>
-                {(partTypes?.results ?? []).map((pt) => (
-                  <SelectItem key={pt.id} value={String(pt.id)}>{pt.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="rip-item">Material or part</Label>
+            <StockItemCombobox id="rip-item" items={stockItems} value={item || null}
+              onChange={(v) => setItem(v ?? "")} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button disabled={!partType || createPlan.isPending} onClick={handleCreate}>
+            <Button disabled={!item || createPlan.isPending} onClick={handleCreate}>
               {createPlan.isPending ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>

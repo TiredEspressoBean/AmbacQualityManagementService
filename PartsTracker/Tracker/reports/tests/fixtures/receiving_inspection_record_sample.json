@@ -1,0 +1,91 @@
+{
+  "lot_number": "L-2026-0142",
+  "item_name": "Housing, injector",
+  "part_number": "HSG-1",
+  "supplier_name": "Acme Castings",
+  "supplier_lot_number": "AC-7781",
+  "heat_number": "H4471",
+  "source_type": "Manufacturer",
+  "quantity": "200 EA",
+  "received_as": "4 boxes",
+  "received_date": "2026-09-30",
+  "received_by": "Dana Clerk",
+  "erp_po": "4500123 / 10",
+  "coc_on_file": true,
+  "status": "Accepted",
+  "plan_name": "Receiving - Housing",
+  "report_number": "QR-2026-000812",
+  "strategy": "Z1.4",
+  "sample_size": 13,
+  "accept_number": 0,
+  "reject_number": 1,
+  "k": null,
+  "defectives_found": 0,
+  "verdict": "PASS",
+  "inspected_by": "Sam Inspector",
+  "measurements": [
+    {
+      "sample": 1,
+      "characteristic": "Bore diameter",
+      "balloon": "7",
+      "spec": "12.000 +0.02 \u22120.01 mm",
+      "value": "12.004",
+      "result": "OK"
+    },
+    {
+      "sample": 2,
+      "characteristic": "Bore diameter",
+      "balloon": "7",
+      "spec": "12.000 +0.02 \u22120.01 mm",
+      "value": "12.004",
+      "result": "OK"
+    },
+    {
+      "sample": 3,
+      "characteristic": "Bore diameter",
+      "balloon": "7",
+      "spec": "12.000 +0.02 \u22120.01 mm",
+      "value": "12.004",
+      "result": "OK"
+    },
+    {
+      "sample": 4,
+      "characteristic": "Bore diameter",
+      "balloon": "7",
+      "spec": "12.000 +0.02 \u22120.01 mm",
+      "value": "12.004",
+      "result": "OK"
+    },
+    {
+      "sample": 5,
+      "characteristic": "Bore diameter",
+      "balloon": "7",
+      "spec": "12.000 +0.02 \u22120.01 mm",
+      "value": "12.004",
+      "result": "OK"
+    }
+  ],
+  "checklist": [
+    {
+      "question": "Is the CoC present and correct for this lot?",
+      "answer": "Yes",
+      "by": "Sam Inspector"
+    }
+  ],
+  "events": [
+    {
+      "what": "Hold released (Unqualified supplier)",
+      "by": "Quinn QA",
+      "at": "2026-09-30T09:12:00",
+      "note": "Requalification in progress; accepted on CoC + 100% visual"
+    },
+    {
+      "what": "Accepted",
+      "by": "Sam Inspector",
+      "at": "2026-09-30T10:40:00",
+      "note": null
+    }
+  ],
+  "tenant_name": "Demo Plant",
+  "generated_date": "2026-09-30"
+}

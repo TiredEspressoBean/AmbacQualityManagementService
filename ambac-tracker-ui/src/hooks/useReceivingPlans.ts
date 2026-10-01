@@ -11,7 +11,8 @@ import { getCookie } from "@/lib/utils";
 export const useCreateReceivingPlan = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { part_type: string; name?: string }) =>
+    /** One of the two: a bought part type, or a raw material. */
+    mutationFn: (vars: { part_type?: string; material?: string; name?: string }) =>
       api.api_Steps_create_receiving_plan_create(vars, {
         headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
       }),

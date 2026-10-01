@@ -81,12 +81,12 @@ def _plan_badge(lot) -> str | None:
 def _severity_summary(lot) -> dict | None:
     """The runtime severity badge for the lot's (receiving step, supplier)."""
     from Tracker.models import SamplingSeverityState
-    from Tracker.services.qms.receiving_inspection import resolve_receiving_step
+    from Tracker.services.qms.receiving_inspection import resolve_receiving_step_for_lot
     from Tracker.services.qms.severity_switching import switching_status
 
     if lot.supplier_id is None:
         return None
-    step = resolve_receiving_step(lot.material_type) if lot.material_type_id else None
+    step = resolve_receiving_step_for_lot(lot)
     if step is None:
         return None
     state = (SamplingSeverityState.objects  # tenant-safe: .objects auto-scopes

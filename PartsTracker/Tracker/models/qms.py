@@ -1079,6 +1079,16 @@ class SupplierQualification(SecureModel):
         ('FAI', 'First Article'),
         ('SURVEY', 'Survey'),
         ('HISTORICAL', 'Historical'),
+        # The supplier holds a third-party certificate — each cert is its own record,
+        # with its own expiry, so the expiry sweeps and reminders cover it unchanged.
+        ('CERTIFICATION', 'Certification'),
+    ]
+    CERTIFICATION_TYPE_CHOICES = [
+        ('ISO9001', 'ISO 9001'),
+        ('IATF16949', 'IATF 16949'),
+        ('AS9100', 'AS9100'),
+        ('NADCAP', 'Nadcap'),
+        ('OTHER', 'Other'),
     ]
 
     qualification_number = models.CharField(max_length=20, editable=False)
@@ -1094,6 +1104,9 @@ class SupplierQualification(SecureModel):
 
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
     basis = models.CharField(max_length=15, choices=BASIS_CHOICES, blank=True)
+    certification_type = models.CharField(
+        max_length=12, choices=CERTIFICATION_TYPE_CHOICES, blank=True,
+        help_text="Which certificate, when the basis is Certification.")
     effective_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
 

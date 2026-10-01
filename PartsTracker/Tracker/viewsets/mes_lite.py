@@ -2961,8 +2961,8 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
     serializer_class = StepsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = StepFilterSet
-    search_fields = ["part_type__name", "name"]
-    ordering_fields = ["part_type__name", "name"]
+    search_fields = ["part_type__name", "material__name", "name"]
+    ordering_fields = ["part_type__name", "material__name", "name"]
     ordering = ["name"]
 
     def get_queryset(self):
@@ -2972,7 +2972,7 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
         return qs.select_related(
-            'part_type'
+            'part_type', 'material'
         ).prefetch_related('process_memberships__process')
 
     @extend_schema(request=StepSamplingRulesUpdateSerializer, responses={
@@ -3005,22 +3005,28 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
     @extend_schema(
         request=inline_serializer(
             name="CreateReceivingPlanInput",
-            fields={"part_type": serializers.UUIDField(),
+            fields={"part_type": serializers.UUIDField(required=False),
+                    "material": serializers.UUIDField(required=False),
                     "name": serializers.CharField(required=False, allow_blank=True)}),
         responses={201: StepsSerializer},
         description="Create a process-free RECEIVING step (a purchased-material Receiving "
-                    "Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.")
+                    "Inspection Plan) for a bought part type or a raw material — give one of "
+                    "`part_type` / `material`. Never adopts an in-process RECEIVING step.")
     @action(detail=False, methods=["post"], url_path="create_receiving_plan")
     def create_receiving_plan(self, request):
+        from Tracker.models import Material
         from Tracker.services.qms import receiving_inspection
-        pt_id = request.data.get("part_type")
-        if not pt_id:
-            return Response({"detail": "part_type is required."}, status=status.HTTP_400_BAD_REQUEST)
-        part_type = PartTypes.objects.filter(pk=pt_id).first()
-        if part_type is None:
-            return Response({"detail": "Part type not found."}, status=status.HTTP_404_NOT_FOUND)
+        pt_id, mat_id = request.data.get("part_type"), request.data.get("material")
+        if bool(pt_id) == bool(mat_id):
+            return Response({"detail": "Give the part type or the material the plan inspects — one of the two."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        # tenant-safe: .objects auto-scopes to the request tenant
+        item = (PartTypes.objects.filter(pk=pt_id).first() if pt_id
+                else Material.objects.filter(pk=mat_id).first())
+        if item is None:
+            return Response({"detail": "Part type or material not found."}, status=status.HTTP_404_NOT_FOUND)
         step = receiving_inspection.create_standalone_receiving_plan(
-            part_type, name=request.data.get("name", ""), user=request.user)
+            item, name=request.data.get("name", ""), user=request.user)
         return Response(StepsSerializer(step, context={"request": request}).data,
                         status=status.HTTP_201_CREATED)
 

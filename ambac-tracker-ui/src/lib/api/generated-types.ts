@@ -12449,7 +12449,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a part type. Never adopts an in-process RECEIVING step. */
+        /** @description Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a bought part type or a raw material — give one of `part_type` / `material`. Never adopts an in-process RECEIVING step. */
         post: operations["api_Steps_create_receiving_plan_create"];
         delete?: never;
         options?: never;
@@ -20000,9 +20000,10 @@ export interface components {
          *     * `FAI` - First Article
          *     * `SURVEY` - Survey
          *     * `HISTORICAL` - Historical
+         *     * `CERTIFICATION` - Certification
          * @enum {string}
          */
-        BasisEnum: "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL";
+        BasisEnum: "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL" | "CERTIFICATION";
         /**
          * @description * `PASS` - PASS
          *     * `FAIL` - FAIL
@@ -20657,6 +20658,15 @@ export interface components {
             materials: components["schemas"]["MaterialLoad"][];
         };
         /**
+         * @description * `ISO9001` - ISO 9001
+         *     * `IATF16949` - IATF 16949
+         *     * `AS9100` - AS9100
+         *     * `NADCAP` - Nadcap
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        CertificationTypeEnum: "ISO9001" | "IATF16949" | "AS9100" | "NADCAP" | "OTHER";
+        /**
          * @description * `SIMPLIFIED` - SIMPLIFIED
          *     * `REGULATED` - REGULATED
          * @enum {string}
@@ -21195,7 +21205,9 @@ export interface components {
         };
         CreateReceivingPlanInputRequest: {
             /** Format: uuid */
-            part_type: string;
+            part_type?: string;
+            /** Format: uuid */
+            material?: string;
             name?: string;
         };
         CreateStepRevisionInputRequest: {
@@ -23790,6 +23802,10 @@ export interface components {
             requires_coc?: boolean;
             /** @description Hold each received lot until its heat / melt number is entered. */
             requires_heat_number?: boolean;
+            /** @description Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set). */
+            requires_supplier_qualification?: boolean;
+            /** @description The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification. */
+            commodity?: string;
             is_active?: boolean;
             /** Format: date-time */
             readonly created_at: string;
@@ -24073,6 +24089,10 @@ export interface components {
             requires_coc?: boolean;
             /** @description Hold each received lot until its heat / melt number is entered. */
             requires_heat_number?: boolean;
+            /** @description Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set). */
+            requires_supplier_qualification?: boolean;
+            /** @description The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification. */
+            commodity?: string;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -27981,6 +28001,10 @@ export interface components {
             requires_coc?: boolean;
             /** @description Hold each received lot until its heat / melt number is entered. */
             requires_heat_number?: boolean;
+            /** @description Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set). */
+            requires_supplier_qualification?: boolean;
+            /** @description The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification. */
+            commodity?: string;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -28879,7 +28903,7 @@ export interface components {
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
-            part_type?: string;
+            part_type?: string | null;
             /**
              * Format: uuid
              * @description Optional process context. Steps can be in multiple processes.
@@ -29213,7 +29237,7 @@ export interface components {
             /** @description If True, first part of each work order at this step requires FPI before others can proceed */
             requires_first_piece_inspection?: boolean;
             /** Format: uuid */
-            part_type?: string;
+            part_type?: string | null;
             /**
              * Format: uuid
              * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -29393,6 +29417,8 @@ export interface components {
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
+            /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
+            once_per_lot?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -29536,6 +29562,16 @@ export interface components {
             /** @description Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes. */
             scope_label?: string;
             basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Which certificate, when the basis is Certification.
+             *
+             *     * `ISO9001` - ISO 9001
+             *     * `IATF16949` - IATF 16949
+             *     * `AS9100` - AS9100
+             *     * `NADCAP` - Nadcap
+             *     * `OTHER` - Other
+             */
+            certification_type?: components["schemas"]["CertificationTypeEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date */
             effective_date?: string | null;
             /** Format: date */
@@ -32447,7 +32483,7 @@ export interface components {
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             readonly part_type_info: {
                 [key: string]: unknown;
             } | null;
@@ -32536,7 +32572,7 @@ export interface components {
             /** @description Number of good parts required before reverting to this ruleset */
             fallback_duration?: number | null;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             /**
              * Format: uuid
              * @description Optional process context. Steps can be in multiple processes.
@@ -33104,7 +33140,7 @@ export interface components {
             operation_number?: string;
             description?: string | null;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             readonly part_type_name: string | null;
             expected_duration?: string | null;
             requires_qa_signoff?: boolean;
@@ -33702,7 +33738,7 @@ export interface components {
             operation_number?: string;
             description?: string | null;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             expected_duration?: string | null;
             requires_qa_signoff?: boolean;
             sampling_required?: boolean;
@@ -33982,7 +34018,7 @@ export interface components {
             description?: string | null;
             expected_duration?: string | null;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             readonly part_type_name: string;
             readonly part_type_info: {
                 /** Format: uuid */
@@ -34074,7 +34110,7 @@ export interface components {
             /** @description If True, first part of each work order at this step requires FPI before others can proceed */
             requires_first_piece_inspection?: boolean;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             readonly part_type_info: {
                 /** Format: uuid */
                 id: string;
@@ -34083,6 +34119,12 @@ export interface components {
                 ID_prefix: string | null;
             } | null;
             readonly part_type_name: string | null;
+            /**
+             * Format: uuid
+             * @description For a Receiving Inspection Plan of a raw material (bulk stock): the material it inspects. Only a RECEIVING step may carry one.
+             */
+            readonly material: string | null;
+            readonly material_name: string | null;
             /**
              * Format: uuid
              * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -34176,7 +34218,7 @@ export interface components {
             /** @description If True, first part of each work order at this step requires FPI before others can proceed */
             requires_first_piece_inspection?: boolean;
             /** Format: uuid */
-            part_type: string;
+            part_type?: string | null;
             /**
              * Format: uuid
              * @description The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -34320,6 +34362,8 @@ export interface components {
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
+            /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
+            once_per_lot?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -34590,6 +34634,8 @@ export interface components {
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
+            /** @description Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution. */
+            once_per_lot?: boolean;
             /** @description Estimated time the substep typically takes. Informational. */
             expected_duration?: string | null;
             /**
@@ -34907,6 +34953,16 @@ export interface components {
             readonly status: components["schemas"]["QualificationStatusEnum"];
             readonly status_display: string;
             basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Which certificate, when the basis is Certification.
+             *
+             *     * `ISO9001` - ISO 9001
+             *     * `IATF16949` - IATF 16949
+             *     * `AS9100` - AS9100
+             *     * `NADCAP` - Nadcap
+             *     * `OTHER` - Other
+             */
+            certification_type?: components["schemas"]["CertificationTypeEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date */
             effective_date?: string | null;
             /** Format: date */
@@ -34959,6 +35015,16 @@ export interface components {
             /** @description Commodity or special-process name for COMMODITY/SPECIAL_PROCESS scopes. */
             scope_label?: string;
             basis?: components["schemas"]["BasisEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Which certificate, when the basis is Certification.
+             *
+             *     * `ISO9001` - ISO 9001
+             *     * `IATF16949` - IATF 16949
+             *     * `AS9100` - AS9100
+             *     * `NADCAP` - Nadcap
+             *     * `OTHER` - Other
+             */
+            certification_type?: components["schemas"]["CertificationTypeEnum"] | components["schemas"]["BlankEnum"];
             /** Format: date */
             effective_date?: string | null;
             /** Format: date */
@@ -59860,7 +59926,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["CreateReceivingPlanInputRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["CreateReceivingPlanInputRequest"];
@@ -61210,8 +61276,9 @@ export interface operations {
                  *     * `FAI` - First Article
                  *     * `SURVEY` - Survey
                  *     * `HISTORICAL` - Historical
+                 *     * `CERTIFICATION` - Certification
                  */
-                basis?: "AUDIT" | "FAI" | "HISTORICAL" | "PPAP" | "SURVEY";
+                basis?: "AUDIT" | "CERTIFICATION" | "FAI" | "HISTORICAL" | "PPAP" | "SURVEY";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */

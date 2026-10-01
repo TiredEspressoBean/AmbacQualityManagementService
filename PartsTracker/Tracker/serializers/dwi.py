@@ -100,6 +100,7 @@ class SubstepSerializer(SecureModelMixin):
             'allow_not_applicable',
             'requires_signature',
             'is_inspection_point',
+            'once_per_lot',
             'expected_duration',
             'scope',
             'sampling_rule',

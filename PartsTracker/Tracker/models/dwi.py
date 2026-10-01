@@ -243,6 +243,19 @@ class Substep(SecureModel):
     for the semantics. SAMPLED is the right default - every shop has way
     more per-part work than per-batch cycle work."""
 
+    once_per_lot = models.BooleanField(
+        default=False,
+        help_text=(
+            "Receiving inspection only: ask this once for the lot, not on every "
+            "sampled unit. A variables (Z1.9) plan walks the substeps once per "
+            "sampled unit; a lot-level check — is the CoC present and correct? "
+            "— belongs on the first pass only. Distinct from BATCH scope, which "
+            "is a work-order batch sharing one BatchExecution."
+        ),
+    )
+    """Asked on the first sampled unit of a receiving inspection and skipped on the
+    rest. Ignored outside receiving (a non-unit-mode run walks every substep once)."""
+
     sampling_rule = models.ForeignKey(
         'Tracker.SamplingRule',
         null=True,

@@ -3695,6 +3695,16 @@ export type Material = {
    * Hold each received lot until its heat / melt number is entered.
    */
   boolean | undefined;
+  requires_supplier_qualification?: /**
+   * Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set).
+   */
+  boolean | undefined;
+  commodity?: /**
+   * The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
   is_active?: boolean | undefined;
   created_at: string;
   updated_at: string;
@@ -4067,6 +4077,16 @@ export type MaterialRequest = {
    * Hold each received lot until its heat / melt number is entered.
    */
   boolean | undefined;
+  requires_supplier_qualification?: /**
+   * Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set).
+   */
+  boolean | undefined;
+  commodity?: /**
+   * The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+   *
+   * @maxLength 100
+   */
+  string | undefined;
   is_active?: boolean | undefined;
   archived?: boolean | undefined;
 };
@@ -6949,7 +6969,7 @@ export type Step = {
    */
   string | undefined;
   description?: (string | null) | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   part_type_name: string | null;
   expected_duration?: (string | null) | undefined;
   requires_qa_signoff?: boolean | undefined;
@@ -8118,7 +8138,7 @@ export type SamplingRuleSet = {
      */
     (number | null)
     | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   part_type_info: {};
   process?:
     | /**
@@ -9096,7 +9116,7 @@ export type Steps = {
    * If True, first part of each work order at this step requires FPI before others can proceed
    */
   boolean | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   part_type_info: {
     id: string;
     name: string;
@@ -9104,6 +9124,11 @@ export type Steps = {
     ID_prefix: string | null;
   };
   part_type_name: string | null;
+  /**
+   * For a Receiving Inspection Plan of a raw material (bulk stock): the material it inspects. Only a RECEIVING step may carry one.
+   */
+  material: string | null;
+  material_name: string | null;
   work_center?:
     | /**
      * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -9527,6 +9552,10 @@ export type Substep = {
    * When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc.
    */
   boolean | undefined;
+  once_per_lot?: /**
+   * Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution.
+   */
+  boolean | undefined;
   expected_duration?:
     | /**
      * Estimated time the substep typically takes. Informational.
@@ -9844,6 +9873,18 @@ export type SupplierQualification = {
   status: QualificationStatusEnum;
   status_display: string;
   basis?: (BasisEnum | BlankEnum) | undefined;
+  certification_type?:
+    | /**
+     * Which certificate, when the basis is Certification.
+    
+    * `ISO9001` - ISO 9001
+    * `IATF16949` - IATF 16949
+    * `AS9100` - AS9100
+    * `NADCAP` - Nadcap
+    * `OTHER` - Other
+     */
+    (CertificationTypeEnum | BlankEnum)
+    | undefined;
   effective_date?: (string | null) | undefined;
   expiry_date?: (string | null) | undefined;
   approval_request: string | null;
@@ -9869,10 +9910,22 @@ export type BasisEnum =
    * `FAI` - First Article
    * `SURVEY` - Survey
    * `HISTORICAL` - Historical
+   * `CERTIFICATION` - Certification
    *
-   * @enum AUDIT, PPAP, FAI, SURVEY, HISTORICAL
+   * @enum AUDIT, PPAP, FAI, SURVEY, HISTORICAL, CERTIFICATION
    */
-  "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL";
+  "AUDIT" | "PPAP" | "FAI" | "SURVEY" | "HISTORICAL" | "CERTIFICATION";
+export type CertificationTypeEnum =
+  /**
+   * * `ISO9001` - ISO 9001
+   * `IATF16949` - IATF 16949
+   * `AS9100` - AS9100
+   * `NADCAP` - Nadcap
+   * `OTHER` - Other
+   *
+   * @enum ISO9001, IATF16949, AS9100, NADCAP, OTHER
+   */
+  "ISO9001" | "IATF16949" | "AS9100" | "NADCAP" | "OTHER";
 export type PaginatedTenantGroupList = {
   /**
    * @example 123
@@ -12253,6 +12306,16 @@ export type PatchedMaterialRequest = Partial<{
    * Hold each received lot until its heat / melt number is entered.
    */
   requires_heat_number: boolean;
+  /**
+   * Hold received lots from a supplier with no active qualification for this material's commodity (or none at all, when no commodity is set).
+   */
+  requires_supplier_qualification: boolean;
+  /**
+   * The commodity a supplier is qualified for when they supply this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+   *
+   * @maxLength 100
+   */
+  commodity: string;
   is_active: boolean;
   archived: boolean;
 }>;
@@ -13238,7 +13301,7 @@ export type PatchedSamplingRuleSetRequest = Partial<{
    * @maximum 2147483647
    */
   fallback_duration: number | null;
-  part_type: string;
+  part_type: string | null;
   /**
    * Optional process context. Steps can be in multiple processes.
    */
@@ -13527,7 +13590,7 @@ export type PatchedStepsRequest = Partial<{
    * If True, first part of each work order at this step requires FPI before others can proceed
    */
   requires_first_piece_inspection: boolean;
-  part_type: string;
+  part_type: string | null;
   /**
    * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
    */
@@ -13786,6 +13849,10 @@ export type PatchedSubstepRequest = Partial<{
    */
   is_inspection_point: boolean;
   /**
+   * Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution.
+   */
+  once_per_lot: boolean;
+  /**
    * Estimated time the substep typically takes. Informational.
    */
   expected_duration: string | null;
@@ -13883,6 +13950,16 @@ export type PatchedSupplierQualificationRequest = Partial<{
    */
   scope_label: string;
   basis: BasisEnum | BlankEnum;
+  /**
+     * Which certificate, when the basis is Certification.
+    
+    * `ISO9001` - ISO 9001
+    * `IATF16949` - IATF 16949
+    * `AS9100` - AS9100
+    * `NADCAP` - Nadcap
+    * `OTHER` - Other
+     */
+  certification_type: CertificationTypeEnum | BlankEnum;
   effective_date: string | null;
   expiry_date: string | null;
   notes: string;
@@ -15546,7 +15623,7 @@ export type SamplingRuleSetRequest = {
      */
     (number | null)
     | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   process?:
     | /**
      * Optional process context. Steps can be in multiple processes.
@@ -16016,7 +16093,7 @@ export type StepRequest = {
    */
   string | undefined;
   description?: (string | null) | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   requires_qa_signoff?: boolean | undefined;
   sampling_required?: boolean | undefined;
@@ -16214,7 +16291,7 @@ export type StepsRequest = {
    * If True, first part of each work order at this step requires FPI before others can proceed
    */
   boolean | undefined;
-  part_type: string;
+  part_type?: (string | null) | undefined;
   work_center?:
     | /**
      * The work-center where this step runs. Primary routing signal for which surface (operator queue / QA inbox / receiving) the step belongs on. Nullable during migration; unmapped steps surface in a 'no-work-center' bucket. See Documents/WORK_CENTER_DESIGN.md.
@@ -16480,6 +16557,10 @@ export type SubstepRequest = {
    * When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc.
    */
   boolean | undefined;
+  once_per_lot?: /**
+   * Receiving inspection only: ask this once for the lot, not on every sampled unit. A variables (Z1.9) plan walks the substeps once per sampled unit; a lot-level check — is the CoC present and correct? — belongs on the first pass only. Distinct from BATCH scope, which is a work-order batch sharing one BatchExecution.
+   */
+  boolean | undefined;
   expected_duration?:
     | /**
      * Estimated time the substep typically takes. Informational.
@@ -16590,6 +16671,18 @@ export type SupplierQualificationRequest = {
    */
   string | undefined;
   basis?: (BasisEnum | BlankEnum) | undefined;
+  certification_type?:
+    | /**
+     * Which certificate, when the basis is Certification.
+    
+    * `ISO9001` - ISO 9001
+    * `IATF16949` - IATF 16949
+    * `AS9100` - AS9100
+    * `NADCAP` - Nadcap
+    * `OTHER` - Other
+     */
+    (CertificationTypeEnum | BlankEnum)
+    | undefined;
   effective_date?: (string | null) | undefined;
   expiry_date?: (string | null) | undefined;
   notes?: string | undefined;
@@ -20378,6 +20471,8 @@ const Material = z.object({
     .nullish(),
   requires_coc: z.boolean().optional(),
   requires_heat_number: z.boolean().optional(),
+  requires_supplier_qualification: z.boolean().optional(),
+  commodity: z.string().max(100).optional(),
   is_active: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -20407,6 +20502,8 @@ const MaterialRequest = z.object({
     .nullish(),
   requires_coc: z.boolean().optional(),
   requires_heat_number: z.boolean().optional(),
+  requires_supplier_qualification: z.boolean().optional(),
+  commodity: z.string().max(100).optional(),
   is_active: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
@@ -20429,6 +20526,8 @@ const PatchedMaterialRequest = z
       .nullable(),
     requires_coc: z.boolean(),
     requires_heat_number: z.boolean(),
+    requires_supplier_qualification: z.boolean(),
+    commodity: z.string().max(100),
     is_active: z.boolean(),
     archived: z.boolean(),
   })
@@ -21546,7 +21645,7 @@ const Step = z.object({
   name: z.string().max(50),
   operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   part_type_name: z.string().nullable(),
   expected_duration: z.string().nullish(),
   requires_qa_signoff: z.boolean().optional(),
@@ -22126,7 +22225,7 @@ const SamplingRuleSet = z.object({
   version: z.number().int(),
   is_fallback: z.boolean().optional(),
   fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   part_type_info: z.object({}).partial().passthrough().nullable(),
   process: z.string().uuid().nullish(),
   process_info: z.object({}).partial().passthrough().nullable(),
@@ -22173,7 +22272,7 @@ const SamplingRuleSetRequest = z.object({
   active: z.boolean().optional(),
   is_fallback: z.boolean().optional(),
   fallback_duration: z.number().int().gte(0).lte(2147483647).nullish(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   process: z.string().uuid().nullish(),
   step: z.string().uuid(),
   supplier: z.string().uuid().nullish(),
@@ -22207,7 +22306,7 @@ const PatchedSamplingRuleSetRequest = z
     active: z.boolean(),
     is_fallback: z.boolean(),
     fallback_duration: z.number().int().gte(0).lte(2147483647).nullable(),
-    part_type: z.string().uuid(),
+    part_type: z.string().uuid().nullable(),
     process: z.string().uuid().nullable(),
     step: z.string().uuid(),
     supplier: z.string().uuid().nullable(),
@@ -23305,7 +23404,7 @@ const Steps = z.object({
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   part_type_info: z
     .object({
       id: z.string().uuid(),
@@ -23315,6 +23414,8 @@ const Steps = z.object({
     })
     .nullable(),
   part_type_name: z.string().nullable(),
+  material: z.string().uuid().nullable(),
+  material_name: z.string().nullable(),
   work_center: z.string().uuid().nullish(),
   work_center_name: z.string().nullable(),
   step_type: StepTypeEnum.optional(),
@@ -23368,7 +23469,7 @@ const StepsRequest = z.object({
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   work_center: z.string().uuid().nullish(),
   step_type: StepTypeEnum.optional(),
   is_outside_process: z.boolean().optional(),
@@ -23403,7 +23504,7 @@ const PatchedStepsRequest = z
     min_sampling_rate: z.number(),
     pass_threshold: z.number(),
     requires_first_piece_inspection: z.boolean(),
-    part_type: z.string().uuid(),
+    part_type: z.string().uuid().nullable(),
     work_center: z.string().uuid().nullable(),
     step_type: StepTypeEnum,
     is_outside_process: z.boolean(),
@@ -23438,7 +23539,7 @@ const StepWithResolvedRules = z.object({
   operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
   expected_duration: z.string().nullish(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   part_type_name: z.string(),
   part_type_info: z
     .object({ id: z.string().uuid(), name: z.string() })
@@ -23533,10 +23634,13 @@ const StepSamplingRulesUpdateRequest = z.object({
   variables_characteristic: z.string().uuid().nullish(),
   supplier: z.string().uuid().nullish(),
 });
-const CreateReceivingPlanInputRequest = z.object({
-  part_type: z.string().uuid(),
-  name: z.string().optional(),
-});
+const CreateReceivingPlanInputRequest = z
+  .object({
+    part_type: z.string().uuid(),
+    material: z.string().uuid(),
+    name: z.string(),
+  })
+  .partial();
 const StorageLocation = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
@@ -23870,6 +23974,7 @@ const Substep = z.object({
   allow_not_applicable: z.boolean().optional(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
+  once_per_lot: z.boolean().optional(),
   expected_duration: z.string().nullish(),
   scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
@@ -23906,6 +24011,7 @@ const SubstepRequest = z.object({
   allow_not_applicable: z.boolean().optional(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
+  once_per_lot: z.boolean().optional(),
   expected_duration: z.string().nullish(),
   scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
@@ -23932,6 +24038,7 @@ const PatchedSubstepRequest = z
     allow_not_applicable: z.boolean(),
     requires_signature: z.boolean(),
     is_inspection_point: z.boolean(),
+    once_per_lot: z.boolean(),
     expected_duration: z.string().nullable(),
     scope: ScopeEnum,
     sampling_rule: z.string().uuid().nullable(),
@@ -23976,7 +24083,21 @@ const SubstepReorderRequestRequest = z.object({
   order: z.array(z.string().uuid()),
 });
 const ScopeTypeEnum = z.enum(["PART_TYPE", "COMMODITY", "SPECIAL_PROCESS"]);
-const BasisEnum = z.enum(["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL"]);
+const BasisEnum = z.enum([
+  "AUDIT",
+  "PPAP",
+  "FAI",
+  "SURVEY",
+  "HISTORICAL",
+  "CERTIFICATION",
+]);
+const CertificationTypeEnum = z.enum([
+  "ISO9001",
+  "IATF16949",
+  "AS9100",
+  "NADCAP",
+  "OTHER",
+]);
 const SupplierQualification = z.object({
   id: z.string().uuid(),
   qualification_number: z.string(),
@@ -23989,6 +24110,7 @@ const SupplierQualification = z.object({
   status: QualificationStatusEnum,
   status_display: z.string(),
   basis: z.union([BasisEnum, BlankEnum]).optional(),
+  certification_type: z.union([CertificationTypeEnum, BlankEnum]).optional(),
   effective_date: z.string().nullish(),
   expiry_date: z.string().nullish(),
   approval_request: z.string().uuid().nullable(),
@@ -24010,6 +24132,7 @@ const SupplierQualificationRequest = z.object({
   part_type: z.string().uuid().nullish(),
   scope_label: z.string().max(120).optional(),
   basis: z.union([BasisEnum, BlankEnum]).optional(),
+  certification_type: z.union([CertificationTypeEnum, BlankEnum]).optional(),
   effective_date: z.string().nullish(),
   expiry_date: z.string().nullish(),
   notes: z.string().optional(),
@@ -24022,6 +24145,7 @@ const PatchedSupplierQualificationRequest = z
     part_type: z.string().uuid().nullable(),
     scope_label: z.string().max(120),
     basis: z.union([BasisEnum, BlankEnum]),
+    certification_type: z.union([CertificationTypeEnum, BlankEnum]),
     effective_date: z.string().nullable(),
     expiry_date: z.string().nullable(),
     notes: z.string(),
@@ -26940,7 +27064,7 @@ const StepRequest = z.object({
   name: z.string().min(1).max(50),
   operation_number: z.string().max(20).optional(),
   description: z.string().nullish(),
-  part_type: z.string().uuid(),
+  part_type: z.string().uuid().nullish(),
   expected_duration: z.string().nullish(),
   requires_qa_signoff: z.boolean().optional(),
   sampling_required: z.boolean().optional(),
@@ -27618,6 +27742,7 @@ export const schemas = {
   SubstepReorderRequestRequest,
   ScopeTypeEnum,
   BasisEnum,
+  CertificationTypeEnum,
   SupplierQualification,
   PaginatedSupplierQualificationList,
   SupplierQualificationRequest,
@@ -52290,7 +52415,7 @@ Returns the active + fallback rulesets for a given step`,
     method: "post",
     path: "/api/Steps/create_receiving_plan/",
     alias: "api_Steps_create_receiving_plan_create",
-    description: `Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.`,
+    description: `Create a process-free RECEIVING step (a purchased-material Receiving Inspection Plan) for a bought part type or a raw material — give one of &#x60;part_type&#x60; / &#x60;material&#x60;. Never adopts an in-process RECEIVING step.`,
     requestFormat: "json",
     parameters: [
       {
@@ -53808,7 +53933,14 @@ transaction every time.`,
         name: "basis",
         type: "Query",
         schema: z
-          .enum(["AUDIT", "FAI", "HISTORICAL", "PPAP", "SURVEY"])
+          .enum([
+            "AUDIT",
+            "CERTIFICATION",
+            "FAI",
+            "HISTORICAL",
+            "PPAP",
+            "SURVEY",
+          ])
           .optional(),
       },
       {

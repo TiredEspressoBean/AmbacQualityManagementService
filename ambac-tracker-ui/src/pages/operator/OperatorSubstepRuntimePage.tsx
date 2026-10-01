@@ -159,9 +159,15 @@ export function OperatorSubstepRuntimePage() {
         () => (data?.results as Substep[] | undefined) ?? [],
         [data],
     );
+    // Receiving, unit by unit: a lot-level check (`once_per_lot` — is the CoC present
+    // and correct?) is asked on the first sampled unit only. `unit` is only ever set in
+    // that unit-by-unit walk, so past 1 means "a later unit of the same lot".
+    const laterUnit = Number(search.unit ?? 1) > 1;
     const sortedForBind = useMemo(
-        () => [...rawSubsteps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
-        [rawSubsteps],
+        () => [...rawSubsteps]
+            .filter((s) => !(laterUnit && (s as { once_per_lot?: boolean }).once_per_lot))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        [rawSubsteps, laterUnit],
     );
     const rawAtBind = Number(search.at ?? 0);
     const atBind = Number.isFinite(rawAtBind)
@@ -356,7 +362,9 @@ export function OperatorSubstepRuntimePage() {
     }
 
     const substeps: Substep[] = (data?.results as Substep[] | undefined) ?? [];
-    const sortedSubsteps = [...substeps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const sortedSubsteps = [...substeps]
+        .filter((s) => !(laterUnit && (s as { once_per_lot?: boolean }).once_per_lot))
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     if (sortedSubsteps.length === 0) {
         // A step can legitimately have no substeps — most commonly a pure
         // decision point (routing, no work to instruct). Still render the

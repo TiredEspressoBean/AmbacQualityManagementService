@@ -147,7 +147,7 @@ export default function SamplingRuleSetsFormPage() {
                 gate_capa_severity: ruleSet.gate_capa_severity ?? "",
                 gate_approval_template: ruleSet.gate_approval_template ?? null,
             } as FormValues)
-            setSelectedPartTypeId(ruleSet.part_type)
+            setSelectedPartTypeId(ruleSet.part_type ?? null)
             setSelectedProcessId(ruleSet.process ?? null)
         }
     }, [mode, ruleSet, form])

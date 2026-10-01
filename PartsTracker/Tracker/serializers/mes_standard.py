@@ -256,6 +256,7 @@ class MaterialSerializer(SecureModelMixin):
             'purchase_lead_time_days', 'safety_stock',
             'preferred_supplier', 'preferred_supplier_name',
             'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
+            'requires_supplier_qualification', 'commodity',
             'is_active', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at')

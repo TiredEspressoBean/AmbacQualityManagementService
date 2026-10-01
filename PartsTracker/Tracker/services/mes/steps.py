@@ -196,6 +196,7 @@ def create_new_step_version(
                 requires_signature=getattr(sub, 'requires_signature', False),
                 allow_not_applicable=getattr(sub, 'allow_not_applicable', False),
                 scope=getattr(sub, 'scope', None) or 'PER_PART',
+                once_per_lot=getattr(sub, 'once_per_lot', False),
                 expected_duration=sub.expected_duration,
                 sampling_rule=getattr(sub, 'sampling_rule', None),
             )

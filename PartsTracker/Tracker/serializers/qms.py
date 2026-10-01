@@ -1050,7 +1050,7 @@ class SupplierQualificationSerializer(SecureModelMixin):
         fields = (
             'id', 'qualification_number', 'supplier', 'supplier_name',
             'scope_type', 'part_type', 'scope_label', 'scope_display',
-            'status', 'status_display', 'basis', 'effective_date', 'expiry_date',
+            'status', 'status_display', 'basis', 'certification_type', 'effective_date', 'expiry_date',
             'approval_request', 'qualified_by', 'notes',
             'created_at', 'updated_at', 'archived',
         )
@@ -1058,6 +1058,18 @@ class SupplierQualificationSerializer(SecureModelMixin):
             'qualification_number', 'status', 'approval_request', 'qualified_by',
             'created_at', 'updated_at',
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        basis = attrs.get('basis', getattr(self.instance, 'basis', ''))
+        cert = attrs.get('certification_type', getattr(self.instance, 'certification_type', ''))
+        # A certificate the supplier holds is a record worth keeping only if it says which.
+        if basis == 'CERTIFICATION' and not cert:
+            raise serializers.ValidationError(
+                {'certification_type': 'Say which certificate (ISO 9001, AS9100, …).'})
+        if basis != 'CERTIFICATION' and cert:
+            attrs['certification_type'] = ''  # only meaningful for a certification
+        return attrs
 
 
 class QualificationStatusSerializer(serializers.Serializer):

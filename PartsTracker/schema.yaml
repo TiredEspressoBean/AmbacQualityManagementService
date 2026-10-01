@@ -31150,7 +31150,8 @@ paths:
     post:
       operationId: api_Steps_create_receiving_plan_create
       description: Create a process-free RECEIVING step (a purchased-material Receiving
-        Inspection Plan) for a part type. Never adopts an in-process RECEIVING step.
+        Inspection Plan) for a bought part type or a raw material — give one of `part_type`
+        / `material`. Never adopts an in-process RECEIVING step.
       parameters:
       - in: query
         name: part_type
@@ -31175,7 +31176,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/CreateReceivingPlanInputRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -33032,6 +33032,7 @@ paths:
           type: string
           enum:
           - AUDIT
+          - CERTIFICATION
           - FAI
           - HISTORICAL
           - PPAP
@@ -33042,6 +33043,7 @@ paths:
           * `FAI` - First Article
           * `SURVEY` - Survey
           * `HISTORICAL` - Historical
+          * `CERTIFICATION` - Certification
       - name: limit
         required: false
         in: query
@@ -48040,6 +48042,7 @@ components:
       - FAI
       - SURVEY
       - HISTORICAL
+      - CERTIFICATION
       type: string
       description: |-
         * `AUDIT` - Audit
@@ -48047,6 +48050,7 @@ components:
         * `FAI` - First Article
         * `SURVEY` - Survey
         * `HISTORICAL` - Historical
+        * `CERTIFICATION` - Certification
     BatchCycleQualityStatusEnum:
       enum:
       - PASS
@@ -49443,6 +49447,20 @@ components:
       - untimed_orders
       - work_center_total
       - work_centers
+    CertificationTypeEnum:
+      enum:
+      - ISO9001
+      - IATF16949
+      - AS9100
+      - NADCAP
+      - OTHER
+      type: string
+      description: |-
+        * `ISO9001` - ISO 9001
+        * `IATF16949` - IATF 16949
+        * `AS9100` - AS9100
+        * `NADCAP` - Nadcap
+        * `OTHER` - Other
     ChangeControlModeEnum:
       enum:
       - SIMPLIFIED
@@ -50535,10 +50553,11 @@ components:
         part_type:
           type: string
           format: uuid
+        material:
+          type: string
+          format: uuid
         name:
           type: string
-      required:
-      - part_type
     CreateStepRevisionInputRequest:
       type: object
       properties:
@@ -55878,6 +55897,15 @@ components:
         requires_heat_number:
           type: boolean
           description: Hold each received lot until its heat / melt number is entered.
+        requires_supplier_qualification:
+          type: boolean
+          description: Hold received lots from a supplier with no active qualification
+            for this material's commodity (or none at all, when no commodity is set).
+        commodity:
+          type: string
+          description: The commodity a supplier is qualified for when they supply
+            this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+          maxLength: 100
         is_active:
           type: boolean
         created_at:
@@ -56468,6 +56496,15 @@ components:
         requires_heat_number:
           type: boolean
           description: Hold each received lot until its heat / melt number is entered.
+        requires_supplier_qualification:
+          type: boolean
+          description: Hold received lots from a supplier with no active qualification
+            for this material's commodity (or none at all, when no commodity is set).
+        commodity:
+          type: string
+          description: The commodity a supplier is qualified for when they supply
+            this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+          maxLength: 100
         is_active:
           type: boolean
         archived:
@@ -63375,6 +63412,15 @@ components:
         requires_heat_number:
           type: boolean
           description: Hold each received lot until its heat / melt number is entered.
+        requires_supplier_qualification:
+          type: boolean
+          description: Hold received lots from a supplier with no active qualification
+            for this material's commodity (or none at all, when no commodity is set).
+        commodity:
+          type: string
+          description: The commodity a supplier is qualified for when they supply
+            this, e.g. 'Elastomer seals'. Matches a commodity-scope supplier qualification.
+          maxLength: 100
         is_active:
           type: boolean
         archived:
@@ -64861,6 +64907,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         process:
           type: string
           format: uuid
@@ -65338,6 +65385,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         work_center:
           type: string
           format: uuid
@@ -65638,6 +65686,13 @@ components:
             on out-of-spec, ncr.opened notification, sampling fallback). Default False
             = process data only. Set True for FAI substeps, in-process hold-points,
             final inspection. See architectural decision #21 in the DWI design doc.'
+        once_per_lot:
+          type: boolean
+          description: 'Receiving inspection only: ask this once for the lot, not
+            on every sampled unit. A variables (Z1.9) plan walks the substeps once
+            per sampled unit; a lot-level check — is the CoC present and correct?
+            — belongs on the first pass only. Distinct from BATCH scope, which is
+            a work-order batch sharing one BatchExecution.'
         expected_duration:
           type: string
           nullable: true
@@ -65837,6 +65892,18 @@ components:
         basis:
           oneOf:
           - $ref: '#/components/schemas/BasisEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        certification_type:
+          description: |-
+            Which certificate, when the basis is Certification.
+
+            * `ISO9001` - ISO 9001
+            * `IATF16949` - IATF 16949
+            * `AS9100` - AS9100
+            * `NADCAP` - Nadcap
+            * `OTHER` - Other
+          oneOf:
+          - $ref: '#/components/schemas/CertificationTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
         effective_date:
           type: string
@@ -71562,6 +71629,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         part_type_info:
           type: object
           additionalProperties: {}
@@ -71692,7 +71760,6 @@ components:
       - created_at
       - id
       - name
-      - part_type
       - part_type_info
       - part_type_name
       - process_info
@@ -71726,6 +71793,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         process:
           type: string
           format: uuid
@@ -71821,7 +71889,6 @@ components:
           type: boolean
       required:
       - name
-      - part_type
       - step
     SamplingRuleUpdateRequest:
       type: object
@@ -72960,6 +73027,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         part_type_name:
           type: string
           readOnly: true
@@ -73060,7 +73128,6 @@ components:
       - id
       - name
       - outside_supplier_name
-      - part_type
       - part_type_name
     StepDistributionResponse:
       type: object
@@ -74003,6 +74070,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         expected_duration:
           type: string
           nullable: true
@@ -74093,7 +74161,6 @@ components:
           $ref: '#/components/schemas/RevisitAssignmentEnum'
       required:
       - name
-      - part_type
     StepSamplingRulesUpdateRequest:
       type: object
       description: |-
@@ -74446,6 +74513,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         part_type_name:
           type: string
           readOnly: true
@@ -74577,7 +74645,6 @@ components:
       - fallback_ruleset
       - id
       - name
-      - part_type
       - part_type_info
       - part_type_name
       - updated_at
@@ -74631,6 +74698,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         part_type_info:
           type: object
           nullable: true
@@ -74652,6 +74720,17 @@ components:
               nullable: true
           readOnly: true
         part_type_name:
+          type: string
+          readOnly: true
+          nullable: true
+        material:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'For a Receiving Inspection Plan of a raw material (bulk stock):
+            the material it inspects. Only a RECEIVING step may carry one.'
+        material_name:
           type: string
           readOnly: true
           nullable: true
@@ -74784,8 +74863,9 @@ components:
       - created_at
       - id
       - is_current_version
+      - material
+      - material_name
       - name
-      - part_type
       - part_type_info
       - part_type_name
       - processes
@@ -74839,6 +74919,7 @@ components:
         part_type:
           type: string
           format: uuid
+          nullable: true
         work_center:
           type: string
           format: uuid
@@ -74949,7 +75030,6 @@ components:
           type: boolean
       required:
       - name
-      - part_type
     StorageLocation:
       type: object
       description: A managed place stock is kept. Optional — receiving takes free
@@ -75123,6 +75203,13 @@ components:
             on out-of-spec, ncr.opened notification, sampling fallback). Default False
             = process data only. Set True for FAI substeps, in-process hold-points,
             final inspection. See architectural decision #21 in the DWI design doc.'
+        once_per_lot:
+          type: boolean
+          description: 'Receiving inspection only: ask this once for the lot, not
+            on every sampled unit. A variables (Z1.9) plan walks the substeps once
+            per sampled unit; a lot-level check — is the CoC present and correct?
+            — belongs on the first pass only. Distinct from BATCH scope, which is
+            a work-order batch sharing one BatchExecution.'
         expected_duration:
           type: string
           nullable: true
@@ -75603,6 +75690,13 @@ components:
             on out-of-spec, ncr.opened notification, sampling fallback). Default False
             = process data only. Set True for FAI substeps, in-process hold-points,
             final inspection. See architectural decision #21 in the DWI design doc.'
+        once_per_lot:
+          type: boolean
+          description: 'Receiving inspection only: ask this once for the lot, not
+            on every sampled unit. A variables (Z1.9) plan walks the substeps once
+            per sampled unit; a lot-level check — is the CoC present and correct?
+            — belongs on the first pass only. Distinct from BATCH scope, which is
+            a work-order batch sharing one BatchExecution.'
         expected_duration:
           type: string
           nullable: true
@@ -76121,6 +76215,18 @@ components:
           oneOf:
           - $ref: '#/components/schemas/BasisEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        certification_type:
+          description: |-
+            Which certificate, when the basis is Certification.
+
+            * `ISO9001` - ISO 9001
+            * `IATF16949` - IATF 16949
+            * `AS9100` - AS9100
+            * `NADCAP` - Nadcap
+            * `OTHER` - Other
+          oneOf:
+          - $ref: '#/components/schemas/CertificationTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         effective_date:
           type: string
           format: date
@@ -76218,6 +76324,18 @@ components:
         basis:
           oneOf:
           - $ref: '#/components/schemas/BasisEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        certification_type:
+          description: |-
+            Which certificate, when the basis is Certification.
+
+            * `ISO9001` - ISO 9001
+            * `IATF16949` - IATF 16949
+            * `AS9100` - AS9100
+            * `NADCAP` - Nadcap
+            * `OTHER` - Other
+          oneOf:
+          - $ref: '#/components/schemas/CertificationTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
         effective_date:
           type: string
