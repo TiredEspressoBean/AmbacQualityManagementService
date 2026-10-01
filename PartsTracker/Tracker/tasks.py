@@ -1437,6 +1437,33 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
         }
 
 
+@shared_task(bind=True, base=RetryableImportTask)
+def run_master_workbook_task(self, rows_by_sheet: Dict[str, List[Dict[str, Any]]],
+                             ignored: List[str], tenant_id: str, user_id: int, dry_run: bool):
+    """Run a master migration workbook in the background (services.core.master_workbook).
+
+    Takes the parsed rows, not the file: the worker never sees the upload. One
+    transaction, as inline — a retry after a dropped connection starts clean.
+    """
+    from types import SimpleNamespace
+    from Tracker.models import Tenant, User
+    from Tracker.services.core.master_workbook import run_workbook
+
+    tenant = Tenant.objects.get(id=tenant_id)
+    user = User.objects.get(id=user_id)
+    # No request in a worker: a stand-in carrying what the viewsets' imports read.
+    request = SimpleNamespace(user=user, tenant=tenant, query_params={}, method='POST',
+                              data={}, META={}, FILES={})
+
+    def on_sheet(i, n, title):
+        self.update_state(state='PROGRESS', meta={'current': i, 'total': n, 'sheet': title})
+
+    with tenant_context(tenant_id):
+        result = run_workbook(rows_by_sheet, request, dry_run=dry_run, on_sheet=on_sheet)
+    result['ignored_sheets'] = ignored
+    return result
+
+
 # Import tasks from Tracker.reports.tasks so Celery's autodiscover picks
 # them up when it loads Tracker.tasks. The task is registered under its
 # real dotted path (Tracker.reports.tasks.generate_and_email_report);

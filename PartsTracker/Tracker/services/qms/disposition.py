@@ -164,6 +164,14 @@ def decide_disposition(
     if disposition.current_state == 'CLOSED':
         raise ValueError("This disposition is closed; its decision can no longer be changed.")
 
+    # Rework and repair act on a part, which a bought lot isn't: the decision was
+    # recorded and the lot sat REJECTED with nothing to do. Its outcomes are back to the
+    # supplier, scrap, or use as-is on a concession.
+    if disposition.material_lot_id and disposition_type in ('REWORK', 'REPAIR'):
+        raise ValueError(
+            "A material lot can't be reworked or repaired here — return it to the supplier "
+            "(who can sort or rework it), scrap it, or use it as-is on a concession.")
+
     if disposition_type in _APPROVAL_REQUIRED_TYPES:
         reference = str((customer_approval or {}).get('reference') or '').strip()
         if not reference:
@@ -228,6 +236,16 @@ def complete_disposition_resolution(
             raise ValueError(
                 f"Cannot complete disposition: {'; '.join(blockers)}"
             )
+
+        # Completing a return-to-supplier on a lot means it went back: ship it, which
+        # closes this record too. Closed here instead, the lot stayed REJECTED and
+        # shipping it was then refused for want of an open disposition.
+        if (locked.material_lot_id and locked.disposition_type == 'RETURN_TO_SUPPLIER'
+                and locked.material_lot.status == 'REJECTED'):
+            from Tracker.services.qms.lot_reject import ship_back
+            ship_back(locked.material_lot, user)
+            disposition.refresh_from_db()
+            return disposition
 
         locked.resolution_completed = True
         locked.resolution_completed_by = user

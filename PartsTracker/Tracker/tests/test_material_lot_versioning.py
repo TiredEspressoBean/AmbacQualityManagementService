@@ -125,13 +125,15 @@ class MaterialLotSerializerUpdateTestCase(TenantTestCase):
         self.assertEqual(result.version, 1)
         self.assertEqual(result.pk, self.lot.pk)
 
-    def test_status_change_does_not_version(self):
+    def test_status_is_not_written_through_the_serializer(self):
+        # Status moves only through the services (receiving review, 2026-10-01): a
+        # PATCH of status used to put a RETURNED lot back in stock.
         s = self._serializer(self.lot, {"status": "IN_USE"})
         s.is_valid(raise_exception=True)
         result = s.save()
 
         self.assertEqual(result.version, 1)
-        self.assertEqual(result.status, "IN_USE")
+        self.assertEqual(result.status, self.lot.status)
         self.assertEqual(result.pk, self.lot.pk)
 
     def test_archive_only_does_not_version(self):

@@ -331,8 +331,9 @@ class MaterialLotSerializer(SecureModelMixin):
     awaiting_return = serializers.SerializerMethodField()
     short_receipt = serializers.ChoiceField(
         choices=SHORT_RECEIPT_CHOICES, allow_blank=True, read_only=True,
-        help_text="For a short delivery: the remainder stays on order (BACKORDERED) or the "
-                  "order closed at what arrived (CLOSED). Blank for a full delivery.")
+        help_text="For a short delivery: the remainder stays on order (BACKORDERED) or "
+                  "nothing more is expected (CLOSED) — UQMES stops expecting it; the ERP's "
+                  "PO line is the ERP's to close. Blank for a full delivery.")
 
     class Meta:
         model = MaterialLot
@@ -361,7 +362,28 @@ class MaterialLotSerializer(SecureModelMixin):
             'hold_reason',
             # Set by receiving a short delivery, not edited.
             'ordered_quantity', 'short_receipt',
+            # Moved only by the services — receiving routing, inspection, reject,
+            # ship-back. Writable, a POST of ACCEPTED skipped inspection and a PATCH
+            # put a RETURNED lot back in stock.
+            'status',
         )
+
+    def validate_lot_number(self, value):
+        """A clash is a 400 naming the number — the unique constraint raised an
+        IntegrityError, which reached the dock as an unexplained failure."""
+        from Tracker.models import MaterialLot
+        value = (value or "").strip()
+        tenant = getattr(self.context.get('request'), 'tenant', None)
+        clash = MaterialLot.objects.filter(lot_number__iexact=value)  # tenant-safe: .objects auto-scopes; narrowed to the tenant below
+        if tenant is not None:
+            clash = clash.filter(tenant=tenant)
+        if self.instance is not None:
+            clash = clash.exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise serializers.ValidationError(
+                f"Lot number {value} is already in use. Leave it blank to have one assigned; "
+                f"the supplier's number goes in Supplier lot.")
+        return value
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -380,6 +402,13 @@ class MaterialLotSerializer(SecureModelMixin):
                 attrs['quantity'] = to_stock_quantity(item, amount, unit)
             except ValueError as e:
                 raise serializers.ValidationError({'received_as_quantity': str(e)})
+        # A received lot's quantity changes through adjust-quantity (reason on record,
+        # remaining kept in step), not an edit: a PATCH moved `quantity` and left
+        # `quantity_remaining` where it was.
+        if self.instance is not None and \
+                attrs.get('quantity', self.instance.quantity) != self.instance.quantity:
+            raise serializers.ValidationError(
+                {'quantity': "Change a lot's quantity with Adjust quantity, which records why."})
         return attrs
 
     @extend_schema_field(serializers.ChoiceField(choices=PURCHASE_UNIT_CHOICES, allow_null=True))
@@ -489,7 +518,7 @@ class BulkExpectedReceiptSerializer(serializers.Serializer):
 class ExpectedReceiptImportRowResultSerializer(serializers.Serializer):
     row = serializers.IntegerField(help_text="1-based data row in the file (header excluded).")
     outcome = serializers.ChoiceField(
-        choices=['CREATED', 'UPDATED', 'UNCHANGED', 'ALREADY_RECEIVED', 'ERROR'])
+        choices=['CREATED', 'UPDATED', 'UNCHANGED', 'REOPENED', 'ERROR'])
     erp_po_number = serializers.CharField(allow_blank=True)
     erp_po_line = serializers.CharField(allow_blank=True)
     lot_number = serializers.CharField(allow_null=True)
@@ -503,7 +532,8 @@ class ExpectedReceiptImportResultSerializer(serializers.Serializer):
     created = serializers.IntegerField()
     updated = serializers.IntegerField()
     unchanged = serializers.IntegerField()
-    already_received = serializers.IntegerField()
+    reopened = serializers.IntegerField(
+        help_text="Lines received before, expected again because the sheet shows them open.")
     errors = serializers.IntegerField()
     rows = ExpectedReceiptImportRowResultSerializer(many=True)
 
@@ -537,8 +567,13 @@ class LateDeliverySerializer(serializers.Serializer):
 
 class ReceiveExpectedLotSerializer(serializers.Serializer):
     """Book in an ON_ORDER lot that has physically arrived."""
+    supplier_lot_number = serializers.CharField(
+        required=False, allow_blank=True, max_length=100,
+        help_text="The supplier's lot/batch number, as printed on the delivery. May repeat.")
     lot_number = serializers.CharField(
-        allow_blank=False, help_text="The supplier's actual lot/batch number.")
+        required=False, allow_blank=True, max_length=100,
+        help_text="Our lot number, when the shop labels its own. Blank (usual): one is "
+                  "assigned (LOT-<year>-00001).")
     quantity = serializers.DecimalField(
         max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
         required=False, allow_null=True,
@@ -552,7 +587,8 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
         choices=SHORT_RECEIPT_CHOICES,
         required=False, allow_null=True,
         help_text="Required when fewer arrived than were on order: BACKORDERED keeps the "
-                  "rest on order as a new expected lot; CLOSED closes the order at what came.")
+                  "rest on order as a new expected lot; CLOSED expects nothing more (the "
+                  "ERP's PO line is closed in the ERP).")
     received_as_quantity = serializers.DecimalField(
         max_digits=12, decimal_places=4, min_value=Decimal('0.0001'),
         required=False, allow_null=True,
@@ -620,6 +656,8 @@ class TracePartSerializer(serializers.Serializer):
 
 
 class TraceUseSerializer(serializers.Serializer):
+    # The lot drawn from: this one, or a lot split off it.
+    lot_number = serializers.CharField()
     quantity = serializers.FloatField()
     consumed_at = serializers.DateTimeField()
     step = serializers.CharField(allow_null=True)

@@ -60,8 +60,6 @@ export function CoreReceiveFormPage() {
     // was populated from /api/Customers/ — which returns Users, with integer ids — so
     // picking anyone produced `400 Invalid pk "72" - object does not exist` and the form
     // only worked with "No customer" selected. A core could not record who sent it.
-    const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
-    const customers = companiesData?.results ?? [];
 
 
     const form = useForm<FormData>({
@@ -81,7 +79,25 @@ export function CoreReceiveFormPage() {
         },
     });
 
+    // Who a core can come from follows how it came: a purchased core was bought from a
+    // supplier (a core broker); every other source is a customer's own unit. Offering
+    // supplier-only companies as a customer would let their arrangement drive the
+    // exchange / repair-and-return default — and a customer's parts into harvest.
+    const purchased = form.watch("source_type") === "PURCHASED";
+    const { data: companiesData } = useRetrieveCompanies(
+        purchased ? { limit: 200, is_supplier: true } : { limit: 200, is_customer: true },
+    );
+    const customers = companiesData?.results ?? [];
+
     const selectedCustomerId = form.watch("customer");
+    // A pick that the new source type no longer offers is dropped rather than kept
+    // invisibly. Only once the list has loaded, so a pending fetch doesn't clear it.
+    useEffect(() => {
+        if (!companiesData || selectedCustomerId === "__none__") return;
+        if (!customers.some((c: { id: string }) => c.id === selectedCustomerId)) {
+            form.setValue("customer", "__none__");
+        }
+    }, [companiesData, customers, selectedCustomerId, form]);
     const touchedMode = useRef(false);
     // Narrowed explicitly, because the field is `blank=True` as well as nullable: the
     // API can send "" and `??` would let it through as if it were a real arrangement.
@@ -261,15 +277,15 @@ export function CoreReceiveFormPage() {
                                     name="customer"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Customer</FormLabel>
+                                            <FormLabel>{purchased ? "Bought from" : "Customer"}</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select customer (optional)" />
+                                                        <SelectValue placeholder={purchased ? "Select supplier (optional)" : "Select customer (optional)"} />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="__none__">No customer</SelectItem>
+                                                    <SelectItem value="__none__">{purchased ? "No supplier" : "No customer"}</SelectItem>
                                                     {customers.map((c: any) => (
                                                         <SelectItem key={c.id} value={c.id}>
                                                             {c.name}

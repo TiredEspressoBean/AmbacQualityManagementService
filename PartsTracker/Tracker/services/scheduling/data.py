@@ -808,7 +808,10 @@ def get_material_gates(tenant, horizon: HorizonData):
     for lot in (
         MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
                                    quantity_remaining__gt=0)
-        .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED'))
+        # Not held stock either: a lot under a hold (a whole-lot reject requested, an
+        # unqualified supplier) isn't supply anyone can count on, and planning on it
+        # over-promised.
+        .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED', 'QUARANTINE'))
         .values('material_id', 'material_type_id', 'promised_date')
     ):
         k = _lot_key(lot)

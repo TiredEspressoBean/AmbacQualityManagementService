@@ -35,6 +35,7 @@ HOLD_SHELF_LIFE_EXPIRED = "SHELF_LIFE_EXPIRED"      # set when a lot arrives/tur
 HOLD_AWAITING_COC = "AWAITING_COC"                  # item requires a CoC; none uploaded yet
 HOLD_AWAITING_HEAT_NUMBER = "AWAITING_HEAT_NUMBER"  # item requires a heat number; none entered
 HOLD_GAUGE_UNAVAILABLE = "GAUGE_UNAVAILABLE"        # manual: required gauge out for cal
+HOLD_QUALITY_GATE = "QUALITY_GATE"                  # a quality gate (sampling ruleset) held it
 
 
 # Holds that clear themselves once the missing thing is supplied. The rest are
@@ -360,11 +361,15 @@ def release_hold(lot, user, reason: str):
         lot.save(update_fields=["hold_reason", "updated_at"])
         if released == "WHOLE_LOT_REJECT_REQUESTED":
             # Declining an inspector's whole-lot request: its pending disposition
-            # closes, and the lot goes back to inspection for a partial reject.
+            # closes, and the lot goes back to the SAME inspection for a partial
+            # reject. Routing it again opened a second report and execution, and
+            # left the first one's readings orphaned.
             from Tracker.services.qms.lot_reject import decline_whole_lot_request
             decline_whole_lot_request(lot, user, reason)
-        inventory.release_hold(lot)
-        route_received_lot(lot, user, waive=(released,))
+            inventory.return_to_inspection(lot)
+        else:
+            inventory.release_hold(lot)
+            route_received_lot(lot, user, waive=(released,))
     lot.refresh_from_db()
     return lot
 
@@ -629,17 +634,24 @@ def _evaluate_variables_lot(report):
     return report
 
 
+def hold_if_expired(lot) -> bool:
+    """Quarantine ``lot`` for shelf life if it expired while awaiting inspection — it
+    must not land in usable stock. Returns whether it did."""
+    from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
+    if not is_lot_shelf_life_expired(lot):
+        return False
+    inventory.quarantine_lot(lot)
+    lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
+    lot.save(update_fields=["hold_reason"])
+    return True
+
+
 def accept(report, user):
     """Accept the inspected lot (AWAITING_INSPECTION → ACCEPTED) + close the execution."""
     if report.material_lot_id is None:
         raise ValueError("Report is not a receiving inspection (no material_lot).")
-    # A lot that expired while awaiting inspection must not land in usable stock:
-    # quarantine + flag instead of accepting.
-    from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
-    if is_lot_shelf_life_expired(report.material_lot):
-        inventory.quarantine_lot(report.material_lot)
-        report.material_lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
-        report.material_lot.save(update_fields=["hold_reason"])
+    # A lot that expired while awaiting inspection: quarantined + flagged, not accepted.
+    if hold_if_expired(report.material_lot):
         raise ValueError(
             f"Lot {report.material_lot.lot_number} is shelf-life expired; it was "
             f"quarantined instead of accepted. Extend the shelf life or dispose it."

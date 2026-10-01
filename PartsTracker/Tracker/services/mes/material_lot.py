@@ -43,9 +43,21 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             )
 
         # AWAITING_INSPECTION: a partial reject splits the bad pieces off mid-inspection.
-        # ACCEPTED: stock divided across locations or boxes.
-        if locked.status not in ("RECEIVED", "AWAITING_INSPECTION", "ACCEPTED", "IN_USE"):
+        # QUARANTINE: the same, for a lot under a hold. ACCEPTED: stock divided across
+        # locations or boxes.
+        if locked.status not in ("RECEIVED", "AWAITING_INSPECTION", "QUARANTINE",
+                                 "ACCEPTED", "IN_USE"):
             raise ValueError(f"Cannot split a {locked.status} lot")
+        # The pieces are what the lot is: accepted stock splits into accepted stock
+        # (consumption draws ACCEPTED/IN_USE only, so a RECEIVED child of good stock
+        # could never be used), a held lot's pieces stay held for the same reason. A lot
+        # still in receiving keeps its child at RECEIVED, as before.
+        if locked.status in ("ACCEPTED", "IN_USE"):
+            child_status, child_hold = "ACCEPTED", ""
+        elif locked.status == "QUARANTINE":
+            child_status, child_hold = "QUARANTINE", locked.hold_reason
+        else:
+            child_status, child_hold = "RECEIVED", ""
 
         child_count = locked.child_lots.count()
         child_lot_number = f"{locked.lot_number}-{child_count + 1:02d}"
@@ -64,7 +76,8 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             quantity=quantity,
             quantity_remaining=quantity,
             unit_of_measure=locked.unit_of_measure,
-            status="RECEIVED",
+            status=child_status,
+            hold_reason=child_hold,
             manufacture_date=locked.manufacture_date,
             expiration_date=locked.expiration_date,
             storage_location=locked.storage_location,
@@ -74,7 +87,10 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             source_type=locked.source_type,
             erp_po_number=locked.erp_po_number,
             erp_po_line=locked.erp_po_line,
+            promised_date=locked.promised_date,
             certificate_of_conformance=locked.certificate_of_conformance,
+            # Customer property stays the customer's, every piece of it.
+            owner=locked.owner,
         )
 
         locked.quantity_remaining -= quantity
@@ -152,12 +168,40 @@ def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, materia
     )
 
 
-def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=None,
+def next_lot_number(tenant) -> str:
+    """Our own lot number for a receipt: LOT-<year>-00001, per tenant.
+
+    The standard practice (SAP's internal batch numbers, the traceability guides): the
+    system numbers each receipt itself, and the supplier's batch number is kept beside
+    it in `supplier_lot_number`. A supplier's number can't be ours — two vendors both
+    print "240915", a back-order repeats the same lot — and ours is unique.
+    """
+    from Tracker.models import MaterialLot
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.utils.sequences import generate_next_sequence
+    return generate_next_sequence(
+        queryset=MaterialLot.objects, number_field='lot_number',
+        prefix=f"LOT-{tenant_today(tenant).year}-", padding=5, tenant=tenant)
+
+
+def next_lot_numbers(tenant, count: int) -> list[str]:
+    """`count` consecutive lot numbers from `next_lot_number` — for a batch numbered
+    before any of it is saved."""
+    if count <= 0:
+        return []
+    first = next_lot_number(tenant)
+    stem, n = first.rsplit("-", 1)
+    return [f"{stem}-{int(n) + i:0{len(n)}d}" for i in range(count)]
+
+
+def receive_expected_lot(lot, *, received_by, lot_number: str = "",
+                         supplier_lot_number: str | None = None, received_date=None,
                          quantity: Decimal | None = None, storage_location: str | None = None,
                          remainder: str | None = None, received_as_quantity=None,
                          received_as_unit: str = "", heat_number: str | None = None,
                          source_type: str | None = None):
-    """ON_ORDER → RECEIVED: the truck arrived. Stamps the supplier's real lot number,
+    """ON_ORDER → RECEIVED: the truck arrived. Numbers the lot (ours, `next_lot_number`,
+    unless ``lot_number`` gives one), records the supplier's lot number as printed,
     who took it in, and when.
 
     ``quantity`` is accepted because deliveries differ from orders — short shipments and
@@ -166,8 +210,10 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
 
     A delivery short of the order needs ``remainder`` — the clerk's call from the packing
     slip, never inferred (the ERP can't tell us): ``BACKORDERED`` keeps the rest on order
-    as a new expected lot (same item, supplier, PO and promised date); ``CLOSED`` closes the
-    order at what arrived. Either way the lot records what had been ordered.
+    as a new expected lot (same item, supplier, PO and promised date); ``CLOSED`` means
+    nothing more is expected — UQMES's copy stops expecting the rest. It does not close the
+    PO line, which is the ERP's (ISA-95 Level 4); if the ERP still shows it open, the next
+    expected-receipts sheet expects it again. Either way the lot records what was ordered.
 
     ``received_as_quantity`` / ``received_as_unit`` take what the clerk counted in the
     item's buying unit ("3 boxes"); it converts to the stock quantity (`to_stock_quantity`)
@@ -181,8 +227,7 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
     from Tracker.models import MaterialLot
     from Tracker.services.mes import inventory
 
-    if not lot_number:
-        raise ValueError("A lot number is required to receive an expected lot")
+    from django.db import IntegrityError
 
     with transaction.atomic():
         locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
@@ -218,12 +263,15 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
             if remainder not in ("BACKORDERED", "CLOSED"):
                 raise ValueError(
                     f"{quantity} of {ordered} arrived — say whether more is coming "
-                    f"(back-ordered) or that's all (closed).")
+                    f"(back-ordered) or that's all (nothing more expected).")
             locked.ordered_quantity = ordered
             locked.short_receipt = remainder
             update += ["ordered_quantity", "short_receipt"]
 
-        locked.lot_number = lot_number
+        if supplier_lot_number is not None:
+            locked.supplier_lot_number = supplier_lot_number.strip()
+            update.append("supplier_lot_number")
+        locked.lot_number = (lot_number or "").strip() or next_lot_number(locked.tenant)
         locked.received_by = received_by
         if storage_location is not None:
             locked.storage_location = storage_location.strip()
@@ -231,7 +279,12 @@ def receive_expected_lot(lot, *, lot_number: str, received_by, received_date=Non
         # in a UTC-5 plant was dated tomorrow.
         from Tracker.services.core.clock import tenant_today
         locked.received_date = received_date or tenant_today(locked.tenant)
-        locked.save(update_fields=update)
+        try:
+            with transaction.atomic():
+                locked.save(update_fields=update)
+        except IntegrityError:
+            raise ValueError(f"Lot number {locked.lot_number} is already in use — leave it "
+                             f"blank to have one assigned.")
         if short_by > 0 and remainder == "BACKORDERED":
             # The rest stays on order as its own expected lot, so planning still sees it.
             record_expected_receipt(
@@ -261,7 +314,10 @@ def record_expected_receipts(*, tenant, rows: list[dict]) -> list:
 IMPORT_CREATED = "CREATED"
 IMPORT_UPDATED = "UPDATED"
 IMPORT_UNCHANGED = "UNCHANGED"
-IMPORT_ALREADY_RECEIVED = "ALREADY_RECEIVED"
+# A line that had been received, expected again because the sheet shows it open: a
+# replacement after a return, a blanket line released again — or a sheet the ERP hasn't
+# caught up with, which is why it is flagged rather than refused.
+IMPORT_REOPENED = "REOPENED"
 
 
 def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
@@ -270,15 +326,17 @@ def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
     """One row of an expected-receipts import, matched on (PO, line). Returns
     ``(lot | None, outcome)``.
 
-    The import is typed up by a person from the ERP — the ERP can't send it — so it is
-    never a complete snapshot. It therefore **only adds and updates**: a PO line missing
-    from the file says nothing, and nothing here closes or cancels an order. Closing is
-    a person's act (receiving short with "that's all").
+    The PO line is the ERP's (ISA-95 Level 4): whether it is open, done, released again
+    or replaced after a return is its call, and the sheet is its word. UQMES holds a copy
+    to plan against, so the import **mirrors** — it never rules a line finished. It is
+    typed up by a person, never a complete snapshot, so it only adds and updates: a line
+    missing from the file says nothing.
 
     - An open (ON_ORDER) lot on that PO line → quantity, promised date, supplier and unit
       are brought up to date. For a back-ordered remainder that is the open quantity.
-    - None open, but the line was already received → left alone (``ALREADY_RECEIVED``):
-      re-importing last week's sheet must not put a delivered order back on order.
+    - None open, but the line was received before → expected again (``REOPENED``), and
+      the caller says so: the sheet shows it open, which a replacement or a re-release
+      means — or a sheet typed before the ERP caught up, which only its typist can tell.
     - Otherwise → a new expected receipt.
     """
     from Tracker.models import MaterialLot
@@ -292,14 +350,13 @@ def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
         tenant=tenant, archived=False, erp_po_number=erp_po_number, erp_po_line=erp_po_line)
     open_lot = on_line.filter(status="ON_ORDER").order_by("created_at").first()
     if open_lot is None:
-        if on_line.exists():
-            return None, IMPORT_ALREADY_RECEIVED
+        received_before = on_line.exists()
         lot = record_expected_receipt(
             tenant=tenant, quantity=quantity, promised_date=promised_date,
             material=material, material_type=material_type, supplier=supplier,
             unit_of_measure=unit_of_measure, erp_po_number=erp_po_number,
             erp_po_line=erp_po_line)
-        return lot, IMPORT_CREATED
+        return lot, IMPORT_REOPENED if received_before else IMPORT_CREATED
 
     if (material is not None and open_lot.material_id != material.id) or (
             material_type is not None and open_lot.material_type_id != material_type.id):
@@ -402,18 +459,30 @@ def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
         raise ValueError("A lot can't hold less than nothing")
     with transaction.atomic():
         locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
-        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED"):
+        # Only stock on our shelf. A rejected lot's quantity is the disposition's, a
+        # returned one is at the vendor.
+        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED", "REJECTED", "RETURNED"):
             raise ValueError(f"Lot {locked.lot_number} is {locked.status}; there is no "
                              f"stock on hand to adjust.")
         old = locked.quantity_remaining
         if old == new_quantity:
             return locked
+        # Counted down to nothing: the lot is used up, as consumption would leave it —
+        # left ACCEPTED it was offered for picking at zero. Only stock is used up; a lot
+        # still in receiving or held is dispositioned, not zeroed.
+        update = ["quantity_remaining", "updated_at"]
+        if new_quantity == 0:
+            if locked.status not in ("ACCEPTED", "IN_USE"):
+                raise ValueError(f"Lot {locked.lot_number} is {locked.status}; reject or "
+                                 f"scrap it rather than counting it to zero.")
+            locked.status = "CONSUMED"
+            update.append("status")
         RecordEdit.objects.create(
             tenant=locked.tenant,
             content_type=ContentType.objects.get_for_model(MaterialLot),
             object_id=locked.id, field_name="quantity_remaining",
             old_value=str(old), new_value=str(new_quantity), reason=reason, edited_by=user)
         locked.quantity_remaining = new_quantity
-        locked.save(update_fields=["quantity_remaining", "updated_at"])
+        locked.save(update_fields=update)
     lot.refresh_from_db()
     return lot

@@ -161,17 +161,20 @@ class ImportTests(_Fixture):
                          (Decimal(4000), Decimal(4000), "2026-10-18"))
         self.assertEqual(MaterialLot.objects.filter(erp_po_number="4500123").count(), 2)
 
-    def test_never_closes_and_never_reopens_a_received_line(self):
+    def test_never_closes_and_mirrors_a_received_line_shown_open(self):
+        # The PO line is the ERP's: a line its sheet shows open is expected, even one
+        # received before (a replacement, a re-release) — flagged, not refused (2026-10-01).
         from Tracker.models import MaterialLot
         from Tracker.services.mes.material_lot import receive_expected_lot
         self._upload(self.HEAD + "P9,1,SHIM-0.010,10,2026-10-15,,\nP9,2,SHIM-0.010,10,2026-10-15,,\n")
         receive_expected_lot(MaterialLot.objects.get(erp_po_number="P9", erp_po_line="1"),
                              lot_number="R-1", received_by=self.user)
-        # Line 2 missing from this sheet; line 1 already received.
+        # Line 2 missing from this sheet; line 1 received, and shown open again.
         r = self._upload(self.HEAD + "P9,1,SHIM-0.010,10,2026-10-15,,\n").json()
-        self.assertEqual(r["already_received"], 1, r)
+        self.assertEqual(r["reopened"], 1, r)
+        self.assertIn("was received", r["rows"][0]["detail"])
         self.assertEqual(MaterialLot.objects.get(erp_po_number="P9", erp_po_line="2").status, "ON_ORDER")
-        self.assertEqual(MaterialLot.objects.filter(erp_po_number="P9", status="ON_ORDER").count(), 1)
+        self.assertEqual(MaterialLot.objects.filter(erp_po_number="P9", status="ON_ORDER").count(), 2)
 
     def test_bad_rows_are_reported_and_the_rest_still_land(self):
         r = self._upload(self.HEAD + "P1,1,NOPE,10,2026-10-15,,\n"

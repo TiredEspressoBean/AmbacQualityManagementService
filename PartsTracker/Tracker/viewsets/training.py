@@ -11,9 +11,10 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from Tracker.models import (
-    EquipmentType, JobRole, Processes, TrainingRecord, TrainingRequirement, TrainingType,
+    EquipmentType, JobRole, Processes, TrainingRecord, TrainingRequirement, TrainingType, User,
 )
 from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
+from Tracker.services.csv_utils import parse_date
 from Tracker.serializers.training import (
     TrainingTypeSerializer,
     TrainingRecordSerializer,
@@ -84,6 +85,34 @@ class TrainingTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMi
 
 # ===== TRAINING RECORD VIEWSET =====
 
+class _TrainingRecordImport(BaseCSVImportSerializer):
+    """A training record is evidence that someone was trained: an import adds records
+    (through the service, so the expiry defaults from the training type) and never
+    rewrites one. A row matching an existing record that changes nothing — the same
+    sheet loaded twice — is a no-op; one that would change it is refused."""
+
+    def find_existing(self, data):
+        # Match on the date the cell reads as, not the text typed (as calibration does).
+        raw = data.get('completed_date')
+        parsed = parse_date(raw) if raw not in (None, '') else None
+        if parsed is not None:
+            data = {**data, 'completed_date': parsed.date()}
+        return super().find_existing(data)
+
+    def create_instance(self, data):
+        from Tracker.services.training import create_training_record
+        if self.tenant:
+            data['tenant'] = self.tenant
+        return create_training_record(**data)
+
+    def update_instance(self, instance, data):
+        if any(getattr(instance, f, None) != v for f, v in data.items()):
+            raise serializers.ValidationError(
+                "Training records are evidence; an import adds them, it doesn't change "
+                "them. Correct this one on its page.")
+        return instance
+
+
 @extend_schema_view(
     list=extend_schema(
         description="List training records with filtering",
@@ -100,7 +129,8 @@ class TrainingTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMi
     partial_update=extend_schema(description="Partially update a training record"),
     destroy=extend_schema(description="Soft delete a training record")
 )
-class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                            viewsets.ModelViewSet):
     """
     ViewSet for managing training records.
 
@@ -109,6 +139,16 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixi
     """
     queryset = TrainingRecord.unscoped.all()
     serializer_class = TrainingRecordSerializer
+    # One record is one person's one training on one day. People by email.
+    csv_import_serializer = create_import_serializer_for_model(
+        TrainingRecord,
+        lookup_fields=['id', ('user', 'training_type', 'completed_date')],
+        extra_fk_fields={
+            'user': (User, ['email', 'username', 'id']),
+            'trainer': (User, ['email', 'username', 'id']),
+            'training_type': (TrainingType, ['name', 'id']),
+        },
+        base=_TrainingRecordImport)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['user', 'training_type', 'trainer', 'level']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'training_type__name', 'notes']

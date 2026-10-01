@@ -2110,7 +2110,10 @@ class InspectionInboxRowSerializer(serializers.Serializer):
 
 class MaterialLotBulkRowSerializer(serializers.Serializer):
     """One row of a bulk lot-receive (paste-grid)."""
-    lot_number = serializers.CharField(max_length=100)
+    lot_number = serializers.CharField(
+        max_length=100, required=False, allow_blank=True,
+        help_text="Ours. Blank: one is assigned (LOT-<year>-00001). The supplier's number "
+                  "goes in supplier_lot_number.")
     received_date = serializers.DateField()
     material_type = TenantScopedPrimaryKeyRelatedField(
         queryset=PartTypes.unscoped.all(), required=False, allow_null=True)

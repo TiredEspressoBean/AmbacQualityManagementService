@@ -187,7 +187,15 @@ class TemplateGenerator:
         """Create the main data entry sheet."""
         ws = wb.active
         ws.title = "Data"
+        self.write_data_sheet(ws)
 
+    def write_data_sheet(self, ws, sheet_for_model: Optional[Dict[Type[models.Model], str]] = None):
+        """The header row, with hints, examples and choice dropdowns, onto `ws`.
+
+        `sheet_for_model` names the sheet a reference column's values come from, for a
+        workbook that holds several tables (the master workbook): there a part type is
+        named on the Part Types sheet, not on a lookup sheet of its own.
+        """
         # Row 1: Headers
         for col, field in enumerate(self.fields, start=1):
             cell = ws.cell(row=1, column=col)
@@ -210,6 +218,10 @@ class TemplateGenerator:
         # hint row and a sample row there were imported — a part type "Part type name".
         for col, field in enumerate(self.fields, start=1):
             hint = field.hint_text
+            sheet = (sheet_for_model or {}).get(field.fk_model)
+            if sheet:
+                hint = hint.replace(f"See {field.fk_model.__name__} sheet",
+                                    f"A name from the '{sheet}' sheet, or one already in UQMES")
             if field.example not in (None, ""):
                 hint = f"{hint}\nExample: {field.example}" if hint else f"Example: {field.example}"
             if hint:
@@ -488,12 +500,16 @@ def introspect_model(model: Type[models.Model], skip_fields: Optional[set] = Non
         if hasattr(model_field, 'choices') and model_field.choices:
             choices = [str(c[0]) for c in model_field.choices]
 
-        # Determine if required
+        # Determine if required — as the importer does (introspect_model_for_import): a
+        # field with a default may be left blank, so it isn't marked. Every yes/no column
+        # used to carry a `*` a row could ignore.
         required = False
         if hasattr(model_field, 'blank') and hasattr(model_field, 'null'):
             required = not model_field.blank and not model_field.null
         elif hasattr(model_field, 'null'):
             required = not model_field.null
+        if required and model_field.has_default():
+            required = False
 
         fields.append(TemplateField(
             name=model_field.name,

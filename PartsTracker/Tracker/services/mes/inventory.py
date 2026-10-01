@@ -73,6 +73,13 @@ def release_hold(lot):
     return _transition(lot, allowed_from=("QUARANTINE",), to="RECEIVED")
 
 
+def return_to_inspection(lot):
+    """QUARANTINE → AWAITING_INSPECTION: a declined whole-lot reject request. The lot
+    goes back to the inspection that asked for it — its report and execution are
+    still open — rather than through routing, which opened a second one."""
+    return _transition(lot, allowed_from=("QUARANTINE",), to="AWAITING_INSPECTION")
+
+
 def reject_from_stock(lot):
     """ACCEPTED/IN_USE → REJECTED: a quality decision taken after the lot reached stock
     — escalating a partial reject to the whole lot."""

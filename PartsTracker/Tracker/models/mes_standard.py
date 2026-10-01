@@ -1506,6 +1506,7 @@ class StorageLocation(SecureModel):
 
 
 # A short delivery's outcome, from the packing slip (see MaterialLot.short_receipt).
+# CLOSED is "nothing more expected" in UQMES's copy — it doesn't close the ERP's PO line.
 SHORT_RECEIPT_CHOICES = [("BACKORDERED", "More coming"), ("CLOSED", "That's all")]
 
 

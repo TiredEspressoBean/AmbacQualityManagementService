@@ -5205,6 +5205,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MasterWorkbook/run/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Run a master workbook: 200 with the result for a small one, 202 with a task id to poll on `status/{task_id}` for a large one. */
+        post: operations["api_MasterWorkbook_run_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MasterWorkbook/sheets/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The workbook's sheets in load order, and whether you may load each. */
+        get: operations["api_MasterWorkbook_sheets_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MasterWorkbook/status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description How a queued workbook run is going, and its result when done. */
+        get: operations["api_MasterWorkbook_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MasterWorkbook/template/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A blank master workbook: a Read me sheet, then one sheet per table. */
+        get: operations["api_MasterWorkbook_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/": {
         parameters: {
             query?: never;
@@ -5722,6 +5790,23 @@ export interface paths {
         };
         /** @description Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment. */
         get: operations["api_MaterialLots_locations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/receipts-export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the dock received in a date range, one row per delivery by PO line — received, accepted, rejected, awaiting decision — as a sheet to post the goods receipts in the ERP. No prices. */
+        get: operations["api_MaterialLots_receipts_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12642,6 +12727,91 @@ export interface paths {
         patch: operations["api_StorageLocations_partial_update"];
         trace?: never;
     };
+    "/api/StorageLocations/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_StorageLocations_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_StorageLocations_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_StorageLocations_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_StorageLocations_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_StorageLocations_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StorageLocations/metadata/": {
         parameters: {
             query?: never;
@@ -14183,6 +14353,74 @@ export interface paths {
         };
         /** @description Export filtered data to CSV or Excel format. */
         get: operations["api_TrainingRecords_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRecords/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_TrainingRecords_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRecords/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_TrainingRecords_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRecords/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_TrainingRecords_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/TrainingRecords/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_TrainingRecords_import_template_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -22400,7 +22638,8 @@ export interface components {
             created: number;
             updated: number;
             unchanged: number;
-            already_received: number;
+            /** @description Lines received before, expected again because the sheet shows them open. */
+            reopened: number;
             errors: number;
             rows: components["schemas"]["ExpectedReceiptImportRowResult"][];
         };
@@ -22417,11 +22656,11 @@ export interface components {
          * @description * `CREATED` - CREATED
          *     * `UPDATED` - UPDATED
          *     * `UNCHANGED` - UNCHANGED
-         *     * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+         *     * `REOPENED` - REOPENED
          *     * `ERROR` - ERROR
          * @enum {string}
          */
-        ExpectedReceiptImportRowResultOutcomeEnum: "CREATED" | "UPDATED" | "UNCHANGED" | "ALREADY_RECEIVED" | "ERROR";
+        ExpectedReceiptImportRowResultOutcomeEnum: "CREATED" | "UPDATED" | "UNCHANGED" | "REOPENED" | "ERROR";
         /**
          * @description Stock ordered but not yet delivered, so planning can see it as incoming supply.
          *
@@ -23925,6 +24164,79 @@ export interface components {
             staged: boolean;
             note?: string;
         };
+        MasterWorkbookProgress: {
+            current: number;
+            total: number;
+            sheet: string;
+        };
+        MasterWorkbookQueued: {
+            task_id: string;
+            total_rows: number;
+        };
+        MasterWorkbookResult: {
+            dry_run: boolean;
+            loaded: boolean;
+            totals: components["schemas"]["MasterWorkbookTotals"];
+            sheets: components["schemas"]["MasterWorkbookSheetResult"][];
+            ignored_sheets: string[];
+        };
+        MasterWorkbookRow: {
+            /** @description The spreadsheet row (the header is row 1). */
+            row: number;
+            outcome: components["schemas"]["MasterWorkbookRowOutcomeEnum"];
+            detail: string;
+        };
+        /**
+         * @description * `error` - error
+         *     * `warning` - warning
+         *     * `note` - note
+         * @enum {string}
+         */
+        MasterWorkbookRowOutcomeEnum: "error" | "warning" | "note";
+        MasterWorkbookSheetInfo: {
+            title: string;
+            about: string;
+            allowed: boolean;
+        };
+        MasterWorkbookSheetResult: {
+            sheet: string;
+            created: number;
+            updated: number;
+            unchanged: number;
+            errors: number;
+            rows: components["schemas"]["MasterWorkbookRow"][];
+            detail: string;
+        };
+        MasterWorkbookStatus: {
+            task_id: string;
+            status: components["schemas"]["MasterWorkbookStatusStatusEnum"];
+            progress: components["schemas"]["MasterWorkbookProgress"] | null;
+            result: components["schemas"]["MasterWorkbookResult"] | null;
+            error: string;
+        };
+        /**
+         * @description * `PENDING` - PENDING
+         *     * `PROGRESS` - PROGRESS
+         *     * `SUCCESS` - SUCCESS
+         *     * `FAILURE` - FAILURE
+         * @enum {string}
+         */
+        MasterWorkbookStatusStatusEnum: "PENDING" | "PROGRESS" | "SUCCESS" | "FAILURE";
+        MasterWorkbookTotals: {
+            created: number;
+            updated: number;
+            unchanged: number;
+            errors: number;
+        };
+        MasterWorkbookUploadRequestRequest: {
+            /** Format: binary */
+            file: string;
+            /**
+             * @description True (the default) reports what loading would do and keeps nothing. False loads it — only if every row loads.
+             * @default true
+             */
+            dry_run: boolean;
+        };
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
          *     Holds the purchase lead time used by the sourcing report.
@@ -24041,7 +24353,7 @@ export interface components {
              */
             readonly ordered_quantity: string | null;
             /**
-             * @description For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
+             * @description For a short delivery: the remainder stays on order (BACKORDERED) or nothing more is expected (CLOSED) — UQMES stops expecting it; the ERP's PO line is the ERP's to close. Blank for a full delivery.
              *
              *     * `BACKORDERED` - More coming
              *     * `CLOSED` - That's all
@@ -24056,7 +24368,7 @@ export interface components {
             /** Format: decimal */
             readonly quantity_remaining: string;
             unit_of_measure: string;
-            status?: components["schemas"]["MaterialLotStatusEnum"];
+            readonly status: components["schemas"]["MaterialLotStatusEnum"];
             /** @description Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold. */
             readonly hold_reason: string;
             /** Format: date */
@@ -24115,7 +24427,8 @@ export interface components {
         };
         /** @description One row of a bulk lot-receive (paste-grid). */
         MaterialLotBulkRowRequest: {
-            lot_number: string;
+            /** @description Ours. Blank: one is assigned (LOT-<year>-00001). The supplier's number goes in supplier_lot_number. */
+            lot_number?: string;
             /** Format: date */
             received_date: string;
             /** Format: uuid */
@@ -24176,7 +24489,6 @@ export interface components {
             /** Format: decimal */
             quantity: string;
             unit_of_measure: string;
-            status?: components["schemas"]["MaterialLotStatusEnum"];
             /** Format: date */
             manufacture_date?: string | null;
             /** Format: date */
@@ -28123,7 +28435,6 @@ export interface components {
             /** Format: decimal */
             quantity?: string;
             unit_of_measure?: string;
-            status?: components["schemas"]["MaterialLotStatusEnum"];
             /** Format: date */
             manufacture_date?: string | null;
             /** Format: date */
@@ -31832,8 +32143,10 @@ export interface components {
         };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {
-            /** @description The supplier's actual lot/batch number. */
-            lot_number: string;
+            /** @description The supplier's lot/batch number, as printed on the delivery. May repeat. */
+            supplier_lot_number?: string;
+            /** @description Our lot number, when the shop labels its own. Blank (usual): one is assigned (LOT-<year>-00001). */
+            lot_number?: string;
             /**
              * Format: decimal
              * @description Quantity actually delivered, when it differs from what was ordered. Omit to keep the ordered quantity.
@@ -31844,7 +32157,7 @@ export interface components {
             /** @description Where it was put away. Omit to keep what the expected receipt recorded. */
             storage_location?: string;
             /**
-             * @description Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+             * @description Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED expects nothing more (the ERP's PO line is closed in the ERP).
              *
              *     * `BACKORDERED` - More coming
              *     * `CLOSED` - That's all
@@ -36105,6 +36418,7 @@ export interface components {
             quantity: number;
         };
         TraceUse: {
+            lot_number: string;
             /** Format: double */
             quantity: number;
             /** Format: date-time */
@@ -47956,6 +48270,96 @@ export interface operations {
             };
         };
     };
+    api_MasterWorkbook_run_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["MasterWorkbookUploadRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasterWorkbookResult"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasterWorkbookQueued"];
+                };
+            };
+        };
+    };
+    api_MasterWorkbook_sheets_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasterWorkbookSheetInfo"][];
+                };
+            };
+        };
+    };
+    api_MasterWorkbook_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MasterWorkbookStatus"];
+                };
+            };
+        };
+    };
+    api_MasterWorkbook_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+        };
+    };
     api_MaterialLots_list: {
         parameters: {
             query?: {
@@ -48303,7 +48707,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["ReceiveExpectedLotRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["ReceiveExpectedLotRequest"];
@@ -48818,6 +49222,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": string[];
+                };
+            };
+        };
+    };
+    api_MaterialLots_receipts_export_retrieve: {
+        parameters: {
+            query: {
+                /** @description Last receipt date (inclusive). */
+                end: string;
+                /** @description Only deliveries received against a PO. */
+                po_only?: boolean;
+                /** @description First receipt date (inclusive). */
+                start: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };
@@ -60612,6 +61042,164 @@ export interface operations {
             };
         };
     };
+    api_StorageLocations_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_StorageLocations_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StorageLocations_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_StorageLocations_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_StorageLocations_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -63794,6 +64382,136 @@ export interface operations {
             header?: never;
             path: {
                 export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_TrainingRecords_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingRecords_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_TrainingRecords_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_TrainingRecords_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
             };
             cookie?: never;
         };

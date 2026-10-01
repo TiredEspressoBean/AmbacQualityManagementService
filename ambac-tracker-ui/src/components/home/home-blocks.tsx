@@ -1196,7 +1196,7 @@ function LateDeliveriesBlock() {
                     Late deliveries
                     {overdue > 0 && <Badge variant="destructive" className="ml-1">{overdue} overdue</Badge>}
                     {rows.length > overdue && <Badge variant="outline">{rows.length - overdue} due soon</Badge>}
-                    <Link to="/production/material-lots" className="ml-auto">
+                    <Link to="/production/material-lots" search={{ tab: "late" }} className="ml-auto">
                         <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
                     </Link>
                 </CardTitle>

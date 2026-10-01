@@ -195,7 +195,9 @@ export function MaterialLotDetailPage() {
                                         const top = u.built_into.length ? u.built_into[u.built_into.length - 1] : u.part;
                                         return (
                                             <tr key={i} className="border-b align-top last:border-0">
-                                                <td className="py-2 pr-3 tabular-nums">{u.quantity} {unit}<div className="text-xs text-muted-foreground">{u.step ?? ""}</div></td>
+                                                <td className="py-2 pr-3 tabular-nums">{u.quantity} {unit}<div className="text-xs text-muted-foreground">{u.step ?? ""}</div>
+                                                    {/* Drawn from a lot split off this one. */}
+                                                    {u.lot_number !== lot?.lot_number && <div className="text-xs text-muted-foreground">from {u.lot_number}</div>}</td>
                                                 <td className="py-2 pr-3">{u.part ? <PartCell p={u.part} /> : "—"}</td>
                                                 <td className="py-2 pr-3">
                                                     {u.built_into.length === 0 ? <span className="text-muted-foreground">—</span>

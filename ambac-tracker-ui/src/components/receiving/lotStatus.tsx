@@ -14,6 +14,7 @@ export const HOLD_LABELS: Record<string, string> = {
     AWAITING_HEAT_NUMBER: "Awaiting heat number",
     WHOLE_LOT_REJECT_REQUESTED: "Whole-lot reject requested",
     GAUGE_UNAVAILABLE: "Gauge unavailable",
+    QUALITY_GATE: "Held by a quality gate",
 };
 
 // Holds that clear themselves once the missing thing is supplied (mirrors

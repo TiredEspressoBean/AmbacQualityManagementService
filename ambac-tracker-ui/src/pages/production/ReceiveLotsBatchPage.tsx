@@ -91,7 +91,6 @@ export function ReceiveLotsBatchPage() {
 
     const rowErrors = (r: Row) => {
         const e: Partial<Record<keyof Row, string>> = {};
-        if (!r.lot_number.trim()) e.lot_number = "Required";
         if (!r.quantity.trim() || Number.isNaN(parseFloat(r.quantity))) e.quantity = "Invalid";
         if (!r.received_date) e.received_date = "Required";
         return e;
@@ -100,6 +99,7 @@ export function ReceiveLotsBatchPage() {
 
     function toPayload(r: Row): LotBulkRow {
         const out: LotBulkRow = {
+            // Blank: the lot is numbered on receipt (LOT-<year>-00001).
             lot_number: r.lot_number.trim(),
             received_date: r.received_date,
             quantity: r.quantity.trim(),
@@ -162,7 +162,7 @@ export function ReceiveLotsBatchPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Lot #</TableHead>
+                                <TableHead title="Ours. Leave blank and one is assigned; the supplier's goes in Supplier Lot.">Lot #</TableHead>
                                 <TableHead>Material / part</TableHead>
                                 <TableHead>Supplier</TableHead>
                                 <TableHead>Qty</TableHead>
@@ -183,7 +183,7 @@ export function ReceiveLotsBatchPage() {
                                 return (
                                     <TableRow key={idx} className={serverErrors[idx] ? "bg-destructive/10" : ""}>
                                         <TableCell>
-                                            <Input value={r.lot_number} onChange={(ev) => setCell(idx, "lot_number", ev.target.value)}
+                                            <Input value={r.lot_number} placeholder="Assigned" onChange={(ev) => setCell(idx, "lot_number", ev.target.value)}
                                                 className={e.lot_number ? "border-destructive" : ""} />
                                         </TableCell>
                                         <TableCell>

@@ -65,18 +65,26 @@ def dock_metrics(tenant, days: int = 30, today=None) -> dict:
         edited_at__date__gte=start, edited_at__date__lte=today)
         .values("old_value").annotate(n=Count("id")).order_by("-n"))
 
-    # Rejected in the window, in pieces — what PPM will be built on.
-    rejects = (QuarantineDisposition.objects.filter(  # tenant-safe: explicit tenant filter
+    # Rejected in the window. A declined whole-lot request was never a reject.
+    from Tracker.services.qms.lot_reject import DECLINED_NOTE
+    rejected = (QuarantineDisposition.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, material_lot__isnull=False,
         created_at__date__gte=start, created_at__date__lte=today)
-        .aggregate(n=Count("id"), pieces=Sum("quantity")))
-    received_pieces = (deliveries.filter(received_date__gte=start, received_date__lte=today, owner__isnull=True)
+        .exclude(resolution_notes__contains=DECLINED_NOTE))
+    # PPM counts pieces: lots kept in each (EA) only — 40 kg of bar stock is no number of
+    # pieces — and our own stock only, as received is (customer property isn't ours to
+    # count either side). Summing every unit and every owner on top, mixed kilograms
+    # into pieces and divided customer rejects by a total that excluded them.
+    in_pieces = {"unit_of_measure__iexact": "EA", "owner__isnull": True}
+    rejects = rejected.aggregate(n=Count("id"))
+    pieces = (rejected.filter(**{f"material_lot__{k}": v for k, v in in_pieces.items()})
+              .aggregate(q=Sum("quantity"))["q"]) or Decimal("0")
+    received_pieces = (deliveries.filter(received_date__gte=start, received_date__lte=today, **in_pieces)
                        .aggregate(q=Sum("quantity"))["q"]) or Decimal("0")
 
     def _med(values):
         return round(median(values), 1) if values else None
 
-    pieces = rejects["pieces"] or Decimal("0")
     return {
         "days": days,
         "receipts": receipts,

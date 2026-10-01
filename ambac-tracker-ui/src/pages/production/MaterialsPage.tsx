@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileUp, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
+import { FileDown, FileUp, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -16,6 +16,7 @@ import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
 import { ExpectedReceiptDialog } from "@/components/receiving/ExpectedReceiptDialog";
 import { ImportExpectedReceiptsDialog } from "@/components/receiving/ImportExpectedReceiptsDialog";
+import { ReceiptsExportDialog } from "@/components/receiving/ReceiptsExportDialog";
 import { ReceiveExpectedLotDialog } from "@/components/receiving/ReceiveExpectedLotDialog";
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
@@ -73,7 +74,9 @@ function queriesForTab(tab: Tab): Record<string, unknown> {
 
 export function MaterialsPage() {
     const navigate = useNavigate();
-    const [tab, setTab] = useState<Tab>("awaiting");
+    const { tab: asked } = useSearch({ strict: false }) as { tab?: string };
+    const [tab, setTab] = useState<Tab>(
+        TABS.some((t) => t.id === asked) ? (asked as Tab) : "awaiting");
 
     // Funnel counts — cheap (limit:1, read total) and double as the manager's
     // at-a-glance of where material is piling up.
@@ -96,6 +99,7 @@ export function MaterialsPage() {
     const [extendLot, setExtendLot] = useState<Lot | null>(null);
     const [expectOpen, setExpectOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
+    const [receiptsOpen, setReceiptsOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
     const [shipLot, setShipLot] = useState<Lot | null>(null);
     const [remainderLot, setRemainderLot] = useState<Lot | null>(null);
@@ -146,6 +150,10 @@ export function MaterialsPage() {
                 <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
                         <FileUp className="h-4 w-4 mr-1" /> Import expected
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setReceiptsOpen(true)}
+                        title="What was received, by PO line, to post in the ERP">
+                        <FileDown className="h-4 w-4 mr-1" /> Receipts for ERP
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setExpectOpen(true)}>
                         <Truck className="h-4 w-4 mr-1" /> Expect
@@ -323,6 +331,7 @@ export function MaterialsPage() {
         />
         <ExpectedReceiptDialog open={expectOpen} onOpenChange={setExpectOpen} />
         <ImportExpectedReceiptsDialog open={importOpen} onOpenChange={setImportOpen} />
+        <ReceiptsExportDialog open={receiptsOpen} onOpenChange={setReceiptsOpen} />
         {receiveLot && (
             <ReceiveExpectedLotDialog
                 // Keyed by lot so the prefilled quantity resets between rows.

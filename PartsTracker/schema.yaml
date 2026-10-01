@@ -13900,6 +13900,92 @@ paths:
               schema:
                 $ref: '#/components/schemas/LifeTracking'
           description: ''
+  /api/MasterWorkbook/run/:
+    post:
+      operationId: api_MasterWorkbook_run_create
+      description: 'Run a master workbook: 200 with the result for a small one, 202
+        with a task id to poll on `status/{task_id}` for a large one.'
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MasterWorkbookUploadRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterWorkbookResult'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterWorkbookQueued'
+          description: ''
+  /api/MasterWorkbook/sheets/:
+    get:
+      operationId: api_MasterWorkbook_sheets_list
+      description: The workbook's sheets in load order, and whether you may load each.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MasterWorkbookSheetInfo'
+          description: ''
+  /api/MasterWorkbook/status/{task_id}/:
+    get:
+      operationId: api_MasterWorkbook_status_retrieve
+      description: How a queued workbook run is going, and its result when done.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MasterWorkbookStatus'
+          description: ''
+  /api/MasterWorkbook/template/:
+    get:
+      operationId: api_MasterWorkbook_template_retrieve
+      description: 'A blank master workbook: a Read me sheet, then one sheet per table.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/MaterialLots/:
     get:
       operationId: api_MaterialLots_list
@@ -14357,7 +14443,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ReceiveExpectedLotRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -15003,6 +15088,45 @@ paths:
                 type: array
                 items:
                   type: string
+          description: ''
+  /api/MaterialLots/receipts-export/:
+    get:
+      operationId: api_MaterialLots_receipts_export_retrieve
+      description: What the dock received in a date range, one row per delivery by
+        PO line — received, accepted, rejected, awaiting decision — as a sheet to
+        post the goods receipts in the ERP. No prices.
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: Last receipt date (inclusive).
+        required: true
+      - in: query
+        name: po_only
+        schema:
+          type: boolean
+        description: Only deliveries received against a PO.
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: First receipt date (inclusive).
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/MaterialUsages/:
     get:
@@ -31640,6 +31764,178 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/StorageLocations/export/{export_format}/:
+    get:
+      operationId: api_StorageLocations_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/StorageLocations/import/:
+    post:
+      operationId: api_StorageLocations_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/StorageLocations/import-preview/:
+    post:
+      operationId: api_StorageLocations_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/StorageLocations/import-status/{task_id}/:
+    get:
+      operationId: api_StorageLocations_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/StorageLocations/import-template/{template_format}/:
+    get:
+      operationId: api_StorageLocations_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
+          description: ''
   /api/StorageLocations/metadata/:
     get:
       operationId: api_StorageLocations_metadata_retrieve
@@ -36028,6 +36324,138 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/TrainingRecords/import/:
+    post:
+      operationId: api_TrainingRecords_import_create
+      description: Import data from CSV or Excel file. Small imports return immediate
+        results (207). Large imports are queued and return task_id (202).
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to import
+                mode:
+                  type: string
+                  enum:
+                  - create
+                  - update
+                  - upsert
+                  description: 'Import mode: create, update, or upsert (default)'
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '207':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResponse'
+          description: ''
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file or data)
+          description: ''
+  /api/TrainingRecords/import-preview/:
+    post:
+      operationId: api_TrainingRecords_import_preview_create
+      description: Preview a file before importing. Returns columns, suggested mappings,
+        and sample data.
+      tags:
+      - Import/Export
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV or Excel file to preview
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPreviewResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Bad request (invalid file)
+          description: ''
+  /api/TrainingRecords/import-status/{task_id}/:
+    get:
+      operationId: api_TrainingRecords_import_status_retrieve
+      description: Check status of a background import task.
+      parameters:
+      - in: path
+        name: task_id
+        schema:
+          type: string
+        description: Celery task ID from import response
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportStatusResponse'
+          description: ''
+  /api/TrainingRecords/import-template/{template_format}/:
+    get:
+      operationId: api_TrainingRecords_import_template_retrieve
+      description: Download an import template with headers, hints, and FK lookups
+        (Excel only).
+      parameters:
+      - in: path
+        name: template_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: Template file download
           description: ''
   /api/TrainingRecords/metadata/:
     get:
@@ -52986,8 +53414,10 @@ components:
           type: integer
         unchanged:
           type: integer
-        already_received:
+        reopened:
           type: integer
+          description: Lines received before, expected again because the sheet shows
+            them open.
         errors:
           type: integer
         rows:
@@ -52995,9 +53425,9 @@ components:
           items:
             $ref: '#/components/schemas/ExpectedReceiptImportRowResult'
       required:
-      - already_received
       - created
       - errors
+      - reopened
       - rows
       - unchanged
       - updated
@@ -53030,14 +53460,14 @@ components:
       - CREATED
       - UPDATED
       - UNCHANGED
-      - ALREADY_RECEIVED
+      - REOPENED
       - ERROR
       type: string
       description: |-
         * `CREATED` - CREATED
         * `UPDATED` - UPDATED
         * `UNCHANGED` - UNCHANGED
-        * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+        * `REOPENED` - REOPENED
         * `ERROR` - ERROR
     ExpectedReceiptRequest:
       type: object
@@ -56176,6 +56606,180 @@ components:
       - staged
       - step
       - work_order
+    MasterWorkbookProgress:
+      type: object
+      properties:
+        current:
+          type: integer
+        total:
+          type: integer
+        sheet:
+          type: string
+      required:
+      - current
+      - sheet
+      - total
+    MasterWorkbookQueued:
+      type: object
+      properties:
+        task_id:
+          type: string
+        total_rows:
+          type: integer
+      required:
+      - task_id
+      - total_rows
+    MasterWorkbookResult:
+      type: object
+      properties:
+        dry_run:
+          type: boolean
+        loaded:
+          type: boolean
+        totals:
+          $ref: '#/components/schemas/MasterWorkbookTotals'
+        sheets:
+          type: array
+          items:
+            $ref: '#/components/schemas/MasterWorkbookSheetResult'
+        ignored_sheets:
+          type: array
+          items:
+            type: string
+      required:
+      - dry_run
+      - ignored_sheets
+      - loaded
+      - sheets
+      - totals
+    MasterWorkbookRow:
+      type: object
+      properties:
+        row:
+          type: integer
+          description: The spreadsheet row (the header is row 1).
+        outcome:
+          $ref: '#/components/schemas/MasterWorkbookRowOutcomeEnum'
+        detail:
+          type: string
+      required:
+      - detail
+      - outcome
+      - row
+    MasterWorkbookRowOutcomeEnum:
+      enum:
+      - error
+      - warning
+      - note
+      type: string
+      description: |-
+        * `error` - error
+        * `warning` - warning
+        * `note` - note
+    MasterWorkbookSheetInfo:
+      type: object
+      properties:
+        title:
+          type: string
+        about:
+          type: string
+        allowed:
+          type: boolean
+      required:
+      - about
+      - allowed
+      - title
+    MasterWorkbookSheetResult:
+      type: object
+      properties:
+        sheet:
+          type: string
+        created:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        errors:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/MasterWorkbookRow'
+        detail:
+          type: string
+      required:
+      - created
+      - detail
+      - errors
+      - rows
+      - sheet
+      - unchanged
+      - updated
+    MasterWorkbookStatus:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/MasterWorkbookStatusStatusEnum'
+        progress:
+          allOf:
+          - $ref: '#/components/schemas/MasterWorkbookProgress'
+          nullable: true
+        result:
+          allOf:
+          - $ref: '#/components/schemas/MasterWorkbookResult'
+          nullable: true
+        error:
+          type: string
+      required:
+      - error
+      - progress
+      - result
+      - status
+      - task_id
+    MasterWorkbookStatusStatusEnum:
+      enum:
+      - PENDING
+      - PROGRESS
+      - SUCCESS
+      - FAILURE
+      type: string
+      description: |-
+        * `PENDING` - PENDING
+        * `PROGRESS` - PROGRESS
+        * `SUCCESS` - SUCCESS
+        * `FAILURE` - FAILURE
+    MasterWorkbookTotals:
+      type: object
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        unchanged:
+          type: integer
+        errors:
+          type: integer
+      required:
+      - created
+      - errors
+      - unchanged
+      - updated
+    MasterWorkbookUploadRequestRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        dry_run:
+          type: boolean
+          default: true
+          description: True (the default) reports what loading would do and keeps
+            nothing. False loads it — only if every row loads.
+      required:
+      - file
     Material:
       type: object
       description: |-
@@ -56408,7 +57012,7 @@ components:
         short_receipt:
           readOnly: true
           description: |-
-            For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
+            For a short delivery: the remainder stays on order (BACKORDERED) or nothing more is expected (CLOSED) — UQMES stops expecting it; the ERP's PO line is the ERP's to close. Blank for a full delivery.
 
             * `BACKORDERED` - More coming
             * `CLOSED` - That's all
@@ -56440,7 +57044,9 @@ components:
           type: string
           maxLength: 20
         status:
-          $ref: '#/components/schemas/MaterialLotStatusEnum'
+          allOf:
+          - $ref: '#/components/schemas/MaterialLotStatusEnum'
+          readOnly: true
         hold_reason:
           type: string
           readOnly: true
@@ -56556,6 +57162,7 @@ components:
       - received_by_name
       - shelf_life_status
       - short_receipt
+      - status
       - supplier_name
       - unit_of_measure
       - updated_at
@@ -56598,7 +57205,8 @@ components:
       properties:
         lot_number:
           type: string
-          minLength: 1
+          description: 'Ours. Blank: one is assigned (LOT-<year>-00001). The supplier''s
+            number goes in supplier_lot_number.'
           maxLength: 100
         received_date:
           type: string
@@ -56643,7 +57251,6 @@ components:
           type: string
           maxLength: 100
       required:
-      - lot_number
       - quantity
       - received_date
     MaterialLotRequest:
@@ -56714,8 +57321,6 @@ components:
           type: string
           minLength: 1
           maxLength: 20
-        status:
-          $ref: '#/components/schemas/MaterialLotStatusEnum'
         manufacture_date:
           type: string
           format: date
@@ -63687,8 +64292,6 @@ components:
           type: string
           minLength: 1
           maxLength: 20
-        status:
-          $ref: '#/components/schemas/MaterialLotStatusEnum'
         manufacture_date:
           type: string
           format: date
@@ -70338,10 +70941,16 @@ components:
       type: object
       description: Book in an ON_ORDER lot that has physically arrived.
       properties:
+        supplier_lot_number:
+          type: string
+          description: The supplier's lot/batch number, as printed on the delivery.
+            May repeat.
+          maxLength: 100
         lot_number:
           type: string
-          minLength: 1
-          description: The supplier's actual lot/batch number.
+          description: 'Our lot number, when the shop labels its own. Blank (usual):
+            one is assigned (LOT-<year>-00001).'
+          maxLength: 100
         quantity:
           type: string
           format: decimal
@@ -70361,7 +70970,7 @@ components:
         remainder:
           nullable: true
           description: |-
-            Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+            Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED expects nothing more (the ERP's PO line is closed in the ERP).
 
             * `BACKORDERED` - More coming
             * `CLOSED` - That's all
@@ -70387,8 +70996,6 @@ components:
           oneOf:
           - $ref: '#/components/schemas/LotSourceTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
-      required:
-      - lot_number
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.
@@ -78626,6 +79233,8 @@ components:
     TraceUse:
       type: object
       properties:
+        lot_number:
+          type: string
         quantity:
           type: number
           format: double
@@ -78650,6 +79259,7 @@ components:
       required:
       - built_into
       - consumed_at
+      - lot_number
       - part
       - quantity
       - step

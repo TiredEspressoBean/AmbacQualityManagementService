@@ -3,7 +3,8 @@
 Backward: where the lot came from — supplier and their lot, heat, PO, the parent lot it
 was split from — and the lots split off it.
 
-Forward: where it went — every part a step drew it into (`MaterialUsage`), each part
+Forward: where it went — every part a step drew it, or a lot split off it, into
+(`MaterialUsage`), each part
 up through the assemblies it was built into (`AssemblyUsage`, to the top), and each top
 assembly's work order, order and customer.
 
@@ -72,13 +73,24 @@ def trace_lot(lot) -> dict:
                         "status": c["status"], "quantity": float(c["quantity"])} for c in children],
     }
 
+    # Forward from the lot AND every lot split off it, at any depth: a recall of this
+    # lot is a recall of its pieces, and reading only its own usages under-reported.
+    family, frontier = [lot.id], [lot.id]
+    for _ in range(MAX_ASSEMBLY_DEPTH):
+        frontier = list(MaterialLot.objects.filter(parent_lot_id__in=frontier)  # tenant-safe: FK to a scoped lot
+                        .exclude(id__in=family).values_list("id", flat=True))
+        if not frontier:
+            break
+        family += frontier
+
     uses = []
-    for u in (MaterialUsage.objects.filter(lot=lot)  # tenant-safe: FK to a scoped lot
-              .select_related("part__part_type", "part__work_order__related_order__company",
+    for u in (MaterialUsage.objects.filter(lot_id__in=family)  # tenant-safe: FK to scoped lots
+              .select_related("lot", "part__part_type", "part__work_order__related_order__company",
                               "part__order__company", "work_order", "step", "consumed_by")
               .order_by("consumed_at")):
         part = u.part
         uses.append({
+            "lot_number": u.lot.lot_number,
             "quantity": float(u.qty_consumed),
             "consumed_at": u.consumed_at,
             "step": u.step.name if u.step_id else None,

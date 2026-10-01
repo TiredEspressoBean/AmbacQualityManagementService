@@ -63,7 +63,9 @@ function detailOf(err: unknown, fallback: string) {
 function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
     const receive = useReceiveCoreLot();
     const { data: typesData } = useRetrievePartTypes({ limit: 500 });
-    const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
+    // Customers only: a lot is always received as a customer return (the service's
+    // fixed source type), so a supplier-only company has no place here.
+    const { data: companiesData } = useRetrieveCompanies({ limit: 200, is_customer: true });
     const [coreType, setCoreType] = useState("");
 
     // Offer only core types — the server's rule (services/reman/core_lot.is_core_type):

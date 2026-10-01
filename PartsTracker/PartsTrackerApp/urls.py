@@ -41,6 +41,7 @@ from Tracker.viewsets.tenant import (
 from Tracker.viewsets.scheduling_setup import (
     StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
 )
+from Tracker.viewsets.master_workbook import MasterWorkbookViewSet
 
 urlpatterns = [
     # Health check endpoints for Azure Container Apps
@@ -227,6 +228,7 @@ router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
 # Material Lots & Usage
 router.register(r'Materials', MaterialViewSet, basename='Materials')
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
+router.register(r'MasterWorkbook', MasterWorkbookViewSet, basename='MasterWorkbook')
 router.register(r'StorageLocations', StorageLocationViewSet, basename='StorageLocations')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
 

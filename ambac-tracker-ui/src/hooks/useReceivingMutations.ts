@@ -156,7 +156,8 @@ export const useReceiveExpectedLot = () => {
     return useMutation({
         mutationFn: (vars: {
             id: string;
-            lot_number: string;
+            /** The supplier's lot/batch number as printed. The lot is numbered by UQMES. */
+            supplier_lot_number?: string;
             quantity?: string | null;
             received_date?: string | null;
             storage_location?: string;
@@ -170,7 +171,7 @@ export const useReceiveExpectedLot = () => {
         }) =>
             api.api_MaterialLots_receive_create(
                 {
-                    lot_number: vars.lot_number,
+                    ...(vars.supplier_lot_number ? { supplier_lot_number: vars.supplier_lot_number } : {}),
                     ...(vars.quantity ? { quantity: vars.quantity } : {}),
                     ...(vars.received_date ? { received_date: vars.received_date } : {}),
                     ...(vars.storage_location ? { storage_location: vars.storage_location } : {}),

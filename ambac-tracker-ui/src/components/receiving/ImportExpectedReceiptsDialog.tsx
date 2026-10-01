@@ -18,7 +18,7 @@ const OUTCOME_LABEL: Record<string, string> = {
     CREATED: "Added",
     UPDATED: "Updated",
     UNCHANGED: "No change",
-    ALREADY_RECEIVED: "Already received",
+    REOPENED: "Expected again",
     ERROR: "Error",
 };
 
@@ -64,7 +64,7 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
         onOpenChange(o);
     };
 
-    const problems = (result?.rows ?? []).filter((r) => r.outcome === "ERROR" || r.outcome === "ALREADY_RECEIVED");
+    const problems = (result?.rows ?? []).filter((r) => r.outcome === "ERROR" || r.outcome === "REOPENED");
 
     return (
         <Dialog open={open} onOpenChange={close}>
@@ -74,8 +74,9 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                     <DialogDescription>
                         What&rsquo;s on order in your ERP, typed into the template: each row
                         becomes an expected receipt, matched on the ERP&rsquo;s PO number and line.
-                        Uploading again updates quantities and dates. Nothing is closed by
-                        being left off the sheet — close short at receiving instead.
+                        Uploading again updates quantities and dates. The sheet is the ERP&rsquo;s word:
+                        a line it shows open is expected — even one received before, which is
+                        flagged — and nothing is closed by being left off it.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -97,7 +98,7 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                             <Badge>{result.created} added</Badge>
                             <Badge variant="secondary">{result.updated} updated</Badge>
                             <Badge variant="outline">{result.unchanged} no change</Badge>
-                            {result.already_received > 0 && <Badge variant="outline">{result.already_received} already received</Badge>}
+                            {result.reopened > 0 && <Badge variant="outline">{result.reopened} expected again</Badge>}
                             {result.errors > 0 && <Badge variant="destructive">{result.errors} not imported</Badge>}
                         </div>
                         {problems.length > 0 && (

@@ -107,7 +107,7 @@ export function ReceiveExpectedLotDialog({
     const short = qtyValid && orderedQuantity != null && Number(effectiveQty) !== Number(orderedQuantity);
     /** How many fewer arrived than were on order (negative for an overage). */
     const shortBy = qtyValid && orderedQuantity != null ? Number(orderedQuantity) - Number(effectiveQty) : 0;
-    const canSubmit = lotNumber.trim() !== "" && qtyValid && receivedDate !== "" && !receive.isPending
+    const canSubmit = qtyValid && receivedDate !== "" && !receive.isPending
         && (shortBy <= 0 || remainder !== "");
 
     const submit = () => {
@@ -115,7 +115,7 @@ export function ReceiveExpectedLotDialog({
         receive.mutate(
             {
                 id: lotId,
-                lot_number: lotNumber.trim(),
+                supplier_lot_number: lotNumber.trim(),
                 quantity: effectiveQty,
                 received_date: receivedDate,
                 storage_location: location.trim(),
@@ -128,12 +128,12 @@ export function ReceiveExpectedLotDialog({
                 onSuccess: (data: unknown) => {
                     // The response is the lot *after* routing ran, so it says where the
                     // lot actually went — inspection, a soft hold, or straight to stock.
-                    const status = (data as { status?: string })?.status;
+                    const { status, lot_number: ours } = (data as { status?: string; lot_number?: string }) ?? {};
                     const parked = status != null && NEEDS_DISPOSITION.includes(status);
                     toast.success(
                         parked
-                            ? `Lot ${lotNumber.trim()} received — waiting on incoming inspection.`
-                            : `Lot ${lotNumber.trim()} received and available.`,
+                            ? `Lot ${ours} received — waiting on incoming inspection.`
+                            : `Lot ${ours} received and available.`,
                         parked && onInspect
                             ? { action: { label: "Inspect", onClick: () => onInspect(lotId) } }
                             : undefined,
@@ -179,7 +179,7 @@ export function ReceiveExpectedLotDialog({
                             onChange={(e) => setLotNumber(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Replaces the placeholder number the expectation was recorded under.
+                            Kept for traceability. The lot gets its own number when it&rsquo;s booked in.
                         </p>
                     </div>
 
@@ -248,8 +248,9 @@ export function ReceiveExpectedLotDialog({
                             <label className="flex items-start gap-2 text-sm">
                                 <input type="radio" name="rel-remainder" className="mt-1" checked={remainder === "CLOSED"}
                                     onChange={() => setRemainder("CLOSED")} />
-                                <span><span className="font-medium">That&rsquo;s all</span> — the order is complete at what
-                                    arrived.</span>
+                                <span><span className="font-medium">That&rsquo;s all</span> — nothing more is expected on
+                                    this line. (UQMES stops planning on the rest; closing the PO line is
+                                    done in the ERP.)</span>
                             </label>
                         </fieldset>
                     )}

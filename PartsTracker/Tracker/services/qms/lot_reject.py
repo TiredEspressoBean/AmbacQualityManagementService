@@ -85,15 +85,24 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
         if not whole:
             from Tracker.services.mes.material_lot import split_material_lot
             child = split_material_lot(lot, qty, reason="Rejected at receiving inspection")
-            inventory.quarantine_lot(child)
+            # A held lot's pieces are split off already held.
+            if child.status != "QUARANTINE":
+                inventory.quarantine_lot(child)
             inventory.mark_lot_rejected(child)
+            child.refresh_from_db()
+            if child.hold_reason:  # rejected now; the parent's hold isn't the child's
+                child.hold_reason = ""
+                child.save(update_fields=["hold_reason", "updated_at"])
             disposition = _open_disposition(
                 child, user=user, disposition_type=disposition_type, quantity=qty,
                 description=description, report=report, severity=severity)
             # The rest of the lot carries on: accepted on this inspection. (A held lot's
             # remainder stays held — its hold is a separate decision.)
             lot.refresh_from_db()
-            if lot.status == "AWAITING_INSPECTION":
+            # An expired remainder is held for its shelf life instead — not a failure of
+            # the reject: raised here, it rolled the reject back while its message still
+            # said the lot was quarantined.
+            if lot.status == "AWAITING_INSPECTION" and not ri.hold_if_expired(lot):
                 ri.accept(report, user)
             apply_disposition_to_lot(disposition)
             return child, disposition, "PARTIAL"
@@ -142,13 +151,18 @@ def confirm_whole_lot_reject(lot, user):
     return lot, disposition
 
 
+# How a declined whole-lot request's disposition is marked: closed with no decision
+# taken, so it is no reject (dock metrics leave it out of PPM).
+DECLINED_NOTE = "Whole-lot reject declined"
+
+
 def decline_whole_lot_request(lot, user, reason: str) -> None:
     """Close the pending disposition of a whole-lot request that QA has declined."""
     from django.utils import timezone
     from Tracker.models import QuarantineDisposition
     for d in (QuarantineDisposition.objects  # tenant-safe: .objects auto-scopes
               .filter(material_lot=lot).exclude(current_state="CLOSED")):
-        note = f"Whole-lot reject declined: {reason}"
+        note = f"{DECLINED_NOTE}: {reason}"
         d.resolution_notes = f"{d.resolution_notes}\n{note}".strip() if d.resolution_notes else note
         d.resolution_completed = True
         d.resolution_completed_by = user

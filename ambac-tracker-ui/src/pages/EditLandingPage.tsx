@@ -245,6 +245,14 @@ export default function EditLandingPage() {
                         </Panel>
                     )}
 
+                    <Panel title="Master workbook"
+                        aside={<Link to="/admin/master-workbook" className="text-xs text-muted-foreground hover:underline">Open</Link>}>
+                        <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                            Loading a new plant? Fill in one workbook — a sheet per table — and load it all at
+                            once, checked before anything is kept.
+                        </p>
+                    </Panel>
+
                     {loadSteps.length > 0 && (
                         <Panel title="Load order"
                             aside={<span className="text-xs tabular-nums text-muted-foreground">

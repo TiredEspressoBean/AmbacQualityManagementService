@@ -25,7 +25,9 @@ from Tracker.services.reman.demand import (
 _ON_HAND_LOT_STATUSES = ('ACCEPTED', 'IN_USE')
 # RETURNED: shipped back to the supplier — neither stock nor on its way.
 _TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED')
-_NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES
+# Held stock is neither on hand nor coming: it may never clear (a whole-lot reject
+# requested, an unqualified supplier), so it isn't counted as supply.
+_NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES + ('QUARANTINE',)
 
 
 def _recoverable_for(line, tenant=None) -> float:

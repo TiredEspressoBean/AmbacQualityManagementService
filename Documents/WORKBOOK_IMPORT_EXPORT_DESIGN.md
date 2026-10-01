@@ -1,6 +1,15 @@
 # Workbook Import/Export Design
 
-> **Status (2026-08-10): design — not started.** Captures the positioning and
+> **Status (2026-10-01): combined importer built** — `services/core/master_workbook.py`,
+> `/api/MasterWorkbook/`, the `/admin/master-workbook` page (linked from Data
+> Management). As decided then: a page, not a management command; real loads are
+> all-or-nothing; re-uploads upsert. In scope: setup tables, open orders/WOs/parts
+> (parts placed at their step), users, stock on hand (`services/mes/stock_import.py`),
+> on-order lines, current training and calibration records. **Routings are out of
+> scope** — processes are built in the process editor. Whole-workbook export (build
+> step 1) is not built.
+>
+> **Original status (2026-08-10): design — not started.** Captures the positioning and
 > build order for a whole-workbook (multi-sheet) Excel import/export layer,
 > built on the existing per-model import/export framework. Primary driver is
 > **onboarding/migration off a paper-only 1996 ERP** (see the migration notes

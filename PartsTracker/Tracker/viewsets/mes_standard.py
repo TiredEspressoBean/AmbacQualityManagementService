@@ -526,11 +526,15 @@ class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMe
     ordering = ['name']
 
 
-class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
+class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
+                             viewsets.ModelViewSet):
     """The tenant's managed list of storage locations. Optional: with none set up,
     receiving takes free text and suggests what has been typed before."""
     queryset = StorageLocation.unscoped.all()
     serializer_class = StorageLocationSerializer
+    # A location is its name (unique per tenant).
+    csv_import_serializer = create_import_serializer_for_model(
+        StorageLocation, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['name', 'description']
     filterset_fields = ['is_active']
@@ -629,11 +633,25 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 qs = qs.filter(promised_date__lte=today + timedelta(days=DUE_SOON_DAYS))
         return qs
 
+    def create(self, request, *args, **kwargs):
+        # A receipt with no lot number is numbered by us (next_lot_number) — the
+        # supplier's number goes in supplier_lot_number.
+        if not str(request.data.get('lot_number') or '').strip():
+            from Tracker.services.mes.material_lot import next_lot_number
+            data = request.data.copy()
+            data['lot_number'] = next_lot_number(request.tenant)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED,
+                            headers=self.get_success_headers(serializer.data))
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         # Auto-set received_by to current user, initialize quantity_remaining
         lot = serializer.save(
             received_by=self.request.user,
-            quantity_remaining=serializer.validated_data.get('quantity', 0)
+            quantity_remaining=serializer.validated_data.get('quantity', 0),
         )
         # Standards-compliant default: a received lot is auto-routed to inspection
         # (or dock-to-stock if no RECEIVING step) — never silently available.
@@ -780,6 +798,39 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         resp['Content-Disposition'] = 'attachment; filename="expected_receipts_template.csv"'
         return resp
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('start', OpenApiTypes.DATE, required=True,
+                             description="First receipt date (inclusive)."),
+            OpenApiParameter('end', OpenApiTypes.DATE, required=True,
+                             description="Last receipt date (inclusive)."),
+            OpenApiParameter('po_only', OpenApiTypes.BOOL, required=False,
+                             description="Only deliveries received against a PO."),
+        ],
+        responses={(200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
+                   OpenApiTypes.BINARY},
+        description=("What the dock received in a date range, one row per delivery by PO "
+                     "line — received, accepted, rejected, awaiting decision — as a sheet "
+                     "to post the goods receipts in the ERP. No prices."),
+    )
+    @action(detail=False, methods=['get'], url_path='receipts-export',
+            pagination_class=None, filter_backends=[])
+    def receipts_export(self, request):
+        from django.http import HttpResponse
+        from django.utils.dateparse import parse_date
+        from Tracker.services.mes.receipt_export import receipts_workbook
+        start = parse_date(request.query_params.get('start') or '')
+        end = parse_date(request.query_params.get('end') or '')
+        if start is None or end is None or start > end:
+            return Response({'detail': 'Give a start and end date (YYYY-MM-DD), start first.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        po_only = str(request.query_params.get('po_only', '')).lower() in ('1', 'true', 'yes')
+        resp = HttpResponse(
+            receipts_workbook(request.tenant, start, end, with_po_only=po_only),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        resp['Content-Disposition'] = f'attachment; filename="receipts_{start}_{end}.xlsx"'
+        return resp
+
     # pagination_class / filter_backends off: the viewset paginates and filters, so
     # this bare list would otherwise be documented as a filtered, paginated envelope.
     @extend_schema(responses={200: LateDeliverySerializer(many=True)})
@@ -830,7 +881,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         try:
             lot = receive_expected_lot(
                 lot,
-                lot_number=ser.validated_data['lot_number'],
+                lot_number=ser.validated_data.get('lot_number', ''),
+                supplier_lot_number=ser.validated_data.get('supplier_lot_number'),
                 received_by=request.user,
                 received_date=ser.validated_data.get('received_date'),
                 quantity=ser.validated_data.get('quantity'),
@@ -1172,7 +1224,19 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         ctx = {'request': request}
         per_row_errors = []
         valid_rows = []
+        # Rows with no lot number are numbered by us, consecutively, before validation.
+        from Tracker.services.mes.material_lot import next_lot_numbers
+        blank = [i for i, r in enumerate(rows)
+                 if isinstance(r, dict) and not str(r.get('lot_number') or '').strip()]
+        for i, number in zip(blank, next_lot_numbers(request.tenant, len(blank))):
+            rows[i] = {**rows[i], 'lot_number': number}
+        typed = [str(r.get('lot_number')).strip().lower() for r in rows if isinstance(r, dict)]
+        dupes = {n for n in typed if typed.count(n) > 1}
         for idx, row in enumerate(rows):
+            if isinstance(row, dict) and str(row.get('lot_number')).strip().lower() in dupes:
+                per_row_errors.append({'index': idx, 'errors': {'lot_number': [
+                    "This lot number is on more than one row."]}})
+                continue
             ser = MaterialLotSerializer(data=row, context=ctx)
             if ser.is_valid():
                 valid_rows.append(ser)

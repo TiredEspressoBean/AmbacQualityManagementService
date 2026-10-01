@@ -255,9 +255,11 @@ class ReceiveExpectedLotTests(_MaterialFixture):
             receive_expected_lot(
                 already_here, lot_number="X", received_by=self.user)
 
-    def test_requires_a_lot_number(self):
-        with self.assertRaises(ValueError):
-            receive_expected_lot(self._expect(), lot_number="", received_by=self.user)
+    def test_a_lot_number_is_assigned_when_none_is_given(self):
+        # Ours, at receipt (receiving review, 2026-10-01); the supplier's is kept beside it.
+        lot = receive_expected_lot(self._expect(), supplier_lot_number="SUP-7", received_by=self.user)
+        self.assertTrue(lot.lot_number.startswith("LOT-"))
+        self.assertEqual(lot.supplier_lot_number, "SUP-7")
 
 
 class SafetyStockTests(_MaterialFixture):

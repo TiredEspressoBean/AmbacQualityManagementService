@@ -130,7 +130,7 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
     for lot in (MaterialLot.objects.filter(archived=False,
             tenant=tenant, promised_date__isnull=False, quantity_remaining__gt=0)
             .filter(lot_scope)
-            .exclude(status__in=_ON_HAND_STATUSES + _TERMINAL_STATUSES)
+            .exclude(status__in=_ON_HAND_STATUSES + _TERMINAL_STATUSES + ('QUARANTINE',))  # held: not supply
             .values('material_id', 'material_type_id', 'promised_date',
                     'quantity_remaining')):
         for i, b in enumerate(buckets):

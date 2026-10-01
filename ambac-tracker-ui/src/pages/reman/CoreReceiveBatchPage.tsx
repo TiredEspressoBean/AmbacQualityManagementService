@@ -216,6 +216,8 @@ export function CoreReceiveBatchPage() {
             // The customer's standing arrangement, so a pasted batch inherits it per
             // row rather than taking one mode for the whole paste.
             arrangement: c.default_core_fulfilment_mode ?? null,
+            isCustomer: c.is_customer ?? true,
+            isSupplier: c.is_supplier ?? true,
         })),
         [companiesData],
     );
@@ -227,14 +229,22 @@ export function CoreReceiveBatchPage() {
     // real PartType / Customer — surfaced in the UI as a red trigger with a
     // tooltip explaining the operator needs to re-pick from the dropdown.
     const partTypeIds = useMemo(() => new Set(partTypes.map((p) => p.id)), [partTypes]);
-    const customerIds = useMemo(() => new Set(customers.map((c) => c.id)), [customers]);
+    // Who a core can come from follows how it came, per ROW: a purchased core was bought
+    // from a supplier (a core broker); every other source is a customer's own unit. All
+    // companies are loaded once and narrowed per row, since a paste mixes sources. A
+    // supplier-only company taken as a customer would drive the row's exchange /
+    // repair-and-return default — and could send a customer's parts into harvest.
+    const companiesFor = (sourceType: string) =>
+        customers.filter((c) => (sourceType === "PURCHASED" ? c.isSupplier : c.isCustomer));
 
     function coreTypeUnresolved(row: Row): boolean {
         return !!row.core_type && !partTypeIds.has(row.core_type);
     }
     function customerUnresolved(row: Row): boolean {
-        return row.customer !== CUSTOMER_NONE && !!row.customer && !customerIds.has(row.customer);
+        return row.customer !== CUSTOMER_NONE && !!row.customer
+            && !companiesFor(row.source_type).some((c) => c.id === row.customer);
     }
+    const hasUnresolvedCustomer = rows.some(customerUnresolved);
 
     const mutation = useBulkCreateCores();
 
@@ -364,6 +374,10 @@ export function CoreReceiveBatchPage() {
             toast.error("Fix invalid rows before submitting");
             return;
         }
+        if (hasUnresolvedCustomer) {
+            toast.error("Re-pick the customers marked in red before submitting");
+            return;
+        }
         const payload = rows.map(toApiRow);
         mutation.mutate(
             { cores: payload },
@@ -467,7 +481,7 @@ export function CoreReceiveBatchPage() {
                                     <TableHead>Core Number</TableHead>
                                     <TableHead>Core Type *</TableHead>
                                     <TableHead>Serial</TableHead>
-                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Customer / bought from</TableHead>
                                     <TableHead>Source</TableHead>
                                     <TableHead>Source Ref</TableHead>
                                     <TableHead>Fulfilment</TableHead>
@@ -547,6 +561,10 @@ export function CoreReceiveBatchPage() {
                                             <TableCell>
                                                 {(() => {
                                                     const unresolved = customerUnresolved(row);
+                                                    const purchased = row.source_type === "PURCHASED";
+                                                    // A known company in the wrong role shows by
+                                                    // name; an unmatched paste shows as typed.
+                                                    const known = customers.find((c) => c.id === row.customer);
                                                     const trigger = (
                                                         <SelectTrigger
                                                             className={cn(
@@ -556,7 +574,7 @@ export function CoreReceiveBatchPage() {
                                                         >
                                                             {unresolved ? (
                                                                 <span className="truncate text-destructive">
-                                                                    {row.customer}
+                                                                    {known?.name ?? row.customer}
                                                                 </span>
                                                             ) : (
                                                                 <SelectValue />
@@ -572,15 +590,19 @@ export function CoreReceiveBatchPage() {
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>{trigger}</TooltipTrigger>
                                                                     <TooltipContent>
-                                                                        "{row.customer}" doesn't match any Customer — pick one or set "No customer"
+                                                                        {known
+                                                                            ? `${known.name} isn't set up as a ${purchased ? "supplier" : "customer"} — pick another or set "${purchased ? "No supplier" : "No customer"}"`
+                                                                            : `"${row.customer}" doesn't match any ${purchased ? "supplier" : "customer"} — pick one or set "${purchased ? "No supplier" : "No customer"}"`}
                                                                     </TooltipContent>
                                                                 </Tooltip>
                                                             ) : (
                                                                 trigger
                                                             )}
                                                             <SelectContent>
-                                                                <SelectItem value={CUSTOMER_NONE}>No customer</SelectItem>
-                                                                {customers.map((c) => (
+                                                                <SelectItem value={CUSTOMER_NONE}>
+                                                                    {purchased ? "No supplier" : "No customer"}
+                                                                </SelectItem>
+                                                                {companiesFor(row.source_type).map((c) => (
                                                                     <SelectItem key={c.id} value={c.id}>
                                                                         {c.name}
                                                                     </SelectItem>
@@ -724,7 +746,7 @@ export function CoreReceiveBatchPage() {
                         <Button variant="outline" asChild>
                             <Link to="/reman/cores">Cancel</Link>
                         </Button>
-                        <Button onClick={submit} disabled={mutation.isPending || hasClientErrors}>
+                        <Button onClick={submit} disabled={mutation.isPending || hasClientErrors || hasUnresolvedCustomer}>
                             {mutation.isPending ? "Submitting…" : `Submit ${rows.length} core${rows.length === 1 ? "" : "s"}`}
                         </Button>
                     </div>

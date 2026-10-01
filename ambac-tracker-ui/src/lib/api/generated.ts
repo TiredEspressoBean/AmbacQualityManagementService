@@ -2769,7 +2769,10 @@ export type ExpectedReceiptImportResult = {
   created: number;
   updated: number;
   unchanged: number;
-  already_received: number;
+  /**
+   * Lines received before, expected again because the sheet shows them open.
+   */
+  reopened: number;
   errors: number;
   rows: Array<ExpectedReceiptImportRowResult>;
 };
@@ -2789,12 +2792,12 @@ export type ExpectedReceiptImportRowResultOutcomeEnum =
    * * `CREATED` - CREATED
    * `UPDATED` - UPDATED
    * `UNCHANGED` - UNCHANGED
-   * `ALREADY_RECEIVED` - ALREADY_RECEIVED
+   * `REOPENED` - REOPENED
    * `ERROR` - ERROR
    *
-   * @enum CREATED, UPDATED, UNCHANGED, ALREADY_RECEIVED, ERROR
+   * @enum CREATED, UPDATED, UNCHANGED, REOPENED, ERROR
    */
-  "CREATED" | "UPDATED" | "UNCHANGED" | "ALREADY_RECEIVED" | "ERROR";
+  "CREATED" | "UPDATED" | "UNCHANGED" | "REOPENED" | "ERROR";
 export type FPIGetOrCreateCreated = {
   created: boolean;
   fpi: FPIRecord;
@@ -3722,6 +3725,7 @@ export type TraceSplitLot = {
   quantity: number;
 };
 export type TraceUse = {
+  lot_number: string;
   quantity: number;
   consumed_at: string;
   step: string | null;
@@ -3742,6 +3746,67 @@ export type TracePart = {
   order_id: string | null;
   order: string | null;
   customer: string | null;
+};
+export type MasterWorkbookResult = {
+  dry_run: boolean;
+  loaded: boolean;
+  totals: MasterWorkbookTotals;
+  sheets: Array<MasterWorkbookSheetResult>;
+  ignored_sheets: Array<string>;
+};
+export type MasterWorkbookTotals = {
+  created: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+};
+export type MasterWorkbookSheetResult = {
+  sheet: string;
+  created: number;
+  updated: number;
+  unchanged: number;
+  errors: number;
+  rows: Array<MasterWorkbookRow>;
+  detail: string;
+};
+export type MasterWorkbookRow = {
+  /**
+   * The spreadsheet row (the header is row 1).
+   */
+  row: number;
+  outcome: MasterWorkbookRowOutcomeEnum;
+  detail: string;
+};
+export type MasterWorkbookRowOutcomeEnum =
+  /**
+   * * `error` - error
+   * `warning` - warning
+   * `note` - note
+   *
+   * @enum error, warning, note
+   */
+  "error" | "warning" | "note";
+export type MasterWorkbookStatus = {
+  task_id: string;
+  status: MasterWorkbookStatusStatusEnum;
+  progress: MasterWorkbookProgress;
+  result: MasterWorkbookResult;
+  error: string;
+};
+export type MasterWorkbookStatusStatusEnum =
+  /**
+   * * `PENDING` - PENDING
+   * `PROGRESS` - PROGRESS
+   * `SUCCESS` - SUCCESS
+   * `FAILURE` - FAILURE
+   *
+   * @enum PENDING, PROGRESS, SUCCESS, FAILURE
+   */
+  "PENDING" | "PROGRESS" | "SUCCESS" | "FAILURE";
+export type MasterWorkbookProgress = {
+  current: number;
+  total: number;
+  sheet: string;
 };
 export type Material = {
   id: string;
@@ -3888,7 +3953,7 @@ export type MaterialLot = {
    */
   ordered_quantity: string | null;
   /**
-     * For a short delivery: the remainder stays on order (BACKORDERED) or the order closed at what arrived (CLOSED). Blank for a full delivery.
+     * For a short delivery: the remainder stays on order (BACKORDERED) or nothing more is expected (CLOSED) — UQMES stops expecting it; the ERP's PO line is the ERP's to close. Blank for a full delivery.
     
     * `BACKORDERED` - More coming
     * `CLOSED` - That's all
@@ -3909,7 +3974,7 @@ export type MaterialLot = {
    * @maxLength 20
    */
   unit_of_measure: string;
-  status?: MaterialLotStatusEnum | undefined;
+  status: MaterialLotStatusEnum;
   /**
    * Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold.
    */
@@ -4011,11 +4076,12 @@ export type MaterialLotBulkCreateRequest = {
   lots: Array<MaterialLotBulkRowRequest>;
 };
 export type MaterialLotBulkRowRequest = {
-  /**
-   * @minLength 1
+  lot_number?: /**
+   * Ours. Blank: one is assigned (LOT-<year>-00001). The supplier's number goes in supplier_lot_number.
+   *
    * @maxLength 100
    */
-  lot_number: string;
+  string | undefined;
   received_date: string;
   material_type?: (string | null) | undefined;
   material_description?: /**
@@ -4102,7 +4168,6 @@ export type MaterialLotRequest = {
    * @maxLength 20
    */
   unit_of_measure: string;
-  status?: MaterialLotStatusEnum | undefined;
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
   certificate_of_conformance?: (string | null) | undefined;
@@ -12393,7 +12458,6 @@ export type PatchedMaterialLotRequest = Partial<{
    * @maxLength 20
    */
   unit_of_measure: string;
-  status: MaterialLotStatusEnum;
   manufacture_date: string | null;
   expiration_date: string | null;
   certificate_of_conformance: string | null;
@@ -15177,57 +15241,55 @@ export type RebuildSlotOverrideRequest = {
   reason: string;
   archived?: boolean | undefined;
 };
-export type ReceiveExpectedLotRequest = {
+export type ReceiveExpectedLotRequest = Partial<{
   /**
-   * The supplier's actual lot/batch number.
+   * The supplier's lot/batch number, as printed on the delivery. May repeat.
    *
-   * @minLength 1
+   * @maxLength 100
+   */
+  supplier_lot_number: string;
+  /**
+   * Our lot number, when the shop labels its own. Blank (usual): one is assigned (LOT-<year>-00001).
+   *
+   * @maxLength 100
    */
   lot_number: string;
-  quantity?:
-    | /**
-     * Quantity actually delivered, when it differs from what was ordered. Omit to keep the ordered quantity.
-     *
-     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
-     */
-    (string | null)
-    | undefined;
-  received_date?: (string | null) | undefined;
-  storage_location?: /**
+  /**
+   * Quantity actually delivered, when it differs from what was ordered. Omit to keep the ordered quantity.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  quantity: string | null;
+  received_date: string | null;
+  /**
    * Where it was put away. Omit to keep what the expected receipt recorded.
    *
    * @maxLength 100
    */
-  string | undefined;
-  remainder?:
-    | /**
-     * Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED closes the order at what came.
+  storage_location: string;
+  /**
+     * Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED expects nothing more (the ERP's PO line is closed in the ERP).
     
     * `BACKORDERED` - More coming
     * `CLOSED` - That's all
      */
-    (ShortReceiptEnum | NullEnum | null)
-    | undefined;
-  received_as_quantity?:
-    | /**
-     * What was counted, in `received_as_unit`. Converted to the stock quantity (and replaces `quantity`) when that is the item's buying unit.
-     *
-     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
-     */
-    (string | null)
-    | undefined;
-  received_as_unit?:
-    | /**
-     * @default ""
-     */
-    (PurchaseUnitEnum | BlankEnum)
-    | undefined;
-  heat_number?: /**
+  remainder: ShortReceiptEnum | NullEnum | null;
+  /**
+   * What was counted, in `received_as_unit`. Converted to the stock quantity (and replaces `quantity`) when that is the item's buying unit.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  received_as_quantity: string | null;
+  /**
+   * @default ""
+   */
+  received_as_unit: PurchaseUnitEnum | BlankEnum;
+  /**
    * @maxLength 64
    */
-  string | undefined;
-  source_type?: (LotSourceTypeEnum | BlankEnum) | undefined;
-};
+  heat_number: string;
+  source_type: LotSourceTypeEnum | BlankEnum;
+}>;
 export type ReceivingMeasurementInputRequest = {
   definition: string;
   value_numeric?: (number | null) | undefined;
@@ -20382,6 +20444,65 @@ const LifeTrackingIncrementRequest = z.object({
 const LifeTrackingResetRequest = z
   .object({ reason: z.string().default("") })
   .partial();
+const MasterWorkbookUploadRequestRequest = z.object({
+  file: z.instanceof(File),
+  dry_run: z.boolean().optional().default(true),
+});
+const MasterWorkbookTotals = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  unchanged: z.number().int(),
+  errors: z.number().int(),
+});
+const MasterWorkbookRowOutcomeEnum = z.enum(["error", "warning", "note"]);
+const MasterWorkbookRow = z.object({
+  row: z.number().int(),
+  outcome: MasterWorkbookRowOutcomeEnum,
+  detail: z.string(),
+});
+const MasterWorkbookSheetResult = z.object({
+  sheet: z.string(),
+  created: z.number().int(),
+  updated: z.number().int(),
+  unchanged: z.number().int(),
+  errors: z.number().int(),
+  rows: z.array(MasterWorkbookRow),
+  detail: z.string(),
+});
+const MasterWorkbookResult = z.object({
+  dry_run: z.boolean(),
+  loaded: z.boolean(),
+  totals: MasterWorkbookTotals,
+  sheets: z.array(MasterWorkbookSheetResult),
+  ignored_sheets: z.array(z.string()),
+});
+const MasterWorkbookQueued = z.object({
+  task_id: z.string(),
+  total_rows: z.number().int(),
+});
+const MasterWorkbookSheetInfo = z.object({
+  title: z.string(),
+  about: z.string(),
+  allowed: z.boolean(),
+});
+const MasterWorkbookStatusStatusEnum = z.enum([
+  "PENDING",
+  "PROGRESS",
+  "SUCCESS",
+  "FAILURE",
+]);
+const MasterWorkbookProgress = z.object({
+  current: z.number().int(),
+  total: z.number().int(),
+  sheet: z.string(),
+});
+const MasterWorkbookStatus = z.object({
+  task_id: z.string(),
+  status: MasterWorkbookStatusStatusEnum,
+  progress: MasterWorkbookProgress.nullable(),
+  result: MasterWorkbookResult.nullable(),
+  error: z.string(),
+});
 const DeliveryStateEnum = z.enum(["OVERDUE", "DUE_SOON"]);
 const ShortReceiptEnum = z.enum(["BACKORDERED", "CLOSED"]);
 const MaterialLotStatusEnum = z.enum([
@@ -20431,7 +20552,7 @@ const MaterialLot = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   quantity_remaining: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().max(20),
-  status: MaterialLotStatusEnum.optional(),
+  status: MaterialLotStatusEnum,
   hold_reason: z.string(),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
@@ -20480,7 +20601,6 @@ const MaterialLotRequest = z.object({
   received_date: z.string().nullish(),
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   unit_of_measure: z.string().min(1).max(20),
-  status: MaterialLotStatusEnum.optional(),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
   certificate_of_conformance: z.instanceof(File).nullish(),
@@ -20510,7 +20630,6 @@ const PatchedMaterialLotRequest = z
     received_date: z.string().nullable(),
     quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
     unit_of_measure: z.string().min(1).max(20),
-    status: MaterialLotStatusEnum,
     manufacture_date: z.string().nullable(),
     expiration_date: z.string().nullable(),
     certificate_of_conformance: z.instanceof(File).nullable(),
@@ -20635,26 +20754,26 @@ const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
   capa_number: z.string(),
 });
-const ReceiveExpectedLotRequest = z.object({
-  lot_number: z.string().min(1),
-  quantity: z
-    .string()
-    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
-    .nullish(),
-  received_date: z.string().nullish(),
-  storage_location: z.string().max(100).optional(),
-  remainder: z.union([ShortReceiptEnum, NullEnum]).nullish(),
-  received_as_quantity: z
-    .string()
-    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
-    .nullish(),
-  received_as_unit: z
-    .union([PurchaseUnitEnum, BlankEnum])
-    .optional()
-    .default(""),
-  heat_number: z.string().max(64).optional(),
-  source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
-});
+const ReceiveExpectedLotRequest = z
+  .object({
+    supplier_lot_number: z.string().max(100),
+    lot_number: z.string().max(100),
+    quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    received_date: z.string().nullable(),
+    storage_location: z.string().max(100),
+    remainder: z.union([ShortReceiptEnum, NullEnum]).nullable(),
+    received_as_quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).default(""),
+    heat_number: z.string().max(64),
+    source_type: z.union([LotSourceTypeEnum, BlankEnum]),
+  })
+  .partial();
 const RecordBulkRequestRequest = z.object({
   defectives_found: z.number().int().gte(0),
 });
@@ -20761,6 +20880,7 @@ const TracePart = z.object({
   customer: z.string().nullable(),
 });
 const TraceUse = z.object({
+  lot_number: z.string(),
   quantity: z.number(),
   consumed_at: z.string().datetime({ offset: true }),
   step: z.string().nullable(),
@@ -20788,7 +20908,7 @@ const BulkExpectedReceiptRequest = z.object({
   receipts: z.array(ExpectedReceiptRequest),
 });
 const MaterialLotBulkRowRequest = z.object({
-  lot_number: z.string().min(1).max(100),
+  lot_number: z.string().max(100).optional(),
   received_date: z.string(),
   material_type: z.string().uuid().nullish(),
   material_description: z.string().max(200).optional(),
@@ -20842,7 +20962,7 @@ const ExpectedReceiptImportRowResultOutcomeEnum = z.enum([
   "CREATED",
   "UPDATED",
   "UNCHANGED",
-  "ALREADY_RECEIVED",
+  "REOPENED",
   "ERROR",
 ]);
 const ExpectedReceiptImportRowResult = z.object({
@@ -20857,7 +20977,7 @@ const ExpectedReceiptImportResult = z.object({
   created: z.number().int(),
   updated: z.number().int(),
   unchanged: z.number().int(),
-  already_received: z.number().int(),
+  reopened: z.number().int(),
   errors: z.number().int(),
   rows: z.array(ExpectedReceiptImportRowResult),
 });
@@ -27826,6 +27946,17 @@ export const schemas = {
   LifeTrackingOverrideRequest,
   LifeTrackingIncrementRequest,
   LifeTrackingResetRequest,
+  MasterWorkbookUploadRequestRequest,
+  MasterWorkbookTotals,
+  MasterWorkbookRowOutcomeEnum,
+  MasterWorkbookRow,
+  MasterWorkbookSheetResult,
+  MasterWorkbookResult,
+  MasterWorkbookQueued,
+  MasterWorkbookSheetInfo,
+  MasterWorkbookStatusStatusEnum,
+  MasterWorkbookProgress,
+  MasterWorkbookStatus,
   DeliveryStateEnum,
   ShortReceiptEnum,
   MaterialLotStatusEnum,
@@ -38869,6 +39000,52 @@ Query params:
     response: LifeTracking,
   },
   {
+    method: "post",
+    path: "/api/MasterWorkbook/run/",
+    alias: "api_MasterWorkbook_run_create",
+    description: `Run a master workbook: 200 with the result for a small one, 202 with a task id to poll on &#x60;status/{task_id}&#x60; for a large one.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MasterWorkbookUploadRequestRequest,
+      },
+    ],
+    response: MasterWorkbookResult,
+  },
+  {
+    method: "get",
+    path: "/api/MasterWorkbook/sheets/",
+    alias: "api_MasterWorkbook_sheets_list",
+    description: `The workbook&#x27;s sheets in load order, and whether you may load each.`,
+    requestFormat: "json",
+    response: z.array(MasterWorkbookSheetInfo),
+  },
+  {
+    method: "get",
+    path: "/api/MasterWorkbook/status/:task_id/",
+    alias: "api_MasterWorkbook_status_retrieve",
+    description: `How a queued workbook run is going, and its result when done.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: MasterWorkbookStatus,
+  },
+  {
+    method: "get",
+    path: "/api/MasterWorkbook/template/",
+    alias: "api_MasterWorkbook_template_retrieve",
+    description: `A blank master workbook: a Read me sheet, then one sheet per table.`,
+    requestFormat: "json",
+    response: z.void(),
+  },
+  {
     method: "get",
     path: "/api/MaterialLots/",
     alias: "api_MaterialLots_list",
@@ -39530,6 +39707,31 @@ work orders whose BOM calls for the item.`,
     description: `Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment.`,
     requestFormat: "json",
     response: z.array(z.string()),
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/receipts-export/",
+    alias: "api_MaterialLots_receipts_export_retrieve",
+    description: `What the dock received in a date range, one row per delivery by PO line — received, accepted, rejected, awaiting decision — as a sheet to post the goods receipts in the ERP. No prices.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "end",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "po_only",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "start",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "get",
@@ -42869,7 +43071,10 @@ availability (plant closures still win).`,
       },
     ],
     response: OvertimeWindow,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/OvertimeWindows/:id/",
@@ -42974,10 +43179,7 @@ availability (plant closures still win).`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OvertimeWindows/import-template/:template_format/",
@@ -48495,7 +48697,10 @@ Usage:
       },
     ],
     response: SamplingRuleSet,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "put",
     path: "/api/Sampling-rule-sets/:id/",
@@ -48702,10 +48907,7 @@ Usage:
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Sampling-rule-sets/metadata/",
@@ -53473,6 +53675,108 @@ receiving takes free text and suggests what has been typed before.`,
   },
   {
     method: "get",
+    path: "/api/StorageLocations/export/:export_format/",
+    alias: "api_StorageLocations_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StorageLocations/import-preview/",
+    alias: "api_StorageLocations_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/import-status/:task_id/",
+    alias: "api_StorageLocations_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/import-template/:template_format/",
+    alias: "api_StorageLocations_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/StorageLocations/import/",
+    alias: "api_StorageLocations_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
     path: "/api/StorageLocations/metadata/",
     alias: "api_StorageLocations_metadata_retrieve",
     description: `Return searchable/filterable/orderable field information with filter options.`,
@@ -53787,7 +54091,10 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       },
     ],
     response: SubstepGateCompletion,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "delete",
     path: "/api/SubstepGateCompletions/:id/",
@@ -54046,10 +54353,7 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: SubstepResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "put",
     path: "/api/SubstepResponses/:id/",
@@ -56567,6 +56871,78 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/TrainingRecords/import-preview/",
+    alias: "api_TrainingRecords_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/TrainingRecords/import-status/:task_id/",
+    alias: "api_TrainingRecords_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/TrainingRecords/import-template/:template_format/",
+    alias: "api_TrainingRecords_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/TrainingRecords/import/",
+    alias: "api_TrainingRecords_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/TrainingRecords/metadata/",
     alias: "api_TrainingRecords_metadata_retrieve",
@@ -58398,7 +58774,10 @@ old version. Archived ones are excluded outright, not left to &#x60;?include_arc
       },
     ],
     response: WorkCenter,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/WorkCenters/:id/",
@@ -58766,10 +59145,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedWorkOrderListList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/WorkOrders/",

@@ -212,7 +212,13 @@ def _hold(ruleset, *, work_order, material_lot):
 
     if material_lot is not None:
         from Tracker.services.mes.inventory import quarantine_lot
+        from Tracker.services.qms.receiving_inspection import HOLD_QUALITY_GATE
         quarantine_lot(material_lot)
+        # Named, so the lot shows in the inspection queue and its hold can be released —
+        # with no reason it fell out of both and only a concession got it out.
+        material_lot.refresh_from_db()
+        material_lot.hold_reason = HOLD_QUALITY_GATE
+        material_lot.save(update_fields=["hold_reason", "updated_at"])
         # A quarantined lot removes available material — the schedule's material
         # gate must re-plan around it.
         mark_active_schedule_stale(material_lot.tenant_id)
