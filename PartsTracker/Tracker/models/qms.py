@@ -819,6 +819,15 @@ class QuarantineDisposition(SecureModel):
 
     # Relationships
     part = models.ForeignKey('Parts', on_delete=models.PROTECT, null=True, blank=True)
+    # A rejected lot of purchased material, and how much of it — in pieces (stock
+    # units), so a supplier's defect rate can be told from its lot reject rate.
+    material_lot = models.ForeignKey(
+        'Tracker.MaterialLot', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='dispositions',
+        help_text="The rejected material lot this disposition decides.")
+    quantity = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="How much is dispositioned, in the lot's stock unit.")
     batch_execution = models.ForeignKey(
         'Tracker.BatchExecution', on_delete=models.PROTECT, null=True, blank=True,
         related_name='dispositions',

@@ -27,7 +27,7 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
     Raises:
         ValueError: quantity is not positive.
         ValueError: quantity exceeds lot.quantity_remaining.
-        ValueError: lot status is not RECEIVED or IN_USE.
+        ValueError: lot status is not one that holds splittable stock.
     """
     from Tracker.models import MaterialLot
 
@@ -42,7 +42,9 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
                 f"Cannot split {quantity}, only {locked.quantity_remaining} remaining"
             )
 
-        if locked.status not in ("RECEIVED", "IN_USE"):
+        # AWAITING_INSPECTION: a partial reject splits the bad pieces off mid-inspection.
+        # ACCEPTED: stock divided across locations or boxes.
+        if locked.status not in ("RECEIVED", "AWAITING_INSPECTION", "ACCEPTED", "IN_USE"):
             raise ValueError(f"Cannot split a {locked.status} lot")
 
         child_count = locked.child_lots.count()
@@ -66,6 +68,13 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             manufacture_date=locked.manufacture_date,
             expiration_date=locked.expiration_date,
             storage_location=locked.storage_location,
+            # Traceability travels with the pieces: same melt, same source, same PO,
+            # same certificate.
+            heat_number=locked.heat_number,
+            source_type=locked.source_type,
+            erp_po_number=locked.erp_po_number,
+            erp_po_line=locked.erp_po_line,
+            certificate_of_conformance=locked.certificate_of_conformance,
         )
 
         locked.quantity_remaining -= quantity

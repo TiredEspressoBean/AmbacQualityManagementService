@@ -324,6 +324,9 @@ class MaterialLotSerializer(SecureModelMixin):
     item_units_per_purchase_unit = serializers.SerializerMethodField()
     item_requires_coc = serializers.SerializerMethodField()
     item_requires_heat_number = serializers.SerializerMethodField()
+    # Rejected, with an open return-to-supplier disposition: waiting for the dock to
+    # ship it back. The list annotates it; a lone lot asks.
+    awaiting_return = serializers.SerializerMethodField()
     short_receipt = serializers.ChoiceField(
         choices=SHORT_RECEIPT_CHOICES, allow_blank=True, read_only=True,
         help_text="For a short delivery: the remainder stays on order (BACKORDERED) or the "
@@ -345,7 +348,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'certificate_of_conformance', 'storage_location',
             'heat_number', 'source_type', 'received_as_quantity', 'received_as_unit',
             'item_purchase_unit', 'item_units_per_purchase_unit',
-            'item_requires_coc', 'item_requires_heat_number',
+            'item_requires_coc', 'item_requires_heat_number', 'awaiting_return',
             'child_lot_count',
             'created_at', 'updated_at', 'archived',
         )
@@ -384,6 +387,16 @@ class MaterialLotSerializer(SecureModelMixin):
     def get_item_units_per_purchase_unit(self, obj):
         v = getattr(obj.item, 'units_per_purchase_unit', None) if obj.item is not None else None
         return None if v is None else f"{v:.4f}"
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_awaiting_return(self, obj):
+        if obj.status != 'REJECTED':
+            return False
+        annotated = getattr(obj, '_awaiting_return', None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.dispositions.filter(
+            disposition_type='RETURN_TO_SUPPLIER').exclude(current_state='CLOSED').exists()
 
     @extend_schema_field(serializers.BooleanField())
     def get_item_requires_coc(self, obj):
@@ -544,6 +557,95 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
     heat_number = serializers.CharField(required=False, allow_blank=True, max_length=64)
     source_type = serializers.ChoiceField(
         choices=SOURCE_TYPE_CHOICES, required=False, allow_blank=True)
+
+
+# Where rejected material goes, decided at rejection (use-as-is is a later concession).
+LOT_REJECT_DISPOSITIONS = [('RETURN_TO_SUPPLIER', 'Return to supplier'), ('SCRAP', 'Scrap')]
+
+
+class RejectLotSerializer(serializers.Serializer):
+    """The inspector's reject: how many pieces are bad (or the whole lot), where they go,
+    and why. Omitting both `rejected_quantity` and `whole_lot` rejects the whole lot."""
+    disposition_type = serializers.ChoiceField(
+        choices=LOT_REJECT_DISPOSITIONS, default='RETURN_TO_SUPPLIER')
+    severity = serializers.ChoiceField(
+        choices=[('CRITICAL', 'Critical'), ('MAJOR', 'Major'), ('MINOR', 'Minor')], default='MAJOR')
+    description = serializers.CharField(required=False, allow_blank=True, default='')
+    rejected_quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=4, min_value=Decimal('0.0001'), required=False, allow_null=True,
+        help_text="Pieces found bad, in the stock unit. Fewer than the lot splits them off; "
+                  "the rest is accepted.")
+    whole_lot = serializers.BooleanField(
+        default=False,
+        help_text="Reject the whole lot back to the vendor. Needs reject_whole_lot; without "
+                  "it the lot is held as a request for someone who has it.")
+
+
+class RejectLotResponseSerializer(serializers.Serializer):
+    outcome = serializers.ChoiceField(choices=['PARTIAL', 'WHOLE_LOT', 'WHOLE_LOT_REQUESTED'])
+    lot = MaterialLotSerializer(help_text="The lot that was rejected — for a partial "
+                                          "reject, the new lot of the bad pieces.")
+    disposition_id = serializers.CharField()
+    disposition_number = serializers.CharField()
+
+
+class LotDecisionSerializer(serializers.Serializer):
+    """A later whole-lot decision on stock already accepted (reject the remainder)."""
+    disposition_type = serializers.ChoiceField(
+        choices=LOT_REJECT_DISPOSITIONS, default='RETURN_TO_SUPPLIER')
+    description = serializers.CharField(allow_blank=False)
+
+
+class ShipBackSerializer(serializers.Serializer):
+    note = serializers.CharField(required=False, allow_blank=True, default='',
+                                 help_text="Carrier, tracking, RMA number from the supplier…")
+
+
+class TracePartSerializer(serializers.Serializer):
+    part_id = serializers.CharField()
+    erp_id = serializers.CharField()
+    part_type = serializers.CharField(allow_null=True)
+    status = serializers.CharField()
+    work_order_id = serializers.CharField(allow_null=True)
+    work_order = serializers.CharField(allow_null=True)
+    order_id = serializers.CharField(allow_null=True)
+    order = serializers.CharField(allow_null=True)
+    customer = serializers.CharField(allow_null=True)
+
+
+class TraceUseSerializer(serializers.Serializer):
+    quantity = serializers.FloatField()
+    consumed_at = serializers.DateTimeField()
+    step = serializers.CharField(allow_null=True)
+    work_order = serializers.CharField(allow_null=True)
+    part = TracePartSerializer(allow_null=True)
+    built_into = TracePartSerializer(many=True, help_text="Assemblies it went into, innermost first.")
+
+
+class TraceSplitLotSerializer(serializers.Serializer):
+    lot_id = serializers.CharField()
+    lot_number = serializers.CharField()
+    status = serializers.CharField()
+    quantity = serializers.FloatField()
+
+
+class TraceBackwardSerializer(serializers.Serializer):
+    supplier = serializers.CharField(allow_null=True)
+    supplier_lot_number = serializers.CharField(allow_null=True)
+    heat_number = serializers.CharField(allow_null=True)
+    source_type = serializers.CharField(allow_null=True)
+    erp_po = serializers.CharField(allow_null=True)
+    received_date = serializers.DateField(allow_null=True)
+    parent_lot_id = serializers.CharField(allow_null=True)
+    parent_lot_number = serializers.CharField(allow_null=True)
+    split_lots = TraceSplitLotSerializer(many=True)
+
+
+class LotTraceSerializer(serializers.Serializer):
+    """Where a lot came from, and every part, assembly, order and customer it reached."""
+    backward = TraceBackwardSerializer()
+    forward = TraceUseSerializer(many=True)
+    customers = serializers.ListField(child=serializers.CharField())
 
 
 class ReleaseHoldSerializer(serializers.Serializer):

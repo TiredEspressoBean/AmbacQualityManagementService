@@ -1,0 +1,19 @@
+{
+  "our_org": "Demo Plant",
+  "supplier_name": "Acme Seals",
+  "lot_number": "L-2026-0142-01",
+  "supplier_lot_number": "AS-88123",
+  "item_name": "Seal & O-Ring Kit",
+  "part_number": "CRI-SEAL",
+  "heat_number": null,
+  "quantity": "20 EA",
+  "erp_po": "4500123 / 10",
+  "received_date": "2026-09-30",
+  "disposition_number": "DISP-2026-00031",
+  "reason": "Rejected at receiving inspection: 20 seals with flash on the parting line, out of drawing.",
+  "scar_numbers": [
+    "CAPA-SUP-2026-0007"
+  ],
+  "issued_by": "Quinn QA",
+  "issued_date": "2026-09-30"
+}

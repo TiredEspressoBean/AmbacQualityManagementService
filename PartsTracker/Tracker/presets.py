@@ -373,6 +373,9 @@ SOD_APPROVAL_PERMISSIONS = [
     'approve_capa', 'close_capa', 'verify_capa',
     'review_rca',
     'approve_disposition', 'close_disposition',
+    # Rejecting a whole lot back to the vendor (VDMR). A tenant may also grant it to
+    # its inspectors' group; without it an inspector's whole-lot reject is a request.
+    'reject_whole_lot',
     # Supplier quality / part approval grant authority (the `grant` action's
     # marker perm) — QA Manager / Tenant Admin tier, like other approve verbs.
     'approve_supplierqualification', 'approve_partapproval',

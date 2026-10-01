@@ -7,15 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { api } from "@/lib/api/generated";
+import { Input } from "@/components/ui/input";
 
-/** Disposition types relevant to rejected purchased material (subset of the
- *  full DispositionTypeEnum — REPAIR is AS9100-rework-centric, not receiving). */
+/** Where rejected purchased material goes, decided at rejection. Use-as-is is a later,
+ *  separately authorized concession on the disposition; rework isn't for bought stock. */
 const DISPOSITION_TYPES = [
     { value: "RETURN_TO_SUPPLIER", label: "Return to supplier" },
     { value: "SCRAP", label: "Scrap" },
-    { value: "USE_AS_IS", label: "Use as is (MRB)" },
-    { value: "REWORK", label: "Rework" },
 ] as const;
 
 const SEVERITIES = [
@@ -24,23 +22,23 @@ const SEVERITIES = [
     { value: "MINOR", label: "Minor — cosmetic" },
 ] as const;
 
-type DispositionCreateBody = Parameters<typeof api.api_QuarantineDispositions_create>[0];
-
 export type RejectDispositionValues = {
-    // From the create contract, not bare strings: both feed straight into the
-    // QuarantineDisposition body, and as strings the two call sites had to cast
-    // the mismatch away.
-    disposition_type: NonNullable<DispositionCreateBody["disposition_type"]>;
-    severity: NonNullable<DispositionCreateBody["severity"]>;
+    disposition_type: "RETURN_TO_SUPPLIER" | "SCRAP";
+    severity: "CRITICAL" | "MAJOR" | "MINOR";
     description: string;
-    quantity_affected: number;
+    /** Pieces found bad, when only part of the lot is rejected; null with `whole_lot`. */
+    rejected_quantity: string | null;
+    whole_lot: boolean;
     raise_scar: boolean;
 };
 
 export function RejectDispositionDialog({
     open, onOpenChange, lotNumber, supplierName, hasSupplier, canRaiseScar = true, quantity, defectives, sampleSize, acceptNumber,
-    defectBreakdown, submitting, onConfirm,
+    defectBreakdown, submitting, onConfirm, canRejectWholeLot = false, unitOfMeasure,
 }: {
+    /** Holds `reject_whole_lot`. Without it a whole-lot reject is sent to QA as a request. */
+    canRejectWholeLot?: boolean;
+    unitOfMeasure?: string | null;
     open: boolean;
     onOpenChange: (v: boolean) => void;
     lotNumber: string;
@@ -71,6 +69,8 @@ export function RejectDispositionDialog({
     const [severity, setSeverity] = useState<RejectDispositionValues["severity"]>("MAJOR");
     const [description, setDescription] = useState<string>(prefill);
     const [raiseScar, setRaiseScar] = useState<boolean>(hasSupplier);
+    const [scope, setScope] = useState<"PART" | "WHOLE">("PART");
+    const [badQty, setBadQty] = useState("");
 
     // The dialog stays mounted (open toggles visibility), so useState initializers
     // would freeze stale props — notably sample size before the plan query resolves.
@@ -81,10 +81,15 @@ export function RejectDispositionDialog({
         setSeverity("MAJOR");
         setDescription(prefill);
         setRaiseScar(hasSupplier);
+        setScope("PART");
+        setBadQty("");
         // eslint-disable-next-line react-hooks/exhaustive-deps -- re-seed only on open transition
     }, [open]);
 
     const isRTV = dispositionType === "RETURN_TO_SUPPLIER";
+    const badValid = badQty !== "" && Number(badQty) > 0 && Number(badQty) < quantity;
+    const canSubmit = !submitting && (scope === "WHOLE" || badValid);
+    const unit = unitOfMeasure ?? "";
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,14 +128,46 @@ export function RejectDispositionDialog({
                         </div>
                     </div>
 
-                    <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
-                        <div>Rejecting the <b>whole lot</b> — <b>{quantity}</b> units affected.</div>
+                    <fieldset className="space-y-2 rounded-md border p-3 text-sm">
+                        <legend className="px-1 font-medium">Which pieces?</legend>
                         {defectives != null && sampleSize != null && (
-                            <div className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 {defectives} defective found in the sample of {sampleSize} (accept ≤ {acceptNumber ?? 0}).
-                            </div>
+                            </p>
                         )}
-                    </div>
+                        <label className="flex items-start gap-2">
+                            <input type="radio" name="rd-scope" className="mt-1" checked={scope === "PART"}
+                                onChange={() => setScope("PART")} />
+                            <span className="flex-1">
+                                <span className="font-medium">Some of them</span> — these are bad, accept the rest
+                                {scope === "PART" && (
+                                    <span className="mt-1.5 flex items-center gap-2">
+                                        <Input className="w-28" type="number" min="0" step="any" aria-label="Pieces rejected"
+                                            value={badQty} onChange={(e) => setBadQty(e.target.value)} />
+                                        <span className="text-muted-foreground">of {quantity} {unit} rejected</span>
+                                    </span>
+                                )}
+                                {scope === "PART" && badQty !== "" && !badValid && (
+                                    <span className="block text-xs text-destructive">
+                                        Fewer than the whole lot — to reject all of it, choose the whole lot.
+                                    </span>
+                                )}
+                            </span>
+                        </label>
+                        <label className="flex items-start gap-2">
+                            <input type="radio" name="rd-scope" className="mt-1" checked={scope === "WHOLE"}
+                                onChange={() => setScope("WHOLE")} />
+                            <span>
+                                <span className="font-medium">Reject whole lot</span> — all {quantity} {unit}
+                                {scope === "WHOLE" && !canRejectWholeLot && (
+                                    <span className="block text-xs text-amber-700">
+                                        This goes to QA as a request: the lot is held until someone who may reject
+                                        a whole lot confirms it, or releases it for a partial reject.
+                                    </span>
+                                )}
+                            </span>
+                        </label>
+                    </fieldset>
 
                     <div className="space-y-1.5">
                         <Label htmlFor="rd-desc">Nonconformance</Label>
@@ -173,19 +210,21 @@ export function RejectDispositionDialog({
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
                     <Button
                         variant="destructive"
-                        disabled={submitting}
+                        disabled={!canSubmit}
                         onClick={() =>
                             onConfirm({
                                 disposition_type: dispositionType,
                                 severity,
                                 description,
-                                // Derived from receiving: a sampling reject rejects the whole lot.
-                                quantity_affected: quantity ?? 0,
+                                rejected_quantity: scope === "PART" ? badQty : null,
+                                whole_lot: scope === "WHOLE",
                                 raise_scar: isRTV && raiseScar && hasSupplier && canRaiseScar,
                             })
                         }
                     >
-                        {submitting ? "Rejecting…" : "Reject & open disposition"}
+                        {submitting ? "Rejecting…"
+                            : scope === "WHOLE" && !canRejectWholeLot ? "Request whole-lot reject"
+                            : "Reject & open disposition"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -6,7 +6,6 @@ import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
     useSamplePlan, useAcceptLot, useRejectLot, useRecordBulk, useRaiseScar, materialLotOptions } from "@/hooks/useReceivingMutations";
@@ -107,6 +106,9 @@ export function ReceivingAcceptanceStage({
     // A SCAR is a supplier-tagged CAPA; raise_scar is gated by initiate_capa
     // server-side (MaterialLotViewSet.action_permissions).
     const canInitiateCapa = usePermissionSet().has("initiate_capa");
+    // Rejecting a whole lot back to the vendor is its own permission; without it the
+    // dialog sends a request to QA instead.
+    const canRejectWholeLot = usePermissionSet().has("reject_whole_lot");
 
     // Persist the DWI captures exactly once — _handle_measurement isn't
     // idempotent (each submit creates a new MeasurementResult), so a second
@@ -210,28 +212,23 @@ export function ReceivingAcceptanceStage({
     // resulting report, optionally raise a SCAR.
     async function confirmReject(values: RejectDispositionValues) {
         setBusy(true);
-        let dispositionOk = true;
+        let outcome: string | undefined;
         try {
             if (!(await ensureFlushed())) { toast.error("Could not save inspection captures"); return; }
             if (!isVariables && hasPlan) {
                 try { await recordBulkMut.mutateAsync({ id: lotId, defectives_found: bd }); } catch { /* non-fatal */ }
             }
-            const qr = (await rejectMut.mutateAsync({ id: lotId })) as { id?: string } | undefined;
-            try {
-                await api.api_QuarantineDispositions_create(
-                    {
-                        current_state: "OPEN",
-                        disposition_type: values.disposition_type,
-                        severity: values.severity,
-                        description: values.description,
-                        part: null,
-                        quality_reports: qr?.id ? [qr.id] : [],
-                    },
-                    { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
-                );
-            } catch {
-                dispositionOk = false;
-            }
+            // One call: the server rejects (all, or the bad pieces split off) and opens the
+            // disposition with it — no second request to fail half-way.
+            const res = await rejectMut.mutateAsync({
+                id: lotId,
+                disposition_type: values.disposition_type,
+                severity: values.severity,
+                description: values.description,
+                rejected_quantity: values.rejected_quantity,
+                whole_lot: values.whole_lot,
+            });
+            outcome = res.outcome;
             // Non-fatal but NOT silent — the reject already committed, so we
             // don't roll back, but the user asked for a SCAR and needs to know
             // it didn't happen (e.g. missing initiate_capa → 403).
@@ -239,7 +236,10 @@ export function ReceivingAcceptanceStage({
             if (values.raise_scar && lot?.supplier) {
                 try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
-            toast.success(dispositionOk ? "Lot rejected · disposition opened" : "Lot rejected (open the disposition manually)");
+            toast.success(
+                outcome === "PARTIAL" ? "Bad pieces split off and rejected · the rest accepted"
+                : outcome === "WHOLE_LOT_REQUESTED" ? "Whole-lot reject requested · the lot is held for QA"
+                : "Lot rejected · disposition opened");
             if (scarFailed) {
                 toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
             }
@@ -394,6 +394,8 @@ export function ReceivingAcceptanceStage({
                 defectBreakdown={defectBreakdown || undefined}
                 submitting={busy}
                 onConfirm={confirmReject}
+                canRejectWholeLot={canRejectWholeLot}
+                unitOfMeasure={lot?.unit_of_measure}
             />
         </div>
     );

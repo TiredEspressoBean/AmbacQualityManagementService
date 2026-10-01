@@ -5277,6 +5277,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/confirm-whole-lot-reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Confirm an inspector's request to reject the whole lot. */
+        post: operations["api_MaterialLots_confirm_whole_lot_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/evaluate_receiving/": {
         parameters: {
             query?: never;
@@ -5425,8 +5442,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Material lot tracking with split capability */
+        /**
+         * @description Reject at receiving inspection, opening the disposition with it. A partial
+         *     reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
+         *     reject_whole_lot, and without it holds the lot as a request.
+         */
         post: operations["api_MaterialLots_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/reject-remainder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Escalate to the whole lot: reject what's left of an accepted lot. */
+        post: operations["api_MaterialLots_reject_remainder_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5470,6 +5508,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/ship-back/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The dock ships a return-to-supplier lot back (→ Returned). */
+        post: operations["api_MaterialLots_ship_back_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/split/": {
         parameters: {
             query?: never;
@@ -5481,6 +5536,26 @@ export interface paths {
         put?: never;
         /** @description Split a lot into a child lot */
         post: operations["api_MaterialLots_split_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/trace/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Two-way traceability: where the lot came from, and every part, assembly,
+         *     work order, order and customer it reached.
+         */
+        get: operations["api_MaterialLots_trace_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -23748,6 +23823,18 @@ export interface components {
             email?: string;
             password: string;
         };
+        /** @description A later whole-lot decision on stock already accepted (reject the remainder). */
+        LotDecisionRequest: {
+            /** @default RETURN_TO_SUPPLIER */
+            disposition_type: components["schemas"]["LotRejectDispositionEnum"];
+            description: string;
+        };
+        /**
+         * @description * `RETURN_TO_SUPPLIER` - Return to supplier
+         *     * `SCRAP` - Scrap
+         * @enum {string}
+         */
+        LotRejectDispositionEnum: "RETURN_TO_SUPPLIER" | "SCRAP";
         /**
          * @description * `MANUFACTURER` - Manufacturer
          *     * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
@@ -23755,6 +23842,12 @@ export interface components {
          * @enum {string}
          */
         LotSourceTypeEnum: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+        /** @description Where a lot came from, and every part, assembly, order and customer it reached. */
+        LotTrace: {
+            backward: components["schemas"]["TraceBackward"];
+            forward: components["schemas"]["TraceUse"][];
+            customers: string[];
+        };
         MarkStagedInputRequest: {
             /** Format: uuid */
             work_order: string;
@@ -23923,6 +24016,7 @@ export interface components {
             readonly item_units_per_purchase_unit: string | null;
             readonly item_requires_coc: boolean;
             readonly item_requires_heat_number: boolean;
+            readonly awaiting_return: boolean;
             readonly child_lot_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -24050,9 +24144,10 @@ export interface components {
          *     * `CONSUMED` - Consumed
          *     * `SCRAPPED` - Scrapped
          *     * `QUARANTINE` - Quarantine
+         *     * `RETURNED` - Returned to supplier
          * @enum {string}
          */
-        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE";
+        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE" | "RETURNED";
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
          *     Holds the purchase lead time used by the sourcing report.
@@ -28682,6 +28777,16 @@ export interface components {
             part?: string | null;
             /**
              * Format: uuid
+             * @description The rejected material lot this disposition decides.
+             */
+            material_lot?: string | null;
+            /**
+             * Format: decimal
+             * @description How much is dispositioned, in the lot's stock unit.
+             */
+            quantity?: string | null;
+            /**
+             * Format: uuid
              * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
              */
             batch_execution?: string | null;
@@ -31197,6 +31302,17 @@ export interface components {
             part?: string | null;
             /**
              * Format: uuid
+             * @description The rejected material lot this disposition decides.
+             */
+            material_lot?: string | null;
+            readonly material_lot_number: string | null;
+            /**
+             * Format: decimal
+             * @description How much is dispositioned, in the lot's stock unit.
+             */
+            quantity?: string | null;
+            /**
+             * Format: uuid
              * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
              */
             batch_execution?: string | null;
@@ -31280,6 +31396,16 @@ export interface components {
             scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
+            /**
+             * Format: uuid
+             * @description The rejected material lot this disposition decides.
+             */
+            material_lot?: string | null;
+            /**
+             * Format: decimal
+             * @description How much is dispositioned, in the lot's stock unit.
+             */
+            quantity?: string | null;
             /**
              * Format: uuid
              * @description Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
@@ -31788,6 +31914,42 @@ export interface components {
             password1: string;
             password2: string;
         };
+        /**
+         * @description The inspector's reject: how many pieces are bad (or the whole lot), where they go,
+         *     and why. Omitting both `rejected_quantity` and `whole_lot` rejects the whole lot.
+         */
+        RejectLotRequest: {
+            /** @default RETURN_TO_SUPPLIER */
+            disposition_type: components["schemas"]["LotRejectDispositionEnum"];
+            /** @default MAJOR */
+            severity: components["schemas"]["SeverityEnum"];
+            /** @default  */
+            description: string;
+            /**
+             * Format: decimal
+             * @description Pieces found bad, in the stock unit. Fewer than the lot splits them off; the rest is accepted.
+             */
+            rejected_quantity?: string | null;
+            /**
+             * @description Reject the whole lot back to the vendor. Needs reject_whole_lot; without it the lot is held as a request for someone who has it.
+             * @default false
+             */
+            whole_lot: boolean;
+        };
+        RejectLotResponse: {
+            outcome: components["schemas"]["RejectLotResponseOutcomeEnum"];
+            /** @description The lot that was rejected — for a partial reject, the new lot of the bad pieces. */
+            lot: components["schemas"]["MaterialLot"];
+            disposition_id: string;
+            disposition_number: string;
+        };
+        /**
+         * @description * `PARTIAL` - PARTIAL
+         *     * `WHOLE_LOT` - WHOLE_LOT
+         *     * `WHOLE_LOT_REQUESTED` - WHOLE_LOT_REQUESTED
+         * @enum {string}
+         */
+        RejectLotResponseOutcomeEnum: "PARTIAL" | "WHOLE_LOT" | "WHOLE_LOT_REQUESTED";
         ReleaseBlocker: {
             code: string;
             detail: string;
@@ -33049,6 +33211,13 @@ export interface components {
             break_windows?: unknown;
             is_active?: boolean;
             archived?: boolean;
+        };
+        ShipBackRequest: {
+            /**
+             * @description Carrier, tracking, RMA number from the supplier…
+             * @default
+             */
+            note: string;
         };
         /**
          * @description * `BACKORDERED` - More coming
@@ -35805,6 +35974,47 @@ export interface components {
             lead_time_days: number | null;
             /** Format: date */
             order_by: string | null;
+        };
+        TraceBackward: {
+            supplier: string | null;
+            supplier_lot_number: string | null;
+            heat_number: string | null;
+            source_type: string | null;
+            erp_po: string | null;
+            /** Format: date */
+            received_date: string | null;
+            parent_lot_id: string | null;
+            parent_lot_number: string | null;
+            split_lots: components["schemas"]["TraceSplitLot"][];
+        };
+        TracePart: {
+            part_id: string;
+            erp_id: string;
+            part_type: string | null;
+            status: string;
+            work_order_id: string | null;
+            work_order: string | null;
+            order_id: string | null;
+            order: string | null;
+            customer: string | null;
+        };
+        TraceSplitLot: {
+            lot_id: string;
+            lot_number: string;
+            status: string;
+            /** Format: double */
+            quantity: number;
+        };
+        TraceUse: {
+            /** Format: double */
+            quantity: number;
+            /** Format: date-time */
+            consumed_at: string;
+            step: string | null;
+            work_order: string | null;
+            part: components["schemas"]["TracePart"] | null;
+            /** @description Assemblies it went into, innermost first. */
+            built_into: components["schemas"]["TracePart"][];
         };
         /** @description Operators x training-types competency matrix. */
         TrainingMatrix: {
@@ -47653,8 +47863,9 @@ export interface operations {
                  *     * `CONSUMED` - Consumed
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
+                 *     * `RETURNED` - Returned to supplier
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;
@@ -47836,6 +48047,28 @@ export interface operations {
                 "application/json": components["schemas"]["AdjustQuantityRequest"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_confirm_whole_lot_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -48063,14 +48296,48 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["RejectLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RejectLotRequest"];
+                "application/json": components["schemas"]["RejectLotRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["QualityReports"];
+                    "application/json": components["schemas"]["RejectLotResponse"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_reject_remainder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["LotDecisionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LotDecisionRequest"];
+                "application/json": components["schemas"]["LotDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
                 };
             };
         };
@@ -48125,6 +48392,34 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_ship_back_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["ShipBackRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShipBackRequest"];
+                "application/json": components["schemas"]["ShipBackRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
     api_MaterialLots_split_create: {
         parameters: {
             query?: never;
@@ -48153,6 +48448,28 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_trace_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotTrace"];
+                };
+            };
+        };
+    };
     api_MaterialLots_bulk_expected_receipt_create: {
         parameters: {
             query?: {
@@ -48171,8 +48488,9 @@ export interface operations {
                  *     * `CONSUMED` - Consumed
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
+                 *     * `RETURNED` - Returned to supplier
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;

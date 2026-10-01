@@ -187,6 +187,11 @@ def decide_disposition(
 
     disposition.save()
     disposition.refresh_from_db()
+    # A material lot's disposition moves the lot (accepted on concession / scrapped);
+    # a part's is applied by the model's own cascade.
+    if disposition.material_lot_id:
+        from Tracker.services.qms.lot_reject import apply_disposition_to_lot
+        apply_disposition_to_lot(disposition)
     return disposition
 
 

@@ -353,6 +353,11 @@ def release_hold(lot, user, reason: str):
             old_value=released, new_value="", reason=reason, edited_by=user)
         lot.hold_reason = ""
         lot.save(update_fields=["hold_reason", "updated_at"])
+        if released == "WHOLE_LOT_REJECT_REQUESTED":
+            # Declining an inspector's whole-lot request: its pending disposition
+            # closes, and the lot goes back to inspection for a partial reject.
+            from Tracker.services.qms.lot_reject import decline_whole_lot_request
+            decline_whole_lot_request(lot, user, reason)
         inventory.release_hold(lot)
         route_received_lot(lot, user, waive=(released,))
     lot.refresh_from_db()

@@ -35,6 +35,8 @@ from Tracker.serializers.mes_standard import (
     ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
+    RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
+    LotTraceSerializer,
     MaterialUsageSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
@@ -587,10 +589,20 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     action_permissions = {
         'release_hold': ['approve_disposition'],
         'adjust_quantity': ['change_materiallot'],
+        # The whole-lot decisions. Rejecting a lot under inspection is open to
+        # inspectors (the service holds a whole-lot reject as a request without it).
+        'confirm_whole_lot_reject': ['reject_whole_lot'],
+        'reject_remainder': ['reject_whole_lot'],
+        'ship_back': ['change_materiallot'],
     }
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        from django.db.models import Exists, OuterRef
+        from Tracker.models import QuarantineDisposition
+        qs = super().get_queryset().annotate(_awaiting_return=Exists(
+            QuarantineDisposition.objects.filter(  # tenant-safe: correlated to the scoped outer lot
+                material_lot=OuterRef('pk'), disposition_type='RETURN_TO_SUPPLIER',
+            ).exclude(current_state='CLOSED')))
         # Receiving-inspection queue: lots still needing a disposition — RECEIVED,
         # AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE with a
         # hold_reason, e.g. an unqualified supplier) so they surface and get resolved.
@@ -998,19 +1010,82 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response({'capa_id': capa.id, 'capa_number': capa.capa_number},
                         status=status.HTTP_201_CREATED)
 
-    @extend_schema(request=None, responses={200: QualityReportsSerializer})
+    @extend_schema(request=RejectLotSerializer, responses={200: RejectLotResponseSerializer})
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
+        """Reject at receiving inspection, opening the disposition with it. A partial
+        reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
+        reject_whole_lot, and without it holds the lot as a request."""
+        from Tracker.services.qms.lot_reject import reject_lot
         lot = self.get_object()
         report = lot.quality_reports.order_by('-created_at').first()
         if report is None:
             return Response({'detail': 'No open inspection for this lot.'},
                             status=status.HTTP_400_BAD_REQUEST)
+        ser = RejectLotSerializer(data=request.data or {})
+        ser.is_valid(raise_exception=True)
+        v = ser.validated_data
         try:
-            report = receiving_inspection.reject(report, request.user)
+            rejected, disposition, outcome = reject_lot(
+                report, request.user, disposition_type=v['disposition_type'],
+                rejected_quantity=v.get('rejected_quantity'), whole_lot=v['whole_lot'],
+                description=v.get('description', ''), severity=v['severity'])
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return self._qr_response(report)
+        rejected.refresh_from_db()
+        return Response(RejectLotResponseSerializer({
+            'outcome': outcome,
+            'lot': rejected,
+            'disposition_id': str(disposition.id),
+            'disposition_number': disposition.disposition_number,
+        }, context={'request': request}).data)
+
+    @extend_schema(responses={200: LotTraceSerializer})
+    @action(detail=True, methods=['get'])
+    def trace(self, request, pk=None):
+        """Two-way traceability: where the lot came from, and every part, assembly,
+        work order, order and customer it reached."""
+        from Tracker.services.mes.lot_trace import trace_lot
+        return Response(LotTraceSerializer(trace_lot(self.get_object())).data)
+
+    @extend_schema(request=None, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='confirm-whole-lot-reject')
+    def confirm_whole_lot_reject(self, request, pk=None):
+        """Confirm an inspector's request to reject the whole lot."""
+        from Tracker.services.qms.lot_reject import confirm_whole_lot_reject
+        try:
+            lot, _ = confirm_whole_lot_reject(self.get_object(), request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=LotDecisionSerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='reject-remainder')
+    def reject_remainder(self, request, pk=None):
+        """Escalate to the whole lot: reject what's left of an accepted lot."""
+        from Tracker.services.qms.lot_reject import reject_remainder
+        ser = LotDecisionSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            lot, _ = reject_remainder(self.get_object(), request.user,
+                                      disposition_type=ser.validated_data['disposition_type'],
+                                      description=ser.validated_data['description'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=ShipBackSerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='ship-back')
+    def ship_back(self, request, pk=None):
+        """The dock ships a return-to-supplier lot back (→ Returned)."""
+        from Tracker.services.qms.lot_reject import ship_back
+        ser = ShipBackSerializer(data=request.data or {})
+        ser.is_valid(raise_exception=True)
+        try:
+            lot, _ = ship_back(self.get_object(), request.user, note=ser.validated_data.get('note', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(
         request=None,

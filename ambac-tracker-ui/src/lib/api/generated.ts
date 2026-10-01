@@ -3632,6 +3632,68 @@ export type LifeTrackingRequest = {
   unknown | undefined;
   archived?: boolean | undefined;
 };
+export type LotDecisionRequest = {
+  disposition_type?: /**
+   * @default "RETURN_TO_SUPPLIER"
+   */
+  LotRejectDispositionEnum | undefined;
+  /**
+   * @minLength 1
+   */
+  description: string;
+};
+export type LotRejectDispositionEnum =
+  /**
+   * * `RETURN_TO_SUPPLIER` - Return to supplier
+   * `SCRAP` - Scrap
+   *
+   * @enum RETURN_TO_SUPPLIER, SCRAP
+   */
+  "RETURN_TO_SUPPLIER" | "SCRAP";
+export type LotTrace = {
+  backward: TraceBackward;
+  forward: Array<TraceUse>;
+  customers: Array<string>;
+};
+export type TraceBackward = {
+  supplier: string | null;
+  supplier_lot_number: string | null;
+  heat_number: string | null;
+  source_type: string | null;
+  erp_po: string | null;
+  received_date: string | null;
+  parent_lot_id: string | null;
+  parent_lot_number: string | null;
+  split_lots: Array<TraceSplitLot>;
+};
+export type TraceSplitLot = {
+  lot_id: string;
+  lot_number: string;
+  status: string;
+  quantity: number;
+};
+export type TraceUse = {
+  quantity: number;
+  consumed_at: string;
+  step: string | null;
+  work_order: string | null;
+  part: TracePart;
+  /**
+   * Assemblies it went into, innermost first.
+   */
+  built_into: Array<TracePart>;
+};
+export type TracePart = {
+  part_id: string;
+  erp_id: string;
+  part_type: string | null;
+  status: string;
+  work_order_id: string | null;
+  work_order: string | null;
+  order_id: string | null;
+  order: string | null;
+  customer: string | null;
+};
 export type Material = {
   id: string;
   /**
@@ -3841,6 +3903,7 @@ export type MaterialLot = {
   item_units_per_purchase_unit: string | null;
   item_requires_coc: boolean;
   item_requires_heat_number: boolean;
+  awaiting_return: boolean;
   child_lot_count: number;
   created_at: string;
   updated_at: string;
@@ -3865,8 +3928,9 @@ export type MaterialLotStatusEnum =
    * `CONSUMED` - Consumed
    * `SCRAPPED` - Scrapped
    * `QUARANTINE` - Quarantine
+   * `RETURNED` - Returned to supplier
    *
-   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE
+   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE, RETURNED
    */
   | "ON_ORDER"
   | "RECEIVED"
@@ -3876,7 +3940,8 @@ export type MaterialLotStatusEnum =
   | "IN_USE"
   | "CONSUMED"
   | "SCRAPPED"
-  | "QUARANTINE";
+  | "QUARANTINE"
+  | "RETURNED";
 export type LotSourceTypeEnum =
   /**
    * * `MANUFACTURER` - Manufacturer
@@ -7584,6 +7649,21 @@ export type QuarantineDisposition = {
   scrap_verified_by_name: string;
   scrap_verified_at?: (string | null) | undefined;
   part?: (string | null) | undefined;
+  material_lot?:
+    | /**
+     * The rejected material lot this disposition decides.
+     */
+    (string | null)
+    | undefined;
+  material_lot_number: string | null;
+  quantity?:
+    | /**
+     * How much is dispositioned, in the lot's stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   batch_execution?:
     | /**
      * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
@@ -13018,6 +13098,16 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   scrap_verified_at: string | null;
   part: string | null;
   /**
+   * The rejected material lot this disposition decides.
+   */
+  material_lot: string | null;
+  /**
+   * How much is dispositioned, in the lot's stock unit.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  quantity: string | null;
+  /**
    * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
    */
   batch_execution: string | null;
@@ -14813,6 +14903,20 @@ export type QuarantineDispositionRequest = {
   scrap_verified_by?: (number | null) | undefined;
   scrap_verified_at?: (string | null) | undefined;
   part?: (string | null) | undefined;
+  material_lot?:
+    | /**
+     * The rejected material lot this disposition decides.
+     */
+    (string | null)
+    | undefined;
+  quantity?:
+    | /**
+     * How much is dispositioned, in the lot's stock unit.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   batch_execution?:
     | /**
      * Set when this disposition covers a failed batch cycle (the whole load), instead of a single part. Affected parts are the batch's members. Mutually exclusive with `part` in practice.
@@ -15050,6 +15154,50 @@ export type RecoverComponent = {
   covered_by_teardown: number;
   still_short: number;
 };
+export type RejectLotRequest = Partial<{
+  /**
+   * @default "RETURN_TO_SUPPLIER"
+   */
+  disposition_type: LotRejectDispositionEnum;
+  /**
+   * @default "MAJOR"
+   */
+  severity: SeverityEnum;
+  /**
+   * @default ""
+   */
+  description: string;
+  /**
+   * Pieces found bad, in the stock unit. Fewer than the lot splits them off; the rest is accepted.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  rejected_quantity: string | null;
+  /**
+   * Reject the whole lot back to the vendor. Needs reject_whole_lot; without it the lot is held as a request for someone who has it.
+   *
+   * @default false
+   */
+  whole_lot: boolean;
+}>;
+export type RejectLotResponse = {
+  outcome: RejectLotResponseOutcomeEnum;
+  /**
+   * The lot that was rejected — for a partial reject, the new lot of the bad pieces.
+   */
+  lot: MaterialLot;
+  disposition_id: string;
+  disposition_number: string;
+};
+export type RejectLotResponseOutcomeEnum =
+  /**
+   * * `PARTIAL` - PARTIAL
+   * `WHOLE_LOT` - WHOLE_LOT
+   * `WHOLE_LOT_REQUESTED` - WHOLE_LOT_REQUESTED
+   *
+   * @enum PARTIAL, WHOLE_LOT, WHOLE_LOT_REQUESTED
+   */
+  "PARTIAL" | "WHOLE_LOT" | "WHOLE_LOT_REQUESTED";
 export type ReleaseQueue = {
   release_mode: string;
   count: number;
@@ -20036,6 +20184,7 @@ const MaterialLotStatusEnum = z.enum([
   "CONSUMED",
   "SCRAPPED",
   "QUARANTINE",
+  "RETURNED",
 ]);
 const LotSourceTypeEnum = z.enum([
   "MANUFACTURER",
@@ -20093,6 +20242,7 @@ const MaterialLot = z.object({
     .nullable(),
   item_requires_coc: z.boolean(),
   item_requires_heat_number: z.boolean(),
+  awaiting_return: z.boolean(),
   child_lot_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -20309,6 +20459,35 @@ const ReceivingSampleUnitRequest = z.object({
 const RecordUnitsRequestRequest = z.object({
   units: z.array(ReceivingSampleUnitRequest),
 });
+const LotRejectDispositionEnum = z.enum(["RETURN_TO_SUPPLIER", "SCRAP"]);
+const RejectLotRequest = z
+  .object({
+    disposition_type: LotRejectDispositionEnum.default("RETURN_TO_SUPPLIER"),
+    severity: SeverityEnum.default("MAJOR"),
+    description: z.string().default(""),
+    rejected_quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+    whole_lot: z.boolean().default(false),
+  })
+  .partial();
+const RejectLotResponseOutcomeEnum = z.enum([
+  "PARTIAL",
+  "WHOLE_LOT",
+  "WHOLE_LOT_REQUESTED",
+]);
+const RejectLotResponse = z.object({
+  outcome: RejectLotResponseOutcomeEnum,
+  lot: MaterialLot,
+  disposition_id: z.string(),
+  disposition_number: z.string(),
+});
+const LotDecisionRequest = z.object({
+  disposition_type:
+    LotRejectDispositionEnum.optional().default("RETURN_TO_SUPPLIER"),
+  description: z.string().min(1),
+});
 const ReleaseHoldRequest = z.object({ reason: z.string().min(1) });
 const ReceivingCharacteristic = z.object({
   id: z.string().uuid(),
@@ -20334,9 +20513,51 @@ const SamplePlanResponse = z.object({
   has_substeps: z.boolean(),
   step_execution_id: z.string().uuid().nullable(),
 });
+const ShipBackRequest = z.object({ note: z.string().default("") }).partial();
 const MaterialLotSplitRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().optional().default(""),
+});
+const TraceSplitLot = z.object({
+  lot_id: z.string(),
+  lot_number: z.string(),
+  status: z.string(),
+  quantity: z.number(),
+});
+const TraceBackward = z.object({
+  supplier: z.string().nullable(),
+  supplier_lot_number: z.string().nullable(),
+  heat_number: z.string().nullable(),
+  source_type: z.string().nullable(),
+  erp_po: z.string().nullable(),
+  received_date: z.string().nullable(),
+  parent_lot_id: z.string().nullable(),
+  parent_lot_number: z.string().nullable(),
+  split_lots: z.array(TraceSplitLot),
+});
+const TracePart = z.object({
+  part_id: z.string(),
+  erp_id: z.string(),
+  part_type: z.string().nullable(),
+  status: z.string(),
+  work_order_id: z.string().nullable(),
+  work_order: z.string().nullable(),
+  order_id: z.string().nullable(),
+  order: z.string().nullable(),
+  customer: z.string().nullable(),
+});
+const TraceUse = z.object({
+  quantity: z.number(),
+  consumed_at: z.string().datetime({ offset: true }),
+  step: z.string().nullable(),
+  work_order: z.string().nullable(),
+  part: TracePart.nullable(),
+  built_into: z.array(TracePart),
+});
+const LotTrace = z.object({
+  backward: TraceBackward,
+  forward: z.array(TraceUse),
+  customers: z.array(z.string()),
 });
 const ExpectedReceiptRequest = z.object({
   material: z.string().uuid().nullish(),
@@ -21905,6 +22126,12 @@ const QuarantineDisposition = z.object({
   scrap_verified_by_name: z.string(),
   scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
   part: z.string().uuid().nullish(),
+  material_lot: z.string().uuid().nullish(),
+  material_lot_number: z.string().nullable(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   batch_execution: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   step_info: z.object({}).partial().passthrough().nullable(),
@@ -21957,6 +22184,11 @@ const QuarantineDispositionRequest = z.object({
   scrap_verified_by: z.number().int().nullish(),
   scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
   part: z.string().uuid().nullish(),
+  material_lot: z.string().uuid().nullish(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   batch_execution: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   rework_attempt_at_step: z
@@ -21992,6 +22224,11 @@ const PatchedQuarantineDispositionRequest = z
     scrap_verified_by: z.number().int().nullable(),
     scrap_verified_at: z.string().datetime({ offset: true }).nullable(),
     part: z.string().uuid().nullable(),
+    material_lot: z.string().uuid().nullable(),
+    quantity: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
     batch_execution: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
     rework_attempt_at_step: z.number().int().gte(-2147483648).lte(2147483647),
@@ -27376,10 +27613,21 @@ export const schemas = {
   RecordInspectionRequestRequest,
   ReceivingSampleUnitRequest,
   RecordUnitsRequestRequest,
+  LotRejectDispositionEnum,
+  RejectLotRequest,
+  RejectLotResponseOutcomeEnum,
+  RejectLotResponse,
+  LotDecisionRequest,
   ReleaseHoldRequest,
   ReceivingCharacteristic,
   SamplePlanResponse,
+  ShipBackRequest,
   MaterialLotSplitRequest,
+  TraceSplitLot,
+  TraceBackward,
+  TracePart,
+  TraceUse,
+  LotTrace,
   ExpectedReceiptRequest,
   BulkExpectedReceiptRequest,
   MaterialLotBulkRowRequest,
@@ -38411,6 +38659,7 @@ Query params:
             "QUARANTINE",
             "RECEIVED",
             "REJECTED",
+            "RETURNED",
             "SCRAPPED",
           ])
           .optional(),
@@ -38535,6 +38784,21 @@ Query params:
         type: "Body",
         schema: AdjustQuantityRequest,
       },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/confirm-whole-lot-reject/",
+    alias: "api_MaterialLots_confirm_whole_lot_reject_create",
+    description: `Confirm an inspector&#x27;s request to reject the whole lot.`,
+    requestFormat: "json",
+    parameters: [
       {
         name: "id",
         type: "Path",
@@ -38691,18 +38955,45 @@ to incoming inspection like any other receipt).`,
   },
   {
     method: "post",
-    path: "/api/MaterialLots/:id/reject/",
-    alias: "api_MaterialLots_reject_create",
-    description: `Material lot tracking with split capability`,
-    requestFormat: "json",
+    path: "/api/MaterialLots/:id/reject-remainder/",
+    alias: "api_MaterialLots_reject_remainder_create",
+    description: `Escalate to the whole lot: reject what&#x27;s left of an accepted lot.`,
+    requestFormat: "form-data",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: LotDecisionRequest,
+      },
       {
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
       },
     ],
-    response: QualityReports,
+    response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/reject/",
+    alias: "api_MaterialLots_reject_create",
+    description: `Reject at receiving inspection, opening the disposition with it. A partial
+reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
+reject_whole_lot, and without it holds the lot as a request.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RejectLotRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RejectLotResponse,
   },
   {
     method: "post",
@@ -38742,6 +39033,26 @@ that one gate waived (inspection or dock-to-stock as usual).`,
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/ship-back/",
+    alias: "api_MaterialLots_ship_back_create",
+    description: `The dock ships a return-to-supplier lot back (→ Returned).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ note: z.string().default("") }).partial(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/split/",
     alias: "api_MaterialLots_split_create",
     description: `Split a lot into a child lot`,
@@ -38759,6 +39070,22 @@ that one gate waived (inspection or dock-to-stock as usual).`,
       },
     ],
     response: MaterialLot,
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/:id/trace/",
+    alias: "api_MaterialLots_trace_retrieve",
+    description: `Two-way traceability: where the lot came from, and every part, assembly,
+work order, order and customer it reached.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: LotTrace,
   },
   {
     method: "post",
@@ -38822,6 +39149,7 @@ they just ordered against a list of shortages.`,
             "QUARANTINE",
             "RECEIVED",
             "REJECTED",
+            "RETURNED",
             "SCRAPPED",
           ])
           .optional(),
@@ -42381,7 +42709,10 @@ availability (plant closures still win).`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/OvertimeWindows/import/",
@@ -42490,10 +42821,7 @@ delegate to the part-approval service. &#x60;grant&#x60; is gated by the
       },
     ],
     response: PartApproval,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/PartApprovals/:id/",
@@ -48102,7 +48430,10 @@ Usage:
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/Sampling-rules/",
@@ -48204,10 +48535,7 @@ Usage:
       },
     ],
     response: SamplingRule,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/Sampling-rules/:id/",
@@ -53458,7 +53786,10 @@ substep (the typical authoring-popover query).`,
       },
     ],
     response: SubstepResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "patch",
     path: "/api/SubstepResponses/:id/",
@@ -53576,10 +53907,7 @@ process&#x27;s version of the parent Step.`,
       },
     ],
     response: Substep,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Substeps/:id/",
@@ -58174,7 +58502,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: WorkOrder,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/WorkOrders/:id/",
@@ -58268,10 +58599,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/WorkOrders/:id/bulk_add_parts/",

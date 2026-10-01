@@ -404,6 +404,10 @@ SPECTACULAR_SETTINGS = {
         "PurchaseUnitEnum": "Tracker.models.mes_standard.PURCHASE_UNIT_CHOICES",
         # A lot's origin (manufacturer / distributor) — distinct from other source_types.
         "LotSourceTypeEnum": "Tracker.models.mes_standard.SOURCE_TYPE_CHOICES",
+        # Where rejected material goes at rejection — a subset of disposition types.
+        "LotRejectDispositionEnum": "Tracker.serializers.mes_standard.LOT_REJECT_DISPOSITIONS",
+        # …so the full disposition-type set keeps its long-standing name.
+        "DispositionTypeEnum": "Tracker.models.qms.QuarantineDisposition.DISPOSITION_TYPES",
         # Calendar 'recurrence' fields — two distinct choice sets (ONCE/YEARLY for
         # plant closures, ONCE/WEEKLY for labor blocks + overtime) share the field
         # name; name them explicitly so drf-spectacular doesn't hash-suffix them.

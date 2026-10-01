@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { HOLD_LABELS, SELF_CLEARING_HOLDS } from "@/components/receiving/lotStatus";
-import { useReleaseHold, useUpdateLotHeatNumber } from "@/hooks/useReceivingMutations";
+import { useConfirmWholeLotReject, useReleaseHold, useUpdateLotHeatNumber } from "@/hooks/useReceivingMutations";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
 
@@ -17,6 +17,13 @@ const HOW_TO_CLEAR: Record<string, string> = {
     AWAITING_COC: "Upload the certificate of conformance below. The lot moves on as soon as it's attached.",
     AWAITING_HEAT_NUMBER: "Enter the heat number from the mill certificate. The lot moves on as soon as it's saved.",
     SHELF_LIFE_EXPIRED: "Extend the shelf life after a re-test, or reject the lot.",
+};
+
+/** A hold that is a request for someone else's decision, said plainly. */
+const REQUEST_TEXT: Record<string, string> = {
+    WHOLE_LOT_REJECT_REQUESTED:
+        "An inspector asked to reject the whole lot back to the vendor. Confirm it, or release " +
+        "the hold to send the lot back to inspection for a partial reject.",
 };
 
 /**
@@ -32,7 +39,10 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
     const [releasing, setReleasing] = useState(false);
     const release = useReleaseHold();
     const saveHeat = useUpdateLotHeatNumber();
-    const canRelease = usePermissionSet().has("approve_disposition");
+    const perms = usePermissionSet();
+    const canRelease = perms.has("approve_disposition");
+    const canRejectWholeLot = perms.has("reject_whole_lot");
+    const confirmWhole = useConfirmWholeLotReject();
 
     if (lot.status !== "QUARANTINE" || !reason) return null;
     const selfClearing = SELF_CLEARING_HOLDS.includes(reason);
@@ -48,6 +58,16 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
             </div>
             {selfClearing && HOW_TO_CLEAR[reason] && (
                 <p className="text-muted-foreground">{HOW_TO_CLEAR[reason]}</p>
+            )}
+            {REQUEST_TEXT[reason] && <p className="text-muted-foreground">{REQUEST_TEXT[reason]}</p>}
+            {reason === "WHOLE_LOT_REJECT_REQUESTED" && canRejectWholeLot && (
+                <Button size="sm" variant="destructive" disabled={confirmWhole.isPending}
+                    onClick={() => confirmWhole.mutate({ id: String(lot.id) }, {
+                        onSuccess: () => toast.success("Whole lot rejected · disposition updated"),
+                        onError: (e) => toast.error(errorOf(e, "Could not reject the whole lot")),
+                    })}>
+                    {confirmWhole.isPending ? "Rejecting…" : "Confirm: reject whole lot"}
+                </Button>
             )}
 
             {reason === "AWAITING_HEAT_NUMBER" && (

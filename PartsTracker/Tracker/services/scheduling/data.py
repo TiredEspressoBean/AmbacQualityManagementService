@@ -806,7 +806,7 @@ def get_material_gates(tenant, horizon: HorizonData):
     for lot in (
         MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
                                    quantity_remaining__gt=0)
-        .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED'))
+        .exclude(status__in=('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED'))
         .values('material_id', 'material_type_id', 'promised_date')
     ):
         k = _lot_key(lot)

@@ -23,7 +23,8 @@ from Tracker.services.reman.demand import (
 # disjoint or accepted stock double-counts (it's both "on hand" and "promised"): incoming
 # therefore excludes the on-hand statuses as well as the terminal ones.
 _ON_HAND_LOT_STATUSES = ('ACCEPTED', 'IN_USE')
-_TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED')
+# RETURNED: shipped back to the supplier — neither stock nor on its way.
+_TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED')
 _NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES
 
 

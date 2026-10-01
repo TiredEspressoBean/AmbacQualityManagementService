@@ -13948,6 +13948,7 @@ paths:
           - QUARANTINE
           - RECEIVED
           - REJECTED
+          - RETURNED
           - SCRAPPED
         description: |-
           * `ON_ORDER` - On Order
@@ -13959,6 +13960,7 @@ paths:
           * `CONSUMED` - Consumed
           * `SCRAPPED` - Scrapped
           * `QUARANTINE` - Quarantine
+          * `RETURNED` - Returned to supplier
       - in: query
         name: supplier
         schema:
@@ -14166,6 +14168,30 @@ paths:
             schema:
               $ref: '#/components/schemas/AdjustQuantityRequest'
         required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/MaterialLots/{id}/confirm-whole-lot-reject/:
+    post:
+      operationId: api_MaterialLots_confirm_whole_lot_reject_create
+      description: Confirm an inspector's request to reject the whole lot.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -14437,7 +14463,10 @@ paths:
   /api/MaterialLots/{id}/reject/:
     post:
       operationId: api_MaterialLots_reject_create
-      description: Material lot tracking with split capability
+      description: |-
+        Reject at receiving inspection, opening the disposition with it. A partial
+        reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
+        reject_whole_lot, and without it holds the lot as a request.
       parameters:
       - in: path
         name: id
@@ -14448,6 +14477,17 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RejectLotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RejectLotRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectLotRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -14456,7 +14496,44 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QualityReports'
+                $ref: '#/components/schemas/RejectLotResponse'
+          description: ''
+  /api/MaterialLots/{id}/reject-remainder/:
+    post:
+      operationId: api_MaterialLots_reject_remainder_create
+      description: 'Escalate to the whole lot: reject what''s left of an accepted
+        lot.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LotDecisionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LotDecisionRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LotDecisionRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
           description: ''
   /api/MaterialLots/{id}/release-hold/:
     post:
@@ -14521,6 +14598,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/SamplePlanResponse'
           description: ''
+  /api/MaterialLots/{id}/ship-back/:
+    post:
+      operationId: api_MaterialLots_ship_back_create
+      description: The dock ships a return-to-supplier lot back (→ Returned).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShipBackRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShipBackRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShipBackRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/split/:
     post:
       operationId: api_MaterialLots_split_create
@@ -14556,6 +14668,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/MaterialLots/{id}/trace/:
+    get:
+      operationId: api_MaterialLots_trace_retrieve
+      description: |-
+        Two-way traceability: where the lot came from, and every part, assembly,
+        work order, order and customer it reached.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LotTrace'
           description: ''
   /api/MaterialLots/bulk-expected-receipt/:
     post:
@@ -14594,6 +14732,7 @@ paths:
           - QUARANTINE
           - RECEIVED
           - REJECTED
+          - RETURNED
           - SCRAPPED
         description: |-
           * `ON_ORDER` - On Order
@@ -14605,6 +14744,7 @@ paths:
           * `CONSUMED` - Consumed
           * `SCRAPPED` - Scrapped
           * `QUARANTINE` - Quarantine
+          * `RETURNED` - Returned to supplier
       - in: query
         name: supplier
         schema:
@@ -55800,6 +55940,28 @@ components:
           minLength: 1
       required:
       - password
+    LotDecisionRequest:
+      type: object
+      description: A later whole-lot decision on stock already accepted (reject the
+        remainder).
+      properties:
+        disposition_type:
+          allOf:
+          - $ref: '#/components/schemas/LotRejectDispositionEnum'
+          default: RETURN_TO_SUPPLIER
+        description:
+          type: string
+          minLength: 1
+      required:
+      - description
+    LotRejectDispositionEnum:
+      enum:
+      - RETURN_TO_SUPPLIER
+      - SCRAP
+      type: string
+      description: |-
+        * `RETURN_TO_SUPPLIER` - Return to supplier
+        * `SCRAP` - Scrap
     LotSourceTypeEnum:
       enum:
       - MANUFACTURER
@@ -55810,6 +55972,25 @@ components:
         * `MANUFACTURER` - Manufacturer
         * `AUTHORIZED_DISTRIBUTOR` - Authorized distributor
         * `INDEPENDENT_DISTRIBUTOR` - Independent distributor
+    LotTrace:
+      type: object
+      description: Where a lot came from, and every part, assembly, order and customer
+        it reached.
+      properties:
+        backward:
+          $ref: '#/components/schemas/TraceBackward'
+        forward:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceUse'
+        customers:
+          type: array
+          items:
+            type: string
+      required:
+      - backward
+      - customers
+      - forward
     MarkStagedInputRequest:
       type: object
       properties:
@@ -56157,6 +56338,9 @@ components:
         item_requires_heat_number:
           type: boolean
           readOnly: true
+        awaiting_return:
+          type: boolean
+          readOnly: true
         child_lot_count:
           type: integer
           readOnly: true
@@ -56171,6 +56355,7 @@ components:
         archived:
           type: boolean
       required:
+      - awaiting_return
       - child_lot_count
       - created_at
       - delivery_state
@@ -56421,6 +56606,7 @@ components:
       - CONSUMED
       - SCRAPPED
       - QUARANTINE
+      - RETURNED
       type: string
       description: |-
         * `ON_ORDER` - On Order
@@ -56432,6 +56618,7 @@ components:
         * `CONSUMED` - Consumed
         * `SCRAPPED` - Scrapped
         * `QUARANTINE` - Quarantine
+        * `RETURNED` - Returned to supplier
     MaterialRequest:
       type: object
       description: |-
@@ -64550,6 +64737,17 @@ components:
           type: string
           format: uuid
           nullable: true
+        material_lot:
+          type: string
+          format: uuid
+          nullable: true
+          description: The rejected material lot this disposition decides.
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: How much is dispositioned, in the lot's stock unit.
         batch_execution:
           type: string
           format: uuid
@@ -69004,6 +69202,21 @@ components:
           type: string
           format: uuid
           nullable: true
+        material_lot:
+          type: string
+          format: uuid
+          nullable: true
+          description: The rejected material lot this disposition decides.
+        material_lot_number:
+          type: string
+          readOnly: true
+          nullable: true
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: How much is dispositioned, in the lot's stock unit.
         batch_execution:
           type: string
           format: uuid
@@ -69090,6 +69303,7 @@ components:
       - decision_authorized_by_name
       - disposition_number
       - id
+      - material_lot_number
       - quality_reports
       - resolution_completed_by_name
       - rework_limit_exceeded
@@ -69187,6 +69401,17 @@ components:
           type: string
           format: uuid
           nullable: true
+        material_lot:
+          type: string
+          format: uuid
+          nullable: true
+          description: The rejected material lot this disposition decides.
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: How much is dispositioned, in the lot's stock unit.
         batch_execution:
           type: string
           format: uuid
@@ -70320,6 +70545,64 @@ components:
       - password1
       - password2
       - username
+    RejectLotRequest:
+      type: object
+      description: |-
+        The inspector's reject: how many pieces are bad (or the whole lot), where they go,
+        and why. Omitting both `rejected_quantity` and `whole_lot` rejects the whole lot.
+      properties:
+        disposition_type:
+          allOf:
+          - $ref: '#/components/schemas/LotRejectDispositionEnum'
+          default: RETURN_TO_SUPPLIER
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/SeverityEnum'
+          default: MAJOR
+        description:
+          type: string
+          default: ''
+        rejected_quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Pieces found bad, in the stock unit. Fewer than the lot splits
+            them off; the rest is accepted.
+        whole_lot:
+          type: boolean
+          default: false
+          description: Reject the whole lot back to the vendor. Needs reject_whole_lot;
+            without it the lot is held as a request for someone who has it.
+    RejectLotResponse:
+      type: object
+      properties:
+        outcome:
+          $ref: '#/components/schemas/RejectLotResponseOutcomeEnum'
+        lot:
+          allOf:
+          - $ref: '#/components/schemas/MaterialLot'
+          description: The lot that was rejected — for a partial reject, the new lot
+            of the bad pieces.
+        disposition_id:
+          type: string
+        disposition_number:
+          type: string
+      required:
+      - disposition_id
+      - disposition_number
+      - lot
+      - outcome
+    RejectLotResponseOutcomeEnum:
+      enum:
+      - PARTIAL
+      - WHOLE_LOT
+      - WHOLE_LOT_REQUESTED
+      type: string
+      description: |-
+        * `PARTIAL` - PARTIAL
+        * `WHOLE_LOT` - WHOLE_LOT
+        * `WHOLE_LOT_REQUESTED` - WHOLE_LOT_REQUESTED
     ReleaseBlocker:
       type: object
       properties:
@@ -72818,6 +73101,13 @@ components:
       - end_time
       - name
       - start_time
+    ShipBackRequest:
+      type: object
+      properties:
+        note:
+          type: string
+          default: ''
+          description: Carrier, tracking, RMA number from the supplier…
     ShortReceiptEnum:
       enum:
       - BACKORDERED
@@ -78027,6 +78317,133 @@ components:
       - lead_time_days
       - need_by
       - order_by
+    TraceBackward:
+      type: object
+      properties:
+        supplier:
+          type: string
+          nullable: true
+        supplier_lot_number:
+          type: string
+          nullable: true
+        heat_number:
+          type: string
+          nullable: true
+        source_type:
+          type: string
+          nullable: true
+        erp_po:
+          type: string
+          nullable: true
+        received_date:
+          type: string
+          format: date
+          nullable: true
+        parent_lot_id:
+          type: string
+          nullable: true
+        parent_lot_number:
+          type: string
+          nullable: true
+        split_lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TraceSplitLot'
+      required:
+      - erp_po
+      - heat_number
+      - parent_lot_id
+      - parent_lot_number
+      - received_date
+      - source_type
+      - split_lots
+      - supplier
+      - supplier_lot_number
+    TracePart:
+      type: object
+      properties:
+        part_id:
+          type: string
+        erp_id:
+          type: string
+        part_type:
+          type: string
+          nullable: true
+        status:
+          type: string
+        work_order_id:
+          type: string
+          nullable: true
+        work_order:
+          type: string
+          nullable: true
+        order_id:
+          type: string
+          nullable: true
+        order:
+          type: string
+          nullable: true
+        customer:
+          type: string
+          nullable: true
+      required:
+      - customer
+      - erp_id
+      - order
+      - order_id
+      - part_id
+      - part_type
+      - status
+      - work_order
+      - work_order_id
+    TraceSplitLot:
+      type: object
+      properties:
+        lot_id:
+          type: string
+        lot_number:
+          type: string
+        status:
+          type: string
+        quantity:
+          type: number
+          format: double
+      required:
+      - lot_id
+      - lot_number
+      - quantity
+      - status
+    TraceUse:
+      type: object
+      properties:
+        quantity:
+          type: number
+          format: double
+        consumed_at:
+          type: string
+          format: date-time
+        step:
+          type: string
+          nullable: true
+        work_order:
+          type: string
+          nullable: true
+        part:
+          allOf:
+          - $ref: '#/components/schemas/TracePart'
+          nullable: true
+        built_into:
+          type: array
+          items:
+            $ref: '#/components/schemas/TracePart'
+          description: Assemblies it went into, innermost first.
+      required:
+      - built_into
+      - consumed_at
+      - part
+      - quantity
+      - step
+      - work_order
     TrainingMatrix:
       type: object
       description: Operators x training-types competency matrix.

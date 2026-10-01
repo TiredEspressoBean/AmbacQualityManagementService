@@ -1546,6 +1546,9 @@ class MaterialLot(SecureModel):
         ('CONSUMED', 'Consumed'),
         ('SCRAPPED', 'Scrapped'),
         ('QUARANTINE', 'Quarantine'),
+        # Shipped back to the supplier on a return-to-supplier disposition. Not
+        # scrapped — the goods exist, at the vendor — and not stock.
+        ('RETURNED', 'Returned to supplier'),
     ]
 
     lot_number = models.CharField(max_length=100)  # Unique per tenant, not globally
@@ -1684,6 +1687,12 @@ class MaterialLot(SecureModel):
         verbose_name = 'Material Lot'
         verbose_name_plural = 'Material Lots'
         ordering = ['-received_date']
+        permissions = [
+            # Rejecting a whole lot back to the vendor (a VDMR) rather than only the
+            # pieces found bad. Granted to QA managers by default; a tenant may grant
+            # it to inspectors. Without it, a whole-lot reject is held as a request.
+            ('reject_whole_lot', 'Can reject a whole lot back to the vendor'),
+        ]
         indexes = [
             models.Index(fields=['lot_number']),
             models.Index(fields=['supplier', 'received_date']),

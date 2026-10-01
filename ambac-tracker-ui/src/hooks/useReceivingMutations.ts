@@ -292,9 +292,24 @@ export const useAcceptLot = () => {
 export const useRejectLot = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { id: string }) =>
-            api.api_MaterialLots_reject_create(undefined, { params: { id: vars.id }, headers: csrf() }),
-        onSuccess: () => invalidateReceiving(queryClient),
+        mutationFn: (vars: {
+            id: string;
+            disposition_type: "RETURN_TO_SUPPLIER" | "SCRAP";
+            severity: "CRITICAL" | "MAJOR" | "MINOR";
+            description: string;
+            rejected_quantity: string | null;
+            whole_lot: boolean;
+        }) => {
+            const { id, ...body } = vars;
+            return api.api_MaterialLots_reject_create(
+                { ...body, rejected_quantity: body.rejected_quantity || null },
+                { params: { id }, headers: csrf() });
+        },
+        // The disposition is opened server-side with the reject now.
+        onSuccess: () => {
+            invalidateReceiving(queryClient);
+            queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).toLowerCase().includes("disposition") });
+        },
     });
 };
 
@@ -427,5 +442,44 @@ export const useUpdateStorageLocation = () => {
             return api.api_StorageLocations_partial_update(body, { params: { id }, headers: csrf() });
         },
         onSuccess: () => invalidateLocations(queryClient),
+    });
+};
+
+// ----- Whole-lot decisions and returns -----
+
+const invalidateLotAndDispositions = (queryClient: ReturnType<typeof useQueryClient>) => {
+    invalidateSupply(queryClient);
+    queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).toLowerCase().includes("disposition") });
+};
+
+/** Confirm an inspector's whole-lot reject request (needs reject_whole_lot). */
+export const useConfirmWholeLotReject = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string }) =>
+            api.api_MaterialLots_confirm_whole_lot_reject_create(undefined, { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateLotAndDispositions(queryClient),
+    });
+};
+
+/** Escalate to the whole lot: reject what is left of an accepted lot (needs reject_whole_lot). */
+export const useRejectRemainder = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; disposition_type: "RETURN_TO_SUPPLIER" | "SCRAP"; description: string }) =>
+            api.api_MaterialLots_reject_remainder_create(
+                { disposition_type: vars.disposition_type, description: vars.description },
+                { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateLotAndDispositions(queryClient),
+    });
+};
+
+/** The dock ships a return-to-supplier lot back (→ Returned). */
+export const useShipBack = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; note?: string }) =>
+            api.api_MaterialLots_ship_back_create({ note: vars.note ?? "" }, { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateLotAndDispositions(queryClient),
     });
 };

@@ -12,6 +12,7 @@ export const HOLD_LABELS: Record<string, string> = {
     SHELF_LIFE_EXPIRED: "Shelf life expired",
     AWAITING_COC: "Awaiting CoC",
     AWAITING_HEAT_NUMBER: "Awaiting heat number",
+    WHOLE_LOT_REJECT_REQUESTED: "Whole-lot reject requested",
     GAUGE_UNAVAILABLE: "Gauge unavailable",
 };
 

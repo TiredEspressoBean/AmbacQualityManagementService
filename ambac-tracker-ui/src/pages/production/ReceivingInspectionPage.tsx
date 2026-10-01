@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api/generated";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDia
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { ReportButton } from "@/components/reports/ReportButton";
-import { getCookie } from "@/lib/utils";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { FileText } from "lucide-react";
 
@@ -127,6 +125,9 @@ export function ReceivingInspectionPage() {
     // A SCAR is a supplier-tagged CAPA; raise_scar is gated by initiate_capa
     // server-side (MaterialLotViewSet.action_permissions).
     const canInitiateCapa = usePermissionSet().has("initiate_capa");
+    // Rejecting a whole lot back to the vendor is its own permission; without it the
+    // dialog sends a request to QA instead.
+    const canRejectWholeLot = usePermissionSet().has("reject_whole_lot");
 
     const units = useMemo(() => Array.from({ length: n }, (_, i) => i + 1), [n]);
 
@@ -189,24 +190,19 @@ export function ReceivingInspectionPage() {
     async function confirmReject(values: RejectDispositionValues) {
         if (!lot) return;
         setRejectSubmitting(true);
-        let dispositionOk = true;
+        let outcome: string | undefined;
         try {
-            const qr = (await rejectMut.mutateAsync({ id: lotId })) as { id?: string } | undefined;
-            try {
-                await api.api_QuarantineDispositions_create(
-                    {
-                        current_state: "OPEN",
-                        disposition_type: values.disposition_type,
-                        severity: values.severity,
-                        description: values.description,
-                        part: null,
-                        quality_reports: qr?.id ? [qr.id] : [],
-                    },
-                    { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
-                );
-            } catch {
-                dispositionOk = false;
-            }
+            // One call: the server rejects (all, or the bad pieces split off) and opens the
+            // disposition with it — no second request to fail half-way.
+            const res = await rejectMut.mutateAsync({
+                id: lotId,
+                disposition_type: values.disposition_type,
+                severity: values.severity,
+                description: values.description,
+                rejected_quantity: values.rejected_quantity,
+                whole_lot: values.whole_lot,
+            });
+            outcome = res.outcome;
             // Non-fatal but NOT silent — the reject already committed, so we
             // don't roll back, but the user asked for a SCAR and needs to know
             // it didn't happen (e.g. missing initiate_capa → 403).
@@ -214,7 +210,10 @@ export function ReceivingInspectionPage() {
             if (values.raise_scar && lot.supplier) {
                 try { await scarMut.mutateAsync({ id: lotId }); } catch { scarFailed = true; }
             }
-            toast.success(dispositionOk ? "Lot rejected · disposition opened" : "Lot rejected (open the disposition manually)");
+            toast.success(
+                outcome === "PARTIAL" ? "Bad pieces split off and rejected · the rest accepted"
+                : outcome === "WHOLE_LOT_REQUESTED" ? "Whole-lot reject requested · the lot is held for QA"
+                : "Lot rejected · disposition opened");
             if (scarFailed) {
                 toast.error("Lot rejected, but the SCAR could not be raised — ask QA to raise it.");
             }
@@ -500,6 +499,8 @@ export function ReceivingInspectionPage() {
                 acceptNumber={ac}
                 submitting={rejectSubmitting}
                 onConfirm={confirmReject}
+                canRejectWholeLot={canRejectWholeLot}
+                unitOfMeasure={lot.unit_of_measure}
             />
             <ExtendShelfLifeDialog
                 lotId={String(lot.id)}

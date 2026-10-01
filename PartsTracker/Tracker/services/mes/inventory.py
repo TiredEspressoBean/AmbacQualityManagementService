@@ -73,6 +73,29 @@ def release_hold(lot):
     return _transition(lot, allowed_from=("QUARANTINE",), to="RECEIVED")
 
 
+def reject_from_stock(lot):
+    """ACCEPTED/IN_USE → REJECTED: a quality decision taken after the lot reached stock
+    — escalating a partial reject to the whole lot."""
+    return _transition(lot, allowed_from=("ACCEPTED", "IN_USE"), to="REJECTED")
+
+
+def accept_on_concession(lot):
+    """REJECTED/QUARANTINE → ACCEPTED: a use-as-is disposition puts nonconforming stock
+    into use, on a recorded concession."""
+    return _transition(lot, allowed_from=("REJECTED", "QUARANTINE"), to="ACCEPTED")
+
+
+def scrap_lot(lot):
+    """REJECTED/QUARANTINE → SCRAPPED (a scrap disposition)."""
+    return _transition(lot, allowed_from=("REJECTED", "QUARANTINE"), to="SCRAPPED")
+
+
+def mark_lot_returned(lot):
+    """REJECTED → RETURNED: shipped back to the supplier on a return-to-supplier
+    disposition. The goods exist, at the vendor; they are no longer stock."""
+    return _transition(lot, allowed_from=("REJECTED",), to="RETURNED")
+
+
 def mark_dock_to_stock(lot):
     """RECEIVED → ACCEPTED for material that needs no incoming inspection
     (dock-to-stock). The basis (no RECEIVING step / skip-lot exemption) is the

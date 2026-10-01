@@ -824,6 +824,9 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         if self.instance is not None:
             self.fields['disposition_type'].read_only = True
 
+    # A rejected material lot (receiving), when the disposition is about one.
+    material_lot_number = serializers.CharField(source='material_lot.lot_number', read_only=True, allow_null=True)
+
     class Meta:
         model = QuarantineDisposition
         fields = (
@@ -845,7 +848,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'scrap_verified', 'scrap_verification_method', 'scrap_verified_by',
             'scrap_verified_by_name', 'scrap_verified_at',
             # Relationships
-            'part', 'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
+            'part', 'material_lot', 'material_lot_number', 'quantity',
+            'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
             # Batch dispositions: the member parts of the affected load
             'affected_parts',

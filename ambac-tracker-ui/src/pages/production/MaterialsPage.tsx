@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { AdjustLotQuantityDialog } from "@/components/receiving/AdjustLotQuantityDialog";
+import { RejectRemainderDialog, ShipBackDialog } from "@/components/receiving/LotReturnDialogs";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
 import { useListMaterialLots } from "@/hooks/useListMaterialLots";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
@@ -24,7 +26,7 @@ const col = createColumnHelper<Schema<"MaterialLot">>();
 const STATUS_LABEL: Record<string, string> = {
     ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
     ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
-    SCRAPPED: "Scrapped", QUARANTINE: "Held",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned",
 };
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -42,7 +44,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
  * use "+ Receive"; QA works the "Awaiting inspection" lens; planners read "On
  * hand"; supervisors read the funnel counts.
  */
-type Tab = "onorder" | "late" | "awaiting" | "onhand" | "held" | "all";
+type Tab = "onorder" | "late" | "awaiting" | "onhand" | "held" | "rejected" | "all";
 
 // Ordered by lifecycle stage: ordered → arrived, awaiting disposition → usable → held.
 const TABS: { id: Tab; label: string }[] = [
@@ -52,6 +54,8 @@ const TABS: { id: Tab; label: string }[] = [
     { id: "awaiting", label: "Awaiting inspection" },
     { id: "onhand", label: "On hand" },
     { id: "held", label: "Held" },
+    // Rejected, waiting on a disposition — and for return-to-supplier, the dock.
+    { id: "rejected", label: "Rejected" },
     { id: "all", label: "All" },
 ];
 
@@ -63,6 +67,7 @@ function queriesForTab(tab: Tab): Record<string, unknown> {
     if (tab === "awaiting") return { inspection_pending: "true" };
     if (tab === "onhand") return { status: "ACCEPTED" };
     if (tab === "held") return { status: "QUARANTINE" };
+    if (tab === "rejected") return { status: "REJECTED" };
     return {};
 }
 
@@ -77,12 +82,14 @@ export function MaterialsPage() {
     const awaiting = useListMaterialLots({ inspection_pending: "true", limit: 1 });
     const onhand = useListMaterialLots({ status: "ACCEPTED", limit: 1 });
     const held = useListMaterialLots({ status: "QUARANTINE", limit: 1 });
+    const rejected = useListMaterialLots({ status: "REJECTED", limit: 1 });
     const counts: Record<Tab, number | undefined> = {
         onorder: onorder.data?.count,
         late: late.data?.count,
         awaiting: awaiting.data?.count,
         onhand: onhand.data?.count,
         held: held.data?.count,
+        rejected: rejected.data?.count,
         all: undefined,
     };
 
@@ -90,6 +97,9 @@ export function MaterialsPage() {
     const [expectOpen, setExpectOpen] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
+    const [shipLot, setShipLot] = useState<Lot | null>(null);
+    const [remainderLot, setRemainderLot] = useState<Lot | null>(null);
+    const canRejectWholeLot = usePermissionSet().has("reject_whole_lot");
     const { downloadReport } = useReportEmail();
     const onOrderLens = tab === "onorder" || tab === "late";
     const [receiveLot, setReceiveLot] = useState<Lot | null>(null);
@@ -161,7 +171,15 @@ export function MaterialsPage() {
                       ]
             }
             columns={[
-                col({ header: "Lot #", renderCell: (l) => <span className="font-mono font-medium">{l.lot_number}</span> }),
+                col({
+                    header: "Lot #",
+                    renderCell: (l) => (
+                        <button type="button" className="font-mono font-medium hover:underline"
+                            onClick={() => navigate({ to: "/production/material-lots/$lotId", params: { lotId: String(l.id) } })}>
+                            {l.lot_number}
+                        </button>
+                    ),
+                }),
                 // item_name resolves either side of the XOR (in-house PartType or purchased
                 // Material) and falls back to the ad-hoc description. The older
                 // material_type_name pairing rendered blank for every Material-based lot.
@@ -245,6 +263,9 @@ export function MaterialsPage() {
                                 {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
                             </Button>
                         )}
+                        {l.awaiting_return && (
+                            <Button size="sm" onClick={() => setShipLot(l)}>Ship back</Button>
+                        )}
                         {l.status !== "ON_ORDER" && (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -271,6 +292,14 @@ export function MaterialsPage() {
                                     </DropdownMenuItem>
                                     {canExtend(l) && (
                                         <DropdownMenuItem onSelect={() => setExtendLot(l)}>Extend shelf life…</DropdownMenuItem>
+                                    )}
+                                    {(l.awaiting_return || l.status === "RETURNED") && (
+                                        <DropdownMenuItem onSelect={() => void downloadReport("rtv_sheet", { lot_id: String(l.id) })}>
+                                            RTV sheet (PDF)
+                                        </DropdownMenuItem>
+                                    )}
+                                    {canRejectWholeLot && (l.status === "ACCEPTED" || l.status === "IN_USE") && (
+                                        <DropdownMenuItem onSelect={() => setRemainderLot(l)}>Reject the rest…</DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -310,6 +339,17 @@ export function MaterialsPage() {
                 open={adjustLot !== null}
                 onOpenChange={(o) => { if (!o) setAdjustLot(null); }}
             />
+        )}
+        {shipLot && (
+            <ShipBackDialog key={String(shipLot.id)} lotId={String(shipLot.id)} lotNumber={shipLot.lot_number}
+                supplierName={shipLot.supplier_name} open={shipLot !== null}
+                onOpenChange={(o) => { if (!o) setShipLot(null); }} />
+        )}
+        {remainderLot && (
+            <RejectRemainderDialog key={String(remainderLot.id)} lotId={String(remainderLot.id)}
+                lotNumber={remainderLot.lot_number} remaining={remainderLot.quantity_remaining}
+                unitOfMeasure={remainderLot.unit_of_measure} open={remainderLot !== null}
+                onOpenChange={(o) => { if (!o) setRemainderLot(null); }} />
         )}
         {extendLot && (
             <ExtendShelfLifeDialog
