@@ -20839,6 +20839,12 @@ export interface components {
              *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
              */
             default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** @description Buys from us. */
+            is_customer?: boolean;
+            /** @description Sells to us. */
+            is_supplier?: boolean;
+            /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
+            address?: string;
             readonly user_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -20869,6 +20875,12 @@ export interface components {
              *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
              */
             default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** @description Buys from us. */
+            is_customer?: boolean;
+            /** @description Sells to us. */
+            is_supplier?: boolean;
+            /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
+            address?: string;
             archived?: boolean;
         };
         /**
@@ -20913,6 +20925,13 @@ export interface components {
          * @enum {string}
          */
         ConditionOperatorEnum: "gte" | "lte" | "eq";
+        /**
+         * @description * `QUALITY` - Quality
+         *     * `EXPEDITING` - Deliveries / expediting
+         *     * `GENERAL` - General
+         * @enum {string}
+         */
+        ContactRoleEnum: "QUALITY" | "EXPEDITING" | "GENERAL";
         /** @description Content type serializer */
         ContentType: {
             readonly id: number;
@@ -23563,6 +23582,8 @@ export interface components {
             lot_number: string;
             item_name: string;
             supplier_name: string | null;
+            supplier_contact: string | null;
+            supplier_contact_email: string | null;
             erp_po_number: string;
             erp_po_line: string;
             /** Format: date */
@@ -24011,6 +24032,12 @@ export interface components {
             /** Format: decimal */
             received_as_quantity?: string | null;
             received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: uuid
+             * @description The customer this stock belongs to, when it is theirs, not ours.
+             */
+            owner?: string | null;
+            readonly owner_name: string | null;
             readonly item_purchase_unit: (components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: decimal */
             readonly item_units_per_purchase_unit: string | null;
@@ -24122,6 +24149,11 @@ export interface components {
             /** Format: decimal */
             received_as_quantity?: string | null;
             received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: uuid
+             * @description The customer this stock belongs to, when it is theirs, not ours.
+             */
+            owner?: string | null;
             archived?: boolean;
         };
         /** @description Serializer for splitting a lot */
@@ -27426,6 +27458,12 @@ export interface components {
              *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
              */
             default_core_fulfilment_mode?: (components["schemas"]["FulfilmentModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** @description Buys from us. */
+            is_customer?: boolean;
+            /** @description Sells to us. */
+            is_supplier?: boolean;
+            /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
+            address?: string;
             archived?: boolean;
         };
         /** @description Remanufacturing core serializer */
@@ -28058,6 +28096,11 @@ export interface components {
             /** Format: decimal */
             received_as_quantity?: string | null;
             received_as_unit?: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: uuid
+             * @description The customer this stock belongs to, when it is theirs, not ours.
+             */
+            owner?: string | null;
             archived?: boolean;
         };
         /**
@@ -30019,6 +30062,14 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
+            /**
+             * @description For an outside contact: what to come to them about.
+             *
+             *     * `QUALITY` - Quality
+             *     * `EXPEDITING` - Deliveries / expediting
+             *     * `GENERAL` - General
+             */
+            contact_role?: components["schemas"]["ContactRoleEnum"] | components["schemas"]["BlankEnum"];
             /**
              * Format: uuid
              * @description Primary job role / position - drives the required-competency profile.
@@ -36501,6 +36552,14 @@ export interface components {
             /** Format: date-time */
             readonly last_login: string | null;
             readonly parent_company: components["schemas"]["Company"] | null;
+            /**
+             * @description For an outside contact: what to come to them about.
+             *
+             *     * `QUALITY` - Quality
+             *     * `EXPEDITING` - Deliveries / expediting
+             *     * `GENERAL` - General
+             */
+            contact_role?: components["schemas"]["ContactRoleEnum"] | components["schemas"]["BlankEnum"];
             readonly groups: {
                 [key: string]: unknown;
             }[];
@@ -36623,6 +36682,14 @@ export interface components {
             is_active?: boolean;
             /** Format: uuid */
             parent_company_id?: string | null;
+            /**
+             * @description For an outside contact: what to come to them about.
+             *
+             *     * `QUALITY` - Quality
+             *     * `EXPEDITING` - Deliveries / expediting
+             *     * `GENERAL` - General
+             */
+            contact_role?: components["schemas"]["ContactRoleEnum"] | components["schemas"]["BlankEnum"];
             /**
              * Format: uuid
              * @description Primary job role / position - drives the required-competency profile.
@@ -41025,6 +41092,8 @@ export interface operations {
     api_Companies_list: {
         parameters: {
             query?: {
+                is_customer?: boolean;
+                is_supplier?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 name?: string;
@@ -41200,6 +41269,8 @@ export interface operations {
     api_Companies_version_history_list: {
         parameters: {
             query?: {
+                is_customer?: boolean;
+                is_supplier?: boolean;
                 name?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
@@ -64543,6 +64614,14 @@ export interface operations {
         parameters: {
             query?: {
                 archived?: boolean;
+                /**
+                 * @description For an outside contact: what to come to them about.
+                 *
+                 *     * `QUALITY` - Quality
+                 *     * `EXPEDITING` - Deliveries / expediting
+                 *     * `GENERAL` - General
+                 */
+                contact_role?: "EXPEDITING" | "GENERAL" | "QUALITY";
                 date_joined__gte?: string;
                 date_joined__lte?: string;
                 email?: string;

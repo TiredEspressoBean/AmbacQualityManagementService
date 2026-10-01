@@ -236,16 +236,23 @@ def sourcing_requirements(tenant) -> dict:
         return None  # ad-hoc lot named only by description — not a planning subject
 
     onhand: dict = {}
+    # Customer property covers only that customer's demand — never anyone else's.
+    owned_onhand: dict = {}   # (item key, owner company id) -> qty
     for r in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=_ON_HAND_LOT_STATUSES)
-              .values('material_id', 'material_type_id', 'quantity_remaining')):
+              .values('material_id', 'material_type_id', 'quantity_remaining', 'owner_id')):
         k = _lot_key(r)
-        if k is not None:
+        if k is None:
+            continue
+        if r['owner_id'] is not None:
+            ok = (k, r['owner_id'])
+            owned_onhand[ok] = owned_onhand.get(ok, 0.0) + float(r['quantity_remaining'] or 0)
+        else:
             onhand[k] = onhand.get(k, 0.0) + float(r['quantity_remaining'] or 0)
 
     incoming: dict = {}
     incoming_date: dict = {}
     for lot in (MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
-                                           quantity_remaining__gt=0)
+                                           quantity_remaining__gt=0, owner__isnull=True)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
                 .values('material_id', 'material_type_id', 'promised_date',
                         'quantity_remaining')):
@@ -285,9 +292,11 @@ def sourcing_requirements(tenant) -> dict:
     pool_name: dict = {}
     need_by: dict = {}      # (kind, id) -> earliest need-by date
     buy_obj: dict = {}      # (kind, id) -> BuyItem
+    demand_by_customer: dict = {}   # (item key, customer company id) -> firm qty
     for wo in (WorkOrder.objects.filter(archived=False, tenant=tenant, process__isnull=False)
-               .exclude(workorder_status__in=excluded).select_related('process')
+               .exclude(workorder_status__in=excluded).select_related('process', 'related_order')
                .prefetch_related('parts__core_role')):
+        wo_customer = wo.related_order.company_id if wo.related_order_id else None
         pt_id = wo.process.part_type_id
         if pt_id is None:
             continue
@@ -324,6 +333,9 @@ def sourcing_requirements(tenant) -> dict:
             k = buy.key
             if firm:
                 demand[k] = demand.get(k, 0.0) + firm
+                if wo_customer is not None:
+                    dk = (k, wo_customer)
+                    demand_by_customer[dk] = demand_by_customer.get(dk, 0.0) + firm
             if fc:
                 forecast[k] = forecast.get(k, 0.0) + fc
             buy_obj[k] = buy
@@ -353,7 +365,10 @@ def sourcing_requirements(tenant) -> dict:
         buy = buy_obj[k]
         # Held-back buffer is not available to commit — see the per-WO pass above.
         safety = buy.safety_stock
-        cover = (onhand.get(k, 0.0) - safety) + incoming.get(k, 0.0)
+        # A customer's own stock covers their demand for it, up to what they need.
+        owned_cover = sum(min(qty, demand_by_customer.get((key, cid), 0.0))
+                          for (key, cid), qty in owned_onhand.items() if key == k)
+        cover = (onhand.get(k, 0.0) - safety) + incoming.get(k, 0.0) + owned_cover
         firm = demand.get(k, 0.0)
         short = firm - cover
         # What ELSE would be short if the forecast came true — the part of the

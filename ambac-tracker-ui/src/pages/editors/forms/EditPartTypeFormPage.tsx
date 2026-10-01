@@ -57,7 +57,7 @@ import {
 const supplierPickerOptions = () =>
     queryOptions({
         queryKey: ["companies", "part-type-supplier-picker"] as const,
-        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name"}}) as Promise<{
+        queryFn: () => api.api_Companies_list({queries: {limit: 500, ordering: "name", is_supplier: true}}) as Promise<{
             results?: Array<{ id: string | number; name: string }>
         }>,
     });

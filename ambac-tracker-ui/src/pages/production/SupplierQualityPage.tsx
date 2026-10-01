@@ -128,7 +128,7 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
 }
 
 export function SupplierQualityPage() {
-    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200 });
+    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200, is_supplier: true });
     return (
         <div className="space-y-4 p-2">
             <div>

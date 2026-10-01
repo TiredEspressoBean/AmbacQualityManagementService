@@ -79,7 +79,12 @@
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
-  field("Issued To (Supplier)", text(weight: "semibold")[#data.supplier_name]),
+  field("Issued To (Supplier)", [
+    #text(weight: "semibold")[#data.supplier_name]
+    #if data.at("supplier_contact", default: none) != none [ \ Attn: #data.supplier_contact
+      #if data.at("supplier_contact_email", default: none) != none [ (#data.supplier_contact_email)] ]
+    #if data.at("supplier_address", default: none) != none [ \ #text(size: 9pt, fill: muted)[#data.supplier_address] ]
+  ]),
   field("Issued By", data.issued_by_org),
   field("Originator", data.issued_by_person),
   field("Severity", severity-badge(data.severity)),

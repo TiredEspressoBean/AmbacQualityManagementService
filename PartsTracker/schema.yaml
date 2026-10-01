@@ -4846,6 +4846,14 @@ paths:
       operationId: api_Companies_list
       description: Company management - scoped to tenant and user permissions.
       parameters:
+      - in: query
+        name: is_customer
+        schema:
+          type: boolean
+      - in: query
+        name: is_supplier
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -5063,6 +5071,14 @@ paths:
           format: uuid
         description: A UUID string identifying this Company.
         required: true
+      - in: query
+        name: is_customer
+        schema:
+          type: boolean
+      - in: query
+        name: is_supplier
+        schema:
+          type: boolean
       - in: query
         name: name
         schema:
@@ -37103,6 +37119,20 @@ paths:
         schema:
           type: boolean
       - in: query
+        name: contact_role
+        schema:
+          type: string
+          enum:
+          - EXPEDITING
+          - GENERAL
+          - QUALITY
+        description: |-
+          For an outside contact: what to come to them about.
+
+          * `QUALITY` - Quality
+          * `EXPEDITING` - Deliveries / expediting
+          * `GENERAL` - General
+      - in: query
         name: date_joined__gte
         schema:
           type: string
@@ -49785,6 +49815,15 @@ components:
           - $ref: '#/components/schemas/FulfilmentModeEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        is_customer:
+          type: boolean
+          description: Buys from us.
+        is_supplier:
+          type: boolean
+          description: Sells to us.
+        address:
+          type: string
+          description: Postal address — printed on SCARs and return-to-vendor sheets.
         user_count:
           type: integer
           readOnly: true
@@ -49851,6 +49890,15 @@ components:
           - $ref: '#/components/schemas/FulfilmentModeEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        is_customer:
+          type: boolean
+          description: Buys from us.
+        is_supplier:
+          type: boolean
+          description: Sells to us.
+        address:
+          type: string
+          description: Postal address — printed on SCARs and return-to-vendor sheets.
         archived:
           type: boolean
       required:
@@ -49927,6 +49975,16 @@ components:
         * `gte` - >= (greater or equal)
         * `lte` - <= (less or equal)
         * `eq` - = (equal)
+    ContactRoleEnum:
+      enum:
+      - QUALITY
+      - EXPEDITING
+      - GENERAL
+      type: string
+      description: |-
+        * `QUALITY` - Quality
+        * `EXPEDITING` - Deliveries / expediting
+        * `GENERAL` - General
     ContentType:
       type: object
       description: Content type serializer
@@ -55429,6 +55487,12 @@ components:
         supplier_name:
           type: string
           nullable: true
+        supplier_contact:
+          type: string
+          nullable: true
+        supplier_contact_email:
+          type: string
+          nullable: true
         erp_po_number:
           type: string
         erp_po_line:
@@ -55465,6 +55529,8 @@ components:
       - promised_date
       - quantity
       - state
+      - supplier_contact
+      - supplier_contact_email
       - supplier_name
       - unit_of_measure
     LateDeliveryWorkOrder:
@@ -56320,6 +56386,16 @@ components:
           oneOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        owner:
+          type: string
+          format: uuid
+          nullable: true
+          description: The customer this stock belongs to, when it is theirs, not
+            ours.
+        owner_name:
+          type: string
+          readOnly: true
+          nullable: true
         item_purchase_unit:
           nullable: true
           readOnly: true
@@ -56370,6 +56446,7 @@ components:
       - material_name
       - material_type_name
       - ordered_quantity
+      - owner_name
       - parent_lot_number
       - quantity
       - quantity_remaining
@@ -56575,6 +56652,12 @@ components:
           oneOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        owner:
+          type: string
+          format: uuid
+          nullable: true
+          description: The customer this stock belongs to, when it is theirs, not
+            ours.
         archived:
           type: boolean
       required:
@@ -62474,6 +62557,15 @@ components:
           - $ref: '#/components/schemas/FulfilmentModeEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        is_customer:
+          type: boolean
+          description: Buys from us.
+        is_supplier:
+          type: boolean
+          description: Sells to us.
+        address:
+          type: string
+          description: Postal address — printed on SCARs and return-to-vendor sheets.
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -63533,6 +63625,12 @@ components:
           oneOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        owner:
+          type: string
+          format: uuid
+          nullable: true
+          description: The customer this stock belongs to, when it is theirs, not
+            ours.
         archived:
           type: boolean
     PatchedMaterialRequest:
@@ -66683,6 +66781,16 @@ components:
           format: uuid
           writeOnly: true
           nullable: true
+        contact_role:
+          description: |-
+            For an outside contact: what to come to them about.
+
+            * `QUALITY` - Quality
+            * `EXPEDITING` - Deliveries / expediting
+            * `GENERAL` - General
+          oneOf:
+          - $ref: '#/components/schemas/ContactRoleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         job_role:
           type: string
           format: uuid
@@ -79478,6 +79586,16 @@ components:
           - $ref: '#/components/schemas/Company'
           readOnly: true
           nullable: true
+        contact_role:
+          description: |-
+            For an outside contact: what to come to them about.
+
+            * `QUALITY` - Quality
+            * `EXPEDITING` - Deliveries / expediting
+            * `GENERAL` - General
+          oneOf:
+          - $ref: '#/components/schemas/ContactRoleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         groups:
           type: array
           items:
@@ -79746,6 +79864,16 @@ components:
           format: uuid
           writeOnly: true
           nullable: true
+        contact_role:
+          description: |-
+            For an outside contact: what to come to them about.
+
+            * `QUALITY` - Quality
+            * `EXPEDITING` - Deliveries / expediting
+            * `GENERAL` - General
+          oneOf:
+          - $ref: '#/components/schemas/ContactRoleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         job_role:
           type: string
           format: uuid

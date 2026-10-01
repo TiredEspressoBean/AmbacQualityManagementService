@@ -29,6 +29,10 @@ class ScarContext(BaseModel):
     """Top-level shape passed to the scar.typ template."""
     scar_number: str
     supplier_name: str
+    # Who it goes to: the supplier's quality contact (or a general one), and address.
+    supplier_contact: Optional[str] = None
+    supplier_contact_email: Optional[str] = None
+    supplier_address: Optional[str] = None
     issued_by_org: str
     issued_by_person: Optional[str] = None
     issued_date: date
@@ -87,9 +91,15 @@ class ScarReportAdapter(ReportAdapter):
         # Present the supplier-facing number as SCAR-… (the canonical record stays
         # the CAPA; supplier CAPA numbers are "CAPA-SU-YYYY-NNN").
         scar_number = capa.capa_number.replace("CAPA-SU-", "SCAR-").replace("CAPA-", "SCAR-")
+        from Tracker.services.mes.late_deliveries import company_contact
+        contact = (company_contact({capa.supplier_id}, ("QUALITY", "GENERAL")).get(capa.supplier_id)
+                   if capa.supplier_id else None)
         return ScarContext(
             scar_number=scar_number,
             supplier_name=capa.supplier.name if capa.supplier_id else "-",
+            supplier_contact=contact[0] if contact else None,
+            supplier_contact_email=(contact[1] or None) if contact else None,
+            supplier_address=(capa.supplier.address or None) if capa.supplier_id else None,
             issued_by_org=capa.tenant.name,
             issued_by_person=_user_name(capa.initiated_by),
             issued_date=capa.initiated_date,

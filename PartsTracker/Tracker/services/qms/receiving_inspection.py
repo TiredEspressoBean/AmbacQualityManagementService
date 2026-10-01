@@ -163,11 +163,16 @@ def route_received_lot(lot, user, *, waive=()):
     # design to approve. The paperwork gates read the lot's item, so apply to both.
     # Supplier-qualification gate (soft hold): a lot from a supplier not qualified
     # for this part type is quarantined and flagged rather than flowing to stock.
-    if HOLD_SUPPLIER_UNQUALIFIED not in waive and _held_for_unqualified_supplier(lot):
+    # Customer property isn't bought from a supplier, so the supplier and part-approval
+    # gates don't apply to it; inspection, shelf life and paperwork still do.
+    is_customer_property = lot.owner_id is not None
+    if (not is_customer_property and HOLD_SUPPLIER_UNQUALIFIED not in waive
+            and _held_for_unqualified_supplier(lot)):
         return None
     # Part-approval gate (soft hold): a lot whose (part type, supplier) has no
     # active part approval (PPAP / FAI) is quarantined and flagged.
-    if HOLD_PART_UNAPPROVED not in waive and _held_for_unapproved_part(lot):
+    if (not is_customer_property and HOLD_PART_UNAPPROVED not in waive
+            and _held_for_unapproved_part(lot)):
         return None
     # Shelf-life gate (soft hold): a lot already past its use-by on arrival is
     # quarantined and flagged rather than routed to inspection/stock.

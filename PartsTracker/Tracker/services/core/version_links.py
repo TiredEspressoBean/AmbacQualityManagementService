@@ -55,6 +55,8 @@ LINKS = {
     'HubSpotCompanyLink.company': FOLLOWS,
     'Material.preferred_supplier': FOLLOWS,
     'MaterialLot.supplier': FOLLOWS,
+    # Customer property's owner: a customer's new version is the same customer.
+    'MaterialLot.owner': FOLLOWS,
     'NotificationRule.scope_customer': FOLLOWS,
     'NotificationSchedule.scope_customer': FOLLOWS,
     'Orders.company': FOLLOWS,

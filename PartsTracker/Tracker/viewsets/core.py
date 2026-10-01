@@ -919,7 +919,7 @@ class CompanyViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, 
     csv_import_serializer = create_import_serializer_for_model(
         Companies, lookup_fields=['id', 'name'], base=VersionedLikeTheAPIImport)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["name"]
+    filterset_fields = ["name", "is_customer", "is_supplier"]
     search_fields = ["name"]
     ordering_fields = ["created_at", "updated_at", "name"]
     ordering = ["-created_at"]

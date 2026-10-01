@@ -70,7 +70,7 @@ export default function EditMaterialFormPage() {
   const [supplierId, setSupplierId] = useState<string | null>(null);
   // Receiving controls (buying unit, CoC / heat-number holds) — also kept out of RHF.
   const [receiving, setReceiving] = useState<ReceivingControls>(DEFAULT_RECEIVING_CONTROLS);
-  const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name" });
+  const { data: companiesData } = useRetrieveCompanies({ limit: 500, ordering: "name", is_supplier: true });
   const suppliers = useMemo(
     () => (companiesData?.results ?? []).map((c) => ({ id: String(c.id), name: c.name })),
     [companiesData]

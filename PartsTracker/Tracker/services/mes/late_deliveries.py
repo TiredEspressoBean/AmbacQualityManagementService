@@ -20,6 +20,24 @@ from Tracker.services.mes.material_lot import DUE_SOON_DAYS, delivery_state
 HOLDING_UP_LIMIT = 10
 
 
+def company_contact(company_ids, preferred_roles) -> dict:
+    """{company_id: (name, email)} — each company's first active contact in the first
+    role that has one ("EXPEDITING", then "GENERAL", say)."""
+    from Tracker.models import User
+    found: dict = {}
+    if not company_ids:
+        return found
+    rank = {r: i for i, r in enumerate(preferred_roles)}
+    for u in (User.objects.filter(  # tenant-safe: scoped by the companies' ids, which are tenant-scoped
+            parent_company_id__in=company_ids, contact_role__in=preferred_roles, is_active=True)
+            .order_by("last_name", "first_name", "email")):
+        best = found.get(u.parent_company_id)
+        if best is None or rank[u.contact_role] < best[0]:
+            name = " ".join(p for p in (u.first_name, u.last_name) if p) or u.email or u.username
+            found[u.parent_company_id] = (rank[u.contact_role], name, u.email or "")
+    return {cid: (name, email) for cid, (_, name, email) in found.items()}
+
+
 def late_deliveries(tenant, today=None) -> list[dict]:
     """Every ON_ORDER lot overdue or due within DUE_SOON_DAYS, most overdue first."""
     from django.db.models import Q
@@ -70,6 +88,9 @@ def late_deliveries(tenant, today=None) -> list[dict]:
                 .order_by("expected_start", "ERP_id")):
             wos_by_pt.setdefault(wo.process.part_type_id, []).append(wo)
 
+    # Who to chase: the supplier's deliveries contact, or failing that a general one.
+    contacts = company_contact({lot.supplier_id for lot in lots if lot.supplier_id},
+                               ("EXPEDITING", "GENERAL"))
     rows = []
     for lot in lots:
         key = ("MATERIAL", lot.material_id) if lot.material_id else ("PART_TYPE", lot.material_type_id)
@@ -80,6 +101,8 @@ def late_deliveries(tenant, today=None) -> list[dict]:
             "lot_number": lot.lot_number,
             "item_name": lot.item_name,
             "supplier_name": lot.supplier.name if lot.supplier_id else None,
+            "supplier_contact": contacts.get(lot.supplier_id, (None, None))[0],
+            "supplier_contact_email": contacts.get(lot.supplier_id, (None, None))[1] or None,
             "erp_po_number": lot.erp_po_number,
             "erp_po_line": lot.erp_po_line,
             "promised_date": lot.promised_date,

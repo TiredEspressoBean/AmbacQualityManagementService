@@ -35,6 +35,8 @@ export type LotBulkRow = {
     storage_location?: string;
     heat_number?: string;
     source_type?: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+    /** Customer property: the customer whose stock this is (free-issue material). */
+    owner?: string | null;
     /** Counted in the item's buying unit: the server derives `quantity` from it. */
     received_as_quantity?: string;
     received_as_unit?: "BOX" | "LB";

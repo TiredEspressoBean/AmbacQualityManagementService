@@ -93,11 +93,15 @@ def item_filter(item, prefix: str = '') -> dict:
     return {f'{prefix}{field}': ident}
 
 
-def _usable_lots(item, tenant):
+def _usable_lots(item, tenant, customer_id=None):
     """Accepted stock of a material, oldest-expiry first (FEFO), then oldest receipt.
 
     Lots with no expiry date sort last: dated stock is the stock that can spoil, so it
     should leave first.
+
+    Customer property (`owner`) is drawn only for that customer's work — `customer_id`
+    — and first, ahead of our own stock: a free-issue kit is meant for their job. With
+    no customer, only our own stock is offered.
     """
     from django.db.models import F
     from Tracker.models import MaterialLot
@@ -111,12 +115,13 @@ def _usable_lots(item, tenant):
     # a lot to SOMEONE ELSE; it must not stop the reserver consuming it, which is the
     # whole point of having reserved. Netting therefore lives in `plan_draw`, which
     # makes suggestions, not in the path that draws stock down.
-    return list(
-        MaterialLot.objects.filter(archived=False,
-            tenant=tenant, **item_filter(item),
-            status__in=('ACCEPTED', 'IN_USE'), quantity_remaining__gt=0,
-        ).order_by(F('expiration_date').asc(nulls_last=True), 'received_date')
+    base = MaterialLot.objects.filter(archived=False,
+        tenant=tenant, **item_filter(item),
+        status__in=('ACCEPTED', 'IN_USE'), quantity_remaining__gt=0,
     )
+    order = (F('expiration_date').asc(nulls_last=True), 'received_date')
+    theirs = list(base.filter(owner_id=customer_id).order_by(*order)) if customer_id else []
+    return theirs + list(base.filter(owner__isnull=True).order_by(*order))
 
 
 def reserved_by_lot(item, tenant) -> dict:
@@ -169,7 +174,7 @@ def available_quantity(material_id, tenant) -> Decimal:
     # tenant-safe: explicit tenant filter
     on_hand = (MaterialLot.objects
                .filter(archived=False, tenant=tenant, material_id=material_id,
-                       status__in=('ACCEPTED', 'IN_USE'))
+                       status__in=('ACCEPTED', 'IN_USE'), owner__isnull=True)
                .aggregate(q=Sum('quantity_remaining'))['q'])
     return max(Decimal('0'), Decimal(str(on_hand or 0)) - reserved_quantity(material_id, tenant))
 
@@ -242,6 +247,8 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         return result
 
     work_order = part.work_order
+    order = getattr(work_order, 'related_order', None) if work_order is not None else None
+    customer_id = getattr(order, 'company_id', None) if order is not None else None
     # A reman unit's harvested components come from teardown, not purchased stock —
     # the same carve-out the material gate makes, so the two can't disagree.
     is_reman = bool(work_order and work_order.cores.exists())
@@ -276,9 +283,11 @@ def consume_for_step(part, step, operator, bom_cache: dict | None = None
         # WOULD draw, the picker took what was really on the shelf, and the record has
         # to say what happened rather than what was intended.
         for lot in (_picked_lots_for(part, step, item.key, tenant)
-                    or _usable_lots(item.key, tenant)):
+                    or _usable_lots(item.key, tenant, customer_id)):
             if drawn >= needed:
                 break
+            if lot.owner_id is not None and lot.owner_id != customer_id:
+                continue  # another customer's property — never into this job
             try:
                 assert_lot_usable(lot)
             except ValueError:

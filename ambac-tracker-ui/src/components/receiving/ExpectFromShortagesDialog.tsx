@@ -53,7 +53,7 @@ type Props = {
 export function ExpectFromShortagesDialog({ rows, open, onOpenChange, onDone }: Props) {
     const [drafts, setDrafts] = useState<Draft[]>([]);
     const [poNumber, setPoNumber] = useState("");
-    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 });
+    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000, is_supplier: true });
     const bulk = useBulkExpectedReceipts();
 
     useEffect(() => {

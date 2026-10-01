@@ -115,7 +115,10 @@ def material_series(tenant, buckets, wo_starts: dict) -> list:
                 else ('PART_TYPE', row['material_type_id']))
 
     on_hand: dict = {}
-    for r in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=_ON_HAND_STATUSES)
+    # Our stock only: customer property covers only its owner's work, which this
+    # aggregate view can't attribute — undercounting is the safe side for a capacity gate.
+    for r in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=_ON_HAND_STATUSES,
+                                         owner__isnull=True)
               .filter(lot_scope)
               .values('material_id', 'material_type_id', 'quantity_remaining')):
         k = _key(r)

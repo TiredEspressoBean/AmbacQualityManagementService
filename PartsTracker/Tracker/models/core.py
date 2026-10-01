@@ -1570,6 +1570,14 @@ class Companies(SecureModel):
     adds ceremony. So "unknown" has to be representable, and visibly so, rather than
     silently collapsing into the cheaper-looking option."""
 
+    # What the company is to us. Both default True so existing companies keep showing
+    # everywhere until someone narrows them; a company can be both (a customer who
+    # also supplies cores). Pickers ask for suppliers or customers, not "companies".
+    is_customer = models.BooleanField(default=True, help_text="Buys from us.")
+    is_supplier = models.BooleanField(default=True, help_text="Sells to us.")
+    address = models.TextField(
+        blank=True, help_text="Postal address — printed on SCARs and return-to-vendor sheets.")
+
     class Meta:
         verbose_name_plural = 'Companies'
         verbose_name = 'Company'
@@ -1762,6 +1770,18 @@ class User(AbstractUser):
     For portal users: the customer company they represent.
     Must belong to the same tenant as the user.
     """
+
+    # For a contact at a supplier or customer (usually a user who never logs in): what
+    # they're the person *for*, so a SCAR goes to quality and a late order is chased
+    # with whoever handles deliveries.
+    CONTACT_ROLE_CHOICES = [
+        ('QUALITY', 'Quality'),
+        ('EXPEDITING', 'Deliveries / expediting'),
+        ('GENERAL', 'General'),
+    ]
+    contact_role = models.CharField(
+        max_length=12, choices=CONTACT_ROLE_CHOICES, blank=True,
+        help_text="For an outside contact: what to come to them about.")
 
     # =========================================================================
     # ITAR / Export Control Fields

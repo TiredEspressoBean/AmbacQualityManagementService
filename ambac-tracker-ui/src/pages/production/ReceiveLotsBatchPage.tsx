@@ -29,12 +29,14 @@ type Row = {
     count_in: "STOCK" | "BOX" | "LB";
     heat_number: string;
     source_type: SourceType | typeof NONE;
+    /** A customer's own material (free issue): theirs, not ours. NONE for our stock. */
+    owner: string;
 };
 
 const emptyRow = (): Row => ({
     lot_number: "", item: NONE, supplier: NONE, supplier_lot_number: "",
     quantity: "", unit_of_measure: "EA", received_date: today(), storage_location: "",
-    count_in: "STOCK", heat_number: "", source_type: NONE,
+    count_in: "STOCK", heat_number: "", source_type: NONE, owner: NONE,
 });
 
 // Column order used when pasting a spreadsheet without headers.
@@ -55,7 +57,8 @@ export function ReceiveLotsBatchPage() {
     const mutation = useBulkCreateLots();
     const { downloadReport } = useReportEmail();
     const stockItems = useStockItems();
-    const { data: companies } = useRetrieveCompanies({ limit: 500 });
+    const { data: companies } = useRetrieveCompanies({ limit: 500, is_supplier: true });
+    const { data: customers } = useRetrieveCompanies({ limit: 500, is_customer: true, ordering: "name" });
 
     const companyByName = useMemo(
         () => new Map((companies?.results ?? []).filter((c) => c.name).map((c) => [c.name.toLowerCase(), String(c.id)])),
@@ -110,6 +113,7 @@ export function ReceiveLotsBatchPage() {
         if (r.storage_location.trim()) out.storage_location = r.storage_location.trim();
         if (r.heat_number.trim()) out.heat_number = r.heat_number.trim();
         if (r.source_type !== NONE) out.source_type = r.source_type;
+        if (r.owner !== NONE) out.owner = r.owner;
         if (r.count_in !== "STOCK") {
             out.received_as_quantity = r.quantity.trim();
             out.received_as_unit = r.count_in;
@@ -169,6 +173,7 @@ export function ReceiveLotsBatchPage() {
                                 <TableHead>Location</TableHead>
                                 <TableHead>Heat #</TableHead>
                                 <TableHead>Bought from</TableHead>
+                                <TableHead title="A customer's own material sent in for their job">Customer&rsquo;s own</TableHead>
                                 <TableHead></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -232,6 +237,15 @@ export function ReceiveLotsBatchPage() {
                                                 <SelectContent>
                                                     <SelectItem value={NONE}>—</SelectItem>
                                                     {SOURCE_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select value={r.owner} onValueChange={(v) => setCell(idx, "owner", v)}>
+                                                <SelectTrigger className="min-w-32" aria-label={`Customer's own, row ${idx + 1}`}><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value={NONE}>— ours</SelectItem>
+                                                    {customers?.results?.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>

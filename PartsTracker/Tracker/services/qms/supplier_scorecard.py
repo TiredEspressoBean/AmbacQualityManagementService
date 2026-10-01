@@ -51,7 +51,8 @@ def _rating(*, inspected, reject_rate, on_time_rate, coc_compliance, open_scar_c
 def compute_supplier_scorecard(supplier) -> SupplierScorecard:
     from Tracker.models import MaterialLot, CAPA
 
-    lots = MaterialLot.objects.filter(archived=False, supplier=supplier)  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
+    # Customer property is not a purchase: it says nothing about the supplier.
+    lots = MaterialLot.objects.filter(archived=False, supplier=supplier, owner__isnull=True)  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
     received = lots.count()
     accepted = lots.filter(status="ACCEPTED").count()
     rejected = lots.filter(status="REJECTED").count()

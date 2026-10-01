@@ -100,8 +100,10 @@ export default function OrderFormPage() {
     const { data: milestones = [] } = useListMilestones();
     // NOTE: api_Customers_list does not support search; all customers loaded, filtered client-side
     const { data: customers = [] } = useRetrieveCustomers({});
+    // An order is placed by a customer — not a supplier.
     const { data: companies } = useRetrieveCompanies({
         search: companySearch,
+        is_customer: true,
     });
 
     const updateOrder = useUpdateOrder();

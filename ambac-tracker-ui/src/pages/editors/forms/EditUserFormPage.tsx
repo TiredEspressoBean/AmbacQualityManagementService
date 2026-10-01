@@ -53,6 +53,7 @@ const formSchema = schemas.UserRequest.pick({
     is_active: true,
     parent_company_id: true,
     job_role: true,
+    contact_role: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -102,6 +103,7 @@ export default function UserFormPage() {
             is_active: true,
             parent_company_id: undefined,
             job_role: null,
+            contact_role: "",
         },
     });
 
@@ -117,6 +119,7 @@ export default function UserFormPage() {
                 is_active: user.is_active ?? true,
                 parent_company_id: user.parent_company?.id ?? undefined,
                 job_role: user.job_role ?? null,
+                contact_role: (user as { contact_role?: "" | "QUALITY" | "EXPEDITING" | "GENERAL" }).contact_role ?? "",
             });
         }
     }, [mode, user, form]);
@@ -193,6 +196,7 @@ export default function UserFormPage() {
             is_active: values.is_active !== undefined ? values.is_active : true,
             parent_company_id: values.parent_company_id || undefined,
             job_role: values.job_role ?? null,
+            contact_role: values.contact_role ?? "",
         };
 
         // Only staff users can set is_staff field
@@ -397,6 +401,34 @@ export default function UserFormPage() {
                                 </FormControl>
                                 <FormDescription>
                                     Associate this user with a company, or leave blank for no company
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* A contact at a supplier or customer: what to come to them about.
+                        Picks who gets a SCAR (quality) and who to chase for a late
+                        delivery (expediting). */}
+                    <FormField
+                        control={form.control}
+                        name="contact_role"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Contact for</FormLabel>
+                                <Select value={field.value || "NONE"} onValueChange={(v) => field.onChange(v === "NONE" ? "" : v)}>
+                                    <FormControl>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="NONE">— not an outside contact</SelectItem>
+                                        <SelectItem value="QUALITY">Quality (receives SCARs)</SelectItem>
+                                        <SelectItem value="EXPEDITING">Deliveries / expediting</SelectItem>
+                                        <SelectItem value="GENERAL">General</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    For someone at a supplier or customer — usually a contact who never logs in.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

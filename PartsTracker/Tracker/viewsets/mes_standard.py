@@ -566,7 +566,7 @@ class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.Mode
 class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
     queryset = MaterialLot.unscoped.select_related(
-        'material_type', 'material', 'supplier', 'parent_lot', 'received_by'
+        'material_type', 'material', 'supplier', 'owner', 'parent_lot', 'received_by'
     ).prefetch_related('life_tracking__definition')
     serializer_class = MaterialLotSerializer
     # Explicit, with MultiPart first, so the schema advertises multipart ahead

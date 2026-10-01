@@ -29,6 +29,9 @@
       #text(size: 9pt, font: mono-font, weight: "bold")[
         #text(fill: muted, weight: "regular")[LOT] #h(2pt) #label.lot_number
       ] \
+      #if label.at("owner_name", default: none) != none [
+        #text(size: 7.5pt, weight: "bold")[CUSTOMER PROPERTY — #label.owner_name] \
+      ]
       #text(size: 7pt)[
         #text(fill: muted)[Supplier:] #opt(label.supplier_name)
         #if label.supplier_lot_number != none [ · #text(fill: muted)[Lot] #label.supplier_lot_number ]

@@ -51,6 +51,8 @@ class MaterialLotLabelContext(BaseModel):
     received_as: Optional[str] = None  # "3 boxes" when counted in the buying unit
     received_date: Optional[date] = None
     expiration_date: Optional[date] = None
+    # Customer property: printed so nobody draws it into someone else's job.
+    owner_name: Optional[str] = None
 
     barcode_svg: str
     qr_svg: str
@@ -120,6 +122,7 @@ def build_material_lot_label_context(lot, tenant) -> MaterialLotLabelContext:
         received_as=received_as,
         received_date=lot.received_date,
         expiration_date=lot.expiration_date,
+        owner_name=lot.owner.name if lot.owner_id else None,
         barcode_svg=render_barcode_svg(lot.lot_number or "UNKNOWN", module_height=6.0),
         qr_svg=render_qr_svg(qr_url),
         tenant_name=tenant.name,

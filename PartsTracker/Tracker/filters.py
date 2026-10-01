@@ -183,6 +183,8 @@ class UserFilter(TenantFilterMixin, django_filters.FilterSet):
     user_type = django_filters.ChoiceFilter(choices=User.UserType.choices)
 
     parent_company = django_filters.ModelChoiceFilter(queryset=Companies.unscoped.none())
+    # Contacts at a company for one purpose (who gets the SCAR, who to chase).
+    contact_role = django_filters.ChoiceFilter(choices=User.CONTACT_ROLE_CHOICES)
 
     date_joined__gte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="gte")
     date_joined__lte = django_filters.DateTimeFilter(field_name="date_joined", lookup_expr="lte")

@@ -324,7 +324,7 @@ class CompanySerializer(SecureModelMixin):
         model = Companies
         fields = ('id', 'name', 'description', 'hubspot_api_id',
                   'default_outside_process_turnaround_days',
-                  'default_core_fulfilment_mode',
+                  'default_core_fulfilment_mode', 'is_customer', 'is_supplier', 'address',
                   'user_count', 'created_at', 'updated_at', 'archived', 'version')
         read_only_fields = ('created_at', 'updated_at', 'version')
 
@@ -413,7 +413,7 @@ class UserSerializer(SecureModelMixin):
         model = User
         fields = (
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
-            'last_login', 'parent_company', 'parent_company_id', 'groups',
+            'last_login', 'parent_company', 'parent_company_id', 'contact_role', 'groups',
             'tenant', 'user_type', 'user_type_display', 'tenant_membership_status',
             'job_role', 'job_role_name',
             # Crew rostering: the shift this person works (drives the scheduling

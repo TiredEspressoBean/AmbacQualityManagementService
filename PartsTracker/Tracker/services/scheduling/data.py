@@ -796,7 +796,9 @@ def get_material_gates(tenant, horizon: HorizonData):
         return None
 
     onhand: dict = {}
-    for row in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=('ACCEPTED', 'IN_USE'))
+    # Our stock only — customer property is drawn only for its owner's job.
+    for row in (MaterialLot.objects.filter(archived=False, tenant=tenant, status__in=('ACCEPTED', 'IN_USE'),
+                                           owner__isnull=True)
                 .values('material_id', 'material_type_id', 'quantity_remaining')):
         k = _lot_key(row)
         if k is not None:

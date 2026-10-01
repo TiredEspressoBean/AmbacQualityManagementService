@@ -306,6 +306,8 @@ class MaterialLotSerializer(SecureModelMixin):
     material_name = serializers.CharField(source='material.name', read_only=True, allow_null=True)
     item_name = serializers.CharField(read_only=True)
     supplier_name = serializers.CharField(source='supplier.name', read_only=True, allow_null=True)
+    # Customer property: whose it is, when it isn't ours.
+    owner_name = serializers.CharField(source='owner.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
     # Who booked the material in. Null while a lot is ON_ORDER — nobody has received it.
     received_by_name = serializers.SerializerMethodField()
@@ -347,6 +349,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'shelf_life_status',
             'certificate_of_conformance', 'storage_location',
             'heat_number', 'source_type', 'received_as_quantity', 'received_as_unit',
+            'owner', 'owner_name',
             'item_purchase_unit', 'item_units_per_purchase_unit',
             'item_requires_coc', 'item_requires_heat_number', 'awaiting_return',
             'child_lot_count',
@@ -517,6 +520,9 @@ class LateDeliverySerializer(serializers.Serializer):
     lot_number = serializers.CharField()
     item_name = serializers.CharField()
     supplier_name = serializers.CharField(allow_null=True)
+    # Who to chase: the supplier's deliveries contact (or a general one).
+    supplier_contact = serializers.CharField(allow_null=True)
+    supplier_contact_email = serializers.CharField(allow_null=True)
     erp_po_number = serializers.CharField(allow_blank=True)
     erp_po_line = serializers.CharField(allow_blank=True)
     promised_date = serializers.DateField()

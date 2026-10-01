@@ -1668,6 +1668,12 @@ class MaterialLot(SecureModel):
         max_length=30, blank=True, choices=SOURCE_TYPE_CHOICES,
         help_text="Bought from the manufacturer, an authorized distributor, or an "
                   "independent one.")
+    # Customer property (ISO 9001 §8.5.3): material a customer sent in for their own
+    # job — a free-issue kit. It isn't ours: it skips the supplier gates and scorecards,
+    # and only that customer's work may draw it or plan against it.
+    owner = models.ForeignKey(
+        Companies, on_delete=models.PROTECT, null=True, blank=True, related_name='owned_lots',
+        help_text="The customer this stock belongs to, when it is theirs, not ours.")
     # What the clerk counted, in the unit they counted it in ("3 boxes"), beside the
     # stock quantity it converted to ("6,000"). Null when entered in the stock unit.
     received_as_quantity = models.DecimalField(

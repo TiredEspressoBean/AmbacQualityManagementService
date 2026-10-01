@@ -183,7 +183,19 @@ export function MaterialsPage() {
                 // item_name resolves either side of the XOR (in-house PartType or purchased
                 // Material) and falls back to the ad-hoc description. The older
                 // material_type_name pairing rendered blank for every Material-based lot.
-                col({ header: "Material", renderCell: (l) => l.item_name || "—" }),
+                col({
+                    header: "Material",
+                    renderCell: (l) => (
+                        <span>
+                            {l.item_name || "—"}
+                            {l.owner_name && (
+                                <Badge variant="outline" className="ml-1.5 border-sky-400 text-sky-700" title="Customer property — only their work may use it">
+                                    {l.owner_name}&rsquo;s
+                                </Badge>
+                            )}
+                        </span>
+                    ),
+                }),
                 col({ header: "Supplier", renderCell: (l) => l.supplier_name ?? "—" }),
                 ...(onOrderLens
                     ? [col({

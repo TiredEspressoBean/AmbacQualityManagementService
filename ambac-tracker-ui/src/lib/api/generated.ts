@@ -1633,6 +1633,18 @@ export type Company = {
      */
     (FulfilmentModeEnum | BlankEnum | NullEnum | null)
     | undefined;
+  is_customer?: /**
+   * Buys from us.
+   */
+  boolean | undefined;
+  is_supplier?: /**
+   * Sells to us.
+   */
+  boolean | undefined;
+  address?: /**
+   * Postal address — printed on SCARs and return-to-vendor sheets.
+   */
+  string | undefined;
   user_count: number;
   created_at: string;
   updated_at: string;
@@ -1686,6 +1698,18 @@ export type CompanyRequest = {
      */
     (FulfilmentModeEnum | BlankEnum | NullEnum | null)
     | undefined;
+  is_customer?: /**
+   * Buys from us.
+   */
+  boolean | undefined;
+  is_supplier?: /**
+   * Sells to us.
+   */
+  boolean | undefined;
+  address?: /**
+   * Postal address — printed on SCARs and return-to-vendor sheets.
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type Core = {
@@ -3440,6 +3464,8 @@ export type LateDelivery = {
   lot_number: string;
   item_name: string;
   supplier_name: string | null;
+  supplier_contact: string | null;
+  supplier_contact_email: string | null;
   erp_po_number: string;
   erp_po_line: string;
   promised_date: string;
@@ -3896,6 +3922,13 @@ export type MaterialLot = {
     (string | null)
     | undefined;
   received_as_unit?: (PurchaseUnitEnum | BlankEnum) | undefined;
+  owner?:
+    | /**
+     * The customer this stock belongs to, when it is theirs, not ours.
+     */
+    (string | null)
+    | undefined;
+  owner_name: string | null;
   item_purchase_unit: PurchaseUnitEnum | NullEnum | null;
   /**
    * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
@@ -4077,6 +4110,12 @@ export type MaterialLotRequest = {
     (string | null)
     | undefined;
   received_as_unit?: (PurchaseUnitEnum | BlankEnum) | undefined;
+  owner?:
+    | /**
+     * The customer this stock belongs to, when it is theirs, not ours.
+     */
+    (string | null)
+    | undefined;
   archived?: boolean | undefined;
 };
 export type MaterialRequest = {
@@ -10781,6 +10820,16 @@ export type User = {
   date_joined: string;
   last_login: string | null;
   parent_company: Company;
+  contact_role?:
+    | /**
+     * For an outside contact: what to come to them about.
+    
+    * `QUALITY` - Quality
+    * `EXPEDITING` - Deliveries / expediting
+    * `GENERAL` - General
+     */
+    (ContactRoleEnum | BlankEnum)
+    | undefined;
   groups: Array<{}>;
   tenant: TenantMinimal;
   user_type: string;
@@ -10800,6 +10849,15 @@ export type User = {
     (string | null)
     | undefined;
 };
+export type ContactRoleEnum =
+  /**
+   * * `QUALITY` - Quality
+   * `EXPEDITING` - Deliveries / expediting
+   * `GENERAL` - General
+   *
+   * @enum QUALITY, EXPEDITING, GENERAL
+   */
+  "QUALITY" | "EXPEDITING" | "GENERAL";
 export type TenantMinimal = {
   id: string;
   name: string;
@@ -11751,6 +11809,18 @@ export type PatchedCompanyRequest = Partial<{
     | BlankEnum
     | NullEnum
     | null;
+  /**
+   * Buys from us.
+   */
+  is_customer: boolean;
+  /**
+   * Sells to us.
+   */
+  is_supplier: boolean;
+  /**
+   * Postal address — printed on SCARs and return-to-vendor sheets.
+   */
+  address: string;
   archived: boolean;
 }>;
 export type PatchedCoreRequest = Partial<{
@@ -12327,6 +12397,10 @@ export type PatchedMaterialLotRequest = Partial<{
    */
   received_as_quantity: string | null;
   received_as_unit: PurchaseUnitEnum | BlankEnum;
+  /**
+   * The customer this stock belongs to, when it is theirs, not ours.
+   */
+  owner: string | null;
   archived: boolean;
 }>;
 export type PatchedMaterialRequest = Partial<{
@@ -14376,6 +14450,53 @@ export type PatchedTrainingRequirementRequest = Partial<{
    */
   notes: string;
   archived: boolean;
+}>;
+export type PatchedUserRequest = Partial<{
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   *
+   * @minLength 1
+   * @maxLength 150
+   * @pattern ^[\w.@+-]+$
+   */
+  username: string;
+  /**
+   * @maxLength 150
+   */
+  first_name: string | null;
+  /**
+   * @maxLength 150
+   */
+  last_name: string | null;
+  /**
+   * @maxLength 254
+   */
+  email: string;
+  /**
+   * Designates whether the user can log into this admin site.
+   */
+  is_staff: boolean;
+  /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  is_active: boolean;
+  parent_company_id: string | null;
+  /**
+     * For an outside contact: what to come to them about.
+    
+    * `QUALITY` - Quality
+    * `EXPEDITING` - Deliveries / expediting
+    * `GENERAL` - General
+     */
+  contact_role: ContactRoleEnum | BlankEnum;
+  /**
+   * Primary job role / position - drives the required-competency profile.
+   */
+  job_role: string | null;
+  /**
+   * The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+   */
+  default_shift: string | null;
 }>;
 export type PatchedWorkCenterRequest = Partial<{
   /**
@@ -17350,6 +17471,63 @@ export type UserDetail = {
   user_type: string;
   user_type_display: string;
 };
+export type UserRequest = {
+  /**
+   * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+   *
+   * @minLength 1
+   * @maxLength 150
+   * @pattern ^[\w.@+-]+$
+   */
+  username: string;
+  first_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  last_name?:
+    | /**
+     * @maxLength 150
+     */
+    (string | null)
+    | undefined;
+  email?: /**
+   * @maxLength 254
+   */
+  string | undefined;
+  is_staff?: /**
+   * Designates whether the user can log into this admin site.
+   */
+  boolean | undefined;
+  is_active?: /**
+   * Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
+   */
+  boolean | undefined;
+  parent_company_id?: (string | null) | undefined;
+  contact_role?:
+    | /**
+     * For an outside contact: what to come to them about.
+    
+    * `QUALITY` - Quality
+    * `EXPEDITING` - Deliveries / expediting
+    * `GENERAL` - General
+     */
+    (ContactRoleEnum | BlankEnum)
+    | undefined;
+  job_role?:
+    | /**
+     * Primary job role / position - drives the required-competency profile.
+     */
+    (string | null)
+    | undefined;
+  default_shift?:
+    | /**
+     * The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
+     */
+    (string | null)
+    | undefined;
+};
 export type WorkAuthorization = {
   results: Array<WorkAuthorizationRow>;
 };
@@ -18619,6 +18797,9 @@ const Company = z.object({
   default_core_fulfilment_mode: z
     .union([FulfilmentModeEnum, BlankEnum, NullEnum])
     .nullish(),
+  is_customer: z.boolean().optional(),
+  is_supplier: z.boolean().optional(),
+  address: z.string().optional(),
   user_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -18644,6 +18825,9 @@ const CompanyRequest = z.object({
   default_core_fulfilment_mode: z
     .union([FulfilmentModeEnum, BlankEnum, NullEnum])
     .nullish(),
+  is_customer: z.boolean().optional(),
+  is_supplier: z.boolean().optional(),
+  address: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedCompanyRequest = z
@@ -18660,6 +18844,9 @@ const PatchedCompanyRequest = z
     default_core_fulfilment_mode: z
       .union([FulfilmentModeEnum, BlankEnum, NullEnum])
       .nullable(),
+    is_customer: z.boolean(),
+    is_supplier: z.boolean(),
+    address: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -20235,6 +20422,8 @@ const MaterialLot = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
   received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).optional(),
+  owner: z.string().uuid().nullish(),
+  owner_name: z.string().nullable(),
   item_purchase_unit: z.union([PurchaseUnitEnum, NullEnum]).nullable(),
   item_units_per_purchase_unit: z
     .string()
@@ -20280,6 +20469,7 @@ const MaterialLotRequest = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullish(),
   received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).optional(),
+  owner: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
 });
 const PatchedMaterialLotRequest = z
@@ -20309,6 +20499,7 @@ const PatchedMaterialLotRequest = z
       .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
       .nullable(),
     received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]),
+    owner: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -20637,6 +20828,8 @@ const LateDelivery = z.object({
   lot_number: z.string(),
   item_name: z.string(),
   supplier_name: z.string().nullable(),
+  supplier_contact: z.string().nullable(),
+  supplier_contact_email: z.string().nullable(),
   erp_po_number: z.string(),
   erp_po_line: z.string(),
   promised_date: z.string(),
@@ -25013,6 +25206,7 @@ const PatchedTrainingTypeRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ContactRoleEnum = z.enum(["QUALITY", "EXPEDITING", "GENERAL"]);
 const TenantMinimal = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -25034,6 +25228,7 @@ const User = z.object({
   date_joined: z.string().datetime({ offset: true }),
   last_login: z.string().datetime({ offset: true }).nullable(),
   parent_company: Company.nullable(),
+  contact_role: z.union([ContactRoleEnum, BlankEnum]).optional(),
   groups: z.array(z.object({}).partial().passthrough()),
   tenant: TenantMinimal.nullable(),
   user_type: z.string(),
@@ -25061,6 +25256,7 @@ const UserRequest = z.object({
   is_staff: z.boolean().optional(),
   is_active: z.boolean().optional(),
   parent_company_id: z.string().uuid().nullish(),
+  contact_role: z.union([ContactRoleEnum, BlankEnum]).optional(),
   job_role: z.string().uuid().nullish(),
   default_shift: z.string().uuid().nullish(),
 });
@@ -25077,6 +25273,7 @@ const PatchedUserRequest = z
     is_staff: z.boolean(),
     is_active: z.boolean(),
     parent_company_id: z.string().uuid().nullable(),
+    contact_role: z.union([ContactRoleEnum, BlankEnum]),
     job_role: z.string().uuid().nullable(),
     default_shift: z.string().uuid().nullable(),
   })
@@ -28061,6 +28258,7 @@ export const schemas = {
   PaginatedTrainingTypeList,
   TrainingTypeRequest,
   PatchedTrainingTypeRequest,
+  ContactRoleEnum,
   TenantMinimal,
   TenantMembershipStatusEnum,
   User,
@@ -31721,6 +31919,16 @@ Provides list, create, retrieve, update, and delete operations.`,
     requestFormat: "json",
     parameters: [
       {
+        name: "is_customer",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "is_supplier",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -31859,6 +32067,16 @@ Provides list, create, retrieve, update, and delete operations.`,
         name: "id",
         type: "Path",
         schema: z.string().uuid(),
+      },
+      {
+        name: "is_customer",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "is_supplier",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "name",
@@ -57016,6 +57234,11 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
         name: "archived",
         type: "Query",
         schema: z.boolean().optional(),
+      },
+      {
+        name: "contact_role",
+        type: "Query",
+        schema: z.enum(["EXPEDITING", "GENERAL", "QUALITY"]).optional(),
       },
       {
         name: "date_joined__gte",

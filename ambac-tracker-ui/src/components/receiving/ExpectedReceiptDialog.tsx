@@ -52,7 +52,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
     const [poLine, setPoLine] = useState("");
 
     const stockItems = useStockItems();
-    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000 });
+    const companies = useRetrieveCompanies({ ordering: "name", limit: 1000, is_supplier: true });
     const record = useRecordExpectedReceipt();
 
     /** Picking a material pre-selects its preferred supplier — the common case is buying

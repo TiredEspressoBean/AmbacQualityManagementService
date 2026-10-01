@@ -91,12 +91,18 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
                 is genuinely waived for this lot. The reason is kept on record. */}
             {canRelease && !releasing && (
                 <Button size="sm" variant="outline" onClick={() => setReleasing(true)}>
-                    Release hold…
+                    {/* Here release means the opposite of everywhere else: it turns the
+                        request down and sends the lot back for a partial reject. */}
+                    {reason === "WHOLE_LOT_REJECT_REQUESTED" ? "Decline request…" : "Release hold…"}
                 </Button>
             )}
             {canRelease && releasing && (
                 <div className="space-y-2">
-                    <Label htmlFor="hold-release">Why is this lot being released?</Label>
+                    <Label htmlFor="hold-release">
+                        {reason === "WHOLE_LOT_REJECT_REQUESTED"
+                            ? "Why is the whole-lot reject being declined?"
+                            : "Why is this lot being released?"}
+                    </Label>
                     <Textarea id="hold-release" rows={2}
                         placeholder={reason === "SUPPLIER_UNQUALIFIED"
                             ? "e.g. Qualification renewal in progress; QA accepts this lot on its CoC and a 100% visual"
@@ -108,7 +114,8 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
                                 onSuccess: () => { toast.success("Hold released — the lot has moved on."); setReleasing(false); },
                                 onError: (e) => toast.error(errorOf(e, "Could not release the hold")),
                             })}>
-                            {release.isPending ? "Releasing…" : "Release hold"}
+                            {release.isPending ? "Saving…"
+                                : reason === "WHOLE_LOT_REJECT_REQUESTED" ? "Decline — back to inspection" : "Release hold"}
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => setReleasing(false)}>Cancel</Button>
                     </div>

@@ -37,7 +37,7 @@ export function SendPartsOutDialog({
     onSent?: () => void;
 }) {
     const sendOut = useSendPartsOut();
-    const { data: companiesData } = useRetrieveCompanies({ limit: 200 });
+    const { data: companiesData } = useRetrieveCompanies({ limit: 200, is_supplier: true });
 
     const total = parts.length;
     const [quantity, setQuantity] = useState(total);

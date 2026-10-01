@@ -1213,6 +1213,7 @@ function LateDeliveriesBlock() {
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                                 {r.supplier_name ?? "No supplier"}
+                                {r.supplier_contact ? ` (${r.supplier_contact}${r.supplier_contact_email ? `, ${r.supplier_contact_email}` : ""})` : ""}
                                 {r.erp_po_number ? ` · PO ${r.erp_po_number}${r.erp_po_line ? `/${r.erp_po_line}` : ""}` : ""}
                                 {r.holding_up_count > 0
                                     ? ` · holding up ${r.holding_up.slice(0, 3).map((w) => w.erp_id).join(", ")}${r.holding_up_count > 3 ? ` +${r.holding_up_count - 3}` : ""}`

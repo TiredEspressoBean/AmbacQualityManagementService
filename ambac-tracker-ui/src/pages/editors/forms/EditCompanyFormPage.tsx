@@ -24,6 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useParams } from "@tanstack/react-router";
 
@@ -45,6 +46,10 @@ const formSchema = schemas.CompanyRequest.pick({
     // inherits it, so without an edit surface here the inheritance chain has
     // nothing to inherit FROM and every receipt falls back to EXCHANGE.
     default_core_fulfilment_mode: true,
+    // What the company is to us — pickers offer suppliers or customers, not "companies".
+    is_customer: true,
+    is_supplier: true,
+    address: true,
 });
 
 // "" and null both reach us for an unset arrangement (blank=True, null=True).
@@ -77,6 +82,9 @@ export default function CompanyFormPage() {
             description: "",
             default_outside_process_turnaround_days: null,
             default_core_fulfilment_mode: null,
+            is_customer: true,
+            is_supplier: true,
+            address: "",
         },
     });
 
@@ -92,6 +100,9 @@ export default function CompanyFormPage() {
                     company.default_outside_process_turnaround_days ?? null,
                 default_core_fulfilment_mode:
                     company.default_core_fulfilment_mode || null,
+                is_customer: company.is_customer ?? true,
+                is_supplier: company.is_supplier ?? true,
+                address: company.address ?? "",
             });
         }
     }, [mode, company, form]);
@@ -108,6 +119,9 @@ export default function CompanyFormPage() {
             default_outside_process_turnaround_days:
                 values.default_outside_process_turnaround_days ?? null,
             default_core_fulfilment_mode: values.default_core_fulfilment_mode || null,
+            is_customer: values.is_customer ?? true,
+            is_supplier: values.is_supplier ?? true,
+            address: values.address ?? "",
         };
 
         if (mode === "edit" && companyId) {
@@ -202,6 +216,54 @@ export default function CompanyFormPage() {
                                 <FormDescription>
                                     Detailed description of the company and its operations
                                 </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4 rounded-md border p-4">
+                        <FormField
+                            control={form.control}
+                            name="is_customer"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <FormLabel>Customer</FormLabel>
+                                        <FormDescription>Buys from us — offered on orders.</FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="is_supplier"
+                            render={({ field }) => (
+                                <FormItem className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <FormLabel>Supplier</FormLabel>
+                                        <FormDescription>Sells to us — offered on receipts and qualifications.</FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Address</FormLabel>
+                                <FormControl>
+                                    <Textarea rows={3} {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormDescription>Printed on SCARs and return-to-vendor sheets.</FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}

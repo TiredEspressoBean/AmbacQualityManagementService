@@ -77,7 +77,14 @@ export function MaterialLotDetailPage() {
                         <Badge variant="outline">{STATUS_LABEL[l.status ?? ""] ?? l.status}</Badge>
                         <LotHoldBadges lot={l} />
                     </h1>
-                    <p className="text-sm text-muted-foreground">{l.item_name || "—"}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {l.item_name || "—"}
+                        {l.owner_name && (
+                            <span className="ml-2 font-medium text-sky-700">
+                                Customer property — {l.owner_name}. Only their work may use it.
+                            </span>
+                        )}
+                    </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
