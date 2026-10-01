@@ -1206,7 +1206,9 @@ function LateDeliveriesBlock() {
                     <div key={r.lot_id} className="flex items-center gap-3 rounded-md border p-2.5">
                         <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium">
-                                {r.item_name}
+                                <Link to="/production/material-lots/$lotId" params={{ lotId: r.lot_id }} className="hover:underline">
+                                    {r.item_name}
+                                </Link>
                                 <span className="ml-1.5 font-normal text-muted-foreground">
                                     {r.quantity} {r.unit_of_measure}
                                 </span>

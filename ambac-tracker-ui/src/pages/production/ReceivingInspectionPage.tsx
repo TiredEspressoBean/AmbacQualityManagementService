@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -231,7 +231,9 @@ export function ReceivingInspectionPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3">
-                        <span className="font-mono">{lot.lot_number}</span>
+                        <Link to="/production/material-lots/$lotId" params={{ lotId: lot.id }} className="font-mono hover:underline" title="Open the lot record">
+                            {lot.lot_number}
+                        </Link>
                         <Badge variant="outline">{lot.status}</Badge>
                         <LotHoldBadges lot={lot} />
                         <div className="ml-auto flex items-center gap-2">

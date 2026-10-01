@@ -11,7 +11,7 @@
  * invisible to the inspector.
  */
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Loader2, PackageSearch } from "lucide-react";
 import { toast } from "sonner";
 
@@ -152,7 +152,13 @@ export function IncomingHubPage() {
                                         r.source === "OUTSIDE_PROCESS" ? "border-sky-400 text-sky-700" : ""
                                     }>{SOURCE_LABEL[r.source] ?? r.source}</Badge>
                                 </TableCell>
-                                <TableCell className="font-mono text-xs font-medium">{r.reference}</TableCell>
+                                <TableCell className="font-mono text-xs font-medium">
+                                    {r.source === "PURCHASED_LOT" ? (
+                                        <Link to="/production/material-lots/$lotId" params={{ lotId: r.id }} className="hover:underline">
+                                            {r.reference}
+                                        </Link>
+                                    ) : r.reference}
+                                </TableCell>
                                 <TableCell>{r.item || "—"}</TableCell>
                                 <TableCell>{r.supplier || "—"}</TableCell>
                                 <TableCell className="tabular-nums">{r.quantity ?? "—"}</TableCell>
