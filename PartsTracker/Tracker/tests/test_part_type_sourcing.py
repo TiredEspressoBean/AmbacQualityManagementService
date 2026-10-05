@@ -61,6 +61,19 @@ class PartTypeSourcingTests(APITestCase):
                                  {"preferred_supplier": str(self.fleet.id)}, format="json")
         self.assertEqual(resp.status_code, 400)
 
+    def test_another_tenants_supplier_cannot_be_preferred(self):
+        from Tracker.models import Companies, PartTypes, Tenant
+        other = Tenant.objects.create(name="Elsewhere", slug="part-type-sourcing-other-1005")
+        token = set_current_tenant_id(other.id)
+        try:
+            theirs = Companies.objects.create(tenant=other, name="Theirs", is_supplier=True)
+        finally:
+            reset_current_tenant(token)
+        resp = self.client.patch(f"/api/PartTypes/{self.nozzle.id}/sourcing/",
+                                 {"preferred_supplier": str(theirs.id)}, format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIsNone(PartTypes.objects.get(pk=self.nozzle.id).preferred_supplier_id)
+
     def test_without_the_permission_it_is_refused(self):
         from Tracker.models import UserRole
         UserRole.objects.filter(user=self.buyer).delete()

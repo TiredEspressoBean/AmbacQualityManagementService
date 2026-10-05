@@ -1709,6 +1709,8 @@ class PartTypesSerializer(SecureModelMixin):
 
 class PartTypeSourcingSerializer(serializers.ModelSerializer):
     """A part type's buy-side planning figures, edited in place (no new version)."""
+    preferred_supplier = TenantScopedPrimaryKeyRelatedField(
+        queryset=Companies.unscoped.all(), allow_null=True, required=False)
 
     class Meta:
         model = PartTypes
