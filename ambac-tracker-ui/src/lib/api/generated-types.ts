@@ -2116,6 +2116,152 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CustomerShipments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+         *     fields) or retracted by `void` — never deleted.
+         */
+        get: operations["api_CustomerShipments_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+         *     fields) or retracted by `void` — never deleted.
+         */
+        get: operations["api_CustomerShipments_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+         *     fields) or retracted by `void` — never deleted.
+         */
+        patch: operations["api_CustomerShipments_partial_update"];
+        trace?: never;
+    };
+    "/api/CustomerShipments/{id}/void/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A shipment recorded by mistake: its parts go back to the Ship step or to stock, and anything it closed reopens. */
+        post: operations["api_CustomerShipments_void_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/delivery-performance/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description On-time delivery to customers over the last N days (default 90). */
+        get: operations["api_CustomerShipments_delivery_performance_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export filtered data to CSV or Excel format. */
+        get: operations["api_CustomerShipments_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/order-shipping/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Per order line: ordered, shipped, and each shipment's date and whether it met the line's due date. */
+        get: operations["api_CustomerShipments_order_shipping_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/ready/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Parts that can ship now — at a Ship step or finished to stock — grouped by order (one customer each). */
+        get: operations["api_CustomerShipments_ready_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CustomerShipments/ship/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ship parts to one customer on one shipment. Parts at a Ship step complete it (its sign-off gate runs); all or nothing. */
+        post: operations["api_CustomerShipments_ship_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Customers/": {
         parameters: {
             query?: never;
@@ -5430,6 +5576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/chase/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record a chase of an expected delivery — what the supplier said, and a new promised date if given. The first promise is kept for on-time scoring. */
+        post: operations["api_MaterialLots_chase_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/confirm-whole-lot-reject/": {
         parameters: {
             query?: never;
@@ -5475,6 +5638,23 @@ export interface paths {
         put?: never;
         /** @description Governed shelf-life extension (re-tested material gets a new use-by). */
         post: operations["api_MaterialLots_extend_shelf_life_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Move a lot to another location, recorded (who, when, from where). With a quantity less than what's left, that much is split off and moves. */
+        post: operations["api_MaterialLots_move_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8505,6 +8685,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/move/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Move serialised units to a location, recorded. All or nothing. */
+        post: operations["api_Parts_move_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/select/": {
         parameters: {
             query?: never;
@@ -9929,6 +10126,40 @@ export interface paths {
         head?: never;
         /** @description Planner decisions that differ from the proposed rebuild plan. */
         patch: operations["api_RebuildSlotOverrides_partial_update"];
+        trace?: never;
+    };
+    "/api/Receipts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Deliveries received in a date range, each with its ERP status. */
+        get: operations["api_Receipts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Receipts/mark-posted/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record that these deliveries were keyed into the ERP, with the numbers posted. Ones still awaiting a decision are skipped. */
+        post: operations["api_Receipts_mark_posted_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/RepairCodes/": {
@@ -12829,6 +13060,23 @@ export interface paths {
         patch: operations["api_StorageLocations_partial_update"];
         trace?: never;
     };
+    "/api/StorageLocations/contents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What is in one location now, and what moved in or out of it lately. By name, so unmanaged (typed) locations work too. */
+        get: operations["api_StorageLocations_contents_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StorageLocations/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -12923,6 +13171,23 @@ export interface paths {
         };
         /** @description Return searchable/filterable/orderable field information with filter options. */
         get: operations["api_StorageLocations_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StorageLocations/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every location with stock in it, plus every managed location, with how many lots and units each holds. */
+        get: operations["api_StorageLocations_summary_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -15095,6 +15360,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/User/invite-uninvited/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Invite every user who has never been invited (go-live, after a migration load). */
+        post: operations["api_User_invite_uninvited_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/User/metadata/": {
         parameters: {
             query?: never;
@@ -15123,6 +15405,23 @@ export interface paths {
         put?: never;
         /** @description Send invitation email to a user */
         post: operations["api_User_send_invitation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/User/uninvited/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Users never invited and never signed in — those a migration workbook loaded ahead of go-live. */
+        get: operations["api_User_uninvited_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -18893,6 +19192,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/scan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Resolve a scanned code: a label QR URL, LOC:<location>, a lot number, a serial, a work-order number or a location name. */
+        get: operations["api_scan_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schema/": {
         parameters: {
             query?: never;
@@ -21126,6 +21442,12 @@ export interface components {
          * @enum {string}
          */
         ChartTypeEnum: "XBAR_R" | "XBAR_S" | "I_MR";
+        /** @description The buyer chased a delivery: what they were told, and a new promise if given. */
+        ChaseExpectedReceiptRequest: {
+            note: string;
+            /** Format: date */
+            promised_date?: string | null;
+        };
         /** @description Serializer for AI chat sessions */
         ChatSession: {
             readonly id: number;
@@ -21209,6 +21531,8 @@ export interface components {
             is_supplier?: boolean;
             /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
             address?: string;
+            /** @description Print a Certificate of Conformance with every shipment to this customer. */
+            requires_coc_on_shipment?: boolean;
             readonly user_count: number;
             /** Format: date-time */
             readonly created_at: string;
@@ -21245,6 +21569,8 @@ export interface components {
             is_supplier?: boolean;
             /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
             address?: string;
+            /** @description Print a Certificate of Conformance with every shipment to this customer. */
+            requires_coc_on_shipment?: boolean;
             archived?: boolean;
         };
         /**
@@ -21921,6 +22247,51 @@ export interface components {
             recipient_groups?: string[];
             recipient_external?: string[];
         };
+        /**
+         * @description A shipment to a customer. Created by the `ship` action, never by plain CRUD;
+         *     the paperwork fields (carrier, tracking, reference, expected delivery, notes) stay
+         *     editable afterwards, since tracking numbers often arrive after the truck leaves.
+         */
+        CustomerShipment: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Auto-generated, tenant-unique (SHP-YYYY-######). */
+            readonly shipment_number: string;
+            /**
+             * Format: uuid
+             * @description Who the units went to.
+             */
+            readonly customer: string;
+            readonly customer_name: string;
+            readonly requires_coc: boolean;
+            /** Format: date-time */
+            readonly shipped_at: string;
+            readonly shipped_by: number | null;
+            readonly shipped_by_name: string | null;
+            carrier?: string;
+            tracking_number?: string;
+            /** @description The ERP's shipper or packing-slip number, so the two can be matched. */
+            reference?: string;
+            /** Format: date */
+            expected_delivery?: string | null;
+            notes?: string;
+            readonly quantity: number;
+            readonly parts: components["schemas"]["ShipmentPart"][];
+            /** @description Whether this record has been voided */
+            readonly is_voided: boolean;
+            /**
+             * Format: date-time
+             * @description When this record was voided
+             */
+            readonly voided_at: string | null;
+            /** @description Reason for voiding this record */
+            readonly void_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
         DashboardKPIsResponse: {
             active_capas: number;
             open_ncrs: number;
@@ -21993,6 +22364,13 @@ export interface components {
          * @enum {string}
          */
         DelegationPolicyEnum: "OPTIONAL" | "DISABLED";
+        DeliveryPerformance: {
+            days: number;
+            deliveries: number;
+            on_time: number;
+            /** Format: double */
+            on_time_pct: number | null;
+        };
         /**
          * @description * `OVERDUE` - Overdue
          *     * `DUE_SOON` - Due soon
@@ -22032,6 +22410,12 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description * `IN` - In
+         *     * `OUT` - Out
+         * @enum {string}
+         */
+        DirectionEnum: "IN" | "OUT";
         /**
          * @description Disassembly BOM line serializer.
          *
@@ -22706,6 +23090,14 @@ export interface components {
          * @enum {string}
          */
         EquipmentsStatusEnum: "IN_SERVICE" | "OUT_OF_SERVICE" | "IN_CALIBRATION" | "IN_MAINTENANCE" | "RETIRED";
+        /**
+         * @description * `Ready to post` - Ready to post
+         *     * `Awaiting decision` - Awaiting decision
+         *     * `Posted` - Posted
+         *     * `Changed since posted` - Changed since posted
+         * @enum {string}
+         */
+        ErpStatusEnum: "Ready to post" | "Awaiting decision" | "Posted" | "Changed since posted";
         ExecuteQueryRequestRequest: {
             /** @description Model name to query */
             model: string;
@@ -23554,6 +23946,7 @@ export interface components {
             total: number;
             created: number;
             updated: number;
+            unchanged?: number;
             errors: number;
         };
         InProcessActionsResponse: {
@@ -23796,6 +24189,9 @@ export interface components {
         InviteError: {
             detail: string;
         };
+        InviteUninvitedResult: {
+            invited: number;
+        };
         InviteViewerInputRequest: {
             /** Format: email */
             email: string;
@@ -23982,6 +24378,11 @@ export interface components {
             erp_po_line: string;
             /** Format: date */
             promised_date: string;
+            /** Format: date */
+            original_promised_date: string | null;
+            chase_note: string | null;
+            /** Format: date-time */
+            chased_at: string | null;
             /** @description Positive: days past the promised date. Zero or negative: due today or in that many days. */
             days_late: number;
             /** Format: double */
@@ -24219,6 +24620,15 @@ export interface components {
          * @enum {string}
          */
         LifeTrackingSourceEnum: "OEM" | "CUSTOMER" | "LOGBOOK" | "CALCULATED" | "ESTIMATED" | "TRANSFERRED" | "RESET";
+        LineShipment: {
+            /** Format: uuid */
+            shipment_id: string;
+            shipment_number: string;
+            /** Format: date-time */
+            shipped_at: string;
+            quantity: number;
+            on_time: boolean;
+        };
         ListMetadataResponse: {
             search_fields: string[];
             search_fields_display: string[];
@@ -24231,6 +24641,57 @@ export interface components {
             permissions: {
                 [key: string]: string;
             } | null;
+        };
+        LocationContents: {
+            name: string;
+            lots: components["schemas"]["LocationLot"][];
+            parts: components["schemas"]["LocationPart"][];
+            moves: components["schemas"]["LocationMove"][];
+        };
+        LocationLot: {
+            /** Format: uuid */
+            id: string;
+            lot_number: string;
+            item_name: string | null;
+            /** Format: double */
+            quantity_remaining: number;
+            unit_of_measure: string;
+            status: string;
+            owner_name: string | null;
+        };
+        LocationMove: {
+            /** Format: date-time */
+            at: string;
+            direction: components["schemas"]["DirectionEnum"];
+            kind: components["schemas"]["LocationMoveKindEnum"];
+            /** Format: uuid */
+            object_id: string;
+            label: string;
+            other: string;
+            by: string | null;
+        };
+        /**
+         * @description * `LOT` - Lot
+         *     * `PART` - Part
+         * @enum {string}
+         */
+        LocationMoveKindEnum: "LOT" | "PART";
+        LocationPart: {
+            /** Format: uuid */
+            id: string;
+            erp_id: string;
+            part_type: string | null;
+            /** Format: uuid */
+            work_order_id: string | null;
+            work_order: string | null;
+            status: string;
+        };
+        LocationSummary: {
+            name: string;
+            description: string;
+            managed: boolean;
+            lots: number;
+            parts: number;
         };
         LoginRequest: {
             username?: string;
@@ -24266,6 +24727,13 @@ export interface components {
             backward: components["schemas"]["TraceBackward"];
             forward: components["schemas"]["TraceUse"][];
             customers: string[];
+        };
+        MarkReceiptsPostedRequest: {
+            lot_ids: string[];
+        };
+        MarkReceiptsPostedResult: {
+            /** @description Deliveries marked posted. Ones still awaiting a decision are skipped. */
+            marked: number;
         };
         MarkStagedInputRequest: {
             /** Format: uuid */
@@ -24457,6 +24925,11 @@ export interface components {
              * @description Supplier's promised delivery date (from the PO); drives on-time-delivery scoring.
              */
             promised_date?: string | null;
+            /** Format: date */
+            readonly original_promised_date: string | null;
+            readonly chase_note: string;
+            /** Format: date-time */
+            readonly chased_at: string | null;
             readonly delivery_state: (components["schemas"]["DeliveryStateEnum"] | components["schemas"]["NullEnum"]) | null;
             /**
              * Format: decimal
@@ -24517,6 +24990,8 @@ export interface components {
             readonly awaiting_return: boolean;
             readonly child_lot_count: number;
             readonly lineage: components["schemas"]["LotRef"][];
+            /** @description Cores received in bulk (units to be identified), not stock of the part. */
+            readonly holds_cores: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -24979,6 +25454,26 @@ export interface components {
             /** Format: date-time */
             start_time: string;
         };
+        MoveLotRequestRequest: {
+            /** @description Destination location; a scanned LOC: label is fine. */
+            to: string;
+            /**
+             * Format: decimal
+             * @description Move only this much (split off first). Omit to move the whole lot.
+             */
+            quantity?: string | null;
+            /** @default  */
+            reason: string;
+        };
+        MovePartsRequestRequest: {
+            part_ids: string[];
+            to: string;
+            /** @default  */
+            reason: string;
+        };
+        MovePartsResult: {
+            moved: number;
+        };
         /** @description Drag-to-reschedule: the new start; the task keeps its duration. */
         MoveRequestRequest: {
             /** Format: date-time */
@@ -25203,12 +25698,36 @@ export interface components {
             notes?: string;
             archived?: boolean;
         };
+        OrderLineShipping: {
+            /** Format: uuid */
+            line_id: string;
+            line_number: number;
+            part_type: string;
+            ordered: number;
+            shipped: number;
+            /** Format: date */
+            due_date: string | null;
+            state: components["schemas"]["OrderLineShippingStateEnum"];
+            shipments: components["schemas"]["LineShipment"][];
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `PART_SHIPPED` - Part shipped
+         *     * `SHIPPED` - Shipped
+         * @enum {string}
+         */
+        OrderLineShippingStateEnum: "OPEN" | "PART_SHIPPED" | "SHIPPED";
         /**
          * @description * `OPEN` - Open
          *     * `CANCELLED` - Cancelled
          * @enum {string}
          */
         OrderLineStatusEnum: "OPEN" | "CANCELLED";
+        OrderShipping: {
+            /** Format: uuid */
+            order_id: string;
+            lines: components["schemas"]["OrderLineShipping"][];
+        };
         /** @description Enhanced orders serializer with user filtering and features */
         Orders: {
             /** Format: uuid */
@@ -25708,6 +26227,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["CustomerSchedule"][];
+        };
+        PaginatedCustomerShipmentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["CustomerShipment"][];
         };
         PaginatedDisassemblyBOMLineList: {
             /** @example 123 */
@@ -27538,6 +28072,7 @@ export interface components {
              * @description UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
              */
             readonly rejoined_at: string | null;
+            readonly storage_location: string;
         };
         PartsBulkIncrementInputRequest: {
             ids: string[];
@@ -27947,6 +28482,8 @@ export interface components {
             is_supplier?: boolean;
             /** @description Postal address — printed on SCARs and return-to-vendor sheets. */
             address?: string;
+            /** @description Print a Certificate of Conformance with every shipment to this customer. */
+            requires_coc_on_shipment?: boolean;
             archived?: boolean;
         };
         /** @description Remanufacturing core serializer */
@@ -28064,6 +28601,21 @@ export interface components {
             recipient_users?: number[];
             recipient_groups?: string[];
             recipient_external?: string[];
+        };
+        /**
+         * @description A shipment to a customer. Created by the `ship` action, never by plain CRUD;
+         *     the paperwork fields (carrier, tracking, reference, expected delivery, notes) stay
+         *     editable afterwards, since tracking numbers often arrive after the truck leaves.
+         */
+        PatchedCustomerShipmentRequest: {
+            carrier?: string;
+            tracking_number?: string;
+            /** @description The ERP's shipper or packing-slip number, so the two can be matched. */
+            reference?: string;
+            /** Format: date */
+            expected_delivery?: string | null;
+            notes?: string;
+            archived?: boolean;
         };
         /**
          * @description Disassembly BOM line serializer.
@@ -32076,6 +32628,24 @@ export interface components {
          * @enum {string}
          */
         RcaReviewStatusEnum: "NOT_REQUIRED" | "REQUIRED" | "COMPLETED";
+        ReadyPart: {
+            /** Format: uuid */
+            id: string;
+            erp_id: string;
+            part_type: string | null;
+            work_order: string | null;
+            order_line: number | null;
+            /** Format: date */
+            due_date: string | null;
+            source: components["schemas"]["ReadyPartSourceEnum"];
+            status: string;
+        };
+        /**
+         * @description * `SHIP_STEP` - At the Ship step
+         *     * `STOCK` - From stock
+         * @enum {string}
+         */
+        ReadyPartSourceEnum: "SHIP_STEP" | "STOCK";
         /**
          * @description One dispatchable group on the shipper board: parts staged at an outside-process
          *     step (the dispatch unit), across work orders. See outside_process.build_ready_to_ship_groups.
@@ -32089,6 +32659,17 @@ export interface components {
             supplier_name: string | null;
             ready_count: number;
             parts: components["schemas"]["ReadyToShipPart"][];
+        };
+        /** @description Parts that can ship now, for one order (one customer). */
+        ReadyToShipOrder: {
+            /** Format: uuid */
+            order_id: string | null;
+            order_number: string | null;
+            /** Format: uuid */
+            customer_id: string | null;
+            customer_name: string | null;
+            requires_coc: boolean;
+            parts: components["schemas"]["ReadyPart"][];
         };
         ReadyToShipPart: {
             /** Format: uuid */
@@ -32283,6 +32864,28 @@ export interface components {
             /** @description Why the proposal was wrong. Required — an override without one cannot be told from a misclick later, and this is the row that answers why a unit was built the way it was. */
             reason: string;
             archived?: boolean;
+        };
+        ReceiptRow: {
+            lot_id: string;
+            our_lot: string;
+            po_number: string;
+            po_line: string;
+            /** Format: date */
+            received: string | null;
+            item: string;
+            item_name: string;
+            supplier: string;
+            unit: string;
+            /** Format: decimal */
+            received_qty: string;
+            /** Format: decimal */
+            accepted: string;
+            /** Format: decimal */
+            rejected: string;
+            /** Format: decimal */
+            awaiting_decision: string;
+            decision: string;
+            erp_status: components["schemas"]["ErpStatusEnum"];
         };
         /** @description Book in an ON_ORDER lot that has physically arrived. */
         ReceiveExpectedLotRequest: {
@@ -33400,6 +34003,24 @@ export interface components {
          * @enum {string}
          */
         ScaleEnum: "small" | "medium" | "large";
+        ScanResult: {
+            kind: components["schemas"]["ScanResultKindEnum"];
+            id: string;
+            label: string;
+            detail: string;
+            path: string;
+            item_id: string | null;
+            work_order_id?: string | null;
+        };
+        /**
+         * @description * `LOT` - Lot
+         *     * `PART` - Part
+         *     * `WORK_ORDER` - Work order
+         *     * `LOCATION` - Location
+         *     * `URL` - Page
+         * @enum {string}
+         */
+        ScanResultKindEnum: "LOT" | "PART" | "WORK_ORDER" | "LOCATION" | "URL";
         ScheduleResult: {
             /** Format: uuid */
             readonly id: string;
@@ -33773,6 +34394,30 @@ export interface components {
              * @default
              */
             note: string;
+        };
+        ShipRequestRequest: {
+            part_ids: string[];
+            /** Format: uuid */
+            customer?: string | null;
+            /** @default  */
+            carrier: string;
+            /** @default  */
+            tracking_number: string;
+            /** @default  */
+            reference: string;
+            /** @default  */
+            notes: string;
+            /** Format: date */
+            expected_delivery?: string | null;
+        };
+        /** @description One unit on a shipment. */
+        ShipmentPart: {
+            /** Format: uuid */
+            readonly id: string;
+            ERP_id: string;
+            readonly part_type_name: string | null;
+            readonly work_order_number: string | null;
+            readonly order_number: string | null;
         };
         /**
          * @description * `BACKORDERED` - More coming
@@ -36552,6 +37197,10 @@ export interface components {
             order_id: string | null;
             order: string | null;
             customer: string | null;
+            shipment_id: string | null;
+            shipment: string | null;
+            /** Format: date-time */
+            shipped_at: string | null;
         };
         TraceSplitLot: {
             lot_id: string;
@@ -36989,6 +37638,10 @@ export interface components {
          * @enum {string}
          */
         TypeEnum: "NUMERIC" | "PASS_FAIL";
+        UninvitedUsers: {
+            count: number;
+            emails: string[];
+        };
         UnscheduledDiagnosis: {
             schedule_id: string | null;
             /** Format: date-time */
@@ -37348,6 +38001,9 @@ export interface components {
          * @enum {string}
          */
         VisibilityEnum: "VISIBLE" | "INTERNAL";
+        VoidShipmentRequestRequest: {
+            reason: string;
+        };
         /** @description Serializer for WIP summary by step. */
         WIPSummary: {
             /** Format: uuid */
@@ -42830,6 +43486,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreStartTeardownBatchResponse"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_list: {
+        parameters: {
+            query?: {
+                customer?: string;
+                is_voided?: boolean;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCustomerShipmentList"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Customer Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerShipment"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Customer Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCustomerShipmentRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCustomerShipmentRequest"];
+                "multipart/form-data": components["schemas"]["PatchedCustomerShipmentRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerShipment"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_void_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Customer Shipment. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidShipmentRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["VoidShipmentRequestRequest"];
+                "multipart/form-data": components["schemas"]["VoidShipmentRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerShipment"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_delivery_performance_retrieve: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryPerformance"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated list of fields to export */
+                fields?: string;
+                /** @description Custom filename for the download */
+                filename?: string;
+                /** @description Include FK reference sheets in Excel export (default: true) */
+                include_references?: boolean;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    api_CustomerShipments_order_shipping_retrieve: {
+        parameters: {
+            query: {
+                order: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderShipping"];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_ready_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyToShipOrder"][];
+                };
+            };
+        };
+    };
+    api_CustomerShipments_ship_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShipRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShipRequestRequest"];
+                "multipart/form-data": components["schemas"]["ShipRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerShipment"];
                 };
             };
         };
@@ -48886,6 +49764,34 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_chase_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ChaseExpectedReceiptRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ChaseExpectedReceiptRequest"];
+                "application/json": components["schemas"]["ChaseExpectedReceiptRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
     api_MaterialLots_confirm_whole_lot_reject_create: {
         parameters: {
             query?: never;
@@ -48945,6 +49851,34 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["ExtendShelfLifeRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["ExtendShelfLifeRequest"];
                 "application/json": components["schemas"]["ExtendShelfLifeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_move_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["MoveLotRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MoveLotRequestRequest"];
+                "application/json": components["schemas"]["MoveLotRequestRequest"];
             };
         };
         responses: {
@@ -49541,6 +50475,8 @@ export interface operations {
                 po_only?: boolean;
                 /** @description First receipt date (inclusive). */
                 start: string;
+                /** @description Leave out deliveries already posted to the ERP, unchanged. */
+                unposted_only?: boolean;
             };
             header?: never;
             path?: never;
@@ -54160,6 +55096,34 @@ export interface operations {
             };
         };
     };
+    api_Parts_move_create: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MovePartsRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MovePartsRequestRequest"];
+                "multipart/form-data": components["schemas"]["MovePartsRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovePartsResult"];
+                };
+            };
+        };
+    };
     api_Parts_select_list: {
         parameters: {
             query?: {
@@ -56254,6 +57218,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RebuildSlotOverride"];
+                };
+            };
+        };
+    };
+    api_Receipts_list: {
+        parameters: {
+            query: {
+                end: string;
+                po_only?: boolean;
+                start: string;
+                /** @description Leave out deliveries already posted, unchanged. */
+                unposted_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptRow"][];
+                };
+            };
+        };
+    };
+    api_Receipts_mark_posted_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkReceiptsPostedRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MarkReceiptsPostedRequest"];
+                "multipart/form-data": components["schemas"]["MarkReceiptsPostedRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkReceiptsPostedResult"];
                 };
             };
         };
@@ -61379,6 +62393,28 @@ export interface operations {
             };
         };
     };
+    api_StorageLocations_contents_retrieve: {
+        parameters: {
+            query: {
+                days?: number;
+                name: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationContents"];
+                };
+            };
+        };
+    };
     api_StorageLocations_export_retrieve: {
         parameters: {
             query?: {
@@ -61552,6 +62588,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_StorageLocations_summary_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationSummary"][];
                 };
             };
         };
@@ -66123,6 +67178,25 @@ export interface operations {
             };
         };
     };
+    api_User_invite_uninvited_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteUninvitedResult"];
+                };
+            };
+        };
+    };
     api_User_metadata_retrieve: {
         parameters: {
             query?: never;
@@ -66163,6 +67237,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendInvitationResponse"];
+                };
+            };
+        };
+    };
+    api_User_uninvited_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UninvitedUsers"];
                 };
             };
         };
@@ -71847,6 +72940,34 @@ export interface operations {
                         template: string;
                     }[];
                 };
+            };
+        };
+    };
+    api_scan_list: {
+        parameters: {
+            query: {
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanResult"][];
+                };
+            };
+            /** @description No response body */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

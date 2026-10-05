@@ -246,3 +246,23 @@ class MasterWorkbookTests(APITestCase):
         body = self._run(wb, dry_run=False).json()
         self.assertTrue(body["loaded"], body)
         self.assertEqual(body["totals"]["created"], 0, body)
+        # Matched and unchanged: "no change", not an update; and no warnings for the
+        # export's read-only columns (they aren't written into the filled workbook).
+        self.assertEqual(body["totals"]["updated"], 0, body)
+        self.assertFalse([r for s in body["sheets"] for r in s["rows"]], body)
+
+    def test_loaded_users_are_invited_together_at_go_live(self):
+        from Tracker.models import UserInvitation
+        from Tracker.services.core.tenant_membership import suspend_membership
+        wb = self._workbook()
+        self._put(wb, "Users", {"Email": "lee@x.test", "First Name": "Lee"})
+        self.assertTrue(self._run(wb, dry_run=False).json()["loaded"])
+        # Removed before go-live: never invited by the bulk action.
+        suspend_membership(User.objects.get(email="lee@x.test"), self.tenant, by=self.admin)
+        listed = self.client.get("/api/User/uninvited/").json()
+        self.assertEqual(listed["emails"], ["kim@x.test"])
+        resp = self.client.post("/api/User/invite-uninvited/")
+        self.assertEqual(resp.json()["invited"], 1, resp.content)
+        self.assertTrue(UserInvitation.objects.filter(user__email="kim@x.test").exists())
+        self.assertFalse(UserInvitation.objects.filter(user__email="lee@x.test").exists())
+        self.assertEqual(self.client.get("/api/User/uninvited/").json()["count"], 0)

@@ -386,6 +386,7 @@ class CSVImportMixin:
                             'total': serializers.IntegerField(),
                             'created': serializers.IntegerField(),
                             'updated': serializers.IntegerField(),
+                            'unchanged': serializers.IntegerField(required=False),
                             'errors': serializers.IntegerField(),
                         }
                     ),
@@ -548,6 +549,8 @@ class CSVImportMixin:
                     transaction.savepoint_commit(sid)
                     if created:
                         result.add_created(i, instance.id, warnings or None)
+                    elif getattr(serializer, 'unchanged', False):
+                        result.add_unchanged(i, instance.id, warnings or None)
                     else:
                         result.add_updated(i, instance.id, warnings or None)
                 except Exception as e:

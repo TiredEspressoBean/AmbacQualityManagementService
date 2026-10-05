@@ -42,6 +42,7 @@ from Tracker.viewsets.scheduling_setup import (
     StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
 )
 from Tracker.viewsets.master_workbook import MasterWorkbookViewSet
+from Tracker.viewsets.receipts import ReceiptsViewSet
 from Tracker.viewsets.shipping import CustomerShipmentViewSet
 from Tracker.viewsets.scan import ScanViewSet
 
@@ -231,15 +232,16 @@ router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
 router.register(r'Materials', MaterialViewSet, basename='Materials')
 router.register(r'MaterialLots', MaterialLotViewSet, basename='MaterialLots')
 router.register(r'MasterWorkbook', MasterWorkbookViewSet, basename='MasterWorkbook')
+router.register(r'Receipts', ReceiptsViewSet, basename='Receipts')
 router.register(r'StorageLocations', StorageLocationViewSet, basename='StorageLocations')
 router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsages')
 
 # Outside processing (subcontract shipments — Flow B)
 router.register(r'OutsideProcessShipments', OutsideProcessShipmentViewSet, basename='OutsideProcessShipments')
-
-# Unified incoming-inspection worklist (purchased lots + subcontract returns)
 router.register(r'CustomerShipments', CustomerShipmentViewSet, basename='CustomerShipments')
 router.register(r'scan', ScanViewSet, basename='scan')
+
+# Unified incoming-inspection worklist (purchased lots + subcontract returns)
 router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
 router.register(r'InspectionInbox', InspectionInboxViewSet, basename='InspectionInbox')
 

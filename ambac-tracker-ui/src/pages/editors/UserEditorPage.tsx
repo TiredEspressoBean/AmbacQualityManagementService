@@ -83,9 +83,16 @@ export function UserEditorPage() {
                     header: "Status",
                     renderCell: (user) => (
                         <div className="flex gap-2">
-                            {user.is_active ? (
+                            {/* Access to THIS organisation: removing a user suspends their
+                                membership here, which the global is_active doesn't show. */}
+                            {user.is_active && user.tenant_membership_status !== "SUSPENDED" ? (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Active
+                                </span>
+                            ) : user.is_active ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800"
+                                    title="Access to this organisation removed; their records are kept. Reactivate from User Management.">
+                                    Access removed
                                 </span>
                             ) : (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">

@@ -227,7 +227,7 @@ def import_sampling_rows(rows, *, tenant, user, context=None) -> dict:
                 transaction.savepoint_commit(sid)
                 state = "in force" if unchanged.active else "draft, not active"
                 for i in row_numbers:
-                    result.add_updated(i, unchanged.id, [
+                    result.add_unchanged(i, unchanged.id, [
                         f"No change: the same rules as '{unchanged.name}' "
                         f"v{unchanged.version} ({state})."])
                 continue

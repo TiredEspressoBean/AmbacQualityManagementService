@@ -1373,6 +1373,7 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
         results = []
         created = 0
         updated = 0
+        unchanged = 0
         errors = 0
 
         # Update progress every N rows
@@ -1397,6 +1398,9 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
                     if was_created:
                         created += 1
                         results.append({'row': i, 'status': 'created', 'id': str(instance.id)})
+                    elif getattr(serializer, 'unchanged', False):
+                        unchanged += 1
+                        results.append({'row': i, 'status': 'unchanged', 'id': str(instance.id)})
                     else:
                         updated += 1
                         results.append({'row': i, 'status': 'updated', 'id': str(instance.id)})
@@ -1431,6 +1435,7 @@ def process_import_task(self, rows: List[Dict[str, Any]], model_name: str, mode:
                 'total': len(rows),
                 'created': created,
                 'updated': updated,
+                'unchanged': unchanged,
                 'errors': errors,
             },
             'results': results,

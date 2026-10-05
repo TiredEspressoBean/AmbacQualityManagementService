@@ -104,5 +104,8 @@ class ImportExportTestCase(APITestCase):
         exported = len(before)
         if getattr(model, "_is_versioned", False):
             exported = sum(1 for row in before.values() if row.get("is_current_version"))
-        self.assertEqual(body["summary"]["updated"], exported, body)
+        # Every row matched and changed nothing: "no change", not an update (2026-10-05 —
+        # matched-but-unchanged rows used to be counted as updates).
+        self.assertEqual((body["summary"]["updated"], body["summary"].get("unchanged")),
+                         (0, exported), body)
         self.assertEqual(self.snapshot(model), before)

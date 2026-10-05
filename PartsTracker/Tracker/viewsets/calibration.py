@@ -41,6 +41,7 @@ class _CalibrationRecordImport(BaseCSVImportSerializer):
         if any(getattr(instance, f, None) != v for f, v in data.items()):
             raise serializers.ValidationError(
                 "CalibrationRecord rows are records; an import adds them, it doesn't change them.")
+        self.unchanged = True  # matched, and as the row says
         return instance
 
 

@@ -443,6 +443,30 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
                          "updated_count": updated_count, "company_name": company.name if company else None})
 
     @extend_schema(
+        responses={200: inline_serializer(name="UninvitedUsers", fields={
+            "count": serializers.IntegerField(),
+            "emails": serializers.ListField(child=serializers.EmailField()),
+        })},
+        description=("Users never invited and never signed in — those a migration workbook "
+                     "loaded ahead of go-live."))
+    @action(detail=False, methods=['get'], url_path='uninvited', pagination_class=None,
+            filter_backends=[])
+    def uninvited(self, request):
+        from Tracker.services.core.user_reconcile import uninvited_users
+        emails = list(uninvited_users(self.tenant).values_list('email', flat=True))
+        return Response({"count": len(emails), "emails": emails})
+
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(name="InviteUninvitedResult", fields={
+            "invited": serializers.IntegerField()})},
+        description="Invite every user who has never been invited (go-live, after a migration load).")
+    @action(detail=False, methods=['post'], url_path='invite-uninvited')
+    def invite_uninvited(self, request):
+        from Tracker.services.core.user_reconcile import invite_uninvited
+        return Response({"invited": invite_uninvited(self.tenant, acting_user=request.user)})
+
+    @extend_schema(
         request=inline_serializer(name="SendInvitationInput", fields={"user_id": serializers.IntegerField()}),
         responses={201: inline_serializer(name="SendInvitationResponse", fields={
             "detail": serializers.CharField(),

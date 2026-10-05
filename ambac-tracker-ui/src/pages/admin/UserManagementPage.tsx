@@ -66,6 +66,7 @@ import { useSetUsersTenantActive } from "@/hooks/useSetUsersTenantActive";
 import { useSendUserInvitation } from "@/hooks/useSendUserInvitation";
 import { useAddUserToTenantGroup } from "@/hooks/useAddUserToTenantGroup";
 import { InviteLinkDialog } from "@/components/users/InviteLinkDialog";
+import { InviteUninvitedButton } from "@/components/users/InviteUninvitedButton";
 import { format, formatDistanceToNow } from "date-fns";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 
@@ -373,6 +374,7 @@ export function UserManagementPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <InviteUninvitedButton />
                         <Button
                             variant="outline"
                             onClick={() => navigate({ to: "/admin/users/new" })}

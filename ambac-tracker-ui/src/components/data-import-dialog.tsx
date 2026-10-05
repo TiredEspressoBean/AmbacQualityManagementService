@@ -35,7 +35,7 @@ type ImportMode = "create" | "update" | "upsert";
 
 interface ImportResult {
     row: number;
-    status: "created" | "updated" | "error";
+    status: "created" | "updated" | "unchanged" | "error";
     id?: string;
     errors?: string | Record<string, string> | string[];
     warnings?: string[];
@@ -46,6 +46,8 @@ interface ImportResponse {
         total: number;
         created: number;
         updated: number;
+        /** Matched an existing record and changed nothing (re-importing an export). */
+        unchanged?: number;
         errors: number;
     };
     results: ImportResult[];
@@ -198,7 +200,7 @@ export function DataImportDialog({
 
                 if (data.result.summary.errors === 0) {
                     toast.success(
-                        `Import complete: ${data.result.summary.created} created, ${data.result.summary.updated} updated`
+                        `Import complete: ${data.result.summary.created} created, ${data.result.summary.updated} updated${data.result.summary.unchanged ? `, ${data.result.summary.unchanged} no change` : ""}`
                     );
                 } else {
                     toast.warning(
@@ -282,7 +284,7 @@ export function DataImportDialog({
 
                 if (data.summary.errors === 0) {
                     toast.success(
-                        `Import complete: ${data.summary.created} created, ${data.summary.updated} updated`
+                        `Import complete: ${data.summary.created} created, ${data.summary.updated} updated${data.summary.unchanged ? `, ${data.summary.unchanged} no change` : ""}`
                     );
                 } else {
                     toast.warning(
@@ -557,7 +559,7 @@ export function DataImportDialog({
                 {step === "results" && results && (
                     <div className="space-y-4">
                         {/* Summary */}
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-5 gap-2">
                             <SummaryCard
                                 label="Total"
                                 value={results.summary.total}
@@ -574,6 +576,11 @@ export function DataImportDialog({
                                 variant="info"
                             />
                             <SummaryCard
+                                label="No change"
+                                value={results.summary.unchanged ?? 0}
+                                variant="default"
+                            />
+                            <SummaryCard
                                 label="Errors"
                                 value={results.summary.errors}
                                 variant="error"
@@ -585,13 +592,13 @@ export function DataImportDialog({
                             <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>Import Progress</span>
                                 <span>
-                                    {results.summary.created + results.summary.updated} /{" "}
+                                    {results.summary.total - results.summary.errors} /{" "}
                                     {results.summary.total} successful
                                 </span>
                             </div>
                             <Progress
                                 value={
-                                    ((results.summary.created + results.summary.updated) /
+                                    ((results.summary.total - results.summary.errors) /
                                         results.summary.total) *
                                     100
                                 }
@@ -720,6 +727,8 @@ function ResultRow({ result }: { result: ImportResult }) {
                 return <CheckCircle2 className="h-4 w-4 text-green-500" />;
             case "updated":
                 return <AlertCircle className="h-4 w-4 text-blue-500" />;
+            case "unchanged":
+                return <CheckCircle2 className="h-4 w-4 text-muted-foreground" />;
             case "error":
                 return <XCircle className="h-4 w-4 text-red-500" />;
         }

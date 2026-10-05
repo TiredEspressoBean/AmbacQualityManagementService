@@ -43,8 +43,8 @@ class Sheet:
 
 _VS = "Tracker.viewsets."
 SHEETS: tuple[Sheet, ...] = (
-    Sheet("Users", "Everyone who will sign in. Loaded without invitations: invite them "
-          "from User Management at go-live.",
+    Sheet("Users", "Everyone who will sign in. Loaded without invitations: at go-live, "
+          "'Invite everyone not yet invited' on User Management sends them all.",
           service="users", perms=("add_user", "change_user")),
     Sheet("Companies", "Customers and suppliers.", _VS + "core.CompanyViewSet"),
     Sheet("External Contacts", "People at those companies who get notifications.",
@@ -160,6 +160,29 @@ def _blank(value) -> bool:
         return False
 
 
+def _round_trip_fields(vs) -> list[str]:
+    """The export's columns a re-upload can take back: the id, what the import may write,
+    and an FK's name only where the importer resolves that FK by name.
+
+    The full export also carries read-only columns (archived, version, counts), each of
+    which an upload reported as "not imported" on every row, and names of FKs the
+    importer doesn't resolve (a part's sampling ruleset), which it refused — so an
+    untouched filled workbook failed its own check.
+    """
+    importer = vs.get_csv_import_serializer()
+    meta = getattr(importer, "Meta", None)
+    by_name = set(getattr(meta, "fk_fields", {}) or {}) | set(getattr(meta, "m2m_fields", {}) or {})
+    writable = vs._importable_columns() or set()
+    keep = []
+    for path in vs.get_export_fields():
+        base, _, attr = path.partition("__")
+        if path == "id" or (not attr and path.lower() in writable):
+            keep.append(path)
+        elif attr and base in by_name and base.lower() in writable:
+            keep.append(path)
+    return keep
+
+
 def _existing_rows(sheet: Sheet, vs, request):
     """What a filled workbook's sheet holds: (columns, rows) of what's in UQMES now, as
     the table's own export writes it — so it imports back (an export's FK-by-name and
@@ -174,7 +197,7 @@ def _existing_rows(sheet: Sheet, vs, request):
         qs = vs.get_export_queryset()
         if not qs.exists() or qs.count() > MAX_EXPORT_ROWS:
             return None
-        df = vs.prepare_export_data(qs, vs.get_export_fields())
+        df = vs.prepare_export_data(qs, _round_trip_fields(vs))
         return list(df.columns), [list(r) for r in df.itertuples(index=False, name=None)]
     return _service_rows(sheet, request)
 
@@ -388,11 +411,11 @@ def _run_viewset_sheet(sheet, rows, request):
         if r.get("status") == "error":
             problems.append({"row": _excel_row(r["row"]), "outcome": "error",
                              "detail": _text(r.get("errors"))})
-        elif r.get("warnings"):
+        elif r.get("warnings") and r.get("status") != "unchanged":
             problems.append({"row": _excel_row(r["row"]), "outcome": "warning",
                              "detail": _text(r["warnings"])})
     return _sheet_result(sheet.title, summary.get("created", 0), summary.get("updated", 0),
-                         0, summary.get("errors", 0), problems)
+                         summary.get("unchanged", 0), summary.get("errors", 0), problems)
 
 
 def _run_service_sheet(sheet, rows, request):

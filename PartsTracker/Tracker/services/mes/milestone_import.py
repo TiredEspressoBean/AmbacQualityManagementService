@@ -134,7 +134,7 @@ def import_milestone_rows(rows, *, tenant, user, context=None) -> dict:
                 if _signature(live) == wanted:
                     transaction.savepoint_commit(sid)
                     for i in row_numbers:
-                        result.add_updated(i, current.id, [
+                        result.add_unchanged(i, current.id, [
                             f"No change: the same milestones as '{current.name}' "
                             f"v{current.version}."])
                     continue

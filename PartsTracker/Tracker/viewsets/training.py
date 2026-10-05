@@ -110,6 +110,7 @@ class _TrainingRecordImport(BaseCSVImportSerializer):
             raise serializers.ValidationError(
                 "Training records are evidence; an import adds them, it doesn't change "
                 "them. Correct this one on its page.")
+        self.unchanged = True  # matched, and as the row says
         return instance
 
 

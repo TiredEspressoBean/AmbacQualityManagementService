@@ -416,6 +416,26 @@ class BaseCSVImportSerializer(serializers.Serializer):
                 result[field_name] = items
                 continue
 
+            # An FK this importer has no lookup for (a part's sampling ruleset, a part
+            # type's disassembly process): read it by ID, or a name, like any other. Left
+            # as text it reached the model as a string ("must be a ... instance"), so an
+            # exported file carrying one couldn't be imported back.
+            if model:
+                try:
+                    plain_fk = model._meta.get_field(field_name)
+                except Exception:
+                    plain_fk = None
+                if isinstance(plain_fk, models.ForeignKey):
+                    related = plain_fk.related_model
+                    lookups = ['id'] + [f for f in ('name', 'ERP_id', 'code', 'email')
+                                        if any(x.name == f for x in related._meta.concrete_fields)]
+                    resolved = self.resolve_fk(field_name, value, related, lookups)
+                    if resolved is None:
+                        raise serializers.ValidationError({field_name: (
+                            f"No {related._meta.verbose_name} matches '{value}'.")})
+                    result[field_name] = resolved
+                    continue
+
             # Get model field for type conversion
             if model:
                 try:
@@ -548,6 +568,9 @@ class BaseCSVImportSerializer(serializers.Serializer):
         """
         changed = [f for f, v in data.items() if not self._same(f, getattr(instance, f, None), v)]
         if not changed:
+            # Matched and already as the row says: reported as "no change", not as an
+            # update — re-uploading an untouched export claimed to update every row.
+            self.unchanged = True
             return instance
         changes = {f: data[f] for f in changed}
         meta = getattr(self, 'Meta', None)
@@ -619,6 +642,7 @@ class BaseCSVImportSerializer(serializers.Serializer):
             - warnings: List of warning messages
         """
         self.warnings = []
+        self.unchanged = False
 
         # Headers arrive lowercased (csv_utils.normalize_header), so a column named after
         # a field with capitals — `ERP_id`, `ID_prefix` — never matched its own field and

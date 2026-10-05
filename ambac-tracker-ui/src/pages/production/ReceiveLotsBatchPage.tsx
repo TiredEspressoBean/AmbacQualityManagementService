@@ -184,7 +184,7 @@ export function ReceiveLotsBatchPage() {
                                     <TableRow key={idx} className={serverErrors[idx] ? "bg-destructive/10" : ""}>
                                         <TableCell>
                                             <Input value={r.lot_number} placeholder="Assigned" onChange={(ev) => setCell(idx, "lot_number", ev.target.value)}
-                                                className={e.lot_number ? "border-destructive" : ""} />
+                                                className={`min-w-32 font-mono ${e.lot_number ? "border-destructive" : ""}`} />
                                         </TableCell>
                                         <TableCell>
                                             <StockItemCombobox className="min-w-44" aria-label={`Material or part, row ${idx + 1}`}
@@ -222,7 +222,7 @@ export function ReceiveLotsBatchPage() {
                                         </TableCell>
                                         <TableCell><Input value={r.unit_of_measure} onChange={(ev) => setCell(idx, "unit_of_measure", ev.target.value)} className="w-16" /></TableCell>
                                         <TableCell><Input type="date" value={r.received_date} onChange={(ev) => setCell(idx, "received_date", ev.target.value)} className={e.received_date ? "border-destructive" : ""} /></TableCell>
-                                        <TableCell><Input value={r.supplier_lot_number} onChange={(ev) => setCell(idx, "supplier_lot_number", ev.target.value)} /></TableCell>
+                                        <TableCell><Input className="min-w-32 font-mono" value={r.supplier_lot_number} onChange={(ev) => setCell(idx, "supplier_lot_number", ev.target.value)} /></TableCell>
                                         <TableCell className="min-w-44">
                                             <LocationCombobox aria-label={`Storage location, row ${idx + 1}`} value={r.storage_location}
                                                 onChange={(v) => setCell(idx, "storage_location", v)} placeholder="Location" />

@@ -535,7 +535,8 @@ class TenantMembership(models.Model):
         return self.status == self.Status.ACTIVE
 
     def __str__(self):
-        return f"{self.user_id} @ {self.tenant_id} ({self.status})"
+        # Read in the audit log ("Recent changes"): names, not ids.
+        return f"{self.user} @ {self.tenant} ({self.get_status_display()})"
 
 
 class SecureQuerySet(models.QuerySet):
@@ -1577,10 +1578,10 @@ class Companies(SecureModel):
     is_supplier = models.BooleanField(default=True, help_text="Sells to us.")
     address = models.TextField(
         blank=True, help_text="Postal address — printed on SCARs and return-to-vendor sheets.")
-
     # Some customers want a Certificate of Conformance with every shipment; most don't.
     requires_coc_on_shipment = models.BooleanField(
         default=False, help_text="Print a Certificate of Conformance with every shipment to this customer.")
+
     class Meta:
         verbose_name_plural = 'Companies'
         verbose_name = 'Company'

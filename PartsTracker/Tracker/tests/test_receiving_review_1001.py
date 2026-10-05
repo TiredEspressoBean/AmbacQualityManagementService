@@ -312,3 +312,31 @@ class LineageAndCancelTests(_Fixture):
         report = import_expected_rows(tenant=self.tenant, rows=[row])
         self.assertEqual(report["reopened"], 1, report)
         self.assertIn("was cancelled", report["rows"][0]["detail"])
+
+
+class PostedToErpTests(_Fixture):
+    def test_posting_marks_final_deliveries_and_a_later_change_shows(self):
+        from Tracker.services.mes.material_lot import split_material_lot
+        from Tracker.services.mes.receipt_export import receipt_rows
+        today = date.today()
+        done = self._lot("PX-1", status="ACCEPTED", qty="100", erp_po_number="77", erp_po_line="1")
+        waiting = self._lot("PX-2", status="AWAITING_INSPECTION", qty="10", erp_po_number="77", erp_po_line="2")
+        resp = self.client.get(f"/api/Receipts/?start={today}&end={today}")
+        status = {r["our_lot"]: r["erp_status"] for r in resp.json()}
+        self.assertEqual(status, {"PX-1": "Ready to post", "PX-2": "Awaiting decision"})
+
+        resp = self.client.post("/api/Receipts/mark-posted/",
+                                {"lot_ids": [str(done.id), str(waiting.id)]}, format="json")
+        self.assertEqual(resp.json()["marked"], 1)  # the one still awaiting a decision is skipped
+        unposted = {r["Our Lot"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)}
+        self.assertEqual(unposted, {"PX-2"})
+
+        # A reject after posting: the numbers moved, so it comes back to be corrected.
+        bad = split_material_lot(done, Decimal(5))
+        bad.status = "REJECTED"
+        bad.save(update_fields=["status"])
+        rows = {r["Our Lot"]: r["erp_status"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)}
+        self.assertEqual(rows["PX-1"], "Changed since posted")
+        resp = self.client.post("/api/Receipts/mark-posted/", {"lot_ids": [str(done.id)]}, format="json")
+        self.assertEqual(resp.json()["marked"], 1)
+        self.assertNotIn("PX-1", {r["Our Lot"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)})

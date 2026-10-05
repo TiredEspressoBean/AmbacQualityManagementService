@@ -542,7 +542,7 @@ class CsvImportApiTests(APITestCase):
         ws.cell(row=2, column=headers.index("name*") + 1, value="From Template")
         out = io.BytesIO(); wb.save(out)
         r = self._post_file("/api/PartTypes/import/", out.getvalue(), "filled.xlsx", "create")
-        self.assertEqual(r.json()["summary"], {"total": 1, "created": 1, "updated": 0, "errors": 0}, r.content)
+        self.assertEqual(r.json()["summary"], {"total": 1, "created": 1, "updated": 0, "unchanged": 0, "errors": 0}, r.content)
         self.assertTrue(PartTypes.objects.filter(name="From Template").exists())
         self.assertFalse(PartTypes.objects.filter(name__in=["Part type name", "Widget Assembly"]).exists())
 
@@ -756,7 +756,8 @@ class PartsStepImportTests(APITestCase):
         # Uploaded as it is, straight to the API: read-only columns are ignored.
         f = io.BytesIO(exported); f.name = "parts-export.xlsx"
         raw = self.client.post("/api/Parts/import/", {"file": f, "mode": "update"}, format="multipart")
-        self.assertEqual(raw.json()["summary"]["updated"], 1, raw.content)
+        # Matched and unchanged: "no change" (2026-10-05), not an update.
+        self.assertEqual(raw.json()["summary"]["unchanged"], 1, raw.content)
         # And as the dialog does it: preview, keep its mapping (unmatched columns skipped).
         import json
         f = io.BytesIO(exported); f.name = "parts-export.xlsx"
@@ -771,7 +772,7 @@ class PartsStepImportTests(APITestCase):
                              format="multipart")
         body = r.json()
         self.assertEqual(body["summary"]["errors"], 0, r.content)
-        self.assertEqual(body["summary"]["updated"], 1, r.content)
+        self.assertEqual(body["summary"]["unchanged"], 1, r.content)
         part.refresh_from_db()
         self.assertEqual(part.part_type_id, self.pt.id)
 

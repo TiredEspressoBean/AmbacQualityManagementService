@@ -193,8 +193,8 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                             />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Points back at the order in your ERP, and names the placeholder lot
-                            until the supplier&rsquo;s real lot number arrives with the goods.
+                            Points back at the order in your ERP, and names the expected lot until
+                            it&rsquo;s received and given its own lot number.
                         </p>
                     </div>
                 </div>

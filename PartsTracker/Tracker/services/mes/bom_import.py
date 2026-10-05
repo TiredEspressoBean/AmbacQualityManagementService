@@ -224,7 +224,7 @@ def import_bom_rows(rows, *, tenant, user, context=None) -> dict:
                 if have == wanted and (not revision or revision == current.revision):
                     transaction.savepoint_commit(sid)
                     for i in row_numbers:
-                        result.add_updated(i, current.id, [
+                        result.add_unchanged(i, current.id, [
                             f"No change: the same lines as {parent.name} rev "
                             f"{current.revision} ({current.status.lower()})."])
                     continue

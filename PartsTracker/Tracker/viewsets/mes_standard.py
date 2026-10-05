@@ -884,6 +884,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                              description="Last receipt date (inclusive)."),
             OpenApiParameter('po_only', OpenApiTypes.BOOL, required=False,
                              description="Only deliveries received against a PO."),
+            OpenApiParameter('unposted_only', OpenApiTypes.BOOL, required=False,
+                             description="Leave out deliveries already posted to the ERP, unchanged."),
         ],
         responses={(200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
                    OpenApiTypes.BINARY},
@@ -902,9 +904,10 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         if start is None or end is None or start > end:
             return Response({'detail': 'Give a start and end date (YYYY-MM-DD), start first.'},
                             status=status.HTTP_400_BAD_REQUEST)
-        po_only = str(request.query_params.get('po_only', '')).lower() in ('1', 'true', 'yes')
+        flag = lambda k: str(request.query_params.get(k, '')).lower() in ('1', 'true', 'yes')
         resp = HttpResponse(
-            receipts_workbook(request.tenant, start, end, with_po_only=po_only),
+            receipts_workbook(request.tenant, start, end, with_po_only=flag('po_only'),
+                              unposted_only=flag('unposted_only')),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         resp['Content-Disposition'] = f'attachment; filename="receipts_{start}_{end}.xlsx"'
         return resp

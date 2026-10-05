@@ -1048,7 +1048,9 @@ class _CalendarImportSerializer(BaseCSVImportSerializer):
                 except ValueError:
                     parsed = None
                 if parsed is not None and tz.is_naive(parsed):
-                    parsed = tz.make_aware(parsed)
+                    # The plant's clock — what the export writes in. The server's (UTC)
+                    # moved every re-imported closure by the plant's UTC offset.
+                    parsed = tz.make_aware(parsed, self._tenant_timezone())
             elif isinstance(field, dj.DateField):
                 try:
                     parsed = dateparse.parse_date(text)

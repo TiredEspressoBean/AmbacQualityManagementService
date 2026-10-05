@@ -6397,6 +6397,289 @@ paths:
               schema:
                 $ref: '#/components/schemas/CoreStartTeardownBatchResponse'
           description: ''
+  /api/CustomerShipments/:
+    get:
+      operationId: api_CustomerShipments_list
+      description: |-
+        Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+        fields) or retracted by `void` — never deleted.
+      parameters:
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: is_voided
+        schema:
+          type: boolean
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerShipmentList'
+          description: ''
+  /api/CustomerShipments/{id}/:
+    get:
+      operationId: api_CustomerShipments_retrieve
+      description: |-
+        Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+        fields) or retracted by `void` — never deleted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Customer Shipment.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerShipment'
+          description: ''
+    patch:
+      operationId: api_CustomerShipments_partial_update
+      description: |-
+        Shipments to customers. Created only by `ship`; corrected by PATCH (paperwork
+        fields) or retracted by `void` — never deleted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Customer Shipment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerShipmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerShipmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCustomerShipmentRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerShipment'
+          description: ''
+  /api/CustomerShipments/{id}/void/:
+    post:
+      operationId: api_CustomerShipments_void_create
+      description: 'A shipment recorded by mistake: its parts go back to the Ship
+        step or to stock, and anything it closed reopens.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Customer Shipment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoidShipmentRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoidShipmentRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoidShipmentRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerShipment'
+          description: ''
+  /api/CustomerShipments/delivery-performance/:
+    get:
+      operationId: api_CustomerShipments_delivery_performance_retrieve
+      description: On-time delivery to customers over the last N days (default 90).
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryPerformance'
+          description: ''
+  /api/CustomerShipments/export/{export_format}/:
+    get:
+      operationId: api_CustomerShipments_export_retrieve
+      description: Export filtered data to CSV or Excel format.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: fields
+        schema:
+          type: string
+        description: Comma-separated list of fields to export
+      - in: query
+        name: filename
+        schema:
+          type: string
+        description: Custom filename for the download
+      - in: query
+        name: include_references
+        schema:
+          type: boolean
+        description: 'Include FK reference sheets in Excel export (default: true)'
+      tags:
+      - Import/Export
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: File download
+          description: ''
+  /api/CustomerShipments/order-shipping/:
+    get:
+      operationId: api_CustomerShipments_order_shipping_retrieve
+      description: 'Per order line: ordered, shipped, and each shipment''s date and
+        whether it met the line''s due date.'
+      parameters:
+      - in: query
+        name: order
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderShipping'
+          description: ''
+  /api/CustomerShipments/ready/:
+    get:
+      operationId: api_CustomerShipments_ready_list
+      description: Parts that can ship now — at a Ship step or finished to stock —
+        grouped by order (one customer each).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReadyToShipOrder'
+          description: ''
+  /api/CustomerShipments/ship/:
+    post:
+      operationId: api_CustomerShipments_ship_create
+      description: Ship parts to one customer on one shipment. Parts at a Ship step
+        complete it (its sign-off gate runs); all or nothing.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShipRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShipRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShipRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerShipment'
+          description: ''
   /api/Customers/:
     get:
       operationId: api_Customers_list
@@ -14459,6 +14742,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
           description: ''
+  /api/MaterialLots/{id}/chase/:
+    post:
+      operationId: api_MaterialLots_chase_create
+      description: Record a chase of an expected delivery — what the supplier said,
+        and a new promised date if given. The first promise is kept for on-time scoring.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/confirm-whole-lot-reject/:
     post:
       operationId: api_MaterialLots_confirm_whole_lot_reject_create
@@ -14535,6 +14855,43 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ExtendShelfLifeRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/MaterialLots/{id}/move/:
+    post:
+      operationId: api_MaterialLots_move_create
+      description: Move a lot to another location, recorded (who, when, from where).
+        With a quantity less than what's left, that much is split off and moves.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MoveLotRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MoveLotRequestRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveLotRequestRequest'
         required: true
       security:
       - cookieAuth: []
@@ -15296,6 +15653,11 @@ paths:
           format: date
         description: First receipt date (inclusive).
         required: true
+      - in: query
+        name: unposted_only
+        schema:
+          type: boolean
+        description: Leave out deliveries already posted to the ERP, unchanged.
       tags:
       - api
       security:
@@ -21552,6 +21914,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/Parts/move/:
+    post:
+      operationId: api_Parts_move_create
+      description: Move serialised units to a location, recorded. All or nothing.
+      parameters:
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovePartsRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MovePartsRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MovePartsRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovePartsResult'
+          description: ''
   /api/Parts/select/:
     get:
       operationId: api_Parts_select_list
@@ -24850,6 +25250,75 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Receipts/:
+    get:
+      operationId: api_Receipts_list
+      description: Deliveries received in a date range, each with its ERP status.
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: po_only
+        schema:
+          type: boolean
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: unposted_only
+        schema:
+          type: boolean
+        description: Leave out deliveries already posted, unchanged.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReceiptRow'
+          description: ''
+  /api/Receipts/mark-posted/:
+    post:
+      operationId: api_Receipts_mark_posted_create
+      description: Record that these deliveries were keyed into the ERP, with the
+        numbers posted. Ones still awaiting a decision are skipped.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReceiptsPostedRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MarkReceiptsPostedRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MarkReceiptsPostedRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkReceiptsPostedResult'
+          description: ''
   /api/RepairCodes/:
     get:
       operationId: api_RepairCodes_list
@@ -31986,6 +32455,33 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/StorageLocations/contents/:
+    get:
+      operationId: api_StorageLocations_contents_retrieve
+      description: What is in one location now, and what moved in or out of it lately.
+        By name, so unmanaged (typed) locations work too.
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+      - in: query
+        name: name
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationContents'
+          description: ''
   /api/StorageLocations/export/{export_format}/:
     get:
       operationId: api_StorageLocations_export_retrieve
@@ -32174,6 +32670,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/StorageLocations/summary/:
+    get:
+      operationId: api_StorageLocations_summary_list
+      description: Every location with stock in it, plus every managed location, with
+        how many lots and units each holds.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSummary'
           description: ''
   /api/SubstepCompletions/:
     get:
@@ -38284,6 +38799,23 @@ paths:
                 format: binary
                 description: XLSX workbook or CSV header row
           description: ''
+  /api/User/invite-uninvited/:
+    post:
+      operationId: api_User_invite_uninvited_create
+      description: Invite every user who has never been invited (go-live, after a
+        migration load).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteUninvitedResult'
+          description: ''
   /api/User/metadata/:
     get:
       operationId: api_User_metadata_retrieve
@@ -38328,6 +38860,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SendInvitationResponse'
+          description: ''
+  /api/User/uninvited/:
+    get:
+      operationId: api_User_uninvited_retrieve
+      description: Users never invited and never signed in — those a migration workbook
+        loaded ahead of go-live.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UninvitedUsers'
           description: ''
   /api/UserInvitations/:
     get:
@@ -45917,6 +46466,33 @@ paths:
                     template:
                       type: string
           description: ''
+  /api/scan/:
+    get:
+      operationId: api_scan_list
+      description: 'Resolve a scanned code: a label QR URL, LOC:<location>, a lot
+        number, a serial, a work-order number or a location name.'
+      parameters:
+      - in: query
+        name: code
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScanResult'
+          description: ''
+        '404':
+          description: No response body
   /api/schema/:
     get:
       operationId: api_schema_retrieve
@@ -50345,6 +50921,20 @@ components:
         * `XBAR_R` - X̄-R
         * `XBAR_S` - X̄-S
         * `I_MR` - I-MR
+    ChaseExpectedReceiptRequest:
+      type: object
+      description: 'The buyer chased a delivery: what they were told, and a new promise
+        if given.'
+      properties:
+        note:
+          type: string
+          minLength: 1
+        promised_date:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - note
     ChatSession:
       type: object
       description: Serializer for AI chat sessions
@@ -50508,6 +51098,10 @@ components:
         address:
           type: string
           description: Postal address — printed on SCARs and return-to-vendor sheets.
+        requires_coc_on_shipment:
+          type: boolean
+          description: Print a Certificate of Conformance with every shipment to this
+            customer.
         user_count:
           type: integer
           readOnly: true
@@ -50583,6 +51177,10 @@ components:
         address:
           type: string
           description: Postal address — printed on SCARs and return-to-vendor sheets.
+        requires_coc_on_shipment:
+          type: boolean
+          description: Print a Certificate of Conformance with every shipment to this
+            customer.
         archived:
           type: boolean
       required:
@@ -52024,6 +52622,109 @@ components:
       - name
       - provider_kind
       - scope_customer
+    CustomerShipment:
+      type: object
+      description: |-
+        A shipment to a customer. Created by the `ship` action, never by plain CRUD;
+        the paperwork fields (carrier, tracking, reference, expected delivery, notes) stay
+        editable afterwards, since tracking numbers often arrive after the truck leaves.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        shipment_number:
+          type: string
+          readOnly: true
+          description: Auto-generated, tenant-unique (SHP-YYYY-######).
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Who the units went to.
+        customer_name:
+          type: string
+          readOnly: true
+        requires_coc:
+          type: boolean
+          readOnly: true
+        shipped_at:
+          type: string
+          format: date-time
+          readOnly: true
+        shipped_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        shipped_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        carrier:
+          type: string
+          maxLength: 120
+        tracking_number:
+          type: string
+          maxLength: 120
+        reference:
+          type: string
+          description: The ERP's shipper or packing-slip number, so the two can be
+            matched.
+          maxLength: 120
+        expected_delivery:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        quantity:
+          type: integer
+          readOnly: true
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentPart'
+          readOnly: true
+        is_voided:
+          type: boolean
+          readOnly: true
+          description: Whether this record has been voided
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When this record was voided
+        void_reason:
+          type: string
+          readOnly: true
+          description: Reason for voiding this record
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - created_at
+      - customer
+      - customer_name
+      - id
+      - is_voided
+      - parts
+      - quantity
+      - requires_coc
+      - shipment_number
+      - shipped_at
+      - shipped_by
+      - shipped_by_name
+      - updated_at
+      - void_reason
+      - voided_at
     DashboardKPIsResponse:
       type: object
       properties:
@@ -52160,6 +52861,24 @@ components:
       description: |-
         * `OPTIONAL` - Optional
         * `DISABLED` - Disabled
+    DeliveryPerformance:
+      type: object
+      properties:
+        days:
+          type: integer
+        deliveries:
+          type: integer
+        on_time:
+          type: integer
+        on_time_pct:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - days
+      - deliveries
+      - on_time
+      - on_time_pct
     DeliveryStateEnum:
       enum:
       - OVERDUE
@@ -52238,6 +52957,14 @@ components:
       - results
       - summary
       - work_order
+    DirectionEnum:
+      enum:
+      - IN
+      - OUT
+      type: string
+      description: |-
+        * `IN` - In
+        * `OUT` - Out
     DisassemblyBOMLine:
       type: object
       description: |-
@@ -53576,6 +54303,18 @@ components:
         * `IN_CALIBRATION` - In Calibration
         * `IN_MAINTENANCE` - In Maintenance
         * `RETIRED` - Retired
+    ErpStatusEnum:
+      enum:
+      - Ready to post
+      - Awaiting decision
+      - Posted
+      - Changed since posted
+      type: string
+      description: |-
+        * `Ready to post` - Ready to post
+        * `Awaiting decision` - Awaiting decision
+        * `Posted` - Posted
+        * `Changed since posted` - Changed since posted
     ExecuteQueryRequestRequest:
       type: object
       properties:
@@ -55353,6 +56092,8 @@ components:
           type: integer
         updated:
           type: integer
+        unchanged:
+          type: integer
         errors:
           type: integer
       required:
@@ -55917,6 +56658,13 @@ components:
           type: string
       required:
       - detail
+    InviteUninvitedResult:
+      type: object
+      properties:
+        invited:
+          type: integer
+      required:
+      - invited
     InviteViewerInputRequest:
       type: object
       properties:
@@ -56268,6 +57016,17 @@ components:
         promised_date:
           type: string
           format: date
+        original_promised_date:
+          type: string
+          format: date
+          nullable: true
+        chase_note:
+          type: string
+          nullable: true
+        chased_at:
+          type: string
+          format: date-time
+          nullable: true
         days_late:
           type: integer
           description: 'Positive: days past the promised date. Zero or negative: due
@@ -56286,6 +57045,8 @@ components:
           items:
             $ref: '#/components/schemas/LateDeliveryWorkOrder'
       required:
+      - chase_note
+      - chased_at
       - days_late
       - erp_po_line
       - erp_po_number
@@ -56294,6 +57055,7 @@ components:
       - item_name
       - lot_id
       - lot_number
+      - original_promised_date
       - promised_date
       - quantity
       - state
@@ -56722,6 +57484,27 @@ components:
         * `ESTIMATED` - Estimated
         * `TRANSFERRED` - Transferred from Core
         * `RESET` - Reset After Rebuild
+    LineShipment:
+      type: object
+      properties:
+        shipment_id:
+          type: string
+          format: uuid
+        shipment_number:
+          type: string
+        shipped_at:
+          type: string
+          format: date-time
+        quantity:
+          type: integer
+        on_time:
+          type: boolean
+      required:
+      - on_time
+      - quantity
+      - shipment_id
+      - shipment_number
+      - shipped_at
     ListMetadataResponse:
       type: object
       properties:
@@ -56761,6 +57544,139 @@ components:
       - permissions
       - search_fields
       - search_fields_display
+    LocationContents:
+      type: object
+      properties:
+        name:
+          type: string
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationLot'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationPart'
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationMove'
+      required:
+      - lots
+      - moves
+      - name
+      - parts
+    LocationLot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lot_number:
+          type: string
+        item_name:
+          type: string
+          nullable: true
+        quantity_remaining:
+          type: number
+          format: double
+        unit_of_measure:
+          type: string
+        status:
+          type: string
+        owner_name:
+          type: string
+          nullable: true
+      required:
+      - id
+      - item_name
+      - lot_number
+      - owner_name
+      - quantity_remaining
+      - status
+      - unit_of_measure
+    LocationMove:
+      type: object
+      properties:
+        at:
+          type: string
+          format: date-time
+        direction:
+          $ref: '#/components/schemas/DirectionEnum'
+        kind:
+          $ref: '#/components/schemas/LocationMoveKindEnum'
+        object_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        other:
+          type: string
+        by:
+          type: string
+          nullable: true
+      required:
+      - at
+      - by
+      - direction
+      - kind
+      - label
+      - object_id
+      - other
+    LocationMoveKindEnum:
+      enum:
+      - LOT
+      - PART
+      type: string
+      description: |-
+        * `LOT` - Lot
+        * `PART` - Part
+    LocationPart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        erp_id:
+          type: string
+        part_type:
+          type: string
+          nullable: true
+        work_order_id:
+          type: string
+          format: uuid
+          nullable: true
+        work_order:
+          type: string
+          nullable: true
+        status:
+          type: string
+      required:
+      - erp_id
+      - id
+      - part_type
+      - status
+      - work_order
+      - work_order_id
+    LocationSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        managed:
+          type: boolean
+        lots:
+          type: integer
+        parts:
+          type: integer
+      required:
+      - description
+      - lots
+      - managed
+      - name
+      - parts
     LoginRequest:
       type: object
       properties:
@@ -56835,6 +57751,25 @@ components:
       - backward
       - customers
       - forward
+    MarkReceiptsPostedRequest:
+      type: object
+      properties:
+        lot_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - lot_ids
+    MarkReceiptsPostedResult:
+      type: object
+      properties:
+        marked:
+          type: integer
+          description: Deliveries marked posted. Ones still awaiting a decision are
+            skipped.
+      required:
+      - marked
     MarkStagedInputRequest:
       type: object
       properties:
@@ -57242,6 +58177,19 @@ components:
           nullable: true
           description: Supplier's promised delivery date (from the PO); drives on-time-delivery
             scoring.
+        original_promised_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        chase_note:
+          type: string
+          readOnly: true
+        chased_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         delivery_state:
           nullable: true
           readOnly: true
@@ -57379,6 +58327,11 @@ components:
           items:
             $ref: '#/components/schemas/LotRef'
           readOnly: true
+        holds_cores:
+          type: boolean
+          readOnly: true
+          description: Cores received in bulk (units to be identified), not stock
+            of the part.
         created_at:
           type: string
           format: date-time
@@ -57391,10 +58344,13 @@ components:
           type: boolean
       required:
       - awaiting_return
+      - chase_note
+      - chased_at
       - child_lot_count
       - created_at
       - delivery_state
       - hold_reason
+      - holds_cores
       - id
       - item_name
       - item_purchase_unit
@@ -57406,6 +58362,7 @@ components:
       - material_name
       - material_type_name
       - ordered_quantity
+      - original_promised_date
       - owner_name
       - parent_lot_number
       - quantity
@@ -58320,6 +59277,49 @@ components:
       required:
       - start_time
       - task_ids
+    MoveLotRequestRequest:
+      type: object
+      properties:
+        to:
+          type: string
+          minLength: 1
+          description: 'Destination location; a scanned LOC: label is fine.'
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Move only this much (split off first). Omit to move the whole
+            lot.
+        reason:
+          type: string
+          default: ''
+      required:
+      - to
+    MovePartsRequestRequest:
+      type: object
+      properties:
+        part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        to:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          default: ''
+      required:
+      - part_ids
+      - to
+    MovePartsResult:
+      type: object
+      properties:
+        moved:
+          type: integer
+      required:
+      - moved
     MoveRequestRequest:
       type: object
       description: 'Drag-to-reschedule: the new start; the task keeps its duration.'
@@ -58796,6 +59796,49 @@ components:
       - order
       - part_type
       - quantity
+    OrderLineShipping:
+      type: object
+      properties:
+        line_id:
+          type: string
+          format: uuid
+        line_number:
+          type: integer
+        part_type:
+          type: string
+        ordered:
+          type: integer
+        shipped:
+          type: integer
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        state:
+          $ref: '#/components/schemas/OrderLineShippingStateEnum'
+        shipments:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineShipment'
+      required:
+      - due_date
+      - line_id
+      - line_number
+      - ordered
+      - part_type
+      - shipments
+      - shipped
+      - state
+    OrderLineShippingStateEnum:
+      enum:
+      - OPEN
+      - PART_SHIPPED
+      - SHIPPED
+      type: string
+      description: |-
+        * `OPEN` - Open
+        * `PART_SHIPPED` - Part shipped
+        * `SHIPPED` - Shipped
     OrderLineStatusEnum:
       enum:
       - OPEN
@@ -58804,6 +59847,19 @@ components:
       description: |-
         * `OPEN` - Open
         * `CANCELLED` - Cancelled
+    OrderShipping:
+      type: object
+      properties:
+        order_id:
+          type: string
+          format: uuid
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLineShipping'
+      required:
+      - lines
+      - order_id
     Orders:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -59720,6 +60776,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomerSchedule'
+    PaginatedCustomerShipmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerShipment'
     PaginatedDisassemblyBOMLineList:
       type: object
       required:
@@ -62748,6 +63827,9 @@ components:
             rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin
             pair is an immutable genealogy record of the detour (rework/quarantine)
             the part took.
+        storage_location:
+          type: string
+          readOnly: true
       required:
       - ERP_id
       - core_role
@@ -62773,6 +63855,7 @@ components:
       - step_description
       - step_info
       - step_name
+      - storage_location
       - total_rework_count
       - updated_at
       - work_order_erp_id
@@ -63543,6 +64626,10 @@ components:
         address:
           type: string
           description: Postal address — printed on SCARs and return-to-vendor sheets.
+        requires_coc_on_shipment:
+          type: boolean
+          description: Print a Certificate of Conformance with every shipment to this
+            customer.
         archived:
           type: boolean
     PatchedCoreRequest:
@@ -63755,6 +64842,32 @@ components:
           items:
             type: string
             format: uuid
+    PatchedCustomerShipmentRequest:
+      type: object
+      description: |-
+        A shipment to a customer. Created by the `ship` action, never by plain CRUD;
+        the paperwork fields (carrier, tracking, reference, expected delivery, notes) stay
+        editable afterwards, since tracking numbers often arrive after the truck leaves.
+      properties:
+        carrier:
+          type: string
+          maxLength: 120
+        tracking_number:
+          type: string
+          maxLength: 120
+        reference:
+          type: string
+          description: The ERP's shipper or packing-slip number, so the two can be
+            matched.
+          maxLength: 120
+        expected_delivery:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        archived:
+          type: boolean
     PatchedDisassemblyBOMLineRequest:
       type: object
       description: |-
@@ -70810,6 +71923,48 @@ components:
         * `NOT_REQUIRED` - Not Required
         * `REQUIRED` - Required
         * `COMPLETED` - Completed
+    ReadyPart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        erp_id:
+          type: string
+        part_type:
+          type: string
+          nullable: true
+        work_order:
+          type: string
+          nullable: true
+        order_line:
+          type: integer
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        source:
+          $ref: '#/components/schemas/ReadyPartSourceEnum'
+        status:
+          type: string
+      required:
+      - due_date
+      - erp_id
+      - id
+      - order_line
+      - part_type
+      - source
+      - status
+      - work_order
+    ReadyPartSourceEnum:
+      enum:
+      - SHIP_STEP
+      - STOCK
+      type: string
+      description: |-
+        * `SHIP_STEP` - At the Ship step
+        * `STOCK` - From stock
     ReadyToShipGroup:
       type: object
       description: |-
@@ -70841,6 +71996,37 @@ components:
       - step_name
       - supplier_id
       - supplier_name
+    ReadyToShipOrder:
+      type: object
+      description: Parts that can ship now, for one order (one customer).
+      properties:
+        order_id:
+          type: string
+          format: uuid
+          nullable: true
+        order_number:
+          type: string
+          nullable: true
+        customer_id:
+          type: string
+          format: uuid
+          nullable: true
+        customer_name:
+          type: string
+          nullable: true
+        requires_coc:
+          type: boolean
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadyPart'
+      required:
+      - customer_id
+      - customer_name
+      - order_id
+      - order_number
+      - parts
+      - requires_coc
     ReadyToShipPart:
       type: object
       properties:
@@ -71240,6 +72426,65 @@ components:
       - core
       - reason
       - resolution
+    ReceiptRow:
+      type: object
+      properties:
+        lot_id:
+          type: string
+        our_lot:
+          type: string
+        po_number:
+          type: string
+        po_line:
+          type: string
+        received:
+          type: string
+          format: date
+          nullable: true
+        item:
+          type: string
+        item_name:
+          type: string
+        supplier:
+          type: string
+        unit:
+          type: string
+        received_qty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+        accepted:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+        rejected:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+        awaiting_decision:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+        decision:
+          type: string
+        erp_status:
+          $ref: '#/components/schemas/ErpStatusEnum'
+      required:
+      - accepted
+      - awaiting_decision
+      - decision
+      - erp_status
+      - item
+      - item_name
+      - lot_id
+      - our_lot
+      - po_line
+      - po_number
+      - received
+      - received_qty
+      - rejected
+      - supplier
+      - unit
     ReceiveExpectedLotRequest:
       type: object
       description: Book in an ON_ORDER lot that has physically arrived.
@@ -73402,6 +74647,46 @@ components:
         * `small` - small
         * `medium` - medium
         * `large` - large
+    ScanResult:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ScanResultKindEnum'
+        id:
+          type: string
+        label:
+          type: string
+        detail:
+          type: string
+        path:
+          type: string
+        item_id:
+          type: string
+          nullable: true
+        work_order_id:
+          type: string
+          nullable: true
+      required:
+      - detail
+      - id
+      - item_id
+      - kind
+      - label
+      - path
+    ScanResultKindEnum:
+      enum:
+      - LOT
+      - PART
+      - WORK_ORDER
+      - LOCATION
+      - URL
+      type: string
+      description: |-
+        * `LOT` - Lot
+        * `PART` - Part
+        * `WORK_ORDER` - Work order
+        * `LOCATION` - Location
+        * `URL` - Page
     ScheduleResult:
       type: object
       properties:
@@ -74228,6 +75513,65 @@ components:
           type: string
           default: ''
           description: Carrier, tracking, RMA number from the supplier…
+    ShipRequestRequest:
+      type: object
+      properties:
+        part_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        customer:
+          type: string
+          format: uuid
+          nullable: true
+        carrier:
+          type: string
+          default: ''
+        tracking_number:
+          type: string
+          default: ''
+        reference:
+          type: string
+          default: ''
+        notes:
+          type: string
+          default: ''
+        expected_delivery:
+          type: string
+          format: date
+          nullable: true
+      required:
+      - part_ids
+    ShipmentPart:
+      type: object
+      description: One unit on a shipment.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ERP_id:
+          type: string
+          maxLength: 50
+        part_type_name:
+          type: string
+          readOnly: true
+          nullable: true
+        work_order_number:
+          type: string
+          nullable: true
+          readOnly: true
+        order_number:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - ERP_id
+      - id
+      - order_number
+      - part_type_name
+      - work_order_number
     ShortReceiptEnum:
       enum:
       - BACKORDERED
@@ -79506,6 +80850,16 @@ components:
         customer:
           type: string
           nullable: true
+        shipment_id:
+          type: string
+          nullable: true
+        shipment:
+          type: string
+          nullable: true
+        shipped_at:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - customer
       - erp_id
@@ -79513,6 +80867,9 @@ components:
       - order_id
       - part_id
       - part_type
+      - shipment
+      - shipment_id
+      - shipped_at
       - status
       - work_order
       - work_order_id
@@ -80441,6 +81798,19 @@ components:
       description: |-
         * `NUMERIC` - Numeric
         * `PASS_FAIL` - Pass/Fail
+    UninvitedUsers:
+      type: object
+      properties:
+        count:
+          type: integer
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+      required:
+      - count
+      - emails
     UnscheduledDiagnosis:
       type: object
       properties:
@@ -81214,6 +82584,14 @@ components:
       description: |-
         * `VISIBLE` - VISIBLE
         * `INTERNAL` - INTERNAL
+    VoidShipmentRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     WIPSummary:
       type: object
       description: Serializer for WIP summary by step.

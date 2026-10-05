@@ -1645,6 +1645,10 @@ export type Company = {
    * Postal address — printed on SCARs and return-to-vendor sheets.
    */
   string | undefined;
+  requires_coc_on_shipment?: /**
+   * Print a Certificate of Conformance with every shipment to this customer.
+   */
+  boolean | undefined;
   user_count: number;
   created_at: string;
   updated_at: string;
@@ -1710,6 +1714,10 @@ export type CompanyRequest = {
    * Postal address — printed on SCARs and return-to-vendor sheets.
    */
   string | undefined;
+  requires_coc_on_shipment?: /**
+   * Print a Certificate of Conformance with every shipment to this customer.
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type Core = {
@@ -2316,6 +2324,65 @@ export type CustomerScheduleRequest = {
   recipient_users?: Array<number> | undefined;
   recipient_groups?: Array<string> | undefined;
   recipient_external?: Array<string> | undefined;
+};
+export type CustomerShipment = {
+  id: string;
+  /**
+   * Auto-generated, tenant-unique (SHP-YYYY-######).
+   */
+  shipment_number: string;
+  /**
+   * Who the units went to.
+   */
+  customer: string;
+  customer_name: string;
+  requires_coc: boolean;
+  shipped_at: string;
+  shipped_by: number | null;
+  shipped_by_name: string | null;
+  carrier?: /**
+   * @maxLength 120
+   */
+  string | undefined;
+  tracking_number?: /**
+   * @maxLength 120
+   */
+  string | undefined;
+  reference?: /**
+   * The ERP's shipper or packing-slip number, so the two can be matched.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
+  expected_delivery?: (string | null) | undefined;
+  notes?: string | undefined;
+  quantity: number;
+  parts: Array<ShipmentPart>;
+  /**
+   * Whether this record has been voided
+   */
+  is_voided: boolean;
+  /**
+   * When this record was voided
+   */
+  voided_at: string | null;
+  /**
+   * Reason for voiding this record
+   */
+  void_reason: string;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type ShipmentPart = {
+  id: string;
+  /**
+   * @maxLength 50
+   */
+  ERP_id: string;
+  part_type_name: string | null;
+  work_order_number: string | null;
+  order_number: string | null;
 };
 export type DemoResetRequestRequest = Partial<{
   /**
@@ -3157,6 +3224,7 @@ export type ImportSummary = {
   total: number;
   created: number;
   updated: number;
+  unchanged?: number | undefined;
   errors: number;
 };
 export type IncomingInspectionRow = {
@@ -3496,6 +3564,9 @@ export type LateDelivery = {
   erp_po_number: string;
   erp_po_line: string;
   promised_date: string;
+  original_promised_date: string | null;
+  chase_note: string | null;
+  chased_at: string | null;
   /**
    * Positive: days past the promised date. Zero or negative: due today or in that many days.
    */
@@ -3685,6 +3756,54 @@ export type LifeTrackingRequest = {
   unknown | undefined;
   archived?: boolean | undefined;
 };
+export type LocationContents = {
+  name: string;
+  lots: Array<LocationLot>;
+  parts: Array<LocationPart>;
+  moves: Array<LocationMove>;
+};
+export type LocationLot = {
+  id: string;
+  lot_number: string;
+  item_name: string | null;
+  quantity_remaining: number;
+  unit_of_measure: string;
+  status: string;
+  owner_name: string | null;
+};
+export type LocationPart = {
+  id: string;
+  erp_id: string;
+  part_type: string | null;
+  work_order_id: string | null;
+  work_order: string | null;
+  status: string;
+};
+export type LocationMove = {
+  at: string;
+  direction: DirectionEnum;
+  kind: LocationMoveKindEnum;
+  object_id: string;
+  label: string;
+  other: string;
+  by: string | null;
+};
+export type DirectionEnum =
+  /**
+   * * `IN` - In
+   * `OUT` - Out
+   *
+   * @enum IN, OUT
+   */
+  "IN" | "OUT";
+export type LocationMoveKindEnum =
+  /**
+   * * `LOT` - Lot
+   * `PART` - Part
+   *
+   * @enum LOT, PART
+   */
+  "LOT" | "PART";
 export type LotDecisionRequest = {
   disposition_type?: /**
    * @default "RETURN_TO_SUPPLIER"
@@ -3747,6 +3866,9 @@ export type TracePart = {
   order_id: string | null;
   order: string | null;
   customer: string | null;
+  shipment_id: string | null;
+  shipment: string | null;
+  shipped_at: string | null;
 };
 export type MasterWorkbookResult = {
   dry_run: boolean;
@@ -3946,6 +4068,9 @@ export type MaterialLot = {
      */
     (string | null)
     | undefined;
+  original_promised_date: string | null;
+  chase_note: string;
+  chased_at: string | null;
   delivery_state: DeliveryStateEnum | NullEnum | null;
   /**
    * What was on order, when the delivery was short of it.
@@ -4028,6 +4153,10 @@ export type MaterialLot = {
   awaiting_return: boolean;
   child_lot_count: number;
   lineage: Array<LotRef>;
+  /**
+   * Cores received in bulk (units to be identified), not stock of the part.
+   */
+  holds_cores: boolean;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -4772,6 +4901,36 @@ export type OrderLineRequest = {
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
+export type OrderLineShipping = {
+  line_id: string;
+  line_number: number;
+  part_type: string;
+  ordered: number;
+  shipped: number;
+  due_date: string | null;
+  state: OrderLineShippingStateEnum;
+  shipments: Array<LineShipment>;
+};
+export type OrderLineShippingStateEnum =
+  /**
+   * * `OPEN` - Open
+   * `PART_SHIPPED` - Part shipped
+   * `SHIPPED` - Shipped
+   *
+   * @enum OPEN, PART_SHIPPED, SHIPPED
+   */
+  "OPEN" | "PART_SHIPPED" | "SHIPPED";
+export type LineShipment = {
+  shipment_id: string;
+  shipment_number: string;
+  shipped_at: string;
+  quantity: number;
+  on_time: boolean;
+};
+export type OrderShipping = {
+  order_id: string;
+  lines: Array<OrderLineShipping>;
+};
 export type Orders = {
   id: string;
   /**
@@ -5451,6 +5610,25 @@ export type PaginatedCustomerScheduleList = {
     (string | null)
     | undefined;
   results: Array<CustomerSchedule>;
+};
+export type PaginatedCustomerShipmentList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<CustomerShipment>;
 };
 export type PaginatedDisassemblyBOMLineList = {
   /**
@@ -6624,6 +6802,7 @@ export type Parts = {
    * UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
    */
   rejoined_at: string | null;
+  storage_location: string;
 };
 export type PaginatedPersonalRuleList = {
   /**
@@ -11933,6 +12112,10 @@ export type PatchedCompanyRequest = Partial<{
    * Postal address — printed on SCARs and return-to-vendor sheets.
    */
   address: string;
+  /**
+   * Print a Certificate of Conformance with every shipment to this customer.
+   */
+  requires_coc_on_shipment: boolean;
   archived: boolean;
 }>;
 export type PatchedCoreRequest = Partial<{
@@ -15189,6 +15372,32 @@ export type RcaRecordRequest = {
   fishbone_data?: FishboneNestedRequest | undefined;
   archived?: boolean | undefined;
 };
+export type ReadyPart = {
+  id: string;
+  erp_id: string;
+  part_type: string | null;
+  work_order: string | null;
+  order_line: number | null;
+  due_date: string | null;
+  source: ReadyPartSourceEnum;
+  status: string;
+};
+export type ReadyPartSourceEnum =
+  /**
+   * * `SHIP_STEP` - At the Ship step
+   * `STOCK` - From stock
+   *
+   * @enum SHIP_STEP, STOCK
+   */
+  "SHIP_STEP" | "STOCK";
+export type ReadyToShipOrder = {
+  order_id: string | null;
+  order_number: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
+  requires_coc: boolean;
+  parts: Array<ReadyPart>;
+};
 export type ReassignOptions = {
   machines: Array<ReassignMachineOption>;
   operators: Array<ReassignOperatorOption>;
@@ -15271,6 +15480,45 @@ export type RebuildSlotOverrideRequest = {
   reason: string;
   archived?: boolean | undefined;
 };
+export type ReceiptRow = {
+  lot_id: string;
+  our_lot: string;
+  po_number: string;
+  po_line: string;
+  received: string | null;
+  item: string;
+  item_name: string;
+  supplier: string;
+  unit: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  received_qty: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  accepted: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  rejected: string;
+  /**
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  awaiting_decision: string;
+  decision: string;
+  erp_status: ErpStatusEnum;
+};
+export type ErpStatusEnum =
+  /**
+   * * `Ready to post` - Ready to post
+   * `Awaiting decision` - Awaiting decision
+   * `Posted` - Posted
+   * `Changed since posted` - Changed since posted
+   *
+   * @enum Ready to post, Awaiting decision, Posted, Changed since posted
+   */
+  "Ready to post" | "Awaiting decision" | "Posted" | "Changed since posted";
 export type ReceiveExpectedLotRequest = Partial<{
   /**
    * The supplier's lot/batch number, as printed on the delivery. May repeat.
@@ -16124,6 +16372,26 @@ export type SamplingRuleUpdateRequest = {
   value?: (number | null) | undefined;
   order: number;
 };
+export type ScanResult = {
+  kind: ScanResultKindEnum;
+  id: string;
+  label: string;
+  detail: string;
+  path: string;
+  item_id: string | null;
+  work_order_id?: (string | null) | undefined;
+};
+export type ScanResultKindEnum =
+  /**
+   * * `LOT` - Lot
+   * `PART` - Part
+   * `WORK_ORDER` - Work order
+   * `LOCATION` - Location
+   * `URL` - Page
+   *
+   * @enum LOT, PART, WORK_ORDER, LOCATION, URL
+   */
+  "LOT" | "PART" | "WORK_ORDER" | "LOCATION" | "URL";
 export type ScheduleResult = {
   id: string;
   horizon_start: string;
@@ -18326,6 +18594,7 @@ const ImportSummary = z.object({
   total: z.number().int(),
   created: z.number().int(),
   updated: z.number().int(),
+  unchanged: z.number().int().optional(),
   errors: z.number().int(),
 });
 const ImportResponse = z.object({
@@ -18915,6 +19184,7 @@ const Company = z.object({
   is_customer: z.boolean().optional(),
   is_supplier: z.boolean().optional(),
   address: z.string().optional(),
+  requires_coc_on_shipment: z.boolean().optional(),
   user_count: z.number().int(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -18943,6 +19213,7 @@ const CompanyRequest = z.object({
   is_customer: z.boolean().optional(),
   is_supplier: z.boolean().optional(),
   address: z.string().optional(),
+  requires_coc_on_shipment: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedCompanyRequest = z
@@ -18962,6 +19233,7 @@ const PatchedCompanyRequest = z
     is_customer: z.boolean(),
     is_supplier: z.boolean(),
     address: z.string(),
+    requires_coc_on_shipment: z.boolean(),
     archived: z.boolean(),
   })
   .partial();
@@ -19301,6 +19573,109 @@ const CoreStartTeardownBatchResponse = z.object({
   work_order_id: z.string().uuid(),
   work_order_erp_id: z.string(),
   transitioned_core_ids: z.array(z.string().uuid()),
+});
+const ShipmentPart = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string().max(50),
+  part_type_name: z.string().nullable(),
+  work_order_number: z.string().nullable(),
+  order_number: z.string().nullable(),
+});
+const CustomerShipment = z.object({
+  id: z.string().uuid(),
+  shipment_number: z.string(),
+  customer: z.string().uuid(),
+  customer_name: z.string(),
+  requires_coc: z.boolean(),
+  shipped_at: z.string().datetime({ offset: true }),
+  shipped_by: z.number().int().nullable(),
+  shipped_by_name: z.string().nullable(),
+  carrier: z.string().max(120).optional(),
+  tracking_number: z.string().max(120).optional(),
+  reference: z.string().max(120).optional(),
+  expected_delivery: z.string().nullish(),
+  notes: z.string().optional(),
+  quantity: z.number().int(),
+  parts: z.array(ShipmentPart),
+  is_voided: z.boolean(),
+  voided_at: z.string().datetime({ offset: true }).nullable(),
+  void_reason: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedCustomerShipmentList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CustomerShipment),
+});
+const PatchedCustomerShipmentRequest = z
+  .object({
+    carrier: z.string().max(120),
+    tracking_number: z.string().max(120),
+    reference: z.string().max(120),
+    expected_delivery: z.string().nullable(),
+    notes: z.string(),
+    archived: z.boolean(),
+  })
+  .partial();
+const VoidShipmentRequestRequest = z.object({ reason: z.string().min(1) });
+const DeliveryPerformance = z.object({
+  days: z.number().int(),
+  deliveries: z.number().int(),
+  on_time: z.number().int(),
+  on_time_pct: z.number().nullable(),
+});
+const OrderLineShippingStateEnum = z.enum(["OPEN", "PART_SHIPPED", "SHIPPED"]);
+const LineShipment = z.object({
+  shipment_id: z.string().uuid(),
+  shipment_number: z.string(),
+  shipped_at: z.string().datetime({ offset: true }),
+  quantity: z.number().int(),
+  on_time: z.boolean(),
+});
+const OrderLineShipping = z.object({
+  line_id: z.string().uuid(),
+  line_number: z.number().int(),
+  part_type: z.string(),
+  ordered: z.number().int(),
+  shipped: z.number().int(),
+  due_date: z.string().nullable(),
+  state: OrderLineShippingStateEnum,
+  shipments: z.array(LineShipment),
+});
+const OrderShipping = z.object({
+  order_id: z.string().uuid(),
+  lines: z.array(OrderLineShipping),
+});
+const ReadyPartSourceEnum = z.enum(["SHIP_STEP", "STOCK"]);
+const ReadyPart = z.object({
+  id: z.string().uuid(),
+  erp_id: z.string(),
+  part_type: z.string().nullable(),
+  work_order: z.string().nullable(),
+  order_line: z.number().int().nullable(),
+  due_date: z.string().nullable(),
+  source: ReadyPartSourceEnum,
+  status: z.string(),
+});
+const ReadyToShipOrder = z.object({
+  order_id: z.string().uuid().nullable(),
+  order_number: z.string().nullable(),
+  customer_id: z.string().uuid().nullable(),
+  customer_name: z.string().nullable(),
+  requires_coc: z.boolean(),
+  parts: z.array(ReadyPart),
+});
+const ShipRequestRequest = z.object({
+  part_ids: z.array(z.string().uuid()),
+  customer: z.string().uuid().nullish(),
+  carrier: z.string().optional().default(""),
+  tracking_number: z.string().optional().default(""),
+  reference: z.string().optional().default(""),
+  notes: z.string().optional().default(""),
+  expected_delivery: z.string().nullish(),
 });
 const UserDetail = z.object({
   id: z.number().int(),
@@ -20572,6 +20947,9 @@ const MaterialLot = z.object({
   erp_po_number: z.string().max(100).optional(),
   erp_po_line: z.string().max(20).optional(),
   promised_date: z.string().nullish(),
+  original_promised_date: z.string().nullable(),
+  chase_note: z.string(),
+  chased_at: z.string().datetime({ offset: true }).nullable(),
   delivery_state: z.union([DeliveryStateEnum, NullEnum]).nullable(),
   ordered_quantity: z
     .string()
@@ -20610,6 +20988,7 @@ const MaterialLot = z.object({
   awaiting_return: z.boolean(),
   child_lot_count: z.number().int(),
   lineage: z.array(LotRef),
+  holds_cores: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -20769,6 +21148,10 @@ const AdjustQuantityRequest = z.object({
   reason: z.string().min(1),
 });
 const CancelExpectedReceiptRequest = z.object({ reason: z.string().min(1) });
+const ChaseExpectedReceiptRequest = z.object({
+  note: z.string().min(1),
+  promised_date: z.string().nullish(),
+});
 const ReceivingVerdict = z.object({
   status: z.string(),
   is_variables: z.boolean(),
@@ -20783,6 +21166,14 @@ const ReceivingVerdict = z.object({
 const ExtendShelfLifeRequest = z.object({
   new_expiration_date: z.string(),
   reason: z.string().min(1),
+});
+const MoveLotRequestRequest = z.object({
+  to: z.string().min(1),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
+  reason: z.string().optional().default(""),
 });
 const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
@@ -20912,6 +21303,9 @@ const TracePart = z.object({
   order_id: z.string().nullable(),
   order: z.string().nullable(),
   customer: z.string().nullable(),
+  shipment_id: z.string().nullable(),
+  shipment: z.string().nullable(),
+  shipped_at: z.string().datetime({ offset: true }).nullable(),
 });
 const TraceUse = z.object({
   lot_number: z.string(),
@@ -21031,6 +21425,9 @@ const LateDelivery = z.object({
   erp_po_number: z.string(),
   erp_po_line: z.string(),
   promised_date: z.string(),
+  original_promised_date: z.string().nullable(),
+  chase_note: z.string().nullable(),
+  chased_at: z.string().datetime({ offset: true }).nullable(),
   days_late: z.number().int(),
   quantity: z.number(),
   unit_of_measure: z.string(),
@@ -21944,6 +22341,7 @@ const Parts = z.object({
   lot_split_reason: z.string().nullable(),
   lot_split_at: z.string().datetime({ offset: true }).nullable(),
   rejoined_at: z.string().datetime({ offset: true }).nullable(),
+  storage_location: z.string(),
 });
 const PaginatedPartsList = z.object({
   count: z.number().int(),
@@ -22182,6 +22580,12 @@ const PartsBulkSetStatusInputRequest = z.object({
 const BulkSetStatusResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
 });
+const MovePartsRequestRequest = z.object({
+  part_ids: z.array(z.string().uuid()),
+  to: z.string().min(1),
+  reason: z.string().optional().default(""),
+});
+const MovePartsResult = z.object({ moved: z.number().int() });
 const PartSelect = z.object({
   id: z.string().uuid(),
   ERP_id: z.string().max(50),
@@ -22812,6 +23216,33 @@ const PatchedRebuildSlotOverrideRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ErpStatusEnum = z.enum([
+  "Ready to post",
+  "Awaiting decision",
+  "Posted",
+  "Changed since posted",
+]);
+const ReceiptRow = z.object({
+  lot_id: z.string(),
+  our_lot: z.string(),
+  po_number: z.string(),
+  po_line: z.string(),
+  received: z.string().nullable(),
+  item: z.string(),
+  item_name: z.string(),
+  supplier: z.string(),
+  unit: z.string(),
+  received_qty: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  accepted: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  rejected: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  awaiting_decision: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
+  decision: z.string(),
+  erp_status: ErpStatusEnum,
+});
+const MarkReceiptsPostedRequest = z.object({
+  lot_ids: z.array(z.string().uuid()),
+});
+const MarkReceiptsPostedResult = z.object({ marked: z.number().int() });
 const TriggerEnum = z.enum([
   "RECONDITION",
   "REPLACE_POOL",
@@ -24320,6 +24751,47 @@ const PatchedStorageLocationRequest = z
     archived: z.boolean(),
   })
   .partial();
+const LocationLot = z.object({
+  id: z.string().uuid(),
+  lot_number: z.string(),
+  item_name: z.string().nullable(),
+  quantity_remaining: z.number(),
+  unit_of_measure: z.string(),
+  status: z.string(),
+  owner_name: z.string().nullable(),
+});
+const LocationPart = z.object({
+  id: z.string().uuid(),
+  erp_id: z.string(),
+  part_type: z.string().nullable(),
+  work_order_id: z.string().uuid().nullable(),
+  work_order: z.string().nullable(),
+  status: z.string(),
+});
+const DirectionEnum = z.enum(["IN", "OUT"]);
+const LocationMoveKindEnum = z.enum(["LOT", "PART"]);
+const LocationMove = z.object({
+  at: z.string().datetime({ offset: true }),
+  direction: DirectionEnum,
+  kind: LocationMoveKindEnum,
+  object_id: z.string().uuid(),
+  label: z.string(),
+  other: z.string(),
+  by: z.string().nullable(),
+});
+const LocationContents = z.object({
+  name: z.string(),
+  lots: z.array(LocationLot),
+  parts: z.array(LocationPart),
+  moves: z.array(LocationMove),
+});
+const LocationSummary = z.object({
+  name: z.string(),
+  description: z.string(),
+  managed: z.boolean(),
+  lots: z.number().int(),
+  parts: z.number().int(),
+});
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
   step_execution: z.string().uuid().nullish(),
@@ -25563,6 +26035,7 @@ const BulkReconcileStatusResponse = z.object({
   result: z.object({}).partial().passthrough().optional(),
   error: z.string().optional(),
 });
+const InviteUninvitedResult = z.object({ invited: z.number().int() });
 const SendInvitationInputRequest = z.object({ user_id: z.number().int() });
 const SendInvitationResponse = z.object({
   detail: z.string(),
@@ -25571,6 +26044,10 @@ const SendInvitationResponse = z.object({
   expires_at: z.string().datetime({ offset: true }),
   invitation_url: z.string(),
   email_sent: z.boolean(),
+});
+const UninvitedUsers = z.object({
+  count: z.number().int(),
+  emails: z.array(z.string().email()),
 });
 const UserInvitation = z.object({
   id: z.number().int(),
@@ -27117,6 +27594,22 @@ const GeneratedReport = z.object({
   status: GeneratedReportStatusEnum,
   error_message: z.string().nullable(),
 });
+const ScanResultKindEnum = z.enum([
+  "LOT",
+  "PART",
+  "WORK_ORDER",
+  "LOCATION",
+  "URL",
+]);
+const ScanResult = z.object({
+  kind: ScanResultKindEnum,
+  id: z.string(),
+  label: z.string(),
+  detail: z.string(),
+  path: z.string(),
+  item_id: z.string().nullable(),
+  work_order_id: z.string().nullish(),
+});
 const ChartTypeEnum = z.enum(["XBAR_R", "XBAR_S", "I_MR"]);
 const BaselineStatusEnum = z.enum(["ACTIVE", "SUPERSEDED"]);
 const SPCBaselineList = z.object({
@@ -27887,6 +28380,20 @@ export const schemas = {
   CoreLotReceiveRequest,
   CoreStartTeardownBatchInputRequest,
   CoreStartTeardownBatchResponse,
+  ShipmentPart,
+  CustomerShipment,
+  PaginatedCustomerShipmentList,
+  PatchedCustomerShipmentRequest,
+  VoidShipmentRequestRequest,
+  DeliveryPerformance,
+  OrderLineShippingStateEnum,
+  LineShipment,
+  OrderLineShipping,
+  OrderShipping,
+  ReadyPartSourceEnum,
+  ReadyPart,
+  ReadyToShipOrder,
+  ShipRequestRequest,
   UserDetail,
   UserDetailRequest,
   PatchedUserDetailRequest,
@@ -28034,8 +28541,10 @@ export const schemas = {
   QualityReports,
   AdjustQuantityRequest,
   CancelExpectedReceiptRequest,
+  ChaseExpectedReceiptRequest,
   ReceivingVerdict,
   ExtendShelfLifeRequest,
+  MoveLotRequestRequest,
   RaiseScarResponse,
   ReceiveExpectedLotRequest,
   RecordBulkRequestRequest,
@@ -28186,6 +28695,8 @@ export const schemas = {
   BulkRollbackResponse,
   PartsBulkSetStatusInputRequest,
   BulkSetStatusResponse,
+  MovePartsRequestRequest,
+  MovePartsResult,
   PartSelect,
   PlantCalendarExceptionKindEnum,
   PlantClosureRecurrenceEnum,
@@ -28245,6 +28756,10 @@ export const schemas = {
   PaginatedRebuildSlotOverrideList,
   RebuildSlotOverrideRequest,
   PatchedRebuildSlotOverrideRequest,
+  ErpStatusEnum,
+  ReceiptRow,
+  MarkReceiptsPostedRequest,
+  MarkReceiptsPostedResult,
   TriggerEnum,
   RepairCode,
   PaginatedRepairCodeList,
@@ -28389,6 +28904,13 @@ export const schemas = {
   PaginatedStorageLocationList,
   StorageLocationRequest,
   PatchedStorageLocationRequest,
+  LocationLot,
+  LocationPart,
+  DirectionEnum,
+  LocationMoveKindEnum,
+  LocationMove,
+  LocationContents,
+  LocationSummary,
   SubstepCompletion,
   PaginatedSubstepCompletionList,
   SubstepCompletionRequest,
@@ -28513,8 +29035,10 @@ export const schemas = {
   BulkReconcileUsersResponse,
   BulkReconcileStatusProgress,
   BulkReconcileStatusResponse,
+  InviteUninvitedResult,
   SendInvitationInputRequest,
   SendInvitationResponse,
+  UninvitedUsers,
   UserInvitation,
   PaginatedUserInvitationList,
   UserInvitationRequest,
@@ -28713,6 +29237,8 @@ export const schemas = {
   GenerateReportResponse,
   GeneratedReportStatusEnum,
   GeneratedReport,
+  ScanResultKindEnum,
+  ScanResult,
   ChartTypeEnum,
   BaselineStatusEnum,
   SPCBaselineList,
@@ -33291,6 +33817,187 @@ committed to rebuilding — which is also what lets the same call answer
   },
   {
     method: "get",
+    path: "/api/CustomerShipments/",
+    alias: "api_CustomerShipments_list",
+    description: `Shipments to customers. Created only by &#x60;ship&#x60;; corrected by PATCH (paperwork
+fields) or retracted by &#x60;void&#x60; — never deleted.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "is_voided",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PaginatedCustomerShipmentList,
+  },
+  {
+    method: "get",
+    path: "/api/CustomerShipments/:id/",
+    alias: "api_CustomerShipments_retrieve",
+    description: `Shipments to customers. Created only by &#x60;ship&#x60;; corrected by PATCH (paperwork
+fields) or retracted by &#x60;void&#x60; — never deleted.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerShipment,
+  },
+  {
+    method: "patch",
+    path: "/api/CustomerShipments/:id/",
+    alias: "api_CustomerShipments_partial_update",
+    description: `Shipments to customers. Created only by &#x60;ship&#x60;; corrected by PATCH (paperwork
+fields) or retracted by &#x60;void&#x60; — never deleted.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedCustomerShipmentRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerShipment,
+  },
+  {
+    method: "post",
+    path: "/api/CustomerShipments/:id/void/",
+    alias: "api_CustomerShipments_void_create",
+    description: `A shipment recorded by mistake: its parts go back to the Ship step or to stock, and anything it closed reopens.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CustomerShipment,
+  },
+  {
+    method: "get",
+    path: "/api/CustomerShipments/delivery-performance/",
+    alias: "api_CustomerShipments_delivery_performance_retrieve",
+    description: `On-time delivery to customers over the last N days (default 90).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: DeliveryPerformance,
+  },
+  {
+    method: "get",
+    path: "/api/CustomerShipments/export/:export_format/",
+    alias: "api_CustomerShipments_export_retrieve",
+    description: `Export filtered data to CSV or Excel format.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "fields",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "filename",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "include_references",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/CustomerShipments/order-shipping/",
+    alias: "api_CustomerShipments_order_shipping_retrieve",
+    description: `Per order line: ordered, shipped, and each shipment&#x27;s date and whether it met the line&#x27;s due date.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "order",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: OrderShipping,
+  },
+  {
+    method: "get",
+    path: "/api/CustomerShipments/ready/",
+    alias: "api_CustomerShipments_ready_list",
+    description: `Parts that can ship now — at a Ship step or finished to stock — grouped by order (one customer each).`,
+    requestFormat: "json",
+    response: z.array(ReadyToShipOrder),
+  },
+  {
+    method: "post",
+    path: "/api/CustomerShipments/ship/",
+    alias: "api_CustomerShipments_ship_create",
+    description: `Ship parts to one customer on one shipment. Parts at a Ship step complete it (its sign-off gate runs); all or nothing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShipRequestRequest,
+      },
+    ],
+    response: CustomerShipment,
+  },
+  {
+    method: "get",
     path: "/api/dashboard/capa-status/",
     alias: "api_dashboard_capa_status_retrieve",
     description: `Get CAPA status distribution for pie chart.
@@ -33350,7 +34057,10 @@ Response:
       },
     ],
     response: DefectParetoResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/dashboard/defect-records/",
@@ -33702,10 +34412,7 @@ Response:
 }`,
     requestFormat: "json",
     response: DashboardKPIsResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/dashboard/ncr-aging/",
@@ -38488,7 +39195,10 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/import-template/:template_format/",
@@ -38706,10 +39416,7 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/LifeLimitDefinitions/:id/revisions/",
@@ -39395,6 +40102,26 @@ Query params:
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/chase/",
+    alias: "api_MaterialLots_chase_create",
+    description: `Record a chase of an expected delivery — what the supplier said, and a new promised date if given. The first promise is kept for on-time scoring.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ChaseExpectedReceiptRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/confirm-whole-lot-reject/",
     alias: "api_MaterialLots_confirm_whole_lot_reject_create",
     description: `Confirm an inspector&#x27;s request to reject the whole lot.`,
@@ -39434,6 +40161,26 @@ Query params:
         name: "body",
         type: "Body",
         schema: ExtendShelfLifeRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/move/",
+    alias: "api_MaterialLots_move_create",
+    description: `Move a lot to another location, recorded (who, when, from where). With a quantity less than what&#x27;s left, that much is split off and moves.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MoveLotRequestRequest,
       },
       {
         name: "id",
@@ -39890,6 +40637,11 @@ work orders whose BOM calls for the item.`,
         name: "start",
         type: "Query",
         schema: z.string(),
+      },
+      {
+        name: "unposted_only",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: z.void(),
@@ -42854,7 +43606,10 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
       },
     ],
     response: PaginatedOutsideProcessShipmentList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/OutsideProcessShipments/",
@@ -43114,10 +43869,7 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
       },
     ],
     response: PaginatedReadyToShipGroupList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/OutsideProcessShipments/send_out/",
@@ -44424,6 +45176,26 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: ListMetadataResponse,
+  },
+  {
+    method: "post",
+    path: "/api/Parts/move/",
+    alias: "api_Parts_move_create",
+    description: `Move serialised units to a location, recorded. All or nothing.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MovePartsRequestRequest,
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.object({ moved: z.number().int() }),
   },
   {
     method: "get",
@@ -48388,6 +49160,54 @@ the completion blockers.`,
   },
   {
     method: "get",
+    path: "/api/Receipts/",
+    alias: "api_Receipts_list",
+    description: `Deliveries received in a date range, each with its ERP status.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "end",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "po_only",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "start",
+        type: "Query",
+        schema: z.string(),
+      },
+      {
+        name: "unposted_only",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z.array(ReceiptRow),
+  }
+]);
+
+const endpoints4 = makeApi([
+  {
+    method: "post",
+    path: "/api/Receipts/mark-posted/",
+    alias: "api_Receipts_mark_posted_create",
+    description: `Record that these deliveries were keyed into the ERP, with the numbers posted. Ones still awaiting a decision are skipped.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MarkReceiptsPostedRequest,
+      },
+    ],
+    response: z.object({ marked: z.number().int() }),
+  },
+  {
+    method: "get",
     path: "/api/RepairCodes/",
     alias: "api_RepairCodes_list",
     description: `Repair codes — what operations a finding adds to a rebuild.`,
@@ -48685,10 +49505,7 @@ returns 504 and memory is reclaimed on gunicorn worker rotation.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/reports/generate/",
@@ -49534,6 +50351,28 @@ problem from the round-4 research).`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/scan/",
+    alias: "api_scan_list",
+    description: `Resolve a scanned code: a label QR URL, LOC:&lt;location&gt;, a lot number, a serial, a work-order number or a location name.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "code",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.array(ScanResult),
+    errors: [
+      {
+        status: 404,
+        description: `No response body`,
+        schema: z.void(),
+      },
+    ],
   },
   {
     method: "get",
@@ -53800,7 +54639,10 @@ receiving takes free text and suggests what has been typed before.`,
       },
     ],
     response: StorageLocation,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "put",
     path: "/api/StorageLocations/:id/",
@@ -53858,6 +54700,26 @@ receiving takes free text and suggests what has been typed before.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/contents/",
+    alias: "api_StorageLocations_contents_retrieve",
+    description: `What is in one location now, and what moved in or out of it lately. By name, so unmanaged (typed) locations work too.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "name",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: LocationContents,
   },
   {
     method: "get",
@@ -53968,6 +54830,14 @@ receiving takes free text and suggests what has been typed before.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
+  },
+  {
+    method: "get",
+    path: "/api/StorageLocations/summary/",
+    alias: "api_StorageLocations_summary_list",
+    description: `Every location with stock in it, plus every managed location, with how many lots and units each holds.`,
+    requestFormat: "json",
+    response: z.array(LocationSummary),
   },
   {
     method: "get",
@@ -54125,10 +54995,7 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/SubstepCompletions/:id/void/",
@@ -58168,6 +59035,14 @@ untouched. Request/response shape is unchanged.`,
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/User/invite-uninvited/",
+    alias: "api_User_invite_uninvited_create",
+    description: `Invite every user who has never been invited (go-live, after a migration load).`,
+    requestFormat: "json",
+    response: z.object({ invited: z.number().int() }),
+  },
+  {
     method: "get",
     path: "/api/User/metadata/",
     alias: "api_User_metadata_retrieve",
@@ -58232,6 +59107,14 @@ Stores the selected tenant in the session.`,
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/User/uninvited/",
+    alias: "api_User_uninvited_retrieve",
+    description: `Users never invited and never signed in — those a migration workbook loaded ahead of go-live.`,
+    requestFormat: "json",
+    response: UninvitedUsers,
   },
   {
     method: "get",
@@ -58438,7 +59321,10 @@ Provides endpoints for:
       },
     ],
     response: ValidateTokenResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/users/:user_id/effective-permissions/",
@@ -58846,10 +59732,7 @@ switches from running one step to another. One row per matrix cell.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/WorkCenterChangeovers/import/",

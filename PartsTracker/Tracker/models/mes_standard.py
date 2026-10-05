@@ -1701,6 +1701,16 @@ class MaterialLot(SecureModel):
         help_text="Cores received in bulk (units to be identified), not stock of the part.",
     )
 
+    # Posted to the ERP: a person keyed this delivery's goods receipt into the ERP from
+    # the receipts sheet (services.mes.receipt_export). UQMES exports the receipt and
+    # records that it was posted; the posting itself is the ERP's. The snapshot is what
+    # was posted (received / accepted / rejected), so a later change — a reject after
+    # posting, a recount — shows as "changed since posted".
+    erp_posted_at = models.DateTimeField(null=True, blank=True)
+    erp_posted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    erp_posted_snapshot = models.JSONField(null=True, blank=True)
+
     class Meta:
         verbose_name = 'Material Lot'
         verbose_name_plural = 'Material Lots'

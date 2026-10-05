@@ -538,3 +538,42 @@ def build_user_reconcile_template(tenant: "Tenant", *, populate: bool = False) -
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Go-live: invite everyone loaded without an invitation
+# ---------------------------------------------------------------------------
+
+def uninvited_users(tenant):
+    """Users of this tenant who have never been invited, never signed in and have no
+    password yet — the staff a migration workbook loads ahead of go-live
+    (`invite=False`, created with an unusable password the invitation sets). Someone
+    given a password directly needs no invitation; a user whose access here was removed
+    (membership suspended) is left out."""
+    from Tracker.models import TenantMembership, User
+    suspended = TenantMembership.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, status=TenantMembership.Status.SUSPENDED).values('user_id')
+    from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
+    return (User.objects.filter(tenant=tenant, is_active=True, last_login__isnull=True,  # tenant-safe: explicit tenant filter
+                                invitations__isnull=True,
+                                password__startswith=UNUSABLE_PASSWORD_PREFIX)
+            .exclude(id__in=suspended).order_by('email').distinct())
+
+
+def invite_uninvited(tenant, *, acting_user) -> int:
+    """Invite every `uninvited_users` user: an invitation each, emailed once the
+    transaction commits (as a single invite is). Returns how many were invited."""
+    from Tracker.models import UserInvitation
+    from Tracker.email_notifications import send_invitation_email
+    invited = 0
+    with transaction.atomic():
+        for user in uninvited_users(tenant):
+            invitation = UserInvitation.objects.create(
+                user=user, invited_by=acting_user, token=UserInvitation.generate_token(),
+                expires_at=timezone.now() + timedelta(days=7))
+            try:
+                send_invitation_email(invitation.id, immediate=False)
+            except Exception:  # noqa: BLE001 - the invitation stands; resend from the user's row
+                pass
+            invited += 1
+    return invited

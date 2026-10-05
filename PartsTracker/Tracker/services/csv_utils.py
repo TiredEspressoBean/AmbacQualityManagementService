@@ -542,6 +542,7 @@ class ImportResult:
         self.total = 0
         self.created = 0
         self.updated = 0
+        self.unchanged = 0
         self.errors = 0
         self.results: List[Dict[str, Any]] = []
 
@@ -563,6 +564,15 @@ class ImportResult:
             result["warnings"] = warnings
         self.results.append(result)
 
+    def add_unchanged(self, row_num: int, obj_id: Any, warnings: Optional[List[str]] = None):
+        """Record a row that matched an existing record and changed nothing."""
+        self.total += 1
+        self.unchanged += 1
+        result = {"row": row_num, "status": "unchanged", "id": str(obj_id)}
+        if warnings:
+            result["warnings"] = warnings
+        self.results.append(result)
+
     def add_error(self, row_num: int, errors: Union[str, Dict, List]):
         """Record an error."""
         self.total += 1
@@ -576,6 +586,7 @@ class ImportResult:
                 "total": self.total,
                 "created": self.created,
                 "updated": self.updated,
+                "unchanged": self.unchanged,
                 "errors": self.errors,
             },
             "results": self.results,

@@ -32,7 +32,8 @@ import { toast } from "sonner";
 import { matchKey } from "@/lib/query-filters";
 
 const formSchema = z.object({
-    core_number: z.string().min(1, "Core number is required"),
+    // Blank: one is assigned (CORE-<year>-####), as the API does for every receipt.
+    core_number: z.string().optional(),
     serial_number: z.string().optional(),
     core_type: z.string().min(1, "Core type is required"),
     received_date: z.string().min(1, "Received date is required"),
@@ -123,6 +124,7 @@ export function CoreReceiveFormPage() {
         mutationFn: (data: FormData) => {
             const payload: any = {
                 ...data,
+                ...(data.core_number?.trim() ? { core_number: data.core_number.trim() } : { core_number: undefined }),
                 core_credit_value: data.core_credit_value ? data.core_credit_value : null,
                 customer: data.customer && data.customer !== "__none__" ? data.customer : null,
             };
@@ -179,12 +181,12 @@ export function CoreReceiveFormPage() {
                                     name="core_number"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Core Number *</FormLabel>
+                                            <FormLabel>Core Number</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="CORE-001" {...field} />
+                                                <Input placeholder="Assigned" {...field} />
                                             </FormControl>
                                             <FormDescription>
-                                                Unique identifier for this core
+                                                Leave blank to have one assigned, or enter your own tag
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -336,9 +338,11 @@ export function CoreReceiveFormPage() {
                                                     ? "From this customer's standing arrangement."
                                                     : modeProvenance === "requested"
                                                         ? "Overridden for this core."
-                                                        : "No arrangement on record for this customer — "
-                                                          + "defaulting to stock. Set one on the company "
-                                                          + "to stop guessing per core."}
+                                                        : selectedCustomerId && selectedCustomerId !== "__none__"
+                                                            ? "No arrangement on record for this customer — "
+                                                              + "defaulting to stock. Set one on the company "
+                                                              + "to stop guessing per core."
+                                                            : "No customer picked — defaulting to a unit from stock."}
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
