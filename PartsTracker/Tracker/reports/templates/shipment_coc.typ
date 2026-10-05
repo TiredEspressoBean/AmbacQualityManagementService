@@ -45,7 +45,7 @@
   data.items.map(i => (
     [#opt(i.order)#if i.line != none [ · #i.line]],
     [#text(weight: "semibold")[#i.part_type] \ #text(size: 8.5pt, fill: muted)[#i.serials.join(", ")]],
-    str(i.quantity),
+    i.quantity,
   )),
   aligns: (left, left, right),
 )

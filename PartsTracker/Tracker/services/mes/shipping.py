@@ -20,6 +20,7 @@ shipment carries the ERP's paperwork number (`reference`) so the two can be matc
 from __future__ import annotations
 
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
@@ -104,6 +105,7 @@ def ready_to_ship(tenant) -> list[dict]:
                 "customer_name": company.name if company is not None else None,
                 "requires_coc": bool(getattr(company, "requires_coc_on_shipment", False)),
                 "parts": [],
+                "lots": [],
             }
         wo = p.work_order
         line = wo.order_line if wo is not None and wo.order_line_id else None
@@ -117,24 +119,54 @@ def ready_to_ship(tenant) -> list[dict]:
             "source": "STOCK" if p.part_status in FROM_STOCK else "SHIP_STEP",
             "status": p.get_part_status_display(),
         })
-    return sorted(groups.values(), key=lambda g: (g["order_number"] is None, g["order_number"] or ""))
+    # A customer's own material, still here: it can go back to them, grouped under them.
+    from Tracker.models import MaterialLot
+    for lot in (MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=tenant, archived=False, owner__isnull=False, holds_cores=False,
+            status__in=SHIPPABLE_LOT_STATUSES, quantity_remaining__gt=0)
+            .select_related("owner", "material", "material_type").order_by("lot_number")):
+        key = f"owner:{lot.owner_id}"
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {
+                "order_id": None, "order_number": None,
+                "customer_id": str(lot.owner_id), "customer_name": lot.owner.name,
+                "requires_coc": bool(lot.owner.requires_coc_on_shipment), "parts": [], "lots": [],
+            }
+        g["lots"].append({
+            "id": str(lot.id), "lot_number": lot.lot_number, "item_name": lot.item_name or "",
+            "quantity_remaining": float(lot.quantity_remaining), "unit_of_measure": lot.unit_of_measure,
+            "storage_location": lot.storage_location,
+        })
+    return sorted(groups.values(), key=lambda g: (g["order_number"] is None, g["order_number"] or "",
+                                                  g["customer_name"] or ""))
 
 
-def ship_parts(*, tenant, parts, user, customer=None, carrier: str = "",
-               tracking_number: str = "", reference: str = "", notes: str = "",
-               expected_delivery: date | None = None):
-    """Ship ``parts`` to one customer on one shipment. All or nothing.
+SHIPPABLE_LOT_STATUSES = ("ACCEPTED", "IN_USE")
 
-    ``customer`` defaults to the parts' order's company; parts for two different
-    customers can't share a shipment. Each part at a Ship step completes it through
-    ``advance_part_step`` (its gate runs); finished stock goes straight to SHIPPED.
+
+def ship(*, tenant, user, parts=(), lots=(), customer=None, carrier: str = "",
+         tracking_number: str = "", reference: str = "", notes: str = "",
+         expected_delivery: date | None = None):
+    """Ship to one customer on one shipment: serialised ``parts`` and material ``lots``
+    (``[{"lot": MaterialLot, "quantity": Decimal | None}]``). All or nothing.
+
+    ``customer`` defaults to the parts' order's company, or a lot's owner; two customers
+    can't share a shipment, and a customer's own lot ships only back to them. Each part at
+    a Ship step completes it through ``advance_part_step`` (its gate runs); finished stock
+    goes straight to SHIPPED. A lot ships whole, or — with a quantity less than what's
+    left — that much is split off and the split ships.
     """
-    from Tracker.models import CustomerShipment, Parts, PartsStatus
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import CustomerShipment, MaterialLot, Parts, PartsStatus, RecordEdit
+    from Tracker.services.mes import inventory
+    from Tracker.services.mes.material_lot import split_material_lot
     from Tracker.services.mes.parts import _cascade_work_order_completion, advance_part_step
 
     ids = [p.id for p in parts]
-    if not ids:
-        raise ValueError("Choose the parts that are going.")
+    lot_reqs = list(lots)
+    if not ids and not lot_reqs:
+        raise ValueError("Choose what's going.")
 
     with transaction.atomic():
         locked = list(Parts.objects.select_for_update(of=("self",))  # tenant-safe: explicit tenant filter
@@ -144,20 +176,33 @@ def ship_parts(*, tenant, parts, user, customer=None, carrier: str = "",
         if len(locked) != len(set(ids)):
             raise ValueError("Some of those parts weren't found.")
         problems = [f"{p.ERP_id}: {why}" for p in locked if (why := shippable(p))]
+        locked_lots = []
+        for req in lot_reqs:
+            lot = (MaterialLot.objects.select_for_update(of=("self",))  # tenant-safe: explicit tenant filter
+                   .select_related("owner").get(tenant=tenant, pk=req["lot"].pk))
+            qty = req.get("quantity")
+            qty = lot.quantity_remaining if qty in (None, "") else Decimal(str(qty))
+            if lot.status not in SHIPPABLE_LOT_STATUSES or lot.holds_cores:
+                problems.append(f"lot {lot.lot_number}: {lot.get_status_display().lower()}, not stock that can ship")
+            elif qty <= 0 or qty > lot.quantity_remaining:
+                problems.append(f"lot {lot.lot_number}: {lot.quantity_remaining} {lot.unit_of_measure} left, "
+                                f"can't ship {qty}")
+            locked_lots.append((lot, qty))
         if problems:
             raise ValueError("Can't ship " + "; ".join(problems))
 
         if customer is not None and not customer.is_customer:
             raise ValueError(f"{customer.name} isn't set up as a customer.")
         owners = {c.id: c for p in locked if (c := _customer_of(p)) is not None}
+        owners.update({lot.owner_id: lot.owner for lot, _ in locked_lots if lot.owner_id})
         if customer is None:
             if len(owners) > 1:
-                raise ValueError("These parts are for different customers — ship them separately.")
+                raise ValueError("These are for different customers — ship them separately.")
             customer = next(iter(owners.values()), None)
         elif owners and set(owners) != {customer.id}:
-            raise ValueError(f"Some of these parts are on another customer's order, not {customer.name}'s.")
+            raise ValueError(f"Some of this belongs to another customer, not {customer.name}.")
         if customer is None:
-            raise ValueError("These parts aren't on a customer's order — say who they're going to.")
+            raise ValueError("Nothing here is on a customer's order — say who it's going to.")
         if not customer.is_customer:
             raise ValueError(f"{customer.name} isn't set up as a customer.")
 
@@ -183,9 +228,29 @@ def ship_parts(*, tenant, parts, user, customer=None, carrier: str = "",
             if p.part_status != PartsStatus.SHIPPED:
                 raise ValueError(f"{p.ERP_id} didn't finish as shipped ({p.get_part_status_display()}).")
 
+        lot_ct = ContentType.objects.get_for_model(MaterialLot)
+        for lot, qty in locked_lots:
+            if qty < lot.quantity_remaining:
+                lot = split_material_lot(lot, qty, reason=f"Shipped on {shipment.shipment_number}")
+            # What went is recorded, so a void can put it back.
+            RecordEdit.objects.create(
+                tenant=tenant, content_type=lot_ct, object_id=lot.id, field_name="quantity_remaining",
+                old_value=str(lot.quantity_remaining), new_value="0",
+                reason=f"Shipped on {shipment.shipment_number}", edited_by=user)
+            inventory.mark_lot_shipped(lot)
+            lot.refresh_from_db()
+            lot.quantity_remaining = Decimal("0")
+            lot.customer_shipment = shipment
+            lot.save(update_fields=["quantity_remaining", "customer_shipment", "updated_at"])
+
         orders = {o.id: o for p in locked if (o := _order_of(p)) is not None}
         transaction.on_commit(lambda: _announce(shipment, list(orders.values())))
     return shipment
+
+
+def ship_parts(*, tenant, parts, user, **kwargs):
+    """Serialised parts only — see ``ship``."""
+    return ship(tenant=tenant, user=user, parts=parts, **kwargs)
 
 
 def _announce(shipment, orders) -> None:
@@ -212,7 +277,10 @@ def void_shipment(shipment, *, user, reason: str) -> None:
 
     Not for goods that went and came back — that is a return (RMA), a new receipt."""
     from django.contrib.contenttypes.models import ContentType
-    from Tracker.models import OrdersStatus, Parts, PartsStatus, RecordEdit, StepExecution, WorkOrderStatus
+    from Tracker.models import (
+        MaterialLot, OrdersStatus, Parts, PartsStatus, RecordEdit, StepExecution, WorkOrderStatus,
+    )
+    from Tracker.services.mes import inventory
     part_ct = ContentType.objects.get_for_model(Parts)
 
     if shipment.is_voided:
@@ -244,6 +312,19 @@ def void_shipment(shipment, *, user, reason: str) -> None:
                 if order is not None and order.order_status == OrdersStatus.COMPLETED:
                     order.order_status = OrdersStatus.IN_PROGRESS
                     order.save(update_fields=["order_status"])
+        lot_ct = ContentType.objects.get_for_model(MaterialLot)
+        for lot in shipment.material_lots.select_for_update(of=("self",)):  # tenant-safe: reverse FK from a scoped shipment
+            shipped = (RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
+                tenant=lot.tenant, content_type=lot_ct, object_id=lot.id, field_name="quantity_remaining",
+                reason=f"Shipped on {shipment.shipment_number}").order_by("-edited_at").first())
+            RecordEdit.objects.create(
+                tenant=lot.tenant, content_type=lot_ct, object_id=lot.id, field_name="customer_shipment",
+                old_value=str(shipment.id), new_value="", reason=reason.strip(), edited_by=user)
+            inventory.unship_lot(lot)
+            lot.refresh_from_db()
+            lot.quantity_remaining = Decimal(shipped.old_value) if shipped else lot.quantity
+            lot.customer_shipment = None
+            lot.save(update_fields=["quantity_remaining", "customer_shipment", "updated_at"])
         shipment.void(user, reason.strip())
 
 
@@ -315,3 +396,15 @@ def shipment_units(shipment):
     ).values_list("object_id", flat=True)
     return list(Parts.objects.filter(tenant=shipment.tenant, id__in=list(ids))  # tenant-safe: explicit tenant filter
                 .select_related("part_type", "work_order__related_order", "order").order_by("ERP_id"))
+
+
+def shipment_lots(shipment):
+    """The material lots on ``shipment`` — for a voided one, those it had when voided."""
+    from Tracker.models import MaterialLot, RecordEdit
+    if not shipment.is_voided:
+        return list(shipment.material_lots.select_related("material", "material_type"))  # tenant-safe: reverse FK from a scoped shipment
+    ids = RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=shipment.tenant, field_name="customer_shipment", old_value=str(shipment.id)
+    ).values_list("object_id", flat=True)
+    return list(MaterialLot.objects.filter(tenant=shipment.tenant, id__in=list(ids))  # tenant-safe: explicit tenant filter
+                .select_related("material", "material_type"))

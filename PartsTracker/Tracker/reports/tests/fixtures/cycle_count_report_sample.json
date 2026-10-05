@@ -1,0 +1,15 @@
+{
+  "our_org": "Demo Plant",
+  "count_number": "CC-2026-0003",
+  "location": "Rack 3",
+  "status": "Submitted",
+  "blind": true,
+  "started_by": "Riley Receiving",
+  "submitted_by": "Riley Receiving",
+  "lines": [
+    {"label": "LOT-2026-00042", "item": "Seal ring", "unit": "EA", "expected": 2000, "counted": 1940, "difference": -60, "what": "Short", "elsewhere": null, "note": "Box crushed"},
+    {"label": "INJ-1001", "item": "Injector, remanufactured", "unit": "EA", "expected": 1, "counted": 0, "difference": -1, "what": "Not found", "elsewhere": null, "note": ""},
+    {"label": "LOT-2026-00061", "item": "Bar stock, 4140", "unit": "ft", "expected": 0, "counted": 36, "difference": 36, "what": "Found here", "elsewhere": "Rack 7", "note": ""}
+  ],
+  "issued_date": "2026-10-05"
+}

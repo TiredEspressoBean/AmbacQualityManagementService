@@ -103,6 +103,17 @@ def scrap_lot(lot):
     return _transition(lot, allowed_from=("REJECTED", "QUARANTINE"), to="SCRAPPED")
 
 
+def mark_lot_shipped(lot):
+    """ACCEPTED/IN_USE → SHIPPED: sent to a customer on a shipment — their property going
+    back, or our material sold or kitted. No longer stock."""
+    return _transition(lot, allowed_from=("ACCEPTED", "IN_USE"), to="SHIPPED")
+
+
+def unship_lot(lot):
+    """SHIPPED → ACCEPTED: a shipment recorded by mistake was voided; the lot never left."""
+    return _transition(lot, allowed_from=("SHIPPED",), to="ACCEPTED")
+
+
 def mark_lot_returned(lot):
     """REJECTED → RETURNED: shipped back to the supplier on a return-to-supplier
     disposition. The goods exist, at the vendor; they are no longer stock."""

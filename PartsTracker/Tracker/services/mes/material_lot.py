@@ -78,6 +78,9 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
             unit_of_measure=locked.unit_of_measure,
             status=child_status,
             hold_reason=child_hold,
+            # Every hold travels with the pieces, not just the first.
+            hold_reasons=(list(locked.hold_reasons or ([locked.hold_reason] if locked.hold_reason else []))
+                          if child_hold else []),
             manufacture_date=locked.manufacture_date,
             expiration_date=locked.expiration_date,
             storage_location=locked.storage_location,
@@ -107,7 +110,7 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
 def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, material=None,
                             material_type=None, unit_of_measure: str = "", supplier=None,
                             erp_po_number: str = "", erp_po_line: str = "",
-                            lot_number: str = "", original_promised_date=None):
+                            lot_number: str = "", original_promised_date=None, replaces=None):
     """Record stock that is **ordered but not yet delivered** as an ON_ORDER lot.
 
     UQMES does not own purchasing — the PO lives in the ERP and we only reference it
@@ -162,6 +165,8 @@ def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, materia
         promised_date=promised_date,
         # A back-ordered remainder keeps the promise the order was made against.
         original_promised_date=original_promised_date or promised_date,
+        # A replacement for goods sent back: the returned lot it stands in for.
+        replaces=replaces,
         quantity=quantity,
         quantity_remaining=quantity,
         unit_of_measure=unit_of_measure or getattr(material, "unit_of_measure", "") or "EA",
@@ -516,7 +521,7 @@ def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
         locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
         # Only stock on our shelf. A rejected lot's quantity is the disposition's, a
         # returned one is at the vendor.
-        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED", "REJECTED", "RETURNED", "CANCELLED"):
+        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED", "REJECTED", "RETURNED", "CANCELLED", "SHIPPED"):
             raise ValueError(f"Lot {locked.lot_number} is {locked.status}; there is no "
                              f"stock on hand to adjust.")
         old = locked.quantity_remaining

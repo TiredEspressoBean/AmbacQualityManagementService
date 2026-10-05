@@ -314,6 +314,13 @@ class MaterialLotSerializer(SecureModelMixin):
     # Customer property: whose it is, when it isn't ours.
     owner_name = serializers.CharField(source='owner.name', read_only=True, allow_null=True)
     parent_lot_number = serializers.CharField(source='parent_lot.lot_number', read_only=True, allow_null=True)
+    replaces_lot_number = serializers.CharField(source='replaces.lot_number', read_only=True, allow_null=True)
+    # Every hold on the lot (hold_reason is the first of them).
+    hold_reasons = serializers.ListField(child=serializers.CharField(), read_only=True)
+    customer_shipment_number = serializers.CharField(
+        source='customer_shipment.shipment_number', read_only=True, allow_null=True)
+    # Expected or received lots standing in for this one after it went back to the supplier.
+    replacement_lots = LotRefSerializer(source='replacements', many=True, read_only=True)
     # Who booked the material in. Null while a lot is ON_ORDER — nobody has received it.
     received_by_name = serializers.SerializerMethodField()
     child_lot_count = serializers.SerializerMethodField()
@@ -356,7 +363,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'ordered_quantity', 'short_receipt',
             'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
-            'status', 'hold_reason', 'manufacture_date', 'expiration_date',
+            'status', 'hold_reason', 'hold_reasons', 'manufacture_date', 'expiration_date',
             'shelf_life_status',
             'certificate_of_conformance', 'storage_location',
             'heat_number', 'source_type', 'received_as_quantity', 'received_as_unit',
@@ -366,6 +373,9 @@ class MaterialLotSerializer(SecureModelMixin):
             'child_lot_count', 'lineage',
             # A customer's bulk cores (reman), not supplier stock — no receiving inspection.
             'holds_cores',
+            # Returns and shipments (services: lot_reject.ship_back, mes.shipping).
+            'rma_number', 'replaces', 'replaces_lot_number', 'replacement_lots',
+            'customer_shipment', 'customer_shipment_number',
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
@@ -374,6 +384,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'hold_reason',
             # Kept by the service: the first promise, and the buyer's chases (`chase`).
             'original_promised_date', 'chase_note', 'chased_at', 'holds_cores',
+            'rma_number', 'replaces', 'customer_shipment', 'hold_reasons',
             # Set by receiving a short delivery, not edited.
             'ordered_quantity', 'short_receipt',
             # Moved only by the services — receiving routing, inspection, reject,
@@ -699,7 +710,12 @@ class LotDecisionSerializer(serializers.Serializer):
 
 class ShipBackSerializer(serializers.Serializer):
     note = serializers.CharField(required=False, allow_blank=True, default='',
-                                 help_text="Carrier, tracking, RMA number from the supplier…")
+                                 help_text="Carrier, tracking…")
+    rma_number = serializers.CharField(required=False, allow_blank=True, default='', max_length=100,
+                                       help_text="The supplier's return authorisation.")
+    replacement_promised_date = serializers.DateField(
+        required=False, allow_null=True,
+        help_text="The supplier is sending replacements, due this day: expect them.")
 
 
 class TracePartSerializer(serializers.Serializer):
@@ -784,6 +800,8 @@ class DockMetricsSerializer(serializers.Serializer):
 class ReleaseHoldSerializer(serializers.Serializer):
     """Lift a receiving hold. The reason is kept on record beside the decision."""
     reason = serializers.CharField(allow_blank=False)
+    code = serializers.CharField(required=False, allow_blank=True, default='',
+                                 help_text="Which hold to release, when the lot has more than one.")
 
 
 class AdjustQuantitySerializer(serializers.Serializer):

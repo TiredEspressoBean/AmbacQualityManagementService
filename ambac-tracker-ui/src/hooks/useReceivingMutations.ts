@@ -390,9 +390,9 @@ export const materialLotOptions = (lotId: string) =>
 export const useReleaseHold = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { id: string; reason: string }) =>
+        mutationFn: (vars: { id: string; reason: string; code?: string }) =>
             api.api_MaterialLots_release_hold_create(
-                { reason: vars.reason }, { params: { id: vars.id }, headers: csrf() }),
+                { reason: vars.reason, code: vars.code ?? "" }, { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => invalidateReceiving(queryClient),
     });
 };
@@ -492,8 +492,11 @@ export const useRejectRemainder = () => {
 export const useShipBack = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { id: string; note?: string }) =>
-            api.api_MaterialLots_ship_back_create({ note: vars.note ?? "" }, { params: { id: vars.id }, headers: csrf() }),
+        mutationFn: (vars: { id: string; note?: string; rma_number?: string; replacement_promised_date?: string | null }) =>
+            api.api_MaterialLots_ship_back_create(
+                { note: vars.note ?? "", rma_number: vars.rma_number ?? "",
+                  replacement_promised_date: vars.replacement_promised_date || null },
+                { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => invalidateLotAndDispositions(queryClient),
     });
 };

@@ -49,6 +49,7 @@
   field("PO / line", opt(data.erp_po)),
   field("Received", if data.received_date == none { text(fill: muted)[—] } else { str(data.received_date) }),
   field("Disposition", opt(data.disposition_number)),
+  field("Your RMA", opt(data.at("rma_number", default: none))),
 )
 
 #divider()
@@ -84,6 +85,6 @@
     *Received by (supplier)* \
     #v(28pt)
     #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date · Your RMA number]
+    #text(size: 9pt, fill: muted)[Name · Date]
   ],
 )

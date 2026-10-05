@@ -27,6 +27,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from Tracker.services.mes import inventory
+from Tracker.services.qms import lot_holds
 
 WHOLE_LOT_PERMISSION = "reject_whole_lot"
 HOLD_WHOLE_LOT_REJECT_REQUESTED = "WHOLE_LOT_REJECT_REQUESTED"
@@ -90,9 +91,7 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
                 inventory.quarantine_lot(child)
             inventory.mark_lot_rejected(child)
             child.refresh_from_db()
-            if child.hold_reason:  # rejected now; the parent's hold isn't the child's
-                child.hold_reason = ""
-                child.save(update_fields=["hold_reason", "updated_at"])
+            lot_holds.clear_holds(child)  # rejected now; the parent's holds aren't the child's
             disposition = _open_disposition(
                 child, user=user, disposition_type=disposition_type, quantity=qty,
                 description=description, report=report, severity=severity)
@@ -109,11 +108,9 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
 
         if not can_reject_whole_lot(user):
             # A request, not a decision: hold the whole lot for someone who may decide.
-            if lot.status != "QUARANTINE":
-                inventory.quarantine_lot(lot)
-            lot.refresh_from_db()
-            lot.hold_reason = HOLD_WHOLE_LOT_REJECT_REQUESTED
-            lot.save(update_fields=["hold_reason", "updated_at"])
+            # Added beside any hold the lot already has (an unqualified supplier, say):
+            # it used to overwrite it, and releasing the request lost the other.
+            lot_holds.hold(lot, HOLD_WHOLE_LOT_REJECT_REQUESTED)
             disposition = _open_disposition(
                 lot, user=user, disposition_type=disposition_type, quantity=total,
                 description=description, report=report, severity=severity)
@@ -121,9 +118,7 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
 
         ri.reject(report, user)
         lot.refresh_from_db()
-        if lot.hold_reason:
-            lot.hold_reason = ""
-            lot.save(update_fields=["hold_reason", "updated_at"])
+        lot_holds.clear_holds(lot)  # rejected: the decision supersedes every hold
         disposition = _open_disposition(
             lot, user=user, disposition_type=disposition_type, quantity=total,
             description=description, report=report, severity=severity)
@@ -136,11 +131,10 @@ def confirm_whole_lot_reject(lot, user):
     from Tracker.models import QuarantineDisposition
     if not can_reject_whole_lot(user):
         raise ValueError("Rejecting a whole lot needs the reject-whole-lot permission.")
-    if lot.status != "QUARANTINE" or lot.hold_reason != HOLD_WHOLE_LOT_REJECT_REQUESTED:
+    if lot.status != "QUARANTINE" or HOLD_WHOLE_LOT_REJECT_REQUESTED not in lot_holds.holds(lot):
         raise ValueError(f"Lot {lot.lot_number} has no whole-lot reject waiting.")
     with transaction.atomic():
-        lot.hold_reason = ""
-        lot.save(update_fields=["hold_reason", "updated_at"])
+        lot_holds.clear_holds(lot)  # rejected: the decision supersedes every hold
         inventory.mark_lot_rejected(lot)
         disposition = (QuarantineDisposition.objects  # tenant-safe: .objects auto-scopes
                        .filter(material_lot=lot).exclude(current_state="CLOSED")
@@ -206,9 +200,7 @@ def apply_disposition_to_lot(disposition) -> None:
         return
     lot.refresh_from_db()
     if disposition.disposition_type == "USE_AS_IS" and lot.status in ("REJECTED", "QUARANTINE"):
-        if lot.hold_reason:
-            lot.hold_reason = ""
-            lot.save(update_fields=["hold_reason", "updated_at"])
+        lot_holds.clear_holds(lot)  # accepted on concession: the decision covers its holds
         inventory.accept_on_concession(lot)
     elif disposition.disposition_type == "SCRAP" and lot.status in ("REJECTED", "QUARANTINE"):
         inventory.scrap_lot(lot)
@@ -217,9 +209,14 @@ def apply_disposition_to_lot(disposition) -> None:
         lot.save(update_fields=["quantity_remaining", "updated_at"])
 
 
-def ship_back(lot, user, *, note: str = ""):
+def ship_back(lot, user, *, note: str = "", rma_number: str = "", replacement_promised_date=None):
     """The dock ships a return-to-supplier lot back: REJECTED → RETURNED, and the
-    disposition is complete. Raises ValueError for a lot not awaiting return."""
+    disposition is complete. Raises ValueError for a lot not awaiting return.
+
+    ``rma_number`` is the supplier's return authorisation. With
+    ``replacement_promised_date`` the supplier is sending replacement goods: an expected
+    receipt for the returned quantity is recorded (same item, supplier and PO line),
+    pointing back at this lot, so planning sees it coming and the buyer can chase it."""
     from django.utils import timezone
     from Tracker.models import QuarantineDisposition
     disposition = (QuarantineDisposition.objects  # tenant-safe: .objects auto-scopes
@@ -228,10 +225,19 @@ def ship_back(lot, user, *, note: str = ""):
     if lot.status != "REJECTED" or disposition is None:
         raise ValueError(f"Lot {lot.lot_number} is not waiting to go back to the supplier.")
     with transaction.atomic():
+        returned_qty = lot.quantity_remaining
         inventory.mark_lot_returned(lot)
         lot.refresh_from_db()
         lot.quantity_remaining = Decimal("0")
-        lot.save(update_fields=["quantity_remaining", "updated_at"])
+        lot.rma_number = (rma_number or "").strip() or lot.rma_number
+        lot.save(update_fields=["quantity_remaining", "rma_number", "updated_at"])
+        if replacement_promised_date is not None and returned_qty > 0:
+            from Tracker.services.mes.material_lot import record_expected_receipt
+            record_expected_receipt(
+                tenant=lot.tenant, quantity=returned_qty, promised_date=replacement_promised_date,
+                material=lot.material, material_type=lot.material_type,
+                unit_of_measure=lot.unit_of_measure, supplier=lot.supplier,
+                erp_po_number=lot.erp_po_number, erp_po_line=lot.erp_po_line, replaces=lot)
         stamp = f"Shipped back to the supplier{': ' + note.strip() if note and note.strip() else ''}."
         disposition.resolution_notes = (f"{disposition.resolution_notes}\n{stamp}".strip()
                                         if disposition.resolution_notes else stamp)

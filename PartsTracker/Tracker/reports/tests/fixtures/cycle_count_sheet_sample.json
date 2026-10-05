@@ -1,0 +1,15 @@
+{
+  "our_org": "Demo Plant",
+  "count_number": "CC-2026-0003",
+  "location": "Rack 3",
+  "status": "Counting",
+  "blind": true,
+  "started_by": "Riley Receiving",
+  "submitted_by": null,
+  "lines": [
+    {"label": "LOT-2026-00042", "item": "Seal ring", "unit": "EA", "expected": null, "counted": null, "difference": null, "what": "", "elsewhere": null, "note": ""},
+    {"label": "LOT-2026-00057", "item": "Shim 0.010 in", "unit": "EA", "expected": null, "counted": null, "difference": null, "what": "", "elsewhere": null, "note": ""},
+    {"label": "INJ-1001", "item": "Injector, remanufactured", "unit": "EA", "expected": null, "counted": null, "difference": null, "what": "", "elsewhere": null, "note": ""}
+  ],
+  "issued_date": "2026-10-05"
+}

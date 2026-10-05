@@ -66,7 +66,7 @@ function CocCapture({ lotId, cocUrl, required }: { lotId: string; cocUrl?: strin
                     {required ? "No Certificate of Conformance captured — this item requires one." : "No Certificate of Conformance on file."}
                 </span>
             )}
-            <input ref={inputRef} type="file" className="hidden" onChange={onFile} />
+            <input ref={inputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={onFile} />
             <Button variant="outline" size="sm" className="ml-auto" disabled={upload.isPending} onClick={pick}>
                 {upload.isPending ? "Uploading…" : cocUrl ? "Replace" : "Upload CoC"}
             </Button>

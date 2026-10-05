@@ -184,6 +184,7 @@ from .mes_standard import (
     OvertimeWindow,
     Material,
     StorageLocation,
+    CycleCount,
 )
 
 # Remanufacturing add-on
@@ -508,6 +509,7 @@ __all__ = [
     'OvertimeWindow',
     'Material',
     'StorageLocation',
+    'CycleCount',
 
     # Remanufacturing Add-on
     'Core',

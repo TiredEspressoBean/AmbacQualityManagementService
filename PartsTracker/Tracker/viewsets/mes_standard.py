@@ -750,7 +750,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         ser = ReleaseHoldSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
-            lot = receiving_inspection.release_hold(lot, request.user, ser.validated_data['reason'])
+            lot = receiving_inspection.release_hold(lot, request.user, ser.validated_data['reason'],
+                                                    code=ser.validated_data.get('code') or None)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
@@ -1246,7 +1247,9 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         ser = ShipBackSerializer(data=request.data or {})
         ser.is_valid(raise_exception=True)
         try:
-            lot, _ = ship_back(self.get_object(), request.user, note=ser.validated_data.get('note', ''))
+            lot, _ = ship_back(self.get_object(), request.user, note=ser.validated_data.get('note', ''),
+                               rma_number=ser.validated_data.get('rma_number', ''),
+                               replacement_promised_date=ser.validated_data.get('replacement_promised_date'))
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)

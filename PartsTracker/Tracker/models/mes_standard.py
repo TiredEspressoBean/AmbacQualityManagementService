@@ -1505,6 +1505,67 @@ class StorageLocation(SecureModel):
         return self.name
 
 
+class CycleCount(SecureModel):
+    """One count of one location: what UQMES expected there, what the counter found,
+    and — once applied — the corrections made (services/mes/cycle_count.py).
+
+    Glovia is the stock register, so the discrepancy report goes there to be keyed; the
+    count also brings UQMES's own lots back in line (recorded adjustments and moves), since
+    nothing else re-aligns them. ``lines`` is the snapshot plus what was found — one row
+    per lot or unit: ``{kind, id, label, item, unit, expected, counted, found_here,
+    system_location, note}``. A JSON list rather than a table: a count is one document,
+    read and written whole.
+    """
+    STATUS_CHOICES = [
+        ('OPEN', 'Counting'),
+        ('SUBMITTED', 'Submitted'),
+        ('APPLIED', 'Applied'),
+    ]
+
+    count_number = models.CharField(max_length=40, blank=True)
+    location = models.CharField(max_length=100)
+    # The counter doesn't see expected quantities while counting — counts what's there
+    # rather than confirming the number on the sheet.
+    blind = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    lines = models.JSONField(default=list, blank=True)
+    started_by = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    submitted_by = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    applied_by = models.ForeignKey(
+        'Tracker.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    applied_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Cycle Count'
+        verbose_name_plural = 'Cycle Counts'
+        ordering = ['-created_at']
+        permissions = [
+            ('apply_cyclecount', 'Can apply a submitted cycle count to stock'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'count_number'],
+                condition=models.Q(count_number__isnull=False) & ~models.Q(count_number=''),
+                name='cycle_count_tenant_number_uniq'),
+        ]
+
+    def save(self, *args, **kwargs):
+        """Auto-fill count_number (CC-YYYY-####) on creation."""
+        if not self.count_number:
+            from django.utils import timezone
+            from Tracker.utils.sequences import generate_next_sequence
+            self.count_number = generate_next_sequence(
+                queryset=type(self).objects, number_field='count_number',
+                prefix=f"CC-{timezone.now().year}-", padding=4, tenant=self.tenant)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.count_number or 'CC'} · {self.location}"
+
+
 # A short delivery's outcome, from the packing slip (see MaterialLot.short_receipt).
 # CLOSED is "nothing more expected" in UQMES's copy — it doesn't close the ERP's PO line.
 SHORT_RECEIPT_CHOICES = [("BACKORDERED", "More coming"), ("CLOSED", "That's all")]
@@ -1554,6 +1615,9 @@ class MaterialLot(SecureModel):
         # typed before the ERP caught up expected a line already received. Never was
         # stock; no longer supply. (`cancel_expected_receipt`, reason on record.)
         ('CANCELLED', 'Cancelled'),
+        # Sent to a customer on a CustomerShipment — their own property going back, or
+        # our material sold or kitted. Gone; not stock, not supply.
+        ('SHIPPED', 'Shipped to customer'),
     ]
 
     lot_number = models.CharField(max_length=100)  # Unique per tenant, not globally
@@ -1657,6 +1721,10 @@ class MaterialLot(SecureModel):
         max_length=40, blank=True,
         help_text="Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). "
                   "Lets the receiving queue explain a hold.")
+    # Every hold on the lot at once — a lot can lack its CoC AND its heat number, and
+    # come from an unqualified supplier. `hold_reason` is the first of these, kept for
+    # every filter and badge that reads one. Written only by services/qms/lot_holds.py.
+    hold_reasons = models.JSONField(default=list, blank=True)
 
     # Shelf life tracking
     manufacture_date = models.DateField(null=True, blank=True)
@@ -1686,6 +1754,16 @@ class MaterialLot(SecureModel):
     owner = models.ForeignKey(
         Companies, on_delete=models.PROTECT, null=True, blank=True, related_name='owned_lots',
         help_text="The customer this stock belongs to, when it is theirs, not ours.")
+    # The shipment this lot left on (services/mes/shipping.py). Null until it ships.
+    customer_shipment = models.ForeignKey(
+        'Tracker.CustomerShipment', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='material_lots')
+    # A return to the supplier: their RMA / return authorisation, and — when they are
+    # sending replacement goods — the expected lot that replaces this one points back here.
+    rma_number = models.CharField(max_length=100, blank=True)
+    replaces = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replacements',
+        help_text="The returned lot this delivery replaces.")
     # What the clerk counted, in the unit they counted it in ("3 boxes"), beside the
     # stock quantity it converted to ("6,000"). Null when entered in the stock unit.
     received_as_quantity = models.DecimalField(

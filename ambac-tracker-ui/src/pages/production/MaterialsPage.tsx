@@ -30,7 +30,7 @@ const col = createColumnHelper<Schema<"MaterialLot">>();
 const STATUS_LABEL: Record<string, string> = {
     ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
     ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
-    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled", SHIPPED: "Shipped",
 };
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

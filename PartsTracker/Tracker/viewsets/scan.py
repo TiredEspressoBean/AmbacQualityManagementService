@@ -1,6 +1,7 @@
 """Scan lookup — one endpoint every scan field asks (services/core/scan.py)."""
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -19,7 +20,10 @@ class ScanViewSet(viewsets.ViewSet):
                    responses={200: ScanResultSerializer, 404: None},
                    description="Resolve a scanned code: a label QR URL, LOC:<location>, "
                                "a lot number, a serial, a work-order number or a location name.")
-    def list(self, request):
+    # An action, not `list`: a list endpoint is documented as returning an array, and the
+    # generated client rejected the single object this answers with.
+    @action(detail=False, methods=['get'], url_path='resolve')
+    def resolve(self, request):
         found = resolve_scan(request.tenant, request.query_params.get('code', ''))
         if found is None:
             return Response({'detail': 'Nothing matches that code.'}, status=status.HTTP_404_NOT_FOUND)

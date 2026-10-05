@@ -135,7 +135,7 @@ class LocationViewTests(_Fixture):
 
 class ScanTests(_Fixture):
     def _scan(self, code):
-        return self.client.get("/api/scan/", {"code": code})
+        return self.client.get("/api/scan/resolve/", {"code": code})
 
     def test_each_kind_of_code(self):
         lot = self._lot(number="LOT-2026-00042")

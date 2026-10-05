@@ -35,6 +35,8 @@ export function LocationsPage() {
         void navigate({ to: "/production/locations/$name", params: { name: locationFromScan(q) } });
     };
 
+    // "Not on the list" only means something once there is a list.
+    const anyManaged = (data ?? []).some((r) => r.managed);
     const rows = (data ?? []).filter((r) => r.name.toLowerCase().includes(filter.toLowerCase()));
     const toggle = (n: string) =>
         setPicked((s) => { const x = new Set(s); if (x.has(n)) x.delete(n); else x.add(n); return x; });
@@ -59,7 +61,8 @@ export function LocationsPage() {
 
             <div className="flex flex-wrap items-center gap-2">
                 <Input placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-xs" />
-                <Button size="sm" variant="outline" className="ml-auto" disabled={picked.size === 0}
+                <Link to="/production/cycle-counts" className="ml-auto text-sm hover:underline">Cycle counts</Link>
+                <Button size="sm" variant="outline" disabled={picked.size === 0}
                     onClick={() => void downloadReport("location_label", { names: [...picked], copies: 1, layout: picked.size > 2 ? "sheet" : "thermal" })
                         .then(() => toast.success(`Labels for ${picked.size} location${picked.size === 1 ? "" : "s"}.`))}>
                     <Tag className="mr-1 h-4 w-4" /> Print labels{picked.size ? ` (${picked.size})` : ""}
@@ -82,7 +85,7 @@ export function LocationsPage() {
                                 <td className="px-3 py-2"><Checkbox checked={picked.has(r.name)} onCheckedChange={() => toggle(r.name)} aria-label={`Label for ${r.name}`} /></td>
                                 <td className="px-3 py-2">
                                     <Link to="/production/locations/$name" params={{ name: r.name }} className="font-medium hover:underline">{r.name}</Link>
-                                    {!r.managed && <Badge variant="outline" className="ml-2 text-xs">typed, not on the list</Badge>}
+                                    {!r.managed && anyManaged && <Badge variant="outline" className="ml-2 text-xs">typed, not on the list</Badge>}
                                     {r.description && <div className="text-xs text-muted-foreground">{r.description}</div>}
                                 </td>
                                 <td className="px-3 py-2 text-right tabular-nums">{r.lots || "—"}</td>

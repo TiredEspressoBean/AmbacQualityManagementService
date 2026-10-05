@@ -27,7 +27,7 @@ const traceOptions = (lotId: string) =>
 const STATUS_LABEL: Record<string, string> = {
     ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
     ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
-    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled", SHIPPED: "Shipped",
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -151,6 +151,11 @@ export function MaterialLotDetailPage() {
                     <Field label="Location">{l.storage_location
                         ? <Link to="/production/locations/$name" params={{ name: l.storage_location }} className="underline">{l.storage_location}</Link>
                         : null}</Field>
+                    {l.customer_shipment && (
+                        <Field label="Shipped">
+                            <Link to="/production/shipments/$shipmentId" params={{ shipmentId: String(l.customer_shipment) }} className="underline">{l.customer_shipment_number}</Link>
+                        </Field>
+                    )}
                     <Field label="Use by">{l.expiration_date ?? null}</Field>
                     <Field label="CoC">{l.certificate_of_conformance
                         ? <a className="underline" href={l.certificate_of_conformance as string} target="_blank" rel="noreferrer">On file</a>
@@ -167,6 +172,19 @@ export function MaterialLotDetailPage() {
                         <Field label="Heat number">{b?.heat_number}</Field>
                         <Field label="Source">{b?.source_type}</Field>
                         <Field label="ERP PO / line">{b?.erp_po}</Field>
+                        {l.replaces && (
+                            <Field label="Replacement for">
+                                <Link to="/production/material-lots/$lotId" params={{ lotId: String(l.replaces) }} className="font-mono underline">{l.replaces_lot_number}</Link>
+                            </Field>
+                        )}
+                        {l.rma_number && <Field label="Supplier RMA">{l.rma_number}</Field>}
+                        {(l.replacement_lots ?? []).length > 0 && (
+                            <Field label="Replaced by">
+                                {l.replacement_lots.map((r) => (
+                                    <Link key={r.id} to="/production/material-lots/$lotId" params={{ lotId: r.id }} className="mr-2 font-mono underline">{r.lot_number}</Link>
+                                ))}
+                            </Field>
+                        )}
                         <Field label="Split from">{b?.parent_lot_id
                             ? <Link to="/production/material-lots/$lotId" params={{ lotId: b.parent_lot_id }} className="font-mono underline">{b.parent_lot_number}</Link>
                             : null}</Field>

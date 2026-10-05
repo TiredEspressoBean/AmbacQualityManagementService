@@ -126,6 +126,8 @@ SOFT_DELETE_MODELS = {
     'batchexecution', 'steprequirement', 'outsideprocessshipment',
     # A shipment recorded by mistake is voided (its parts go back), never deleted.
     'customershipment',
+    # A count is a record of what was found; it is applied or left, never deleted.
+    'cyclecount',
     # ('milestone' moved out: the milestones editor has a delete button, so
     # delete_milestone is granted to staff — see presets.py.)
     'milestonetemplate',

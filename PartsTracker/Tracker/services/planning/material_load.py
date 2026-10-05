@@ -29,7 +29,7 @@ from decimal import Decimal
 # On-hand is usable stock; incoming is inbound and not yet usable. They must stay
 # disjoint or accepted stock is counted twice — once as held, once as promised.
 _ON_HAND_STATUSES = ('ACCEPTED', 'IN_USE')
-_TERMINAL_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED', 'CANCELLED')
+_TERMINAL_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED', 'CANCELLED', 'SHIPPED')
 
 
 def material_series(tenant, buckets, wo_starts: dict) -> list:

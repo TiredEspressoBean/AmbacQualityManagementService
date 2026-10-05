@@ -400,6 +400,9 @@ SPECTACULAR_SETTINGS = {
         "ShortReceiptEnum": "Tracker.models.mes_standard.SHORT_RECEIPT_CHOICES",
         # An expected receipt's lateness: the lot's field and the late-deliveries row.
         "DeliveryStateEnum": "Tracker.serializers.mes_standard.DELIVERY_STATES",
+        # A cycle-count line is a lot or a unit; and the kind of difference a count found.
+        "CycleCountLineKindEnum": "Tracker.serializers.cycle_counts.LINE_KINDS",
+        "CycleCountVarianceEnum": "Tracker.serializers.cycle_counts.VARIANCES",
         # How an item is bought / counted at the dock: Material, PartTypes and the lot.
         "PurchaseUnitEnum": "Tracker.models.mes_standard.PURCHASE_UNIT_CHOICES",
         # A lot's origin (manufacturer / distributor) — distinct from other source_types.

@@ -2001,6 +2001,25 @@ export type CoreRequestAuthorisation = {
   core: Core;
   over_and_above: Array<string>;
 };
+export type CountEntryRequest = {
+  kind: CycleCountLineKindEnum;
+  id: string;
+  counted?:
+    | /**
+     * @pattern ^-?\d{0,10}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
+  note?: string | undefined;
+};
+export type CycleCountLineKindEnum =
+  /**
+   * * `LOT` - Lot
+   * `PART` - Unit
+   *
+   * @enum LOT, PART
+   */
+  "LOT" | "PART";
 export type CurrentTenantResponse = {
   tenant: TenantInfo;
   deployment: DeploymentInfo;
@@ -2358,6 +2377,7 @@ export type CustomerShipment = {
   notes?: string | undefined;
   quantity: number;
   parts: Array<ShipmentPart>;
+  lots: Array<ShipmentLot>;
   /**
    * Whether this record has been voided
    */
@@ -2384,6 +2404,80 @@ export type ShipmentPart = {
   work_order_number: string | null;
   order_number: string | null;
 };
+export type ShipmentLot = {
+  id: string;
+  lot_number: string;
+  item_name: string;
+  quantity: number;
+  unit_of_measure: string;
+};
+export type CycleCount = {
+  id: string;
+  count_number: string;
+  /**
+   * @maxLength 100
+   */
+  location: string;
+  blind?: boolean | undefined;
+  status: CycleCountStatusEnum;
+  status_display: string;
+  lines: Array<CycleCountLine>;
+  variances: Array<CycleCountVariance>;
+  started_by: number | null;
+  started_by_name: string | null;
+  submitted_by_name: string | null;
+  submitted_at: string | null;
+  applied_by_name: string | null;
+  applied_at: string | null;
+  created_at: string;
+  updated_at: string;
+  archived?: boolean | undefined;
+};
+export type CycleCountStatusEnum =
+  /**
+   * * `OPEN` - Counting
+   * `SUBMITTED` - Submitted
+   * `APPLIED` - Applied
+   *
+   * @enum OPEN, SUBMITTED, APPLIED
+   */
+  "OPEN" | "SUBMITTED" | "APPLIED";
+export type CycleCountLine = {
+  kind: CycleCountLineKindEnum;
+  id: string;
+  label: string;
+  item: string;
+  unit: string;
+  expected: number | null;
+  counted: number | null;
+  found_here: boolean;
+  system_location: string | null;
+  note: string;
+};
+export type CycleCountVariance = {
+  kind: CycleCountLineKindEnum;
+  id: string;
+  label: string;
+  item: string;
+  unit: string;
+  expected: number | null;
+  counted: number | null;
+  found_here: boolean;
+  system_location: string | null;
+  note: string;
+  difference: number;
+  variance: CycleCountVarianceEnum;
+};
+export type CycleCountVarianceEnum =
+  /**
+   * * `SHORT` - Short
+   * `OVER` - Over
+   * `MISSING` - Not found
+   * `FOUND_HERE` - Found here
+   *
+   * @enum SHORT, OVER, MISSING, FOUND_HERE
+   */
+  "SHORT" | "OVER" | "MISSING" | "FOUND_HERE";
 export type DemoResetRequestRequest = Partial<{
   /**
    * @default "small"
@@ -4105,6 +4199,7 @@ export type MaterialLot = {
    * Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold.
    */
   hold_reason: string;
+  hold_reasons: Array<string>;
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
   shelf_life_status: string | null;
@@ -4157,6 +4252,15 @@ export type MaterialLot = {
    * Cores received in bulk (units to be identified), not stock of the part.
    */
   holds_cores: boolean;
+  rma_number: string;
+  /**
+   * The returned lot this delivery replaces.
+   */
+  replaces: string | null;
+  replaces_lot_number: string | null;
+  replacement_lots: Array<LotRef>;
+  customer_shipment: string | null;
+  customer_shipment_number: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -4182,8 +4286,9 @@ export type MaterialLotStatusEnum =
    * `QUARANTINE` - Quarantine
    * `RETURNED` - Returned to supplier
    * `CANCELLED` - Cancelled
+   * `SHIPPED` - Shipped to customer
    *
-   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE, RETURNED, CANCELLED
+   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE, RETURNED, CANCELLED, SHIPPED
    */
   | "ON_ORDER"
   | "RECEIVED"
@@ -4195,7 +4300,8 @@ export type MaterialLotStatusEnum =
   | "SCRAPPED"
   | "QUARANTINE"
   | "RETURNED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "SHIPPED";
 export type LotSourceTypeEnum =
   /**
    * * `MANUFACTURER` - Manufacturer
@@ -5629,6 +5735,25 @@ export type PaginatedCustomerShipmentList = {
     (string | null)
     | undefined;
   results: Array<CustomerShipment>;
+};
+export type PaginatedCycleCountList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<CycleCount>;
 };
 export type PaginatedDisassemblyBOMLineList = {
   /**
@@ -15397,6 +15522,15 @@ export type ReadyToShipOrder = {
   customer_name: string | null;
   requires_coc: boolean;
   parts: Array<ReadyPart>;
+  lots: Array<ReadyLot>;
+};
+export type ReadyLot = {
+  id: string;
+  lot_number: string;
+  item_name: string;
+  quantity_remaining: number;
+  unit_of_measure: string;
+  storage_location: string;
 };
 export type ReassignOptions = {
   machines: Array<ReassignMachineOption>;
@@ -15579,6 +15713,9 @@ export type ReceivingSampleUnitRequest = {
    */
   sample_number: number;
   measurements: Array<ReceivingMeasurementInputRequest>;
+};
+export type RecordCountRequest = {
+  entries: Array<CountEntryRequest>;
 };
 export type RecordInspectionRequestRequest = {
   measurements: Array<ReceivingMeasurementInputRequest>;
@@ -16481,6 +16618,39 @@ export type ShiftNoteRequest = {
   acknowledgment_required?: boolean | undefined;
   effective_from?: (string | null) | undefined;
   effective_until?: (string | null) | undefined;
+};
+export type ShipRequestRequest = Partial<{
+  part_ids: Array<string>;
+  lots: Array<ShipLotRequestRequest>;
+  customer: string | null;
+  /**
+   * @default ""
+   */
+  carrier: string;
+  /**
+   * @default ""
+   */
+  tracking_number: string;
+  /**
+   * @default ""
+   */
+  reference: string;
+  /**
+   * @default ""
+   */
+  notes: string;
+  expected_delivery: string | null;
+}>;
+export type ShipLotRequestRequest = {
+  lot_id: string;
+  quantity?:
+    | /**
+     * Ship only this much (split off first). Omit for all of it.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
 };
 export type SourceRequirement = {
   material: string;
@@ -19581,6 +19751,13 @@ const ShipmentPart = z.object({
   work_order_number: z.string().nullable(),
   order_number: z.string().nullable(),
 });
+const ShipmentLot = z.object({
+  id: z.string().uuid(),
+  lot_number: z.string(),
+  item_name: z.string(),
+  quantity: z.number(),
+  unit_of_measure: z.string(),
+});
 const CustomerShipment = z.object({
   id: z.string().uuid(),
   shipment_number: z.string(),
@@ -19597,6 +19774,7 @@ const CustomerShipment = z.object({
   notes: z.string().optional(),
   quantity: z.number().int(),
   parts: z.array(ShipmentPart),
+  lots: z.array(ShipmentLot),
   is_voided: z.boolean(),
   voided_at: z.string().datetime({ offset: true }).nullable(),
   void_reason: z.string(),
@@ -19660,6 +19838,14 @@ const ReadyPart = z.object({
   source: ReadyPartSourceEnum,
   status: z.string(),
 });
+const ReadyLot = z.object({
+  id: z.string().uuid(),
+  lot_number: z.string(),
+  item_name: z.string(),
+  quantity_remaining: z.number(),
+  unit_of_measure: z.string(),
+  storage_location: z.string(),
+});
 const ReadyToShipOrder = z.object({
   order_id: z.string().uuid().nullable(),
   order_number: z.string().nullable(),
@@ -19667,16 +19853,27 @@ const ReadyToShipOrder = z.object({
   customer_name: z.string().nullable(),
   requires_coc: z.boolean(),
   parts: z.array(ReadyPart),
+  lots: z.array(ReadyLot),
 });
-const ShipRequestRequest = z.object({
-  part_ids: z.array(z.string().uuid()),
-  customer: z.string().uuid().nullish(),
-  carrier: z.string().optional().default(""),
-  tracking_number: z.string().optional().default(""),
-  reference: z.string().optional().default(""),
-  notes: z.string().optional().default(""),
-  expected_delivery: z.string().nullish(),
+const ShipLotRequestRequest = z.object({
+  lot_id: z.string().uuid(),
+  quantity: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
 });
+const ShipRequestRequest = z
+  .object({
+    part_ids: z.array(z.string().uuid()),
+    lots: z.array(ShipLotRequestRequest),
+    customer: z.string().uuid().nullable(),
+    carrier: z.string().default(""),
+    tracking_number: z.string().default(""),
+    reference: z.string().default(""),
+    notes: z.string().default(""),
+    expected_delivery: z.string().nullable(),
+  })
+  .partial();
 const UserDetail = z.object({
   id: z.number().int(),
   username: z
@@ -19721,6 +19918,79 @@ const PatchedUserDetailRequest = z
     parent_company_id: z.string().uuid(),
   })
   .partial();
+const CycleCountStatusEnum = z.enum(["OPEN", "SUBMITTED", "APPLIED"]);
+const CycleCountLineKindEnum = z.enum(["LOT", "PART"]);
+const CycleCountLine = z.object({
+  kind: CycleCountLineKindEnum,
+  id: z.string(),
+  label: z.string(),
+  item: z.string(),
+  unit: z.string(),
+  expected: z.number().nullable(),
+  counted: z.number().nullable(),
+  found_here: z.boolean(),
+  system_location: z.string().nullable(),
+  note: z.string(),
+});
+const CycleCountVarianceEnum = z.enum([
+  "SHORT",
+  "OVER",
+  "MISSING",
+  "FOUND_HERE",
+]);
+const CycleCountVariance = z.object({
+  kind: CycleCountLineKindEnum,
+  id: z.string(),
+  label: z.string(),
+  item: z.string(),
+  unit: z.string(),
+  expected: z.number().nullable(),
+  counted: z.number().nullable(),
+  found_here: z.boolean(),
+  system_location: z.string().nullable(),
+  note: z.string(),
+  difference: z.number(),
+  variance: CycleCountVarianceEnum,
+});
+const CycleCount = z.object({
+  id: z.string().uuid(),
+  count_number: z.string(),
+  location: z.string().max(100),
+  blind: z.boolean().optional(),
+  status: CycleCountStatusEnum,
+  status_display: z.string(),
+  lines: z.array(CycleCountLine),
+  variances: z.array(CycleCountVariance),
+  started_by: z.number().int().nullable(),
+  started_by_name: z.string().nullable(),
+  submitted_by_name: z.string().nullable(),
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
+  applied_by_name: z.string().nullable(),
+  applied_at: z.string().datetime({ offset: true }).nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  updated_at: z.string().datetime({ offset: true }),
+  archived: z.boolean().optional(),
+});
+const PaginatedCycleCountList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(CycleCount),
+});
+const StartCycleCountRequest = z.object({
+  location: z.string().min(1),
+  blind: z.boolean().optional().default(false),
+});
+const CountEntryRequest = z.object({
+  kind: CycleCountLineKindEnum,
+  id: z.string().uuid(),
+  counted: z
+    .string()
+    .regex(/^-?\d{0,10}(?:\.\d{0,4})?$/)
+    .nullish(),
+  note: z.string().optional(),
+});
+const RecordCountRequest = z.object({ entries: z.array(CountEntryRequest) });
 const DisassemblyBOMLine = z.object({
   id: z.string().uuid(),
   core_type: z.string().uuid(),
@@ -20922,6 +21192,7 @@ const MaterialLotStatusEnum = z.enum([
   "QUARANTINE",
   "RETURNED",
   "CANCELLED",
+  "SHIPPED",
 ]);
 const LotSourceTypeEnum = z.enum([
   "MANUFACTURER",
@@ -20964,6 +21235,7 @@ const MaterialLot = z.object({
   unit_of_measure: z.string().max(20),
   status: MaterialLotStatusEnum,
   hold_reason: z.string(),
+  hold_reasons: z.array(z.string()),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
   shelf_life_status: z.string().nullable(),
@@ -20989,6 +21261,12 @@ const MaterialLot = z.object({
   child_lot_count: z.number().int(),
   lineage: z.array(LotRef),
   holds_cores: z.boolean(),
+  rma_number: z.string(),
+  replaces: z.string().uuid().nullable(),
+  replaces_lot_number: z.string().nullable(),
+  replacement_lots: z.array(LotRef),
+  customer_shipment: z.string().uuid().nullable(),
+  customer_shipment_number: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -21246,7 +21524,10 @@ const LotDecisionRequest = z.object({
     LotRejectDispositionEnum.optional().default("RETURN_TO_SUPPLIER"),
   description: z.string().min(1),
 });
-const ReleaseHoldRequest = z.object({ reason: z.string().min(1) });
+const ReleaseHoldRequest = z.object({
+  reason: z.string().min(1),
+  code: z.string().optional().default(""),
+});
 const ReceivingCharacteristic = z.object({
   id: z.string().uuid(),
   label: z.string(),
@@ -21271,7 +21552,13 @@ const SamplePlanResponse = z.object({
   has_substeps: z.boolean(),
   step_execution_id: z.string().uuid().nullable(),
 });
-const ShipBackRequest = z.object({ note: z.string().default("") }).partial();
+const ShipBackRequest = z
+  .object({
+    note: z.string().default(""),
+    rma_number: z.string().max(100).default(""),
+    replacement_promised_date: z.string().nullable(),
+  })
+  .partial();
 const MaterialLotSplitRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().optional().default(""),
@@ -28168,6 +28455,10 @@ const FiveWhysNested = z
     identified_root_cause: z.string().nullable(),
   })
   .partial();
+const LotRefRequest = z.object({
+  id: z.string().min(1),
+  lot_number: z.string().min(1),
+});
 const ProcessStepRequest = z.object({
   step_id: z.string().uuid(),
   order: z.number().int().gte(-2147483648).lte(2147483647),
@@ -28381,6 +28672,7 @@ export const schemas = {
   CoreStartTeardownBatchInputRequest,
   CoreStartTeardownBatchResponse,
   ShipmentPart,
+  ShipmentLot,
   CustomerShipment,
   PaginatedCustomerShipmentList,
   PatchedCustomerShipmentRequest,
@@ -28392,11 +28684,23 @@ export const schemas = {
   OrderShipping,
   ReadyPartSourceEnum,
   ReadyPart,
+  ReadyLot,
   ReadyToShipOrder,
+  ShipLotRequestRequest,
   ShipRequestRequest,
   UserDetail,
   UserDetailRequest,
   PatchedUserDetailRequest,
+  CycleCountStatusEnum,
+  CycleCountLineKindEnum,
+  CycleCountLine,
+  CycleCountVarianceEnum,
+  CycleCountVariance,
+  CycleCount,
+  PaginatedCycleCountList,
+  StartCycleCountRequest,
+  CountEntryRequest,
+  RecordCountRequest,
   DisassemblyBOMLine,
   PaginatedDisassemblyBOMLineList,
   DisassemblyBOMLineRequest,
@@ -29295,6 +29599,7 @@ export const schemas = {
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
+  LotRefRequest,
   ProcessStepRequest,
   QualityReportEquipmentRequest,
   QualityReportPersonnelRequest,
@@ -33998,6 +34303,146 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
   },
   {
     method: "get",
+    path: "/api/CycleCounts/",
+    alias: "api_CycleCounts_list",
+    description: `Counts of locations. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60; move it on.
+Never edited or deleted otherwise — a count is a record of what was found.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z.enum(["APPLIED", "OPEN", "SUBMITTED"]).optional(),
+      },
+    ],
+    response: PaginatedCycleCountList,
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/",
+    alias: "api_CycleCounts_create",
+    description: `Start a count of a location: snapshots what UQMES expects there.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: StartCycleCountRequest,
+      },
+    ],
+    response: CycleCount,
+  }
+]);
+
+const endpoints1 = makeApi([
+  {
+    method: "get",
+    path: "/api/CycleCounts/:id/",
+    alias: "api_CycleCounts_retrieve",
+    description: `Counts of locations. POST starts one; &#x60;record&#x60;, &#x60;submit&#x60; and &#x60;apply&#x60; move it on.
+Never edited or deleted otherwise — a count is a record of what was found.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/:id/apply/",
+    alias: "api_CycleCounts_apply_create",
+    description: `Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "get",
+    path: "/api/CycleCounts/:id/differences-xlsx/",
+    alias: "api_CycleCounts_differences_xlsx_retrieve",
+    description: `The count&#x27;s differences as a spreadsheet, for keying into the ERP.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/:id/record/",
+    alias: "api_CycleCounts_record_create",
+    description: `Save what was counted; an entry not on the list is something found here.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RecordCountRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "post",
+    path: "/api/CycleCounts/:id/submit/",
+    alias: "api_CycleCounts_submit_create",
+    description: `Finish counting; anything not counted is taken as not there.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "get",
     path: "/api/dashboard/capa-status/",
     alias: "api_dashboard_capa_status_retrieve",
     description: `Get CAPA status distribution for pie chart.
@@ -34057,10 +34502,7 @@ Response:
       },
     ],
     response: DefectParetoResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/dashboard/defect-records/",
@@ -39051,7 +39493,10 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -39195,10 +39640,7 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/import-template/:template_format/",
@@ -39949,6 +40391,7 @@ Query params:
             "REJECTED",
             "RETURNED",
             "SCRAPPED",
+            "SHIPPED",
           ])
           .optional(),
       },
@@ -40354,7 +40797,7 @@ that one gate waived (inspection or dock-to-stock as usual).`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string().min(1) }),
+        schema: ReleaseHoldRequest,
       },
       {
         name: "id",
@@ -40389,7 +40832,7 @@ that one gate waived (inspection or dock-to-stock as usual).`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ note: z.string().default("") }).partial(),
+        schema: ShipBackRequest,
       },
       {
         name: "id",
@@ -40500,6 +40943,7 @@ they just ordered against a list of shortages.`,
             "REJECTED",
             "RETURNED",
             "SCRAPPED",
+            "SHIPPED",
           ])
           .optional(),
       },
@@ -43441,7 +43885,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedPartsList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -43606,10 +44053,7 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
       },
     ],
     response: PaginatedOutsideProcessShipmentList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/OutsideProcessShipments/",
@@ -49030,7 +49474,10 @@ the completion blockers.`,
       },
     ],
     response: z.array(VersionSummary),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/RebuildSlotOverrides/",
@@ -49187,10 +49634,7 @@ the completion blockers.`,
       },
     ],
     response: z.array(ReceiptRow),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Receipts/mark-posted/",
@@ -50354,8 +50798,8 @@ problem from the round-4 research).`,
   },
   {
     method: "get",
-    path: "/api/scan/",
-    alias: "api_scan_list",
+    path: "/api/scan/resolve/",
+    alias: "api_scan_resolve_retrieve",
     description: `Resolve a scanned code: a label QR URL, LOC:&lt;location&gt;, a lot number, a serial, a work-order number or a location name.`,
     requestFormat: "json",
     parameters: [
@@ -50365,7 +50809,7 @@ problem from the round-4 research).`,
         schema: z.string(),
       },
     ],
-    response: z.array(ScanResult),
+    response: ScanResult,
     errors: [
       {
         status: 404,
@@ -54512,7 +54956,10 @@ from. One row per step (the step is the key).`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepTimings/import-status/:task_id/",
@@ -54639,10 +55086,7 @@ receiving takes free text and suggests what has been typed before.`,
       },
     ],
     response: StorageLocation,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "put",
     path: "/api/StorageLocations/:id/",
@@ -59182,7 +59626,10 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/UserInvitations/:id/",
@@ -59321,10 +59768,7 @@ Provides endpoints for:
       },
     ],
     response: ValidateTokenResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/users/:user_id/effective-permissions/",

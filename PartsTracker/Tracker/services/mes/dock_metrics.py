@@ -58,8 +58,11 @@ def dock_metrics(tenant, days: int = 30, today=None) -> dict:
                  if out and received_on.get(s) is not None]
 
     # Holds: what's held now, by reason; and how many were released in the window.
-    held_now = list(lots.filter(status="QUARANTINE").exclude(hold_reason="")
-                    .values("hold_reason").annotate(n=Count("id")).order_by("-n"))
+    # Every hold counts: a lot held for its CoC and its heat number is in both bars.
+    from collections import Counter
+    from Tracker.services.qms.lot_holds import holds
+    held_counts = Counter(code for lot in lots.filter(status="QUARANTINE").exclude(hold_reason="")
+                          for code in holds(lot))
     released = (RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, content_type=lot_ct, field_name="hold_reason",
         edited_at__date__gte=start, edited_at__date__lte=today)
@@ -94,7 +97,7 @@ def dock_metrics(tenant, days: int = 30, today=None) -> dict:
         "decided": len(runs),
         "median_inspection_hours": _med(inspect_hours),
         "median_days_to_decision": _med(dock_days),
-        "held_now": [{"reason": h["hold_reason"], "lots": h["n"]} for h in held_now],
+        "held_now": [{"reason": code, "lots": n} for code, n in held_counts.most_common()],
         "holds_released": [{"reason": r["old_value"], "lots": r["n"]} for r in released],
         "lots_rejected": rejects["n"] or 0,
         "pieces_rejected": float(pieces),

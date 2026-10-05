@@ -75,7 +75,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_shiftnote', 'view_shiftnoteack',
     # BOM & Materials
     'view_bom', 'view_bomline', 'view_assemblyusage', 'view_disassemblybomline',
-    'view_material', 'view_storagelocation',
+    'view_material', 'view_storagelocation', 'view_cyclecount',
     'view_materiallot', 'view_materialusage', 'view_materialstaging',
     'view_materialstagingline',
     'view_harvestedcomponent',
@@ -191,6 +191,8 @@ STAFF_OPERATIONAL_WRITE = [
     'add_outsideprocessshipment', 'change_outsideprocessshipment',
     # Shipping to customers: ship (add) and correct/void (change). Voided, never deleted.
     'add_customershipment', 'change_customershipment',
+    # Counting a location (start, record, submit). Applying it to stock is a lead's call.
+    'add_cyclecount', 'change_cyclecount',
     # (steptransitionlog is service-written and DB-immutable — view only)
     # Production exceptions
     'add_workorderhold', 'change_workorderhold',
@@ -596,6 +598,7 @@ GROUP_PRESETS = {
         'name': 'Tenant Admin',
         'description': 'Tenant administrator - full access within their organization',
         'permissions': [
+            'apply_cyclecount',
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -640,6 +643,7 @@ GROUP_PRESETS = {
         'name': 'QA Manager',
         'description': 'Quality management, approvals, CAPA control',
         'permissions': [
+            'apply_cyclecount',
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -703,6 +707,7 @@ GROUP_PRESETS = {
         'name': 'Production Manager',
         'description': 'Manage production operations, work orders, scheduling',
         'permissions': [
+            'apply_cyclecount',
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -755,6 +760,7 @@ GROUP_PRESETS = {
         'name': 'Shift Lead',
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
+            'apply_cyclecount',
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,

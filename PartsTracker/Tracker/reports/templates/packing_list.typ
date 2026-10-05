@@ -49,12 +49,12 @@
     opt(i.order),
     if i.line == none { text(fill: muted)[—] } else { str(i.line) },
     [#text(weight: "semibold")[#i.part_type] \ #text(size: 8.5pt, fill: muted)[#i.serials.join(", ")]],
-    str(i.quantity),
+    i.quantity,
   )),
   aligns: (left, right, left, right),
 )
 
-#align(right)[#text(weight: "semibold")[Total units: #data.total_units]]
+#align(right)[#text(weight: "semibold")[Serialised units: #data.total_units]]
 
 #v(18pt)
 

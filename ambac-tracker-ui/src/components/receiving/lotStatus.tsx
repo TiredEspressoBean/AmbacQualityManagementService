@@ -28,9 +28,13 @@ export const SOURCE_TYPE_OPTIONS: { value: SourceType; label: string }[] = [
     { value: "INDEPENDENT_DISTRIBUTOR", label: "Independent distributor" },
 ];
 
+/** Every hold on a lot — a lot can be held for several reasons at once. */
+export const lotHolds = (l: Lot): string[] =>
+    (l.hold_reasons ?? []).length > 0 ? (l.hold_reasons as string[]) : l.hold_reason ? [l.hold_reason] : [];
+
 // A lot an operator can re-qualify: held for shelf life, or flagged EXPIRED.
 export const canExtend = (l: Lot) =>
-    l.hold_reason === "SHELF_LIFE_EXPIRED" || l.shelf_life_status === "EXPIRED";
+    lotHolds(l).includes("SHELF_LIFE_EXPIRED") || l.shelf_life_status === "EXPIRED";
 
 /**
  * Hold-reason + shelf-life "nearing expiry" chips for a lot (NOT the status badge
@@ -38,13 +42,13 @@ export const canExtend = (l: Lot) =>
  * signal identical across the receiving queue, the Materials hub, and lot detail.
  */
 export function LotHoldBadges({ lot }: { lot: Lot }) {
-    const holdLabel = HOLD_LABELS[lot.hold_reason ?? ""];
+    const holds = lotHolds(lot);
     return (
         <>
-            {holdLabel && (
-                <Badge variant="outline" className="border-amber-400 text-amber-700">{holdLabel}</Badge>
-            )}
-            {lot.shelf_life_status === "WARNING" && lot.hold_reason !== "SHELF_LIFE_EXPIRED" && (
+            {holds.map((code) => (
+                <Badge key={code} variant="outline" className="border-amber-400 text-amber-700">{HOLD_LABELS[code] ?? code}</Badge>
+            ))}
+            {lot.shelf_life_status === "WARNING" && !holds.includes("SHELF_LIFE_EXPIRED") && (
                 <Badge variant="outline" className="border-amber-400 text-amber-700">Nearing expiry</Badge>
             )}
         </>

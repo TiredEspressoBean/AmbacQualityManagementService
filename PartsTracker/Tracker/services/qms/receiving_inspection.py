@@ -21,6 +21,7 @@ import logging
 from django.db import transaction
 
 from Tracker.services.mes import inventory
+from Tracker.services.qms import lot_holds
 from Tracker.services.qms.acceptance_sampling import compute_sample_plan
 
 logger = logging.getLogger(__name__)
@@ -167,23 +168,26 @@ def route_received_lot(lot, user, *, waive=()):
     # Customer property isn't bought from a supplier, so the supplier and part-approval
     # gates don't apply to it; inspection, shelf life and paperwork still do.
     is_customer_property = lot.owner_id is not None
-    if (not is_customer_property and HOLD_SUPPLIER_UNQUALIFIED not in waive
-            and _held_for_unqualified_supplier(lot)):
-        return None
+    # Every gate is checked, not just the first that fails: a lot from an unqualified
+    # supplier that also lacks its CoC carries both holds, each cleared on its own.
+    held = False
+    if not is_customer_property and HOLD_SUPPLIER_UNQUALIFIED not in waive:
+        held |= _held_for_unqualified_supplier(lot)
     # Part-approval gate (soft hold): a lot whose (part type, supplier) has no
     # active part approval (PPAP / FAI) is quarantined and flagged.
-    if (not is_customer_property and HOLD_PART_UNAPPROVED not in waive
-            and _held_for_unapproved_part(lot)):
-        return None
+    if not is_customer_property and HOLD_PART_UNAPPROVED not in waive:
+        held |= _held_for_unapproved_part(lot)
     # Shelf-life gate (soft hold): a lot already past its use-by on arrival is
     # quarantined and flagged rather than routed to inspection/stock.
-    if HOLD_SHELF_LIFE_EXPIRED not in waive and _held_for_expired_shelf_life(lot):
-        return None
+    if HOLD_SHELF_LIFE_EXPIRED not in waive:
+        held |= _held_for_expired_shelf_life(lot)
     # Paperwork gates (soft holds), opt-in per item: the lot waits until the CoC is
     # uploaded / the heat number entered, then clears itself (`reevaluate_hold`).
-    if HOLD_AWAITING_COC not in waive and _held_for_missing(lot, HOLD_AWAITING_COC):
-        return None
-    if HOLD_AWAITING_HEAT_NUMBER not in waive and _held_for_missing(lot, HOLD_AWAITING_HEAT_NUMBER):
+    if HOLD_AWAITING_COC not in waive:
+        held |= _held_for_missing(lot, HOLD_AWAITING_COC)
+    if HOLD_AWAITING_HEAT_NUMBER not in waive:
+        held |= _held_for_missing(lot, HOLD_AWAITING_HEAT_NUMBER)
+    if held:
         return None
     step = resolve_receiving_step_for_lot(lot)
     if step is None:
@@ -217,9 +221,7 @@ def _held_for_unqualified_supplier(lot) -> bool:
     else:
         return False
 
-    inventory.quarantine_lot(lot)
-    lot.hold_reason = HOLD_SUPPLIER_UNQUALIFIED
-    lot.save(update_fields=["hold_reason"])
+    lot_holds.hold(lot, HOLD_SUPPLIER_UNQUALIFIED)
     _emit_supplier_unqualified(lot)
     return True
 
@@ -262,9 +264,7 @@ def _held_for_unapproved_part(lot) -> bool:
     if is_part_approved(part_type=part_type, supplier=lot.supplier):
         return False
 
-    inventory.quarantine_lot(lot)
-    lot.hold_reason = HOLD_PART_UNAPPROVED
-    lot.save(update_fields=["hold_reason"])
+    lot_holds.hold(lot, HOLD_PART_UNAPPROVED)
     _emit_part_unapproved(lot)
     return True
 
@@ -307,69 +307,94 @@ def _missing(lot, code) -> bool:
 def _held_for_missing(lot, code) -> bool:
     if not _missing(lot, code):
         return False
-    inventory.quarantine_lot(lot)
-    lot.hold_reason = code
-    lot.save(update_fields=["hold_reason"])
+    lot_holds.hold(lot, code)
     return True
 
 
-def _hold_still_applies(lot) -> bool:
+def _hold_still_applies(lot, code) -> bool:
     from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
-    if lot.hold_reason == HOLD_SHELF_LIFE_EXPIRED:
+    if code == HOLD_SHELF_LIFE_EXPIRED:
         return is_lot_shelf_life_expired(lot)
-    return _missing(lot, lot.hold_reason)
+    return _missing(lot, code)
+
+
+def _released_by_a_person(lot) -> tuple:
+    """Hold codes a person has released on this lot — waived when it is routed again,
+    so a released supplier hold isn't re-applied by the next routing."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+    return tuple(RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=lot.tenant, content_type=ContentType.objects.get_for_model(lot.__class__),
+        object_id=lot.id, field_name="hold_reason").exclude(old_value="")
+        .values_list("old_value", flat=True))
 
 
 def reevaluate_hold(lot, user) -> bool:
-    """Clear a self-clearing hold whose cause is gone — the CoC was uploaded, the heat
-    number entered, the shelf life extended — and route the lot on as if it had just
-    arrived (which re-checks every other gate). Returns True when the hold cleared.
+    """Clear each self-clearing hold whose cause is gone — the CoC was uploaded, the
+    heat number entered, the shelf life extended. When no hold is left, the lot is
+    routed on as if it had just arrived (which re-checks every other gate). Returns True
+    when any hold cleared.
 
     Called after an edit that could resolve a hold; a no-op for anything else."""
-    if lot.status != "QUARANTINE" or lot.hold_reason not in SELF_CLEARING_HOLDS:
+    if lot.status != "QUARANTINE":
         return False
-    if _hold_still_applies(lot):
+    cleared = [c for c in lot_holds.holds(lot)
+               if c in SELF_CLEARING_HOLDS and not _hold_still_applies(lot, c)]
+    if not cleared:
         return False
-    lot.hold_reason = ""
-    lot.save(update_fields=["hold_reason", "updated_at"])
-    inventory.release_hold(lot)
-    route_received_lot(lot, user)
+    remaining = lot_holds.holds(lot)
+    for code in cleared:
+        remaining = lot_holds.remove_hold(lot, code)
+    if not remaining:
+        inventory.release_hold(lot)
+        route_received_lot(lot, user, waive=_released_by_a_person(lot))
     return True
 
 
-def release_hold(lot, user, reason: str):
-    """A person lifts a receiving hold — accepting stock from an unqualified supplier
+def release_hold(lot, user, reason: str, code: str | None = None):
+    """A person lifts one receiving hold — accepting stock from an unqualified supplier
     for this lot, say. The decision and its reason are recorded as an edit of
-    ``hold_reason``; the lot is then routed on with that one gate waived (the others
-    still apply). Raises ValueError for a lot that isn't under a receiving hold."""
+    ``hold_reason`` (old value: the code released). Other holds stay; when this was the
+    last, the lot is routed on with every person-released gate waived (the rest still
+    apply). ``code`` names the hold when the lot has more than one. Raises ValueError
+    for a lot that isn't under a receiving hold."""
     from django.contrib.contenttypes.models import ContentType
     from Tracker.models import RecordEdit
 
     reason = (reason or "").strip()
     if not reason:
         raise ValueError("Say why the hold is being released")
-    if lot.status != "QUARANTINE" or not lot.hold_reason:
+    current = lot_holds.holds(lot)
+    if lot.status != "QUARANTINE" or not current:
         raise ValueError(f"Lot {lot.lot_number} is not under a receiving hold")
-    released = lot.hold_reason
+    if code is None:
+        if len(current) > 1:
+            raise ValueError(f"Lot {lot.lot_number} has {len(current)} holds; say which one is being released")
+        code = current[0]
+    if code not in current:
+        raise ValueError(f"Lot {lot.lot_number} is not held for {code}")
+    released = code
     with transaction.atomic():
         RecordEdit.objects.create(
             tenant=lot.tenant,
             content_type=ContentType.objects.get_for_model(lot.__class__),
             object_id=lot.id, field_name="hold_reason",
             old_value=released, new_value="", reason=reason, edited_by=user)
-        lot.hold_reason = ""
-        lot.save(update_fields=["hold_reason", "updated_at"])
+        remaining = lot_holds.remove_hold(lot, released)
         if released == "WHOLE_LOT_REJECT_REQUESTED":
-            # Declining an inspector's whole-lot request: its pending disposition
-            # closes, and the lot goes back to the SAME inspection for a partial
-            # reject. Routing it again opened a second report and execution, and
-            # left the first one's readings orphaned.
+            # Declining an inspector's whole-lot request closes its pending disposition,
+            # whatever other holds the lot still has.
             from Tracker.services.qms.lot_reject import decline_whole_lot_request
             decline_whole_lot_request(lot, user, reason)
+        if remaining:
+            pass  # still held for the others; nothing routes yet
+        elif released == "WHOLE_LOT_REJECT_REQUESTED":
+            # Back to the SAME inspection for a partial reject. Routing it again opened
+            # a second report and execution, and left the first one's readings orphaned.
             inventory.return_to_inspection(lot)
         else:
             inventory.release_hold(lot)
-            route_received_lot(lot, user, waive=(released,))
+            route_received_lot(lot, user, waive=_released_by_a_person(lot))
     lot.refresh_from_db()
     return lot
 
@@ -383,9 +408,7 @@ def _held_for_expired_shelf_life(lot) -> bool:
     if not is_lot_shelf_life_expired(lot):
         return False
 
-    inventory.quarantine_lot(lot)
-    lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
-    lot.save(update_fields=["hold_reason"])
+    lot_holds.hold(lot, HOLD_SHELF_LIFE_EXPIRED)
     return True
 
 
@@ -640,9 +663,7 @@ def hold_if_expired(lot) -> bool:
     from Tracker.services.life_tracking.shelf_life import is_lot_shelf_life_expired
     if not is_lot_shelf_life_expired(lot):
         return False
-    inventory.quarantine_lot(lot)
-    lot.hold_reason = HOLD_SHELF_LIFE_EXPIRED
-    lot.save(update_fields=["hold_reason"])
+    lot_holds.hold(lot, HOLD_SHELF_LIFE_EXPIRED)
     return True
 
 

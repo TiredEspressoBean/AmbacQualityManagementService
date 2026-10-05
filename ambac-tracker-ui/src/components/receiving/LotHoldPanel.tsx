@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { HOLD_LABELS, SELF_CLEARING_HOLDS } from "@/components/receiving/lotStatus";
+import { HOLD_LABELS, SELF_CLEARING_HOLDS, lotHolds } from "@/components/receiving/lotStatus";
 import { useConfirmWholeLotReject, useReleaseHold, useUpdateLotHeatNumber } from "@/hooks/useReceivingMutations";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
@@ -33,7 +33,20 @@ const REQUEST_TEXT: Record<string, string> = {
  * reject the lot). Either way the lot then routes on as if it had just arrived.
  */
 export function LotHoldPanel({ lot }: { lot: Lot }) {
-    const reason = lot.hold_reason ?? "";
+    const holds = lotHolds(lot);
+    if (lot.status !== "QUARANTINE" || holds.length === 0) return null;
+    // One card per hold: each is cleared on its own, and the lot moves on when the last goes.
+    return (
+        <div className="space-y-2">
+            {holds.length > 1 && (
+                <p className="text-sm font-medium text-amber-700">Held for {holds.length} reasons — each clears on its own.</p>
+            )}
+            {holds.map((code) => <HoldCard key={code} lot={lot} reason={code} several={holds.length > 1} />)}
+        </div>
+    );
+}
+
+function HoldCard({ lot, reason, several }: { lot: Lot; reason: string; several: boolean }) {
     const [heat, setHeat] = useState(lot.heat_number ?? "");
     const [releaseReason, setReleaseReason] = useState("");
     const [releasing, setReleasing] = useState(false);
@@ -44,7 +57,6 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
     const canRejectWholeLot = perms.has("reject_whole_lot");
     const confirmWhole = useConfirmWholeLotReject();
 
-    if (lot.status !== "QUARANTINE" || !reason) return null;
     const selfClearing = SELF_CLEARING_HOLDS.includes(reason);
 
     const errorOf = (err: unknown, fallback: string) =>
@@ -93,7 +105,7 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
                 <Button size="sm" variant="outline" onClick={() => setReleasing(true)}>
                     {/* Here release means the opposite of everywhere else: it turns the
                         request down and sends the lot back for a partial reject. */}
-                    {reason === "WHOLE_LOT_REJECT_REQUESTED" ? "Decline request…" : "Release hold…"}
+                    {reason === "WHOLE_LOT_REJECT_REQUESTED" ? "Decline request…" : several ? "Release this hold…" : "Release hold…"}
                 </Button>
             )}
             {canRelease && releasing && (
@@ -110,8 +122,11 @@ export function LotHoldPanel({ lot }: { lot: Lot }) {
                         value={releaseReason} onChange={(e) => setReleaseReason(e.target.value)} />
                     <div className="flex gap-2">
                         <Button size="sm" disabled={!releaseReason.trim() || release.isPending}
-                            onClick={() => release.mutate({ id: String(lot.id), reason: releaseReason.trim() }, {
-                                onSuccess: () => { toast.success("Hold released — the lot has moved on."); setReleasing(false); },
+                            onClick={() => release.mutate({ id: String(lot.id), reason: releaseReason.trim(), code: reason }, {
+                                onSuccess: () => {
+                                    toast.success(several ? "Hold released — the lot's other holds still stand." : "Hold released — the lot has moved on.");
+                                    setReleasing(false);
+                                },
                                 onError: (e) => toast.error(errorOf(e, "Could not release the hold")),
                             })}>
                             {release.isPending ? "Saving…"

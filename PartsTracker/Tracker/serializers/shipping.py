@@ -26,6 +26,20 @@ class ShipmentPartSerializer(serializers.ModelSerializer):
         return (order.order_number or order.name) if order is not None else None
 
 
+class ShipmentLotSerializer(serializers.Serializer):
+    """A material lot on a shipment, and how much of it went."""
+    id = serializers.UUIDField()
+    lot_number = serializers.CharField()
+    item_name = serializers.CharField(allow_blank=True)
+    quantity = serializers.FloatField()
+    unit_of_measure = serializers.CharField(allow_blank=True)
+
+
+def _lot_rows(lots):
+    return [{"id": l.id, "lot_number": l.lot_number, "item_name": l.item_name or "",
+             "quantity": float(l.quantity), "unit_of_measure": l.unit_of_measure} for l in lots]
+
+
 class CustomerShipmentSerializer(SecureModelMixin):
     """A shipment to a customer. Created by the `ship` action, never by plain CRUD;
     the paperwork fields (carrier, tracking, reference, expected delivery, notes) stay
@@ -37,6 +51,7 @@ class CustomerShipmentSerializer(SecureModelMixin):
     quantity = serializers.SerializerMethodField()
     # For a voided shipment: the units it had, so the record still says what was on it.
     parts = serializers.SerializerMethodField()
+    lots = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomerShipment
@@ -44,7 +59,7 @@ class CustomerShipmentSerializer(SecureModelMixin):
             'id', 'shipment_number', 'customer', 'customer_name', 'requires_coc',
             'shipped_at', 'shipped_by', 'shipped_by_name',
             'carrier', 'tracking_number', 'reference', 'expected_delivery', 'notes',
-            'quantity', 'parts',
+            'quantity', 'parts', 'lots',
             'is_voided', 'voided_at', 'void_reason',
             'created_at', 'updated_at', 'archived',
         )
@@ -64,6 +79,11 @@ class CustomerShipmentSerializer(SecureModelMixin):
     def get_quantity(self, obj):
         return obj.parts.count()
 
+    @extend_schema_field(ShipmentLotSerializer(many=True))
+    def get_lots(self, obj):
+        from Tracker.services.mes.shipping import shipment_lots
+        return ShipmentLotSerializer(_lot_rows(shipment_lots(obj)), many=True).data
+
     @extend_schema_field(ShipmentPartSerializer(many=True))
     def get_parts(self, obj):
         from Tracker.services.mes.shipping import shipment_units
@@ -81,6 +101,15 @@ class ReadyPartSerializer(serializers.Serializer):
     status = serializers.CharField()
 
 
+class ReadyLotSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    lot_number = serializers.CharField()
+    item_name = serializers.CharField(allow_blank=True)
+    quantity_remaining = serializers.FloatField()
+    unit_of_measure = serializers.CharField(allow_blank=True)
+    storage_location = serializers.CharField(allow_blank=True)
+
+
 class ReadyToShipOrderSerializer(serializers.Serializer):
     """Parts that can ship now, for one order (one customer)."""
     order_id = serializers.UUIDField(allow_null=True)
@@ -89,10 +118,19 @@ class ReadyToShipOrderSerializer(serializers.Serializer):
     customer_name = serializers.CharField(allow_null=True)
     requires_coc = serializers.BooleanField()
     parts = ReadyPartSerializer(many=True)
+    # A customer's own material still here, to send back to them.
+    lots = ReadyLotSerializer(many=True)
+
+
+class ShipLotRequestSerializer(serializers.Serializer):
+    lot_id = serializers.UUIDField()
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=4, required=False, allow_null=True,
+                                        help_text="Ship only this much (split off first). Omit for all of it.")
 
 
 class ShipRequestSerializer(serializers.Serializer):
-    part_ids = serializers.ListField(child=serializers.UUIDField(), allow_empty=False)
+    part_ids = serializers.ListField(child=serializers.UUIDField(), required=False, default=list)
+    lots = ShipLotRequestSerializer(many=True, required=False, default=list)
     customer = serializers.UUIDField(required=False, allow_null=True)
     carrier = serializers.CharField(required=False, allow_blank=True, default='')
     tracking_number = serializers.CharField(required=False, allow_blank=True, default='')

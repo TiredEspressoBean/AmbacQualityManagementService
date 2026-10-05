@@ -191,13 +191,15 @@ def extend_shelf_life(lot, new_expiration_date: date, reason: str, approved_by=N
     # the expiry, re-qualify it: back to RECEIVED so it re-enters the receiving
     # queue and flows normally. ("SHELF_LIFE_EXPIRED" is the hold_reason set by
     # services.qms.receiving_inspection; kept as a literal to avoid a circular import.)
+    lot.save(update_fields=fields)
+    from Tracker.services.qms import lot_holds
     if (
         lot.status == "QUARANTINE"
-        and lot.hold_reason == "SHELF_LIFE_EXPIRED"
+        and "SHELF_LIFE_EXPIRED" in lot_holds.holds(lot)
         and not lt.is_blocked
     ):
-        lot.status = "RECEIVED"
-        lot.hold_reason = ""
-        fields += ["status", "hold_reason"]
-    lot.save(update_fields=fields)
+        # Its other holds, if any, still stand; with none left it goes back to RECEIVED.
+        if not lot_holds.remove_hold(lot, "SHELF_LIFE_EXPIRED"):
+            lot.status = "RECEIVED"
+            lot.save(update_fields=["status", "updated_at"])
     return lt

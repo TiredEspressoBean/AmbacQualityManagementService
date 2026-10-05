@@ -34,6 +34,7 @@ class RtvSheetContext(BaseModel):
     erp_po: Optional[str] = None
     received_date: Optional[date] = None
     disposition_number: Optional[str] = None
+    rma_number: Optional[str] = None
     reason: str = ""
     scar_numbers: list[str] = []
     issued_by: Optional[str] = None
@@ -41,8 +42,10 @@ class RtvSheetContext(BaseModel):
 
 
 class RtvSheetParamsSerializer(serializers.Serializer):
-    """{"lot_id": <uuid>} — a lot rejected to go back to its supplier."""
+    """{"lot_id": <uuid>, "rma_number": "…"} — a lot rejected to go back to its supplier.
+    ``rma_number`` prints the supplier's return authorisation before it is saved on the lot."""
     lot_id = serializers.UUIDField()
+    rma_number = serializers.CharField(required=False, allow_blank=True, default="", max_length=100)
 
     def validate_lot_id(self, value):
         from Tracker.models import MaterialLot
@@ -63,7 +66,7 @@ def _num(v) -> str:
     return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def build_rtv_sheet_context(lot, tenant, user=None) -> RtvSheetContext:
+def build_rtv_sheet_context(lot, tenant, user=None, rma_number: str = "") -> RtvSheetContext:
     """Caller is responsible for tenant filtering on the MaterialLot query."""
     from Tracker.models import CAPA, QuarantineDisposition
     item = lot.item
@@ -93,6 +96,7 @@ def build_rtv_sheet_context(lot, tenant, user=None) -> RtvSheetContext:
                 if lot.erp_po_number else None),
         received_date=lot.received_date,
         disposition_number=disposition.disposition_number if disposition else None,
+        rma_number=(rma_number or "").strip() or lot.rma_number or None,
         reason=(disposition.description if disposition else "") or "",
         scar_numbers=sorted(scars),
         issued_by=name,
@@ -115,7 +119,7 @@ class RtvSheetAdapter(ReportAdapter):
         lot = (MaterialLot.unscoped.filter(tenant=tenant)
                .select_related("material", "material_type", "supplier")
                .get(id=validated_params["lot_id"]))
-        return build_rtv_sheet_context(lot, tenant, user)
+        return build_rtv_sheet_context(lot, tenant, user, validated_params.get("rma_number", ""))
 
     def get_filename(self, validated_params) -> str:
         return f"rtv_{validated_params.get('lot_id', 'unknown')}.pdf"

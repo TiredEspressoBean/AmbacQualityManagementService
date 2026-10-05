@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
-from Tracker.models import Companies, CustomerShipment, Orders, Parts
+from Tracker.models import Companies, CustomerShipment, MaterialLot, Orders, Parts
 from Tracker.serializers.shipping import (
     CustomerShipmentSerializer,
     DeliveryPerformanceSerializer,
@@ -63,9 +63,14 @@ class CustomerShipmentViewSet(TenantScopedMixin, DataExportMixin, mixins.ListMod
             if customer is None:
                 return Response({'detail': 'Customer not found.'}, status=status.HTTP_400_BAD_REQUEST)
         parts = list(Parts.objects.filter(pk__in=d['part_ids']))  # tenant-safe: .objects auto-scopes (request context)
+        found = {l.id: l for l in MaterialLot.objects.filter(  # tenant-safe: .objects auto-scopes (request context)
+            pk__in=[r['lot_id'] for r in d['lots']])}
+        if len(found) != len({r['lot_id'] for r in d['lots']}):
+            return Response({'detail': "Some of those lots weren't found."}, status=status.HTTP_400_BAD_REQUEST)
+        lots = [{'lot': found[r['lot_id']], 'quantity': r.get('quantity')} for r in d['lots']]
         try:
-            shipment = shipping.ship_parts(
-                tenant=request.tenant, parts=parts, user=request.user, customer=customer,
+            shipment = shipping.ship(
+                tenant=request.tenant, parts=parts, lots=lots, user=request.user, customer=customer,
                 carrier=d['carrier'], tracking_number=d['tracking_number'],
                 reference=d['reference'], notes=d['notes'],
                 expected_delivery=d.get('expected_delivery'))

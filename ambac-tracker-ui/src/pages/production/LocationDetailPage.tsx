@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowDownToLine, ArrowUpFromLine, ScanLine, Tag } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, ClipboardList, ScanLine, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { useStartCount } from "@/hooks/useCycleCounts";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { locationContentsOptions, useMoveLot, useMoveParts } from "@/hooks/useLocations";
 import { resolveScan } from "@/lib/scan";
@@ -28,6 +30,9 @@ export function LocationDetailPage() {
     const moveParts = useMoveParts();
     const [code, setCode] = useState("");
     const [busy, setBusy] = useState(false);
+    const [blind, setBlind] = useState(false);
+    const startCount = useStartCount();
+    const navigate = useNavigate();
     const input = useRef<HTMLInputElement>(null);
 
     const putHere = async () => {
@@ -66,10 +71,22 @@ export function LocationDetailPage() {
                         {data ? `${data.lots.length} lot${data.lots.length === 1 ? "" : "s"} · ${data.parts.length} unit${data.parts.length === 1 ? "" : "s"}` : " "}
                     </p>
                 </div>
-                <Button size="sm" variant="outline"
-                    onClick={() => void downloadReport("location_label", { names: [name], copies: 1, layout: "thermal" })}>
-                    <Tag className="mr-1 h-4 w-4" /> Label
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Switch checked={blind} onCheckedChange={setBlind} aria-label="Blind count" /> Blind
+                    </label>
+                    <Button size="sm" disabled={startCount.isPending}
+                        onClick={() => startCount.mutate({ location: name, blind }, {
+                            onSuccess: (c) => void navigate({ to: "/production/cycle-counts/$countId", params: { countId: c.id } }),
+                            onError: (e) => toast.error(errorOf(e, "Could not start a count")),
+                        })}>
+                        <ClipboardList className="mr-1 h-4 w-4" /> Count this location
+                    </Button>
+                    <Button size="sm" variant="outline"
+                        onClick={() => void downloadReport("location_label", { names: [name], copies: 1, layout: "thermal" })}>
+                        <Tag className="mr-1 h-4 w-4" /> Label
+                    </Button>
+                </div>
             </div>
 
             <div className="flex items-center gap-2 rounded-lg border bg-card p-3">

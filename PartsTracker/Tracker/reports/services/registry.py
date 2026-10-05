@@ -51,6 +51,8 @@ REPORT_ADAPTERS: tuple[str, ...] = (
     "Tracker.reports.adapters.shipment_documents.PackingListAdapter",
     "Tracker.reports.adapters.shipment_documents.ShipmentCocAdapter",
     "Tracker.reports.adapters.location_label.LocationLabelAdapter",
+    "Tracker.reports.adapters.cycle_count.CycleCountSheetAdapter",
+    "Tracker.reports.adapters.cycle_count.CycleCountReportAdapter",
 )
 
 

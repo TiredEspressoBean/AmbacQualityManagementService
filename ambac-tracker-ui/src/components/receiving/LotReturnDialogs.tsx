@@ -7,6 +7,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,9 @@ export function ShipBackDialog({ lotId, lotNumber, supplierName, open, onOpenCha
     supplierName?: string | null;
 }) {
     const [note, setNote] = useState("");
+    const [rma, setRma] = useState("");
+    const [replacement, setReplacement] = useState(false);
+    const [replacementDate, setReplacementDate] = useState("");
     const ship = useShipBack();
     const { downloadReport } = useReportEmail();
     return (
@@ -40,19 +44,34 @@ export function ShipBackDialog({ lotId, lotNumber, supplierName, open, onOpenCha
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-1">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="sb-rma">Supplier&rsquo;s RMA number <span className="text-muted-foreground">(if they gave one)</span></Label>
+                        <Input id="sb-rma" value={rma} onChange={(e) => setRma(e.target.value)} />
+                    </div>
                     <Button variant="outline" size="sm"
-                        onClick={() => void downloadReport("rtv_sheet", { lot_id: lotId })}>
+                        onClick={() => void downloadReport("rtv_sheet", { lot_id: lotId, rma_number: rma })}>
                         Print RTV sheet
                     </Button>
                     <div className="space-y-1.5">
-                        <Label htmlFor="sb-note">Carrier, tracking or the supplier&rsquo;s RMA <span className="text-muted-foreground">(optional)</span></Label>
+                        <Label htmlFor="sb-note">Carrier or tracking <span className="text-muted-foreground">(optional)</span></Label>
                         <Input id="sb-note" value={note} onChange={(e) => setNote(e.target.value)} />
                     </div>
+                    <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={replacement} onCheckedChange={(v) => setReplacement(!!v)} />
+                        The supplier is sending replacements
+                    </label>
+                    {replacement && (
+                        <div className="space-y-1.5">
+                            <Label htmlFor="sb-rep">Replacements promised for</Label>
+                            <Input id="sb-rep" type="date" value={replacementDate} onChange={(e) => setReplacementDate(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">Adds an expected delivery for the same quantity, so planning sees it and it can be chased.</p>
+                        </div>
+                    )}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={ship.isPending}>Cancel</Button>
-                    <Button disabled={ship.isPending}
-                        onClick={() => ship.mutate({ id: lotId, note }, {
+                    <Button disabled={ship.isPending || (replacement && !replacementDate)}
+                        onClick={() => ship.mutate({ id: lotId, note, rma_number: rma, replacement_promised_date: replacement ? replacementDate : null }, {
                             onSuccess: () => { toast.success(`Lot ${lotNumber} shipped back to the supplier.`); onOpenChange(false); },
                             onError: (e) => toast.error(errorOf(e, "Could not mark the lot shipped back")),
                         })}>

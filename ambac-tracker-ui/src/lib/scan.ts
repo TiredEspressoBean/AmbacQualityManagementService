@@ -16,7 +16,7 @@ export async function resolveScan(code: string): Promise<ScanResult | null> {
     const q = code.trim();
     if (!q) return null;
     try {
-        return (await api.api_scan_list({ queries: { code: q } })) as unknown as ScanResult;
+        return (await api.api_scan_resolve_retrieve({ queries: { code: q } })) as unknown as ScanResult;
     } catch (err) {
         if ((err as { response?: { status?: number } })?.response?.status === 404) return null;
         throw err;

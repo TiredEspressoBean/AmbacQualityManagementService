@@ -25,8 +25,8 @@ class ShipmentItem(BaseModel):
     order: Optional[str] = None
     line: Optional[int] = None
     part_type: str
-    quantity: int
-    serials: list[str] = []
+    quantity: str                  # "3" for units, "40 lb" for a material lot
+    serials: list[str] = []        # unit serials, or the lot number for material
 
 
 class ShipmentDocumentContext(BaseModel):
@@ -87,8 +87,15 @@ def build_shipment_document_context(shipment, tenant, user=None) -> ShipmentDocu
         if order_no and order_no not in orders:
             orders.append(order_no)
     items = [ShipmentItem(order=k[0] or None, line=k[1] or None, part_type=k[2],
-                          quantity=len(v), serials=v)
+                          quantity=str(len(v)), serials=v)
              for k, v in sorted(groups.items())]
+    units = sum(len(v) for v in groups.values())
+    from Tracker.services.mes.shipping import shipment_lots
+    for lot in shipment_lots(shipment):
+        qty = f"{lot.quantity:f}".rstrip("0").rstrip(".") if "." in f"{lot.quantity:f}" else f"{lot.quantity:f}"
+        items.append(ShipmentItem(part_type=lot.item_name or "Material",
+                                  quantity=f"{qty} {lot.unit_of_measure}".strip(),
+                                  serials=[f"Lot {lot.lot_number}"]))
     customer = shipment.customer
     return ShipmentDocumentContext(
         our_org=tenant.name,
@@ -102,7 +109,7 @@ def build_shipment_document_context(shipment, tenant, user=None) -> ShipmentDocu
         expected_delivery=shipment.expected_delivery,
         orders=orders,
         items=items,
-        total_units=sum(i.quantity for i in items),
+        total_units=units,
         shipped_by=_name(shipment.shipped_by),
         issued_by=_name(user),
         issued_date=tenant_today(tenant),

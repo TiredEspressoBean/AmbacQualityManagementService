@@ -51,7 +51,7 @@ export function ShipmentDetailPage() {
                         {s.is_voided ? <Badge variant="destructive">Voided</Badge> : <Badge variant="outline">Shipped</Badge>}
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        {s.parts.length} unit{s.parts.length === 1 ? "" : "s"} to {s.customer_name} on {new Date(s.shipped_at).toLocaleDateString()}
+                        {s.parts.length} unit{s.parts.length === 1 ? "" : "s"}{s.lots.length > 0 ? ` and ${s.lots.length} lot${s.lots.length === 1 ? "" : "s"}` : ""} to {s.customer_name} on {new Date(s.shipped_at).toLocaleDateString()}
                         {s.shipped_by_name ? ` · ${s.shipped_by_name}` : ""}
                     </p>
                 </div>
@@ -93,6 +93,7 @@ export function ShipmentDetailPage() {
                 </CardContent>
             </Card>
 
+            {(s.parts.length > 0 || s.lots.length === 0) && (
             <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-base">{s.is_voided ? "Units it had" : "Units"}</CardTitle></CardHeader>
                 <CardContent className="overflow-x-auto">
@@ -122,6 +123,33 @@ export function ShipmentDetailPage() {
                     )}
                 </CardContent>
             </Card>
+            )}
+
+            {s.lots.length > 0 && (
+                <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-base">{s.is_voided ? "Material it had" : "Material"}</CardTitle></CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b text-left text-muted-foreground">
+                                    <th className="py-2 pr-3 font-medium">Lot</th>
+                                    <th className="py-2 pr-3 font-medium">Item</th>
+                                    <th className="py-2 text-right font-medium">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {s.lots.map((l) => (
+                                    <tr key={l.id} className="border-b last:border-0">
+                                        <td className="py-2 pr-3"><Link to="/production/material-lots/$lotId" params={{ lotId: l.id }} className="font-mono hover:underline">{l.lot_number}</Link></td>
+                                        <td className="py-2 pr-3">{l.item_name || "—"}</td>
+                                        <td className="py-2 text-right tabular-nums">{l.quantity} {l.unit_of_measure}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </CardContent>
+                </Card>
+            )}
 
             <RecordHistoryCard endpoint="CustomerShipments" id={s.id} model="customershipment" />
 

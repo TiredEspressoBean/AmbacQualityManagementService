@@ -6669,7 +6669,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/ShipRequestRequest'
-        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -6896,6 +6895,230 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
+  /api/CycleCounts/:
+    get:
+      operationId: api_CycleCounts_list
+      description: |-
+        Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
+        Never edited or deleted otherwise — a count is a record of what was found.
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: location
+        schema:
+          type: string
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - OPEN
+          - SUBMITTED
+        description: |-
+          * `OPEN` - Counting
+          * `SUBMITTED` - Submitted
+          * `APPLIED` - Applied
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCycleCountList'
+          description: ''
+    post:
+      operationId: api_CycleCounts_create
+      description: 'Start a count of a location: snapshots what UQMES expects there.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartCycleCountRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StartCycleCountRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StartCycleCountRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/{id}/:
+    get:
+      operationId: api_CycleCounts_retrieve
+      description: |-
+        Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
+        Never edited or deleted otherwise — a count is a record of what was found.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/{id}/apply/:
+    post:
+      operationId: api_CycleCounts_apply_create
+      description: 'Correct UQMES from the count: quantity differences as recorded
+        adjustments, things found here moved here. Units not found are reported, not
+        changed.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/{id}/differences-xlsx/:
+    get:
+      operationId: api_CycleCounts_differences_xlsx_retrieve
+      description: The count's differences as a spreadsheet, for keying into the ERP.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/CycleCounts/{id}/record/:
+    post:
+      operationId: api_CycleCounts_record_create
+      description: Save what was counted; an entry not on the list is something found
+        here.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordCountRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecordCountRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecordCountRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
+  /api/CycleCounts/{id}/submit/:
+    post:
+      operationId: api_CycleCounts_submit_create
+      description: Finish counting; anything not counted is taken as not there.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
           description: ''
   /api/DisassemblyBOMLines/:
     get:
@@ -14476,6 +14699,7 @@ paths:
           - REJECTED
           - RETURNED
           - SCRAPPED
+          - SHIPPED
         description: |-
           * `ON_ORDER` - On Order
           * `RECEIVED` - Received
@@ -14488,6 +14712,7 @@ paths:
           * `QUARANTINE` - Quarantine
           * `RETURNED` - Returned to supplier
           * `CANCELLED` - Cancelled
+          * `SHIPPED` - Shipped to customer
       - in: query
         name: supplier
         schema:
@@ -15372,6 +15597,7 @@ paths:
           - REJECTED
           - RETURNED
           - SCRAPPED
+          - SHIPPED
         description: |-
           * `ON_ORDER` - On Order
           * `RECEIVED` - Received
@@ -15384,6 +15610,7 @@ paths:
           * `QUARANTINE` - Quarantine
           * `RETURNED` - Returned to supplier
           * `CANCELLED` - Cancelled
+          * `SHIPPED` - Shipped to customer
       - in: query
         name: supplier
         schema:
@@ -46466,9 +46693,9 @@ paths:
                     template:
                       type: string
           description: ''
-  /api/scan/:
+  /api/scan/resolve/:
     get:
-      operationId: api_scan_list
+      operationId: api_scan_resolve_retrieve
       description: 'Resolve a scanned code: a label QR URL, LOC:<location>, a lot
         number, a serial, a work-order number or a location name.'
       parameters:
@@ -46487,9 +46714,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ScanResult'
+                $ref: '#/components/schemas/ScanResult'
           description: ''
         '404':
           description: No response body
@@ -52011,6 +52236,24 @@ components:
         * `RETURNED_UNREPAIRED` - Returned unrepaired
         * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
+    CountEntryRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/CycleCountLineKindEnum'
+        id:
+          type: string
+          format: uuid
+        counted:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        note:
+          type: string
+      required:
+      - id
+      - kind
     CreateBOMRevisionInputRequest:
       type: object
       properties:
@@ -52685,6 +52928,11 @@ components:
           items:
             $ref: '#/components/schemas/ShipmentPart'
           readOnly: true
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipmentLot'
+          readOnly: true
         is_voided:
           type: boolean
           readOnly: true
@@ -52715,6 +52963,7 @@ components:
       - customer_name
       - id
       - is_voided
+      - lots
       - parts
       - quantity
       - requires_coc
@@ -52725,6 +52974,208 @@ components:
       - updated_at
       - void_reason
       - voided_at
+    CycleCount:
+      type: object
+      description: |-
+        A count of one location. Started by POST (location, blind); counted, submitted and
+        applied through its actions.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        count_number:
+          type: string
+          readOnly: true
+        location:
+          type: string
+          maxLength: 100
+        blind:
+          type: boolean
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CycleCountStatusEnum'
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/CycleCountLine'
+          readOnly: true
+        variances:
+          type: array
+          items:
+            $ref: '#/components/schemas/CycleCountVariance'
+          readOnly: true
+        started_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        started_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        submitted_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        applied_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        applied_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        archived:
+          type: boolean
+      required:
+      - applied_at
+      - applied_by_name
+      - count_number
+      - created_at
+      - id
+      - lines
+      - location
+      - started_by
+      - started_by_name
+      - status
+      - status_display
+      - submitted_at
+      - submitted_by_name
+      - updated_at
+      - variances
+    CycleCountLine:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/CycleCountLineKindEnum'
+        id:
+          type: string
+        label:
+          type: string
+        item:
+          type: string
+        unit:
+          type: string
+        expected:
+          type: number
+          format: double
+          nullable: true
+        counted:
+          type: number
+          format: double
+          nullable: true
+        found_here:
+          type: boolean
+        system_location:
+          type: string
+          nullable: true
+        note:
+          type: string
+      required:
+      - counted
+      - expected
+      - found_here
+      - id
+      - item
+      - kind
+      - label
+      - note
+      - system_location
+      - unit
+    CycleCountLineKindEnum:
+      enum:
+      - LOT
+      - PART
+      type: string
+      description: |-
+        * `LOT` - Lot
+        * `PART` - Unit
+    CycleCountStatusEnum:
+      enum:
+      - OPEN
+      - SUBMITTED
+      - APPLIED
+      type: string
+      description: |-
+        * `OPEN` - Counting
+        * `SUBMITTED` - Submitted
+        * `APPLIED` - Applied
+    CycleCountVariance:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/CycleCountLineKindEnum'
+        id:
+          type: string
+        label:
+          type: string
+        item:
+          type: string
+        unit:
+          type: string
+        expected:
+          type: number
+          format: double
+          nullable: true
+        counted:
+          type: number
+          format: double
+          nullable: true
+        found_here:
+          type: boolean
+        system_location:
+          type: string
+          nullable: true
+        note:
+          type: string
+        difference:
+          type: number
+          format: double
+        variance:
+          $ref: '#/components/schemas/CycleCountVarianceEnum'
+      required:
+      - counted
+      - difference
+      - expected
+      - found_here
+      - id
+      - item
+      - kind
+      - label
+      - note
+      - system_location
+      - unit
+      - variance
+    CycleCountVarianceEnum:
+      enum:
+      - SHORT
+      - OVER
+      - MISSING
+      - FOUND_HERE
+      type: string
+      description: |-
+        * `SHORT` - Short
+        * `OVER` - Over
+        * `MISSING` - Not found
+        * `FOUND_HERE` - Found here
     DashboardKPIsResponse:
       type: object
       properties:
@@ -57714,6 +58165,18 @@ components:
       required:
       - id
       - lot_number
+    LotRefRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        lot_number:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - lot_number
     LotRejectDispositionEnum:
       enum:
       - RETURN_TO_SUPPLIER
@@ -58246,6 +58709,11 @@ components:
           readOnly: true
           description: Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED).
             Lets the receiving queue explain a hold.
+        hold_reasons:
+          type: array
+          items:
+            type: string
+          readOnly: true
         manufacture_date:
           type: string
           format: date
@@ -58332,6 +58800,33 @@ components:
           readOnly: true
           description: Cores received in bulk (units to be identified), not stock
             of the part.
+        rma_number:
+          type: string
+          readOnly: true
+        replaces:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The returned lot this delivery replaces.
+        replaces_lot_number:
+          type: string
+          readOnly: true
+          nullable: true
+        replacement_lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/LotRef'
+          readOnly: true
+        customer_shipment:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        customer_shipment_number:
+          type: string
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -58348,8 +58843,11 @@ components:
       - chased_at
       - child_lot_count
       - created_at
+      - customer_shipment
+      - customer_shipment_number
       - delivery_state
       - hold_reason
+      - hold_reasons
       - holds_cores
       - id
       - item_name
@@ -58369,6 +58867,10 @@ components:
       - quantity_remaining
       - received_by
       - received_by_name
+      - replacement_lots
+      - replaces
+      - replaces_lot_number
+      - rma_number
       - shelf_life_status
       - short_receipt
       - status
@@ -58607,6 +59109,7 @@ components:
       - QUARANTINE
       - RETURNED
       - CANCELLED
+      - SHIPPED
       type: string
       description: |-
         * `ON_ORDER` - On Order
@@ -58620,6 +59123,7 @@ components:
         * `QUARANTINE` - Quarantine
         * `RETURNED` - Returned to supplier
         * `CANCELLED` - Cancelled
+        * `SHIPPED` - Shipped to customer
     MaterialRequest:
       type: object
       description: |-
@@ -60799,6 +61303,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomerShipment'
+    PaginatedCycleCountList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CycleCount'
     PaginatedDisassemblyBOMLineList:
       type: object
       required:
@@ -66280,7 +66807,6 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Default supplier when this part is purchased.
         purchase_lead_time_days:
           type: integer
           maximum: 2147483647
@@ -71923,6 +72449,30 @@ components:
         * `NOT_REQUIRED` - Not Required
         * `REQUIRED` - Required
         * `COMPLETED` - Completed
+    ReadyLot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lot_number:
+          type: string
+        item_name:
+          type: string
+        quantity_remaining:
+          type: number
+          format: double
+        unit_of_measure:
+          type: string
+        storage_location:
+          type: string
+      required:
+      - id
+      - item_name
+      - lot_number
+      - quantity_remaining
+      - storage_location
+      - unit_of_measure
     ReadyPart:
       type: object
       properties:
@@ -72020,9 +72570,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReadyPart'
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadyLot'
       required:
       - customer_id
       - customer_name
+      - lots
       - order_id
       - order_number
       - parts
@@ -72665,6 +73220,15 @@ components:
           minimum: 0
       required:
       - defectives_found
+    RecordCountRequest:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountEntryRequest'
+      required:
+      - entries
     RecordInspectionRequestRequest:
       type: object
       description: Request body for recording receiving-inspection measurement results.
@@ -72986,6 +73550,10 @@ components:
         reason:
           type: string
           minLength: 1
+        code:
+          type: string
+          default: ''
+          description: Which hold to release, when the lot has more than one.
       required:
       - reason
     ReleaseModeEnum:
@@ -75512,7 +76080,32 @@ components:
         note:
           type: string
           default: ''
-          description: Carrier, tracking, RMA number from the supplier…
+          description: Carrier, tracking…
+        rma_number:
+          type: string
+          default: ''
+          description: The supplier's return authorisation.
+          maxLength: 100
+        replacement_promised_date:
+          type: string
+          format: date
+          nullable: true
+          description: 'The supplier is sending replacements, due this day: expect
+            them.'
+    ShipLotRequestRequest:
+      type: object
+      properties:
+        lot_id:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: Ship only this much (split off first). Omit for all of it.
+      required:
+      - lot_id
     ShipRequestRequest:
       type: object
       properties:
@@ -75521,6 +76114,10 @@ components:
           items:
             type: string
             format: uuid
+        lots:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShipLotRequestRequest'
         customer:
           type: string
           format: uuid
@@ -75541,8 +76138,28 @@ components:
           type: string
           format: date
           nullable: true
+    ShipmentLot:
+      type: object
+      description: A material lot on a shipment, and how much of it went.
+      properties:
+        id:
+          type: string
+          format: uuid
+        lot_number:
+          type: string
+        item_name:
+          type: string
+        quantity:
+          type: number
+          format: double
+        unit_of_measure:
+          type: string
       required:
-      - part_ids
+      - id
+      - item_name
+      - lot_number
+      - quantity
+      - unit_of_measure
     ShipmentPart:
       type: object
       description: One unit on a shipment.
@@ -75759,6 +76376,17 @@ components:
         * `QUANTITY` - Quantity
         * `OPERATION` - Operation
         * `REWORK` - Rework
+    StartCycleCountRequest:
+      type: object
+      properties:
+        location:
+          type: string
+          minLength: 1
+        blind:
+          type: boolean
+          default: false
+      required:
+      - location
     Step:
       type: object
       description: Step serializer - just the node properties (no process/order/branching)

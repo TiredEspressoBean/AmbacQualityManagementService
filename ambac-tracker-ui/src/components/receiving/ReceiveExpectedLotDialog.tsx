@@ -16,7 +16,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
-import { useReceiveExpectedLot } from "@/hooks/useReceivingMutations";
+import { useReceiveExpectedLot, useUploadLotCoC } from "@/hooks/useReceivingMutations";
 
 type Props = {
     lotId: string;
@@ -77,6 +77,10 @@ export function ReceiveExpectedLotDialog({
     const [remainder, setRemainder] = useState<"BACKORDERED" | "CLOSED" | "">("");
     const [heatNumber, setHeatNumber] = useState("");
     const [sourceType, setSourceType] = useState<SourceType | "">("");
+    // The cert, photographed at the dock (or a PDF) — uploaded onto the lot once it's
+    // received, which clears an "awaiting CoC" hold by itself.
+    const [cocFile, setCocFile] = useState<File | null>(null);
+    const uploadCoc = useUploadLotCoC();
     // Counting in the buying unit ("3 boxes") when the item has one with a conversion.
     const buyingUnit: "BOX" | "LB" | null =
         purchaseUnit === "BOX" || purchaseUnit === "LB" ? purchaseUnit : null;
@@ -95,6 +99,7 @@ export function ReceiveExpectedLotDialog({
         setSourceType("");
         setCountIn("STOCK");
         setCounted("");
+        setCocFile(null);
     };
 
     // In the buying unit, the stock quantity follows from the count.
@@ -130,6 +135,12 @@ export function ReceiveExpectedLotDialog({
                     // lot actually went — inspection, a soft hold, or straight to stock.
                     const { status, lot_number: ours } = (data as { status?: string; lot_number?: string }) ?? {};
                     const parked = status != null && NEEDS_DISPOSITION.includes(status);
+                    if (cocFile) {
+                        uploadCoc.mutate({ id: lotId, file: cocFile }, {
+                            onSuccess: () => toast.success(`CoC attached to lot ${ours}.`),
+                            onError: () => toast.error(`Lot ${ours} was received, but the CoC didn't upload — add it from the lot.`),
+                        });
+                    }
                     toast.success(
                         parked
                             ? `Lot ${ours} received — waiting on incoming inspection.`
@@ -277,6 +288,11 @@ export function ReceiveExpectedLotDialog({
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="rel-coc">Certificate of Conformance <span className="text-muted-foreground">(optional — photo or PDF)</span></Label>
+                        <Input id="rel-coc" type="file" accept="image/*,application/pdf" capture="environment"
+                            onChange={(e) => setCocFile(e.target.files?.[0] ?? null)} />
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="rel-location">Put away at</Label>

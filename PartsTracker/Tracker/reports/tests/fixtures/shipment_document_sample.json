@@ -8,12 +8,39 @@
   "tracking_number": "1Z999AA10123456784",
   "reference": "SHPR-77812",
   "expected_delivery": "2026-10-08",
-  "orders": ["ORD-2026-0031"],
+  "orders": [
+    "ORD-2026-0031"
+  ],
   "items": [
-    {"order": "ORD-2026-0031", "line": 1, "part_type": "Injector, remanufactured", "quantity": 3,
-     "serials": ["INJ-1001", "INJ-1002", "INJ-1003"]},
-    {"order": "ORD-2026-0031", "line": 2, "part_type": "Fuel pump", "quantity": 1,
-     "serials": ["FP-220"]}
+    {
+      "order": "ORD-2026-0031",
+      "line": 1,
+      "part_type": "Injector, remanufactured",
+      "quantity": "3",
+      "serials": [
+        "INJ-1001",
+        "INJ-1002",
+        "INJ-1003"
+      ]
+    },
+    {
+      "order": "ORD-2026-0031",
+      "line": 2,
+      "part_type": "Fuel pump",
+      "quantity": "1",
+      "serials": [
+        "FP-220"
+      ]
+    },
+    {
+      "order": null,
+      "line": null,
+      "part_type": "Bar stock, 4140, 1.25 in",
+      "quantity": "36 ft",
+      "serials": [
+        "Lot LOT-2026-00117"
+      ]
+    }
   ],
   "total_units": 4,
   "shipped_by": "Sam Shipping",

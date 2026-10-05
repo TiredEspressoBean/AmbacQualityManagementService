@@ -2334,6 +2334,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CycleCounts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
+         *     Never edited or deleted otherwise — a count is a record of what was found.
+         */
+        get: operations["api_CycleCounts_list"];
+        put?: never;
+        /** @description Start a count of a location: snapshots what UQMES expects there. */
+        post: operations["api_CycleCounts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
+         *     Never edited or deleted otherwise — a count is a record of what was found.
+         */
+        get: operations["api_CycleCounts_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/apply/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct UQMES from the count: quantity differences as recorded adjustments, things found here moved here. Units not found are reported, not changed. */
+        post: operations["api_CycleCounts_apply_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/differences-xlsx/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The count's differences as a spreadsheet, for keying into the ERP. */
+        get: operations["api_CycleCounts_differences_xlsx_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/record/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Save what was counted; an entry not on the list is something found here. */
+        post: operations["api_CycleCounts_record_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CycleCounts/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Finish counting; anything not counted is taken as not there. */
+        post: operations["api_CycleCounts_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/DisassemblyBOMLines/": {
         parameters: {
             query?: never;
@@ -19192,7 +19301,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scan/": {
+    "/api/scan/resolve/": {
         parameters: {
             query?: never;
             header?: never;
@@ -19200,7 +19309,7 @@ export interface paths {
             cookie?: never;
         };
         /** @description Resolve a scanned code: a label QR URL, LOC:<location>, a lot number, a serial, a work-order number or a location name. */
-        get: operations["api_scan_list"];
+        get: operations["api_scan_resolve_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -21981,6 +22090,14 @@ export interface components {
          * @enum {string}
          */
         CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        CountEntryRequest: {
+            kind: components["schemas"]["CycleCountLineKindEnum"];
+            /** Format: uuid */
+            id: string;
+            /** Format: decimal */
+            counted?: string | null;
+            note?: string;
+        };
         CreateBOMRevisionInputRequest: {
             change_description: string;
         };
@@ -22277,6 +22394,7 @@ export interface components {
             notes?: string;
             readonly quantity: number;
             readonly parts: components["schemas"]["ShipmentPart"][];
+            readonly lots: components["schemas"]["ShipmentLot"][];
             /** @description Whether this record has been voided */
             readonly is_voided: boolean;
             /**
@@ -22292,6 +22410,86 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        /**
+         * @description A count of one location. Started by POST (location, blind); counted, submitted and
+         *     applied through its actions.
+         */
+        CycleCount: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly count_number: string;
+            location: string;
+            blind?: boolean;
+            readonly status: components["schemas"]["CycleCountStatusEnum"];
+            readonly status_display: string;
+            readonly lines: components["schemas"]["CycleCountLine"][];
+            readonly variances: components["schemas"]["CycleCountVariance"][];
+            readonly started_by: number | null;
+            readonly started_by_name: string | null;
+            readonly submitted_by_name: string | null;
+            /** Format: date-time */
+            readonly submitted_at: string | null;
+            readonly applied_by_name: string | null;
+            /** Format: date-time */
+            readonly applied_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            archived?: boolean;
+        };
+        CycleCountLine: {
+            kind: components["schemas"]["CycleCountLineKindEnum"];
+            id: string;
+            label: string;
+            item: string;
+            unit: string;
+            /** Format: double */
+            expected: number | null;
+            /** Format: double */
+            counted: number | null;
+            found_here: boolean;
+            system_location: string | null;
+            note: string;
+        };
+        /**
+         * @description * `LOT` - Lot
+         *     * `PART` - Unit
+         * @enum {string}
+         */
+        CycleCountLineKindEnum: "LOT" | "PART";
+        /**
+         * @description * `OPEN` - Counting
+         *     * `SUBMITTED` - Submitted
+         *     * `APPLIED` - Applied
+         * @enum {string}
+         */
+        CycleCountStatusEnum: "OPEN" | "SUBMITTED" | "APPLIED";
+        CycleCountVariance: {
+            kind: components["schemas"]["CycleCountLineKindEnum"];
+            id: string;
+            label: string;
+            item: string;
+            unit: string;
+            /** Format: double */
+            expected: number | null;
+            /** Format: double */
+            counted: number | null;
+            found_here: boolean;
+            system_location: string | null;
+            note: string;
+            /** Format: double */
+            difference: number;
+            variance: components["schemas"]["CycleCountVarianceEnum"];
+        };
+        /**
+         * @description * `SHORT` - Short
+         *     * `OVER` - Over
+         *     * `MISSING` - Not found
+         *     * `FOUND_HERE` - Found here
+         * @enum {string}
+         */
+        CycleCountVarianceEnum: "SHORT" | "OVER" | "MISSING" | "FOUND_HERE";
         DashboardKPIsResponse: {
             active_capas: number;
             open_ncrs: number;
@@ -24709,6 +24907,10 @@ export interface components {
             id: string;
             lot_number: string;
         };
+        LotRefRequest: {
+            id: string;
+            lot_number: string;
+        };
         /**
          * @description * `RETURN_TO_SUPPLIER` - Return to supplier
          *     * `SCRAP` - Scrap
@@ -24955,6 +25157,7 @@ export interface components {
             readonly status: components["schemas"]["MaterialLotStatusEnum"];
             /** @description Why a lot is held/quarantined (e.g. SUPPLIER_UNQUALIFIED). Lets the receiving queue explain a hold. */
             readonly hold_reason: string;
+            readonly hold_reasons: string[];
             /** Format: date */
             manufacture_date?: string | null;
             /** Format: date */
@@ -24992,6 +25195,17 @@ export interface components {
             readonly lineage: components["schemas"]["LotRef"][];
             /** @description Cores received in bulk (units to be identified), not stock of the part. */
             readonly holds_cores: boolean;
+            readonly rma_number: string;
+            /**
+             * Format: uuid
+             * @description The returned lot this delivery replaces.
+             */
+            readonly replaces: string | null;
+            readonly replaces_lot_number: string | null;
+            readonly replacement_lots: components["schemas"]["LotRef"][];
+            /** Format: uuid */
+            readonly customer_shipment: string | null;
+            readonly customer_shipment_number: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -25125,9 +25339,10 @@ export interface components {
          *     * `QUARANTINE` - Quarantine
          *     * `RETURNED` - Returned to supplier
          *     * `CANCELLED` - Cancelled
+         *     * `SHIPPED` - Shipped to customer
          * @enum {string}
          */
-        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE" | "RETURNED" | "CANCELLED";
+        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE" | "RETURNED" | "CANCELLED" | "SHIPPED";
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
          *     Holds the purchase lead time used by the sourcing report.
@@ -26242,6 +26457,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["CustomerShipment"][];
+        };
+        PaginatedCycleCountList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["CycleCount"][];
         };
         PaginatedDisassemblyBOMLineList: {
             /** @example 123 */
@@ -29455,10 +29685,7 @@ export interface components {
         };
         /** @description A part type's buy-side planning figures, edited in place (no new version). */
         PatchedPartTypeSourcingRequest: {
-            /**
-             * Format: uuid
-             * @description Default supplier when this part is purchased.
-             */
+            /** Format: uuid */
             preferred_supplier?: string | null;
             /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
@@ -32628,6 +32855,16 @@ export interface components {
          * @enum {string}
          */
         RcaReviewStatusEnum: "NOT_REQUIRED" | "REQUIRED" | "COMPLETED";
+        ReadyLot: {
+            /** Format: uuid */
+            id: string;
+            lot_number: string;
+            item_name: string;
+            /** Format: double */
+            quantity_remaining: number;
+            unit_of_measure: string;
+            storage_location: string;
+        };
         ReadyPart: {
             /** Format: uuid */
             id: string;
@@ -32670,6 +32907,7 @@ export interface components {
             customer_name: string | null;
             requires_coc: boolean;
             parts: components["schemas"]["ReadyPart"][];
+            lots: components["schemas"]["ReadyLot"][];
         };
         ReadyToShipPart: {
             /** Format: uuid */
@@ -32969,6 +33207,9 @@ export interface components {
         RecordBulkRequestRequest: {
             defectives_found: number;
         };
+        RecordCountRequest: {
+            entries: components["schemas"]["CountEntryRequest"][];
+        };
         /** @description Request body for recording receiving-inspection measurement results. */
         RecordInspectionRequestRequest: {
             measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
@@ -33115,6 +33356,11 @@ export interface components {
         /** @description Lift a receiving hold. The reason is kept on record beside the decision. */
         ReleaseHoldRequest: {
             reason: string;
+            /**
+             * @description Which hold to release, when the lot has more than one.
+             * @default
+             */
+            code: string;
         };
         /**
          * @description * `auto` - Date-driven (no release step)
@@ -34390,13 +34636,33 @@ export interface components {
         };
         ShipBackRequest: {
             /**
-             * @description Carrier, tracking, RMA number from the supplier…
+             * @description Carrier, tracking…
              * @default
              */
             note: string;
+            /**
+             * @description The supplier's return authorisation.
+             * @default
+             */
+            rma_number: string;
+            /**
+             * Format: date
+             * @description The supplier is sending replacements, due this day: expect them.
+             */
+            replacement_promised_date?: string | null;
+        };
+        ShipLotRequestRequest: {
+            /** Format: uuid */
+            lot_id: string;
+            /**
+             * Format: decimal
+             * @description Ship only this much (split off first). Omit for all of it.
+             */
+            quantity?: string | null;
         };
         ShipRequestRequest: {
-            part_ids: string[];
+            part_ids?: string[];
+            lots?: components["schemas"]["ShipLotRequestRequest"][];
             /** Format: uuid */
             customer?: string | null;
             /** @default  */
@@ -34409,6 +34675,16 @@ export interface components {
             notes: string;
             /** Format: date */
             expected_delivery?: string | null;
+        };
+        /** @description A material lot on a shipment, and how much of it went. */
+        ShipmentLot: {
+            /** Format: uuid */
+            id: string;
+            lot_number: string;
+            item_name: string;
+            /** Format: double */
+            quantity: number;
+            unit_of_measure: string;
         };
         /** @description One unit on a shipment. */
         ShipmentPart: {
@@ -34500,6 +34776,11 @@ export interface components {
          * @enum {string}
          */
         SplitReasonEnum: "QUANTITY" | "OPERATION" | "REWORK";
+        StartCycleCountRequest: {
+            location: string;
+            /** @default false */
+            blind: boolean;
+        };
         /** @description Step serializer - just the node properties (no process/order/branching) */
         Step: {
             /** Format: uuid */
@@ -43694,7 +43975,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["ShipRequestRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["ShipRequestRequest"];
@@ -43901,6 +44182,182 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_list: {
+        parameters: {
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                location?: string;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `OPEN` - Counting
+                 *     * `SUBMITTED` - Submitted
+                 *     * `APPLIED` - Applied
+                 */
+                status?: "APPLIED" | "OPEN" | "SUBMITTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCycleCountList"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartCycleCountRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["StartCycleCountRequest"];
+                "multipart/form-data": components["schemas"]["StartCycleCountRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_apply_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_differences_xlsx_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+        };
+    };
+    api_CycleCounts_record_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordCountRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RecordCountRequest"];
+                "multipart/form-data": components["schemas"]["RecordCountRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
+    api_CycleCounts_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
                 };
             };
         };
@@ -49542,8 +49999,9 @@ export interface operations {
                  *     * `QUARANTINE` - Quarantine
                  *     * `RETURNED` - Returned to supplier
                  *     * `CANCELLED` - Cancelled
+                 *     * `SHIPPED` - Shipped to customer
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED" | "SHIPPED";
                 supplier?: string;
             };
             header?: never;
@@ -50252,8 +50710,9 @@ export interface operations {
                  *     * `QUARANTINE` - Quarantine
                  *     * `RETURNED` - Returned to supplier
                  *     * `CANCELLED` - Cancelled
+                 *     * `SHIPPED` - Shipped to customer
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED" | "SHIPPED";
                 supplier?: string;
             };
             header?: never;
@@ -72943,7 +73402,7 @@ export interface operations {
             };
         };
     };
-    api_scan_list: {
+    api_scan_resolve_retrieve: {
         parameters: {
             query: {
                 code: string;
@@ -72959,7 +73418,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanResult"][];
+                    "application/json": components["schemas"]["ScanResult"];
                 };
             };
             /** @description No response body */
