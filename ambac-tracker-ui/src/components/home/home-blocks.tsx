@@ -25,6 +25,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
+import { resolveScan } from "@/lib/scan";
+import { ChaseDeliveryDialog, chaseMailto, type ChaseTarget } from "@/components/receiving/ChaseDeliveryDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,27 +115,22 @@ export function ScanBox({
         if (!q || busy) return;
         setBusy(true);
         try {
-            // Work order first (traveler headers carry the WO number), then part.
-            const wos = (await api.api_WorkOrders_list({ queries: { search: q, limit: 5 } })) as {
-                results?: Array<{ id: string; ERP_id?: string | null }>;
-            };
-            const wo = (wos.results ?? []).find((w) => (w.ERP_id ?? "").toLowerCase() === q.toLowerCase())
-                ?? ((wos.results?.length ?? 0) === 1 ? wos.results![0] : undefined);
-            if (wo) {
-                goToWo(String(wo.id));
+            // One resolver for every scan field (lib/scan.ts → /api/scan/): work orders and
+            // serials as before, plus lot labels, location labels and label QR codes.
+            const hit = await resolveScan(q);
+            if (hit?.kind === "WORK_ORDER") { goToWo(hit.id); return; }
+            if (hit?.kind === "PART" && hit.work_order_id) { goToWo(hit.work_order_id); return; }
+            if (hit?.kind === "LOT") {
+                void navigate({ to: "/production/material-lots/$lotId", params: { lotId: hit.id } });
                 return;
             }
-            const parts = (await api.api_Parts_list({ queries: { search: q, limit: 5 } })) as {
-                results?: Array<{ id: string; ERP_id?: string | null; work_order?: string | null }>;
-            };
-            const part = (parts.results ?? []).find((p) => (p.ERP_id ?? "").toLowerCase() === q.toLowerCase())
-                ?? ((parts.results?.length ?? 0) === 1 ? parts.results![0] : undefined);
-            if (part?.work_order) {
-                goToWo(String(part.work_order));
+            if (hit?.kind === "LOCATION") {
+                void navigate({ to: "/production/locations/$name", params: { name: hit.label } });
                 return;
             }
+            if (hit?.kind === "URL" && hit.path) { void navigate({ to: hit.path as never }); return; }
             toast.error(`Nothing found for "${q}"`, {
-                description: "Scan or type a work order or part number (ERP id).",
+                description: "Scan or type a work order, serial, lot or location.",
             });
         } catch {
             toast.error("Lookup failed — try again.");
@@ -144,8 +141,8 @@ export function ScanBox({
     };
 
     const placeholder = dest === "control"
-        ? "Look up a work order or part…"
-        : "Scan or type a work order / part number…";
+        ? "Look up a work order, serial, lot or location…"
+        : "Scan or type a work order, serial, lot or location…";
 
     return (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
@@ -1186,6 +1183,7 @@ const SUPPLIER_EXPIRY_HORIZON_DAYS = 60;
 
 function LateDeliveriesBlock() {
     const { data: rows = [] } = useLateDeliveries();
+    const [chasing, setChasing] = useState<ChaseTarget | null>(null);
     if (rows.length === 0) return null;
     const overdue = rows.filter((r) => r.state === "OVERDUE").length;
     return (
@@ -1215,13 +1213,22 @@ function LateDeliveriesBlock() {
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                                 {r.supplier_name ?? "No supplier"}
-                                {r.supplier_contact ? ` (${r.supplier_contact}${r.supplier_contact_email ? `, ${r.supplier_contact_email}` : ""})` : ""}
+                                {r.supplier_contact ? <> ({r.supplier_contact_email
+                                    ? <a href={chaseMailto(r) ?? undefined} className="underline">{r.supplier_contact}</a>
+                                    : r.supplier_contact})</> : ""}
                                 {r.erp_po_number ? ` · PO ${r.erp_po_number}${r.erp_po_line ? `/${r.erp_po_line}` : ""}` : ""}
                                 {r.holding_up_count > 0
                                     ? ` · holding up ${r.holding_up.slice(0, 3).map((w) => w.erp_id).join(", ")}${r.holding_up_count > 3 ? ` +${r.holding_up_count - 3}` : ""}`
                                     : ""}
+                                {r.original_promised_date ? ` · first promised ${r.original_promised_date}` : ""}
                             </div>
+                            {r.chase_note && (
+                                <div className="truncate text-xs italic text-muted-foreground">
+                                    Chased{r.chased_at ? ` ${new Date(r.chased_at).toLocaleDateString()}` : ""}: {r.chase_note}
+                                </div>
+                            )}
                         </div>
+                        <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setChasing(r)}>Chase…</Button>
                         <Badge
                             variant={r.state === "OVERDUE" ? "destructive" : "outline"}
                             className="shrink-0 tabular-nums"
@@ -1231,6 +1238,10 @@ function LateDeliveriesBlock() {
                     </div>
                 ))}
             </CardContent>
+            {chasing && (
+                <ChaseDeliveryDialog key={chasing.lot_id} target={chasing} open
+                    onOpenChange={(o) => { if (!o) setChasing(null); }} />
+            )}
         </Card>
     );
 }

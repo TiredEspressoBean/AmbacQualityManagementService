@@ -325,6 +325,7 @@ class CompanySerializer(SecureModelMixin):
         fields = ('id', 'name', 'description', 'hubspot_api_id',
                   'default_outside_process_turnaround_days',
                   'default_core_fulfilment_mode', 'is_customer', 'is_supplier', 'address',
+                  'requires_coc_on_shipment',
                   'user_count', 'created_at', 'updated_at', 'archived', 'version')
         read_only_fields = ('created_at', 'updated_at', 'version')
 
@@ -340,6 +341,8 @@ class CompanySerializer(SecureModelMixin):
         'archived',
         'default_outside_process_turnaround_days',
         'default_core_fulfilment_mode',
+        # A paperwork preference agreed with the customer, like the two above.
+        'requires_coc_on_shipment',
     })
 
     @extend_schema_field(serializers.IntegerField())

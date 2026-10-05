@@ -1619,6 +1619,13 @@ class MaterialLot(SecureModel):
         null=True, blank=True,
         help_text="Supplier's promised delivery date (from the PO); drives on-time-delivery scoring."
     )
+    # The first promise. A re-promise moves `promised_date` (planning wants the latest
+    # word); on-time delivery is judged against this, or a supplier who slipped twice
+    # would still score "on time".
+    original_promised_date = models.DateField(null=True, blank=True)
+    # The buyer's last chase of a late delivery: what they were told, and when.
+    chase_note = models.TextField(blank=True)
+    chased_at = models.DateTimeField(null=True, blank=True)
     # A delivery short of what was on order: what had been ordered, and the clerk's call
     # from the packing slip. The ERP can't tell us, so closing short is never inferred.
     ordered_quantity = models.DecimalField(

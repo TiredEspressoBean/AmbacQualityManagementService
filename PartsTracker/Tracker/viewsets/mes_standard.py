@@ -9,6 +9,9 @@ ViewSets for MES Standard tier models:
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
+from Tracker.serializers.locations import (
+    LocationContentsSerializer, LocationSummarySerializer, MoveLotRequestSerializer,
+)
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import viewsets, status, serializers, parsers
 from rest_framework.decorators import action
@@ -32,7 +35,7 @@ from Tracker.serializers.mes_standard import (
     DowntimeEventSerializer,
     MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
-    CancelExpectedReceiptSerializer, ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
+    CancelExpectedReceiptSerializer, ChaseExpectedReceiptSerializer, ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
@@ -541,6 +544,36 @@ class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixi
     ordering_fields = ['name']
     ordering = ['name']
 
+    def perform_update(self, serializer):
+        from Tracker.services.mes.locations import rename_location
+        old = serializer.instance.name
+        with transaction.atomic():
+            super().perform_update(serializer)
+            rename_location(serializer.instance.tenant, old, serializer.instance.name)
+
+    @extend_schema(responses=LocationSummarySerializer(many=True),
+                   description="Every location with stock in it, plus every managed location, "
+                               "with how many lots and units each holds.")
+    @action(detail=False, methods=['get'], url_path='summary', pagination_class=None, filter_backends=[])
+    def summary(self, request):
+        from Tracker.services.mes.locations import location_summary
+        return Response(LocationSummarySerializer(location_summary(request.tenant), many=True).data)
+
+    @extend_schema(parameters=[OpenApiParameter('name', str, required=True),
+                               OpenApiParameter('days', int, required=False)],
+                   responses=LocationContentsSerializer,
+                   description="What is in one location now, and what moved in or out of it lately. "
+                               "By name, so unmanaged (typed) locations work too.")
+    @action(detail=False, methods=['get'], url_path='contents', pagination_class=None, filter_backends=[])
+    def contents(self, request):
+        from Tracker.services.mes.locations import location_contents
+        try:
+            days = max(1, min(int(request.query_params.get('days', 7)), 90))
+        except ValueError:
+            days = 7
+        return Response(LocationContentsSerializer(
+            location_contents(request.tenant, request.query_params.get('name', ''), days)).data)
+
 
 # `inspection_pending` is read straight off query_params in get_queryset rather
 # than declared in filterset_fields, so drf-spectacular cannot see it and the
@@ -582,7 +615,11 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # already declares its parsers this way for the same reason.
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
-    search_fields = ['lot_number', 'supplier_lot_number', 'material_description']
+    # The dock looks a lot up by whatever is in hand: our number or theirs, the item,
+    # the supplier, the PO on the packing slip, or the heat on the cert.
+    search_fields = ['lot_number', 'supplier_lot_number', 'material_description',
+                     'material__name', 'material__part_number', 'material_type__name',
+                     'supplier__name', 'erp_po_number', 'heat_number']
     filterset_fields = ['status', 'supplier', 'material_type']
     # promised_date is the useful axis for ON_ORDER lots — they have no received_date yet.
     ordering_fields = ['received_date', 'lot_number', 'expiration_date', 'promised_date']
@@ -600,7 +637,44 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         'ship_back': ['change_materiallot'],
         # Who may expect a receipt may say it won't come.
         'cancel_expected': ['change_materiallot'],
+        'move': ['change_materiallot'],
+        'chase': ['change_materiallot'],
     }
+    # A move changes an existing lot (or splits one), a chase notes one — not creates.
+    crud_exempt_actions = {'move', 'chase'}
+
+    @extend_schema(request=ChaseExpectedReceiptSerializer, responses={200: MaterialLotSerializer},
+                   description="Record a chase of an expected delivery — what the supplier said, and "
+                               "a new promised date if given. The first promise is kept for on-time scoring.")
+    @action(detail=True, methods=['post'], url_path='chase')
+    def chase(self, request, pk=None):
+        from Tracker.services.mes.material_lot import chase_expected_receipt
+        lot = self.get_object()
+        req = ChaseExpectedReceiptSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            lot = chase_expected_receipt(lot, user=request.user, note=req.validated_data['note'],
+                                         promised_date=req.validated_data.get('promised_date'))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=MoveLotRequestSerializer, responses={200: MaterialLotSerializer},
+                   description="Move a lot to another location, recorded (who, when, from where). "
+                               "With a quantity less than what's left, that much is split off and moves.")
+    @action(detail=True, methods=['post'], url_path='move')
+    def move(self, request, pk=None):
+        from Tracker.services.mes.locations import move_lot
+        lot = self.get_object()
+        req = MoveLotRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            moved = move_lot(lot, to=req.validated_data['to'], user=request.user,
+                             quantity=req.validated_data.get('quantity'),
+                             reason=req.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(moved, context={'request': request}).data)
 
     def get_queryset(self):
         from django.db.models import Exists, OuterRef
@@ -617,7 +691,9 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
             qs = qs.filter(
                 Q(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
                 | (Q(status='QUARANTINE') & ~Q(hold_reason=''))
-            )
+            # A customer's bulk cores aren't supplier stock: each unit is graded when it
+            # is identified off the lot, not sampled at receiving.
+            ).filter(holds_cores=False)
         # Late deliveries: ON_ORDER lots past (overdue), or within DUE_SOON_DAYS of
         # (due_soon), their promised date; `late` is both. The plant's day, not UTC's.
         delivery = self.request.query_params.get('delivery')

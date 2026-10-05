@@ -31,6 +31,11 @@ def _part_row(part) -> dict:
         "order_id": str(order.id) if order is not None else None,
         "order": (order.order_number or order.name) if order is not None else None,
         "customer": company.name if company is not None else None,
+        # Whether it actually left: the recall question is "still on our shelf, or at
+        # the customer?" — a customer on the order alone doesn't say.
+        "shipment_id": str(part.customer_shipment_id) if part.customer_shipment_id else None,
+        "shipment": part.customer_shipment.shipment_number if part.customer_shipment_id else None,
+        "shipped_at": part.customer_shipment.shipped_at if part.customer_shipment_id else None,
     }
 
 
@@ -42,7 +47,7 @@ def _climb(part) -> list:
         use = (AssemblyUsage.objects  # tenant-safe: .objects auto-scopes; FK to a scoped part
                .filter(component=current, assembly__isnull=False)
                .select_related("assembly__part_type", "assembly__work_order__related_order__company",
-                               "assembly__order__company")
+                               "assembly__order__company", "assembly__customer_shipment")
                .order_by("-created_at").first())
         if use is None or use.assembly_id in seen:
             break
@@ -86,7 +91,8 @@ def trace_lot(lot) -> dict:
     uses = []
     for u in (MaterialUsage.objects.filter(lot_id__in=family)  # tenant-safe: FK to scoped lots
               .select_related("lot", "part__part_type", "part__work_order__related_order__company",
-                              "part__order__company", "work_order", "step", "consumed_by")
+                              "part__order__company", "part__customer_shipment", "work_order", "step",
+                              "consumed_by")
               .order_by("consumed_at")):
         part = u.part
         uses.append({

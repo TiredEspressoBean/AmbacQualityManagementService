@@ -118,6 +118,9 @@ def _cascade_work_order_completion(part: Parts) -> None:
 # core's part is judged by its reman stage instead (`core_part.ENDED_STAGES`).
 _ENDED_PART_STATUSES = frozenset({
     PartsStatus.COMPLETED, PartsStatus.SCRAPPED, PartsStatus.CANCELLED,
+    # A route can end in any of these (Steps.terminal_status); the work is done.
+    PartsStatus.SHIPPED, PartsStatus.IN_STOCK, PartsStatus.AWAITING_PICKUP,
+    PartsStatus.RMA_CLOSED,
 })
 
 
@@ -303,18 +306,21 @@ def advance_part_step(
             pass
         elif part.part_status not in HELD_PART_STATUSES:
             if part.step.is_terminal:
+                # Keyed as Steps.TERMINAL_STATUS_CHOICES stores them (upper case). The
+                # map was lower-case, so every terminal step fell through to COMPLETED
+                # and a Ship step never produced SHIPPED.
                 status_map = {
-                    'completed': PartsStatus.COMPLETED,
-                    'shipped': PartsStatus.SHIPPED,
-                    'stock': PartsStatus.IN_STOCK,
-                    'scrapped': PartsStatus.SCRAPPED,
-                    'returned': PartsStatus.CANCELLED,
-                    'awaiting_pickup': PartsStatus.AWAITING_PICKUP,
-                    'core_banked': PartsStatus.CORE_BANKED,
-                    'rma_closed': PartsStatus.RMA_CLOSED,
+                    'COMPLETED': PartsStatus.COMPLETED,
+                    'SHIPPED': PartsStatus.SHIPPED,
+                    'STOCK': PartsStatus.IN_STOCK,
+                    'SCRAPPED': PartsStatus.SCRAPPED,
+                    'RETURNED': PartsStatus.CANCELLED,
+                    'AWAITING_PICKUP': PartsStatus.AWAITING_PICKUP,
+                    'CORE_BANKED': PartsStatus.CORE_BANKED,
+                    'RMA_CLOSED': PartsStatus.RMA_CLOSED,
                 }
                 part.part_status = status_map.get(
-                    part.step.terminal_status,
+                    (part.step.terminal_status or '').upper(),
                     PartsStatus.COMPLETED,
                 )
             else:

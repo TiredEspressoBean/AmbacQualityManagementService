@@ -584,7 +584,9 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
                   # plan (Documents/CORE_AS_PART_DESIGN.md).
                   'core_role',
                   # Lot-split genealogy (PART grain — distinct from WorkOrder.split_reason/at).
-                  'split_from_lot', 'lot_split_reason', 'lot_split_at', 'rejoined_at')
+                  'split_from_lot', 'lot_split_reason', 'lot_split_at', 'rejoined_at',
+                  # Where the unit sits. Changed only by a recorded move (Parts/move).
+                  'storage_location')
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
@@ -593,7 +595,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             # Lot-split state is driven by split_from_lot / rejoin_to_lot services, not direct writes.
             # (lot_split_reason is a SerializerMethodField below, inherently read-only.)
             'split_from_lot', 'lot_split_at', 'rejoined_at',
-            'reserved_for_core', 'reserved_for_core_number')
+            'reserved_for_core', 'reserved_for_core_number', 'storage_location')
 
     def validate(self, attrs):
         attrs = super().validate(attrs)

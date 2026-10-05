@@ -62,7 +62,7 @@ STAFF_VIEW_PERMISSIONS = [
     'view_orders', 'view_orderline', 'view_workorder', 'view_parts', 'view_parttypes',
     'view_processes', 'view_steps', 'view_processstep', 'view_stepedge',
     'view_stepexecution', 'view_steptransitionlog', 'view_stepmeasurementrequirement',
-    'view_outsideprocessshipment',
+    'view_outsideprocessshipment', 'view_customershipment',
     'view_companies', 'view_orderviewer', 'view_externalapiorderidentifier',
     # DWI (digital work instructions)
     'view_substep', 'view_substepcompletion', 'view_substepresource',
@@ -189,6 +189,8 @@ STAFF_OPERATIONAL_WRITE = [
     # Outside processing (subcontract send-out / receive-back — Flow B).
     # delete is opted out (retired via status/void), like other operational records.
     'add_outsideprocessshipment', 'change_outsideprocessshipment',
+    # Shipping to customers: ship (add) and correct/void (change). Voided, never deleted.
+    'add_customershipment', 'change_customershipment',
     # (steptransitionlog is service-written and DB-immutable — view only)
     # Production exceptions
     'add_workorderhold', 'change_workorderhold',

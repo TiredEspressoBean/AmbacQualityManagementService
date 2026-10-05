@@ -107,7 +107,7 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
 def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, material=None,
                             material_type=None, unit_of_measure: str = "", supplier=None,
                             erp_po_number: str = "", erp_po_line: str = "",
-                            lot_number: str = ""):
+                            lot_number: str = "", original_promised_date=None):
     """Record stock that is **ordered but not yet delivered** as an ON_ORDER lot.
 
     UQMES does not own purchasing — the PO lives in the ERP and we only reference it
@@ -160,6 +160,8 @@ def record_expected_receipt(*, tenant, quantity: Decimal, promised_date, materia
         erp_po_number=erp_po_number,
         erp_po_line=erp_po_line,
         promised_date=promised_date,
+        # A back-ordered remainder keeps the promise the order was made against.
+        original_promised_date=original_promised_date or promised_date,
         quantity=quantity,
         quantity_remaining=quantity,
         unit_of_measure=unit_of_measure or getattr(material, "unit_of_measure", "") or "EA",
@@ -267,6 +269,11 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
             locked.ordered_quantity = ordered
             locked.short_receipt = remainder
             update += ["ordered_quantity", "short_receipt"]
+        elif short_by < 0:
+            # More came than was ordered. Normal enough to accept, worth recording: the
+            # lot keeps what was ordered so the overage shows.
+            locked.ordered_quantity = ordered
+            update.append("ordered_quantity")
 
         if supplier_lot_number is not None:
             locked.supplier_lot_number = supplier_lot_number.strip()
@@ -289,6 +296,7 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
             # The rest stays on order as its own expected lot, so planning still sees it.
             record_expected_receipt(
                 tenant=locked.tenant, quantity=short_by, promised_date=locked.promised_date,
+                original_promised_date=locked.original_promised_date,
                 material=locked.material, material_type=locked.material_type,
                 unit_of_measure=locked.unit_of_measure, supplier=locked.supplier,
                 erp_po_number=locked.erp_po_number, erp_po_line=locked.erp_po_line,
@@ -376,6 +384,10 @@ def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
     changed = [f for f, v in changes.items() if getattr(open_lot, f) != v]
     if not changed:
         return open_lot, IMPORT_UNCHANGED
+    if "promised_date" in changed and open_lot.original_promised_date is None:
+        # Recorded before the first promise was kept: the date being replaced is it.
+        open_lot.original_promised_date = open_lot.promised_date
+        changed.append("original_promised_date")
     for f in changed:
         setattr(open_lot, f, changes[f])
     if "quantity" in changed:
@@ -526,6 +538,43 @@ def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
             object_id=locked.id, field_name="quantity_remaining",
             old_value=str(old), new_value=str(new_quantity), reason=reason, edited_by=user)
         locked.quantity_remaining = new_quantity
+        locked.save(update_fields=update)
+    lot.refresh_from_db()
+    return lot
+
+
+def chase_expected_receipt(lot, *, user, note: str, promised_date=None):
+    """The buyer chased a late (or soon due) delivery: record what they were told, and a
+    new promise if one was given. The first promise stays as it was — on-time delivery
+    is judged against it."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.utils import timezone
+    from Tracker.models import MaterialLot, RecordEdit
+
+    note = (note or "").strip()
+    if not note:
+        raise ValueError("Say what the supplier told you.")
+    with transaction.atomic():
+        locked = MaterialLot.objects.select_for_update().get(pk=lot.pk)  # tenant-safe: pk of a scoped lot
+        if locked.status != "ON_ORDER":
+            raise ValueError(f"Lot {locked.lot_number} has arrived — there's nothing left to chase.")
+        ct = ContentType.objects.get_for_model(MaterialLot)
+        update = ["chase_note", "chased_at", "updated_at"]
+        if promised_date is not None and promised_date != locked.promised_date:
+            RecordEdit.objects.create(
+                tenant=locked.tenant, content_type=ct, object_id=locked.id, field_name="promised_date",
+                old_value=str(locked.promised_date or ""), new_value=str(promised_date),
+                reason=note, edited_by=user)
+            if locked.original_promised_date is None:
+                locked.original_promised_date = locked.promised_date
+                update.append("original_promised_date")
+            locked.promised_date = promised_date
+            update.append("promised_date")
+        RecordEdit.objects.create(
+            tenant=locked.tenant, content_type=ct, object_id=locked.id, field_name="chase_note",
+            old_value=locked.chase_note, new_value=note, reason="Chased", edited_by=user)
+        locked.chase_note = note
+        locked.chased_at = timezone.now()
         locked.save(update_fields=update)
     lot.refresh_from_db()
     return lot

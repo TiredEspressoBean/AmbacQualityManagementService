@@ -50,6 +50,7 @@ const formSchema = schemas.CompanyRequest.pick({
     is_customer: true,
     is_supplier: true,
     address: true,
+    requires_coc_on_shipment: true,
 });
 
 // "" and null both reach us for an unset arrangement (blank=True, null=True).
@@ -85,6 +86,7 @@ export default function CompanyFormPage() {
             is_customer: true,
             is_supplier: true,
             address: "",
+            requires_coc_on_shipment: false,
         },
     });
 
@@ -103,6 +105,7 @@ export default function CompanyFormPage() {
                 is_customer: company.is_customer ?? true,
                 is_supplier: company.is_supplier ?? true,
                 address: company.address ?? "",
+                requires_coc_on_shipment: company.requires_coc_on_shipment ?? false,
             });
         }
     }, [mode, company, form]);
@@ -122,6 +125,7 @@ export default function CompanyFormPage() {
             is_customer: values.is_customer ?? true,
             is_supplier: values.is_supplier ?? true,
             address: values.address ?? "",
+            requires_coc_on_shipment: values.requires_coc_on_shipment ?? false,
         };
 
         if (mode === "edit" && companyId) {
@@ -265,6 +269,22 @@ export default function CompanyFormPage() {
                                 </FormControl>
                                 <FormDescription>Printed on SCARs and return-to-vendor sheets.</FormDescription>
                                 <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="requires_coc_on_shipment"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center justify-between gap-3 rounded-md border p-4">
+                                <div>
+                                    <FormLabel>CoC with every shipment</FormLabel>
+                                    <FormDescription>Print a Certificate of Conformance with the packing list each time we ship to them.</FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value ?? false} onCheckedChange={field.onChange} />
+                                </FormControl>
                             </FormItem>
                         )}
                     />

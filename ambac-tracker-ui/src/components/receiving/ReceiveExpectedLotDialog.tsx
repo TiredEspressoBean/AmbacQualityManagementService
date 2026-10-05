@@ -267,9 +267,9 @@ export function ReceiveExpectedLotDialog({
                             )}
                         </div>
                         <div className="space-y-1.5">
-                            <Label>Bought from</Label>
+                            <Label>Source <span className="text-muted-foreground">(from the paperwork, if shown)</span></Label>
                             <Select value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
-                                <SelectTrigger aria-label="Bought from"><SelectValue placeholder="Optional" /></SelectTrigger>
+                                <SelectTrigger aria-label="Source"><SelectValue placeholder="Optional" /></SelectTrigger>
                                 <SelectContent>
                                     {SOURCE_TYPE_OPTIONS.map((o) => (
                                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>

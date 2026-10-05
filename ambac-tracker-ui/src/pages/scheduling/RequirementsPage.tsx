@@ -161,18 +161,21 @@ export function RequirementsPage() {
   const exportCsv = () =>
     downloadCsv(
       `requirements_${todayISO}`,
-      ["Lane", "Item", "Kind / Component", "Qty", "Need by", "Order by", "Notes"],
+      // Part number, unit and supplier ride along so the sheet can be keyed into the ERP
+      // without looking each item up again.
+      ["Lane", "Item", "Part number", "Kind / Component", "Qty", "Unit", "Supplier", "Need by", "Order by", "Notes"],
       [
-        ...source.map((r) => ["Source", r.material, "Buy", r.qty_short, r.need_by ?? "", r.order_by ?? "",
+        ...source.map((r) => ["Source", r.material, r.part_number ?? "", "Buy", r.qty_short, r.unit_of_measure ?? "",
+          r.preferred_supplier_name ?? "", r.need_by ?? "", r.order_by ?? "",
           [r.incoming_date ? `incoming ${r.incoming_date}` : "",
            (r.recoverable ?? 0) > 0
              ? `recoverable ${r.recoverable} from ${r.recoverable_cores} cores`
              : ""].filter(Boolean).join("; ")]),
-        ...recover.map((r) => ["Recover", r.core_type, `tear down ${r.cores_to_tear_down}`,
-          r.cores_to_tear_down, r.need_by ?? "", r.start_by ?? "",
+        ...recover.map((r) => ["Recover", r.core_type, "", `tear down ${r.cores_to_tear_down}`,
+          r.cores_to_tear_down, "", "", r.need_by ?? "", r.start_by ?? "",
           r.components.map((c) => `${c.component} ${c.covered_by_teardown}/${c.needed}`).join("; ")]),
-        ...produce.map((r) => ["Produce", r.component, r.work_order, r.qty, r.need_by ?? "", "", r.status]),
-        ...tooling.map((r) => ["Tooling", r.fixture, r.kind, "", "", r.order_by ?? "", ""]),
+        ...produce.map((r) => ["Produce", r.component, "", r.work_order, r.qty, "", "", r.need_by ?? "", "", r.status]),
+        ...tooling.map((r) => ["Tooling", r.fixture, "", r.kind, "", "", "", "", r.order_by ?? "", ""]),
       ]
     );
 
@@ -221,7 +224,7 @@ export function RequirementsPage() {
           <Button size="sm" variant="outline" disabled={pickedRows.length === 0}
             onClick={() => setExpectOpen(true)}>
             <Truck className="mr-1.5 h-4 w-4" />
-            Expect{pickedRows.length > 0 ? ` ${pickedRows.length}` : ""}
+            Add expected deliver{pickedRows.length === 1 ? "y" : "ies"}{pickedRows.length > 0 ? ` (${pickedRows.length})` : ""}
           </Button>
         }
       >

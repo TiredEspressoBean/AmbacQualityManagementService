@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { ExternalLink, Plus, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import {
     useCreateStorageLocation, useStorageLocations, useUpdateStorageLocation,
 } from "@/hooks/useReceivingMutations";
+import { useReportEmail } from "@/hooks/useReportEmail";
 import type { Schema } from "@/lib/api/types";
 
 type Loc = Schema<"StorageLocation">;
@@ -21,6 +23,7 @@ function LocationRow({ loc }: { loc: Loc }) {
     const [name, setName] = useState(loc.name);
     const [description, setDescription] = useState(loc.description ?? "");
     const update = useUpdateStorageLocation();
+    const { downloadReport } = useReportEmail();
     const dirty = name.trim() !== loc.name || description.trim() !== (loc.description ?? "");
     const save = () => update.mutate({ id: String(loc.id), name: name.trim(), description: description.trim() }, {
         onSuccess: () => toast.success("Saved"),
@@ -37,6 +40,13 @@ function LocationRow({ loc }: { loc: Loc }) {
                     onCheckedChange={(c) => update.mutate({ id: String(loc.id), is_active: c })} />
                 {!(loc.is_active ?? true) && <Badge variant="outline">Inactive</Badge>}
             </div>
+            <Button size="sm" variant="ghost" aria-label={`Print a label for ${loc.name}`}
+                onClick={() => void downloadReport("location_label", { names: [loc.name], copies: 1, layout: "thermal" })}>
+                <Tag className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" asChild aria-label={`Open ${loc.name}`}>
+                <Link to="/production/locations/$name" params={{ name: loc.name }}><ExternalLink className="h-4 w-4" /></Link>
+            </Button>
         </div>
     );
 }
@@ -45,7 +55,8 @@ function LocationRow({ loc }: { loc: Loc }) {
  * The tenant's list of places stock is put away. Optional: with none here, receiving
  * takes any location typed and suggests ones used before. Once there are entries,
  * receiving offers only the active ones — so "Rack 3", "rack3" and "R3" stop being
- * three places. Flat on purpose; aisle/bin structure is warehouse management.
+ * three places, and moves must go to one of them. Renaming one carries what's in it
+ * across. Flat on purpose; aisle/bin structure is warehouse management.
  */
 export function StorageLocationsEditorPage() {
     const { data, isLoading } = useStorageLocations();

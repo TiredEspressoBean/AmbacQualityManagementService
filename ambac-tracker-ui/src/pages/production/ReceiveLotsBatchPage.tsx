@@ -172,7 +172,7 @@ export function ReceiveLotsBatchPage() {
                                 <TableHead>Supplier Lot</TableHead>
                                 <TableHead>Location</TableHead>
                                 <TableHead>Heat #</TableHead>
-                                <TableHead>Bought from</TableHead>
+                                <TableHead>Source</TableHead>
                                 <TableHead title="A customer's own material sent in for their job">Customer&rsquo;s own</TableHead>
                                 <TableHead></TableHead>
                             </TableRow>
@@ -233,7 +233,7 @@ export function ReceiveLotsBatchPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Select value={r.source_type} onValueChange={(v) => setCell(idx, "source_type", v)}>
-                                                <SelectTrigger className="min-w-32" aria-label={`Bought from, row ${idx + 1}`}><SelectValue /></SelectTrigger>
+                                                <SelectTrigger className="min-w-32" aria-label={`Source, row ${idx + 1}`}><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value={NONE}>—</SelectItem>
                                                     {SOURCE_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}

@@ -1578,6 +1578,9 @@ class Companies(SecureModel):
     address = models.TextField(
         blank=True, help_text="Postal address — printed on SCARs and return-to-vendor sheets.")
 
+    # Some customers want a Certificate of Conformance with every shipment; most don't.
+    requires_coc_on_shipment = models.BooleanField(
+        default=False, help_text="Print a Certificate of Conformance with every shipment to this customer.")
     class Meta:
         verbose_name_plural = 'Companies'
         verbose_name = 'Company'

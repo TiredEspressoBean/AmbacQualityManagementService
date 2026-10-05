@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.db.models import F
+from django.db.models.functions import Coalesce
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,10 @@ def compute_supplier_scorecard(supplier) -> SupplierScorecard:
 
     promised = lots.filter(promised_date__isnull=False)
     promised_n = promised.count()
-    on_time = promised.filter(received_date__lte=F("promised_date")).count()
+    # Against the FIRST promise: a re-promise moves promised_date, and judging against
+    # that would score a supplier who slipped twice as on time.
+    on_time = (promised.annotate(_first_promise=Coalesce("original_promised_date", "promised_date"))
+               .filter(received_date__lte=F("_first_promise")).count())
 
     open_scars = (
         CAPA.objects.filter(archived=False, supplier=supplier, capa_type="SUPPLIER")  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes

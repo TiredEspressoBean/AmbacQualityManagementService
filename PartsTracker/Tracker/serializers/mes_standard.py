@@ -351,7 +351,8 @@ class MaterialLotSerializer(SecureModelMixin):
             'material_type', 'material_type_name',
             'material', 'material_name', 'item_name', 'material_description',
             'supplier', 'supplier_name', 'supplier_lot_number',
-            'erp_po_number', 'erp_po_line', 'promised_date', 'delivery_state',
+            'erp_po_number', 'erp_po_line', 'promised_date', 'original_promised_date',
+            'chase_note', 'chased_at', 'delivery_state',
             'ordered_quantity', 'short_receipt',
             'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
@@ -363,12 +364,16 @@ class MaterialLotSerializer(SecureModelMixin):
             'item_purchase_unit', 'item_units_per_purchase_unit',
             'item_requires_coc', 'item_requires_heat_number', 'awaiting_return',
             'child_lot_count', 'lineage',
+            # A customer's bulk cores (reman), not supplier stock — no receiving inspection.
+            'holds_cores',
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
             'created_at', 'updated_at', 'quantity_remaining',
             'parent_lot_number', 'child_lot_count', 'received_by',
             'hold_reason',
+            # Kept by the service: the first promise, and the buyer's chases (`chase`).
+            'original_promised_date', 'chase_note', 'chased_at', 'holds_cores',
             # Set by receiving a short delivery, not edited.
             'ordered_quantity', 'short_receipt',
             # Moved only by the services — receiving routing, inspection, reject,
@@ -396,6 +401,16 @@ class MaterialLotSerializer(SecureModelMixin):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        # A location edited here is a move like any other: held to the managed list, and
+        # recorded (old → new, who) in update() — services/mes/locations.py.
+        if (self.instance is not None and 'storage_location' in attrs
+                and (attrs['storage_location'] or '') != (self.instance.storage_location or '')
+                and (attrs['storage_location'] or '').strip()):
+            from Tracker.services.mes.locations import canonical_location
+            try:
+                attrs['storage_location'] = canonical_location(self.instance.tenant, attrs['storage_location'])
+            except ValueError as e:
+                raise serializers.ValidationError({'storage_location': str(e)})
         # Counted in the buying unit ("3 boxes"): the stock quantity is derived from it,
         # and both are kept. In the stock unit, the entered quantity stands as it is.
         amount = attrs.get('received_as_quantity')
@@ -481,6 +496,17 @@ class MaterialLotSerializer(SecureModelMixin):
             today = tenant_today(obj.tenant_id)
             self.context['_tenant_today'] = today
         return delivery_state(obj, today)
+
+
+    def update(self, instance, validated_data):
+        old = instance.storage_location or ''
+        lot = super().update(instance, validated_data)
+        if (lot.storage_location or '') != old:
+            from Tracker.services.mes.locations import record_move
+            request = self.context.get('request')
+            record_move(lot, old, lot.storage_location, getattr(request, 'user', None), "Edited")
+        return lot
+
 
 class MaterialLotSplitSerializer(serializers.Serializer):
     """Serializer for splitting a lot"""
@@ -580,6 +606,9 @@ class LateDeliverySerializer(serializers.Serializer):
     erp_po_number = serializers.CharField(allow_blank=True)
     erp_po_line = serializers.CharField(allow_blank=True)
     promised_date = serializers.DateField()
+    original_promised_date = serializers.DateField(allow_null=True)
+    chase_note = serializers.CharField(allow_null=True)
+    chased_at = serializers.DateTimeField(allow_null=True)
     days_late = serializers.IntegerField(
         help_text="Positive: days past the promised date. Zero or negative: due today or in that many days.")
     quantity = serializers.FloatField()
@@ -587,6 +616,12 @@ class LateDeliverySerializer(serializers.Serializer):
     state = serializers.ChoiceField(choices=DELIVERY_STATES)
     holding_up_count = serializers.IntegerField()
     holding_up = LateDeliveryWorkOrderSerializer(many=True)
+
+
+class ChaseExpectedReceiptSerializer(serializers.Serializer):
+    """The buyer chased a delivery: what they were told, and a new promise if given."""
+    note = serializers.CharField()
+    promised_date = serializers.DateField(required=False, allow_null=True)
 
 
 class ReceiveExpectedLotSerializer(serializers.Serializer):
@@ -677,6 +712,9 @@ class TracePartSerializer(serializers.Serializer):
     order_id = serializers.CharField(allow_null=True)
     order = serializers.CharField(allow_null=True)
     customer = serializers.CharField(allow_null=True)
+    shipment_id = serializers.CharField(allow_null=True)
+    shipment = serializers.CharField(allow_null=True)
+    shipped_at = serializers.DateTimeField(allow_null=True)
 
 
 class TraceUseSerializer(serializers.Serializer):

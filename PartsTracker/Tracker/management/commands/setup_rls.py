@@ -59,6 +59,7 @@ class Command(BaseCommand):
         'Tracker_stepexecution',
         'Tracker_steptransitionlog',
         'Tracker_outsideprocessshipment',
+        'Tracker_customershipment',
 
         # QMS - Quality Reports
         'Tracker_qualityreports',

@@ -106,6 +106,11 @@ def late_deliveries(tenant, today=None) -> list[dict]:
             "erp_po_number": lot.erp_po_number,
             "erp_po_line": lot.erp_po_line,
             "promised_date": lot.promised_date,
+            # Set when the supplier has re-promised: what they first said.
+            "original_promised_date": (lot.original_promised_date
+                                       if lot.original_promised_date not in (None, lot.promised_date) else None),
+            "chase_note": lot.chase_note or None,
+            "chased_at": lot.chased_at,
             # Positive = days late; zero or negative = due today or in that many days.
             "days_late": (today - lot.promised_date).days,
             "quantity": float(lot.quantity),

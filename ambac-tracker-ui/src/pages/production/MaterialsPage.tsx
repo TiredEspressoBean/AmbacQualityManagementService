@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileDown, FileUp, MoreHorizontal, PackagePlus, Truck } from "lucide-react";
 import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { AdjustLotQuantityDialog } from "@/components/receiving/AdjustLotQuantityDialog";
+import { MoveLotDialog } from "@/components/locations/MoveLotDialog";
+import { ChaseDeliveryDialog } from "@/components/receiving/ChaseDeliveryDialog";
 import { RejectRemainderDialog, ShipBackDialog } from "@/components/receiving/LotReturnDialogs";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
@@ -102,6 +104,8 @@ export function MaterialsPage() {
     const [importOpen, setImportOpen] = useState(false);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
+    const [moveLot, setMoveLot] = useState<Lot | null>(null);
+    const [chaseLot, setChaseLot] = useState<Lot | null>(null);
     const [cancelLot, setCancelLot] = useState<Lot | null>(null);
     const [shipLot, setShipLot] = useState<Lot | null>(null);
     const [remainderLot, setRemainderLot] = useState<Lot | null>(null);
@@ -151,14 +155,14 @@ export function MaterialsPage() {
             extraToolbarContent={
                 <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                        <FileUp className="h-4 w-4 mr-1" /> Import expected
+                        <FileUp className="h-4 w-4 mr-1" /> Import POs
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setReceiptsOpen(true)}
                         title="What was received, by PO line, to post in the ERP">
                         <FileDown className="h-4 w-4 mr-1" /> Receipts for ERP
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setExpectOpen(true)}>
-                        <Truck className="h-4 w-4 mr-1" /> Expect
+                        <Truck className="h-4 w-4 mr-1" /> Add expected delivery
                     </Button>
                     <Button size="sm" onClick={() => navigate({ to: "/production/material-lots/receive" })}>
                         <PackagePlus className="h-4 w-4 mr-1" /> Receive
@@ -243,11 +247,21 @@ export function MaterialsPage() {
                     ? col({
                           header: "Promised",
                           renderCell: (l) => (
-                              <div className="flex items-center gap-1.5">
-                                  <span>{l.promised_date ?? "—"}</span>
-                                  {l.delivery_state === "OVERDUE" && <Badge variant="destructive">Overdue</Badge>}
-                                  {l.delivery_state === "DUE_SOON" && (
-                                      <Badge className="bg-amber-500 text-white hover:bg-amber-500">Due soon</Badge>
+                              <div>
+                                  <div className="flex items-center gap-1.5">
+                                      <span>{l.promised_date ?? "—"}</span>
+                                      {l.delivery_state === "OVERDUE" && <Badge variant="destructive">Overdue</Badge>}
+                                      {l.delivery_state === "DUE_SOON" && (
+                                          <Badge className="bg-amber-500 text-white hover:bg-amber-500">Due soon</Badge>
+                                      )}
+                                  </div>
+                                  {l.original_promised_date && l.original_promised_date !== l.promised_date && (
+                                      <div className="text-xs text-muted-foreground">first promised {l.original_promised_date}</div>
+                                  )}
+                                  {l.chase_note && (
+                                      <div className="max-w-56 truncate text-xs italic text-muted-foreground" title={l.chase_note}>
+                                          Chased: {l.chase_note}
+                                      </div>
                                   )}
                               </div>
                           ),
@@ -286,6 +300,7 @@ export function MaterialsPage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => setChaseLot(l)}>Chase…</DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => setCancelLot(l)}>
                                             Cancel expected receipt…
                                         </DropdownMenuItem>
@@ -293,7 +308,7 @@ export function MaterialsPage() {
                                 </DropdownMenu>
                             </>
                         )}
-                        {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
+                        {!l.holds_cores && (l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
                             <Button size="sm"
                                 onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}>
                                 {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
@@ -319,6 +334,9 @@ export function MaterialsPage() {
                                         Print label (Letter sheet)
                                     </DropdownMenuItem>
                                     {inStock && (
+                                        <DropdownMenuItem onSelect={() => setMoveLot(l)}>Move…</DropdownMenuItem>
+                                    )}
+                                    {inStock && (
                                         <DropdownMenuItem onSelect={() => setAdjustLot(l)}>Adjust quantity…</DropdownMenuItem>
                                     )}
                                     {/* The retained evidence of release (ISO 9001 §8.6). */}
@@ -335,7 +353,11 @@ export function MaterialsPage() {
                                         </DropdownMenuItem>
                                     )}
                                     {canRejectWholeLot && (l.status === "ACCEPTED" || l.status === "IN_USE") && (
-                                        <DropdownMenuItem onSelect={() => setRemainderLot(l)}>Reject the rest…</DropdownMenuItem>
+                                        <>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive"
+                                                onSelect={() => setRemainderLot(l)}>Reject remaining stock…</DropdownMenuItem>
+                                        </>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -366,6 +388,14 @@ export function MaterialsPage() {
                 onOpenChange={(o) => { if (!o) setReceiveLot(null); }}
             />
         )}
+        {chaseLot && (
+            <ChaseDeliveryDialog key={String(chaseLot.id)} open
+                target={{ lot_id: String(chaseLot.id), item_name: chaseLot.item_name ?? chaseLot.lot_number,
+                          supplier_name: chaseLot.supplier_name, erp_po_number: chaseLot.erp_po_number,
+                          erp_po_line: chaseLot.erp_po_line, promised_date: chaseLot.promised_date,
+                          chase_note: chaseLot.chase_note }}
+                onOpenChange={(o) => { if (!o) setChaseLot(null); }} />
+        )}
         {cancelLot && (
             <CancelExpectedReceiptDialog
                 key={String(cancelLot.id)}
@@ -376,6 +406,12 @@ export function MaterialsPage() {
                 open={cancelLot !== null}
                 onOpenChange={(o) => { if (!o) setCancelLot(null); }}
             />
+        )}
+        {moveLot && (
+            <MoveLotDialog key={String(moveLot.id)}
+                lot={{ id: String(moveLot.id), lot_number: moveLot.lot_number, storage_location: moveLot.storage_location,
+                       quantity_remaining: moveLot.quantity_remaining, unit_of_measure: moveLot.unit_of_measure }}
+                open={moveLot !== null} onOpenChange={(o) => { if (!o) setMoveLot(null); }} />
         )}
         {adjustLot && (
             <AdjustLotQuantityDialog

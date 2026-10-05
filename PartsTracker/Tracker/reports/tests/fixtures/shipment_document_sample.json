@@ -1,0 +1,22 @@
+{
+  "our_org": "Demo Plant",
+  "shipment_number": "SHP-2026-000014",
+  "shipped_date": "2026-10-05",
+  "customer_name": "Fleet Diesel Co",
+  "customer_address": "400 Harbor Rd, Erie PA 16501",
+  "carrier": "UPS Ground",
+  "tracking_number": "1Z999AA10123456784",
+  "reference": "SHPR-77812",
+  "expected_delivery": "2026-10-08",
+  "orders": ["ORD-2026-0031"],
+  "items": [
+    {"order": "ORD-2026-0031", "line": 1, "part_type": "Injector, remanufactured", "quantity": 3,
+     "serials": ["INJ-1001", "INJ-1002", "INJ-1003"]},
+    {"order": "ORD-2026-0031", "line": 2, "part_type": "Fuel pump", "quantity": 1,
+     "serials": ["FP-220"]}
+  ],
+  "total_units": 4,
+  "shipped_by": "Sam Shipping",
+  "issued_by": "Quinn QA",
+  "issued_date": "2026-10-05"
+}

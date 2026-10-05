@@ -471,10 +471,13 @@ class WorkOrderCompletionIsJudgedRightTests(_RemanDwiBase):
         core.refresh_from_db()
         sync_part_status(core)
 
-    def test_ordinary_parts_are_judged_exactly_as_before(self):
-        """A part that ends SHIPPED (a 'shipped' terminal step) never closed its order
-        before this work, and must not start to now: only COMPLETED, SCRAPPED and
-        CANCELLED end an ordinary part."""
+    def test_an_ordinary_part_ended_by_its_route_closes_its_order(self):
+        """An ordinary part ends at any status its route can end in. This used to pin
+        SHIPPED as NOT ending — but only because a 'SHIPPED' terminal step never
+        produced SHIPPED (the terminal-status map was keyed lower-case, so every route
+        ended COMPLETED). With that fixed (2026-10-05, customer shipping), a route
+        ending at its Ship step ends SHIPPED, and an order whose units all shipped is
+        done — as it was in practice. A unit still in work keeps it open."""
         from Tracker.models import Parts, PartsStatus
         from Tracker.services.mes.parts import _cascade_work_order_completion_for_subject
         process, steps = self._make_process([("Op", True)])
@@ -482,9 +485,17 @@ class WorkOrderCompletionIsJudgedRightTests(_RemanDwiBase):
         Parts.objects.create(ERP_id="P-SHIP", work_order=wo, part_type=self.core_type,
                              step=steps[0], part_status=PartsStatus.SHIPPED,
                              tenant=self.tenant)
+        busy = Parts.objects.create(ERP_id="P-BUSY", work_order=wo, part_type=self.core_type,
+                                    step=steps[0], part_status=PartsStatus.IN_PROGRESS,
+                                    tenant=self.tenant)
         _cascade_work_order_completion_for_subject(wo)
         wo.refresh_from_db()
         self.assertEqual(wo.workorder_status, WorkOrderStatus.IN_PROGRESS)
+        busy.part_status = PartsStatus.IN_STOCK
+        busy.save(update_fields=["part_status"])
+        _cascade_work_order_completion_for_subject(wo)
+        wo.refresh_from_db()
+        self.assertEqual(wo.workorder_status, WorkOrderStatus.COMPLETED)
 
     def test_a_rebuilt_unit_ends_its_order_before_it_is_returned(self):
         """The work is done at REBUILT; sending it back is logistics after the work,

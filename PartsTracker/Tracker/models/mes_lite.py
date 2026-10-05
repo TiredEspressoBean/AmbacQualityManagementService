@@ -106,7 +106,8 @@ class PartsStatus(models.TextChoices):
 # (DISMANTLED) is done: a teardown order's job is to get its units taken apart, and
 # counting one as unfinished left a teardown-only order short of 100% for ever. It is
 # not OUTPUT — "units produced" metrics must not count it (CORE_AS_PART_DESIGN.md §8).
-PROGRESS_DONE_STATUSES = ('COMPLETED', 'DISMANTLED')
+# SHIPPED / IN_STOCK / AWAITING_PICKUP: a route can end there (Steps.terminal_status).
+PROGRESS_DONE_STATUSES = ('COMPLETED', 'DISMANTLED', 'SHIPPED', 'IN_STOCK', 'AWAITING_PICKUP')
 
 
 # ===== MODELS =====
@@ -2048,6 +2049,77 @@ class OutsideProcessShipment(SecureModel, VoidableModel):
         return f"{num} → {self.supplier} ({self.status})"
 
 
+class CustomerShipment(SecureModel, VoidableModel):
+    """One consignment to a customer: the units that left together, on one day, under
+    one paperwork number. Membership is `Parts.customer_shipment`.
+
+    Created by `services/mes/shipping.ship_parts` (never plain CRUD), which completes
+    each part's Ship step; `void_shipment` retracts one recorded by mistake. The
+    paperwork fields stay editable — a tracking number often arrives after the truck
+    leaves. No prices: invoicing is the ERP's, and `reference` is its paperwork number.
+    """
+
+    documents = GenericRelation('Tracker.Documents')
+
+    shipment_number = models.CharField(
+        max_length=100, blank=True,
+        help_text="Auto-generated, tenant-unique (SHP-YYYY-######).",
+    )
+    customer = models.ForeignKey(
+        Companies, on_delete=models.PROTECT, related_name='customer_shipments',
+        help_text="Who the units went to.",
+    )
+    shipped_at = models.DateTimeField(default=timezone.now)
+    shipped_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='customer_shipments_sent',
+    )
+    carrier = models.CharField(max_length=120, blank=True)
+    tracking_number = models.CharField(max_length=120, blank=True)
+    reference = models.CharField(
+        max_length=120, blank=True,
+        help_text="The ERP's shipper or packing-slip number, so the two can be matched.",
+    )
+    expected_delivery = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Customer Shipment'
+        verbose_name_plural = 'Customer Shipments'
+        ordering = ['-shipped_at']
+        indexes = [models.Index(fields=['customer', 'shipped_at'])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'shipment_number'],
+                condition=models.Q(shipment_number__isnull=False) & ~models.Q(shipment_number=''),
+                name='customer_shipment_tenant_number_uniq',
+            ),
+        ]
+
+    @classmethod
+    def generate_shipment_number(cls, tenant=None):
+        """Auto-generate shipment number: SHP-YYYY-######."""
+        from Tracker.utils.sequences import generate_next_sequence
+
+        year = timezone.now().year
+        return generate_next_sequence(
+            queryset=cls.objects,
+            number_field='shipment_number',
+            prefix=f"SHP-{year}-",
+            padding=6,
+            tenant=tenant,
+        )
+
+    def save(self, *args, **kwargs):
+        """Auto-fill shipment_number on creation, then persist."""
+        if not self.shipment_number:
+            self.shipment_number = self.generate_shipment_number(self.tenant)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.shipment_number or 'SHP'} → {self.customer}"
+
+
 class OrdersStatus(models.TextChoices):
     RFI = 'RFI', 'RFI'
     PENDING = 'PENDING', "Pending"
@@ -3283,6 +3355,14 @@ class Parts(SecureModel):
 
     work_order = models.ForeignKey(WorkOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name='parts')
     """Optional reference to the internal Work Order this part is attached to."""
+
+    customer_shipment = models.ForeignKey(
+        'CustomerShipment', on_delete=models.PROTECT, null=True, blank=True, related_name='parts')
+    """The shipment this unit left on (services/mes/shipping.py). Null until it ships."""
+
+    storage_location = models.CharField(max_length=100, blank=True)
+    """Where the unit sits when it isn't on a step — a shelf, a cage, the yard. Changed
+    only by a recorded move (services/mes/locations.py)."""
 
     # String reference: Core lives in models/reman.py, which imports THIS module.
     # PROTECT rather than SET_NULL. Nothing hits it today — hard delete is disabled

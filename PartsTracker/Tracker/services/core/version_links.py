@@ -61,6 +61,7 @@ LINKS = {
     'NotificationSchedule.scope_customer': FOLLOWS,
     'Orders.company': FOLLOWS,
     'OutsideProcessShipment.supplier': FOLLOWS,
+    'CustomerShipment.customer': FOLLOWS,
     'PartApproval.supplier': FOLLOWS,
     'PartTypes.preferred_supplier': FOLLOWS,
     'SamplingRuleSet.supplier': FOLLOWS,

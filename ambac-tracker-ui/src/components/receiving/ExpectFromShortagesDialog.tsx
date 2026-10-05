@@ -103,7 +103,7 @@ export function ExpectFromShortagesDialog({ rows, open, onOpenChange, onDone }: 
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle>Expect deliveries</DialogTitle>
+                    <DialogTitle>Add expected deliveries</DialogTitle>
                     <DialogDescription>
                         Record what you&rsquo;ve ordered in the ERP so planning counts it as
                         incoming. Nothing is purchased here.

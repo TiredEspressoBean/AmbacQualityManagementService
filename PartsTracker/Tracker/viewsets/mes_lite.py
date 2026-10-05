@@ -16,6 +16,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
+from Tracker.serializers.locations import MovePartsRequestSerializer, MovePartsResultSerializer
 
 from Tracker.filters import PartFilter, OrderFilter
 from Tracker.models import (
@@ -260,11 +261,27 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
     # split_from_lot / rejoin_to_lot likewise MODIFY a part's cohort membership, so they
     # are gated by change_parts (below) rather than the POST→add_parts default — splitting
     # or rejoining a part is not "creating" one. CRUD-exempt so add_parts doesn't also apply.
-    crud_exempt_actions = {'resolve_decision', 'split_from_lot', 'rejoin_to_lot'}
+    crud_exempt_actions = {'resolve_decision', 'split_from_lot', 'rejoin_to_lot', 'move'}
     action_permissions = {
         'split_from_lot': ['change_parts'],
         'rejoin_to_lot': ['change_parts'],
+        'move': ['change_parts'],
     }
+
+    @extend_schema(request=MovePartsRequestSerializer, responses=MovePartsResultSerializer,
+                   description="Move serialised units to a location, recorded. All or nothing.")
+    @action(detail=False, methods=['post'], url_path='move')
+    def move(self, request):
+        from Tracker.services.mes.locations import move_parts
+        req = MovePartsRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        parts = list(Parts.objects.filter(pk__in=req.validated_data['part_ids']))  # tenant-safe: .objects auto-scopes (request context)
+        try:
+            n = move_parts(request.tenant, parts, to=req.validated_data['to'], user=request.user,
+                           reason=req.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'moved': n})
 
     # `resolve_step_decision` lives in `cosign_actions`, not
     # `action_permissions`, for the same reason FPI buy-off does: an operator

@@ -127,6 +127,7 @@ from .mes_lite import (
 
     # Outside processing (subcontract ops — Flow B)
     OutsideProcessShipment,
+    CustomerShipment,
 
     # Step requirements (workflow engine)
     RequirementType,
@@ -465,6 +466,7 @@ __all__ = [
     'ProcessStatus',
     'StepExecution',
     'OutsideProcessShipment',
+    'CustomerShipment',
     'RequirementType',
     'StepRequirement',
     'DecisionDataMissing',

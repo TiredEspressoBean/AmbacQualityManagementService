@@ -124,6 +124,8 @@ SOFT_DELETE_MODELS = {
     'fpirecord', 'qualityreportequipment', 'qualityreportpersonnel',
     'stepexecutionequipment',
     'batchexecution', 'steprequirement', 'outsideprocessshipment',
+    # A shipment recorded by mistake is voided (its parts go back), never deleted.
+    'customershipment',
     # ('milestone' moved out: the milestones editor has a delete button, so
     # delete_milestone is granted to staff — see presets.py.)
     'milestonetemplate',

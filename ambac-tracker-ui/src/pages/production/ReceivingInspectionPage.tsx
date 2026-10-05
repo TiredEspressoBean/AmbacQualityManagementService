@@ -40,7 +40,7 @@ function QualificationBanner({ supplierId, partTypeId }: { supplierId?: string |
 /** Dedicated Certificate of Conformance capture — populates the lot's
  *  `certificate_of_conformance` FileField (what the supplier scorecard's
  *  CoC-compliance metric reads), distinct from generic attached Documents. */
-function CocCapture({ lotId, cocUrl }: { lotId: string; cocUrl?: string | null }) {
+function CocCapture({ lotId, cocUrl, required }: { lotId: string; cocUrl?: string | null; required: boolean }) {
     const upload = useUploadLotCoC();
     const inputRef = useRef<HTMLInputElement>(null);
     const pick = () => inputRef.current?.click();
@@ -61,7 +61,10 @@ function CocCapture({ lotId, cocUrl }: { lotId: string; cocUrl?: string | null }
                     <a href={cocUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">View</a>
                 </>
             ) : (
-                <span className="text-amber-700">No Certificate of Conformance captured for this lot.</span>
+                // A warning only where the item requires a CoC; elsewhere it's just absent.
+                <span className={required ? "text-amber-700" : "text-muted-foreground"}>
+                    {required ? "No Certificate of Conformance captured — this item requires one." : "No Certificate of Conformance on file."}
+                </span>
             )}
             <input ref={inputRef} type="file" className="hidden" onChange={onFile} />
             <Button variant="outline" size="sm" className="ml-auto" disabled={upload.isPending} onClick={pick}>
@@ -257,7 +260,7 @@ export function ReceivingInspectionPage() {
                 <CardContent className="space-y-3">
                     <LotHoldPanel lot={lot} />
                     <QualificationBanner supplierId={lot.supplier as string | null} partTypeId={lot.material_type as string | null} />
-                    <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} />
+                    <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} required={!!lot.item_requires_coc} />
                     {noPlan && (
                         <p className="text-sm text-destructive">
                             No receiving inspection plan for this item. Create one under Supply → Receiving

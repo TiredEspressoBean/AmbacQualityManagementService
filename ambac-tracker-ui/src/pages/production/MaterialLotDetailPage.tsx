@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { ArrowRight, FileText, Tag } from "lucide-react";
+import { ArrowRight, FileText, MapPin, Tag } from "lucide-react";
 import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCar
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { LotHoldBadges } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
+import { MoveLotDialog } from "@/components/locations/MoveLotDialog";
 import { materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import type { Schema } from "@/lib/api/types";
@@ -58,6 +59,7 @@ export function MaterialLotDetailPage() {
     const navigate = useNavigate();
     const { data: lot, isLoading } = useQuery(materialLotOptions(lotId));
     const [docsOpen, setDocsOpen] = useState(false);
+    const [moveOpen, setMoveOpen] = useState(false);
     const { data: trace } = useQuery(traceOptions(lotId));
     const { downloadReport } = useReportEmail();
 
@@ -90,7 +92,7 @@ export function MaterialLotDetailPage() {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
+                    {!l.holds_cores && (l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
                         <Button size="sm" onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } })}>
                             {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
                         </Button>
@@ -99,6 +101,11 @@ export function MaterialLotDetailPage() {
                         <Button size="sm" variant="outline"
                             onClick={() => void downloadReport("material_lot_label", { lot_ids: [lotId], copies: 1, layout: "thermal" })}>
                             <Tag className="mr-1 h-4 w-4" /> Label
+                        </Button>
+                    )}
+                    {["RECEIVED", "AWAITING_INSPECTION", "ACCEPTED", "IN_USE", "QUARANTINE", "REJECTED"].includes(l.status ?? "") && (
+                        <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
+                            <MapPin className="mr-1 h-4 w-4" /> Move
                         </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => setDocsOpen(true)}>
@@ -132,9 +139,18 @@ export function MaterialLotDetailPage() {
                 <CardHeader className="pb-2"><CardTitle className="text-base">The lot</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     <Field label="On hand">{`${l.quantity_remaining ?? "—"} ${unit}`} <span className="text-muted-foreground">of {l.quantity}</span></Field>
+                    {l.ordered_quantity != null && (
+                        <Field label="Ordered">{`${l.ordered_quantity} ${unit}`}{" "}
+                            <span className="text-muted-foreground">{Number(l.quantity) > Number(l.ordered_quantity)
+                                ? `· ${Number(l.quantity) - Number(l.ordered_quantity)} over`
+                                : l.short_receipt === "BACKORDERED" ? "· rest back-ordered" : "· nothing more expected"}</span>
+                        </Field>
+                    )}
                     <Field label="Counted as">{l.received_as_quantity && l.received_as_unit ? `${l.received_as_quantity} ${l.received_as_unit.toLowerCase()}` : null}</Field>
                     <Field label="Received">{l.received_date ? `${l.received_date}${l.received_by_name ? ` · ${l.received_by_name}` : ""}` : null}</Field>
-                    <Field label="Location">{l.storage_location || null}</Field>
+                    <Field label="Location">{l.storage_location
+                        ? <Link to="/production/locations/$name" params={{ name: l.storage_location }} className="underline">{l.storage_location}</Link>
+                        : null}</Field>
                     <Field label="Use by">{l.expiration_date ?? null}</Field>
                     <Field label="CoC">{l.certificate_of_conformance
                         ? <a className="underline" href={l.certificate_of_conformance as string} target="_blank" rel="noreferrer">On file</a>
@@ -149,7 +165,7 @@ export function MaterialLotDetailPage() {
                         <Field label="Supplier">{b?.supplier}</Field>
                         <Field label="Their lot">{b?.supplier_lot_number}</Field>
                         <Field label="Heat number">{b?.heat_number}</Field>
-                        <Field label="Bought from">{b?.source_type}</Field>
+                        <Field label="Source">{b?.source_type}</Field>
                         <Field label="ERP PO / line">{b?.erp_po}</Field>
                         <Field label="Split from">{b?.parent_lot_id
                             ? <Link to="/production/material-lots/$lotId" params={{ lotId: b.parent_lot_id }} className="font-mono underline">{b.parent_lot_number}</Link>
@@ -224,7 +240,17 @@ export function MaterialLotDetailPage() {
                                                         ))}
                                                 </td>
                                                 <td className="py-2 pr-3">{[top?.work_order, top?.order].filter(Boolean).join(" · ") || "—"}</td>
-                                                <td className="py-2">{top?.customer ?? "—"}</td>
+                                                <td className="py-2">
+                                                    {top?.customer ?? "—"}
+                                                    {top?.shipment_id ? (
+                                                        <div className="text-xs">
+                                                            <Link to="/production/shipments/$shipmentId" params={{ shipmentId: top.shipment_id }} className="underline">
+                                                                Shipped {top.shipment}
+                                                            </Link>
+                                                            {top.shipped_at ? ` · ${new Date(top.shipped_at).toLocaleDateString()}` : ""}
+                                                        </div>
+                                                    ) : top ? <div className="text-xs text-muted-foreground">Not shipped</div> : null}
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -235,6 +261,9 @@ export function MaterialLotDetailPage() {
                 </CardContent>
             </Card>
 
+            <MoveLotDialog lot={{ id: lotId, lot_number: l.lot_number, storage_location: l.storage_location,
+                                  quantity_remaining: l.quantity_remaining, unit_of_measure: l.unit_of_measure }}
+                open={moveOpen} onOpenChange={setMoveOpen} />
             <RecordHistoryCard endpoint="MaterialLots" id={lotId} model="materiallot" />
         </div>
     );

@@ -111,7 +111,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
         >
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Expect a delivery</DialogTitle>
+                    <DialogTitle>Add an expected delivery</DialogTitle>
                     <DialogDescription>
                         Record a material or part that&rsquo;s on order but hasn&rsquo;t arrived, so planning
                         counts it as incoming supply. It stays out of stock and can&rsquo;t be

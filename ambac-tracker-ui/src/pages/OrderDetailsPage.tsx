@@ -25,6 +25,7 @@ import { OrderLineItem } from "@/components/order-line-item";
 import { OrderDocumentsModal } from "@/components/order-documents-modal";
 // Demand lines. Distinct from `order-line-item` above, which is a Part row.
 import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
+import { OrderShippingCard } from "@/components/orders/OrderShippingCard";
 import { QuickComposer } from "@/components/QuickComposer";
 
 function getStatusIcon(stage: any, size: "sm" | "md" = "md") {
@@ -436,6 +437,7 @@ export function OrderDetailsPage() {
                 planning state both live on the internal order editor
                 (/editOrdersParts/$orderId). */}
             {orderId && <OrderLinesPanel orderId={orderId} readOnly />}
+            {orderId && <OrderShippingCard orderId={orderId} />}
 
             {/* Two Column Layout for Details */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

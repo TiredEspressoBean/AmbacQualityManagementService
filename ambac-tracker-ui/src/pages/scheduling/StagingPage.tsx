@@ -19,7 +19,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { queryOptions, useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
+import { resolveScan } from "@/lib/scan";
 import { Input } from "@/components/ui/input";
 import {
   useStagingList, useMarkStaged, useRecordPick,
@@ -55,8 +57,10 @@ function whenLabel(iso: string): string {
  *  strong as the person tapping, which is why deviating has to be easy enough that
  *  confirming isn't the path of least resistance when the bin was empty.
  *
- *  Typing lot numbers is not the design. It's the escape hatch for the exception; the
- *  real fix is a barcode on the lot, at which point this becomes a scan. */
+ *  Lots carry barcodes now, so the deviation is a scan: the scanned (or typed) lot is
+ *  resolved to the real lot, checked to be the right item, and recorded by id — so
+ *  consumption draws from the lot that went in the tote, not FEFO's guess. A code that
+ *  matches nothing is still recorded as text, so the deviation is never lost. */
 function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
   const recordPick = useRecordPick();
   const [deviating, setDeviating] = useState(false);
@@ -64,6 +68,25 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
   const [qty, setQty] = useState(String(m.needed));
 
   const confirmed = m.picked_qty != null;
+
+  const recordDeviation = async () => {
+    const text = lotText.trim();
+    if (!text || recordPick.isPending) return;
+    const amount = Number(qty) || 0;
+    const hit = await resolveScan(text).catch(() => null);
+    if (hit?.kind === "LOT") {
+      if (hit.item_id && hit.item_id !== m.material_id) {
+        toast.error(`Lot ${hit.label} is ${hit.detail || "another item"}, not ${m.material}.`);
+        return;
+      }
+      send([{ lot_id: hit.id, lot_number: hit.label, qty: amount }], amount);
+      return;
+    }
+    // No lot_id: the picker named a lot nothing matches. Recorded as text so the
+    // deviation is visible rather than lost — consumption falls back to FEFO for the
+    // draw, and the note is what an auditor reads.
+    send([{ lot_id: "", lot_number: text, qty: amount }], amount);
+  };
 
   const send = (lots: { lot_id: string; lot_number?: string; qty: number }[],
                 pickedQty: number) =>
@@ -168,14 +191,16 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
         {deviating && (
           <div className="mt-1.5 space-y-1.5 rounded-md border p-2 text-left">
             <p className="text-[11px] text-muted-foreground">
-              Which lot did you actually take? Free text until lots carry barcodes.
+              Which lot did you actually take? Scan its label, or type the lot number.
             </p>
             <div className="flex gap-1.5">
               <Input
                 className="h-7 text-xs"
-                placeholder="Lot number"
+                placeholder="Scan or type the lot"
+                autoFocus
                 value={lotText}
                 onChange={(e) => setLotText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void recordDeviation(); }}
               />
               <Input
                 className="h-7 w-20 text-xs"
@@ -189,14 +214,7 @@ function MaterialRow({ job, m }: { job: StagingJob; m: StagingMaterial }) {
                 size="sm"
                 className="h-6 px-2 text-[11px]"
                 disabled={!lotText.trim() || recordPick.isPending}
-                onClick={() =>
-                  // No lot_id: the picker named a lot the plan didn't offer, so there's
-                  // nothing to resolve it against yet. Recorded as text so the deviation
-                  // is visible rather than lost — consumption falls back to FEFO for the
-                  // draw, and the note is what an auditor reads.
-                  send([{ lot_id: "", lot_number: lotText.trim(), qty: Number(qty) || 0 }],
-                       Number(qty) || 0)
-                }
+                onClick={() => void recordDeviation()}
               >
                 Record
               </Button>

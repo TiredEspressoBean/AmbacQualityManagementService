@@ -42,6 +42,8 @@ from Tracker.viewsets.scheduling_setup import (
     StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
 )
 from Tracker.viewsets.master_workbook import MasterWorkbookViewSet
+from Tracker.viewsets.shipping import CustomerShipmentViewSet
+from Tracker.viewsets.scan import ScanViewSet
 
 urlpatterns = [
     # Health check endpoints for Azure Container Apps
@@ -236,6 +238,8 @@ router.register(r'MaterialUsages', MaterialUsageViewSet, basename='MaterialUsage
 router.register(r'OutsideProcessShipments', OutsideProcessShipmentViewSet, basename='OutsideProcessShipments')
 
 # Unified incoming-inspection worklist (purchased lots + subcontract returns)
+router.register(r'CustomerShipments', CustomerShipmentViewSet, basename='CustomerShipments')
+router.register(r'scan', ScanViewSet, basename='scan')
 router.register(r'IncomingInspection', IncomingInspectionViewSet, basename='IncomingInspection')
 router.register(r'InspectionInbox', InspectionInboxViewSet, basename='InspectionInbox')
 

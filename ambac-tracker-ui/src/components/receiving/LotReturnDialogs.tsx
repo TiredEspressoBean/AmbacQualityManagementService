@@ -79,7 +79,7 @@ export function RejectRemainderDialog({ lotId, lotNumber, remaining, unitOfMeasu
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Reject the rest of {lotNumber}</DialogTitle>
+                    <DialogTitle>Reject remaining stock · {lotNumber}</DialogTitle>
                     <DialogDescription>
                         Rejects the {remaining ?? "remaining"} {unitOfMeasure ?? ""} still on hand and opens a
                         disposition. Anything already used is not reversed.
@@ -109,7 +109,7 @@ export function RejectRemainderDialog({ lotId, lotNumber, remaining, unitOfMeasu
                             onSuccess: () => { toast.success(`Rest of lot ${lotNumber} rejected · disposition opened`); onOpenChange(false); },
                             onError: (e) => toast.error(errorOf(e, "Could not reject the remainder")),
                         })}>
-                        {reject.isPending ? "Rejecting…" : "Reject the rest"}
+                        {reject.isPending ? "Rejecting…" : "Reject remaining stock"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

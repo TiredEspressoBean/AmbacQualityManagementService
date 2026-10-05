@@ -25,6 +25,9 @@ def _lot_rows():
           .filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
           .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
                   | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
+          # A customer's bulk cores are graded unit by unit as they're identified, not
+          # sampled as supplier stock.
+          .filter(holds_cores=False)
           .select_related("material_type", "material", "supplier"))
     for lot in qs:
         yield {
