@@ -69,7 +69,7 @@ export function EquipmentEditorPage() {
                 }),
             ]}
             renderActions={(equipment) => <EditEquipmentActionsCell equipmentId={equipment.id} />}
-            onCreate={() => navigate({ to: "/EquipmentForm/create" })}
+            onCreate={() => navigate({ to: "/editor/equipment/new" })}
         />
     );
 }

@@ -71,7 +71,7 @@ export function ErrorTypeEditorPage() {
                 }),
             ]}
             renderActions={(errorType) => <EditErrorTypeActionsCell errorTypeId={errorType.id} />}
-            onCreate={() => navigate({ to: "/ErrorTypeForm/create" })}
+            onCreate={() => navigate({ to: "/editor/error-types/new" })}
         />
     );
 }

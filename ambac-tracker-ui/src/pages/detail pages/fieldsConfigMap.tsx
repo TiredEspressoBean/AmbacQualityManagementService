@@ -235,7 +235,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         if (!partId) return text;
                         return (
                             <Link
-                                to="/editor/qualityReports"
+                                to="/editor/quality-reports"
                                 search={{ part: String(partId) }}
                                 className="text-primary hover:underline font-medium"
                             >
@@ -1097,7 +1097,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     {
                         label: 'Edit Report',
                         variant: 'outline',
-                        getUrl: (modelData) => `/editor/qualityReports/edit/${modelData.id}`,
+                        getUrl: (modelData) => `/editor/quality-reports/${modelData.id}/edit`,
                     },
                 ],
                 linkedRecordsComponent: QRMeasurementsSection,

@@ -203,7 +203,7 @@ export default function ApprovalTemplateFormPage() {
                         const newId = (updated as { id?: string })?.id;
                         if (newId && newId !== templateId) {
                             navigate({
-                                to: "/ApprovalTemplateForm/edit/$id",
+                                to: "/editor/approval-templates/$id/edit",
                                 params: { id: newId },
                                 replace: true,
                             });

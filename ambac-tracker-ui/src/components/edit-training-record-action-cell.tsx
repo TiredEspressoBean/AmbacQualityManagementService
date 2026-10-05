@@ -27,7 +27,7 @@ export function EditTrainingRecordActionCell({ recordId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/TrainingRecordForm/$id",
+            to: "/quality/training/records/$id/edit",
             params: { id: String(recordId) },
         });
     };

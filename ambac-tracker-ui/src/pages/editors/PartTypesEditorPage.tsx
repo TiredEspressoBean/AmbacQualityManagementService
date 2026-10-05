@@ -61,7 +61,7 @@ export function PartTypesEditorPage() {
                 col({ header: "Previous Version", renderCell: (p) => p.previous_version || "-", priority: 5 }),
             ]}
             renderActions={(partType) => <EditPartTypeActionsCell partTypeId={partType.id} />}
-            onCreate={() => navigate({ to: "/PartTypeForm/create" })}
+            onCreate={() => navigate({ to: "/editor/part-types/new" })}
         />
     );
 }

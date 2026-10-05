@@ -536,7 +536,7 @@ export default function AnalysisPage() {
                     </Link>
                 </Button>
                 <Button variant="ghost" size="sm" asChild>
-                    <Link to="/editor/qualityReports">
+                    <Link to="/editor/quality-reports">
                         <FileText className="h-4 w-4 mr-1" />
                         All Reports
                     </Link>

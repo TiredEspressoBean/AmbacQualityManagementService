@@ -62,7 +62,7 @@ export function SamplingRuleSetsEditorPage() {
                 col({ header: "Created At", renderCell: (ruleSet) => new Date(ruleSet.created_at).toLocaleString(), priority: 4 }),
             ]}
             renderActions={(ruleSet) => <EditRuleTypeActionsCell ruleSetId={ruleSet.id} />} // temporary until a dedicated component is created
-            onCreate={() => navigate({ to: "/SamplingRuleSetForm/create" })}
+            onCreate={() => navigate({ to: "/editor/sampling-rule-sets/new" })}
         />
     );
 }

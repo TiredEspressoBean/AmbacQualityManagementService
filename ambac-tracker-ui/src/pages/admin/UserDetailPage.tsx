@@ -325,7 +325,7 @@ export function UserDetailPage() {
                                     <CardDescription>Account details and membership</CardDescription>
                                 </div>
                                 <Button asChild variant="outline" size="sm">
-                                    <Link to="/UserForm/edit/$id" params={{ id: String(userId) }}>
+                                    <Link to="/admin/users/$id/edit" params={{ id: String(userId) }}>
                                         <Pencil className="h-4 w-4 mr-2" />
                                         Edit profile
                                     </Link>

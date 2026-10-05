@@ -73,7 +73,7 @@ export function ApprovalTemplatesEditorPage() {
                 }),
             ]}
             renderActions={(item) => <EditApprovalTemplateActionsCell templateId={item.id} />}
-            onCreate={() => navigate({ to: "/ApprovalTemplateForm/create" })}
+            onCreate={() => navigate({ to: "/editor/approval-templates/new" })}
             showDetailsLink={false}
         />
     );

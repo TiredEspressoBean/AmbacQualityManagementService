@@ -38,7 +38,7 @@ export const DATA_MANAGEMENT: DMGroup[] = [
         title: "Products & routing",
         tables: [
             {
-                key: "part-types", name: "Part Types", list: "/editor/partTypes", add: "/PartTypeForm/create",
+                key: "part-types", name: "Part Types", list: "/editor/part-types", add: "/editor/part-types/new",
                 endpoint: "PartTypes", model: "parttypes", versioned: true,
                 children: [
                     { key: "boms", name: "BOMs & BOM lines", endpoint: "BOMs", model: "bom", versioned: true, editedOn: "the part type" },
@@ -57,7 +57,7 @@ export const DATA_MANAGEMENT: DMGroup[] = [
                     { key: "substeps", name: "Substeps", endpoint: "Substeps", model: "substep", editedOn: "the step" },
                 ],
             },
-            { key: "error-types", name: "Error Types", list: "/editor/errorTypes", add: "/ErrorTypeForm/create", endpoint: "Error-types", model: "qualityerrorslist", versioned: true },
+            { key: "error-types", name: "Error Types", list: "/editor/error-types", add: "/editor/error-types/new", endpoint: "Error-types", model: "qualityerrorslist", versioned: true },
             { key: "life-limit-definitions", name: "Life Limit Definitions", list: "/editor/life-limit-definitions", add: "/editor/life-limit-definitions/new", endpoint: "LifeLimitDefinitions", model: "lifelimitdefinition", versioned: true },
         ],
     },
@@ -65,13 +65,13 @@ export const DATA_MANAGEMENT: DMGroup[] = [
         title: "Equipment & scheduling",
         tables: [
             {
-                key: "equipment", name: "Equipment", list: "/editor/equipment", add: "/EquipmentForm/create",
+                key: "equipment", name: "Equipment", list: "/editor/equipment", add: "/editor/equipment/new",
                 endpoint: "Equipment", model: "equipments", versioned: true,
                 children: [
                     { key: "changeovers", name: "Changeovers", list: "/production/work-center-changeovers", endpoint: "WorkCenterChangeovers", model: "workcenterchangeover", editedOn: "the machine" },
                 ],
             },
-            { key: "equipment-types", name: "Equipment Types", list: "/editor/equipmentTypes", add: "/EquipmentTypeForm/create", endpoint: "Equipment-types", model: "equipmenttype", versioned: true },
+            { key: "equipment-types", name: "Equipment Types", list: "/editor/equipment-types", add: "/editor/equipment-types/new", endpoint: "Equipment-types", model: "equipmenttype", versioned: true },
             { key: "tooling", name: "Tooling", list: "/editor/tooling", add: "/editor/tooling/new", endpoint: "Fixtures", model: "fixture" },
             { key: "work-centers", name: "Work Centers", list: "/admin/work-centers", endpoint: "WorkCenters", model: "workcenter", versioned: true },
             { key: "shifts", name: "Shifts", list: "/editor/shifts", endpoint: "Shifts", model: "shift", versioned: true },
@@ -81,18 +81,18 @@ export const DATA_MANAGEMENT: DMGroup[] = [
         title: "Quality",
         tables: [
             {
-                key: "sampling-rule-sets", name: "Sampling Rule Sets", list: "/editor/samplingRuleSets", add: "/SamplingRuleSetForm/create",
+                key: "sampling-rule-sets", name: "Sampling Rule Sets", list: "/editor/sampling-rule-sets", add: "/editor/sampling-rule-sets/new",
                 endpoint: "Sampling-rule-sets", model: "samplingruleset", versioned: true,
                 children: [
-                    { key: "sampling-rules", name: "Sampling Rules", list: "/editor/samplingrules", endpoint: "Sampling-rules", model: "samplingrule", editedOn: "the rule set" },
+                    { key: "sampling-rules", name: "Sampling Rules", list: "/editor/sampling-rules", endpoint: "Sampling-rules", model: "samplingrule", editedOn: "the rule set" },
                 ],
             },
             {
                 key: "receiving-plans", name: "Receiving Inspection Plans", list: "/production/receiving-plans",
                 endpoint: "Steps", countQuery: { step_type: "RECEIVING", standalone: true }, slice: true, model: "steps", versioned: true,
             },
-            { key: "document-types", name: "Document Types", list: "/editor/documentTypes", add: "/DocumentTypeForm/create", endpoint: "DocumentTypes", model: "documenttype", versioned: true },
-            { key: "approval-templates", name: "Approval Templates", list: "/editor/approvalTemplates", add: "/ApprovalTemplateForm/create", endpoint: "ApprovalTemplates", model: "approvaltemplate", versioned: true },
+            { key: "document-types", name: "Document Types", list: "/editor/document-types", add: "/editor/document-types/new", endpoint: "DocumentTypes", model: "documenttype", versioned: true },
+            { key: "approval-templates", name: "Approval Templates", list: "/editor/approval-templates", add: "/editor/approval-templates/new", endpoint: "ApprovalTemplates", model: "approvaltemplate", versioned: true },
         ],
     },
     {
@@ -100,7 +100,7 @@ export const DATA_MANAGEMENT: DMGroup[] = [
         tables: [
             { key: "materials", name: "Purchased Materials", list: "/editor/materials", add: "/editor/materials/new", endpoint: "Materials", model: "material" },
             { key: "storage-locations", name: "Storage Locations", list: "/editor/storage-locations", endpoint: "StorageLocations", model: "storagelocation" },
-            { key: "companies", name: "Companies", list: "/editor/Companies", add: "/CompaniesForm/create", endpoint: "Companies", model: "companies", versioned: true },
+            { key: "companies", name: "Companies", list: "/editor/companies", add: "/editor/companies/new", endpoint: "Companies", model: "companies", versioned: true },
             { key: "repair-codes", name: "Repair Codes", list: "/editor/repair-codes", add: "/editor/repair-codes/new", endpoint: "RepairCodes", model: "repaircode", versioned: true },
             { key: "rebuild-levels", name: "Rebuild Levels", list: "/editor/rebuild-levels", add: "/editor/rebuild-levels/new", endpoint: "RebuildScopePresets", model: "rebuildscopepreset", versioned: true },
         ],
@@ -108,29 +108,29 @@ export const DATA_MANAGEMENT: DMGroup[] = [
     {
         title: "People & access",
         tables: [
-            { key: "users", name: "Users", list: "/editor/users", add: "/UserForm/create", endpoint: "User", model: "user" },
+            { key: "users", name: "Users", list: "/editor/users", add: "/admin/users/new", endpoint: "User", model: "user" },
             { key: "groups", name: "User Groups", list: "/editor/groups", endpoint: "TenantGroups", model: "tenantgroup" },
             { key: "job-roles", name: "Job Roles", list: "/quality/training/roles", add: "/quality/training/roles/new", endpoint: "JobRoles", model: "jobrole" },
-            { key: "training-types", name: "Training Types", list: "/quality/training/types", add: "/TrainingTypeForm/new", endpoint: "TrainingTypes", model: "trainingtype", versioned: true },
+            { key: "training-types", name: "Training Types", list: "/quality/training/types", add: "/quality/training/types/new", endpoint: "TrainingTypes", model: "trainingtype", versioned: true },
             { key: "external-contacts", name: "External Contacts", list: "/settings/notifications/external-contacts", add: "/settings/notifications/external-contacts/new", endpoint: "notifications/external-contacts", model: "externalcontact" },
         ],
     },
     {
         title: "Orders & records",
         tables: [
-            { key: "orders", name: "Orders", list: "/editor/orders", add: "/OrderForm", endpoint: "Orders", model: "orders" },
-            { key: "work-orders", name: "Work Orders", list: "/editor/WorkOrders", add: "/WorkOrderForm/create", endpoint: "WorkOrders", model: "workorder" },
-            { key: "parts", name: "Parts", list: "/editor/parts", add: "/PartForm/create", endpoint: "Parts", model: "parts" },
+            { key: "orders", name: "Orders", list: "/editor/orders", add: "/editor/orders/new", endpoint: "Orders", model: "orders" },
+            { key: "work-orders", name: "Work Orders", list: "/editor/work-orders", add: "/editor/work-orders/new", endpoint: "WorkOrders", model: "workorder" },
+            { key: "parts", name: "Parts", list: "/editor/parts", add: "/editor/parts/new", endpoint: "Parts", model: "parts" },
             { key: "cores", name: "Cores", list: "/reman/cores", add: "/reman/cores/receive", endpoint: "Cores", model: "core" },
             { key: "milestones", name: "Order Milestones", list: "/editor/milestones", endpoint: "MilestoneTemplates", model: "milestonetemplate", versioned: true },
-            { key: "quality-reports", name: "Quality Reports", list: "/editor/qualityReports", add: "/editor/qualityReports/create", endpoint: "QualityReports", model: "qualityreports" },
+            { key: "quality-reports", name: "Quality Reports", list: "/editor/quality-reports", add: "/editor/quality-reports/new", endpoint: "QualityReports", model: "qualityreports" },
         ],
     },
     {
         title: "Documents & audit",
         tables: [
-            { key: "documents", name: "Documents", list: "/documents/list", add: "/DocumentForm/create", endpoint: "Documents", model: "documents", versioned: true },
-            { key: "3d-models", name: "3D Models", list: "/editor/ThreeDModels", add: "/ThreeDModelsForm/create", endpoint: "ThreeDModels", model: "threedmodel", versioned: true },
+            { key: "documents", name: "Documents", list: "/documents/list", add: "/documents/new", endpoint: "Documents", model: "documents", versioned: true },
+            { key: "3d-models", name: "3D Models", list: "/editor/3d-models", add: "/editor/3d-models/new", endpoint: "ThreeDModels", model: "threedmodel", versioned: true },
             { key: "audit-log", name: "Audit Log", list: "/admin/audit-log", endpoint: "auditlog", model: "logentry" },
         ],
     },

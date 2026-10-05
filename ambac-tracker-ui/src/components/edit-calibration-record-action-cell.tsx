@@ -27,7 +27,7 @@ export function EditCalibrationRecordActionCell({ recordId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/CalibrationRecordForm/$id",
+            to: "/quality/calibrations/records/$id/edit",
             params: { id: String(recordId) },
         });
     };

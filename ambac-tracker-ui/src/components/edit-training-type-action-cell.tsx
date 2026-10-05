@@ -27,7 +27,7 @@ export function EditTrainingTypeActionCell({ typeId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/TrainingTypeForm/$id",
+            to: "/quality/training/types/$id/edit",
             params: { id: String(typeId) },
         });
     };

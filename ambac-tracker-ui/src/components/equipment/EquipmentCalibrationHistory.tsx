@@ -35,7 +35,7 @@ export function EquipmentCalibrationHistory({ equipmentId }: { equipmentId: stri
                         {rows.map((r) => (
                             <TableRow key={r.id}>
                                 <TableCell className="tabular-nums">
-                                    <Link to="/CalibrationRecordForm/$id" params={{ id: r.id }} className="hover:underline">
+                                    <Link to="/quality/calibrations/records/$id/edit" params={{ id: r.id }} className="hover:underline">
                                         {r.calibration_date}
                                     </Link>
                                 </TableCell>
@@ -54,7 +54,7 @@ export function EquipmentCalibrationHistory({ equipmentId }: { equipmentId: stri
             )}
             <div className="flex items-center gap-2">
                 <Button asChild variant="outline" size="sm">
-                    <Link to="/CalibrationRecordForm/$id" params={{ id: "new" }}>Record a calibration</Link>
+                    <Link to="/quality/calibrations/records/new">Record a calibration</Link>
                 </Button>
                 {total > rows.length && (
                     <Button asChild variant="ghost" size="sm">

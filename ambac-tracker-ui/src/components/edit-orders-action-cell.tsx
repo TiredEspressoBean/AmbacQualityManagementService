@@ -26,7 +26,7 @@ export function EditOrderActionsCell({ orderId }: Props) {
 
     const handleEditOrder = () => {
         navigate({
-            to: "/OrderForm/$id",
+            to: "/editor/orders/$id/edit",
             params: { id: String(orderId) },
         });
     };

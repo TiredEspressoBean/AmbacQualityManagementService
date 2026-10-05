@@ -111,7 +111,7 @@ export function TrainingRecordsPage() {
                 }),
             ]}
             renderActions={(record) => <EditTrainingRecordActionCell recordId={record.id} />}
-            onCreate={() => navigate({ to: "/TrainingRecordForm/$id", params: { id: "new" } })}
+            onCreate={() => navigate({ to: "/quality/training/records/new" })}
             showDetailsLink={false}
         />
     );

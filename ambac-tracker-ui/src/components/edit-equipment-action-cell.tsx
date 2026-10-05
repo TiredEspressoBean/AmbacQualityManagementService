@@ -27,7 +27,7 @@ export function EditEquipmentActionsCell({ equipmentId }: Props) {
 
     const handleEditEquipment = () => {
         navigate({
-            to: "/EquipmentForm/edit/$id",
+            to: "/editor/equipment/$id/edit",
             params: { id: String(equipmentId) },
         });
     };

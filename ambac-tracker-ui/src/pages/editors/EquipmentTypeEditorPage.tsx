@@ -60,7 +60,7 @@ export function EquipmentTypeEditorPage() {
                 col({ header: "Updated", renderCell: (equipment) => equipment.updated_at ? new Date(equipment.updated_at).toLocaleDateString() : "-", priority: 4 }),
             ]}
             renderActions={(equipmentType) => <EditEquipmentTypeActionsCell equipmentTypeId={equipmentType.id} />}
-            onCreate={() => navigate({ to: "/EquipmentForm/create" })}
+            onCreate={() => navigate({ to: "/editor/equipment/new" })}
         />
     );
 }

@@ -65,7 +65,7 @@ export function PartsEditorPage() {
                 col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString(), priority: 4 }),
             ]}
             renderActions={(part) => <EditPartActionsCell partId={part.id} />}
-            onCreate={() => navigate({ to: "/PartForm/create" })}
+            onCreate={() => navigate({ to: "/editor/parts/new" })}
         />
     );
 }

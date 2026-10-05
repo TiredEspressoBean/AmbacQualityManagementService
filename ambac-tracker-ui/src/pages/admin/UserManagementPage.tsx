@@ -375,7 +375,7 @@ export function UserManagementPage() {
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => navigate({ to: "/UserForm/create" })}
+                            onClick={() => navigate({ to: "/admin/users/new" })}
                         >
                             <UserPlus className="h-4 w-4 mr-1.5" />
                             Add user
@@ -589,7 +589,7 @@ export function UserManagementPage() {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() => navigate({
-                                                            to: "/UserForm/edit/$id",
+                                                            to: "/admin/users/$id/edit",
                                                             params: { id: String(u.id) },
                                                         })}
                                                     >

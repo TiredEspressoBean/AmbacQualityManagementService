@@ -57,7 +57,7 @@ export function StepTimingsPage() {
             renderActions={(t) => (
                 <RowActions
                     label={`timing for ${t.step_name}`}
-                    editTo={`/StepForm/edit/${t.step}`}
+                    editTo={`/editor/steps/${t.step}/edit`}
                     canEdit={allows("change_steptiming")}
                     canDelete={allows("delete_steptiming")}
                     onDelete={() => del.mutate(t.id, {

@@ -34,7 +34,7 @@ export function EditWorkOrderActionsCell({workOrderId}: Props) {
 
     const handleEditWorkOrder = () => {
         navigate({
-            to: "/WorkOrderForm/edit/$id",
+            to: "/editor/work-orders/$id/edit",
             params: {id: String(workOrderId)},
         });
     };

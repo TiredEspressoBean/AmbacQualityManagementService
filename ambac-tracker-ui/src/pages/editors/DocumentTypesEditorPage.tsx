@@ -70,7 +70,7 @@ export function DocumentTypesEditorPage() {
                 }),
             ]}
             renderActions={(item) => <EditDocumentTypeActionsCell documentTypeId={item.id} />}
-            onCreate={() => navigate({ to: "/DocumentTypeForm/create" })}
+            onCreate={() => navigate({ to: "/editor/document-types/new" })}
             showDetailsLink={false}
         />
     );

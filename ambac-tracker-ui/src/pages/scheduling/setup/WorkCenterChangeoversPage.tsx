@@ -55,7 +55,7 @@ export function WorkCenterChangeoversPage() {
             renderActions={(c) => (
                 <RowActions
                     label={`changeover ${c.from_step_name} to ${c.to_step_name} on ${c.equipment_name}`}
-                    editTo={`/EquipmentForm/edit/${c.equipment}`}
+                    editTo={`/editor/equipment/${c.equipment}/edit`}
                     canEdit={allows("change_workcenterchangeover")}
                     canDelete={allows("delete_workcenterchangeover")}
                     onDelete={() => del.mutate(c.id, {

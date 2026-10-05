@@ -312,7 +312,7 @@ export function ApprovalsOverviewPage() {
                             <div className="text-sm text-muted-foreground">View all past approvals</div>
                         </Link>
                         <Link
-                            to="/editor/approvalTemplates"
+                            to="/editor/approval-templates"
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <div className="font-medium">Approval Templates</div>

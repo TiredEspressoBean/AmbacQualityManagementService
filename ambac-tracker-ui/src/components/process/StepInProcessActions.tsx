@@ -23,7 +23,7 @@ export function StepInProcessActions({ stepId, processes }: { stepId: string; pr
         <div className="flex items-center gap-1">
             {processes.length === 0 ? (
                 <Button asChild variant="ghost" size="icon" title="Edit step">
-                    <Link to="/StepForm/edit/$id" params={{ id: stepId }}><Pencil className="h-4 w-4" /></Link>
+                    <Link to="/editor/steps/$id/edit" params={{ id: stepId }}><Pencil className="h-4 w-4" /></Link>
                 </Button>
             ) : processes.length === 1 ? (
                 <Button asChild variant="ghost" size="icon" title={`Edit in ${label(processes[0])}`}>
@@ -50,7 +50,7 @@ export function StepInProcessActions({ stepId, processes }: { stepId: string; pr
             )}
             {processes.length > 0 && (
                 <Button asChild variant="ghost" size="icon" title="Step details, timing and machines">
-                    <Link to="/StepForm/edit/$id" params={{ id: stepId }}><Eye className="h-4 w-4" /></Link>
+                    <Link to="/editor/steps/$id/edit" params={{ id: stepId }}><Eye className="h-4 w-4" /></Link>
                 </Button>
             )}
         </div>

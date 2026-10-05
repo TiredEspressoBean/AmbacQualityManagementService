@@ -104,7 +104,7 @@ export function WorkOrdersEditorPage() {
                 }),
             ]}
             renderActions={(workOrder) => <EditWorkOrderActionsCell workOrderId={workOrder.id} />}
-            onCreate={() => navigate({ to: "/WorkOrderForm/create" })}
+            onCreate={() => navigate({ to: "/editor/work-orders/new" })}
         />
     );
 }

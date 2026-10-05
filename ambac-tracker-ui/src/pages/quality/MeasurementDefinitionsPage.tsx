@@ -152,7 +152,7 @@ export function MeasurementDefinitionsPage() {
                     header: "Step",
                     priority: 1,
                     renderCell: (m) => (
-                        <Link to="/StepForm/edit/$id" params={{ id: String(m.step) }}
+                        <Link to="/editor/steps/$id/edit" params={{ id: String(m.step) }}
                             className="text-primary hover:underline">
                             {m.step_name}
                         </Link>

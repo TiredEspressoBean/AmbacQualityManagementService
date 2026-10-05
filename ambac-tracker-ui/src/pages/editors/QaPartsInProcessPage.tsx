@@ -63,7 +63,7 @@ export function QaPartsInProcessPage() {
                 col({ header: "Created At", renderCell: (p) => new Date(p.created_at).toLocaleString() }),
             ]}
             renderActions={(part) => <QaPartActionsCell part={part} />}
-            onCreate={() => navigate({ to: "/PartForm/create" })}
+            onCreate={() => navigate({ to: "/editor/parts/new" })}
         />
     );
 }

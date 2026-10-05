@@ -56,7 +56,7 @@ export function CompaniesEditorPage() {
                 col({ header: "Description", renderCell: (company) => company.description, priority: 5 }),
             ]}
             renderActions={(company) => <EditCompanyActionsCell companyId={company.id} />}
-            onCreate={() => navigate({ to: "/CompaniesForm/create" })}
+            onCreate={() => navigate({ to: "/editor/companies/new" })}
         />
     );
 }

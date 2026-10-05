@@ -27,7 +27,7 @@ export function EditRuleTypeActionsCell({ ruleSetId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/SamplingRuleSetForm/edit/$id",
+            to: "/editor/sampling-rule-sets/$id/edit",
             params: { id: String(ruleSetId) },
         });
     };

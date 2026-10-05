@@ -124,8 +124,7 @@ export function CalibrationDashboardPage() {
                             <div className="text-sm text-muted-foreground">Browse calibration history</div>
                         </Link>
                         <Link
-                            to="/CalibrationRecordForm/$id"
-                            params={{ id: "new" }}
+                            to="/quality/calibrations/records/new"
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <div className="font-medium">Record New Calibration</div>

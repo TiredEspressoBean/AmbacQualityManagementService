@@ -97,7 +97,7 @@ export default function OrdersEditorPage() {
                 }),
             ]}
             renderActions={(order) => <EditOrderActionsCell orderId={order.id} />}
-            onCreate={() => navigate({ to: "/OrderForm" })}
+            onCreate={() => navigate({ to: "/editor/orders/new" })}
         />
     );
 }

@@ -58,7 +58,7 @@ export function ThreeDModelsEditorPage() {
                 col({ header: "File Type", renderCell: (model) => model.file_type || "N/A", priority: 2 }),
             ]}
             renderActions={(model) => <EditThreeDModelActionsCell modelId={model.id} />}
-            onCreate={() => navigate({ to: "/ThreeDModelsForm/create" })}
+            onCreate={() => navigate({ to: "/editor/3d-models/new" })}
         />
     );
 }

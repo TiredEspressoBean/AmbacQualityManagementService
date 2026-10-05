@@ -33,7 +33,7 @@ export function EditUserActionsCell({ userId }: Props) {
 
     const handleEditUser = () => {
         navigate({
-            to: "/UserForm/edit/$id",
+            to: "/admin/users/$id/edit",
             params: { id: String(userId) },
         });
     };

@@ -27,7 +27,7 @@ export function EditCompanyActionsCell({ companyId }: Props) {
 
     const handleEditCompany = () => {
         navigate({
-            to: "/CompaniesForm/edit/$id",
+            to: "/editor/companies/$id/edit",
             params: { id: String(companyId) },
         });
     };

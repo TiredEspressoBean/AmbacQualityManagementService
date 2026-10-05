@@ -34,7 +34,7 @@ export function EditDocumentsActionsCell({ documentId }: Props) {
 
     const handleEditDocument = () => {
         navigate({
-            to: "/DocumentForm/edit/$id",
+            to: "/documents/$id/edit",
             params: { id: String(documentId) },
         });
     };

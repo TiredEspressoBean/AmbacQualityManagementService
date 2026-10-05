@@ -27,7 +27,7 @@ export function EditErrorTypeActionsCell({ errorTypeId }: Props) {
 
     const handleEditErrorType = () => {
         navigate({
-            to: "/ErrorTypeForm/edit/$id",
+            to: "/editor/error-types/$id/edit",
             params: { id: String(errorTypeId) },
         });
     };

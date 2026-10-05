@@ -27,7 +27,7 @@ export function EditThreeDModelActionsCell({ modelId }: Props) {
 
     const handleEditModel = () => {
         navigate({
-            to: "/ThreeDModelsForm/edit/$id",
+            to: "/editor/3d-models/$id/edit",
             params: { id: String(modelId) },
         });
     };

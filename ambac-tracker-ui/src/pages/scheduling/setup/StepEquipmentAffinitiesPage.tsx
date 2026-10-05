@@ -61,7 +61,7 @@ export function StepEquipmentAffinitiesPage() {
             renderActions={(a) => (
                 <RowActions
                     label={`${a.equipment_name} for ${a.step_name}`}
-                    editTo={`/EquipmentForm/edit/${a.equipment}`}
+                    editTo={`/editor/equipment/${a.equipment}/edit`}
                     canEdit={allows("change_stepequipmentaffinity")}
                     canDelete={allows("delete_stepequipmentaffinity")}
                     onDelete={() => del.mutate(a.id, {

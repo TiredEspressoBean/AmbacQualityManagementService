@@ -116,7 +116,7 @@ export function QualityReportsEditorPage() {
                 }),
             ]}
             renderActions={(qualityReport) => <EditQualityReportActionsCell qualityReportId={qualityReport.id} />}
-            onCreate={() => navigate({ to: "/editor/qualityReports/create" })}
+            onCreate={() => navigate({ to: "/editor/quality-reports/new" })}
         />
     );
 }

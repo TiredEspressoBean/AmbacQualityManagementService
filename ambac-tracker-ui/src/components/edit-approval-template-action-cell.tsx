@@ -27,7 +27,7 @@ export function EditApprovalTemplateActionsCell({ templateId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/ApprovalTemplateForm/edit/$id",
+            to: "/editor/approval-templates/$id/edit",
             params: { id: String(templateId) },
         });
     };

@@ -113,7 +113,7 @@ export function UserEditorPage() {
                 }),
             ]}
             renderActions={(user) => <EditUserActionsCell userId={user.id} />}
-            onCreate={() => navigate({ to: "/UserForm/create" })}
+            onCreate={() => navigate({ to: "/admin/users/new" })}
         />
     );
 }

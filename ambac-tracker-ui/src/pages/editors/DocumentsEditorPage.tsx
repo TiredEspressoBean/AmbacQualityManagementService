@@ -194,7 +194,7 @@ export function DocumentsEditorPage() {
                 }),
             ]}
             renderActions={(document) => <EditDocumentsActionsCell documentId={document.id} />}
-            onCreate={() => navigate({ to: "/DocumentForm/create" })}
+            onCreate={() => navigate({ to: "/documents/new" })}
             showDetailsLink={false}
         />
     );

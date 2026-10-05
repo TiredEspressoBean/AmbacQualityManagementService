@@ -314,7 +314,7 @@ export function ModelEditorPage<T extends { id: string | number }>({
                                                               onDataChange,
                                                           }: ModelEditorProps<T>) {
     // Deep-linkable list filters. Any `?key=value` query string on the URL
-    // seeds `activeFilters`, so links like `/editor/qualityReports?part=<uuid>`
+    // seeds `activeFilters`, so links like `/editor/quality-reports?part=<uuid>`
     // (from the part-detail page's Latest Inspection link) land pre-filtered.
     // Reserved keys the editor owns itself (offset/limit/ordering/search) are
     // excluded so they don't collide with filter names.

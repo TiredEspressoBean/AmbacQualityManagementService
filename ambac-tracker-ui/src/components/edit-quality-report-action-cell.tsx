@@ -27,7 +27,7 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/editor/qualityReports/edit/$id",
+            to: "/editor/quality-reports/$id/edit",
             params: { id: String(qualityReportId) },
         });
     };

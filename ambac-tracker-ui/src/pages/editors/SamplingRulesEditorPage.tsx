@@ -63,7 +63,7 @@ export function SamplingRulesEditorPage() {
             ]}
             renderActions={(rule) => rule.ruleset ? (
                 <Button asChild variant="ghost" size="icon" title="Edit in its rule set">
-                    <Link to="/SamplingRuleSetForm/edit/$id" params={{ id: String(rule.ruleset) }}>
+                    <Link to="/editor/sampling-rule-sets/$id/edit" params={{ id: String(rule.ruleset) }}>
                         <Pencil className="h-4 w-4" />
                     </Link>
                 </Button>

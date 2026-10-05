@@ -201,12 +201,12 @@ const QAPage = createRoute({
 })
 
 export const ordersCreateFormRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "/OrderForm/",
+    getParentRoute: () => rootRoute, path: "/editor/orders/new",
     component: lazyRouteComponent(() => import("./pages/OrderFormPage")),
 })
 
 export const ordersEditFormRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "/OrderForm/$id",
+    getParentRoute: () => rootRoute, path: "/editor/orders/$id/edit",
     component: lazyRouteComponent(() => import("./pages/OrderFormPage")),
 })
 
@@ -236,27 +236,27 @@ const PartsEditorRoute = createRoute({
 })
 
 export const partCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/PartForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/parts/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditPartFormPage")),
 });
 
 export const partEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/PartForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/parts/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditPartFormPage")),
 });
 
 export const partTypeCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/PartTypeForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/part-types/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditPartTypeFormPage")),
 });
 
 export const partTypeEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/PartTypeForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/part-types/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditPartTypeFormPage")),
 });
 
 const PartTypesEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "editor/partTypes",
+    getParentRoute: () => rootRoute, path: "editor/part-types",
     component: lazyRouteComponent(() => import("@/pages/editors/PartTypesEditorPage"), "PartTypesEditorPage"),
     loader: async ({ context }) => {
         const { prefetchPartTypesEditor } = await import("@/pages/editors/PartTypesEditorPage");
@@ -265,12 +265,12 @@ const PartTypesEditorRoute = createRoute({
 })
 
 export const processCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ProcessForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/processes/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditProcessFormPage")),
 });
 
 export const processEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ProcessForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/processes/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditProcessFormPage")),
 });
 
@@ -284,12 +284,12 @@ const ProcessEditorRoute = createRoute({
 })
 
 export const stepCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/StepForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/steps/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditStepFormPage")),
 });
 
 export const stepEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/StepForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/steps/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditStepFormPage")),
 });
 
@@ -303,12 +303,12 @@ const StepEditorRoute = createRoute({
 })
 
 export const equipmentCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/EquipmentForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/equipment/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditEquipmentFormPage")),
 });
 
 export const equipmentEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/EquipmentForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/equipment/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditEquipmentFormPage")),
 });
 
@@ -337,17 +337,17 @@ const toolingEditRoute = createRoute({
 })
 
 export const equipmentTypeCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/EquipmentTypeForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/equipment-types/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditEquipmentTypeFormPage")),
 });
 
 export const equipmentTypeEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/EquipmentTypeForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/equipment-types/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditEquipmentTypeFormPage")),
 });
 
 const EquipmentTypeEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "editor/equipmentTypes",
+    getParentRoute: () => rootRoute, path: "editor/equipment-types",
     component: lazyRouteComponent(() => import("@/pages/editors/EquipmentTypeEditorPage"), "EquipmentTypeEditorPage"),
     loader: async ({ context }) => {
         const { prefetchEquipmentTypesEditor } = await import("@/pages/editors/EquipmentTypeEditorPage");
@@ -356,17 +356,17 @@ const EquipmentTypeEditorRoute = createRoute({
 })
 
 export const errorTypeCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ErrorTypeForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/error-types/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditErrorTypeFormPage")),
 });
 
 export const errorTypeEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ErrorTypeForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/error-types/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditErrorTypeFormPage")),
 });
 
 const ErrorTypeEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "editor/errorTypes",
+    getParentRoute: () => rootRoute, path: "editor/error-types",
     component: lazyRouteComponent(() => import("@/pages/editors/ErrorTypeEditorPage"), "ErrorTypeEditorPage"),
     loader: async ({ context }) => {
         const { prefetchErrorTypesEditor } = await import("@/pages/editors/ErrorTypeEditorPage");
@@ -375,7 +375,7 @@ const ErrorTypeEditorRoute = createRoute({
 })
 
 const SamplingRulesEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "editor/samplingrules",
+    getParentRoute: () => rootRoute, path: "editor/sampling-rules",
     component: lazyRouteComponent(() => import("@/pages/editors/SamplingRulesEditorPage"), "SamplingRulesEditorPage"),
     loader: async ({ context }) => {
         const { prefetchSamplingRulesEditor } = await import("@/pages/editors/SamplingRulesEditorPage");
@@ -386,7 +386,7 @@ const SamplingRulesEditorRoute = createRoute({
 
 
 const SamplingRuleSetsEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "editor/samplingRuleSets",
+    getParentRoute: () => rootRoute, path: "editor/sampling-rule-sets",
     component: lazyRouteComponent(() => import("@/pages/editors/SamplingRuleSetsEditorPage"), "SamplingRuleSetsEditorPage"),
     loader: async ({ context }) => {
         const { prefetchSamplingRuleSetsEditor } = await import("@/pages/editors/SamplingRuleSetsEditorPage");
@@ -395,12 +395,12 @@ const SamplingRuleSetsEditorRoute = createRoute({
 })
 
 export const samplingRuleSetsCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/SamplingRuleSetForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/sampling-rule-sets/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditSamplingRuleSetsFormPage")),
 });
 
 export const samplingRuleSetsEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/SamplingRuleSetForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/sampling-rule-sets/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditSamplingRuleSetsFormPage")),
 });
 
@@ -424,12 +424,12 @@ export const DocumentDetailRoute = createRoute({
 })
 
 export const DocumentCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/DocumentForm/create',
+    getParentRoute: () => rootRoute, path: '/documents/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDocumentFormPage")),
 });
 
 export const DocumentEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/DocumentForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/documents/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDocumentFormPage")),
 });
 
@@ -439,7 +439,7 @@ export const ModelDetailRoute = createRoute({
 })
 
 export const WorkOrderEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/WorkOrders',
+    getParentRoute: () => rootRoute, path: 'editor/work-orders',
     component: lazyRouteComponent(() => import("@/pages/editors/WorkOrdersEditorPage"), "WorkOrdersEditorPage"),
     loader: async ({ context }) => {
         const { prefetchWorkOrdersEditor } = await import("@/pages/editors/WorkOrdersEditorPage");
@@ -448,17 +448,17 @@ export const WorkOrderEditorRoute = createRoute({
 })
 
 export const workOrderCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/WorkOrderForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/work-orders/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditWorkOrderFormPage")),
 });
 
 export const workOrderEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/WorkOrderForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/work-orders/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditWorkOrderFormPage")),
 });
 
 export const companiesEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/Companies',
+    getParentRoute: () => rootRoute, path: 'editor/companies',
     component: lazyRouteComponent(() => import("@/pages/editors/CompaniesEditorPage"), "CompaniesEditorPage"),
     loader: async ({ context }) => {
         const { prefetchCompaniesEditor } = await import("@/pages/editors/CompaniesEditorPage");
@@ -467,12 +467,12 @@ export const companiesEditorRoute = createRoute({
 })
 
 export const companiesCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/CompaniesForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/companies/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditCompanyFormPage")),
 });
 
 export const companiesEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/CompaniesForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/companies/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditCompanyFormPage")),
 });
 
@@ -486,7 +486,7 @@ export const userEditorRoute = createRoute({
 })
 
 export const usersCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/UserForm/create',
+    getParentRoute: () => rootRoute, path: '/admin/users/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditUserFormPage")),
 });
 
@@ -512,7 +512,7 @@ export const userDetailRoute = createRoute({
 });
 
 export const usersEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/UserForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/admin/users/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditUserFormPage")),
 });
 
@@ -543,7 +543,7 @@ export const aiChatRoute = createRoute({
 });
 
 export const threeDModelsEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/ThreeDModels',
+    getParentRoute: () => rootRoute, path: 'editor/3d-models',
     component: lazyRouteComponent(() => import("@/pages/editors/ThreeDModelsEditorPage"), "ThreeDModelsEditorPage"),
     loader: async ({ context }) => {
         const { prefetchThreeDModelsEditor } = await import("@/pages/editors/ThreeDModelsEditorPage");
@@ -552,12 +552,12 @@ export const threeDModelsEditorRoute = createRoute({
 })
 
 export const threeDModelsCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ThreeDModelsForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/3d-models/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditThreeDModelFormPage")),
 });
 
 export const threeDModelsEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ThreeDModelsForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/3d-models/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditThreeDModelFormPage")),
 });
 
@@ -714,7 +714,7 @@ export const integrationDetailRoute = createRoute({
 });
 
 export const qualityReportsEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/qualityReports',
+    getParentRoute: () => rootRoute, path: 'editor/quality-reports',
     component: lazyRouteComponent(() => import("@/pages/editors/QualityReportsEditorPage"), "QualityReportsEditorPage"),
     loader: async ({ context }) => {
         const { prefetchQualityReportsEditor } = await import("@/pages/editors/QualityReportsEditorPage");
@@ -723,12 +723,12 @@ export const qualityReportsEditorRoute = createRoute({
 });
 
 export const qualityReportCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/editor/qualityReports/create',
+    getParentRoute: () => rootRoute, path: '/editor/quality-reports/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditQualityReportFormPage")),
 });
 
 export const qualityReportEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/editor/qualityReports/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/quality-reports/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditQualityReportFormPage")),
 });
 
@@ -856,13 +856,23 @@ export const jobRoleEditRoute = createRoute({
 
 export const trainingRecordFormRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/TrainingRecordForm/$id',
+    path: '/quality/training/records/$id/edit',
+    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditTrainingRecordFormPage")),
+});
+export const trainingRecordCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/records/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditTrainingRecordFormPage")),
 });
 
 export const trainingTypeFormRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/TrainingTypeForm/$id',
+    path: '/quality/training/types/$id/edit',
+    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditTrainingTypeFormPage")),
+});
+export const trainingTypeCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/training/types/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditTrainingTypeFormPage")),
 });
 
@@ -912,7 +922,12 @@ export const calibrationRecordsRoute = createRoute({
 
 export const calibrationRecordFormRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/CalibrationRecordForm/$id',
+    path: '/quality/calibrations/records/$id/edit',
+    component: lazyRouteComponent(() => import("@/pages/editors/forms/EditCalibrationRecordFormPage")),
+});
+export const calibrationRecordCreateRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/quality/calibrations/records/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditCalibrationRecordFormPage")),
 });
 
@@ -963,7 +978,7 @@ export const masterWorkbookRoute = createRoute({
 
 // Approval Templates Routes
 export const approvalTemplatesEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/approvalTemplates',
+    getParentRoute: () => rootRoute, path: 'editor/approval-templates',
     component: lazyRouteComponent(() => import("@/pages/editors/ApprovalTemplatesEditorPage"), "ApprovalTemplatesEditorPage"),
     loader: async ({ context }) => {
         const { prefetchApprovalTemplatesEditor } = await import("@/pages/editors/ApprovalTemplatesEditorPage");
@@ -972,12 +987,12 @@ export const approvalTemplatesEditorRoute = createRoute({
 });
 
 export const approvalTemplateCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ApprovalTemplateForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/approval-templates/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditApprovalTemplateFormPage")),
 });
 
 export const approvalTemplateEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/ApprovalTemplateForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/approval-templates/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditApprovalTemplateFormPage")),
 });
 
@@ -1005,7 +1020,7 @@ export const approvalsHistoryRoute = createRoute({
 
 // Document Types Routes
 export const documentTypesEditorRoute = createRoute({
-    getParentRoute: () => rootRoute, path: 'editor/documentTypes',
+    getParentRoute: () => rootRoute, path: 'editor/document-types',
     component: lazyRouteComponent(() => import("@/pages/editors/DocumentTypesEditorPage"), "DocumentTypesEditorPage"),
     loader: async ({ context }) => {
         const { prefetchDocumentTypesEditor } = await import("@/pages/editors/DocumentTypesEditorPage");
@@ -1014,12 +1029,12 @@ export const documentTypesEditorRoute = createRoute({
 });
 
 export const documentTypeCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/DocumentTypeForm/create',
+    getParentRoute: () => rootRoute, path: '/editor/document-types/new',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDocumentTypeFormPage")),
 });
 
 export const documentTypeEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/DocumentTypeForm/edit/$id',
+    getParentRoute: () => rootRoute, path: '/editor/document-types/$id/edit',
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDocumentTypeFormPage")),
 });
 
@@ -1469,7 +1484,68 @@ const lifeLimitDefinitionEditRoute = createRoute({
     component: lazyRouteComponent(() => import("@/pages/editors/forms/LifeLimitDefinitionFormPage"), "LifeLimitDefinitionFormPage"),
 })
 
-const routeTree = rootRoute.addChildren([shiftsEditorRoute, lifeLimitDefinitionsEditorRoute, lifeLimitDefinitionNewRoute, lifeLimitDefinitionEditRoute, schedulingGanttRoute, schedulingCalendarRoute, laborHoursRoute, capacityPlanningRoute, stagingRoute, requirementsRoute, stepTimingsRoute, stepEquipmentAffinitiesRoute, workCenterChangeoversRoute, MaterialsEditorRoute, materialCreateRoute, materialEditRoute, storageLocationsEditorRoute, materialLotDetailRoute, receivingMetricsRoute, homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, ToolingEditorRoute, toolingCreateRoute, toolingEditRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, userDetailRoute, workCentersAdminRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, externalContactsRoute, externalContactNewRoute, externalContactEditRoute, myNotificationsRoute, notificationFeedRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingMatrixRoute, jobRolesRoute, jobRoleNewRoute, jobRoleEditRoute, trainingRecordFormRoute, trainingTypeFormRoute, calibrationDashboardRoute, measurementDefinitionsRoute, calibrationRecordsRoute, calibrationRecordFormRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, masterWorkbookRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, operatorHomePrototypeRoute, workQueuePrototypeRoute, qaHomePrototypeRoute, homeLandingsSpikeRoute, trainingMatrixPrototypeRoute, qaInboxRoute, operatorHomeRoute, shiftNotesRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreLotsRoute, coreDisassemblyRoute, rebuildQueueRoute, coreRebuildRoute, repairCodesEditorRoute, repairCodeNewRoute, repairCodeEditRoute, rebuildLevelsEditorRoute, rebuildLevelNewRoute, rebuildLevelEditRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, incomingHubRoute, outsideProcessingBoardRoute, receivingPlansRoute, receivingPlanEditorRoute, receivingPlanSubstepsRoute, supplierQualityRoute, supplierQualificationsRoute, supplierQualificationNewRoute, supplierQualificationEditRoute, partApprovalsRoute, partApprovalNewRoute, partApprovalEditRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
+
+// Legacy URLs (before 2026-10-05) → the /{domain}/{resource}/new and /$id/edit
+// convention. Kept for a release so bookmarks and old links still land; remove after.
+function legacyRedirect(path: string, to: (params: Record<string, string>) => string) {
+    return createRoute({
+        getParentRoute: () => rootRoute, path,
+        beforeLoad: ({ params }) => {
+            throw redirect({ to: to(params as Record<string, string>) as never, replace: true });
+        },
+    });
+}
+const legacyRedirectRoutes = [
+    legacyRedirect("/PartTypeForm/create", () => "/editor/part-types/new"),
+    legacyRedirect("/PartTypeForm/edit/$id", (p) => `/editor/part-types/${p.id}/edit`),
+    legacyRedirect("/PartForm/create", () => "/editor/parts/new"),
+    legacyRedirect("/PartForm/edit/$id", (p) => `/editor/parts/${p.id}/edit`),
+    legacyRedirect("/ProcessForm/create", () => "/editor/processes/new"),
+    legacyRedirect("/ProcessForm/edit/$id", (p) => `/editor/processes/${p.id}/edit`),
+    legacyRedirect("/StepForm/create", () => "/editor/steps/new"),
+    legacyRedirect("/StepForm/edit/$id", (p) => `/editor/steps/${p.id}/edit`),
+    legacyRedirect("/EquipmentTypeForm/create", () => "/editor/equipment-types/new"),
+    legacyRedirect("/EquipmentTypeForm/edit/$id", (p) => `/editor/equipment-types/${p.id}/edit`),
+    legacyRedirect("/EquipmentForm/create", () => "/editor/equipment/new"),
+    legacyRedirect("/EquipmentForm/edit/$id", (p) => `/editor/equipment/${p.id}/edit`),
+    legacyRedirect("/ErrorTypeForm/create", () => "/editor/error-types/new"),
+    legacyRedirect("/ErrorTypeForm/edit/$id", (p) => `/editor/error-types/${p.id}/edit`),
+    legacyRedirect("/SamplingRuleSetForm/create", () => "/editor/sampling-rule-sets/new"),
+    legacyRedirect("/SamplingRuleSetForm/edit/$id", (p) => `/editor/sampling-rule-sets/${p.id}/edit`),
+    legacyRedirect("/DocumentTypeForm/create", () => "/editor/document-types/new"),
+    legacyRedirect("/DocumentTypeForm/edit/$id", (p) => `/editor/document-types/${p.id}/edit`),
+    legacyRedirect("/DocumentForm/create", () => "/documents/new"),
+    legacyRedirect("/DocumentForm/edit/$id", (p) => `/documents/${p.id}/edit`),
+    legacyRedirect("/WorkOrderForm/create", () => "/editor/work-orders/new"),
+    legacyRedirect("/WorkOrderForm/edit/$id", (p) => `/editor/work-orders/${p.id}/edit`),
+    legacyRedirect("/CompaniesForm/create", () => "/editor/companies/new"),
+    legacyRedirect("/CompaniesForm/edit/$id", (p) => `/editor/companies/${p.id}/edit`),
+    legacyRedirect("/UserForm/create", () => "/admin/users/new"),
+    legacyRedirect("/UserForm/edit/$id", (p) => `/admin/users/${p.id}/edit`),
+    legacyRedirect("/ThreeDModelsForm/create", () => "/editor/3d-models/new"),
+    legacyRedirect("/ThreeDModelsForm/edit/$id", (p) => `/editor/3d-models/${p.id}/edit`),
+    legacyRedirect("/ApprovalTemplateForm/create", () => "/editor/approval-templates/new"),
+    legacyRedirect("/ApprovalTemplateForm/edit/$id", (p) => `/editor/approval-templates/${p.id}/edit`),
+    legacyRedirect("/OrderForm", () => "/editor/orders/new"),
+    legacyRedirect("/OrderForm/$id", (p) => `/editor/orders/${p.id}/edit`),
+    legacyRedirect("/editor/qualityReports/create", () => "/editor/quality-reports/new"),
+    legacyRedirect("/editor/qualityReports/edit/$id", (p) => `/editor/quality-reports/${p.id}/edit`),
+    legacyRedirect("/editor/partTypes", () => "/editor/part-types"),
+    legacyRedirect("/editor/equipmentTypes", () => "/editor/equipment-types"),
+    legacyRedirect("/editor/errorTypes", () => "/editor/error-types"),
+    legacyRedirect("/editor/samplingRuleSets", () => "/editor/sampling-rule-sets"),
+    legacyRedirect("/editor/samplingrules", () => "/editor/sampling-rules"),
+    legacyRedirect("/editor/WorkOrders", () => "/editor/work-orders"),
+    legacyRedirect("/editor/ThreeDModels", () => "/editor/3d-models"),
+    legacyRedirect("/editor/qualityReports", () => "/editor/quality-reports"),
+    legacyRedirect("/editor/approvalTemplates", () => "/editor/approval-templates"),
+    legacyRedirect("/editor/documentTypes", () => "/editor/document-types"),
+    legacyRedirect("/TrainingRecordForm/$id", (p) => p.id === "new" ? "/quality/training/records/new" : `/quality/training/records/${p.id}/edit`),
+    legacyRedirect("/TrainingTypeForm/$id", (p) => p.id === "new" ? "/quality/training/types/new" : `/quality/training/types/${p.id}/edit`),
+    legacyRedirect("/CalibrationRecordForm/$id", (p) => p.id === "new" ? "/quality/calibrations/records/new" : `/quality/calibrations/records/${p.id}/edit`),
+];
+
+const routeTree = rootRoute.addChildren([...legacyRedirectRoutes, shiftsEditorRoute, lifeLimitDefinitionsEditorRoute, lifeLimitDefinitionNewRoute, lifeLimitDefinitionEditRoute, schedulingGanttRoute, schedulingCalendarRoute, laborHoursRoute, capacityPlanningRoute, stagingRoute, requirementsRoute, stepTimingsRoute, stepEquipmentAffinitiesRoute, workCenterChangeoversRoute, MaterialsEditorRoute, materialCreateRoute, materialEditRoute, storageLocationsEditorRoute, materialLotDetailRoute, receivingMetricsRoute, homeRoute, loginRote, signupRoute, passwordResetRequestRoute, passwordResetConfirmRoute, trackerRoute, orderDetailsRoute, partAnnotatorRoute, heatMapViewerPartTypeRoute, heatMapViewerPartRoute, heatmapRoute, QAPage, ordersCreateFormRoute, ordersEditFormRoute, editLandingPageRoute, OrdersEditorPageRoute, PartsEditorRoute, partCreateRoute, partEditRoute, PartTypesEditorRoute, partTypeCreateRoute, partTypeEditRoute, processCreateRoute, processEditRoute, ProcessEditorRoute, stepCreateRoute, stepEditRoute, StepEditorRoute, equipmentCreateRoute, equipmentEditRoute, EquipmentEditorRoute, ToolingEditorRoute, toolingCreateRoute, toolingEditRoute, equipmentTypeCreateRoute, equipmentTypeEditRoute, EquipmentTypeEditorRoute, errorTypeCreateRoute, errorTypeEditRoute, ErrorTypeEditorRoute, DocumentsRoute, DocumentsListRoute, DocumentDetailRoute, SamplingRulesEditorRoute, SamplingRuleSetsEditorRoute, samplingRuleSetsCreateRoute, samplingRuleSetsEditRoute, DocumentCreateRoute, DocumentEditRoute, ModelDetailRoute, WorkOrderEditorRoute, workOrderEditRoute, workOrderCreateRoute, workOrderDetailRoute, workOrdersControlCenterRoute, workOrderControlRoute, companiesEditorRoute, companiesEditRoute, companiesCreateRoute, userEditorRoute, usersEditRoute, usersCreateRoute, userManagementRoute, bulkUserActionsRoute, userDetailRoute, workCentersAdminRoute, aiChatRoute, threeDModelsEditorRoute, threeDModelsCreateRoute, threeDModelsEditRoute, userProfileRoute, settingsRoute, organizationSettingsRoute, brandingSettingsRoute, notificationRulesSettingsRoute, notificationRuleNewRoute, notificationRuleEditRoute, notificationScheduleNewRoute, notificationScheduleEditRoute, notificationDefaultsSettingsRoute, externalContactsRoute, externalContactNewRoute, externalContactEditRoute, myNotificationsRoute, notificationFeedRoute, billingSettingsRoute, milestonesEditorRoute, integrationsSettingsRoute, integrationDetailRoute, qualityReportsEditorRoute, qualityReportCreateRoute, qualityReportEditRoute, annotatorPageRoute, analysisRoute, processFlowRoute, spcRoute,qualityDashboardRoute, changeControlRoute, pcrDetailRoute, pcoDetailRoute, pcnDetailRoute, capaListRoute, capaCreateRoute, capaDetailRoute, ncrAnalysisRoute, defectAnalysisRoute, trainingDashboardRoute, trainingRecordsRoute, trainingTypesRoute, trainingMatrixRoute, jobRolesRoute, jobRoleNewRoute, jobRoleEditRoute, trainingRecordFormRoute, trainingRecordCreateRoute, trainingTypeFormRoute, trainingTypeCreateRoute, calibrationDashboardRoute, measurementDefinitionsRoute, calibrationRecordsRoute, calibrationRecordFormRoute, calibrationRecordCreateRoute, inboxRoute, workOrdersRoute, dispositionsRoute, dispositionCreateRoute, dispositionEditRoute, auditLogRoute, masterWorkbookRoute, approvalTemplatesEditorRoute, approvalTemplateCreateRoute, approvalTemplateEditRoute, approvalsOverviewRoute, approvalsHistoryRoute, documentTypesEditorRoute, documentTypeCreateRoute, documentTypeEditRoute, groupsEditorRoute, groupDetailRoute, bigScreenRoute, forbiddenRoute, schemaAuditRoute, operatorHomePrototypeRoute, workQueuePrototypeRoute, qaHomePrototypeRoute, homeLandingsSpikeRoute, trainingMatrixPrototypeRoute, qaInboxRoute, operatorHomeRoute, shiftNotesRoute, remanDashboardRoute, coresEditorRoute, coreDetailRoute, coreReceiveRoute, coreReceiveBatchRoute, coreLotsRoute, coreDisassemblyRoute, rebuildQueueRoute, coreRebuildRoute, repairCodesEditorRoute, repairCodeNewRoute, repairCodeEditRoute, rebuildLevelsEditorRoute, rebuildLevelNewRoute, rebuildLevelEditRoute, harvestedComponentsRoute, materialLotsRoute, receiveLotsBatchRoute, receivingInspectionQueueRoute, receivingInspectionRoute, incomingHubRoute, outsideProcessingBoardRoute, receivingPlansRoute, receivingPlanEditorRoute, receivingPlanSubstepsRoute, supplierQualityRoute, supplierQualificationsRoute, supplierQualificationNewRoute, supplierQualificationEditRoute, partApprovalsRoute, partApprovalNewRoute, partApprovalEditRoute, dwiSpikeRoute, substepEditorRoute, operatorSubstepRuntimeRoute])
 
 // Create router with context
 export function createAppRouter(queryClient: QueryClient) {

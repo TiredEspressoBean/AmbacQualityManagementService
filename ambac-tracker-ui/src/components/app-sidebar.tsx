@@ -114,7 +114,7 @@ const remanPages = [
 const qualityPages = [
     { name: "Dashboard", url: "/quality", icon: ShieldCheck },
     { name: "CAPAs", url: "/quality/capas", icon: ClipboardList },
-    { name: "Quality Reports", url: "/editor/qualityReports", icon: ClipboardCheck },
+    { name: "Quality Reports", url: "/editor/quality-reports", icon: ClipboardCheck },
     { name: "Change Control", url: "/quality/change-control", icon: FileSignature },
     { name: "Dispositions", url: "/production/dispositions", icon: PackageSearch },
     { name: "Training", url: "/quality/training", icon: GraduationCap },

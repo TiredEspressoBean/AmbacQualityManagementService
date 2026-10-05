@@ -100,7 +100,7 @@ export function DocumentsDashboardPage() {
                             <div className="text-sm text-muted-foreground ml-6">Browse and search documents</div>
                         </Link>
                         <Link
-                            to="/DocumentForm/create"
+                            to="/documents/new"
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <div className="flex items-center gap-2">

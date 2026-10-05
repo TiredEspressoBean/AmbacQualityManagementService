@@ -112,7 +112,7 @@ export function DocumentDetailPage() {
                                 Create Revision
                             </Button>
                         )}
-                        <Link to="/DocumentForm/edit/$id" params={{ id: String(documentId) }}>
+                        <Link to="/documents/$id/edit" params={{ id: String(documentId) }}>
                             <Button variant="outline">
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit

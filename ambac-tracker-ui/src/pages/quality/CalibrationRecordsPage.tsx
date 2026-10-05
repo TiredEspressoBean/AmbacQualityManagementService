@@ -108,7 +108,7 @@ export function CalibrationRecordsPage() {
                 }),
             ]}
             renderActions={(record) => <EditCalibrationRecordActionCell recordId={record.id} />}
-            onCreate={() => navigate({ to: "/CalibrationRecordForm/$id", params: { id: "new" } })}
+            onCreate={() => navigate({ to: "/quality/calibrations/records/new" })}
             showDetailsLink={false}
             listQueryKey={["calibration-records"]}
         />

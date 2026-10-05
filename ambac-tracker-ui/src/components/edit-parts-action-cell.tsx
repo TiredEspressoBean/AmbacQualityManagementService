@@ -27,7 +27,7 @@ export function EditPartActionsCell({ partId }: Props) {
 
     const handleEditPart = () => {
         navigate({
-            to: "/PartForm/edit/$id", // <- adjust if your edit route differs
+            to: "/editor/parts/$id/edit", // <- adjust if your edit route differs
             params: { id: String(partId) },
         });
     };

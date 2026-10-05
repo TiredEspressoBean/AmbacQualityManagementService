@@ -78,7 +78,7 @@ export function TrainingTypesPage() {
                 }),
             ]}
             renderActions={(type) => <EditTrainingTypeActionCell typeId={type.id} />}
-            onCreate={() => navigate({ to: "/TrainingTypeForm/$id", params: { id: "new" } })}
+            onCreate={() => navigate({ to: "/quality/training/types/new" })}
             showDetailsLink={false}
             listQueryKey={["training-types"]}
         />

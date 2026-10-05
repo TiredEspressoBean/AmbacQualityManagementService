@@ -161,7 +161,7 @@ export default function SamplingRuleSetsFormPage() {
                 const created = await createRuleSet.mutateAsync(values)
                 toast.success("Rule set created — add sampling rules below")
                 const newId = (created as { id?: string })?.id
-                if (newId) navigate({ to: "/SamplingRuleSetForm/edit/$id", params: { id: newId } })
+                if (newId) navigate({ to: "/editor/sampling-rule-sets/$id/edit", params: { id: newId } })
                 else form.reset()
             }
         } catch (error) {

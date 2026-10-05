@@ -27,7 +27,7 @@ export function EditDocumentTypeActionsCell({ documentTypeId }: Props) {
 
     const handleEdit = () => {
         navigate({
-            to: "/DocumentTypeForm/edit/$id",
+            to: "/editor/document-types/$id/edit",
             params: { id: String(documentTypeId) },
         });
     };

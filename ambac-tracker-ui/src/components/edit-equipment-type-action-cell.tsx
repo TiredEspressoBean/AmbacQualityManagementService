@@ -27,7 +27,7 @@ export function EditEquipmentTypeActionsCell({ equipmentTypeId }: Props) {
 
     const handleEditEquipmentType = () => {
         navigate({
-            to: "/EquipmentTypeForm/edit/$id",
+            to: "/editor/equipment-types/$id/edit",
             params: { id: String(equipmentTypeId) },
         });
     };
