@@ -1,6 +1,7 @@
 import { LocationCombobox } from "@/components/locations/LocationCombobox";
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,6 +12,7 @@ import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateLots, type LotBulkRow } from "@/hooks/useReceivingMutations";
 import { useReportEmail } from "@/hooks/useReportEmail";
+import { locationSummaryOptions } from "@/hooks/useLocations";
 import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
 
 const NONE = "__none__";
@@ -65,6 +67,19 @@ export function ReceiveLotsBatchPage() {
         [companies],
     );
 
+    // A location cell holds the location's id (picked) or, pasted from a sheet, its name
+    // or code until it's matched — an unmatched one is a row error, not silently dropped.
+    const { data: locs } = useQuery(locationSummaryOptions());
+    const locationIds = useMemo(() => new Set((locs ?? []).map((l) => l.id)), [locs]);
+    const locationByName = useMemo(() => {
+        const m = new Map<string, string>();
+        for (const l of locs ?? []) {
+            m.set(l.name.toLowerCase(), l.id);
+            if (l.code) m.set(l.code.toLowerCase(), l.id);
+        }
+        return m;
+    }, [locs]);
+
     function setCell(idx: number, key: keyof Row, value: string) {
         setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     }
@@ -82,6 +97,7 @@ export function ReceiveLotsBatchPage() {
                 const v = val.trim();
                 if (key === "item") r.item = stockItems.byName.get(v.toLowerCase()) ?? NONE;
                 else if (key === "supplier") r.supplier = companyByName.get(v.toLowerCase()) ?? NONE;
+                else if (key === "storage_location") r.storage_location = locationByName.get(v.toLowerCase()) ?? v;
                 else (r as Record<string, string>)[key] = v;
             });
             return r;
@@ -93,6 +109,7 @@ export function ReceiveLotsBatchPage() {
         const e: Partial<Record<keyof Row, string>> = {};
         if (!r.quantity.trim() || Number.isNaN(parseFloat(r.quantity))) e.quantity = "Invalid";
         if (!r.received_date) e.received_date = "Required";
+        if (r.storage_location && !locationIds.has(r.storage_location)) e.storage_location = "Not a location";
         return e;
     };
     const hasErrors = rows.some((r) => Object.keys(rowErrors(r)).length > 0);
@@ -110,7 +127,7 @@ export function ReceiveLotsBatchPage() {
         if (r.supplier !== NONE) out.supplier = r.supplier;
         if (r.supplier_lot_number.trim()) out.supplier_lot_number = r.supplier_lot_number.trim();
         if (r.unit_of_measure.trim()) out.unit_of_measure = r.unit_of_measure.trim();
-        if (r.storage_location.trim()) out.storage_location = r.storage_location.trim();
+        if (r.storage_location) out.location = r.storage_location;
         if (r.heat_number.trim()) out.heat_number = r.heat_number.trim();
         if (r.source_type !== NONE) out.source_type = r.source_type;
         if (r.owner !== NONE) out.owner = r.owner;
@@ -225,7 +242,8 @@ export function ReceiveLotsBatchPage() {
                                         <TableCell><Input className="min-w-32 font-mono" value={r.supplier_lot_number} onChange={(ev) => setCell(idx, "supplier_lot_number", ev.target.value)} /></TableCell>
                                         <TableCell className="min-w-44">
                                             <LocationCombobox aria-label={`Storage location, row ${idx + 1}`} value={r.storage_location}
-                                                onChange={(v) => setCell(idx, "storage_location", v)} placeholder="Location" />
+                                                onChange={(v) => setCell(idx, "storage_location", v ?? "")} placeholder="Location"
+                                                selectedLabel={r.storage_location} />
                                         </TableCell>
                                         <TableCell>
                                             <Input value={r.heat_number} onChange={(ev) => setCell(idx, "heat_number", ev.target.value)}

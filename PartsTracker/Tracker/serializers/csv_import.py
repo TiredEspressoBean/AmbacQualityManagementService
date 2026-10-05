@@ -1184,7 +1184,7 @@ class EquipmentCSVImportSerializer(BaseCSVImportSerializer):
     """CSV import serializer for Equipment."""
 
     class Meta:
-        from Tracker.models import Equipments, EquipmentType
+        from Tracker.models import Equipments, EquipmentType, StorageLocation
         model = Equipments
         lookup_fields = ['id', 'serial_number', 'name']
         field_mapping = {
@@ -1192,6 +1192,7 @@ class EquipmentCSVImportSerializer(BaseCSVImportSerializer):
         }
         fk_fields = {
             'equipment_type': (EquipmentType, ['name', 'id']),
+            'location': (StorageLocation, ['name', 'code', 'id']),
         }
         required_fields = ['name', 'equipment_type']
 

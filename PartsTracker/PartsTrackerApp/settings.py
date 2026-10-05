@@ -402,6 +402,8 @@ SPECTACULAR_SETTINGS = {
         "DeliveryStateEnum": "Tracker.serializers.mes_standard.DELIVERY_STATES",
         # A cycle-count line is a lot or a unit; and the kind of difference a count found.
         "CycleCountLineKindEnum": "Tracker.serializers.cycle_counts.LINE_KINDS",
+        # What sort of place a location is: the record's field and the tree/contents rows.
+        "StorageLocationKindEnum": "Tracker.models.mes_standard.STORAGE_LOCATION_KINDS",
         "CycleCountVarianceEnum": "Tracker.serializers.cycle_counts.VARIANCES",
         # How an item is bought / counted at the dock: Material, PartTypes and the lot.
         "PurchaseUnitEnum": "Tracker.models.mes_standard.PURCHASE_UNIT_CHOICES",

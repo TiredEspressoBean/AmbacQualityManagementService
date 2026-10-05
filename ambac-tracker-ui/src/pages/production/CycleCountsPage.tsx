@@ -32,7 +32,7 @@ export function CycleCountsPage() {
                                     <Link to="/production/cycle-counts/$countId" params={{ countId: c.id }} className="font-mono hover:underline">{c.count_number}</Link>
                                     {c.blind && <Badge variant="outline" className="ml-2">Blind</Badge>}
                                 </td>
-                                <td className="px-3 py-2">{c.location}</td>
+                                <td className="px-3 py-2">{c.location_name}</td>
                                 <td className="px-3 py-2"><Badge variant={c.status === "APPLIED" ? "default" : "outline"}>{c.status_display}</Badge></td>
                                 <td className="px-3 py-2 text-right tabular-nums">{c.status === "OPEN" ? "—" : c.variances.length}</td>
                                 <td className="px-3 py-2 text-muted-foreground">{new Date(c.created_at).toLocaleDateString()} · {c.started_by_name ?? "—"}</td>

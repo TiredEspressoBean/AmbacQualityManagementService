@@ -58,7 +58,7 @@ export function EquipmentEditorPage() {
                 col({ header: "Equipment Type", renderCell: (equipment) => equipment.equipment_type_name || "—", priority: 2 }),
                 col({ header: "Serial #", renderCell: (equipment) => equipment.serial_number || "—", priority: 2 }),
                 col({ header: "Manufacturer", renderCell: (equipment) => equipment.manufacturer || "—", priority: 3 }),
-                col({ header: "Location", renderCell: (equipment) => equipment.location || "—", priority: 3 }),
+                col({ header: "Location", renderCell: (equipment) => equipment.location_name || "—", priority: 3 }),
                 col({
                     header: "Status",
                     renderCell: (equipment) => {

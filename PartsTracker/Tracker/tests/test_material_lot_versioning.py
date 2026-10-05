@@ -147,8 +147,12 @@ class MaterialLotSerializerUpdateTestCase(TenantTestCase):
 
     # -- spec fields: update in place (no versioning) --------------------
 
+    def _shelf(self, name):
+        from Tracker.services.mes.locations import seed_location
+        return seed_location(self.lot.tenant, name)
+
     def test_spec_field_change_updates_in_place(self):
-        s = self._serializer(self.lot, {"storage_location": "Shelf B"})
+        s = self._serializer(self.lot, {"location": str(self._shelf("Shelf B").id)})
         s.is_valid(raise_exception=True)
         result = s.save()
 
@@ -180,7 +184,7 @@ class MaterialLotSerializerUpdateTestCase(TenantTestCase):
         """Mixed spec + operational edit updates in place (no versioning)."""
         s = self._serializer(
             self.lot,
-            {"status": "IN_USE", "storage_location": "Shelf C"},
+            {"status": "IN_USE", "location": str(self._shelf("Shelf C").id)},
         )
         s.is_valid(raise_exception=True)
         result = s.save()

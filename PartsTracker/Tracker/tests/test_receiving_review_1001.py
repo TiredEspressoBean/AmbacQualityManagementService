@@ -73,7 +73,7 @@ class LotIntegrityTests(_Fixture):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("Adjust quantity", str(resp.json()))
         # The same quantity sent back (a form saving every field) is no change.
-        ok = self.client.patch(f"/api/MaterialLots/{lot.id}/", {"quantity": "100", "storage_location": "B2"},
+        ok = self.client.patch(f"/api/MaterialLots/{lot.id}/", {"quantity": "100", "supplier_lot_number": "B2"},
                                format="json")
         self.assertEqual(ok.status_code, 200, ok.content)
 

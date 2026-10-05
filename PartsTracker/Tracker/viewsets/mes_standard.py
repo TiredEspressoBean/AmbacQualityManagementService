@@ -531,48 +531,52 @@ class MaterialViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, ListMe
 
 class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                              viewsets.ModelViewSet):
-    """The tenant's managed list of storage locations. Optional: with none set up,
-    receiving takes free text and suggests what has been typed before."""
-    queryset = StorageLocation.unscoped.all()
+    """The tenant's locations — where lots, units and machines are. A location is a
+    record, so renaming it renames it everywhere; ``summary`` is the tree."""
+    queryset = StorageLocation.unscoped.select_related('parent')
     serializer_class = StorageLocationSerializer
     # A location is its name (unique per tenant).
     csv_import_serializer = create_import_serializer_for_model(
         StorageLocation, lookup_fields=['id', 'name'])
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
-    search_fields = ['name', 'description']
-    filterset_fields = ['is_active']
-    ordering_fields = ['name']
+    search_fields = ['name', 'code', 'description']
+    filterset_fields = ['is_active', 'parent', 'kind', 'held_only', 'receiving_dock']
+    ordering_fields = ['name', 'kind']
     ordering = ['name']
 
-    def perform_update(self, serializer):
-        from Tracker.services.mes.locations import rename_location
-        old = serializer.instance.name
-        with transaction.atomic():
-            super().perform_update(serializer)
-            rename_location(serializer.instance.tenant, old, serializer.instance.name)
-
     @extend_schema(responses=LocationSummarySerializer(many=True),
-                   description="Every location with stock in it, plus every managed location, "
-                               "with how many lots and units each holds.")
+                   description="Every location as a tree (ordered by path), with how many lots, "
+                               "units and machines are in each — directly and in total.")
     @action(detail=False, methods=['get'], url_path='summary', pagination_class=None, filter_backends=[])
     def summary(self, request):
         from Tracker.services.mes.locations import location_summary
         return Response(LocationSummarySerializer(location_summary(request.tenant), many=True).data)
 
-    @extend_schema(parameters=[OpenApiParameter('name', str, required=True),
-                               OpenApiParameter('days', int, required=False)],
+    @extend_schema(parameters=[OpenApiParameter('days', int, required=False),
+                               OpenApiParameter('include_children', bool, required=False)],
                    responses=LocationContentsSerializer,
-                   description="What is in one location now, and what moved in or out of it lately. "
-                               "By name, so unmanaged (typed) locations work too.")
-    @action(detail=False, methods=['get'], url_path='contents', pagination_class=None, filter_backends=[])
-    def contents(self, request):
+                   description="What is in one location now (and, by default, in the locations "
+                               "inside it), and what moved in or out of it lately.")
+    @action(detail=True, methods=['get'], url_path='contents', pagination_class=None, filter_backends=[])
+    def contents(self, request, pk=None):
         from Tracker.services.mes.locations import location_contents
+        loc = self.get_object()
         try:
             days = max(1, min(int(request.query_params.get('days', 7)), 90))
         except ValueError:
             days = 7
+        include = request.query_params.get('include_children', 'true').lower() not in ('false', '0')
         return Response(LocationContentsSerializer(
-            location_contents(request.tenant, request.query_params.get('name', ''), days)).data)
+            location_contents(request.tenant, loc, days, include_children=include)).data)
+
+    def perform_destroy(self, instance):
+        # Delete archives (SecureModel), so PROTECT never fires: a location with things in
+        # it would drop out of the tree with them still pointing at it. Refuse instead.
+        from Tracker.services.mes.locations import in_use
+        reason = in_use(instance)
+        if reason:
+            raise serializers.ValidationError(f"{instance.name} still has {reason}. Make it inactive instead.")
+        super().perform_destroy(instance)
 
 
 # `inspection_pending` is read straight off query_params in get_queryset rather
@@ -620,7 +624,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description',
                      'material__name', 'material__part_number', 'material_type__name',
                      'supplier__name', 'erp_po_number', 'heat_number']
-    filterset_fields = ['status', 'supplier', 'material_type']
+    filterset_fields = ['status', 'supplier', 'material_type', 'location']
     # promised_date is the useful axis for ON_ORDER lots — they have no received_date yet.
     ordering_fields = ['received_date', 'lot_number', 'expiration_date', 'promised_date']
     ordering = ['-received_date']
@@ -681,7 +685,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     def get_queryset(self):
         from django.db.models import Exists, OuterRef
         from Tracker.models import QuarantineDisposition
-        qs = super().get_queryset().annotate(_awaiting_return=Exists(
+        qs = super().get_queryset().select_related('location').annotate(_awaiting_return=Exists(
             QuarantineDisposition.objects.filter(  # tenant-safe: correlated to the scoped outer lot
                 material_lot=OuterRef('pk'), disposition_type='RETURN_TO_SUPPLIER',
             ).exclude(current_state='CLOSED')))
@@ -925,33 +929,6 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         work orders whose BOM calls for the item."""
         from Tracker.services.mes.late_deliveries import late_deliveries
         return Response(LateDeliverySerializer(late_deliveries(request.tenant), many=True).data)
-
-    @extend_schema(
-        description=(
-            "Storage locations for a picker to suggest. When the tenant keeps a managed "
-            "list (StorageLocations), its active entries; otherwise every location "
-            "already typed on material lots and equipment."
-        ),
-        responses={200: {"type": "array", "items": {"type": "string"}}},
-    )
-    @action(detail=False, methods=['get'], pagination_class=None)
-    def locations(self, request):
-        from Tracker.models import Equipments, StorageLocation
-        # tenant-safe: SecureManager scopes StorageLocation to the request's tenant.
-        managed = list(StorageLocation.objects.filter(is_active=True, archived=False)
-                       .values_list('name', flat=True))
-        if managed:
-            return Response(sorted(managed, key=str.casefold))
-        lots = (self.get_queryset().exclude(storage_location='')
-                .values_list('storage_location', flat=True))
-        # tenant-safe: SecureManager scopes Equipments to the request's tenant.
-        machines = Equipments.objects.exclude(location='').values_list('location', flat=True)
-        seen = {}
-        for raw in [*lots, *machines]:
-            name = (raw or '').strip()
-            if name:
-                seen.setdefault(name.casefold(), name)  # one spelling per case-insensitive name
-        return Response(sorted(seen.values(), key=str.casefold))
 
     @extend_schema(request=ReceiveExpectedLotSerializer, responses={200: MaterialLotSerializer})
     @action(detail=True, methods=['post'], url_path='receive')
@@ -1347,12 +1324,15 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         if per_row_errors:
             return Response({"detail": "Validation failed", "errors": per_row_errors},
                             status=status.HTTP_400_BAD_REQUEST)
+        from Tracker.services.mes.locations import default_receiving_location
+        dock = default_receiving_location(request.tenant)
         try:
             with transaction.atomic():
                 created = []
                 for ser in valid_rows:
+                    extra = {} if ser.validated_data.get('location') or dock is None else {'location': dock}
                     lot = ser.save(received_by=request.user,
-                                   quantity_remaining=ser.validated_data.get('quantity', 0))
+                                   quantity_remaining=ser.validated_data.get('quantity', 0), **extra)
                     receiving_inspection.route_received_lot(lot, request.user)
                     created.append(lot)
         except Exception as exc:

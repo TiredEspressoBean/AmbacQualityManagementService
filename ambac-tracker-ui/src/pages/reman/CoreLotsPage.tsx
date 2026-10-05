@@ -166,8 +166,8 @@ function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                         </div>
                         <div className="grid gap-1">
                             <Label>Storage location</Label>
-                            <LocationCombobox value={location} onChange={setLocation}
-                                              placeholder="Optional — choose or type a location" />
+                            <LocationCombobox value={location} onChange={(v) => setLocation(v ?? "")}
+                                              placeholder="Optional — the receiving dock if none" />
                         </div>
                     </div>
                     <div className="grid gap-1">

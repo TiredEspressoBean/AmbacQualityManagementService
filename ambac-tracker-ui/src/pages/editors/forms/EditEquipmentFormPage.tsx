@@ -98,7 +98,7 @@ export default function EquipmentFormPage() {
             serial_number: "",
             manufacturer: "",
             model_number: "",
-            location: "",
+            location: null,
             status: undefined,
             is_schedulable: false,
             runs_unattended: null,
@@ -117,7 +117,7 @@ export default function EquipmentFormPage() {
                 serial_number: equipment.serial_number ?? "",
                 manufacturer: equipment.manufacturer ?? "",
                 model_number: equipment.model_number ?? "",
-                location: equipment.location ?? "",
+                location: equipment.location ?? null,
                 status: equipment.status ?? undefined,
                 is_schedulable: equipment.is_schedulable ?? false,
                 runs_unattended: equipment.runs_unattended ?? null,
@@ -138,7 +138,7 @@ export default function EquipmentFormPage() {
             serial_number: values.serial_number || undefined,
             manufacturer: values.manufacturer || undefined,
             model_number: values.model_number || undefined,
-            location: values.location || undefined,
+            location: values.location || null,
             status: values.status || undefined,
             is_schedulable: values.is_schedulable,
             runs_unattended: values.runs_unattended,
@@ -311,11 +311,11 @@ export default function EquipmentFormPage() {
                                 <FormItem>
                                     <FormLabel required={required.location}>Location</FormLabel>
                                     <FormControl>
-                                        <LocationCombobox value={field.value ?? ""} onChange={field.onChange}
-                                            placeholder="e.g. Building A, Bay 3" />
+                                        <LocationCombobox value={field.value ?? null} onChange={field.onChange}
+                                            placeholder="Where the machine is" />
                                     </FormControl>
                                     <FormDescription>
-                                        Physical location of the equipment
+                                        Where the machine is — one of your locations (a cell, a lab, the tool crib)
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

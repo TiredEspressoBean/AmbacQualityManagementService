@@ -27,6 +27,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from Tracker.services.mes.locations import seed_location
 from Tracker.models import (
     Orders, Parts, WorkOrder, Steps, Processes,
     OrdersStatus, WorkOrderStatus, WorkOrderPriority, PartsStatus,
@@ -488,7 +489,8 @@ class DemoShowcaseSeeder(BaseSeeder):
                     received_date=(self.today - timedelta(days=30)).date(),
                     received_by=admin_user, quantity=Decimal("400"),
                     quantity_remaining=Decimal("400"), unit_of_measure="EA",
-                    hold_reason="", storage_location="Main Stores", status="ACCEPTED"))
+                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    status="ACCEPTED"))
 
         bom = BOM.objects.filter(
             tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",

@@ -765,7 +765,7 @@ def get_work_orders_template() -> TemplateGenerator:
 
 def get_equipment_template() -> TemplateGenerator:
     """Get template generator for Equipment import."""
-    from Tracker.models import EquipmentType
+    from Tracker.models import EquipmentType, StorageLocation
 
     return TemplateGenerator(
         model_name="Equipment",
@@ -801,8 +801,11 @@ def get_equipment_template() -> TemplateGenerator:
             ),
             TemplateField(
                 "location",
-                description="Physical location",
-                example="Bay 3"
+                description="Location name (must exist under Locations)",
+                example="Bay 3",
+                fk_model=StorageLocation,
+                fk_display_field="name",
+                fk_value_field="name"
             ),
             TemplateField(
                 "status",

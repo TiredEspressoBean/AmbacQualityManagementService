@@ -84,7 +84,7 @@ def build_cycle_count_context(count, tenant, *, differences_only: bool) -> Cycle
                            expected=None if count.blind else l.get("expected"))
                  for l in sorted(count.lines, key=lambda l: (l["kind"], l["label"]))]
     return CycleCountContext(
-        our_org=tenant.name, count_number=count.count_number, location=count.location,
+        our_org=tenant.name, count_number=count.count_number, location=count.location.name,
         status=count.get_status_display(), blind=count.blind,
         started_by=_name(count.started_by), submitted_by=_name(count.submitted_by),
         lines=lines, issued_date=tenant_today(tenant))

@@ -152,8 +152,8 @@ export function MaterialLotDetailPage() {
                     )}
                     <Field label="Counted as">{l.received_as_quantity && l.received_as_unit ? `${l.received_as_quantity} ${l.received_as_unit.toLowerCase()}` : null}</Field>
                     <Field label="Received">{l.received_date ? `${l.received_date}${l.received_by_name ? ` · ${l.received_by_name}` : ""}` : null}</Field>
-                    <Field label="Location">{l.storage_location
-                        ? <Link to="/production/locations/$name" params={{ name: l.storage_location }} className="underline">{l.storage_location}</Link>
+                    <Field label="Location">{l.location
+                        ? <Link to="/production/locations/$locationId" params={{ locationId: l.location }} className="underline">{l.location_path ?? l.storage_location}</Link>
                         : null}</Field>
                     {l.customer_shipment && (
                         <Field label="Shipped">

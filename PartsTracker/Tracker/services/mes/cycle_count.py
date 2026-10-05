@@ -27,18 +27,21 @@ def _num(v):
 
 def start_count(tenant, location: str, user, *, blind: bool = False):
     from Tracker.models import CycleCount
-    from Tracker.services.mes.locations import canonical_location, location_contents
-    name = canonical_location(tenant, location)
-    if CycleCount.objects.filter(tenant=tenant, location__iexact=name, status="OPEN").exists():  # tenant-safe: explicit tenant filter
+    from Tracker.services.mes.locations import location_contents, resolve_location
+    # One location exactly, not the ones inside it: a bin is counted as a bin, so what's
+    # found here can be moved here without flattening the rack's bins into the rack.
+    loc = resolve_location(tenant, location)
+    name = loc.name
+    if CycleCount.objects.filter(tenant=tenant, location=loc, status="OPEN").exists():  # tenant-safe: explicit tenant filter
         raise ValueError(f"{name} already has a count open — finish or submit it first.")
-    contents = location_contents(tenant, name, days=1)
+    contents = location_contents(tenant, loc, days=1, include_children=False)
     lines = [{"kind": "LOT", "id": l["id"], "label": l["lot_number"], "item": l["item_name"] or "",
               "unit": l["unit_of_measure"], "expected": l["quantity_remaining"], "counted": None,
               "found_here": False, "system_location": name, "note": ""} for l in contents["lots"]]
     lines += [{"kind": "PART", "id": p["id"], "label": p["erp_id"], "item": p["part_type"] or "",
                "unit": "EA", "expected": 1, "counted": None, "found_here": False,
                "system_location": name, "note": ""} for p in contents["parts"]]
-    return CycleCount.objects.create(tenant=tenant, location=name, blind=blind, lines=lines,
+    return CycleCount.objects.create(tenant=tenant, location=loc, blind=blind, lines=lines,
                                      started_by=user if getattr(user, "is_authenticated", False) else None)
 
 
@@ -131,7 +134,7 @@ def apply_count(count, user):
     from Tracker.services.mes.material_lot import adjust_quantity
     if count.status != "SUBMITTED":
         raise ValueError(f"{count.count_number} has to be submitted before it's applied.")
-    reason = f"Cycle count {count.count_number} at {count.location}"
+    reason = f"Cycle count {count.count_number} at {count.location.name}"
     with transaction.atomic():
         for v in variances(count):
             if v["kind"] == "LOT":
@@ -139,7 +142,7 @@ def apply_count(count, user):
                 if lot is None:
                     continue
                 if v["variance"] == "FOUND_HERE":
-                    if (lot.storage_location or "").casefold() != count.location.casefold():
+                    if lot.location_id != count.location_id:
                         lot = move_lot(lot, to=count.location, user=user, reason=reason)
                     new = Decimal(str(v["counted"]))
                 else:
@@ -176,7 +179,7 @@ def discrepancy_workbook(count) -> bytes:
         cell.fill, cell.font = HEADER_FILL, HEADER_FONT
         ws.column_dimensions[cell.column_letter].width = max(len(name), 12) + 2
     for r, v in enumerate(variances(count), start=2):
-        row = [count.location, v["label"], v.get("item", ""), v.get("unit", ""), v.get("expected"),
+        row = [count.location.name, v["label"], v.get("item", ""), v.get("unit", ""), v.get("expected"),
                v.get("counted"), v.get("difference"), _WHAT[v["variance"]],
                v.get("system_location") if v["variance"] == "FOUND_HERE" else "", v.get("note", "")]
         for c, value in enumerate(row, start=1):

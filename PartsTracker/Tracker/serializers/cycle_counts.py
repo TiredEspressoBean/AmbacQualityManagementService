@@ -41,16 +41,17 @@ class CycleCountSerializer(SecureModelMixin):
     submitted_by_name = serializers.SerializerMethodField()
     applied_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    location_name = serializers.CharField(source='location.name', read_only=True)
 
     class Meta:
         model = CycleCount
         fields = (
-            'id', 'count_number', 'location', 'blind', 'status', 'status_display',
+            'id', 'count_number', 'location', 'location_name', 'blind', 'status', 'status_display',
             'lines', 'variances',
             'started_by', 'started_by_name', 'submitted_by_name', 'submitted_at',
             'applied_by_name', 'applied_at', 'created_at', 'updated_at', 'archived',
         )
-        read_only_fields = ('count_number', 'status', 'started_by', 'submitted_at', 'applied_at',
+        read_only_fields = ('count_number', 'location', 'status', 'started_by', 'submitted_at', 'applied_at',
                             'created_at', 'updated_at')
 
     @extend_schema_field(CycleCountLineSerializer(many=True))
@@ -80,7 +81,7 @@ class CycleCountSerializer(SecureModelMixin):
 
 
 class StartCycleCountSerializer(serializers.Serializer):
-    location = serializers.CharField()
+    location = serializers.CharField(help_text="The location's id, code or name (a scanned LOC: label is fine).")
     blind = serializers.BooleanField(required=False, default=False)
 
 

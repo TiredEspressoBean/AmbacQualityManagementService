@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
+from Tracker.services.mes.locations import seed_location
 from Tracker.models import (
     MaterialLot, Steps, StepMeasurementRequirement, MeasurementDefinition,
     SamplingRuleSet, SamplingRule, ProcessStep,
@@ -131,7 +132,7 @@ class DemoReceivingSeeder(BaseSeeder):
                     'received_by': received_by,
                     'quantity': Decimal(qty), 'quantity_remaining': Decimal(qty),
                     'unit_of_measure': 'EA', 'status': 'RECEIVED',
-                    'storage_location': 'Receiving Dock',
+                    'location': seed_location(self.tenant, 'Receiving Dock', kind='DOCK', receiving_dock=True),
                 },
             )
             return lot

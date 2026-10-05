@@ -586,7 +586,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
                   # Lot-split genealogy (PART grain — distinct from WorkOrder.split_reason/at).
                   'split_from_lot', 'lot_split_reason', 'lot_split_at', 'rejoined_at',
                   # Where the unit sits. Changed only by a recorded move (Parts/move).
-                  'storage_location')
+                  'location', 'storage_location')
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
@@ -595,7 +595,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             # Lot-split state is driven by split_from_lot / rejoin_to_lot services, not direct writes.
             # (lot_split_reason is a SerializerMethodField below, inherently read-only.)
             'split_from_lot', 'lot_split_at', 'rejoined_at',
-            'reserved_for_core', 'reserved_for_core_number', 'storage_location')
+            'reserved_for_core', 'reserved_for_core_number', 'location', 'storage_location')
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -1876,12 +1876,17 @@ class EquipmentsSerializer(SecureModelMixin):
     through a plain save.
     """
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
+    location_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location_id else None
 
     class Meta:
         model = Equipments
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
-            "serial_number", "manufacturer", "model_number", "location", "status",
+            "serial_number", "manufacturer", "model_number", "location", "location_name", "status",
             "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]
@@ -1907,12 +1912,17 @@ class EquipmentsSerializer(SecureModelMixin):
 class EquipmentSerializer(SecureModelMixin):
     """Legacy equipment serializer"""
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
+    location_name = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location_id else None
 
     class Meta:
         model = Equipments
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
-            "serial_number", "manufacturer", "model_number", "location", "status", "notes",
+            "serial_number", "manufacturer", "model_number", "location", "location_name", "status", "notes",
             "created_at", "updated_at", "archived"
         ]
         read_only_fields = ("created_at", "updated_at")
@@ -1921,6 +1931,11 @@ class EquipmentSerializer(SecureModelMixin):
 class EquipmentSelectSerializer(serializers.ModelSerializer):
     """Equipment select serializer"""
     equipment_type = EquipmentTypeSerializer(read_only=True)
+    location = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_location(self, obj):
+        return obj.location.name if obj.location_id else None
 
     class Meta:
         model = Equipments

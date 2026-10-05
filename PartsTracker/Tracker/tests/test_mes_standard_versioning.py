@@ -102,11 +102,13 @@ class EquipmentsSerializerRoutingTestCase(TenantTestCase):
             name='Caliper',
             requires_calibration=True,
         )
+        from Tracker.models import StorageLocation
+        self.loc = {n: StorageLocation.objects.create(name=n) for n in ('QA Lab', 'Machine Shop', 'Tool Crib')}
         self.obj = Equipments.objects.create(
             name='Digital Caliper #1',
             serial_number='CAL-001',
             equipment_type=self.eq_type,
-            location='QA Lab',
+            location=self.loc['QA Lab'],
             notes='',
         )
         self.factory = APIRequestFactory()
@@ -120,12 +122,12 @@ class EquipmentsSerializerRoutingTestCase(TenantTestCase):
         )
 
     def test_content_edit_creates_new_version(self):
-        s = self._serializer(self.obj, {'location': 'Machine Shop'})
+        s = self._serializer(self.obj, {'location': str(self.loc['Machine Shop'].id)})
         s.is_valid(raise_exception=True)
         result = s.save()
 
         self.assertEqual(result.version, 2)
-        self.assertEqual(result.location, 'Machine Shop')
+        self.assertEqual(result.location.name, 'Machine Shop')
         self.obj.refresh_from_db()
         self.assertFalse(self.obj.is_current_version)
 
@@ -148,12 +150,12 @@ class EquipmentsSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(result.id, self.obj.id)
 
     def test_mixed_archive_and_content_creates_new_version(self):
-        s = self._serializer(self.obj, {'archived': True, 'location': 'Tool Crib'})
+        s = self._serializer(self.obj, {'archived': True, 'location': str(self.loc['Tool Crib'].id)})
         s.is_valid(raise_exception=True)
         result = s.save()
 
         self.assertEqual(result.version, 2)
-        self.assertEqual(result.location, 'Tool Crib')
+        self.assertEqual(result.location.name, 'Tool Crib')
 
     def test_empty_update_is_noop(self):
         s = self._serializer(self.obj, {})

@@ -10,6 +10,7 @@ Creates deterministic manufacturing setup matching DEMO_DATA_SYSTEM.md:
 from datetime import timedelta
 from django.utils import timezone
 
+from Tracker.services.mes.locations import seed_location
 from Tracker.models import (
     PartTypes, Processes, Steps, ProcessStep, StepEdge,
     Equipments, EquipmentType, MeasurementDefinition,
@@ -473,7 +474,8 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'serial_number': eq_data['serial'],
                     'equipment_type': eq_type,
                     'status': EquipmentStatus.IN_SERVICE,  # Enum member from EquipmentStatus
-                    'location': eq_data.get('location', ''),
+                    'location': (seed_location(self.tenant, eq_data['location'])
+                                 if eq_data.get('location') else None),
                     'is_schedulable': eq_data.get('schedulable', False),  # solver reserves only these
                     # Lights-out: only genuinely-continuous processes run unattended (wash
                     # cycle, automated CMM/vision inspection). Everything else is None →

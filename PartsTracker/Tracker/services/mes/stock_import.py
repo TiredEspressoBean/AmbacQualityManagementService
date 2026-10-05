@@ -93,7 +93,10 @@ def _read(tenant, row) -> dict:
         "quantity": quantity,
         "unit_of_measure": (_text(row.get("unit"))
                             or getattr(material, "unit_of_measure", "") or "EA"),
-        "storage_location": _text(row.get("location")),
+        # A location the sheet names that UQMES doesn't have yet is created: the opening
+        # balance is where the stock IS, and the list is set up from it.
+        "location": (_resolve_location(tenant, _text(row.get("location")))
+                     if _text(row.get("location")) else None),
         "received_date": _date(row, "received_date", "Received date") or tenant_today(tenant),
         "supplier": _resolve_supplier(tenant, _text(row.get("supplier"))),
         "supplier_lot_number": _text(row.get("supplier_lot_number")),
@@ -102,6 +105,11 @@ def _read(tenant, row) -> dict:
         "expiration_date": _date(row, "expiration_date", "Expiration date"),
         "owner": _owner(tenant, _text(row.get("owner"))),
     }
+
+
+def _resolve_location(tenant, name: str):
+    from Tracker.services.mes.locations import resolve_location
+    return resolve_location(tenant, name, create=True)
 
 
 def _apply(tenant, fields: dict) -> str:

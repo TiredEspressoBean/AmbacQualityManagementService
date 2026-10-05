@@ -110,7 +110,7 @@ class MasterWorkbookTests(APITestCase):
         body = resp.json()
         self.assertTrue(body["loaded"], body)
         lot = MaterialLot.objects.get(lot_number="L-100")
-        self.assertEqual((lot.status, lot.quantity, lot.quantity_remaining, lot.storage_location),
+        self.assertEqual((lot.status, lot.quantity, lot.quantity_remaining, lot.storage_location),  # created from the sheet
                          ("ACCEPTED", Decimal("40"), Decimal("40"), "Rack 1"))
         self.assertEqual((lot.supplier.name, lot.material_type.ERP_id), ("Acme", "SEAL-1"))
         record = TrainingRecord.objects.get()

@@ -5,8 +5,8 @@ from django.test import SimpleTestCase
 from Tracker.reports.adapters.location_label import LocationLabelAdapter
 from Tracker.reports.tests.base import ReportAdapterTestMixin
 
-_SKIP = ("Labels are printed by name; build_context reads only the tenant's own "
-         "StorageLocation descriptions through an explicit tenant filter.")
+_SKIP = ("Each entry is resolved with locations.find_location, which filters by tenant; "
+         "the DB-backed refusal is covered in tests/test_locations_scan.py.")
 
 
 class TestLocationLabelThermal(ReportAdapterTestMixin, SimpleTestCase):

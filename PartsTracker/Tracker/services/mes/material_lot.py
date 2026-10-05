@@ -83,7 +83,7 @@ def split_material_lot(lot, quantity: Decimal, reason: str = ""):
                           if child_hold else []),
             manufacture_date=locked.manufacture_date,
             expiration_date=locked.expiration_date,
-            storage_location=locked.storage_location,
+            location=locked.location,
             # Traceability travels with the pieces: same melt, same source, same PO,
             # same certificate.
             heat_number=locked.heat_number,
@@ -203,7 +203,7 @@ def next_lot_numbers(tenant, count: int) -> list[str]:
 
 def receive_expected_lot(lot, *, received_by, lot_number: str = "",
                          supplier_lot_number: str | None = None, received_date=None,
-                         quantity: Decimal | None = None, storage_location: str | None = None,
+                         quantity: Decimal | None = None, storage_location=None,
                          remainder: str | None = None, received_as_quantity=None,
                          received_as_unit: str = "", heat_number: str | None = None,
                          source_type: str | None = None, accept_overage: bool = False):
@@ -221,6 +221,10 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
     nothing more is expected — UQMES's copy stops expecting the rest. It does not close the
     PO line, which is the ERP's (ISA-95 Level 4); if the ERP still shows it open, the next
     expected-receipts sheet expects it again. Either way the lot records what was ordered.
+
+    ``storage_location`` is where it was put away — anything `locations.resolve_location`
+    takes (id, code, name). Omitted, the lot keeps the location the expected receipt
+    named, or goes to the tenant's receiving dock.
 
     ``received_as_quantity`` / ``received_as_unit`` take what the clerk counted in the
     item's buying unit ("3 boxes"); it converts to the stock quantity (`to_stock_quantity`)
@@ -264,7 +268,7 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
             locked.quantity = quantity
             locked.quantity_remaining = quantity
         update = ["lot_number", "received_by", "received_date",
-                  "quantity", "quantity_remaining", "storage_location", "updated_at",
+                  "quantity", "quantity_remaining", "location", "updated_at",
                   *update_extra]
         if short_by > 0:
             if remainder not in ("BACKORDERED", "CLOSED"):
@@ -293,8 +297,11 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
             update.append("supplier_lot_number")
         locked.lot_number = (lot_number or "").strip() or next_lot_number(locked.tenant)
         locked.received_by = received_by
-        if storage_location is not None:
-            locked.storage_location = storage_location.strip()
+        from Tracker.services.mes.locations import default_receiving_location, resolve_location
+        if storage_location not in (None, ""):
+            locked.location = resolve_location(locked.tenant, storage_location)
+        elif locked.location_id is None:
+            locked.location = default_receiving_location(locked.tenant)
         # The shop floor's day (Tenant.default_timezone), not UTC's: a receipt at 8 pm
         # in a UTC-5 plant was dated tomorrow.
         from Tracker.services.core.clock import tenant_today

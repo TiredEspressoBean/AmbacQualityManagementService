@@ -4196,9 +4196,9 @@ class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin
         base=VersionedLikeTheAPIImport)
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_fields = ["equipment_type", "status", "location"]
-    ordering_fields = ["name", "equipment_type__name", "serial_number", "status", "location", "updated_at", "created_at"]
+    ordering_fields = ["name", "equipment_type__name", "serial_number", "status", "location__name", "updated_at", "created_at"]
     ordering = ["name"]  # Alphabetical by default
-    search_fields = ["name", "serial_number", "location"]
+    search_fields = ["name", "serial_number", "location__name"]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -4210,7 +4210,7 @@ class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin
         # old version stays retrievable by id, since history points at it.
         if self.action == 'list':
             qs = qs.filter(is_current_version=True)
-        return qs.select_related('equipment_type')
+        return qs.select_related('equipment_type', 'location')
 
 
 class EquipmentTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,

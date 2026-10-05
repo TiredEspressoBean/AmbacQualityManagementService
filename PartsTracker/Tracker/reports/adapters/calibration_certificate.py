@@ -178,7 +178,7 @@ class CalibrationCertificateAdapter(ReportAdapter):
             equipment_type=equipment_type.name if equipment_type else None,
             equipment_manufacturer=equipment.manufacturer if equipment else "",
             equipment_model=equipment.model_number if equipment else "",
-            equipment_location=equipment.location if equipment else "",
+            equipment_location=(equipment.location.name if equipment and equipment.location_id else ""),
 
             tenant_name=record.tenant.name,
         )

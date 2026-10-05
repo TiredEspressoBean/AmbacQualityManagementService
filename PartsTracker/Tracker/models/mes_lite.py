@@ -3360,9 +3360,15 @@ class Parts(SecureModel):
         'CustomerShipment', on_delete=models.PROTECT, null=True, blank=True, related_name='parts')
     """The shipment this unit left on (services/mes/shipping.py). Null until it ships."""
 
-    storage_location = models.CharField(max_length=100, blank=True)
+    location = models.ForeignKey(
+        'StorageLocation', null=True, blank=True, on_delete=models.PROTECT, related_name='parts')
     """Where the unit sits when it isn't on a step — a shelf, a cage, the yard. Changed
     only by a recorded move (services/mes/locations.py)."""
+
+    @property
+    def storage_location(self) -> str:
+        """The location's name ('' for none) — what lists and reports print."""
+        return self.location.name if self.location_id else ""
 
     # String reference: Core lives in models/reman.py, which imports THIS module.
     # PROTECT rather than SET_NULL. Nothing hits it today — hard delete is disabled

@@ -24,6 +24,7 @@ from decimal import Decimal
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
+from Tracker.services.mes.locations import seed_location
 from Tracker.models import Companies, MaterialLot, PartApproval, SupplierQualification
 from Tracker.services.qms import (
     supplier_qualification as sq,
@@ -152,7 +153,7 @@ class DemoSupplierQualitySeeder(BaseSeeder):
                     "received_date": today, "received_by": user,
                     "quantity": Decimal("30"), "quantity_remaining": Decimal("30"),
                     "unit_of_measure": "EA", "status": "RECEIVED",
-                    "storage_location": "Receiving Dock",
+                    "location": seed_location(self.tenant, "Receiving Dock", kind="DOCK", receiving_dock=True),
                 },
             )
             if created or held.status == "RECEIVED":

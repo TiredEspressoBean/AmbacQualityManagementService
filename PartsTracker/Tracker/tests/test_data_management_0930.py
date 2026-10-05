@@ -131,21 +131,12 @@ class DataManagementApiTests(APITestCase):
         self.assertEqual(back.status_code, 200, back.content)
         self.assertEqual([r["id"] for r in self.client.get(url).json()["results"]], [aid])
 
-    def test_locations_lists_what_lots_and_machines_use_once_each(self):
-        from datetime import date
-        from Tracker.models import Equipments, Material, MaterialLot
-        oring = Material.objects.create(tenant=self.tenant, name="O-Ring")
-        for n, loc in (("L1", "Rack 4"), ("L2", "rack 4"), ("L3", "Bay 2"), ("L4", "")):
-            MaterialLot.objects.create(tenant=self.tenant, lot_number=n, material=oring, received_date=date.today(),
-                                       quantity=Decimal(1), quantity_remaining=Decimal(1), unit_of_measure="EA",
-                                       status="ACCEPTED", storage_location=loc)
-        Equipments.objects.create(tenant=self.tenant, name="Press", location="Cell A")
-        self.assertEqual(self.client.get("/api/MaterialLots/locations/").json(), ["Bay 2", "Cell A", "Rack 4"])
-
     def test_receiving_an_expected_lot_records_where_it_went(self):
         from datetime import date, timedelta
         from Tracker.models import Material, MaterialLot
+        from Tracker.services.mes.locations import seed_location
         from Tracker.services.mes.material_lot import record_expected_receipt
+        seed_location(self.tenant, "Rack 4")
         lot = record_expected_receipt(tenant=self.tenant, material=Material.objects.create(tenant=self.tenant, name="Seal"),
                                       quantity=Decimal(10), promised_date=date.today() + timedelta(days=3))
         resp = self.client.post(f"/api/MaterialLots/{lot.id}/receive/",

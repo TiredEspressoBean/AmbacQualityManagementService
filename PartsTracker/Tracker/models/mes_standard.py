@@ -255,8 +255,9 @@ class Equipments(SecureModel):
     """Per-machine operating calendar; empty inherits the tenant shift calendar."""
 
     # === LOCATION ===
-    location = models.CharField(max_length=100, blank=True)
-    """Physical location (e.g., 'QA Lab', 'Machine Shop', 'Tool Crib')."""
+    location = models.ForeignKey(
+        'StorageLocation', null=True, blank=True, on_delete=models.PROTECT, related_name='equipment')
+    """Where the machine is (e.g. 'QA Lab', 'Cell 3', 'Tool Crib') — a StorageLocation."""
 
     # === CALIBRATION ===
     calibration_interval_days = models.PositiveIntegerField(
@@ -1481,17 +1482,44 @@ class Material(SecureModel):
         return self.name
 
 
-class StorageLocation(SecureModel):
-    """A place stock is kept — an optional, managed list of the tenant's locations.
+# What sort of place a StorageLocation is. Module-level so the API names one enum for it.
+STORAGE_LOCATION_KINDS = [
+    ('WAREHOUSE', 'Warehouse'), ('AREA', 'Area'), ('RACK', 'Rack'), ('SHELF', 'Shelf'),
+    ('BIN', 'Bin'), ('CAGE', 'Cage'), ('YARD', 'Yard'), ('DOCK', 'Dock'),
+    ('CELL', 'Work cell'), ('LINE_SIDE', 'Line-side'), ('OTHER', 'Other'),
+]
 
-    `MaterialLot.storage_location` stays free text: a small shop never sets this list
-    up, and receiving still works. Once a shop does, the list is what receiving offers,
-    so "Rack 3", "rack3" and "R3" stop being three places. Flat on purpose — aisle/bin
-    nesting is warehouse management, which is the ERP's."""
+
+class StorageLocation(SecureModel):
+    """A place things are kept: a warehouse, an area, a rack, a bin, a cage, the yard,
+    a work cell. Lots, serialised units and machines point at one
+    (`MaterialLot.location`, `Parts.location`, `Equipments.location`), so a location is a
+    record, not a spelling — renaming it renames it everywhere.
+
+    Locations nest (`parent`): Main Stores / Rack 3 / Bin B. The name is unique per
+    tenant; `path` is the full trail for display. A `code` is what the label's barcode
+    carries when set (`LOC:<code>`), shorter to scan than a name.
+
+    Controls: `held_only` — only held or rejected stock may be put here (an MRB cage);
+    `receiving_dock` — where receiving puts things away by default. Where things are is
+    MOM data; which bin to put something in (directed putaway, slotting) is not modelled.
+    """
+
+    KIND_CHOICES = STORAGE_LOCATION_KINDS
 
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.PROTECT, related_name='children',
+        help_text="The location this one is inside (a bin's rack, a rack's area).")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='OTHER')
+    code = models.CharField(max_length=40, blank=True,
+                            help_text="Short code for the label barcode. Optional; the name is used without one.")
+    held_only = models.BooleanField(
+        default=False, help_text="Only held or rejected stock may be put here (an MRB or quarantine cage).")
+    receiving_dock = models.BooleanField(
+        default=False, help_text="Where receiving puts deliveries by default.")
 
     class Meta:
         verbose_name = 'Storage Location'
@@ -1499,10 +1527,24 @@ class StorageLocation(SecureModel):
         ordering = ['name']
         constraints = [
             models.UniqueConstraint(fields=['tenant', 'name'], name='storage_location_unique_per_tenant'),
+            models.UniqueConstraint(
+                fields=['tenant', 'code'], condition=~models.Q(code=''),
+                name='storage_location_code_unique_per_tenant'),
         ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def path(self) -> str:
+        """Main Stores / Rack 3 / Bin B — walked up the parents (bounded, so bad data
+        can't loop)."""
+        names, node, seen = [], self, set()
+        while node is not None and node.pk not in seen and len(names) < 12:
+            seen.add(node.pk)
+            names.append(node.name)
+            node = node.parent
+        return " / ".join(reversed(names))
 
 
 class CycleCount(SecureModel):
@@ -1523,7 +1565,7 @@ class CycleCount(SecureModel):
     ]
 
     count_number = models.CharField(max_length=40, blank=True)
-    location = models.CharField(max_length=100)
+    location = models.ForeignKey('StorageLocation', on_delete=models.PROTECT, related_name='cycle_counts')
     # The counter doesn't see expected quantities while counting — counts what's there
     # rather than confirming the number on the sheet.
     blind = models.BooleanField(default=False)
@@ -1563,7 +1605,7 @@ class CycleCount(SecureModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.count_number or 'CC'} · {self.location}"
+        return f"{self.count_number or 'CC'} · {self.location.name if self.location_id else ''}"
 
 
 # A short delivery's outcome, from the packing slip (see MaterialLot.short_receipt).
@@ -1738,7 +1780,9 @@ class MaterialLot(SecureModel):
     )
 
     # Location
-    storage_location = models.CharField(max_length=100, blank=True)
+    # Where the lot is — a StorageLocation, changed by a recorded move.
+    location = models.ForeignKey(
+        'StorageLocation', null=True, blank=True, on_delete=models.PROTECT, related_name='lots')
 
     # Traceability at receipt. The heat (melt) number ties a lot to the batch of metal it
     # was made from — how a recall finds everything poured from one bad melt.
@@ -1828,6 +1872,11 @@ class MaterialLot(SecureModel):
     def item_name(self):
         it = self.item
         return it.name if it is not None else (self.material_description or "")
+
+    @property
+    def storage_location(self) -> str:
+        """The location's name ('' for none) — what lists and reports print."""
+        return self.location.name if self.location_id else ""
 
     def __str__(self):
         return f"Lot {self.lot_number} - {self.item_name}"

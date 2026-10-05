@@ -2127,7 +2127,9 @@ class MaterialLotBulkRowSerializer(serializers.Serializer):
     unit_of_measure = serializers.CharField(max_length=20, required=False, allow_blank=True)
     manufacture_date = serializers.DateField(required=False, allow_null=True)
     expiration_date = serializers.DateField(required=False, allow_null=True)
-    storage_location = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    location = serializers.UUIDField(
+        required=False, allow_null=True,
+        help_text="A StorageLocation id. Omitted, the lot goes to the receiving dock.")
 
 
 class MaterialLotBulkCreateSerializer(serializers.Serializer):

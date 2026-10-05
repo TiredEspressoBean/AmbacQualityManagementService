@@ -32,7 +32,8 @@ export type LotBulkRow = {
     unit_of_measure?: string;
     manufacture_date?: string | null;
     expiration_date?: string | null;
-    storage_location?: string;
+    /** A StorageLocation id; omitted, the lot goes to the receiving dock. */
+    location?: string;
     heat_number?: string;
     source_type?: "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
     /** Customer property: the customer whose stock this is (free-issue material). */
@@ -420,11 +421,10 @@ export const useUpdateLotHeatNumber = () => {
     });
 };
 
-// ----- Managed storage locations -----
+// ----- Storage locations (records; the tree lives on /production/locations) -----
 
 export const storageLocationsOptions = () =>
     queryOptions({
-        // Not "storage-locations": LocationCombobox caches the picker's name list there.
         queryKey: ["storage-location-records"],
         queryFn: () => api.api_StorageLocations_list({ queries: { limit: 500, ordering: "name" } }),
     });
@@ -433,17 +433,27 @@ export const useStorageLocations = () => useQuery(storageLocationsOptions());
 
 const invalidateLocations = (queryClient: ReturnType<typeof useQueryClient>) =>
     queryClient.invalidateQueries({
-        // Both the managed records and the picker's name list (which reads them).
-        predicate: (q) => q.queryKey[0] === "storage-location-records" || q.queryKey[0] === "storage-locations",
+        // The records and the tree (["locations", ...]), which the pickers read.
+        predicate: (q) => q.queryKey[0] === "storage-location-records" || q.queryKey[0] === "locations",
     });
+
+export type StorageLocationFields = {
+    name?: string;
+    description?: string;
+    is_active?: boolean;
+    parent?: string | null;
+    kind?: Schema<"StorageLocationKindEnum">;
+    code?: string;
+    held_only?: boolean;
+    receiving_dock?: boolean;
+};
 
 export const useCreateStorageLocation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { name: string; description?: string }) =>
+        mutationFn: (vars: StorageLocationFields & { name: string }) =>
             api.api_StorageLocations_create(
-                { name: vars.name, description: vars.description ?? "", is_active: true },
-                { headers: csrf() }),
+                { description: "", is_active: true, ...vars }, { headers: csrf() }),
         onSuccess: () => invalidateLocations(queryClient),
     });
 };
@@ -451,10 +461,18 @@ export const useCreateStorageLocation = () => {
 export const useUpdateStorageLocation = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { id: string; name?: string; description?: string; is_active?: boolean }) => {
+        mutationFn: (vars: StorageLocationFields & { id: string }) => {
             const { id, ...body } = vars;
             return api.api_StorageLocations_partial_update(body, { params: { id }, headers: csrf() });
         },
+        onSuccess: () => invalidateLocations(queryClient),
+    });
+};
+
+export const useDeleteStorageLocation = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.api_StorageLocations_destroy(undefined, { params: { id }, headers: csrf() }),
         onSuccess: () => invalidateLocations(queryClient),
     });
 };

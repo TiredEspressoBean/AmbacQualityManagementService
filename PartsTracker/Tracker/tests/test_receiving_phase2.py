@@ -191,13 +191,16 @@ class AdjustQuantityTests(_Fixture):
 
 
 class StorageLocationTests(_Fixture):
-    def test_a_managed_list_replaces_typed_suggestions(self):
-        from Tracker.models import StorageLocation
-        self._receive(material=str(self.shim.id), quantity="1", storage_location="rack3")
-        self.assertIn("rack3", self.client.get("/api/MaterialLots/locations/").json())
-        StorageLocation.objects.create(tenant=self.tenant, name="Rack 3")
-        StorageLocation.objects.create(tenant=self.tenant, name="Old shelf", is_active=False)
-        self.assertEqual(self.client.get("/api/MaterialLots/locations/").json(), ["Rack 3"])
+    def test_a_receipt_points_at_a_location_and_another_tenants_is_refused(self):
+        from Tracker.models import StorageLocation, Tenant
+        rack = StorageLocation.objects.create(tenant=self.tenant, name="Rack 3")
+        resp = self._receive(material=str(self.shim.id), quantity="1", location=str(rack.id))
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual((resp.json()["location"], resp.json()["storage_location"]), (str(rack.id), "Rack 3"))
+        other = Tenant.objects.create(name="Other plant", slug="receiving-phase2-locs-fk")
+        theirs = StorageLocation.all_tenants.create(tenant=other, name="Their rack")
+        resp = self._receive(lot_number="L-2", material=str(self.shim.id), quantity="1", location=str(theirs.id))
+        self.assertEqual(resp.status_code, 400)
 
     def test_crud_and_one_name_per_tenant(self):
         ok = self.client.post("/api/StorageLocations/", {"name": "Cage A"}, format="json")

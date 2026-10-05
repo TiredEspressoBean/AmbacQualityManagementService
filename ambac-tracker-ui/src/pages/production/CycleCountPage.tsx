@@ -102,7 +102,7 @@ export function CycleCountPage() {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="text-sm text-muted-foreground">
-                        <Link to="/production/locations/$name" params={{ name: c.location }} className="hover:underline">{c.location}</Link>
+                        <Link to="/production/locations/$locationId" params={{ locationId: c.location }} className="hover:underline">{c.location_name}</Link>
                         {" / "}<Link to="/production/cycle-counts" className="hover:underline">counts</Link>
                     </div>
                     <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold">

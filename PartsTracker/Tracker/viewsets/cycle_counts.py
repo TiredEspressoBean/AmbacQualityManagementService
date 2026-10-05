@@ -23,10 +23,10 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
                         viewsets.GenericViewSet):
     """Counts of locations. POST starts one; `record`, `submit` and `apply` move it on.
     Never edited or deleted otherwise — a count is a record of what was found."""
-    queryset = CycleCount.unscoped.select_related('started_by', 'submitted_by', 'applied_by')
+    queryset = CycleCount.unscoped.select_related('location', 'started_by', 'submitted_by', 'applied_by')
     serializer_class = CycleCountSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, filters.SearchFilter]
-    search_fields = ['count_number', 'location']
+    search_fields = ['count_number', 'location__name']
     filterset_fields = ['status', 'location']
     ordering = ['-created_at']
 

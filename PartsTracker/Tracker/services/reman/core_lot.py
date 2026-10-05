@@ -42,8 +42,14 @@ def is_core_type(part_type) -> bool:
             .exists())
 
 
+def _location(tenant, value):
+    """Where the cores were put: a location's id, code or name — or the receiving dock."""
+    from Tracker.services.mes.locations import default_receiving_location, resolve_location
+    return resolve_location(tenant, value) if value else default_receiving_location(tenant)
+
+
 def receive_core_lot(*, tenant, core_type, quantity, received_by, customer=None,
-                     received_date=None, lot_number: str = '', storage_location: str = '',
+                     received_date=None, lot_number: str = '', storage_location=None,
                      source_reference: str = ''):
     """Receive `quantity` unidentified cores of `core_type` as one lot.
 
@@ -96,7 +102,7 @@ def receive_core_lot(*, tenant, core_type, quantity, received_by, customer=None,
         quantity_remaining=qty,
         unit_of_measure='EA',
         status='RECEIVED',
-        storage_location=storage_location,
+        location=_location(tenant, storage_location),
         holds_cores=True,
     )
 

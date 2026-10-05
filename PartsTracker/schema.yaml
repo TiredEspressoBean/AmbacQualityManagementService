@@ -6913,6 +6913,7 @@ paths:
         name: location
         schema:
           type: string
+          format: uuid
       - name: offset
         required: false
         in: query
@@ -8821,6 +8822,7 @@ paths:
         name: location
         schema:
           type: string
+          format: uuid
       - name: offset
         required: false
         in: query
@@ -9826,6 +9828,7 @@ paths:
         name: location
         schema:
           type: string
+          format: uuid
       - name: ordering
         required: false
         in: query
@@ -14661,6 +14664,11 @@ paths:
         schema:
           type: integer
       - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: material_type
         schema:
           type: string
@@ -14984,12 +14992,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/ChaseExpectedReceiptRequest'
@@ -15108,12 +15110,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MoveLotRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/MoveLotRequestRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/MoveLotRequestRequest'
@@ -15266,12 +15262,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RecordInspectionRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RecordInspectionRequestRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/RecordInspectionRequestRequest'
@@ -15302,12 +15292,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RecordUnitsRequestRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RecordUnitsRequestRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/RecordUnitsRequestRequest'
@@ -15476,12 +15460,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ShipBackRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ShipBackRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/ShipBackRequest'
@@ -15565,6 +15543,11 @@ paths:
         they just ordered against a list of shortages.
       parameters:
       - in: query
+        name: location
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: material_type
         schema:
           type: string
@@ -15620,12 +15603,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BulkExpectedReceiptRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BulkExpectedReceiptRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/BulkExpectedReceiptRequest'
@@ -15651,12 +15628,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/MaterialLotBulkCreateRequest'
@@ -15833,26 +15804,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LateDelivery'
-          description: ''
-  /api/MaterialLots/locations/:
-    get:
-      operationId: api_MaterialLots_locations_retrieve
-      description: Storage locations for a picker to suggest. When the tenant keeps
-        a managed list (StorageLocations), its active entries; otherwise every location
-        already typed on material lots and equipment.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
           description: ''
   /api/MaterialLots/receipts-export/:
     get:
@@ -32490,13 +32441,45 @@ paths:
     get:
       operationId: api_StorageLocations_list
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       parameters:
+      - in: query
+        name: held_only
+        schema:
+          type: boolean
       - in: query
         name: is_active
         schema:
           type: boolean
+      - in: query
+        name: kind
+        schema:
+          type: string
+          enum:
+          - AREA
+          - BIN
+          - CAGE
+          - CELL
+          - DOCK
+          - LINE_SIDE
+          - OTHER
+          - RACK
+          - SHELF
+          - WAREHOUSE
+          - YARD
+        description: |-
+          * `WAREHOUSE` - Warehouse
+          * `AREA` - Area
+          * `RACK` - Rack
+          * `SHELF` - Shelf
+          * `BIN` - Bin
+          * `CAGE` - Cage
+          * `YARD` - Yard
+          * `DOCK` - Dock
+          * `CELL` - Work cell
+          * `LINE_SIDE` - Line-side
+          * `OTHER` - Other
       - name: limit
         required: false
         in: query
@@ -32515,6 +32498,15 @@ paths:
         description: Which field to use when ordering the results.
         schema:
           type: string
+      - in: query
+        name: parent
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: receiving_dock
+        schema:
+          type: boolean
       - name: search
         required: false
         in: query
@@ -32536,8 +32528,8 @@ paths:
     post:
       operationId: api_StorageLocations_create
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       tags:
       - api
       requestBody:
@@ -32566,8 +32558,8 @@ paths:
     get:
       operationId: api_StorageLocations_retrieve
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       parameters:
       - in: path
         name: id
@@ -32591,8 +32583,8 @@ paths:
     put:
       operationId: api_StorageLocations_update
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       parameters:
       - in: path
         name: id
@@ -32628,8 +32620,8 @@ paths:
     patch:
       operationId: api_StorageLocations_partial_update
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       parameters:
       - in: path
         name: id
@@ -32664,8 +32656,8 @@ paths:
     delete:
       operationId: api_StorageLocations_destroy
       description: |-
-        The tenant's managed list of storage locations. Optional: with none set up,
-        receiving takes free text and suggests what has been typed before.
+        The tenant's locations — where lots, units and machines are. A location is a
+        record, so renaming it renames it everywhere; ``summary`` is the tree.
       parameters:
       - in: path
         name: id
@@ -32682,21 +32674,27 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/StorageLocations/contents/:
+  /api/StorageLocations/{id}/contents/:
     get:
       operationId: api_StorageLocations_contents_retrieve
-      description: What is in one location now, and what moved in or out of it lately.
-        By name, so unmanaged (typed) locations work too.
+      description: What is in one location now (and, by default, in the locations
+        inside it), and what moved in or out of it lately.
       parameters:
       - in: query
         name: days
         schema:
           type: integer
-      - in: query
-        name: name
+      - in: path
+        name: id
         schema:
           type: string
+          format: uuid
+        description: A UUID string identifying this Storage Location.
         required: true
+      - in: query
+        name: include_children
+        schema:
+          type: boolean
       tags:
       - api
       security:
@@ -32901,8 +32899,8 @@ paths:
   /api/StorageLocations/summary/:
     get:
       operationId: api_StorageLocations_summary_list
-      description: Every location with stock in it, plus every managed location, with
-        how many lots and units each holds.
+      description: Every location as a tree (ordered by path), with how many lots,
+        units and machines are in each — directly and in total.
       tags:
       - api
       security:
@@ -52989,7 +52987,11 @@ components:
           readOnly: true
         location:
           type: string
-          maxLength: 100
+          format: uuid
+          readOnly: true
+        location_name:
+          type: string
+          readOnly: true
         blind:
           type: boolean
         status:
@@ -53053,6 +53055,7 @@ components:
       - id
       - lines
       - location
+      - location_name
       - started_by
       - started_by_name
       - status
@@ -54617,7 +54620,12 @@ components:
           maxLength: 100
         location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
+        location_name:
+          type: string
+          nullable: true
+          readOnly: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
         is_schedulable:
@@ -54669,6 +54677,7 @@ components:
       - created_at
       - equipment_type_name
       - id
+      - location_name
       - name
       - updated_at
       - version
@@ -54701,7 +54710,8 @@ components:
           maxLength: 100
         location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
         is_schedulable:
@@ -57995,11 +58005,47 @@ components:
       - permissions
       - search_fields
       - search_fields_display
+    LocationChild:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     LocationContents:
       type: object
       properties:
+        id:
+          type: string
+          format: uuid
         name:
           type: string
+        path:
+          type: string
+        kind:
+          $ref: '#/components/schemas/StorageLocationKindEnum'
+        code:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        held_only:
+          type: boolean
+        receiving_dock:
+          type: boolean
+        parent:
+          type: string
+          format: uuid
+          nullable: true
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationChild'
         lots:
           type: array
           items:
@@ -58008,15 +58054,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LocationPart'
+        equipment:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationEquipment'
         moves:
           type: array
           items:
             $ref: '#/components/schemas/LocationMove'
       required:
+      - children
+      - code
+      - description
+      - equipment
+      - held_only
+      - id
+      - is_active
+      - kind
       - lots
       - moves
       - name
+      - parent
       - parts
+      - path
+      - receiving_dock
+    LocationEquipment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        serial_number:
+          type: string
+        equipment_type:
+          type: string
+          nullable: true
+        sublocation:
+          type: string
+          nullable: true
+      required:
+      - equipment_type
+      - id
+      - name
+      - serial_number
+      - sublocation
     LocationLot:
       type: object
       properties:
@@ -58038,6 +58121,10 @@ components:
         owner_name:
           type: string
           nullable: true
+        sublocation:
+          type: string
+          nullable: true
+          description: Set when it is in a location inside this one.
       required:
       - id
       - item_name
@@ -58045,6 +58132,7 @@ components:
       - owner_name
       - quantity_remaining
       - status
+      - sublocation
       - unit_of_measure
     LocationMove:
       type: object
@@ -58102,32 +58190,78 @@ components:
           nullable: true
         status:
           type: string
+        sublocation:
+          type: string
+          nullable: true
       required:
       - erp_id
       - id
       - part_type
       - status
+      - sublocation
       - work_order
       - work_order_id
     LocationSummary:
       type: object
+      description: |-
+        One row of the location tree. ``lots``/``parts``/``equipment`` count what is in
+        the location itself; ``total_*`` add everything inside it.
       properties:
+        id:
+          type: string
+          format: uuid
         name:
+          type: string
+        path:
+          type: string
+        depth:
+          type: integer
+        parent:
+          type: string
+          format: uuid
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/StorageLocationKindEnum'
+        code:
           type: string
         description:
           type: string
-        managed:
+        is_active:
+          type: boolean
+        held_only:
+          type: boolean
+        receiving_dock:
           type: boolean
         lots:
           type: integer
         parts:
           type: integer
+        equipment:
+          type: integer
+        total_lots:
+          type: integer
+        total_parts:
+          type: integer
+        total_equipment:
+          type: integer
       required:
+      - code
+      - depth
       - description
+      - equipment
+      - held_only
+      - id
+      - is_active
+      - kind
       - lots
-      - managed
       - name
+      - parent
       - parts
+      - path
+      - receiving_dock
+      - total_equipment
+      - total_lots
+      - total_parts
     LoginRequest:
       type: object
       properties:
@@ -58730,9 +58864,17 @@ components:
           type: string
           format: uri
           nullable: true
+        location:
+          type: string
+          format: uuid
+          nullable: true
         storage_location:
           type: string
-          maxLength: 100
+          readOnly: true
+        location_path:
+          type: string
+          nullable: true
+          readOnly: true
         heat_number:
           type: string
           description: Heat / melt number from the mill certificate.
@@ -58856,6 +58998,7 @@ components:
       - item_requires_heat_number
       - item_units_per_purchase_unit
       - lineage
+      - location_path
       - lot_number
       - material_name
       - material_type_name
@@ -58874,6 +59017,7 @@ components:
       - shelf_life_status
       - short_receipt
       - status
+      - storage_location
       - supplier_name
       - unit_of_measure
       - updated_at
@@ -58958,9 +59102,12 @@ components:
           type: string
           format: date
           nullable: true
-        storage_location:
+        location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
+          description: A StorageLocation id. Omitted, the lot goes to the receiving
+            dock.
       required:
       - quantity
       - received_date
@@ -59044,9 +59191,10 @@ components:
           type: string
           format: binary
           nullable: true
-        storage_location:
+        location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
         heat_number:
           type: string
           description: Heat / melt number from the mill certificate.
@@ -59787,7 +59935,8 @@ components:
         to:
           type: string
           minLength: 1
-          description: 'Destination location; a scanned LOC: label is fine.'
+          description: 'Destination location: its id, code or name; a scanned LOC:
+            label is fine.'
         quantity:
           type: string
           format: decimal
@@ -64354,8 +64503,15 @@ components:
             rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin
             pair is an immutable genealogy record of the detour (rework/quarantine)
             the part took.
+        location:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         storage_location:
           type: string
+          description: The location's name ('' for none) — what lists and reports
+            print.
           readOnly: true
       required:
       - ERP_id
@@ -64363,6 +64519,7 @@ components:
       - created_at
       - has_error
       - id
+      - location
       - lot_split_at
       - lot_split_reason
       - needs_qa
@@ -65670,7 +65827,8 @@ components:
           maxLength: 100
         location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
         is_schedulable:
@@ -66214,9 +66372,10 @@ components:
           type: string
           format: binary
           nullable: true
-        storage_location:
+        location:
           type: string
-          maxLength: 100
+          format: uuid
+          nullable: true
         heat_number:
           type: string
           description: Heat / melt number from the mill certificate.
@@ -68439,8 +68598,9 @@ components:
           type: boolean
     PatchedStorageLocationRequest:
       type: object
-      description: A managed place stock is kept. Optional — receiving takes free
-        text without it.
+      description: |-
+        A place things are kept — lots, units and machines point at one. Nests via
+        ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
       properties:
         name:
           type: string
@@ -68449,6 +68609,25 @@ components:
         description:
           type: string
           maxLength: 255
+        parent:
+          type: string
+          format: uuid
+          nullable: true
+          description: The location this one is inside (a bin's rack, a rack's area).
+        kind:
+          $ref: '#/components/schemas/StorageLocationKindEnum'
+        code:
+          type: string
+          description: Short code for the label barcode. Optional; the name is used
+            without one.
+          maxLength: 40
+        held_only:
+          type: boolean
+          description: Only held or rejected stock may be put here (an MRB or quarantine
+            cage).
+        receiving_dock:
+          type: boolean
+          description: Where receiving puts deliveries by default.
         is_active:
           type: boolean
         archived:
@@ -73067,8 +73246,8 @@ components:
           nullable: true
         storage_location:
           type: string
-          description: Where it was put away. Omit to keep what the expected receipt
-            recorded.
+          description: 'Where it was put away: a location''s id, code or name. Omit
+            to keep what the expected receipt recorded (or the receiving dock).'
           maxLength: 100
         remainder:
           nullable: true
@@ -73099,6 +73278,11 @@ components:
           oneOf:
           - $ref: '#/components/schemas/LotSourceTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        accept_overage:
+          type: boolean
+          default: false
+          description: Keep a delivery larger than the tenant's over-receipt tolerance
+            allows.
     ReceivingCharacteristic:
       type: object
       description: A measurement definition to capture during receiving inspection.
@@ -76382,6 +76566,8 @@ components:
         location:
           type: string
           minLength: 1
+          description: 'The location''s id, code or name (a scanned LOC: label is
+            fine).'
         blind:
           type: boolean
           default: false
@@ -78414,8 +78600,9 @@ components:
       - name
     StorageLocation:
       type: object
-      description: A managed place stock is kept. Optional — receiving takes free
-        text without it.
+      description: |-
+        A place things are kept — lots, units and machines point at one. Nests via
+        ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
       properties:
         id:
           type: string
@@ -78424,9 +78611,35 @@ components:
         name:
           type: string
           maxLength: 100
+        path:
+          type: string
+          readOnly: true
         description:
           type: string
           maxLength: 255
+        parent:
+          type: string
+          format: uuid
+          nullable: true
+          description: The location this one is inside (a bin's rack, a rack's area).
+        parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/StorageLocationKindEnum'
+        code:
+          type: string
+          description: Short code for the label barcode. Optional; the name is used
+            without one.
+          maxLength: 40
+        held_only:
+          type: boolean
+          description: Only held or rejected stock may be put here (an MRB or quarantine
+            cage).
+        receiving_dock:
+          type: boolean
+          description: Where receiving puts deliveries by default.
         is_active:
           type: boolean
         created_at:
@@ -78443,11 +78656,40 @@ components:
       - created_at
       - id
       - name
+      - parent_name
+      - path
       - updated_at
+    StorageLocationKindEnum:
+      enum:
+      - WAREHOUSE
+      - AREA
+      - RACK
+      - SHELF
+      - BIN
+      - CAGE
+      - YARD
+      - DOCK
+      - CELL
+      - LINE_SIDE
+      - OTHER
+      type: string
+      description: |-
+        * `WAREHOUSE` - Warehouse
+        * `AREA` - Area
+        * `RACK` - Rack
+        * `SHELF` - Shelf
+        * `BIN` - Bin
+        * `CAGE` - Cage
+        * `YARD` - Yard
+        * `DOCK` - Dock
+        * `CELL` - Work cell
+        * `LINE_SIDE` - Line-side
+        * `OTHER` - Other
     StorageLocationRequest:
       type: object
-      description: A managed place stock is kept. Optional — receiving takes free
-        text without it.
+      description: |-
+        A place things are kept — lots, units and machines point at one. Nests via
+        ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
       properties:
         name:
           type: string
@@ -78456,6 +78698,25 @@ components:
         description:
           type: string
           maxLength: 255
+        parent:
+          type: string
+          format: uuid
+          nullable: true
+          description: The location this one is inside (a bin's rack, a rack's area).
+        kind:
+          $ref: '#/components/schemas/StorageLocationKindEnum'
+        code:
+          type: string
+          description: Short code for the label barcode. Optional; the name is used
+            without one.
+          maxLength: 40
+        held_only:
+          type: boolean
+          description: Only held or rejected stock may be put here (an MRB or quarantine
+            cage).
+        receiving_dock:
+          type: boolean
+          description: Where receiving puts deliveries by default.
         is_active:
           type: boolean
         archived:

@@ -124,7 +124,7 @@ def ready_to_ship(tenant) -> list[dict]:
     for lot in (MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
             tenant=tenant, archived=False, owner__isnull=False, holds_cores=False,
             status__in=SHIPPABLE_LOT_STATUSES, quantity_remaining__gt=0)
-            .select_related("owner", "material", "material_type").order_by("lot_number")):
+            .select_related("owner", "material", "material_type", "location").order_by("lot_number")):
         key = f"owner:{lot.owner_id}"
         g = groups.get(key)
         if g is None:

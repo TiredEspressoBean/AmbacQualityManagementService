@@ -11,17 +11,17 @@ export const locationSummaryOptions = () =>
         queryFn: () => api.api_StorageLocations_summary_list() as Promise<LocationSummary[]>,
     });
 
-export const locationContentsOptions = (name: string, days = 7) =>
+export const locationContentsOptions = (id: string, days = 7, includeChildren = true) =>
     queryOptions({
-        queryKey: ["locations", "contents", name, days],
-        queryFn: () => api.api_StorageLocations_contents_retrieve({ queries: { name, days } }) as Promise<LocationContents>,
+        queryKey: ["locations", "contents", id, days, includeChildren],
+        queryFn: () => api.api_StorageLocations_contents_retrieve(
+            { params: { id }, queries: { days, include_children: includeChildren } }) as Promise<LocationContents>,
     });
 
 function useInvalidate() {
     const qc = useQueryClient();
     return () => {
         void qc.invalidateQueries({ queryKey: ["locations"] });
-        void qc.invalidateQueries({ queryKey: ["storage-locations"] });
         void qc.invalidateQueries({ queryKey: ["material-lot"] });
         void qc.invalidateQueries({ queryKey: ["material-lots"] });
     };

@@ -227,7 +227,7 @@ def _service_rows(sheet: Sheet, request):
     if sheet.service == "stock":
         on_hand = (lots.filter(status__in=("ACCEPTED", "IN_USE"), quantity_remaining__gt=0,
                                holds_cores=False)
-                   .select_related("material", "material_type", "supplier", "owner")
+                   .select_related("material", "material_type", "supplier", "owner", "location")
                    .order_by("lot_number"))
         rows = [[l.lot_number, item(l), l.quantity_remaining, l.unit_of_measure,
                  l.storage_location, l.received_date, company(l.supplier), l.supplier_lot_number,

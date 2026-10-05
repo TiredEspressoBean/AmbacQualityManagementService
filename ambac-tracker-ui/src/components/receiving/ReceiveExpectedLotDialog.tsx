@@ -133,7 +133,7 @@ export function ReceiveExpectedLotDialog({
                 supplier_lot_number: lotNumber.trim(),
                 quantity: effectiveQty,
                 received_date: receivedDate,
-                storage_location: location.trim(),
+                storage_location: location,
                 ...(shortBy > 0 && remainder ? { remainder } : {}),
                 ...(shortBy < 0 && acceptOverage ? { accept_overage: true } : {}),
                 ...(inBuyingUnit && buyingUnit ? { received_as_quantity: counted, received_as_unit: buyingUnit } : {}),
@@ -331,8 +331,8 @@ export function ReceiveExpectedLotDialog({
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="rel-location">Put away at</Label>
-                        <LocationCombobox id="rel-location" value={location} onChange={setLocation}
-                            placeholder="Optional — choose or type a location" />
+                        <LocationCombobox id="rel-location" value={location} onChange={(v) => setLocation(v ?? "")}
+                            placeholder="Optional — the receiving dock if none" />
                     </div>
                 </div>
 

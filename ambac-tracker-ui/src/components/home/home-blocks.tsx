@@ -125,7 +125,7 @@ export function ScanBox({
                 return;
             }
             if (hit?.kind === "LOCATION") {
-                void navigate({ to: "/production/locations/$name", params: { name: hit.label } });
+                void navigate({ to: "/production/locations/$locationId", params: { locationId: hit.id } });
                 return;
             }
             if (hit?.kind === "URL" && hit.path) { void navigate({ to: hit.path as never }); return; }

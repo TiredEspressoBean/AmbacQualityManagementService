@@ -193,6 +193,9 @@ STAFF_OPERATIONAL_WRITE = [
     'add_customershipment', 'change_customershipment',
     # Counting a location (start, record, submit). Applying it to stock is a lead's call.
     'add_cyclecount', 'change_cyclecount',
+    # Anyone who receives or moves stock can add the location it's going to ("add new" in
+    # the picker). Renaming, nesting and the held-only / dock controls stay with leads.
+    'add_storagelocation',
     # (steptransitionlog is service-written and DB-immutable — view only)
     # Production exceptions
     'add_workorderhold', 'change_workorderhold',

@@ -6155,23 +6155,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/MaterialLots/locations/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment. */
-        get: operations["api_MaterialLots_locations_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/MaterialLots/receipts-export/": {
         parameters: {
             query?: never;
@@ -13121,14 +13104,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         get: operations["api_StorageLocations_list"];
         put?: never;
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         post: operations["api_StorageLocations_create"];
         delete?: never;
@@ -13145,38 +13128,38 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         get: operations["api_StorageLocations_retrieve"];
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         put: operations["api_StorageLocations_update"];
         post?: never;
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         delete: operations["api_StorageLocations_destroy"];
         options?: never;
         head?: never;
         /**
-         * @description The tenant's managed list of storage locations. Optional: with none set up,
-         *     receiving takes free text and suggests what has been typed before.
+         * @description The tenant's locations — where lots, units and machines are. A location is a
+         *     record, so renaming it renames it everywhere; ``summary`` is the tree.
          */
         patch: operations["api_StorageLocations_partial_update"];
         trace?: never;
     };
-    "/api/StorageLocations/contents/": {
+    "/api/StorageLocations/{id}/contents/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** @description What is in one location now, and what moved in or out of it lately. By name, so unmanaged (typed) locations work too. */
+        /** @description What is in one location now (and, by default, in the locations inside it), and what moved in or out of it lately. */
         get: operations["api_StorageLocations_contents_retrieve"];
         put?: never;
         post?: never;
@@ -13295,7 +13278,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Every location with stock in it, plus every managed location, with how many lots and units each holds. */
+        /** @description Every location as a tree (ordered by path), with how many lots, units and machines are in each — directly and in total. */
         get: operations["api_StorageLocations_summary_list"];
         put?: never;
         post?: never;
@@ -22418,7 +22401,9 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly count_number: string;
-            location: string;
+            /** Format: uuid */
+            readonly location: string;
+            readonly location_name: string;
             blind?: boolean;
             readonly status: components["schemas"]["CycleCountStatusEnum"];
             readonly status_display: string;
@@ -23223,7 +23208,9 @@ export interface components {
             serial_number?: string;
             manufacturer?: string;
             model_number?: string;
-            location?: string;
+            /** Format: uuid */
+            location?: string | null;
+            readonly location_name: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
@@ -23261,7 +23248,8 @@ export interface components {
             serial_number?: string;
             manufacturer?: string;
             model_number?: string;
-            location?: string;
+            /** Format: uuid */
+            location?: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
@@ -24840,11 +24828,37 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
-        LocationContents: {
+        LocationChild: {
+            /** Format: uuid */
+            id: string;
             name: string;
+        };
+        LocationContents: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            path: string;
+            kind: components["schemas"]["StorageLocationKindEnum"];
+            code: string;
+            description: string;
+            is_active: boolean;
+            held_only: boolean;
+            receiving_dock: boolean;
+            /** Format: uuid */
+            parent: string | null;
+            children: components["schemas"]["LocationChild"][];
             lots: components["schemas"]["LocationLot"][];
             parts: components["schemas"]["LocationPart"][];
+            equipment: components["schemas"]["LocationEquipment"][];
             moves: components["schemas"]["LocationMove"][];
+        };
+        LocationEquipment: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            serial_number: string;
+            equipment_type: string | null;
+            sublocation: string | null;
         };
         LocationLot: {
             /** Format: uuid */
@@ -24856,6 +24870,8 @@ export interface components {
             unit_of_measure: string;
             status: string;
             owner_name: string | null;
+            /** @description Set when it is in a location inside this one. */
+            sublocation: string | null;
         };
         LocationMove: {
             /** Format: date-time */
@@ -24883,13 +24899,32 @@ export interface components {
             work_order_id: string | null;
             work_order: string | null;
             status: string;
+            sublocation: string | null;
         };
+        /**
+         * @description One row of the location tree. ``lots``/``parts``/``equipment`` count what is in
+         *     the location itself; ``total_*`` add everything inside it.
+         */
         LocationSummary: {
+            /** Format: uuid */
+            id: string;
             name: string;
+            path: string;
+            depth: number;
+            /** Format: uuid */
+            parent: string | null;
+            kind: components["schemas"]["StorageLocationKindEnum"];
+            code: string;
             description: string;
-            managed: boolean;
+            is_active: boolean;
+            held_only: boolean;
+            receiving_dock: boolean;
             lots: number;
             parts: number;
+            equipment: number;
+            total_lots: number;
+            total_parts: number;
+            total_equipment: number;
         };
         LoginRequest: {
             username?: string;
@@ -25165,7 +25200,10 @@ export interface components {
             readonly shelf_life_status: string | null;
             /** Format: uri */
             certificate_of_conformance?: string | null;
-            storage_location?: string;
+            /** Format: uuid */
+            location?: string | null;
+            readonly storage_location: string;
+            readonly location_path: string | null;
             /** @description Heat / melt number from the mill certificate. */
             heat_number?: string;
             /**
@@ -25248,7 +25286,11 @@ export interface components {
             manufacture_date?: string | null;
             /** Format: date */
             expiration_date?: string | null;
-            storage_location?: string;
+            /**
+             * Format: uuid
+             * @description A StorageLocation id. Omitted, the lot goes to the receiving dock.
+             */
+            location?: string | null;
         };
         /**
          * @description Material lot serializer.
@@ -25296,7 +25338,8 @@ export interface components {
             expiration_date?: string | null;
             /** Format: binary */
             certificate_of_conformance?: string | null;
-            storage_location?: string;
+            /** Format: uuid */
+            location?: string | null;
             /** @description Heat / melt number from the mill certificate. */
             heat_number?: string;
             /**
@@ -25670,7 +25713,7 @@ export interface components {
             start_time: string;
         };
         MoveLotRequestRequest: {
-            /** @description Destination location; a scanned LOC: label is fine. */
+            /** @description Destination location: its id, code or name; a scanned LOC: label is fine. */
             to: string;
             /**
              * Format: decimal
@@ -28302,6 +28345,9 @@ export interface components {
              * @description UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
              */
             readonly rejoined_at: string | null;
+            /** Format: uuid */
+            readonly location: string | null;
+            /** @description The location's name ('' for none) — what lists and reports print. */
             readonly storage_location: string;
         };
         PartsBulkIncrementInputRequest: {
@@ -29015,7 +29061,8 @@ export interface components {
             serial_number?: string;
             manufacturer?: string;
             model_number?: string;
-            location?: string;
+            /** Format: uuid */
+            location?: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
@@ -29346,7 +29393,8 @@ export interface components {
             expiration_date?: string | null;
             /** Format: binary */
             certificate_of_conformance?: string | null;
-            storage_location?: string;
+            /** Format: uuid */
+            location?: string | null;
             /** @description Heat / melt number from the mill certificate. */
             heat_number?: string;
             /**
@@ -30725,10 +30773,25 @@ export interface components {
             change_description?: string;
             archived?: boolean;
         };
-        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        /**
+         * @description A place things are kept — lots, units and machines point at one. Nests via
+         *     ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
+         */
         PatchedStorageLocationRequest: {
             name?: string;
             description?: string;
+            /**
+             * Format: uuid
+             * @description The location this one is inside (a bin's rack, a rack's area).
+             */
+            parent?: string | null;
+            kind?: components["schemas"]["StorageLocationKindEnum"];
+            /** @description Short code for the label barcode. Optional; the name is used without one. */
+            code?: string;
+            /** @description Only held or rejected stock may be put here (an MRB or quarantine cage). */
+            held_only?: boolean;
+            /** @description Where receiving puts deliveries by default. */
+            receiving_dock?: boolean;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -33138,7 +33201,7 @@ export interface components {
             quantity?: string | null;
             /** Format: date */
             received_date?: string | null;
-            /** @description Where it was put away. Omit to keep what the expected receipt recorded. */
+            /** @description Where it was put away: a location's id, code or name. Omit to keep what the expected receipt recorded (or the receiving dock). */
             storage_location?: string;
             /**
              * @description Required when fewer arrived than were on order: BACKORDERED keeps the rest on order as a new expected lot; CLOSED expects nothing more (the ERP's PO line is closed in the ERP).
@@ -33156,6 +33219,11 @@ export interface components {
             received_as_unit: components["schemas"]["PurchaseUnitEnum"] | components["schemas"]["BlankEnum"];
             heat_number?: string;
             source_type?: components["schemas"]["LotSourceTypeEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Keep a delivery larger than the tenant's over-receipt tolerance allows.
+             * @default false
+             */
+            accept_overage: boolean;
         };
         /** @description A measurement definition to capture during receiving inspection. */
         ReceivingCharacteristic: {
@@ -34777,6 +34845,7 @@ export interface components {
          */
         SplitReasonEnum: "QUANTITY" | "OPERATION" | "REWORK";
         StartCycleCountRequest: {
+            /** @description The location's id, code or name (a scanned LOC: label is fine). */
             location: string;
             /** @default false */
             blind: boolean;
@@ -35927,12 +35996,29 @@ export interface components {
             change_description?: string;
             archived?: boolean;
         };
-        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        /**
+         * @description A place things are kept — lots, units and machines point at one. Nests via
+         *     ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
+         */
         StorageLocation: {
             /** Format: uuid */
             readonly id: string;
             name: string;
+            readonly path: string;
             description?: string;
+            /**
+             * Format: uuid
+             * @description The location this one is inside (a bin's rack, a rack's area).
+             */
+            parent?: string | null;
+            readonly parent_name: string | null;
+            kind?: components["schemas"]["StorageLocationKindEnum"];
+            /** @description Short code for the label barcode. Optional; the name is used without one. */
+            code?: string;
+            /** @description Only held or rejected stock may be put here (an MRB or quarantine cage). */
+            held_only?: boolean;
+            /** @description Where receiving puts deliveries by default. */
+            receiving_dock?: boolean;
             is_active?: boolean;
             /** Format: date-time */
             readonly created_at: string;
@@ -35940,10 +36026,40 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
-        /** @description A managed place stock is kept. Optional — receiving takes free text without it. */
+        /**
+         * @description * `WAREHOUSE` - Warehouse
+         *     * `AREA` - Area
+         *     * `RACK` - Rack
+         *     * `SHELF` - Shelf
+         *     * `BIN` - Bin
+         *     * `CAGE` - Cage
+         *     * `YARD` - Yard
+         *     * `DOCK` - Dock
+         *     * `CELL` - Work cell
+         *     * `LINE_SIDE` - Line-side
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        StorageLocationKindEnum: "WAREHOUSE" | "AREA" | "RACK" | "SHELF" | "BIN" | "CAGE" | "YARD" | "DOCK" | "CELL" | "LINE_SIDE" | "OTHER";
+        /**
+         * @description A place things are kept — lots, units and machines point at one. Nests via
+         *     ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B).
+         */
         StorageLocationRequest: {
             name: string;
             description?: string;
+            /**
+             * Format: uuid
+             * @description The location this one is inside (a bin's rack, a rack's area).
+             */
+            parent?: string | null;
+            kind?: components["schemas"]["StorageLocationKindEnum"];
+            /** @description Short code for the label barcode. Optional; the name is used without one. */
+            code?: string;
+            /** @description Only held or rejected stock may be put here (an MRB or quarantine cage). */
+            held_only?: boolean;
+            /** @description Where receiving puts deliveries by default. */
+            receiving_dock?: boolean;
             is_active?: boolean;
             archived?: boolean;
         };
@@ -49980,6 +50096,7 @@ export interface operations {
                 inspection_pending?: string;
                 /** @description Number of results to return per page. */
                 limit?: number;
+                location?: string;
                 material_type?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
@@ -50234,8 +50351,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["ChaseExpectedReceiptRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ChaseExpectedReceiptRequest"];
                 "application/json": components["schemas"]["ChaseExpectedReceiptRequest"];
             };
         };
@@ -50334,8 +50449,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["MoveLotRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MoveLotRequestRequest"];
                 "application/json": components["schemas"]["MoveLotRequestRequest"];
             };
         };
@@ -50462,8 +50575,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["RecordInspectionRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RecordInspectionRequestRequest"];
                 "application/json": components["schemas"]["RecordInspectionRequestRequest"];
             };
         };
@@ -50490,8 +50601,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["RecordUnitsRequestRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RecordUnitsRequestRequest"];
                 "application/json": components["schemas"]["RecordUnitsRequestRequest"];
             };
         };
@@ -50624,8 +50733,6 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "multipart/form-data": components["schemas"]["ShipBackRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ShipBackRequest"];
                 "application/json": components["schemas"]["ShipBackRequest"];
             };
         };
@@ -50693,6 +50800,7 @@ export interface operations {
     api_MaterialLots_bulk_expected_receipt_create: {
         parameters: {
             query?: {
+                location?: string;
                 material_type?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
@@ -50721,8 +50829,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["BulkExpectedReceiptRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["BulkExpectedReceiptRequest"];
                 "application/json": components["schemas"]["BulkExpectedReceiptRequest"];
             };
         };
@@ -50746,8 +50852,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["MaterialLotBulkCreateRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["MaterialLotBulkCreateRequest"];
                 "application/json": components["schemas"]["MaterialLotBulkCreateRequest"];
             };
         };
@@ -50902,25 +51006,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateDelivery"][];
-                };
-            };
-        };
-    };
-    api_MaterialLots_locations_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string[];
                 };
             };
         };
@@ -62702,13 +62787,30 @@ export interface operations {
     api_StorageLocations_list: {
         parameters: {
             query?: {
+                held_only?: boolean;
                 is_active?: boolean;
+                /**
+                 * @description * `WAREHOUSE` - Warehouse
+                 *     * `AREA` - Area
+                 *     * `RACK` - Rack
+                 *     * `SHELF` - Shelf
+                 *     * `BIN` - Bin
+                 *     * `CAGE` - Cage
+                 *     * `YARD` - Yard
+                 *     * `DOCK` - Dock
+                 *     * `CELL` - Work cell
+                 *     * `LINE_SIDE` - Line-side
+                 *     * `OTHER` - Other
+                 */
+                kind?: "AREA" | "BIN" | "CAGE" | "CELL" | "DOCK" | "LINE_SIDE" | "OTHER" | "RACK" | "SHELF" | "WAREHOUSE" | "YARD";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                parent?: string;
+                receiving_dock?: boolean;
                 /** @description A search term. */
                 search?: string;
             };
@@ -62854,12 +62956,15 @@ export interface operations {
     };
     api_StorageLocations_contents_retrieve: {
         parameters: {
-            query: {
+            query?: {
                 days?: number;
-                name: string;
+                include_children?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                /** @description A UUID string identifying this Storage Location. */
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

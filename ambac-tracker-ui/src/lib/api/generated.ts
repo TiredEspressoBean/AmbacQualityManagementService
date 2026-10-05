@@ -2414,10 +2414,8 @@ export type ShipmentLot = {
 export type CycleCount = {
   id: string;
   count_number: string;
-  /**
-   * @maxLength 100
-   */
   location: string;
+  location_name: string;
   blind?: boolean | undefined;
   status: CycleCountStatusEnum;
   status_display: string;
@@ -2817,10 +2815,8 @@ export type Equipments = {
    * @maxLength 100
    */
   string | undefined;
-  location?: /**
-   * @maxLength 100
-   */
-  string | undefined;
+  location?: (string | null) | undefined;
+  location_name: string | null;
   status?: EquipmentsStatusEnum | undefined;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
@@ -2894,10 +2890,7 @@ export type EquipmentsRequest = {
    * @maxLength 100
    */
   string | undefined;
-  location?: /**
-   * @maxLength 100
-   */
-  string | undefined;
+  location?: (string | null) | undefined;
   status?: EquipmentsStatusEnum | undefined;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
@@ -3851,10 +3844,52 @@ export type LifeTrackingRequest = {
   archived?: boolean | undefined;
 };
 export type LocationContents = {
+  id: string;
   name: string;
+  path: string;
+  kind: StorageLocationKindEnum;
+  code: string;
+  description: string;
+  is_active: boolean;
+  held_only: boolean;
+  receiving_dock: boolean;
+  parent: string | null;
+  children: Array<LocationChild>;
   lots: Array<LocationLot>;
   parts: Array<LocationPart>;
+  equipment: Array<LocationEquipment>;
   moves: Array<LocationMove>;
+};
+export type StorageLocationKindEnum =
+  /**
+   * * `WAREHOUSE` - Warehouse
+   * `AREA` - Area
+   * `RACK` - Rack
+   * `SHELF` - Shelf
+   * `BIN` - Bin
+   * `CAGE` - Cage
+   * `YARD` - Yard
+   * `DOCK` - Dock
+   * `CELL` - Work cell
+   * `LINE_SIDE` - Line-side
+   * `OTHER` - Other
+   *
+   * @enum WAREHOUSE, AREA, RACK, SHELF, BIN, CAGE, YARD, DOCK, CELL, LINE_SIDE, OTHER
+   */
+  | "WAREHOUSE"
+  | "AREA"
+  | "RACK"
+  | "SHELF"
+  | "BIN"
+  | "CAGE"
+  | "YARD"
+  | "DOCK"
+  | "CELL"
+  | "LINE_SIDE"
+  | "OTHER";
+export type LocationChild = {
+  id: string;
+  name: string;
 };
 export type LocationLot = {
   id: string;
@@ -3864,6 +3899,10 @@ export type LocationLot = {
   unit_of_measure: string;
   status: string;
   owner_name: string | null;
+  /**
+   * Set when it is in a location inside this one.
+   */
+  sublocation: string | null;
 };
 export type LocationPart = {
   id: string;
@@ -3872,6 +3911,14 @@ export type LocationPart = {
   work_order_id: string | null;
   work_order: string | null;
   status: string;
+  sublocation: string | null;
+};
+export type LocationEquipment = {
+  id: string;
+  name: string;
+  serial_number: string;
+  equipment_type: string | null;
+  sublocation: string | null;
 };
 export type LocationMove = {
   at: string;
@@ -3898,6 +3945,25 @@ export type LocationMoveKindEnum =
    * @enum LOT, PART
    */
   "LOT" | "PART";
+export type LocationSummary = {
+  id: string;
+  name: string;
+  path: string;
+  depth: number;
+  parent: string | null;
+  kind: StorageLocationKindEnum;
+  code: string;
+  description: string;
+  is_active: boolean;
+  held_only: boolean;
+  receiving_dock: boolean;
+  lots: number;
+  parts: number;
+  equipment: number;
+  total_lots: number;
+  total_parts: number;
+  total_equipment: number;
+};
 export type LotDecisionRequest = {
   disposition_type?: /**
    * @default "RETURN_TO_SUPPLIER"
@@ -4204,10 +4270,9 @@ export type MaterialLot = {
   expiration_date?: (string | null) | undefined;
   shelf_life_status: string | null;
   certificate_of_conformance?: (string | null) | undefined;
-  storage_location?: /**
-   * @maxLength 100
-   */
-  string | undefined;
+  location?: (string | null) | undefined;
+  storage_location: string;
+  location_path: string | null;
   heat_number?: /**
    * Heat / melt number from the mill certificate.
    *
@@ -4351,10 +4416,12 @@ export type MaterialLotBulkRowRequest = {
   string | undefined;
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
-  storage_location?: /**
-   * @maxLength 100
-   */
-  string | undefined;
+  location?:
+    | /**
+     * A StorageLocation id. Omitted, the lot goes to the receiving dock.
+     */
+    (string | null)
+    | undefined;
 };
 export type MaterialLotRequest = {
   /**
@@ -4414,10 +4481,7 @@ export type MaterialLotRequest = {
   manufacture_date?: (string | null) | undefined;
   expiration_date?: (string | null) | undefined;
   certificate_of_conformance?: (string | null) | undefined;
-  storage_location?: /**
-   * @maxLength 100
-   */
-  string | undefined;
+  location?: (string | null) | undefined;
   heat_number?: /**
    * Heat / melt number from the mill certificate.
    *
@@ -6927,6 +6991,10 @@ export type Parts = {
    * UTC timestamp when a previously-split part rejoined its cohort's flow (via the rejoin_part_to_lot service). split_from_lot is cleared on rejoin but lot_split_reason/lot_split_at are RETAINED — the split→rejoin pair is an immutable genealogy record of the detour (rework/quarantine) the part took.
    */
   rejoined_at: string | null;
+  location: string | null;
+  /**
+   * The location's name ('' for none) — what lists and reports print.
+   */
   storage_location: string;
 };
 export type PaginatedPersonalRuleList = {
@@ -9812,10 +9880,33 @@ export type StorageLocation = {
    * @maxLength 100
    */
   name: string;
+  path: string;
   description?: /**
    * @maxLength 255
    */
   string | undefined;
+  parent?:
+    | /**
+     * The location this one is inside (a bin's rack, a rack's area).
+     */
+    (string | null)
+    | undefined;
+  parent_name: string | null;
+  kind?: StorageLocationKindEnum | undefined;
+  code?: /**
+   * Short code for the label barcode. Optional; the name is used without one.
+   *
+   * @maxLength 40
+   */
+  string | undefined;
+  held_only?: /**
+   * Only held or rejected stock may be put here (an MRB or quarantine cage).
+   */
+  boolean | undefined;
+  receiving_dock?: /**
+   * Where receiving puts deliveries by default.
+   */
+  boolean | undefined;
   is_active?: boolean | undefined;
   created_at: string;
   updated_at: string;
@@ -12522,10 +12613,7 @@ export type PatchedEquipmentsRequest = Partial<{
    * @maxLength 100
    */
   model_number: string;
-  /**
-   * @maxLength 100
-   */
-  location: string;
+  location: string | null;
   status: EquipmentsStatusEnum;
   /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
@@ -12793,10 +12881,7 @@ export type PatchedMaterialLotRequest = Partial<{
   manufacture_date: string | null;
   expiration_date: string | null;
   certificate_of_conformance: string | null;
-  /**
-   * @maxLength 100
-   */
-  storage_location: string;
+  location: string | null;
   /**
    * Heat / melt number from the mill certificate.
    *
@@ -14289,6 +14374,38 @@ export type StepTimingRequest = Partial<{
    */
   external_setup_minutes: number;
 }>;
+export type PatchedStorageLocationRequest = Partial<{
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @maxLength 255
+   */
+  description: string;
+  /**
+   * The location this one is inside (a bin's rack, a rack's area).
+   */
+  parent: string | null;
+  kind: StorageLocationKindEnum;
+  /**
+   * Short code for the label barcode. Optional; the name is used without one.
+   *
+   * @maxLength 40
+   */
+  code: string;
+  /**
+   * Only held or rejected stock may be put here (an MRB or quarantine cage).
+   */
+  held_only: boolean;
+  /**
+   * Where receiving puts deliveries by default.
+   */
+  receiving_dock: boolean;
+  is_active: boolean;
+  archived: boolean;
+}>;
 export type PatchedSubstepCompletionRequest = Partial<{
   /**
    * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
@@ -15674,7 +15791,7 @@ export type ReceiveExpectedLotRequest = Partial<{
   quantity: string | null;
   received_date: string | null;
   /**
-   * Where it was put away. Omit to keep what the expected receipt recorded.
+   * Where it was put away: a location's id, code or name. Omit to keep what the expected receipt recorded (or the receiving dock).
    *
    * @maxLength 100
    */
@@ -15701,6 +15818,12 @@ export type ReceiveExpectedLotRequest = Partial<{
    */
   heat_number: string;
   source_type: LotSourceTypeEnum | BlankEnum;
+  /**
+   * Keep a delivery larger than the tenant's over-receipt tolerance allows.
+   *
+   * @default false
+   */
+  accept_overage: boolean;
 }>;
 export type ReceivingMeasurementInputRequest = {
   definition: string;
@@ -17201,6 +17324,40 @@ export type StepsRequest = {
    * Reason for this revision, recorded on the new version (ISO 9001 4.4 / IATF 16949 8.5.6.1).
    */
   string | undefined;
+  archived?: boolean | undefined;
+};
+export type StorageLocationRequest = {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  description?: /**
+   * @maxLength 255
+   */
+  string | undefined;
+  parent?:
+    | /**
+     * The location this one is inside (a bin's rack, a rack's area).
+     */
+    (string | null)
+    | undefined;
+  kind?: StorageLocationKindEnum | undefined;
+  code?: /**
+   * Short code for the label barcode. Optional; the name is used without one.
+   *
+   * @maxLength 40
+   */
+  string | undefined;
+  held_only?: /**
+   * Only held or rejected stock may be put here (an MRB or quarantine cage).
+   */
+  boolean | undefined;
+  receiving_dock?: /**
+   * Where receiving puts deliveries by default.
+   */
+  boolean | undefined;
+  is_active?: boolean | undefined;
   archived?: boolean | undefined;
 };
 export type SubmitProcessForApprovalResponse = {
@@ -19955,7 +20112,8 @@ const CycleCountVariance = z.object({
 const CycleCount = z.object({
   id: z.string().uuid(),
   count_number: z.string(),
-  location: z.string().max(100),
+  location: z.string().uuid(),
+  location_name: z.string(),
   blind: z.boolean().optional(),
   status: CycleCountStatusEnum,
   status_display: z.string(),
@@ -20309,7 +20467,8 @@ const Equipments = z.object({
   serial_number: z.string().max(100).optional(),
   manufacturer: z.string().max(100).optional(),
   model_number: z.string().max(100).optional(),
-  location: z.string().max(100).optional(),
+  location: z.string().uuid().nullish(),
+  location_name: z.string().nullable(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
@@ -20333,7 +20492,7 @@ const EquipmentsRequest = z.object({
   serial_number: z.string().max(100).optional(),
   manufacturer: z.string().max(100).optional(),
   model_number: z.string().max(100).optional(),
-  location: z.string().max(100).optional(),
+  location: z.string().uuid().nullish(),
   status: EquipmentsStatusEnum.optional(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
@@ -20409,7 +20568,7 @@ const PatchedEquipmentsRequest = z
     serial_number: z.string().max(100),
     manufacturer: z.string().max(100),
     model_number: z.string().max(100),
-    location: z.string().max(100),
+    location: z.string().uuid().nullable(),
     status: EquipmentsStatusEnum,
     is_schedulable: z.boolean(),
     runs_unattended: z.boolean().nullable(),
@@ -21240,7 +21399,9 @@ const MaterialLot = z.object({
   expiration_date: z.string().nullish(),
   shelf_life_status: z.string().nullable(),
   certificate_of_conformance: z.string().url().nullish(),
-  storage_location: z.string().max(100).optional(),
+  location: z.string().uuid().nullish(),
+  storage_location: z.string(),
+  location_path: z.string().nullable(),
   heat_number: z.string().max(64).optional(),
   source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
   received_as_quantity: z
@@ -21294,7 +21455,7 @@ const MaterialLotRequest = z.object({
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
   certificate_of_conformance: z.instanceof(File).nullish(),
-  storage_location: z.string().max(100).optional(),
+  location: z.string().uuid().nullish(),
   heat_number: z.string().max(64).optional(),
   source_type: z.union([LotSourceTypeEnum, BlankEnum]).optional(),
   received_as_quantity: z
@@ -21323,7 +21484,7 @@ const PatchedMaterialLotRequest = z
     manufacture_date: z.string().nullable(),
     expiration_date: z.string().nullable(),
     certificate_of_conformance: z.instanceof(File).nullable(),
-    storage_location: z.string().max(100),
+    location: z.string().uuid().nullable(),
     heat_number: z.string().max(64),
     source_type: z.union([LotSourceTypeEnum, BlankEnum]),
     received_as_quantity: z
@@ -21475,6 +21636,7 @@ const ReceiveExpectedLotRequest = z
     received_as_unit: z.union([PurchaseUnitEnum, BlankEnum]).default(""),
     heat_number: z.string().max(64),
     source_type: z.union([LotSourceTypeEnum, BlankEnum]),
+    accept_overage: z.boolean().default(false),
   })
   .partial();
 const RecordBulkRequestRequest = z.object({
@@ -21635,7 +21797,7 @@ const MaterialLotBulkRowRequest = z.object({
   unit_of_measure: z.string().max(20).optional(),
   manufacture_date: z.string().nullish(),
   expiration_date: z.string().nullish(),
-  storage_location: z.string().max(100).optional(),
+  location: z.string().uuid().nullish(),
 });
 const MaterialLotBulkCreateRequest = z.object({
   lots: z.array(MaterialLotBulkRowRequest),
@@ -22628,6 +22790,7 @@ const Parts = z.object({
   lot_split_reason: z.string().nullable(),
   lot_split_at: z.string().datetime({ offset: true }).nullable(),
   rejoined_at: z.string().datetime({ offset: true }).nullable(),
+  location: z.string().uuid().nullable(),
   storage_location: z.string(),
 });
 const PaginatedPartsList = z.object({
@@ -25009,10 +25172,30 @@ const CreateReceivingPlanInputRequest = z
     name: z.string(),
   })
   .partial();
+const StorageLocationKindEnum = z.enum([
+  "WAREHOUSE",
+  "AREA",
+  "RACK",
+  "SHELF",
+  "BIN",
+  "CAGE",
+  "YARD",
+  "DOCK",
+  "CELL",
+  "LINE_SIDE",
+  "OTHER",
+]);
 const StorageLocation = z.object({
   id: z.string().uuid(),
   name: z.string().max(100),
+  path: z.string(),
   description: z.string().max(255).optional(),
+  parent: z.string().uuid().nullish(),
+  parent_name: z.string().nullable(),
+  kind: StorageLocationKindEnum.optional(),
+  code: z.string().max(40).optional(),
+  held_only: z.boolean().optional(),
+  receiving_dock: z.boolean().optional(),
   is_active: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -25027,6 +25210,11 @@ const PaginatedStorageLocationList = z.object({
 const StorageLocationRequest = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(255).optional(),
+  parent: z.string().uuid().nullish(),
+  kind: StorageLocationKindEnum.optional(),
+  code: z.string().max(40).optional(),
+  held_only: z.boolean().optional(),
+  receiving_dock: z.boolean().optional(),
   is_active: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
@@ -25034,10 +25222,16 @@ const PatchedStorageLocationRequest = z
   .object({
     name: z.string().min(1).max(100),
     description: z.string().max(255),
+    parent: z.string().uuid().nullable(),
+    kind: StorageLocationKindEnum,
+    code: z.string().max(40),
+    held_only: z.boolean(),
+    receiving_dock: z.boolean(),
     is_active: z.boolean(),
     archived: z.boolean(),
   })
   .partial();
+const LocationChild = z.object({ id: z.string().uuid(), name: z.string() });
 const LocationLot = z.object({
   id: z.string().uuid(),
   lot_number: z.string(),
@@ -25046,6 +25240,7 @@ const LocationLot = z.object({
   unit_of_measure: z.string(),
   status: z.string(),
   owner_name: z.string().nullable(),
+  sublocation: z.string().nullable(),
 });
 const LocationPart = z.object({
   id: z.string().uuid(),
@@ -25054,6 +25249,14 @@ const LocationPart = z.object({
   work_order_id: z.string().uuid().nullable(),
   work_order: z.string().nullable(),
   status: z.string(),
+  sublocation: z.string().nullable(),
+});
+const LocationEquipment = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  serial_number: z.string(),
+  equipment_type: z.string().nullable(),
+  sublocation: z.string().nullable(),
 });
 const DirectionEnum = z.enum(["IN", "OUT"]);
 const LocationMoveKindEnum = z.enum(["LOT", "PART"]);
@@ -25067,17 +25270,40 @@ const LocationMove = z.object({
   by: z.string().nullable(),
 });
 const LocationContents = z.object({
+  id: z.string().uuid(),
   name: z.string(),
+  path: z.string(),
+  kind: StorageLocationKindEnum,
+  code: z.string(),
+  description: z.string(),
+  is_active: z.boolean(),
+  held_only: z.boolean(),
+  receiving_dock: z.boolean(),
+  parent: z.string().uuid().nullable(),
+  children: z.array(LocationChild),
   lots: z.array(LocationLot),
   parts: z.array(LocationPart),
+  equipment: z.array(LocationEquipment),
   moves: z.array(LocationMove),
 });
 const LocationSummary = z.object({
+  id: z.string().uuid(),
   name: z.string(),
+  path: z.string(),
+  depth: z.number().int(),
+  parent: z.string().uuid().nullable(),
+  kind: StorageLocationKindEnum,
+  code: z.string(),
   description: z.string(),
-  managed: z.boolean(),
+  is_active: z.boolean(),
+  held_only: z.boolean(),
+  receiving_dock: z.boolean(),
   lots: z.number().int(),
   parts: z.number().int(),
+  equipment: z.number().int(),
+  total_lots: z.number().int(),
+  total_parts: z.number().int(),
+  total_equipment: z.number().int(),
 });
 const SubstepCompletion = z.object({
   id: z.string().uuid(),
@@ -29204,12 +29430,15 @@ export const schemas = {
   SamplingRuleUpdateRequest,
   StepSamplingRulesUpdateRequest,
   CreateReceivingPlanInputRequest,
+  StorageLocationKindEnum,
   StorageLocation,
   PaginatedStorageLocationList,
   StorageLocationRequest,
   PatchedStorageLocationRequest,
+  LocationChild,
   LocationLot,
   LocationPart,
+  LocationEquipment,
   DirectionEnum,
   LocationMoveKindEnum,
   LocationMove,
@@ -34317,7 +34546,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       {
         name: "location",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.string().uuid().optional(),
       },
       {
         name: "offset",
@@ -36712,7 +36941,7 @@ Usage:
       {
         name: "location",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.string().uuid().optional(),
       },
       {
         name: "offset",
@@ -36970,7 +37199,7 @@ Usage:
       {
         name: "location",
         type: "Query",
-        schema: z.string().optional(),
+        schema: z.string().uuid().optional(),
       },
       {
         name: "ordering",
@@ -40356,6 +40585,11 @@ Query params:
         schema: z.number().int().optional(),
       },
       {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "material_type",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -40548,7 +40782,7 @@ Query params:
     path: "/api/MaterialLots/:id/chase/",
     alias: "api_MaterialLots_chase_create",
     description: `Record a chase of an expected delivery — what the supplier said, and a new promised date if given. The first promise is kept for on-time scoring.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40618,7 +40852,7 @@ Query params:
     path: "/api/MaterialLots/:id/move/",
     alias: "api_MaterialLots_move_create",
     description: `Move a lot to another location, recorded (who, when, from where). With a quantity less than what&#x27;s left, that much is split off and moves.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40709,7 +40943,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/record_inspection/",
     alias: "api_MaterialLots_record_inspection_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40729,7 +40963,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/record_units/",
     alias: "api_MaterialLots_record_units_create",
     description: `Material lot tracking with split capability`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40827,7 +41061,7 @@ that one gate waived (inspection or dock-to-stock as usual).`,
     path: "/api/MaterialLots/:id/ship-back/",
     alias: "api_MaterialLots_ship_back_create",
     description: `The dock ships a return-to-supplier lot back (→ Returned).`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40883,7 +41117,7 @@ work order, order and customer it reached.`,
     path: "/api/MaterialLots/bulk_create/",
     alias: "api_MaterialLots_bulk_create_create",
     description: `Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40905,12 +41139,17 @@ work order, order and customer it reached.`,
     alias: "api_MaterialLots_bulk_expected_receipt_create",
     description: `Several expected receipts at once, all or nothing — a buyer recording what
 they just ordered against a list of shortages.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
         schema: BulkExpectedReceiptRequest,
+      },
+      {
+        name: "location",
+        type: "Query",
+        schema: z.string().uuid().optional(),
       },
       {
         name: "material_type",
@@ -41051,14 +41290,6 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
 work orders whose BOM calls for the item.`,
     requestFormat: "json",
     response: z.array(LateDelivery),
-  },
-  {
-    method: "get",
-    path: "/api/MaterialLots/locations/",
-    alias: "api_MaterialLots_locations_retrieve",
-    description: `Storage locations for a picker to suggest. When the tenant keeps a managed list (StorageLocations), its active entries; otherwise every location already typed on material lots and equipment.`,
-    requestFormat: "json",
-    response: z.array(z.string()),
   },
   {
     method: "get",
@@ -43885,10 +44116,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedPartsList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -43918,7 +44146,10 @@ const endpoints3 = makeApi([
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/Orders/import-preview/",
@@ -49474,10 +49705,7 @@ the completion blockers.`,
       },
     ],
     response: z.array(VersionSummary),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/RebuildSlotOverrides/",
@@ -49519,7 +49747,10 @@ const endpoints4 = makeApi([
       },
     ],
     response: PaginatedRebuildSlotOverrideList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/RebuildSlotOverrides/",
@@ -54956,10 +55187,7 @@ from. One row per step (the step is the key).`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepTimings/import-status/:task_id/",
@@ -54974,7 +55202,10 @@ const endpoints5 = makeApi([
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepTimings/import-template/:template_format/",
@@ -55023,14 +55254,38 @@ const endpoints5 = makeApi([
     method: "get",
     path: "/api/StorageLocations/",
     alias: "api_StorageLocations_list",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "held_only",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
       {
         name: "is_active",
         type: "Query",
         schema: z.boolean().optional(),
+      },
+      {
+        name: "kind",
+        type: "Query",
+        schema: z
+          .enum([
+            "AREA",
+            "BIN",
+            "CAGE",
+            "CELL",
+            "DOCK",
+            "LINE_SIDE",
+            "OTHER",
+            "RACK",
+            "SHELF",
+            "WAREHOUSE",
+            "YARD",
+          ])
+          .optional(),
       },
       {
         name: "limit",
@@ -55048,6 +55303,16 @@ receiving takes free text and suggests what has been typed before.`,
         schema: z.string().optional(),
       },
       {
+        name: "parent",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "receiving_dock",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "search",
         type: "Query",
         schema: z.string().optional(),
@@ -55059,8 +55324,8 @@ receiving takes free text and suggests what has been typed before.`,
     method: "post",
     path: "/api/StorageLocations/",
     alias: "api_StorageLocations_create",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55075,8 +55340,8 @@ receiving takes free text and suggests what has been typed before.`,
     method: "get",
     path: "/api/StorageLocations/:id/",
     alias: "api_StorageLocations_retrieve",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55091,8 +55356,8 @@ receiving takes free text and suggests what has been typed before.`,
     method: "put",
     path: "/api/StorageLocations/:id/",
     alias: "api_StorageLocations_update",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55112,8 +55377,8 @@ receiving takes free text and suggests what has been typed before.`,
     method: "patch",
     path: "/api/StorageLocations/:id/",
     alias: "api_StorageLocations_partial_update",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55133,8 +55398,8 @@ receiving takes free text and suggests what has been typed before.`,
     method: "delete",
     path: "/api/StorageLocations/:id/",
     alias: "api_StorageLocations_destroy",
-    description: `The tenant&#x27;s managed list of storage locations. Optional: with none set up,
-receiving takes free text and suggests what has been typed before.`,
+    description: `The tenant&#x27;s locations — where lots, units and machines are. A location is a
+record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is the tree.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55147,9 +55412,9 @@ receiving takes free text and suggests what has been typed before.`,
   },
   {
     method: "get",
-    path: "/api/StorageLocations/contents/",
+    path: "/api/StorageLocations/:id/contents/",
     alias: "api_StorageLocations_contents_retrieve",
-    description: `What is in one location now, and what moved in or out of it lately. By name, so unmanaged (typed) locations work too.`,
+    description: `What is in one location now (and, by default, in the locations inside it), and what moved in or out of it lately.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55158,9 +55423,14 @@ receiving takes free text and suggests what has been typed before.`,
         schema: z.number().int().optional(),
       },
       {
-        name: "name",
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "include_children",
         type: "Query",
-        schema: z.string(),
+        schema: z.boolean().optional(),
       },
     ],
     response: LocationContents,
@@ -55279,7 +55549,7 @@ receiving takes free text and suggests what has been typed before.`,
     method: "get",
     path: "/api/StorageLocations/summary/",
     alias: "api_StorageLocations_summary_list",
-    description: `Every location with stock in it, plus every managed location, with how many lots and units each holds.`,
+    description: `Every location as a tree (ordered by path), with how many lots, units and machines are in each — directly and in total.`,
     requestFormat: "json",
     response: z.array(LocationSummary),
   },
@@ -59626,10 +59896,7 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/UserInvitations/:id/",
@@ -59650,7 +59917,10 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "put",
     path: "/api/UserInvitations/:id/",

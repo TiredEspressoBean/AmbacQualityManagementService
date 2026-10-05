@@ -1468,7 +1468,7 @@ const locationsRoute = createRoute({
 })
 
 const locationDetailRoute = createRoute({
-    getParentRoute: () => rootRoute, path: "/production/locations/$name",
+    getParentRoute: () => rootRoute, path: "/production/locations/$locationId",
     component: lazyRouteComponent(() => import("@/pages/production/LocationDetailPage"), "LocationDetailPage"),
 })
 

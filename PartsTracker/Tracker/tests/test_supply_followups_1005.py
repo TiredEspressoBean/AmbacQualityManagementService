@@ -39,10 +39,12 @@ class _Fixture(APITestCase):
 
     def _lot(self, number, qty="100", status="ACCEPTED", owner=None, where="Rack 1", **kw):
         from Tracker.models import MaterialLot
+        from Tracker.services.mes.locations import seed_location
         return MaterialLot.objects.create(
             tenant=self.tenant, lot_number=number, material=self.bar, quantity=Decimal(qty),
             quantity_remaining=Decimal(qty), unit_of_measure="ft", status=status, supplier=self.acme,
-            owner=owner, storage_location=where, received_date=date.today(), **kw)
+            owner=owner, location=seed_location(self.tenant, where) if where else None,
+            received_date=date.today(), **kw)
 
 
 class RmaTests(_Fixture):

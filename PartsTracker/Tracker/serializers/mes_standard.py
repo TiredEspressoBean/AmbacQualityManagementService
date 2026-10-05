@@ -263,12 +263,41 @@ class MaterialSerializer(SecureModelMixin):
 
 
 class StorageLocationSerializer(SecureModelMixin):
-    """A managed place stock is kept. Optional — receiving takes free text without it."""
+    """A place things are kept — lots, units and machines point at one. Nests via
+    ``parent``; ``path`` is the full trail (Main Stores / Rack 3 / Bin B)."""
+    path = serializers.CharField(read_only=True)
+    parent_name = serializers.SerializerMethodField()
 
     class Meta:
         model = StorageLocation
-        fields = ('id', 'name', 'description', 'is_active', 'created_at', 'updated_at', 'archived')
+        fields = ('id', 'name', 'path', 'description', 'parent', 'parent_name', 'kind', 'code',
+                  'held_only', 'receiving_dock', 'is_active', 'created_at', 'updated_at', 'archived')
         read_only_fields = ('created_at', 'updated_at')
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_parent_name(self, obj):
+        return obj.parent.name if obj.parent_id else None
+
+    def validate_code(self, value):
+        code = (value or '').strip()
+        tenant = getattr(self.context.get('request'), 'tenant', None)
+        if code and tenant is not None:
+            clash = StorageLocation.unscoped.filter(tenant=tenant, code__iexact=code)  # tenant-safe: explicit tenant filter
+            if self.instance is not None:
+                clash = clash.exclude(pk=self.instance.pk)
+            if clash.exists():
+                raise serializers.ValidationError(f'Another location already has the code "{code}".')
+        return code
+
+    def validate(self, attrs):
+        from Tracker.services.mes.locations import validate_parent
+        attrs = super().validate(attrs)
+        if 'parent' in attrs and self.instance is not None:
+            try:
+                validate_parent(self.instance, attrs['parent'])
+            except ValueError as e:
+                raise serializers.ValidationError({'parent': str(e)})
+        return attrs
 
     def validate_name(self, value):
         # The (tenant, name) constraint is invisible to DRF (tenant isn't a field), so a
@@ -345,6 +374,10 @@ class MaterialLotSerializer(SecureModelMixin):
     # Rejected, with an open return-to-supplier disposition: waiting for the dock to
     # ship it back. The list annotates it; a lone lot asks.
     awaiting_return = serializers.SerializerMethodField()
+    # Where it is: `location` (the record, writable — an edit is a recorded move), its
+    # name and its full path for display.
+    storage_location = serializers.CharField(read_only=True)
+    location_path = serializers.SerializerMethodField()
     short_receipt = serializers.ChoiceField(
         choices=SHORT_RECEIPT_CHOICES, allow_blank=True, read_only=True,
         help_text="For a short delivery: the remainder stays on order (BACKORDERED) or "
@@ -365,7 +398,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'hold_reasons', 'manufacture_date', 'expiration_date',
             'shelf_life_status',
-            'certificate_of_conformance', 'storage_location',
+            'certificate_of_conformance', 'location', 'storage_location', 'location_path',
             'heat_number', 'source_type', 'received_as_quantity', 'received_as_unit',
             'owner', 'owner_name',
             'item_purchase_unit', 'item_units_per_purchase_unit',
@@ -412,16 +445,17 @@ class MaterialLotSerializer(SecureModelMixin):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-        # A location edited here is a move like any other: held to the managed list, and
-        # recorded (old → new, who) in update() — services/mes/locations.py.
-        if (self.instance is not None and 'storage_location' in attrs
-                and (attrs['storage_location'] or '') != (self.instance.storage_location or '')
-                and (attrs['storage_location'] or '').strip()):
-            from Tracker.services.mes.locations import canonical_location
+        # A location edited here is a move like any other: held to the location's
+        # controls, and recorded (old → new, who) in update() — services/mes/locations.py.
+        new_loc = attrs.get('location')
+        if self.instance is not None and new_loc is not None and new_loc.pk != self.instance.location_id:
+            from Tracker.services.mes.locations import check_accepts
             try:
-                attrs['storage_location'] = canonical_location(self.instance.tenant, attrs['storage_location'])
+                if not new_loc.is_active:
+                    raise ValueError(f"{new_loc.name} is no longer in use.")
+                check_accepts(new_loc, lot=self.instance)
             except ValueError as e:
-                raise serializers.ValidationError({'storage_location': str(e)})
+                raise serializers.ValidationError({'location': str(e)})
         # Counted in the buying unit ("3 boxes"): the stock quantity is derived from it,
         # and both are kept. In the stock unit, the entered quantity stands as it is.
         amount = attrs.get('received_as_quantity')
@@ -508,6 +542,10 @@ class MaterialLotSerializer(SecureModelMixin):
             self.context['_tenant_today'] = today
         return delivery_state(obj, today)
 
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_location_path(self, obj):
+        return obj.location.path if obj.location_id else None
 
     def update(self, instance, validated_data):
         old = instance.storage_location or ''
@@ -652,7 +690,8 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
     received_date = serializers.DateField(required=False, allow_null=True)
     storage_location = serializers.CharField(
         required=False, allow_blank=True, max_length=100,
-        help_text="Where it was put away. Omit to keep what the expected receipt recorded.")
+        help_text="Where it was put away: a location's id, code or name. Omit to keep what "
+                  "the expected receipt recorded (or the receiving dock).")
     remainder = serializers.ChoiceField(
         choices=SHORT_RECEIPT_CHOICES,
         required=False, allow_null=True,

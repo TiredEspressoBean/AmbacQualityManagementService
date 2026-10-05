@@ -17,13 +17,16 @@ class EquipmentImportExportTests(ImportExportTestCase):
 
     @classmethod
     def build_fixtures(cls):
-        from Tracker.models import Equipments, EquipmentType, Shift
+        from Tracker.models import Equipments, EquipmentType, Shift, StorageLocation
         cls.mill = EquipmentType.objects.create(tenant=cls.tenant, name="CNC Mill")
+        # A machine's location is a record; an import names one that exists.
+        cls.locs = {n: StorageLocation.objects.create(tenant=cls.tenant, name=n)
+                    for n in ("Machine Shop", "Bay 7", "Tool Crib")}
         cls.day = Shift.objects.create(tenant=cls.tenant, name="Day", code="DAY",
                                        start_time=datetime.time(6), end_time=datetime.time(14))
         cls.vf2 = Equipments.objects.create(
             tenant=cls.tenant, name="Haas VF-2", serial_number="SN-100",
-            equipment_type=cls.mill, location="Machine Shop", manufacturer="Haas",
+            equipment_type=cls.mill, location=cls.locs["Machine Shop"], manufacturer="Haas",
             model_number="VF-2", is_schedulable=True, runs_unattended=False,
             batch_capacity=1, notes="Bay 3")
         # Not in the API, so neither imported nor exported: the round trip must leave it.
@@ -44,11 +47,11 @@ class EquipmentImportExportTests(ImportExportTestCase):
         body = self.import_csv("serial_number,location\nSN-100,Bay 7\n", mode="update")
         self.assertEqual(body["summary"]["updated"], 1, body)
         current = Equipments.objects.get(serial_number="SN-100", is_current_version=True)
-        self.assertEqual(current.location, "Bay 7")
+        self.assertEqual(current.location.name, "Bay 7")
         self.assertEqual(current.version, 2)
         self.vf2.refresh_from_db()
         self.assertFalse(self.vf2.is_current_version)
-        self.assertEqual(self.vf2.location, "Machine Shop")
+        self.assertEqual(self.vf2.location.name, "Machine Shop")
 
     def test_a_status_edit_saves_in_place(self):
         # status is operational, not content — the API saves it without a new version.
