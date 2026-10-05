@@ -174,6 +174,15 @@ class LocationViewTests(_Fixture):
         resp = self.client.delete(f"/api/StorageLocations/{inner.id}/")
         self.assertEqual(resp.status_code, 400)
 
+    def test_a_receiving_dock_cant_also_be_held_only(self):
+        both = self.client.post("/api/StorageLocations/", {"name": "Dock X", "receiving_dock": True,
+                                                           "held_only": True}, format="json")
+        self.assertEqual(both.status_code, 400)
+        self.assertIn("receiving_dock", both.json())
+        cage = self._loc("MRB cage", held_only=True)
+        resp = self.client.patch(f"/api/StorageLocations/{cage.id}/", {"receiving_dock": True}, format="json")
+        self.assertEqual(resp.status_code, 400)  # the stored half counts too
+
     def test_receiving_puts_a_delivery_on_the_dock_by_default(self):
         from Tracker.models import MaterialLot
         from Tracker.services.mes.material_lot import receive_expected_lot

@@ -118,7 +118,8 @@ def default_receiving_location(tenant):
     """Where receiving puts a delivery when nobody says: the first receiving dock."""
     from Tracker.models import StorageLocation
     return (StorageLocation.objects.filter(  # tenant-safe: explicit tenant filter
-        tenant=tenant, archived=False, is_active=True, receiving_dock=True).order_by("name").first())
+        tenant=tenant, archived=False, is_active=True, receiving_dock=True, held_only=False)
+        .order_by("name").first())
 
 
 def validate_parent(loc, parent) -> None:

@@ -292,6 +292,15 @@ class StorageLocationSerializer(SecureModelMixin):
     def validate(self, attrs):
         from Tracker.services.mes.locations import validate_parent
         attrs = super().validate(attrs)
+        # Receiving puts deliveries on the dock without a held-only check, so a dock
+        # that's also a quarantine cage would take accepted stock. Almost certainly a
+        # setup mistake — refuse it.
+        held = attrs.get('held_only', getattr(self.instance, 'held_only', False))
+        dock = attrs.get('receiving_dock', getattr(self.instance, 'receiving_dock', False))
+        if held and dock:
+            raise serializers.ValidationError(
+                {'receiving_dock': "A receiving dock can't also be for held stock only — "
+                                   "deliveries arrive there before they're inspected."})
         if 'parent' in attrs and self.instance is not None:
             try:
                 validate_parent(self.instance, attrs['parent'])

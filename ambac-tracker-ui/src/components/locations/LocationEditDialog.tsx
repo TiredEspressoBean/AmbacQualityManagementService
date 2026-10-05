@@ -118,14 +118,14 @@ export function LocationEditDialog({ open, onOpenChange, location, parentId }: {
                         <Input id="loc-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
                     <label className="flex items-start gap-2 text-sm sm:col-span-2">
-                        <Switch checked={heldOnly} onCheckedChange={setHeldOnly} className="mt-0.5" />
+                        <Switch checked={heldOnly} onCheckedChange={setHeldOnly} disabled={dock} className="mt-0.5" />
                         <span>Held stock only<span className="block text-xs text-muted-foreground">
-                            Only quarantined or rejected stock can be put here — an MRB or quarantine cage.</span></span>
+                            Only quarantined or rejected stock can be put here — an MRB or quarantine cage.{dock && " Not on a receiving dock."}</span></span>
                     </label>
                     <label className="flex items-start gap-2 text-sm sm:col-span-2">
-                        <Switch checked={dock} onCheckedChange={setDock} className="mt-0.5" />
+                        <Switch checked={dock} onCheckedChange={setDock} disabled={heldOnly} className="mt-0.5" />
                         <span>Receiving dock<span className="block text-xs text-muted-foreground">
-                            Deliveries go here unless the receiver says otherwise.</span></span>
+                            Deliveries go here unless the receiver says otherwise.{heldOnly && " Not on a held-only location."}</span></span>
                     </label>
                     {location && (
                         <label className="flex items-start gap-2 text-sm sm:col-span-2">
