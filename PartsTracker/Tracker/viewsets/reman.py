@@ -14,8 +14,8 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
 
 from Tracker.models import (
-    Core, HarvestedComponent, DisassemblyBOMLine, RepairCode, RebuildScopePreset,
-    RebuildSlotOverride,
+    Companies, Core, HarvestedComponent, DisassemblyBOMLine, PartTypes, RepairCode,
+    RebuildScopePreset, RebuildSlotOverride,
 )
 from Tracker.serializers.reman import (
     CoreSerializer, CoreListSerializer, CoreScrapSerializer,
@@ -25,7 +25,7 @@ from Tracker.serializers.reman import (
     DisassemblyBOMLineSerializer, RebuildPlanSerializer,
     RepairCodeSerializer, RebuildScopePresetSerializer, RebuildSlotOverrideSerializer,
 )
-from Tracker.serializers.csv_import import create_import_serializer_for_model
+from Tracker.serializers.csv_import import BaseCSVImportSerializer, create_import_serializer_for_model
 from .base import TenantScopedMixin
 from .mixins import CSVImportMixin, DataExportMixin, VersionHistoryMixin
 from .scheduling_setup import ReviveOnCreateMixin
@@ -33,7 +33,40 @@ from .scheduling_setup import ReviveOnCreateMixin
 
 # ===== CORE VIEWSETS =====
 
-class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
+class _CoreImport(BaseCSVImportSerializer):
+    """Cores already in the building, from a sheet (the migration workbook's Cores).
+
+    Created through `create_core`, as every core is, so none exists without its part.
+    A core loads as Received: one further along moves through teardown in UQMES, which
+    is what keeps its part, harvest and authorisation consistent. The fulfilment mode
+    follows the customer's standing arrangement when the row leaves it blank, as at the
+    receiving desk — and who it came from must be a customer (a supplier, for a core
+    bought from a broker), or that arrangement could send a customer's own unit into
+    the harvest pool.
+    """
+
+    def create_instance(self, data):
+        from Tracker.services.reman.core import resolve_fulfilment_mode
+        from Tracker.services.reman.core_part import create_core
+        if data.get('status') not in (None, '', 'RECEIVED'):
+            raise serializers.ValidationError({'status': (
+                "A core loads as Received; take it through teardown in UQMES from there.")})
+        data.pop('status', None)
+        company = data.get('customer')
+        if company is not None:
+            bought = data.get('source_type') == 'PURCHASED'
+            if bought and not company.is_supplier:
+                raise serializers.ValidationError({'customer': (
+                    f"{company.name} isn't set up as a supplier, so a core can't be bought from it.")})
+            if not bought and not company.is_customer:
+                raise serializers.ValidationError({'customer': (
+                    f"{company.name} isn't set up as a customer.")})
+        if not data.get('fulfilment_mode'):
+            data['fulfilment_mode'], _ = resolve_fulfilment_mode(company)
+        return create_core(tenant=self.tenant, received_by=self.user, **data)
+
+
+class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     Remanufacturing core management with disassembly workflow.
 
@@ -49,6 +82,15 @@ class CoreViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
     queryset = Core.unscoped.select_related('core_type', 'customer', 'received_by', 'disassembled_by',
                                             'part__work_order', 'part__step')
     serializer_class = CoreSerializer
+    # A core is its number (blank: one is assigned). Customer by name, type by name or
+    # part number.
+    csv_import_serializer = create_import_serializer_for_model(
+        Core, lookup_fields=['id', 'core_number'],
+        extra_fk_fields={'customer': (Companies, ['name', 'id']),
+                         'core_type': (PartTypes, ['name', 'ERP_id', 'id'])},
+        # What a row must say; the part and receiver are create_core's to fill.
+        meta={'required_fields': ['core_type', 'condition_grade']},
+        base=_CoreImport)
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['core_number', 'serial_number', 'source_reference']
     filterset_fields = ['status', 'condition_grade', 'source_type', 'customer', 'core_type']

@@ -32,6 +32,9 @@ export interface EntityDocumentsEditorProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     readOnly?: boolean;
+    /** Objects whose documents also apply, shown read-only — a split lot's delivery
+     *  (and its parents): the paperwork stays on the lot it arrived with. */
+    inheritedFrom?: { objectId: string; label: string }[];
 }
 
 type Doc = {
@@ -49,8 +52,38 @@ function statusBadge(status: string) {
 
 /** Reusable attach/list/upload documents dialog for any model with a Documents
  *  GenericRelation. Generalized from the flow-editor step documents editor. */
+/** Another object's documents, read-only, under a heading naming it. */
+function InheritedDocuments({ contentTypeId, objectId, label, enabled }: {
+    contentTypeId: number | undefined; objectId: string; label: string; enabled: boolean;
+}) {
+    const { data } = useRetrieveDocuments(
+        { content_type: contentTypeId, object_id: objectId }, undefined,
+        { enabled: enabled && !!contentTypeId },
+    );
+    const docs = (data?.results || []) as Doc[];
+    if (docs.length === 0) return null;
+    return (
+        <div className="space-y-2">
+            <Label className="text-sm font-medium">From {label} ({docs.length})</Label>
+            {docs.map((doc) => (
+                <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <span className="flex-1 min-w-0 truncate text-sm font-medium">{doc.file_name}</span>
+                    {doc.document_type_code && <Badge variant="outline" className="text-xs shrink-0">{doc.document_type_code}</Badge>}
+                    {doc.file_url && (
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                        </Button>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export function EntityDocumentsEditor({
     contentTypeModel, objectId, label, description, open, onOpenChange, readOnly = false,
+    inheritedFrom = [],
 }: EntityDocumentsEditorProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -211,6 +244,10 @@ export function EntityDocumentsEditor({
                                 </div>
                             )}
                         </div>
+                        {inheritedFrom.map((src) => (
+                            <InheritedDocuments key={src.objectId} contentTypeId={contentTypeId}
+                                objectId={src.objectId} label={src.label} enabled={open && !ctLoading} />
+                        ))}
                     </div>
                 </ScrollArea>
 

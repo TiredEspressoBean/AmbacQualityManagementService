@@ -106,10 +106,13 @@ export default function MasterWorkbookPage() {
     const [busy, setBusy] = useState<"check" | "load" | null>(null);
     const [progress, setProgress] = useState<Progress | null>(null);
 
-    const downloadTemplate = async () => {
+    /** Blank, or filled with what's in UQMES now — to edit and upload back. */
+    const downloadTemplate = async (filled = false) => {
         try {
-            const resp = await api.axios.get("/api/MasterWorkbook/template/", { responseType: "blob" });
-            downloadBlob(resp.data, "master_workbook.xlsx");
+            const resp = await api.axios.get("/api/MasterWorkbook/template/", {
+                responseType: "blob", params: filled ? { filled: "true" } : undefined,
+            });
+            downloadBlob(resp.data, filled ? "master_workbook_filled.xlsx" : "master_workbook.xlsx");
         } catch (e) {
             toast.error(await blobErrorMessage(e, "Couldn't download the workbook."));
         }
@@ -242,9 +245,16 @@ export default function MasterWorkbookPage() {
 
                 <aside className="flex w-full shrink-0 flex-col gap-5 lg:w-80">
                     <Panel title="The workbook"
-                        aside={<Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={downloadTemplate}>
-                            <Download className="mr-1 h-3.5 w-3.5" /> Download
-                        </Button>}>
+                        aside={<span className="flex gap-1">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => downloadTemplate()}
+                                title="A blank workbook to fill in">
+                                <Download className="mr-1 h-3.5 w-3.5" /> Blank
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => downloadTemplate(true)}
+                                title="Filled in with what's in UQMES now — edit it and upload it back">
+                                <Download className="mr-1 h-3.5 w-3.5" /> Filled in
+                            </Button>
+                        </span>}>
                         <p className="px-3 pb-1 pt-2.5 text-xs text-muted-foreground">
                             Sheets load in this order; a row may name anything an earlier sheet made. Leave the
                             ones you don't need empty. Processes are built in the process editor first.

@@ -32,7 +32,7 @@ from Tracker.serializers.mes_standard import (
     DowntimeEventSerializer,
     MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
-    ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
+    CancelExpectedReceiptSerializer, ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
@@ -598,6 +598,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         'confirm_whole_lot_reject': ['reject_whole_lot'],
         'reject_remainder': ['reject_whole_lot'],
         'ship_back': ['change_materiallot'],
+        # Who may expect a receipt may say it won't come.
+        'cancel_expected': ['change_materiallot'],
     }
 
     def get_queryset(self):
@@ -898,6 +900,21 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         # Same disposition path a walk-in receipt takes — inspection or dock-to-stock.
         receiving_inspection.route_received_lot(lot, request.user)
         lot.refresh_from_db()
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=CancelExpectedReceiptSerializer, responses={200: MaterialLotSerializer},
+                   description=("An expected receipt that won't come (the ERP cancelled the "
+                                "line, or it was already received) -> Cancelled, reason kept."))
+    @action(detail=True, methods=['post'], url_path='cancel-expected')
+    def cancel_expected(self, request, pk=None):
+        lot = self.get_object()
+        ser = CancelExpectedReceiptSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import cancel_expected_receipt
+        try:
+            lot = cancel_expected_receipt(lot, user=request.user, reason=ser.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(request=ExtendShelfLifeSerializer, responses={200: MaterialLotSerializer})

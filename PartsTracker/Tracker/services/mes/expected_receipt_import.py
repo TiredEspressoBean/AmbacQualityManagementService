@@ -94,13 +94,26 @@ def _resolve_supplier(tenant, text: str):
 def _reopened_note(tenant, po, line, quantity) -> str:
     """Why a received line is on order again — so whoever typed the sheet can tell a
     replacement or a re-release from an ERP that hadn't caught up."""
-    from Tracker.models import MaterialLot
-    last = (MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
-        tenant=tenant, archived=False, erp_po_number=po, erp_po_line=line,
-        received_date__isnull=False).order_by("-received_date").first())
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+    on_line = MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, archived=False, erp_po_number=po, erp_po_line=line)
+    cancelled = on_line.filter(status="CANCELLED").order_by("-updated_at").first()
+    if cancelled is not None:
+        edit = (RecordEdit.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=tenant, content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=cancelled.id, field_name="status", new_value="CANCELLED")
+            .select_related("edited_by").order_by("-edited_at").first())
+        who = ""
+        if edit is not None:
+            name = edit.edited_by.display_name if edit.edited_by_id else "someone"
+            who = f" on {edit.edited_at:%d %b %Y} by {name}"
+        return (f"Line {line} was cancelled{who}; expected again because the sheet still "
+                f"shows {quantity:g} open. If the ERP has cancelled it, cancel this one too.")
+    last = on_line.filter(received_date__isnull=False).order_by("-received_date").first()
     when = f" on {last.received_date:%d %b %Y} (lot {last.lot_number})" if last else ""
     return (f"Line {line} was received{when}; expecting {quantity:g} more because the sheet "
-            f"shows it open. If the ERP hasn't caught up, remove this expected receipt.")
+            f"shows it open. If the ERP hasn't caught up, cancel this expected receipt.")
 
 
 def import_expected_receipts(*, tenant, file, filename: str) -> dict:
@@ -122,7 +135,7 @@ def import_expected_rows(*, tenant, rows: list[dict]) -> dict:
         if not any(_text(v) for v in row.values()):
             continue  # a blank line in the sheet
         entry = {"row": n, "erp_po_number": po, "erp_po_line": line,
-                 "lot_number": None, "detail": ""}
+                 "lot_number": None, "lot_id": None, "detail": ""}
         try:
             material, part_type = resolve_item(tenant, _text(row.get("item")))
             try:
@@ -141,6 +154,7 @@ def import_expected_rows(*, tenant, rows: list[dict]) -> dict:
                 unit_of_measure=_text(row.get("unit")))
             entry["outcome"] = outcome
             entry["lot_number"] = lot.lot_number if lot else None
+            entry["lot_id"] = str(lot.id) if lot else None
             if outcome == lot_svc.IMPORT_REOPENED:
                 entry["detail"] = _reopened_note(tenant, po, line, quantity)
             elif ambiguous_day_month(row.get("promised")):

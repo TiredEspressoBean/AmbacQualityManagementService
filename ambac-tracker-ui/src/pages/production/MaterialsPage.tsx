@@ -17,6 +17,7 @@ import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDia
 import { ExpectedReceiptDialog } from "@/components/receiving/ExpectedReceiptDialog";
 import { ImportExpectedReceiptsDialog } from "@/components/receiving/ImportExpectedReceiptsDialog";
 import { ReceiptsExportDialog } from "@/components/receiving/ReceiptsExportDialog";
+import { CancelExpectedReceiptDialog } from "@/components/receiving/CancelExpectedReceiptDialog";
 import { ReceiveExpectedLotDialog } from "@/components/receiving/ReceiveExpectedLotDialog";
 import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
 
@@ -27,7 +28,7 @@ const col = createColumnHelper<Schema<"MaterialLot">>();
 const STATUS_LABEL: Record<string, string> = {
     ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
     ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
-    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled",
 };
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -101,6 +102,7 @@ export function MaterialsPage() {
     const [importOpen, setImportOpen] = useState(false);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
+    const [cancelLot, setCancelLot] = useState<Lot | null>(null);
     const [shipLot, setShipLot] = useState<Lot | null>(null);
     const [remainderLot, setRemainderLot] = useState<Lot | null>(null);
     const canRejectWholeLot = usePermissionSet().has("reject_whole_lot");
@@ -275,7 +277,21 @@ export function MaterialsPage() {
                 return (
                     <div className="flex items-center justify-end gap-1">
                         {l.status === "ON_ORDER" && (
-                            <Button size="sm" onClick={() => setReceiveLot(l)}>Receive</Button>
+                            <>
+                                <Button size="sm" onClick={() => setReceiveLot(l)}>Receive</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button size="sm" variant="ghost" aria-label={`More actions for ${l.lot_number}`}>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => setCancelLot(l)}>
+                                            Cancel expected receipt…
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </>
                         )}
                         {(l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
                             <Button size="sm"
@@ -348,6 +364,17 @@ export function MaterialsPage() {
                 }
                 open={receiveLot !== null}
                 onOpenChange={(o) => { if (!o) setReceiveLot(null); }}
+            />
+        )}
+        {cancelLot && (
+            <CancelExpectedReceiptDialog
+                key={String(cancelLot.id)}
+                lotId={String(cancelLot.id)}
+                label={cancelLot.erp_po_number
+                    ? `PO ${cancelLot.erp_po_number}${cancelLot.erp_po_line ? ` / ${cancelLot.erp_po_line}` : ""} · ${cancelLot.item_name ?? ""}`
+                    : `${cancelLot.lot_number} · ${cancelLot.item_name ?? ""}`}
+                open={cancelLot !== null}
+                onOpenChange={(o) => { if (!o) setCancelLot(null); }}
             />
         )}
         {adjustLot && (

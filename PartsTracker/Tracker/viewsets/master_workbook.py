@@ -45,13 +45,27 @@ class MasterWorkbookViewSet(viewsets.ViewSet):
                 for s in SHEETS]
         return Response(MasterWorkbookSheetInfoSerializer(data, many=True).data)
 
-    @extend_schema(responses={(200, XLSX): OpenApiTypes.BINARY},
-                   description="A blank master workbook: a Read me sheet, then one sheet per table.")
+    @extend_schema(
+        parameters=[OpenApiParameter('filled', OpenApiTypes.BOOL, required=False, description=(
+            "True: each sheet holds what's in UQMES now (the sheets you may see), to edit "
+            "and upload back."))],
+        responses={(200, XLSX): OpenApiTypes.BINARY},
+        description="The master workbook: a Read me sheet, then one sheet per table — blank, or filled in.")
     @action(detail=False, methods=['get'], url_path='template')
     def template(self, request):
         from Tracker.services.core.master_workbook import build_template
-        resp = HttpResponse(build_template(request), content_type=XLSX)
-        resp['Content-Disposition'] = 'attachment; filename="master_workbook.xlsx"'
+        filled = str(request.query_params.get('filled', '')).lower() in ('1', 'true', 'yes')
+        resp = HttpResponse(build_template(request, filled=filled), content_type=XLSX)
+        name = 'master_workbook_filled.xlsx' if filled else 'master_workbook.xlsx'
+        resp['Content-Disposition'] = f'attachment; filename="{name}"'
+        if filled:
+            # Bulk egress of the whole plant: recorded as the per-table exports are.
+            from Tracker.services.core.access_log import record_access
+            from Tracker.throttling import get_client_ip
+            record_access(obj=request.tenant, user=request.user, action_type='bulk_export',
+                          object_repr='Export: master workbook (filled)',
+                          remote_addr=get_client_ip(request),
+                          payload={'export': 'master_workbook', 'filled': True})
         return resp
 
     @extend_schema(

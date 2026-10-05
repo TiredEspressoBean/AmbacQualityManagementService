@@ -1980,6 +1980,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202). */
+        post: operations["api_Cores_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/import-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Preview a file before importing. Returns columns, suggested mappings, and sample data. */
+        post: operations["api_Cores_import_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/import-status/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Check status of a background import task. */
+        get: operations["api_Cores_import_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/import-template/{template_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
+        get: operations["api_Cores_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/lots/": {
         parameters: {
             query?: never;
@@ -5263,7 +5331,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description A blank master workbook: a Read me sheet, then one sheet per table. */
+        /** @description The master workbook: a Read me sheet, then one sheet per table — blank, or filled in. */
         get: operations["api_MasterWorkbook_template_retrieve"];
         put?: never;
         post?: never;
@@ -5339,6 +5407,23 @@ export interface paths {
         put?: never;
         /** @description Correct what's left of a lot to what is physically there, with a reason. */
         post: operations["api_MaterialLots_adjust_quantity_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/cancel-expected/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description An expected receipt that won't come (the ERP cancelled the line, or it was already received) -> Cancelled, reason kept. */
+        post: operations["api_MaterialLots_cancel_expected_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20804,6 +20889,10 @@ export interface components {
          * @enum {string}
          */
         CalibrationTypeEnum: "SCHEDULED" | "INITIAL" | "AFTER_REPAIR" | "AFTER_ADJUSTMENT" | "VERIFICATION";
+        CancelExpectedReceiptRequest: {
+            /** @description Why it won't come — the ERP cancelled the line, or it was already received. */
+            reason: string;
+        };
         /** @description CAPA task assignee serializer */
         CapaTaskAssignee: {
             /** Format: uuid */
@@ -22650,6 +22739,7 @@ export interface components {
             erp_po_number: string;
             erp_po_line: string;
             lot_number: string | null;
+            lot_id: string | null;
             detail: string;
         };
         /**
@@ -24137,6 +24227,10 @@ export interface components {
             disposition_type: components["schemas"]["LotRejectDispositionEnum"];
             description: string;
         };
+        LotRef: {
+            id: string;
+            lot_number: string;
+        };
         /**
          * @description * `RETURN_TO_SUPPLIER` - Return to supplier
          *     * `SCRAP` - Scrap
@@ -24405,6 +24499,7 @@ export interface components {
             readonly item_requires_heat_number: boolean;
             readonly awaiting_return: boolean;
             readonly child_lot_count: number;
+            readonly lineage: components["schemas"]["LotRef"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -24537,9 +24632,10 @@ export interface components {
          *     * `SCRAPPED` - Scrapped
          *     * `QUARANTINE` - Quarantine
          *     * `RETURNED` - Returned to supplier
+         *     * `CANCELLED` - Cancelled
          * @enum {string}
          */
-        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE" | "RETURNED";
+        MaterialLotStatusEnum: "ON_ORDER" | "RECEIVED" | "AWAITING_INSPECTION" | "ACCEPTED" | "REJECTED" | "IN_USE" | "CONSUMED" | "SCRAPPED" | "QUARANTINE" | "RETURNED" | "CANCELLED";
         /**
          * @description Purchased item — raw material / bought component (distinct from in-house PartTypes).
          *     Holds the purchase lead time used by the sourcing report.
@@ -42467,6 +42563,136 @@ export interface operations {
             };
         };
     };
+    api_Cores_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to import
+                     */
+                    file: string;
+                    /**
+                     * @description Import mode: create, update, or upsert (default)
+                     * @enum {string}
+                     */
+                    mode?: "create" | "update" | "upsert";
+                };
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportQueued"];
+                };
+            };
+            207: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Cores_import_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description CSV or Excel file to preview
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportPreviewResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Cores_import_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Celery task ID from import response */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportStatusResponse"];
+                };
+            };
+        };
+    };
+    api_Cores_import_template_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
     api_Cores_lots_list: {
         parameters: {
             query?: never;
@@ -48343,7 +48569,10 @@ export interface operations {
     };
     api_MasterWorkbook_template_retrieve: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description True: each sheet holds what's in UQMES now (the sheets you may see), to edit and upload back. */
+                filled?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -48387,8 +48616,9 @@ export interface operations {
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
                  *     * `RETURNED` - Returned to supplier
+                 *     * `CANCELLED` - Cancelled
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;
@@ -48568,6 +48798,34 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["AdjustQuantityRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["AdjustQuantityRequest"];
                 "application/json": components["schemas"]["AdjustQuantityRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_cancel_expected_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["CancelExpectedReceiptRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CancelExpectedReceiptRequest"];
+                "application/json": components["schemas"]["CancelExpectedReceiptRequest"];
             };
         };
         responses: {
@@ -49012,8 +49270,9 @@ export interface operations {
                  *     * `SCRAPPED` - Scrapped
                  *     * `QUARANTINE` - Quarantine
                  *     * `RETURNED` - Returned to supplier
+                 *     * `CANCELLED` - Cancelled
                  */
-                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
+                status?: "ACCEPTED" | "AWAITING_INSPECTION" | "CANCELLED" | "CONSUMED" | "IN_USE" | "ON_ORDER" | "QUARANTINE" | "RECEIVED" | "REJECTED" | "RETURNED" | "SCRAPPED";
                 supplier?: string;
             };
             header?: never;

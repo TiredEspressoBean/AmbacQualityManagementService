@@ -44,7 +44,7 @@ def receipt_rows(tenant, start, end, *, with_po_only: bool = False) -> list[dict
         MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
             tenant=tenant, archived=False, parent_lot__isnull=True, holds_cores=False,
             received_date__gte=start, received_date__lte=end)
-        .exclude(status="ON_ORDER")
+        .exclude(status__in=("ON_ORDER", "CANCELLED"))
         .select_related("material", "material_type", "supplier")
         .order_by("received_date", "erp_po_number", "erp_po_line", "lot_number"))
     if with_po_only:

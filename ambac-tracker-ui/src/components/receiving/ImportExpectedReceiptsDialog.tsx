@@ -11,6 +11,7 @@ import { api } from "@/lib/api/generated";
 import { blobErrorMessage, downloadBlob } from "@/lib/download";
 import { useImportExpectedReceipts } from "@/hooks/useReceivingMutations";
 import type { Schema } from "@/lib/api/types";
+import { CancelExpectedReceiptDialog } from "@/components/receiving/CancelExpectedReceiptDialog";
 
 type Result = Schema<"ExpectedReceiptImportResult">;
 
@@ -33,6 +34,9 @@ type Props = { open: boolean; onOpenChange: (open: boolean) => void };
 export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
     const [file, setFile] = useState<File | null>(null);
     const [result, setResult] = useState<Result | null>(null);
+    // An "Expected again" row being cancelled (the ERP hadn't caught up), and those done.
+    const [cancelRow, setCancelRow] = useState<{ lotId: string; label: string } | null>(null);
+    const [cancelled, setCancelled] = useState<Set<string>>(new Set());
     const upload = useImportExpectedReceipts();
 
     const downloadTemplate = async () => {
@@ -67,6 +71,17 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
     const problems = (result?.rows ?? []).filter((r) => r.outcome === "ERROR" || r.outcome === "REOPENED");
 
     return (
+        <>
+        {cancelRow && (
+            <CancelExpectedReceiptDialog
+                key={cancelRow.lotId}
+                lotId={cancelRow.lotId}
+                label={cancelRow.label}
+                open
+                onOpenChange={(o) => { if (!o) setCancelRow(null); }}
+                onCancelled={() => setCancelled((s) => new Set(s).add(cancelRow.lotId))}
+            />
+        )}
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
@@ -110,6 +125,7 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                                             <th className="p-2 font-medium">PO / line</th>
                                             <th className="p-2 font-medium">Result</th>
                                             <th className="p-2 font-medium">Why</th>
+                                            <th className="p-2" />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -119,6 +135,16 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                                                 <td className="p-2 font-mono">{r.erp_po_number || "—"} / {r.erp_po_line || "—"}</td>
                                                 <td className="p-2">{OUTCOME_LABEL[r.outcome] ?? r.outcome}</td>
                                                 <td className="p-2 text-muted-foreground">{r.detail}</td>
+                                                <td className="p-2 text-right">
+                                                    {r.outcome === "REOPENED" && r.lot_id && (
+                                                        cancelled.has(r.lot_id)
+                                                            ? <span className="text-xs text-muted-foreground">Cancelled</span>
+                                                            : <Button size="sm" variant="ghost" onClick={() => setCancelRow({
+                                                                lotId: r.lot_id as string,
+                                                                label: `PO ${r.erp_po_number} / ${r.erp_po_line}`,
+                                                            })}>Cancel</Button>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -143,5 +169,6 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </>
     );
 }

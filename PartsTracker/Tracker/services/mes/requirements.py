@@ -24,7 +24,8 @@ from Tracker.services.reman.demand import (
 # therefore excludes the on-hand statuses as well as the terminal ones.
 _ON_HAND_LOT_STATUSES = ('ACCEPTED', 'IN_USE')
 # RETURNED: shipped back to the supplier — neither stock nor on its way.
-_TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED')
+# CANCELLED: an expected receipt that won't come.
+_TERMINAL_LOT_STATUSES = ('CONSUMED', 'SCRAPPED', 'REJECTED', 'RETURNED', 'CANCELLED')
 # Held stock is neither on hand nor coming: it may never clear (a whole-lot reject
 # requested, an unqualified supplier), so it isn't counted as supply.
 _NOT_INCOMING_LOT_STATUSES = _ON_HAND_LOT_STATUSES + _TERMINAL_LOT_STATUSES + ('QUARANTINE',)

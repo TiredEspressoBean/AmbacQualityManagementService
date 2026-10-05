@@ -266,3 +266,49 @@ class MirrorTests(_Fixture):
         self.assertEqual(report["reopened"], 1, report)
         self.assertIn("If the ERP hasn't caught up", report["rows"][0]["detail"])
         self.assertEqual(MaterialLot.objects.filter(erp_po_number="88", status="ON_ORDER").count(), 1)
+
+
+class LineageAndCancelTests(_Fixture):
+    def test_a_split_lot_knows_the_delivery_its_paperwork_is_on(self):
+        from Tracker.services.mes.material_lot import split_material_lot
+        parent = self._lot("LIN-1")
+        child = split_material_lot(parent, Decimal(10))
+        grandchild = split_material_lot(child, Decimal(2))
+        body = self.client.get(f"/api/MaterialLots/{grandchild.id}/").json()
+        self.assertEqual([a["lot_number"] for a in body["lineage"]], [child.lot_number, "LIN-1"])
+
+    def test_cancelling_an_expected_receipt(self):
+        from Tracker.models import MaterialLot, RecordEdit
+        lot = self._expected(po="4410", line="2")
+        self.assertEqual(self.client.post(f"/api/MaterialLots/{lot.id}/cancel-expected/", {},
+                                          format="json").status_code, 400)  # a reason is required
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/cancel-expected/",
+                                {"reason": "Already received"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        lot = MaterialLot.objects.get(pk=lot.id)
+        self.assertEqual((lot.status, lot.quantity_remaining), ("CANCELLED", Decimal(0)))
+        self.assertTrue(RecordEdit.objects.filter(object_id=lot.id, reason="Already received").exists())
+        # Not supply: requirements' incoming set leaves it out.
+        from Tracker.services.mes.requirements import _NOT_INCOMING_LOT_STATUSES
+        self.assertIn("CANCELLED", _NOT_INCOMING_LOT_STATUSES)
+
+    def test_cancelling_a_backorder_remainder_closes_its_delivery(self):
+        from Tracker.models import MaterialLot
+        from Tracker.services.mes.material_lot import cancel_expected_receipt, receive_expected_lot
+        first = self._expected(po="4411", line="1", qty="10")
+        receive_expected_lot(first, received_by=self.user, quantity=Decimal(6), remainder="BACKORDERED")
+        rest = MaterialLot.objects.get(erp_po_number="4411", status="ON_ORDER")
+        cancel_expected_receipt(rest, user=self.user, reason="Supplier cancelled the balance")
+        self.assertEqual(MaterialLot.objects.get(pk=first.id).short_receipt, "CLOSED")
+
+    def test_a_cancelled_line_the_sheet_still_shows_is_expected_again_and_says_so(self):
+        from Tracker.services.mes.expected_receipt_import import import_expected_rows
+        from Tracker.services.mes.material_lot import cancel_expected_receipt
+        row = {"po": "4412", "line": "1", "item": "SEAL", "quantity": "5", "promised": "2027-01-15"}
+        import_expected_rows(tenant=self.tenant, rows=[row])
+        from Tracker.models import MaterialLot
+        cancel_expected_receipt(MaterialLot.objects.get(erp_po_number="4412"), user=self.user,
+                                reason="Typed early")
+        report = import_expected_rows(tenant=self.tenant, rows=[row])
+        self.assertEqual(report["reopened"], 1, report)
+        self.assertIn("was cancelled", report["rows"][0]["detail"])

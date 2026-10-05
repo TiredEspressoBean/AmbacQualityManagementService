@@ -140,6 +140,17 @@ export const useImportExpectedReceipts = () => {
     });
 };
 
+/** An expected receipt that won't come → Cancelled, with the reason on record. */
+export const useCancelExpectedReceipt = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; reason: string }) =>
+            api.api_MaterialLots_cancel_expected_create(
+                { reason: vars.reason }, { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateSupply(queryClient),
+    });
+};
+
 /** Expected receipts overdue or due soon, with the work each holds up. */
 export const useLateDeliveries = () =>
     useQuery(

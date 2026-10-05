@@ -45,7 +45,8 @@ _STATUS_TO_ACTIVE = {
 }
 
 
-def reconcile_user_row(*, row: Dict[str, Any], tenant: "Tenant", acting_user: "User") -> Dict[str, Any]:
+def reconcile_user_row(*, row: Dict[str, Any], tenant: "Tenant", acting_user: "User",
+                       invite: bool = True) -> Dict[str, Any]:
     """Reconcile one row to the tenant's user roster.
 
     Args:
@@ -55,6 +56,9 @@ def reconcile_user_row(*, row: Dict[str, Any], tenant: "Tenant", acting_user: "U
         tenant: the tenant we're operating on.
         acting_user: the admin running the bulk action — recorded on
             UserInvitation.invited_by + audit fields where applicable.
+        invite: False creates a new user with no invitation (the migration
+            workbook: staff are loaded before go-live and invited then, from
+            User Management's Send invitation).
 
     Returns:
         dict with one of these shapes:
@@ -127,6 +131,7 @@ def reconcile_user_row(*, row: Dict[str, Any], tenant: "Tenant", acting_user: "U
             target_groups=target_groups or [],
             desired_is_active=desired_is_active,
             message=message,
+            invite=invite,
         )
 
     # UPDATE path — bring existing user into line with the row
@@ -155,8 +160,10 @@ def _create_and_invite(
     target_groups: List["TenantGroup"],
     desired_is_active: Optional[bool],
     message: str,
+    invite: bool = True,
 ) -> Dict[str, Any]:
-    """Create a new User in this tenant, assign groups, fire an invitation."""
+    """Create a new User in this tenant, assign groups, fire an invitation (unless
+    ``invite`` is False — then no invitation exists until one is sent)."""
     from django.db import IntegrityError
     from Tracker.models import User, UserInvitation, UserRole
 
@@ -183,6 +190,8 @@ def _create_and_invite(
                     user=user, group=tg, granted_by=acting_user,
                 )
 
+            if not invite:
+                return {"outcome": "created", "user_id": str(user.id), "warnings": []}
             invitation = UserInvitation.objects.create(
                 user=user,
                 invited_by=acting_user,

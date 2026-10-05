@@ -1550,6 +1550,10 @@ class MaterialLot(SecureModel):
         # Shipped back to the supplier on a return-to-supplier disposition. Not
         # scrapped — the goods exist, at the vendor — and not stock.
         ('RETURNED', 'Returned to supplier'),
+        # An expected receipt that won't come: the ERP cancelled the line, or a sheet
+        # typed before the ERP caught up expected a line already received. Never was
+        # stock; no longer supply. (`cancel_expected_receipt`, reason on record.)
+        ('CANCELLED', 'Cancelled'),
     ]
 
     lot_number = models.CharField(max_length=100)  # Unique per tenant, not globally

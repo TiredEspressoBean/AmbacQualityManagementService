@@ -485,6 +485,7 @@ export function ReceivingInspectionPage() {
                 objectId={String(lot.id)}
                 label={lot.lot_number}
                 description="Certificate of Conformance, mill/material certs, packing slips, and supplier documents for this lot."
+                inheritedFrom={(lot.lineage ?? []).map((a) => ({ objectId: a.id, label: `lot ${a.lot_number}` }))}
                 open={docsOpen}
                 onOpenChange={setDocsOpen}
             />

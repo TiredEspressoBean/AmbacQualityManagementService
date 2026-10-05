@@ -73,6 +73,12 @@ def release_hold(lot):
     return _transition(lot, allowed_from=("QUARANTINE",), to="RECEIVED")
 
 
+def cancel_expected(lot):
+    """ON_ORDER -> CANCELLED: an expected receipt that won't come (see
+    `material_lot.cancel_expected_receipt`, which records why)."""
+    return _transition(lot, allowed_from=("ON_ORDER",), to="CANCELLED")
+
+
 def return_to_inspection(lot):
     """QUARANTINE → AWAITING_INSPECTION: a declined whole-lot reject request. The lot
     goes back to the inspection that asked for it — its report and execution are

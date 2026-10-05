@@ -290,6 +290,11 @@ class StorageLocationSerializer(SecureModelMixin):
 DELIVERY_STATES = [('OVERDUE', 'Overdue'), ('DUE_SOON', 'Due soon')]
 
 
+class LotRefSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    lot_number = serializers.CharField()
+
+
 class MaterialLotSerializer(SecureModelMixin):
     """Material lot serializer.
 
@@ -312,6 +317,10 @@ class MaterialLotSerializer(SecureModelMixin):
     # Who booked the material in. Null while a lot is ON_ORDER — nobody has received it.
     received_by_name = serializers.SerializerMethodField()
     child_lot_count = serializers.SerializerMethodField()
+    # The lots this one was split from, nearest first. A split piece's supplier
+    # paperwork is its delivery's: documents stay attached to the lot they arrived on
+    # (a controlled document isn't copied) and are shown on the pieces through this.
+    lineage = serializers.SerializerMethodField()
     # Live calendar shelf-life status (OK/WARNING/EXPIRED), or null when the lot
     # has no shelf life. Reads the LifeTracking record, not the raw scalar.
     shelf_life_status = serializers.SerializerMethodField()
@@ -353,7 +362,7 @@ class MaterialLotSerializer(SecureModelMixin):
             'owner', 'owner_name',
             'item_purchase_unit', 'item_units_per_purchase_unit',
             'item_requires_coc', 'item_requires_heat_number', 'awaiting_return',
-            'child_lot_count',
+            'child_lot_count', 'lineage',
             'created_at', 'updated_at', 'archived',
         )
         read_only_fields = (
@@ -446,6 +455,15 @@ class MaterialLotSerializer(SecureModelMixin):
     def get_child_lot_count(self, obj):
         return obj.child_lots.count()
 
+    @extend_schema_field(LotRefSerializer(many=True))
+    def get_lineage(self, obj):
+        out, seen, cur = [], {obj.pk}, obj
+        while cur.parent_lot_id and cur.parent_lot_id not in seen and len(out) < 20:
+            cur = cur.parent_lot
+            seen.add(cur.pk)
+            out.append({'id': str(cur.pk), 'lot_number': cur.lot_number})
+        return out
+
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_shelf_life_status(self, obj):
         from Tracker.services.life_tracking.shelf_life import shelf_life_status
@@ -522,7 +540,13 @@ class ExpectedReceiptImportRowResultSerializer(serializers.Serializer):
     erp_po_number = serializers.CharField(allow_blank=True)
     erp_po_line = serializers.CharField(allow_blank=True)
     lot_number = serializers.CharField(allow_null=True)
+    lot_id = serializers.CharField(allow_null=True)
     detail = serializers.CharField(allow_blank=True)
+
+
+class CancelExpectedReceiptSerializer(serializers.Serializer):
+    reason = serializers.CharField(
+        help_text="Why it won't come — the ERP cancelled the line, or it was already received.")
 
 
 class ExpectedReceiptImportResultSerializer(serializers.Serializer):

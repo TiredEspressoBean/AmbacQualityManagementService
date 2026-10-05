@@ -43,7 +43,8 @@ class Sheet:
 
 _VS = "Tracker.viewsets."
 SHEETS: tuple[Sheet, ...] = (
-    Sheet("Users", "Everyone who will sign in. Loading invites each new one by email.",
+    Sheet("Users", "Everyone who will sign in. Loaded without invitations: invite them "
+          "from User Management at go-live.",
           service="users", perms=("add_user", "change_user")),
     Sheet("Companies", "Customers and suppliers.", _VS + "core.CompanyViewSet"),
     Sheet("External Contacts", "People at those companies who get notifications.",
@@ -93,6 +94,8 @@ SHEETS: tuple[Sheet, ...] = (
     Sheet("Work Orders", "Open work orders (their process must already exist).",
           _VS + "mes_lite.WorkOrderViewSet"),
     Sheet("Parts", "Parts in work, with the step each is at now.", _VS + "mes_lite.PartsViewSet"),
+    Sheet("Cores", "Reman cores in the building today, each with its customer. They load "
+          "as Received.", _VS + "reman.CoreViewSet"),
     Sheet("Stock on Hand", "Lots on the shelf today, already accepted.",
           service="stock", perms=("add_materiallot", "change_materiallot")),
     Sheet("On Order", "Open purchase-order lines, expected in.",
@@ -146,10 +149,81 @@ def _service_columns(sheet: Sheet) -> tuple[list[str], dict, dict]:
 # The blank workbook
 # ---------------------------------------------------------------------------
 
-def build_template(request) -> bytes:
-    """A blank workbook: a Read me sheet, then one sheet per table in load order, each
-    with the columns its import accepts (hints on the header cells, dropdowns for
-    fixed choices)."""
+def _blank(value) -> bool:
+    """None, NaN or NaT — what an export's empty cell arrives as."""
+    import pandas as pd
+    if value is None:
+        return True
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _existing_rows(sheet: Sheet, vs, request):
+    """What a filled workbook's sheet holds: (columns, rows) of what's in UQMES now, as
+    the table's own export writes it — so it imports back (an export's FK-by-name and
+    id columns are what the per-table import reads). None when the user can't see the
+    table, the viewset has no export, or there is nothing yet."""
+    from Tracker.viewsets.mixins.data_export import MAX_EXPORT_ROWS
+    if sheet.viewset:
+        if not hasattr(vs, "prepare_export_data"):
+            return None
+        if not request.user.has_tenant_perm(f"view_{vs._get_model()._meta.model_name}"):
+            return None
+        qs = vs.get_export_queryset()
+        if not qs.exists() or qs.count() > MAX_EXPORT_ROWS:
+            return None
+        df = vs.prepare_export_data(qs, vs.get_export_fields())
+        return list(df.columns), [list(r) for r in df.itertuples(index=False, name=None)]
+    return _service_rows(sheet, request)
+
+
+def _service_rows(sheet: Sheet, request):
+    """A service sheet's current rows, in its template's columns."""
+    from Tracker.models import MaterialLot, User, UserRole
+    tenant = request.tenant
+    columns = _service_columns(sheet)[0]
+    if sheet.service == "users":
+        if not request.user.has_tenant_perm("view_user"):
+            return None
+        groups: dict = {}
+        for uid, name in (UserRole.objects.filter(group__tenant=tenant)  # tenant-safe: scoped by group's tenant
+                          .values_list("user_id", "group__name")):
+            groups.setdefault(uid, []).append(name)
+        rows = [[u.email, u.first_name, u.last_name, "; ".join(sorted(groups.get(u.id, []))),
+                 "Active" if u.is_active else "Inactive"]
+                for u in User.objects.filter(tenant=tenant).order_by("email")]  # tenant-safe: explicit tenant filter
+        return (columns, rows) if rows else None
+    if not request.user.has_tenant_perm("view_materiallot"):
+        return None
+    lots = MaterialLot.objects.filter(tenant=tenant, archived=False)  # tenant-safe: explicit tenant filter
+    item = lambda l: (l.material.part_number or l.material.name) if l.material_id else (
+        (l.material_type.ERP_id or l.material_type.name) if l.material_type_id else "")
+    company = lambda c: c.name if c is not None else ""
+    if sheet.service == "stock":
+        on_hand = (lots.filter(status__in=("ACCEPTED", "IN_USE"), quantity_remaining__gt=0,
+                               holds_cores=False)
+                   .select_related("material", "material_type", "supplier", "owner")
+                   .order_by("lot_number"))
+        rows = [[l.lot_number, item(l), l.quantity_remaining, l.unit_of_measure,
+                 l.storage_location, l.received_date, company(l.supplier), l.supplier_lot_number,
+                 l.heat_number, l.manufacture_date, l.expiration_date, company(l.owner)]
+                for l in on_hand]
+    else:
+        on_order = (lots.filter(status="ON_ORDER").exclude(erp_po_number="")
+                    .select_related("material", "material_type", "supplier")
+                    .order_by("erp_po_number", "erp_po_line"))
+        rows = [[l.erp_po_number, l.erp_po_line, item(l), l.quantity, l.promised_date,
+                 company(l.supplier), l.unit_of_measure] for l in on_order]
+    return (columns, rows) if rows else None
+
+
+def build_template(request, *, filled: bool = False) -> bytes:
+    """A workbook: a Read me sheet, then one sheet per table in load order, each with
+    the columns its import accepts (hints on the header cells, dropdowns for fixed
+    choices). ``filled`` writes what's in UQMES now onto each sheet the user may see —
+    to edit and upload back, which updates rather than duplicates."""
     from openpyxl import Workbook
     from openpyxl.comments import Comment
     from openpyxl.styles import Font
@@ -162,8 +236,25 @@ def build_template(request) -> bytes:
     viewsets = {s.title: _viewset(s, request) for s in SHEETS if s.viewset}
     sheet_for_model = {vs._get_model(): title for title, vs in viewsets.items()}
 
+    from Tracker.services.spreadsheet_safety import write_cell
+    filled_rows = 0
     for sheet in SHEETS:
         ws = wb.create_sheet(sheet.title)
+        existing = _existing_rows(sheet, viewsets.get(sheet.title), request) if filled else None
+        if existing:
+            columns, rows = existing
+            for col, name in enumerate(columns, start=1):
+                cell = ws.cell(row=1, column=col, value=str(name))
+                cell.fill, cell.font, cell.border = HEADER_FILL, HEADER_FONT, THIN_BORDER
+                ws.column_dimensions[cell.column_letter].width = max(len(str(name)), 14) + 2
+            for r, row in enumerate(rows, start=2):
+                for c, value in enumerate(row, start=1):
+                    if _blank(value):
+                        continue
+                    write_cell(ws, r, c, float(value) if hasattr(value, "as_tuple") else value)
+            ws.freeze_panes = "A2"
+            filled_rows += len(rows)
+            continue
         if sheet.viewset:
             generator = viewsets[sheet.title]._importable_generator()
             generator.write_data_sheet(ws, sheet_for_model)
@@ -179,9 +270,12 @@ def build_template(request) -> bytes:
 
     lines = [
         ("Master migration workbook", Font(size=14, bold=True)),
-        ("Fill in the sheets you need and leave the rest empty. Upload it on the Data "
-         "Management page: a dry run shows what every row would do, and nothing is kept "
-         "until you load it.", None),
+        (("Filled in with what's in UQMES now. Edit it and upload it back: matched rows "
+          "update, new rows are added, nothing is deleted. Sheets you can't see, or with "
+          "nothing yet, are blank templates.") if filled else
+         ("Fill in the sheets you need and leave the rest empty. Upload it on the Data "
+          "Management page: a dry run shows what every row would do, and nothing is kept "
+          "until you load it."), None),
         ("", None),
         ("How it loads", Font(bold=True)),
         ("• The sheets load in the order below, so a row may name anything made on an "
@@ -308,7 +402,8 @@ def _run_service_sheet(sheet, rows, request):
         counts = {"created": 0, "updated": 0, "unchanged": 0, "error": 0}
         problems = []
         for n, row in enumerate(rows, start=1):
-            out = reconcile_user_row(row=row, tenant=tenant, acting_user=user)
+            # No invitations: staff are loaded ahead of go-live and invited then.
+            out = reconcile_user_row(row=row, tenant=tenant, acting_user=user, invite=False)
             counts[out["outcome"]] = counts.get(out["outcome"], 0) + 1
             if out["outcome"] == "error":
                 problems.append({"row": _excel_row(n), "outcome": "error", "detail": out["error"]})

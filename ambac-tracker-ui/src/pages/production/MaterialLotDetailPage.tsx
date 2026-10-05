@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { ArrowRight, FileText, Tag } from "lucide-react";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { LotHoldBadges } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { materialLotOptions } from "@/hooks/useReceivingMutations";
@@ -24,7 +26,7 @@ const traceOptions = (lotId: string) =>
 const STATUS_LABEL: Record<string, string> = {
     ON_ORDER: "On order", RECEIVED: "Received", AWAITING_INSPECTION: "Awaiting inspection",
     ACCEPTED: "Accepted", REJECTED: "Rejected", IN_USE: "In use", CONSUMED: "Consumed",
-    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned",
+    SCRAPPED: "Scrapped", QUARANTINE: "Held", RETURNED: "Returned", CANCELLED: "Cancelled",
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -55,6 +57,7 @@ export function MaterialLotDetailPage() {
     const { lotId } = useParams({ strict: false }) as { lotId: string };
     const navigate = useNavigate();
     const { data: lot, isLoading } = useQuery(materialLotOptions(lotId));
+    const [docsOpen, setDocsOpen] = useState(false);
     const { data: trace } = useQuery(traceOptions(lotId));
     const { downloadReport } = useReportEmail();
 
@@ -98,6 +101,9 @@ export function MaterialLotDetailPage() {
                             <Tag className="mr-1 h-4 w-4" /> Label
                         </Button>
                     )}
+                    <Button size="sm" variant="outline" onClick={() => setDocsOpen(true)}>
+                        <FileText className="mr-1 h-4 w-4" /> Documents
+                    </Button>
                     <Button size="sm" variant="outline"
                         onClick={() => void downloadReport("receiving_inspection_record", { lot_id: lotId })}>
                         <FileText className="mr-1 h-4 w-4" /> Inspection record
@@ -112,6 +118,15 @@ export function MaterialLotDetailPage() {
             </div>
 
             <LotHoldPanel lot={l} />
+            <EntityDocumentsEditor
+                contentTypeModel="materiallot"
+                objectId={String(l.id)}
+                label={l.lot_number}
+                description="Certificates and supplier paperwork. A lot split from a delivery shows the delivery's documents too."
+                inheritedFrom={(l.lineage ?? []).map((a) => ({ objectId: a.id, label: `lot ${a.lot_number}` }))}
+                open={docsOpen}
+                onOpenChange={setDocsOpen}
+            />
 
             <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-base">The lot</CardTitle></CardHeader>

@@ -202,3 +202,47 @@ class MasterWorkbookTests(APITestCase):
     def test_an_empty_workbook_is_refused(self):
         resp = self._run(self._blank())
         self.assertEqual(resp.status_code, 400)
+
+    # -- 2026-10-01, second pass ---------------------------------------------------
+
+    def test_users_load_without_invitations(self):
+        from Tracker.models import UserInvitation
+        self.assertTrue(self._run(self._workbook(), dry_run=False).json()["loaded"])
+        kim = User.objects.get(email="kim@x.test")
+        self.assertFalse(UserInvitation.objects.filter(user=kim).exists())
+
+    def test_cores_load_as_received_with_their_part(self):
+        from Tracker.models import Core
+        wb = self._workbook()
+        self._put(wb, "Companies", {"name": "Fleet Co", "description": "Customer",
+                                    "is_customer": "TRUE", "is_supplier": "FALSE"})
+        self._put(wb, "Part Types", {"name": "Injector Core", "ERP_id": "INJ-C"})
+        self._put(wb, "Cores", {"core_type": "Injector Core", "customer": "Fleet Co",
+                                "serial_number": "SN-1", "received_date": "2026-09-01",
+                                "source_type": "CUSTOMER_RETURN", "condition_grade": "B"})
+        body = self._run(wb, dry_run=False).json()
+        self.assertTrue(body["loaded"], body)
+        core = Core.objects.get(serial_number="SN-1")
+        self.assertEqual((core.status, core.customer.name), ("RECEIVED", "Fleet Co"))
+        self.assertIsNotNone(core.part_id)
+
+    def test_a_core_from_a_supplier_only_company_is_refused(self):
+        wb = self._workbook()
+        self._put(wb, "Part Types", {"name": "Injector Core", "ERP_id": "INJ-C"})
+        self._put(wb, "Cores", {"core_type": "Injector Core", "customer": "Acme",
+                                "received_date": "2026-09-01", "source_type": "CUSTOMER_RETURN",
+                                "condition_grade": "B"})
+        cores = self._sheet(self._run(wb).json(), "Cores")
+        self.assertEqual(cores["errors"], 1, cores)
+        self.assertIn("customer", cores["rows"][0]["detail"])
+
+    def test_a_filled_workbook_uploads_back_unchanged(self):
+        self.assertTrue(self._run(self._workbook(), dry_run=False).json()["loaded"])
+        resp = self.client.get("/api/MasterWorkbook/template/?filled=true")
+        self.assertEqual(resp.status_code, 200)
+        wb = load_workbook(io.BytesIO(resp.content))
+        self.assertEqual(wb["Stock on Hand"]["A2"].value, "L-100")
+        self.assertEqual(wb["Users"].max_row, 3)  # header, the admin, Kim
+        body = self._run(wb, dry_run=False).json()
+        self.assertTrue(body["loaded"], body)
+        self.assertEqual(body["totals"]["created"], 0, body)

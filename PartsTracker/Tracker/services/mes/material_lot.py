@@ -386,6 +386,49 @@ def upsert_expected_receipt(*, tenant, erp_po_number: str, erp_po_line: str,
     return open_lot, IMPORT_UPDATED
 
 
+def cancel_expected_receipt(lot, *, user, reason: str):
+    """An expected receipt that won't come -> CANCELLED, with why on record.
+
+    The ERP cancelled the line, or an expected-receipts sheet typed before the ERP caught
+    up expected a line already received (``REOPENED``). Until now an ON_ORDER lot could
+    leave only by being received, so either sat as phantom supply: netted against
+    shortages, and on Late deliveries once its date passed.
+
+    Not a delete (the expectation and its cancelling stay on the record) and not a void
+    (void means "captured wrong, capture again"). If it was a back-ordered remainder,
+    the delivery it came from now reads "That's all": nothing more is expected on the
+    line. Raises ValueError for a lot not on order, or no reason.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+    from Tracker.services.mes import inventory
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the expected receipt is being cancelled")
+    with transaction.atomic():
+        locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
+        if locked.status != "ON_ORDER":
+            raise ValueError(f"Lot {locked.lot_number} is {locked.status}; only an expected "
+                             f"receipt (on order) can be cancelled.")
+        RecordEdit.objects.create(
+            tenant=locked.tenant, content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=locked.id, field_name="status", old_value="ON_ORDER",
+            new_value="CANCELLED", reason=reason, edited_by=user)
+        inventory.cancel_expected(locked)
+        locked.refresh_from_db()
+        # Not supply any more, by any measure that reads what's left.
+        locked.quantity_remaining = Decimal("0")
+        locked.save(update_fields=["quantity_remaining", "updated_at"])
+        line = MaterialLot.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=locked.tenant, erp_po_number=locked.erp_po_number,
+            erp_po_line=locked.erp_po_line)
+        if locked.erp_po_number and not line.filter(status="ON_ORDER").exists():
+            line.filter(short_receipt="BACKORDERED").update(short_receipt="CLOSED")
+    lot.refresh_from_db()
+    return lot
+
+
 # How far ahead an expected receipt counts as "due soon" on the late-deliveries list.
 DUE_SOON_DAYS = 3
 DELIVERY_OVERDUE = "OVERDUE"
@@ -461,7 +504,7 @@ def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
         locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
         # Only stock on our shelf. A rejected lot's quantity is the disposition's, a
         # returned one is at the vendor.
-        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED", "REJECTED", "RETURNED"):
+        if locked.status in ("ON_ORDER", "CONSUMED", "SCRAPPED", "REJECTED", "RETURNED", "CANCELLED"):
             raise ValueError(f"Lot {locked.lot_number} is {locked.status}; there is no "
                              f"stock on hand to adjust.")
         old = locked.quantity_remaining

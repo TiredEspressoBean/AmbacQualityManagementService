@@ -2785,6 +2785,7 @@ export type ExpectedReceiptImportRowResult = {
   erp_po_number: string;
   erp_po_line: string;
   lot_number: string | null;
+  lot_id: string | null;
   detail: string;
 };
 export type ExpectedReceiptImportRowResultOutcomeEnum =
@@ -4026,6 +4027,7 @@ export type MaterialLot = {
   item_requires_heat_number: boolean;
   awaiting_return: boolean;
   child_lot_count: number;
+  lineage: Array<LotRef>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -4050,8 +4052,9 @@ export type MaterialLotStatusEnum =
    * `SCRAPPED` - Scrapped
    * `QUARANTINE` - Quarantine
    * `RETURNED` - Returned to supplier
+   * `CANCELLED` - Cancelled
    *
-   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE, RETURNED
+   * @enum ON_ORDER, RECEIVED, AWAITING_INSPECTION, ACCEPTED, REJECTED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE, RETURNED, CANCELLED
    */
   | "ON_ORDER"
   | "RECEIVED"
@@ -4062,7 +4065,8 @@ export type MaterialLotStatusEnum =
   | "CONSUMED"
   | "SCRAPPED"
   | "QUARANTINE"
-  | "RETURNED";
+  | "RETURNED"
+  | "CANCELLED";
 export type LotSourceTypeEnum =
   /**
    * * `MANUFACTURER` - Manufacturer
@@ -4072,6 +4076,10 @@ export type LotSourceTypeEnum =
    * @enum MANUFACTURER, AUTHORIZED_DISTRIBUTOR, INDEPENDENT_DISTRIBUTOR
    */
   "MANUFACTURER" | "AUTHORIZED_DISTRIBUTOR" | "INDEPENDENT_DISTRIBUTOR";
+export type LotRef = {
+  id: string;
+  lot_number: string;
+};
 export type MaterialLotBulkCreateRequest = {
   lots: Array<MaterialLotBulkRowRequest>;
 };
@@ -20516,6 +20524,7 @@ const MaterialLotStatusEnum = z.enum([
   "SCRAPPED",
   "QUARANTINE",
   "RETURNED",
+  "CANCELLED",
 ]);
 const LotSourceTypeEnum = z.enum([
   "MANUFACTURER",
@@ -20523,6 +20532,7 @@ const LotSourceTypeEnum = z.enum([
   "INDEPENDENT_DISTRIBUTOR",
 ]);
 const PurchaseUnitEnum = z.enum(["STOCK", "BOX", "LB"]);
+const LotRef = z.object({ id: z.string(), lot_number: z.string() });
 const MaterialLot = z.object({
   id: z.string().uuid(),
   lot_number: z.string().max(100),
@@ -20577,6 +20587,7 @@ const MaterialLot = z.object({
   item_requires_heat_number: z.boolean(),
   awaiting_return: z.boolean(),
   child_lot_count: z.number().int(),
+  lineage: z.array(LotRef),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -20735,6 +20746,7 @@ const AdjustQuantityRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   reason: z.string().min(1),
 });
+const CancelExpectedReceiptRequest = z.object({ reason: z.string().min(1) });
 const ReceivingVerdict = z.object({
   status: z.string(),
   is_variables: z.boolean(),
@@ -20971,6 +20983,7 @@ const ExpectedReceiptImportRowResult = z.object({
   erp_po_number: z.string(),
   erp_po_line: z.string(),
   lot_number: z.string().nullable(),
+  lot_id: z.string().nullable(),
   detail: z.string(),
 });
 const ExpectedReceiptImportResult = z.object({
@@ -27962,6 +27975,7 @@ export const schemas = {
   MaterialLotStatusEnum,
   LotSourceTypeEnum,
   PurchaseUnitEnum,
+  LotRef,
   MaterialLot,
   PaginatedMaterialLotList,
   MaterialLotRequest,
@@ -27975,6 +27989,7 @@ export const schemas = {
   QualityReportPersonnel,
   QualityReports,
   AdjustQuantityRequest,
+  CancelExpectedReceiptRequest,
   ReceivingVerdict,
   ExtendShelfLifeRequest,
   RaiseScarResponse,
@@ -32967,6 +32982,78 @@ committed to rebuilding — which is also what lets the same call answer
     response: z.instanceof(File),
   },
   {
+    method: "post",
+    path: "/api/Cores/import-preview/",
+    alias: "api_Cores_import_preview_create",
+    description: `Preview a file before importing. Returns columns, suggested mappings, and sample data.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }),
+      },
+    ],
+    response: ImportPreviewResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/Cores/import-status/:task_id/",
+    alias: "api_Cores_import_status_retrieve",
+    description: `Check status of a background import task.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ImportStatusResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Cores/import-template/:template_format/",
+    alias: "api_Cores_import_template_retrieve",
+    description: `Download an import template with headers, hints, and FK lookups (Excel only).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "template_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.instanceof(File),
+  },
+  {
+    method: "post",
+    path: "/api/Cores/import/",
+    alias: "api_Cores_import_create",
+    description: `Import data from CSV or Excel file. Small imports return immediate results (207). Large imports are queued and return task_id (202).`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: api_BOMLines_import_create_Body,
+      },
+    ],
+    response: ImportQueued,
+    errors: [
+      {
+        status: 400,
+        schema: z.unknown(),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Cores/lots/",
     alias: "api_Cores_lots_list",
@@ -33570,7 +33657,10 @@ Response:
 }`,
     requestFormat: "json",
     response: DashboardKPIsResponse,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/dashboard/ncr-aging/",
@@ -33677,10 +33767,7 @@ Response:
       },
     ],
     response: OpenDispositionsResponse,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/dashboard/quality-rates/",
@@ -38574,7 +38661,10 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/LifeLimitDefinitions/:id/revisions/",
@@ -38675,10 +38765,7 @@ the API&#x27;s does (the importer follows LifeLimitDefinitionSerializer.update).
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/LifeLimitDefinitions/import-status/:task_id/",
@@ -39041,8 +39128,15 @@ Query params:
     method: "get",
     path: "/api/MasterWorkbook/template/",
     alias: "api_MasterWorkbook_template_retrieve",
-    description: `A blank master workbook: a Read me sheet, then one sheet per table.`,
+    description: `The master workbook: a Read me sheet, then one sheet per table — blank, or filled in.`,
     requestFormat: "json",
+    parameters: [
+      {
+        name: "filled",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+    ],
     response: z.void(),
   },
   {
@@ -39094,6 +39188,7 @@ Query params:
           .enum([
             "ACCEPTED",
             "AWAITING_INSPECTION",
+            "CANCELLED",
             "CONSUMED",
             "IN_USE",
             "ON_ORDER",
@@ -39224,6 +39319,26 @@ Query params:
         name: "body",
         type: "Body",
         schema: AdjustQuantityRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/cancel-expected/",
+    alias: "api_MaterialLots_cancel_expected_create",
+    description: `An expected receipt that won&#x27;t come (the ERP cancelled the line, or it was already received) -&gt; Cancelled, reason kept.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -39584,6 +39699,7 @@ they just ordered against a list of shortages.`,
           .enum([
             "ACCEPTED",
             "AWAITING_INSPECTION",
+            "CANCELLED",
             "CONSUMED",
             "IN_USE",
             "ON_ORDER",
@@ -42953,7 +43069,10 @@ to the shipment and runs the same DWI receiving runtime as incoming lots.`,
       },
     ],
     response: PaginatedReadyToShipGroupList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/OutsideProcessShipments/send_out/",
@@ -43071,10 +43190,7 @@ availability (plant closures still win).`,
       },
     ],
     response: OvertimeWindow,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/OvertimeWindows/:id/",
@@ -48515,7 +48631,10 @@ requesting user. Responds 202 immediately.`,
       },
     ],
     response: GenerateReportResponse,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/reports/history/",
@@ -48697,10 +48816,7 @@ Usage:
       },
     ],
     response: SamplingRuleSet,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "put",
     path: "/api/Sampling-rule-sets/:id/",
@@ -53976,7 +54092,10 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/SubstepGateCompletions/",
@@ -54091,10 +54210,7 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       },
     ],
     response: SubstepGateCompletion,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/SubstepGateCompletions/:id/",
@@ -58681,7 +58797,10 @@ switches from running one step to another. One row per matrix cell.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/WorkCenterChangeovers/metadata/",
@@ -58774,10 +58893,7 @@ old version. Archived ones are excluded outright, not left to &#x60;?include_arc
       },
     ],
     response: WorkCenter,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkCenters/:id/",
