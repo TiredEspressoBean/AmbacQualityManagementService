@@ -42,11 +42,11 @@ export function EditUserActionsCell({ userId }: Props) {
         deleteUser.mutate(userId, {
             onSuccess: () => {
                 setOpen(false);
-                toast.success(`User #${userId} deleted successfully.`);
+                toast.success("Access removed. Their records are kept.");
             },
             onError: (error) => {
                 console.error("Failed to delete user:", error);
-                toast.error("Failed to delete user.");
+                toast.error("Couldn't remove the user's access.");
             },
         });
     };
@@ -101,7 +101,7 @@ export function EditUserActionsCell({ userId }: Props) {
                         variant="ghost"
                         size="icon"
                         className="text-destructive"
-                        title="Delete User"
+                        title="Remove from this organisation"
                     >
                         <Delete className="h-4 w-4" />
                     </Button>
@@ -109,11 +109,12 @@ export function EditUserActionsCell({ userId }: Props) {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete User #{userId}?
+                            Remove this user&rsquo;s access?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
-                            The user will be removed from the system and lose access to all resources.
+                            They lose access to this organisation. Their account, and everything they
+                            recorded here — training, approvals, signatures — is kept. Reactivate them
+                            from User Management to restore access.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -122,7 +123,7 @@ export function EditUserActionsCell({ userId }: Props) {
                             onClick={handleDelete}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                            Confirm Delete
+                            Remove access
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

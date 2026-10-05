@@ -57,7 +57,7 @@ export function EditJobRoleActionCell({ roleId }: Props) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Job Role?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. Users assigned to this role will keep their
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. Users assigned to this role will keep their
                             training but lose their role-based required-competency profile.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

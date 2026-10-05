@@ -87,7 +87,7 @@ export function EditDocumentsActionsCell({ documentId }: Props) {
                             Delete Document #{documentId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                             The document will be removed from the associated process.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

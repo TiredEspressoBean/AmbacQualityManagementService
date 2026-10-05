@@ -72,7 +72,7 @@ export function EditEquipmentTypeActionsCell({ equipmentTypeId }: Props) {
                             Delete Equipment Type #{equipmentTypeId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                             The equipment type will be removed from the associated process.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

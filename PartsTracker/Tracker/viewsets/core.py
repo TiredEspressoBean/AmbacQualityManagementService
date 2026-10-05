@@ -349,6 +349,25 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
             "queryset_count": queryset_count,
         })
 
+    def perform_destroy(self, instance):
+        """Removing a user from this tenant suspends their membership here — it never
+        deletes the account.
+
+        `User` isn't a soft-deleting SecureModel, so the default destroy deleted the
+        row, and with it (CASCADE) their approval responses — signatures — the
+        approvals they requested, their training records and CAPA task assignments,
+        and their memberships of every OTHER tenant; a user with PROTECTed links
+        (lots they received) errored instead. Suspension keeps every record they made
+        and is reversible: reactivate them from User Management.
+        """
+        from rest_framework.exceptions import ValidationError
+        from Tracker.services.core.tenant_membership import suspend_membership
+        if instance.id == self.request.user.id:
+            raise ValidationError({"detail": "You can't remove your own access."})
+        if self.tenant is None:
+            raise ValidationError({"detail": "No tenant context to remove the user from."})
+        suspend_membership(instance, self.tenant, by=self.request.user)
+
     @extend_schema(request=inline_serializer(name="BulkUserActivationInput", fields={
         "user_ids": serializers.ListField(child=serializers.IntegerField()), "is_active": serializers.BooleanField()}),
                    responses={

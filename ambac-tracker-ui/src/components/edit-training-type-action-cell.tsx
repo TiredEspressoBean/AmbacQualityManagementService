@@ -70,7 +70,7 @@ export function EditTrainingTypeActionCell({ typeId }: Props) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Training Type?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. The training type will be permanently deleted.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. The training type will be permanently deleted.
                             Any training records using this type will be affected.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

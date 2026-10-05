@@ -97,7 +97,7 @@ export default function MeasurementDefinitionCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Measurement Definition</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{definition.label}"? This action cannot be undone.
+                    Are you sure you want to delete "{definition.label}"? It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

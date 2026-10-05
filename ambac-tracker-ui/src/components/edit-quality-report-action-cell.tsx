@@ -72,7 +72,7 @@ export function EditQualityReportActionsCell({ qualityReportId }: Props) {
                             Delete Quality Report #{qualityReportId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                             The quality report will be removed from the system.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

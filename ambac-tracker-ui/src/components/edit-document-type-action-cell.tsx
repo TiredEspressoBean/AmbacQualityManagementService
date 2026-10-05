@@ -72,7 +72,7 @@ export function EditDocumentTypeActionsCell({ documentTypeId }: Props) {
                             Delete Document Type?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. Documents of this type
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. Documents of this type
                             will retain their type but new documents cannot use it.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

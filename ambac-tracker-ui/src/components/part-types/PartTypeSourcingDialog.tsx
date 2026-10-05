@@ -84,7 +84,7 @@ export function PartTypeSourcingDialog({ partTypeId, open, onOpenChange }: Props
                             options={(suppliers?.results ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
                             placeholder="None"
                             searchPlaceholder="Search suppliers…"
-                            emptyText="No supplier found."
+                            emptyText="No supplier by that name. A company appears here once it's marked as a supplier (Companies)."
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-3">

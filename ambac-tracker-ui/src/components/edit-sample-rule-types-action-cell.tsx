@@ -72,7 +72,7 @@ export function EditRuleTypeActionsCell({ ruleSetId }: Props) {
                             Delete Sampling Rule #{ruleSetId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. The rule will be removed
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. The rule will be removed
                             from its associated ruleset.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

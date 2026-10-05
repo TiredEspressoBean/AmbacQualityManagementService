@@ -74,7 +74,7 @@ export function EditPartActionsCell({ partId }: Props) {
                             Archive Part #{partId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                             The part will be removed from active tracking.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

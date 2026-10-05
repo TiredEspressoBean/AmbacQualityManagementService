@@ -72,7 +72,7 @@ export function EditThreeDModelActionsCell({ modelId }: Props) {
                             Delete 3D Model #{modelId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action is permanent and cannot be undone.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                             The 3D model will be removed from the system.
                         </AlertDialogDescription>
                     </AlertDialogHeader>

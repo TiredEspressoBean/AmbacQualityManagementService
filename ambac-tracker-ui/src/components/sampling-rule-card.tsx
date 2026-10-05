@@ -108,7 +108,7 @@ export default function SamplingRuleCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Sampling Rule</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this sampling rule? This action cannot be undone.
+                Are you sure you want to delete this sampling rule? It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

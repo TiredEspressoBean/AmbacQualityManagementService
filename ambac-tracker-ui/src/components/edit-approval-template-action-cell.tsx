@@ -72,7 +72,7 @@ export function EditApprovalTemplateActionsCell({ templateId }: Props) {
                             Delete Approval Template?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. Existing approval requests
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. Existing approval requests
                             using this template will not be affected, but no new
                             requests can use this template.
                         </AlertDialogDescription>
