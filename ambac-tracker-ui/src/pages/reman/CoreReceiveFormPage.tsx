@@ -381,7 +381,7 @@ export function CoreReceiveFormPage() {
                                                     <SelectItem value="A">Grade A - Excellent</SelectItem>
                                                     <SelectItem value="B">Grade B - Good</SelectItem>
                                                     <SelectItem value="C">Grade C - Fair</SelectItem>
-                                                    <SelectItem value="scrap">Scrap - Not Usable</SelectItem>
+                                                    <SelectItem value="SCRAP">Scrap - Not Usable</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

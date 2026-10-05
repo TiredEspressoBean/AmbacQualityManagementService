@@ -5,7 +5,7 @@ import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditor
 import { format, parseISO } from "date-fns";
 import type { QueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { coreStageLabel, coreStageVariant } from "@/lib/reman/core-stages";
+import { coreStageLabel, coreStageVariant, isScrappable } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Schema } from "@/lib/api/types";
@@ -61,8 +61,6 @@ type CoreRow = Schema<"CoreList">;
 
 // Actions cell component for cores
 function CoreActionsCell({ core }: { core: CoreRow }) {
-    const navigate = useNavigate();
-
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -92,13 +90,15 @@ function CoreActionsCell({ core }: { core: CoreRow }) {
                         </Link>
                     </DropdownMenuItem>
                 )}
-                {core.status === 'RECEIVED' && (
-                    <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => navigate({ to: `/reman/cores/${core.id}/scrap` })}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Scrap Core
+                {/* Scrap lives on the core's page, which owns the dialog and the reason
+                    it records. This used to navigate to /reman/cores/$id/scrap, a route
+                    that never existed, and offered itself at RECEIVED alone. */}
+                {isScrappable(core.status) && (
+                    <DropdownMenuItem asChild className="text-destructive">
+                        <Link to="/reman/cores/$id" params={{ id: String(core.id) }}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Scrap core…
+                        </Link>
                     </DropdownMenuItem>
                 )}
             </DropdownMenuContent>

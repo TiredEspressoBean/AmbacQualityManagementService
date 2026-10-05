@@ -28,6 +28,23 @@ export function coreStageLabel(stage: string | null | undefined): string {
     return CORE_STAGE_LABEL[stage] ?? stage;
 }
 
+/** Stages at which the unit is still here to scrap.
+ *
+ * `scrap_core` accepts any stage but SCRAPPED — a core is as often found beyond use
+ * DURING teardown or rebuild as at receipt — but a unit that has already left or been
+ * consumed has nothing to scrap. Kept here rather than in a component because both the
+ * core's page and the cores list offer the action, and they disagreed: the list gated
+ * on RECEIVED alone and so hid Scrap for four of the five stages that allow it.
+ */
+export const SCRAPPABLE_STAGES = new Set([
+    "RECEIVED", "IN_DISASSEMBLY", "DISASSEMBLED", "IN_REBUILD", "AWAITING_AUTHORISATION",
+]);
+
+/** Whether the unit can still be scrapped at this stage. */
+export function isScrappable(stage: string | null | undefined): boolean {
+    return !!stage && SCRAPPABLE_STAGES.has(stage);
+}
+
 type Variant = "default" | "secondary" | "outline" | "destructive";
 
 /** Badge tone. Loud for what needs someone (a decision outstanding, declined, scrapped),

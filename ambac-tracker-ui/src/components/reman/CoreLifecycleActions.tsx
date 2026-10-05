@@ -15,13 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useScrapCore } from "@/hooks/useScrapCore";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
-
-/** Stages at which the unit is still here to scrap. `scrap_core` accepts any stage but
- *  SCRAPPED — a core is as often found beyond use DURING teardown or rebuild as at
- *  receipt — but a unit that has already left or been consumed has nothing to scrap. */
-const SCRAPPABLE = new Set([
-    "RECEIVED", "IN_DISASSEMBLY", "DISASSEMBLED", "IN_REBUILD", "AWAITING_AUTHORISATION",
-]);
+import { isScrappable } from "@/lib/reman/core-stages";
 
 function detailOf(err: unknown, fallback: string) {
     const d = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -34,7 +28,7 @@ export function ScrapCoreButton({ core }: {
     const [open, setOpen] = useState(false);
     const [reason, setReason] = useState("");
     const scrap = useScrapCore();
-    if (!SCRAPPABLE.has(core.status ?? "")) return null;
+    if (!isScrappable(core.status)) return null;
     const theirs = core.fulfilment_mode === "REPAIR_RETURN";
 
     const submit = () =>
