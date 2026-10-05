@@ -1,6 +1,12 @@
 # Production Manager Guide
 
-This guide is for Production Managers and Planners who manage orders, schedule work, and oversee production operations in uqmes.
+This guide is for Production Managers who manage orders, work orders and
+production operations in uqmes.
+
+!!! tip "Planning and scheduling have their own guide"
+    Releasing work onto the floor, promising dates, and running the schedule
+    are covered in the [Planner Guide](planner.md). This guide covers the
+    production side.
 
 !!! tip "Demo Account"
     In demo mode, log in as **Jennifer Walsh** (jennifer.mgr@demo.ambac.com) to experience the Production Manager workflow. You'll see:

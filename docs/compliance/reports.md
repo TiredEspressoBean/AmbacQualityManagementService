@@ -68,6 +68,63 @@ generates the PDF and either downloads it or emails it to you.
 | `labor_hours` | Operator Hours | Operator hours page |
 | `part_id_label` | Part ID Label / WIP Tag | Part |
 | `part_id_label_batch` | Part ID Labels (Batch) | Part list |
+| `receiving_inspection_record` | Receiving Inspection Record | Material lot / receiving inspection |
+| `rtv_sheet` | Return to Vendor (RTV) Sheet | Rejected material lot |
+
+#### Return to Vendor (RTV) Sheet
+
+The paperwork that travels with material going back. Printed from the **Ship
+back** dialog, or **RTV sheet (PDF)** in the Materials row menu — for lots
+waiting to go back and ones already returned.
+
+It carries the return addressing (to the supplier, from you, issued by, date);
+the material — item and part number, quantity returned, **your lot and theirs**,
+heat, PO/line, received date, disposition number; the reason for return, with a
+**SCAR callout** where one exists; and **shipped-by and received-by signature
+lines**.
+
+!!! note "No prices, by design"
+    The sheet says what is going back and why. **Credit is settled in the ERP** —
+    uqmes does not price the return, raise a credit note or track what you are
+    owed.
+
+    What it gives the system that does own that is an unambiguous statement of
+    which material, from which lot and heat, against which PO line, and on whose
+    decision.
+
+#### Receiving Inspection Record
+
+The **evidence of release** for incoming material — ISO 9001 §8.6. Open it from
+**Record** in the receiving inspection page header, or **Inspection record
+(PDF)** in the Materials row **⋯** menu.
+
+It gathers, for one lot:
+
+| Section | Carries |
+|---------|---------|
+| **As received** | Item, supplier and supplier lot, heat number, bought from, quantity and how it was counted, ERP PO / line, who received it, whether a CoC is on file |
+| **Plan and sampling** | Sample size, Ac/Re or k, defectives found, inspector, verdict |
+| **Measurements** | With their balloon numbers |
+| **Checklist** | The answers given |
+| **Release** | Accepted, rejected or hold released — with the reason, by whom, and when |
+
+!!! note "A lot with no plan still produces a record"
+    It states that the lot went **straight to stock** (dock-to-stock). That is
+    itself the evidence, and the record says so rather than leaving a gap.
+
+    The decision it evidences was made **once, on the item** — whether that
+    material or part type has a plan at all — not on this delivery. So the
+    record shows a standing decision being applied, which is what makes it
+    defensible: nobody waved this lot through, the item was never under a plan.
+
+    It follows that the thing to be able to justify is the **plan coverage**,
+    not any individual dock-to-stock record.
+
+!!! tip "It is regenerated, not stored"
+    The PDF is built from live data each time, so it always reflects the current
+    record. Don't archive a copy and treat it as the master — the system is the
+    master.
+
 
 Reports are also available over the API:
 

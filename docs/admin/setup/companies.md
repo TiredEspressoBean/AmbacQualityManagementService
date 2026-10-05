@@ -31,11 +31,67 @@ The record is deliberately minimal:
 | **Company Name** | Company name | Yes |
 | **Description** | What this company is to you | Yes |
 | **Outside-process turnaround (days)** | Default turnaround when sending work to this vendor | No |
+| **Address** | Printed on SCARs and return-to-vendor sheets | No |
 
-!!! note "No address, phone, or contact fields"
-    A company record holds no postal address, phone number, website, or contact
-    email. People are held separately as **external contacts**, and a company
-    can have several.
+!!! note "No phone or contact email on the company"
+    Beyond the address, a company record holds no phone number, website or
+    contact email. People are held separately as **external contacts**, and a
+    company can have several.
+
+## What a company is to you
+
+Two switches decide where a company is offered, and a company can be **both**:
+
+| Switch | Meaning |
+|--------|---------|
+| **Customer** | Buys from us — offered on orders |
+| **Supplier** | Sells to us — offered on receipts and qualifications |
+
+**Both are on by default**, so every existing company still appears everywhere
+until someone narrows it.
+
+Once narrowed, the pickers follow:
+
+- **Suppliers only** — Expect, Expect from shortages, batch receive, the
+  preferred supplier on a Material or Part Type, supplier qualifications, part
+  approvals, outside-processing send-out, Supplier Quality
+- **Customers only** — the order form
+
+!!! tip "Narrowing is how you shorten the lists"
+    The switches exist so a company that only ever sells to you stops appearing
+    when someone picks a customer. On a shop with a long company list that is the
+    difference between a usable picker and a scroll.
+
+!!! note "Reman core pickers are not narrowed yet"
+    They still offer every company.
+
+## Outside contacts
+
+A **user** record can be marked as someone at a supplier or customer rather than
+a member of your staff — usually a contact who never logs in. The **Contact for**
+field on the user form says what they are the contact *for*:
+
+| Setting | Used for |
+|---------|----------|
+| **— not an outside contact** | Ordinary staff (the default) |
+| **Quality (receives SCARs)** | The named recipient on a SCAR |
+| **Deliveries / expediting** | Who to chase about a late delivery |
+| **General** | Fallback for both |
+
+Two places read it:
+
+- **SCAR PDF** — *Issued To* shows **Attn: <quality contact> (<email>)** above the
+  supplier's address, falling back to a General contact
+- **Late deliveries** on Home — each row names the supplier's deliveries contact
+  and email, falling back to General
+
+!!! tip "This is what turns a report into an action"
+    A SCAR addressed to a company goes to nobody in particular. The point of the
+    field is that the paperwork and the Home card both tell you **which person**,
+    without anyone looking it up.
+
+    Set at least a General contact on suppliers you deal with regularly, even if
+    you set nothing else.
 
 ## Customer-Specific Fields
 

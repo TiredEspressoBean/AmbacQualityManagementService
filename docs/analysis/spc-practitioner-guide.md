@@ -37,7 +37,7 @@ Tools (sidebar)
 Quality (sidebar)
     ├── Dashboard (/quality)
     ├── CAPAs (/quality/capas)
-    ├── Quality Reports (/editor/qualityReports)
+    ├── Quality Reports (/editor/quality-reports)
     ├── Training (/quality/training)
     ├── Calibrations (/quality/calibrations)
     └── Heat Map (/heatmap)
@@ -459,6 +459,6 @@ Monthly SPC summary for leadership:
 | [Defect Analysis](defects.md) | Defect Analysis | `/quality/defects` |
 | [CAPA Overview](../workflows/capa/overview.md) | CAPA List | `/quality/capas` |
 | [Dispositions](../workflows/quality/dispositions.md) | Dispositions | `/production/dispositions` |
-| [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/editor/qualityReports` |
+| [Quality Reports](../workflows/quality/quality-reports.md) | Quality Reports | `/editor/quality-reports` |
 | [Heat Maps](../3d-models/heatmap-viz.md) | Heat Map Viewer | `/heatmap` |
 | [Calibrations](../admin/setup/equipment.md) | Calibration Dashboard | `/quality/calibrations` |

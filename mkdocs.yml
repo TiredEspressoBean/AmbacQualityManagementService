@@ -43,6 +43,10 @@ nav:
     - QA Inspector: roles/qa-inspector.md
     - QA Manager: roles/qa-manager.md
     - Production Manager: roles/production-manager.md
+    - Planner: roles/planner.md
+    - Scheduler: roles/scheduler.md
+    - Receiving: roles/receiving.md
+    - Shipping: roles/shipping.md
     - Document Controller: roles/document-controller.md
     - Administrator: roles/administrator.md
     - Customer Portal: roles/customer.md
@@ -66,9 +70,14 @@ nav:
     - Scheduling:
       - Overview: workflows/scheduling/overview.md
       - Schedule (Gantt): workflows/scheduling/gantt.md
+      - Releasing Work: workflows/scheduling/releasing.md
       - Capacity Planning: workflows/scheduling/capacity.md
+      - How the Numbers Are Made: workflows/scheduling/how-the-numbers-are-made.md
+      - Scheduling Setup: workflows/scheduling/setup.md
     - Supply:
       - Overview: workflows/supply/overview.md
+      - Shipping: workflows/supply/shipping.md
+      - Locations & Cycle Counts: workflows/supply/locations.md
       - Outside Processing: workflows/supply/outside-processing.md
       - Part Approvals: workflows/supply/part-approvals.md
     - Approvals:
@@ -113,6 +122,7 @@ nav:
       - Reman Overview: workflows/reman/overview.md
       - Receiving Cores: workflows/reman/receiving.md
       - Disassembly: workflows/reman/disassembly.md
+      - Rebuild: workflows/reman/rebuild.md
       - Component Management: workflows/reman/components.md
   - Analysis & Reporting:
     - Dashboard Overview: analysis/dashboard.md
@@ -130,6 +140,7 @@ nav:
   - Administration:
     - Overview: admin/index.md
     - Data Management:
+      - Data Management: admin/data/data-management.md
       - Import & Export: admin/data/import-export.md
     - User Management:
       - Adding Users: admin/users/adding.md

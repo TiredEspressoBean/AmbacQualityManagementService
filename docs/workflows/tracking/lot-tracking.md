@@ -75,6 +75,60 @@ A **material lot** represents a batch of material received or produced:
 └──────────────┘     └──────────────┘
 ```
 
+### Later statuses
+
+Beyond the lifecycle above, a lot can reach:
+
+| Status | Means |
+|--------|-------|
+| **Cancelled** | An expected receipt you are no longer waiting for |
+| **Returned** | Rejected and shipped back to the supplier |
+| **Shipped** | Sent out to a customer — see [Shipping](../supply/overview.md) |
+
+### Returned
+
+A lot rejected and shipped back to its supplier becomes **Returned**. It holds no
+stock and counts as neither stock nor incoming supply.
+
+!!! important "Returned is not Scrapped"
+    **Scrapped** means the material is gone. **Returned** means it exists, at the
+    vendor. Keeping them apart matters because a returned lot is still a live
+    record — the credit conversation, the SCAR and the supplier's quality history
+    all hang off it.
+
+See [Sending it back](../supply/overview.md#sending-it-back).
+
+### Split lots
+
+Rejecting **part** of a delivery splits the bad pieces into their own lot,
+numbered `-01`, `-02` … and carrying the heat number, source, PO and CoC from the
+parent. The remainder carries on.
+
+A lot can be split while it is **awaiting inspection** and from **accepted
+stock** — so a problem found later doesn't force a decision about the whole
+quantity.
+
+A split inherits the parent's situation rather than resetting it:
+
+| Parent | The split pieces |
+|--------|------------------|
+| **Accepted stock** | Come out accepted |
+| **Held** | Stay held |
+| **Customer property** | Stay that customer's |
+
+!!! note "Usage of a split lot still shows on the parent"
+    The parent's **Where it went** includes what its split-off lots were used
+    for, marked *from <lot>*. Splitting material does not break the trail back to
+    the delivery it arrived in.
+
+!!! note "A split lot can see its delivery's paperwork"
+    **Documents** on a split lot lists the original delivery's documents,
+    read-only, under **From lot <number>** — and the same appears in the
+    receiving inspection documents dialog.
+
+    The certificate arrived with the delivery, not with the pieces you split out
+    of it, so the pieces have to be able to point at it.
+
 ## Common Operations
 
 ### Receiving Lots
@@ -134,6 +188,34 @@ Lot tracking enables forward and backward traceability:
 **Backward Traceability**: Given a part, find which lots were used
 - Supports root cause analysis
 - Shows material history for any part
+
+### The lot page
+
+`/production/material-lots/$lotId` — reached by clicking any lot number — answers
+both directions for one lot in one place:
+
+In the order they appear:
+
+| Section | Answers |
+|---------|---------|
+| **The lot** | On hand of total, how it was counted, received date, location, use-by, CoC |
+| **Came from** | Supplier, their lot, heat, bought from, ERP PO/line, and **split from / split into** as links |
+| **Reached** | The customers this lot reached |
+| **Where it went** | Quantity used, at which step, on which part, **built into** the assembly chain up to the top, work order · order, customer |
+| **History** | The record's own change history |
+
+Its header carries the lot's primary action (**Inspect** or **Resolve**),
+**Label**, **Documents** and **Inspection record** — plus **RTV sheet** once the
+lot is rejected — and a hold panel when the lot is held.
+
+!!! warning "Reached shows what was recorded, not what is possible"
+    A lot appears against a customer only where a **step recorded drawing from
+    it**. Material consumed without that record won't appear, so treat a short
+    list as a question about capture coverage rather than proof of limited
+    exposure.
+
+    This is the distinction that matters in a recall: *what we can show* is not
+    automatically *what happened*.
 
 ## Integration Points
 

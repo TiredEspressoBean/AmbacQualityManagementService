@@ -41,9 +41,13 @@ selected one. Connections between steps are drawn on the graph itself, which is
 why this is the right surface — a step's routing and its properties are edited
 together.
 
-!!! note "The legacy step form"
-    `/StepForm/edit/{id}` still exists and exposes a reduced set of fields.
-    It is a legacy route being phased out; use the Process Flow editor.
+!!! note "The standalone step form"
+    `/editor/steps/{id}/edit` exposes a reduced set of fields, and is read-only
+    for step content when the step belongs to a process — use the Process Flow
+    editor for that. **Timing** and **Machines** stay editable there, because
+    they are scheduling data every version shares.
+
+    The old `/StepForm/edit/{id}` redirects to it for now.
 
 ## Step Properties
 

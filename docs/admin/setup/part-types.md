@@ -51,10 +51,43 @@ Part Types define:
 |-------|-------------|
 | **Made in-house** | Can be manufactured |
 | **Purchased** | Can be bought |
-| **Preferred supplier** | Default supplier for purchased types |
-| **Purchase lead time (days)** | Lead time used by sourcing requirements |
+| **Preferred supplier** | Default supplier for purchased types. Offers **suppliers only** |
+| **Preferred supplier's lead time (days)** | Lead time used by sourcing requirements |
+| **Safety stock** | A quantity held back from planning, so the sourcing report warns while there is still stock to react with |
 | **Requires supplier qualification** | Only qualified suppliers may supply it |
 | **Requires part approval** | Lots are held from suppliers without a [part approval](../../workflows/supply/part-approvals.md) |
+
+!!! note "Safety stock doesn't stop you issuing"
+    It is held back from the **planning** view, not from the shelf — the same as
+    on a Material. The point is that the sourcing report goes red while you still
+    have stock to react with, rather than when you are already out. See [How the
+    numbers are made](../../workflows/scheduling/how-the-numbers-are-made.md).
+
+### Who can change sourcing, and who can change the part
+
+These are deliberately different people.
+
+**Can change a part type's sourcing** covers just three fields — preferred
+supplier, lead time, safety stock. **Purchasing** holds it, as does anyone who
+can author part types.
+
+On the part types list a holder sees a **truck** icon, **Sourcing**, which opens
+a three-field dialog. The **pencil** and **delete** icons appear only with
+`change_parttypes` / `delete_parttypes`.
+
+!!! tip "A buyer can maintain sourcing without being able to edit the part"
+    That is the whole point of the split. Lead times and preferred suppliers
+    change often and belong to whoever buys; the part's definition does not and
+    belongs to engineering.
+
+!!! important "Sourcing changes do not create a new version"
+    Supplier, lead time and safety stock are edited **in place**. They describe
+    how you buy the thing, not what the thing is — so versioning them would fill
+    the history with commercial churn and make a real engineering change harder
+    to find.
+
+    The change is still recorded in the audit log, and the **History** card shows
+    it as an in-place change.
 
 ### Export Control
 

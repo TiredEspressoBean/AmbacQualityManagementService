@@ -34,7 +34,7 @@ Equipment records represent:
 | **Serial Number** | Manufacturer serial | No |
 | **Manufacturer** | Who made it | No |
 | **Model Number** | Model | No |
-| **Location** | Where it is | No |
+| **Location** | Where it is — a location record, from the picker | No |
 | **Status** | Operational status | No |
 | **Schedulable resource** | Whether the scheduler may plan work onto it | No |
 | **Notes** | Free text | No |
@@ -86,8 +86,18 @@ There is no asset-number field.
 
 ### Location
 
-**Location** is a single free-text field — there is no separate building, area,
-and station breakdown.
+**Location** is a **location record**, chosen from the same picker used on
+receiving and moves — not free text. Locations nest, so the building/area/station
+breakdown comes from the tree rather than from separate fields.
+
+The location's page shows a **Machines** card listing the equipment placed there,
+so the relationship reads from both ends. See [Locations & Cycle
+Counts](../../workflows/supply/locations.md).
+
+!!! note "Equipment import needs the location to exist"
+    Unlike a stock import, which creates any location its sheet names, an
+    equipment import must name one that is already there. Create it first — from
+    any picker, or in Data Management.
 
 ### Status
 

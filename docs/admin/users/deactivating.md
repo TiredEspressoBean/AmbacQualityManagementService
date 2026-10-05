@@ -11,6 +11,20 @@ Properly offboard users when they leave the organization or no longer need acces
 - **Data integrity** - Related records remain valid
 - **Reversible** - Can reactivate if needed
 
+!!! important "Deleting a user does this anyway"
+    **Delete** on a user list does not destroy anything. It **removes their
+    access to this organisation** by suspending their membership — the account
+    survives, and so does everything they recorded: training, approvals,
+    signatures.
+
+    Reactivate them from **User Management**. The Data Management Users list
+    shows them as **Access removed**.
+
+    You cannot remove your own access.
+
+    So the choice is not *delete or deactivate* — both lead to the same safe
+    place, which is why the compliance argument above holds either way.
+
 ## Deactivating a User
 
 ### Quick Deactivation

@@ -73,6 +73,69 @@ Processes support version control:
 - **Obsolete** versions archived
 - Parts track which version they used
 
+### Versions share their steps
+
+A process, its later versions and its copies **share the same step rows**. That is
+deliberate: it is what lets any version's routing be read back as it stood on a
+given date, rather than as it looks today.
+
+The consequence is the thing to understand: editing a step could change what an
+approved version says happened. So it doesn't.
+
+### A draft takes its own copy
+
+When a **draft** edits a step that something else depends on, the draft first gets
+a **copy of its own**, and edits that. The other versions keep the original. You
+will see:
+
+> This draft now has its own copy of the step…
+
+What triggers it is any edit to the step or to anything hanging off it — saving
+step fields, opening one of the step panel's dialogs, editing its substeps, or
+changing its timing.
+
+The copy is taken **once**. Later edits on that draft land on the copy in place,
+so you do not get a new step version per keystroke.
+
+!!! note "A step used by nothing else is edited in place"
+    The copy is only taken when the row is genuinely depended on elsewhere:
+    another process links it, work has already been run at it, or parts are
+    sitting at it right now. A step that belongs to this process alone is simply
+    edited — no copy, no toast.
+
+    So on a young process you may never see this happen, and on a mature one you
+    will see it constantly. Both are correct.
+
+The copy carries the step's **measurements, sampling rules, training, machines,
+timing, substeps and documents**, so the draft is a faithful starting point
+rather than a stripped one.
+
+!!! warning "BOM allocation does not follow the copy"
+    Which BOM line is *consumed at this step* is not carried over — a line points
+    at one step, and BOMs version on their own lifecycle. Check it after a copy is
+    taken on a step that consumes material.
+
+### Where step content is edited
+
+| Where | What you can change |
+|-------|--------------------|
+| **Process flow editor**, on a draft | Everything: name, description, inspection, measurements, sampling, training, substeps |
+| **Step form** (standalone) | **Timing** and **Machines** only — scheduling data shared by every version |
+| **Steps list** | Nothing directly. Its row action is *Edit in process*, which opens the flow editor with the step selected |
+
+The standalone step form is **read-only for step content** when the step belongs
+to a process, with a banner offering *Edit in [process] vN*. The API refuses the
+same edits, so it holds however you reach it:
+
+> This step is part of an approved process version. Open it from a draft of the
+> process to change it; the draft gets its own copy.
+
+!!! tip "Why timing and machines are the exception"
+    They are not statements about *how the work is done* — they are statements
+    about how long it takes and what it runs on, which every version shares.
+    Editing them from anywhere is safe, and is why those two sections stay live
+    on a form that is otherwise read-only.
+
 ## Process Approval
 
 Changes to processes may require approval:

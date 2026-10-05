@@ -68,13 +68,58 @@ Exports to **CSV** and **PDF**.
 **What open demand needs — material to buy, components to build, tooling to
 procure — with order-by dates from the live schedule.**
 
-Three tabs:
+Four sections, one under another on the page:
 
-| Tab | Covers |
-|-----|--------|
-| **Source (buy)** | Material to purchase |
-| **Produce (build)** | Components to manufacture |
-| **Tooling** | Tooling to procure |
+| Section | Covers |
+|---------|--------|
+| **Source (buy)** | Purchased material short of coverage — see [Turning a shortage into an expected delivery](#turning-a-shortage-into-an-expected-delivery) |
+| **Recover (tear down)** | Teardown proposed to refill recovered stock — see [Planning a teardown](#planning-a-teardown) |
+| **Produce (build)** | In-house component work orders pegged to open demand |
+| **Tooling** | Fixtures, tools, dies and NC programs not yet on hand |
+
+### Turning a shortage into an expected delivery
+
+Each **Source (buy)** row has a checkbox, with select-all in the header, and the
+material cell shows its **part number** and **preferred supplier** under the
+name. Tick rows and **Add expected deliveries (N)** opens *Add expected
+deliveries*.
+
+You give one **PO number** for the whole set, then per row a **quantity**
+(pre-filled with the shortage), a **promised date** (pre-filled one lead time
+from today), a **supplier** (pre-filled with the preferred one) and a **PO
+line**. It records every row or none.
+
+The shortage then reads as covered, because the expected receipts now exist as
+incoming supply.
+
+!!! important "Nothing is purchased here"
+    This closes the loop between *what we are short of* and *what we are
+    expecting*, so planning stops flagging a gap someone has already dealt with.
+    The buying itself happens in the system that owns it — you are recording the
+    answer, not making it.
+
+    Which is why it asks for a PO number: you are telling UQMES an order already
+    exists. See [Loading what is on
+    order](../supply/overview.md#loading-what-is-on-order).
+
+### Planning a teardown
+
+**Recover** is the bridge between the core bank and buying. Rather than
+purchasing a component, it asks whether tearing down cores you already hold
+would cover the need — each row naming the core type, how many are **in bank**
+and already committed, what the teardown would **cover** (*"2.3 of 5 needed · 1
+on shelf · 1.7 on the way"*), and a start-by date.
+
+**Plan teardown** commits those cores to a future teardown work order. Nothing
+on the page commits a core on its own.
+
+!!! note "This is for exchange rebuilds"
+    Recovered stock refills the pool that exchange units are rebuilt from. A
+    repair-and-return unit is rebuilt with its own components, so it never draws
+    on this. See [Rebuild](../reman/rebuild.md#two-kinds-of-replace).
+
+Note this is the **plan-ahead** path. Tearing a core down now starts from the
+core itself — see [Teardown](../reman/disassembly.md).
 
 Order-by dates come from the live schedule, so they move when the schedule
 moves. Rows past their order-by date are flagged.

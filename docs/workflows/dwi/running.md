@@ -188,6 +188,80 @@ has to be redone too, in order.
 
     Retracting a record is itself a recorded event. Nothing is deleted.
 
+## Reman captures
+
+Three substep types exist only for remanufacturing work. They look like any
+other capture in the player, but each one writes to the reman records rather
+than just recording an answer. If you are tearing down or rebuilding a core, the
+work below is how it gets recorded — there is no separate reman screen to go to
+afterwards.
+
+### Harvested components — teardown
+
+One row per component you take off the unit:
+
+| Field | |
+|-------|---|
+| **Component type** | What it is |
+| **Condition grade** | A, B, C or Scrap — **your** assessment, at the bench |
+| **Position** | Where on the unit it came from |
+| **Missing** | Tick when the position was empty |
+| **Condition notes**, **original part number** | Optional detail |
+
+Submitting creates the harvested component records, and anything graded **Scrap**
+is scrapped in the same action — you do not scrap it separately afterwards.
+
+The grade you give here is what the rebuild plan resolves against, so it decides
+whether the part goes back in, gets reconditioned, or has to be replaced. See
+[Harvested Components](../reman/components.md).
+
+!!! warning "Missing is a real answer — record it"
+    Tick **Missing** rather than leaving a position blank. A blank says nothing;
+    *missing* says someone looked.
+
+    If the capture was authored in **strict** mode, this is enforced: every row
+    on the disassembly BOM must be accounted for before the step completes, and
+    it is checked server-side. Strict is opt-in per capture, so not every
+    teardown will hold you to it — record it properly either way.
+
+### Component install — rebuild
+
+One row per slot, naming what you actually fitted:
+
+- **the unit's own component**, back into the unit it came out of, or
+- **a recovered part from stock** — exchange rebuilds only. A repair-and-return
+  unit is refused anyone else's part.
+
+**Purchased replacements are not recorded here.** A bought component is drawn
+from its lot by material consumption when the step completes, which is already
+its traceability.
+
+!!! note "The capture is all or nothing"
+    A slot that cannot be installed fails the whole submission rather than
+    leaving the unit half-recorded. Fix the row it names and submit again.
+
+### Rebuild finding — rebuild
+
+For a component that turns out **worse than teardown graded it**. You propose a
+new grade and say what you found; a lead applies or dismisses it.
+
+You are not changing the plan yourself — applying a finding re-grades the
+component and re-resolves the rebuild plan from it, which is a decision that
+belongs to whoever owns the scope. See [the findings
+section](../reman/components.md#findings-a-component-found-worse-at-the-bench).
+
+Four things it will refuse:
+
+| Refusal | Why |
+|---------|-----|
+| *"Say what was found — a finding with no description can't be judged."* | A grade with no evidence isn't actionable |
+| *"… is already scrapped."* | Nothing left to re-grade |
+| *"… already has a finding waiting on a lead's decision"* | One at a time; the first must be applied or dismissed |
+| *"… is already grade X; a finding proposes a different grade."* | A finding is a *change* |
+
+Findings are recorded per row and the whole capture is one transaction, so one
+bad row rejects the submission and names its position.
+
 ## What happens next
 
 Completing the step is the event that lets the part advance. If the step's
