@@ -32,7 +32,7 @@ from Tracker.models import (
 from Tracker.serializers.mes_lite import (
     OrdersSerializer, OrderLineSerializer, CustomerOrderSerializer, PartsSerializer, PartSelectSerializer, CustomerPartsSerializer,
     WorkOrderSerializer, WorkOrderListSerializer,
-    StepsSerializer, StepSerializer, PartTypesSerializer, PartTypeSelectSerializer, ProcessesSerializer,
+    StepsSerializer, StepSerializer, PartTypesSerializer, PartTypeSourcingSerializer, PartTypeSelectSerializer, ProcessesSerializer,
     ProcessWithStepsSerializer, EquipmentsSerializer, EquipmentTypeSerializer,
     BulkAddPartsSerializer, BulkRemovePartsSerializer,
     StepAdvancementSerializer, BulkStepAdvancementSerializer,
@@ -3749,11 +3749,27 @@ class PartTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin,
     """
     queryset = PartTypes.unscoped.all()
     serializer_class = PartTypesSerializer
+    # A buyer edits sourcing without the authoring perm (change_parttypes): the action's
+    # own perm is its sole gate.
+    action_permissions = {'sourcing': ['change_parttype_sourcing']}
+    crud_exempt_actions = {'sourcing'}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, OrderingFilter]
     ordering_fields = ['created_at', 'name', 'updated_at', 'ID_prefix']
     ordering = ['-created_at']
     search_fields = ["name", "ID_prefix"]
     filterset_fields = ['name', 'requires_supplier_qualification', 'requires_part_approval']
+
+    @extend_schema(request=PartTypeSourcingSerializer, responses={200: PartTypesSerializer},
+                   description=("A part type's preferred supplier, its lead time and the "
+                                "safety stock — edited in place, not as a new version."))
+    @action(detail=True, methods=['patch'], url_path='sourcing')
+    def sourcing(self, request, pk=None):
+        part_type = self.get_object()
+        ser = PartTypeSourcingSerializer(part_type, data=request.data, partial=True,
+                                         context=self.get_serializer_context())
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(PartTypesSerializer(part_type, context=self.get_serializer_context()).data)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

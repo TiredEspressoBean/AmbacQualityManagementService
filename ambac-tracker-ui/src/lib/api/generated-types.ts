@@ -7848,6 +7848,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/PartTypes/{id}/sourcing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** @description A part type's preferred supplier, its lead time and the safety stock — edited in place, not as a new version. */
+        patch: operations["api_PartTypes_sourcing_partial_update"];
+        trace?: never;
+    };
     "/api/PartTypes/{id}/version-history/": {
         parameters: {
             query?: never;
@@ -27339,6 +27356,11 @@ export interface components {
             preferred_supplier?: string | null;
             readonly preferred_supplier_name: string | null;
             /**
+             * Format: decimal
+             * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+             */
+            safety_stock?: string | null;
+            /**
              * @description How this part is bought and counted at receiving.
              *
              *     * `STOCK` - Stock unit
@@ -27405,6 +27427,11 @@ export interface components {
              * @description Default supplier when this part is purchased.
              */
             preferred_supplier?: string | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+             */
+            safety_stock?: string | null;
             /**
              * @description How this part is bought and counted at receiving.
              *
@@ -28874,6 +28901,21 @@ export interface components {
             is_required?: boolean;
             archived?: boolean;
         };
+        /** @description A part type's buy-side planning figures, edited in place (no new version). */
+        PatchedPartTypeSourcingRequest: {
+            /**
+             * Format: uuid
+             * @description Default supplier when this part is purchased.
+             */
+            preferred_supplier?: string | null;
+            /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
+            purchase_lead_time_days?: number | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+             */
+            safety_stock?: string | null;
+        };
         /**
          * @description Part types serializer with versioning support.
          *
@@ -28908,6 +28950,11 @@ export interface components {
              * @description Default supplier when this part is purchased.
              */
             preferred_supplier?: string | null;
+            /**
+             * Format: decimal
+             * @description Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+             */
+            safety_stock?: string | null;
             /**
              * @description How this part is bought and counted at receiving.
              *
@@ -53029,6 +53076,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartTypeQualitySummary"];
+                };
+            };
+        };
+    };
+    api_PartTypes_sourcing_partial_update: {
+        parameters: {
+            query?: {
+                /** @description Filter processes by associated part type UUID */
+                part_type?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part Type. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPartTypeSourcingRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPartTypeSourcingRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPartTypeSourcingRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartTypes"];
                 };
             };
         };

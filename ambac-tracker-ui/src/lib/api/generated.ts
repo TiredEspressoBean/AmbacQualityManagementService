@@ -6484,6 +6484,14 @@ export type PartTypes = {
     (string | null)
     | undefined;
   preferred_supplier_name: string | null;
+  safety_stock?:
+    | /**
+     * Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   purchase_unit?: /**
      * How this part is bought and counted at receiving.
     
@@ -11525,6 +11533,14 @@ export type PartTypesRequest = {
      */
     (string | null)
     | undefined;
+  safety_stock?:
+    | /**
+     * Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+     *
+     * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+     */
+    (string | null)
+    | undefined;
   purchase_unit?: /**
      * How this part is bought and counted at receiving.
     
@@ -12884,6 +12900,12 @@ export type PatchedPartTypesRequest = Partial<{
    * Default supplier when this part is purchased.
    */
   preferred_supplier: string | null;
+  /**
+   * Buffer held back from planning, as on Material: coverage nets against on-hand MINUS this, so the sourcing report warns while there is still stock to react with. Does not block issuing.
+   *
+   * @pattern ^-?\d{0,8}(?:\.\d{0,4})?$
+   */
+  safety_stock: string | null;
   /**
      * How this part is bought and counted at receiving.
     
@@ -21761,6 +21783,10 @@ const PartTypes = z.object({
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
+  safety_stock: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   purchase_unit: PurchaseUnitEnum.optional(),
   units_per_purchase_unit: z
     .string()
@@ -21795,6 +21821,10 @@ const PartTypesRequest = z.object({
   can_buy: z.boolean().optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
+  safety_stock: z
+    .string()
+    .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+    .nullish(),
   purchase_unit: PurchaseUnitEnum.optional(),
   units_per_purchase_unit: z
     .string()
@@ -21821,6 +21851,10 @@ const PatchedPartTypesRequest = z
     can_buy: z.boolean(),
     purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
     preferred_supplier: z.string().uuid().nullable(),
+    safety_stock: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
     purchase_unit: PurchaseUnitEnum,
     units_per_purchase_unit: z
       .string()
@@ -21843,6 +21877,16 @@ const PartTypeQualitySummary = z.object({
   recent_failures: z.array(z.object({}).partial().passthrough()),
   fpy_trend: z.array(z.object({}).partial().passthrough()),
 });
+const PatchedPartTypeSourcingRequest = z
+  .object({
+    preferred_supplier: z.string().uuid().nullable(),
+    purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
+    safety_stock: z
+      .string()
+      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
+      .nullable(),
+  })
+  .partial();
 const PartTypeSelect = z.object({
   id: z.string().uuid(),
   name: z.string().max(50),
@@ -28101,6 +28145,7 @@ export const schemas = {
   PartTypesRequest,
   PatchedPartTypesRequest,
   PartTypeQualitySummary,
+  PatchedPartTypeSourcingRequest,
   PartTypeSelect,
   Parts,
   PaginatedPartsList,
@@ -44916,6 +44961,31 @@ Import/Export endpoints (auto-configured from model):
     response: PartTypeQualitySummary,
   },
   {
+    method: "patch",
+    path: "/api/PartTypes/:id/sourcing/",
+    alias: "api_PartTypes_sourcing_partial_update",
+    description: `A part type&#x27;s preferred supplier, its lead time and the safety stock — edited in place, not as a new version.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PatchedPartTypeSourcingRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: PartTypes,
+  },
+  {
     method: "get",
     path: "/api/PartTypes/:id/version-history/",
     alias: "api_PartTypes_version_history_list",
@@ -48615,7 +48685,10 @@ returns 504 and memory is reclaimed on gunicorn worker rotation.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/reports/generate/",
@@ -48631,10 +48704,7 @@ requesting user. Responds 202 immediately.`,
       },
     ],
     response: GenerateReportResponse,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/reports/history/",
@@ -54055,7 +54125,10 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/SubstepCompletions/:id/void/",
@@ -54092,10 +54165,7 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/SubstepGateCompletions/",
@@ -58776,7 +58846,10 @@ switches from running one step to another. One row per matrix cell.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/WorkCenterChangeovers/import/",
@@ -58797,10 +58870,7 @@ switches from running one step to another. One row per matrix cell.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/WorkCenterChangeovers/metadata/",

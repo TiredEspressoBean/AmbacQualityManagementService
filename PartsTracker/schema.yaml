@@ -19988,6 +19988,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartTypeQualitySummary'
           description: ''
+  /api/PartTypes/{id}/sourcing/:
+    patch:
+      operationId: api_PartTypes_sourcing_partial_update
+      description: A part type's preferred supplier, its lead time and the safety
+        stock — edited in place, not as a new version.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part Type.
+        required: true
+      - in: query
+        name: part_type
+        schema:
+          type: string
+        description: Filter processes by associated part type UUID
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeSourcingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeSourcingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPartTypeSourcingRequest'
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartTypes'
+          description: ''
   /api/PartTypes/{id}/version-history/:
     get:
       operationId: api_PartTypes_version_history_list
@@ -62335,6 +62376,14 @@ components:
           type: string
           readOnly: true
           nullable: true
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: 'Buffer held back from planning, as on Material: coverage nets
+            against on-hand MINUS this, so the sourcing report warns while there is
+            still stock to react with. Does not block issuing.'
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
@@ -62459,6 +62508,14 @@ components:
           format: uuid
           nullable: true
           description: Default supplier when this part is purchased.
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: 'Buffer held back from planning, as on Material: coverage nets
+            against on-hand MINUS this, so the sourcing report warns while there is
+            still stock to react with. Does not block issuing.'
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'
@@ -65101,6 +65158,31 @@ components:
           description: If true, parts of this type must have this tracking
         archived:
           type: boolean
+    PatchedPartTypeSourcingRequest:
+      type: object
+      description: A part type's buy-side planning figures, edited in place (no new
+        version).
+      properties:
+        preferred_supplier:
+          type: string
+          format: uuid
+          nullable: true
+          description: Default supplier when this part is purchased.
+        purchase_lead_time_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Days to source this part from a supplier when bought — drives
+            the order-by date in the sourcing report (order-by = need-by − lead time).
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: 'Buffer held back from planning, as on Material: coverage nets
+            against on-hand MINUS this, so the sourcing report warns while there is
+            still stock to react with. Does not block issuing.'
     PatchedPartTypesRequest:
       type: object
       description: |-
@@ -65163,6 +65245,14 @@ components:
           format: uuid
           nullable: true
           description: Default supplier when this part is purchased.
+        safety_stock:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,4})?$
+          nullable: true
+          description: 'Buffer held back from planning, as on Material: coverage nets
+            against on-hand MINUS this, so the sourcing report warns while there is
+            still stock to react with. Does not block issuing.'
         purchase_unit:
           allOf:
           - $ref: '#/components/schemas/PurchaseUnitEnum'

@@ -1669,9 +1669,11 @@ class PartTypesSerializer(SecureModelMixin):
     plain save.
     """
 
-    # Fields whose edits are soft-delete / metadata only and should NOT
-    # trigger a new version.
-    _NON_VERSIONING_FIELDS = frozenset({'archived'})
+    # Fields whose edits should NOT trigger a new version: archiving, and the buy-side
+    # planning figures — a new lead time from the supplier isn't a new revision of the
+    # part (auditlog still records it).
+    _NON_VERSIONING_FIELDS = frozenset({
+        'archived', 'preferred_supplier', 'purchase_lead_time_days', 'safety_stock'})
 
     preferred_supplier_name = serializers.CharField(
         source='preferred_supplier.name', read_only=True, allow_null=True)
@@ -1683,7 +1685,7 @@ class PartTypesSerializer(SecureModelMixin):
             'name', 'ID_prefix', 'ERP_id',
             'requires_supplier_qualification', 'requires_part_approval',
             'can_make', 'can_buy', 'purchase_lead_time_days',
-            'preferred_supplier', 'preferred_supplier_name',
+            'preferred_supplier', 'preferred_supplier_name', 'safety_stock',
             'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'itar_controlled', 'eccn', 'usml_category',
             'default_disassembly_process',
@@ -1701,6 +1703,19 @@ class PartTypesSerializer(SecureModelMixin):
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
         )
+
+
+class PartTypeSourcingSerializer(serializers.ModelSerializer):
+    """A part type's buy-side planning figures, edited in place (no new version)."""
+
+    class Meta:
+        model = PartTypes
+        fields = ['preferred_supplier', 'purchase_lead_time_days', 'safety_stock']
+
+    def validate_preferred_supplier(self, value):
+        if value is not None and not value.is_supplier:
+            raise serializers.ValidationError(f"{value.name} isn't set up as a supplier.")
+        return value
 
 
 class PartTypeSerializer(serializers.ModelSerializer):

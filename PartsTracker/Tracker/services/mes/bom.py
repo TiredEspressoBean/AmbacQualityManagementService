@@ -76,9 +76,7 @@ def buy_line_item(line) -> BuyItem | None:
         return BuyItem(
             kind='PART_TYPE', id=line.component_type_id, name=pt.name,
             lead_time_days=getattr(pt, 'purchase_lead_time_days', None),
-            # PartTypes has no safety-stock field yet; treated as no buffer rather
-            # than guessed. Adding the field makes this line pick it up unchanged.
-            safety_stock=float(getattr(pt, 'safety_stock', None) or 0),
+            safety_stock=float(pt.safety_stock or 0),
             lot_field='material_type',
             part_number=pt.ERP_id or "",
             preferred_supplier_id=getattr(pt, 'preferred_supplier_id', None),

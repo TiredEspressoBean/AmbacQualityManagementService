@@ -197,6 +197,13 @@ class PartTypes(SecureModel):
     )
     """Preferred supplier for the buy path."""
 
+    safety_stock = models.DecimalField(
+        max_digits=12, decimal_places=4, null=True, blank=True,
+        help_text="Buffer held back from planning, as on Material: coverage nets against "
+                  "on-hand MINUS this, so the sourcing report warns while there is still "
+                  "stock to react with. Does not block issuing.")
+    """Planning buffer for the buy path (a quantity; blank = none)."""
+
     # Receiving controls — the same four on Material (see PURCHASE_UNIT_CHOICES there).
     purchase_unit = models.CharField(
         max_length=10, choices=PURCHASE_UNIT_CHOICES, default="STOCK",
@@ -261,6 +268,12 @@ class PartTypes(SecureModel):
     class Meta:
         verbose_name_plural = 'Part Types'
         verbose_name = 'Part Type'
+        permissions = [
+            # A buyer keeps the buy-side planning figures current — preferred supplier,
+            # its lead time, the safety stock — without authoring the part itself.
+            ('change_parttype_sourcing',
+             "Can change a part type's sourcing (preferred supplier, lead time, safety stock)"),
+        ]
 
     def __str__(self):
         """

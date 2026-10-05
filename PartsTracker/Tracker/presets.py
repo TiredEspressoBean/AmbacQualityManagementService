@@ -323,7 +323,7 @@ AUTHORING_PERMISSIONS = [
     'add_substepresource', 'change_substepresource', 'delete_substepresource',
     'add_substeptranslation', 'change_substeptranslation', 'delete_substeptranslation',
     # Specs
-    'add_parttypes', 'change_parttypes', 'delete_parttypes',
+    'add_parttypes', 'change_parttypes', 'delete_parttypes', 'change_parttype_sourcing',
     # Raw-material master data (like part-type master data — change-controlled)
     'add_material', 'change_material', 'delete_material',
     # The managed list of storage locations receiving offers.
@@ -839,6 +839,9 @@ GROUP_PRESETS = {
             # Buyers own purchased materials: lead time, preferred supplier, safety stock
             # (what the requirements report nets against).
             'add_material', 'change_material',
+            # …and a bought part's sourcing (supplier, lead time, safety stock) — not
+            # the part's definition, which stays with engineering.
+            'change_parttype_sourcing',
             # Receiving keeps the list of places stock is put away.
             'add_storagelocation', 'change_storagelocation',
         ],

@@ -87,6 +87,7 @@ const formSchema = schemas.PartTypesRequest.pick({
     can_make: true,
     can_buy: true,
     purchase_lead_time_days: true,
+    safety_stock: true,
     itar_controlled: true,
     eccn: true,
     usml_category: true,
@@ -119,6 +120,7 @@ export default function PartTypeFormPage() {
             can_make: true,
             can_buy: false,
             purchase_lead_time_days: null,
+            safety_stock: null,
             itar_controlled: false,
             eccn: "",
             usml_category: "",
@@ -143,6 +145,7 @@ export default function PartTypeFormPage() {
                 can_buy: (partType as { can_buy?: boolean }).can_buy ?? false,
                 purchase_lead_time_days:
                     (partType as { purchase_lead_time_days?: number | null }).purchase_lead_time_days ?? null,
+                safety_stock: partType.safety_stock ?? null,
                 itar_controlled: partType.itar_controlled ?? false,
                 eccn: partType.eccn ?? "",
                 usml_category: partType.usml_category ?? "",
@@ -274,7 +277,7 @@ export default function PartTypeFormPage() {
                                 name="purchase_lead_time_days"
                                 render={({field}) => (
                                     <FormItem>
-                                        <FormLabel>Purchase lead time (days)</FormLabel>
+                                        <FormLabel>Preferred supplier&rsquo;s lead time (days)</FormLabel>
                                         <FormControl>
                                             <Input
                                                 type="number" min={0} placeholder="e.g. 14"
@@ -302,6 +305,26 @@ export default function PartTypeFormPage() {
                                 </select>
                                 <FormDescription>Default supplier when this part is bought</FormDescription>
                             </FormItem>
+                            <FormField
+                                control={form.control}
+                                name="safety_stock"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Safety stock</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number" min={0} step="any" placeholder="None"
+                                                value={field.value ?? ""}
+                                                onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.value)}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Held back from planning, so the sourcing report warns while there&rsquo;s still stock to react with
+                                        </FormDescription>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
                             <div className="col-span-2">
                                 <ReceivingControlsFields value={receiving} onChange={setReceiving} />
                             </div>
