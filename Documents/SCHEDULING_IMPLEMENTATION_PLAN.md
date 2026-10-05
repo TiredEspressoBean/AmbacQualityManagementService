@@ -818,6 +818,17 @@ npx kibo-ui add dialog-stack   # Multi-step scenario wizard (pick template → c
 
 ### Scenario Models
 
+> **Not built as designed (audit 2026-09-29).** There is no `Scenario` model and
+> no `ScenarioComparison`. What shipped is far smaller: `ScheduleResult.is_draft`
+> plus `Tracker/services/scheduling/scenario.py` — a solve can produce one draft,
+> `compare_draft()` reports solver status, weighted lateness, makespan, task count,
+> uncovered tasks and moved tasks against live, and `commit_draft()` promotes it.
+>
+> No named scenarios, no `modifications` JSON, no templates, no A-vs-B comparison.
+> **Do not document or build from the tables below** — they describe an intended
+> shape that was superseded. The service module is the specification.
+
+
 | Model | Key Fields |
 |---|---|
 | `Scenario` | `name`, `tenant`, `base_schedule` (FK→ScheduleResult), `modifications` (JSONField), `schedule_result` (FK→ScheduleResult, null), `allocation_result` (FK→AllocationResult, null), `status` (draft/solving/solved/promoted) |
