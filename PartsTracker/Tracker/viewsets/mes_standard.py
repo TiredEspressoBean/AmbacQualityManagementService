@@ -618,6 +618,10 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # bypass the client with a hand-rolled multipart fetch. DocumentViewSet
     # already declares its parsers this way for the same reason.
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    # ...but form-data can't carry a list of rows: the client appends the array
+    # as one field and the server gets "[object Object],…". Actions whose body
+    # is a list take JSON only, so they generate as requestFormat "json".
+    _JSON_ONLY = [parsers.JSONParser]
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     # The dock looks a lot up by whatever is in hand: our number or theirs, the item,
     # the supplier, the PO on the packing slip, or the heat on the cert.
@@ -832,7 +836,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # pagination_class=None: a many=True response on a paginated viewset would be
     # documented as a paginated envelope; this returns the bare list it created.
     @action(detail=False, methods=['post'], url_path='bulk-expected-receipt',
-            pagination_class=None)
+            pagination_class=None, parser_classes=_JSON_ONLY)
     def bulk_expected_receipt(self, request):
         """Several expected receipts at once, all or nothing — a buyer recording what
         they just ordered against a list of shortages."""
@@ -1056,7 +1060,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                         status=status.HTTP_201_CREATED)
 
     @extend_schema(request=RecordInspectionRequestSerializer, responses={200: QualityReportsSerializer})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], parser_classes=_JSON_ONLY)
     def record_inspection(self, request, pk=None):
         lot = self.get_object()
         report = lot.quality_reports.order_by('-created_at').first()
@@ -1073,7 +1077,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return self._qr_response(report)
 
     @extend_schema(request=RecordUnitsRequestSerializer, responses={200: QualityReportsSerializer})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], parser_classes=_JSON_ONLY)
     def record_units(self, request, pk=None):
         lot = self.get_object()
         report = lot.quality_reports.order_by('-created_at').first()
@@ -1294,7 +1298,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         },
         description="Receive N lots from a shipment (paste-grid). All-or-nothing - any row error rolls back.",
     )
-    @action(detail=False, methods=['post'], url_path='bulk_create')
+    @action(detail=False, methods=['post'], url_path='bulk_create', parser_classes=_JSON_ONLY)
     def bulk_create(self, request):
         rows = request.data.get('lots')
         if not isinstance(rows, list) or len(rows) == 0:
