@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lotStatus";
 import { useReceiveExpectedLot, useUploadLotCoC } from "@/hooks/useReceivingMutations";
+import { useCreateDocument } from "@/hooks/useCreateDocument";
+import { useContentTypeMapping } from "@/hooks/useContentTypes";
 
 type Props = {
     lotId: string;
@@ -75,12 +77,18 @@ export function ReceiveExpectedLotDialog({
     const [location, setLocation] = useState("");
     // A short delivery: the clerk says, from the packing slip, whether more is coming.
     const [remainder, setRemainder] = useState<"BACKORDERED" | "CLOSED" | "">("");
+    const [acceptOverage, setAcceptOverage] = useState(false);
     const [heatNumber, setHeatNumber] = useState("");
     const [sourceType, setSourceType] = useState<SourceType | "">("");
     // The cert, photographed at the dock (or a PDF) — uploaded onto the lot once it's
     // received, which clears an "awaiting CoC" hold by itself.
     const [cocFile, setCocFile] = useState<File | null>(null);
     const uploadCoc = useUploadLotCoC();
+    // The supplier's packing slip, filed with the lot's documents — the paper the
+    // delivery came with, kept beside the receipt it backs.
+    const [slipFile, setSlipFile] = useState<File | null>(null);
+    const createDocument = useCreateDocument();
+    const { getContentTypeId } = useContentTypeMapping();
     // Counting in the buying unit ("3 boxes") when the item has one with a conversion.
     const buyingUnit: "BOX" | "LB" | null =
         purchaseUnit === "BOX" || purchaseUnit === "LB" ? purchaseUnit : null;
@@ -97,9 +105,11 @@ export function ReceiveExpectedLotDialog({
         setRemainder("");
         setHeatNumber("");
         setSourceType("");
+        setAcceptOverage(false);
         setCountIn("STOCK");
         setCounted("");
         setCocFile(null);
+        setSlipFile(null);
     };
 
     // In the buying unit, the stock quantity follows from the count.
@@ -125,6 +135,7 @@ export function ReceiveExpectedLotDialog({
                 received_date: receivedDate,
                 storage_location: location.trim(),
                 ...(shortBy > 0 && remainder ? { remainder } : {}),
+                ...(shortBy < 0 && acceptOverage ? { accept_overage: true } : {}),
                 ...(inBuyingUnit && buyingUnit ? { received_as_quantity: counted, received_as_unit: buyingUnit } : {}),
                 ...(heatNumber.trim() ? { heat_number: heatNumber.trim() } : {}),
                 ...(sourceType ? { source_type: sourceType } : {}),
@@ -135,6 +146,15 @@ export function ReceiveExpectedLotDialog({
                     // lot actually went — inspection, a soft hold, or straight to stock.
                     const { status, lot_number: ours } = (data as { status?: string; lot_number?: string }) ?? {};
                     const parked = status != null && NEEDS_DISPOSITION.includes(status);
+                    const lotCt = getContentTypeId("materiallot");
+                    if (slipFile && lotCt) {
+                        createDocument.mutate({
+                            file: slipFile, file_name: `Packing slip · ${ours ?? ""}`.trim(),
+                            content_type: lotCt, object_id: lotId, classification: "INTERNAL" as const,
+                        }, {
+                            onError: () => toast.error(`Lot ${ours} was received, but the packing slip didn't upload — add it from the lot.`),
+                        });
+                    }
                     if (cocFile) {
                         uploadCoc.mutate({ id: lotId, file: cocFile }, {
                             onSuccess: () => toast.success(`CoC attached to lot ${ours}.`),
@@ -245,6 +265,16 @@ export function ReceiveExpectedLotDialog({
                             />
                         </div>
                     </div>
+                    {shortBy < 0 && (
+                        <label className="flex items-start gap-2 rounded-md border border-sky-300 bg-sky-50/50 p-3 text-sm dark:bg-sky-950/20">
+                            <input type="checkbox" className="mt-1" checked={acceptOverage}
+                                onChange={(e) => setAcceptOverage(e.target.checked)} />
+                            <span>
+                                <span className="font-medium">{-shortBy} more than the {orderedQuantity} ordered.</span>{" "}
+                                Accept the overage — needed when it&rsquo;s beyond the tolerance your organization set.
+                            </span>
+                        </label>
+                    )}
                     {shortBy > 0 && (
                         <fieldset className="space-y-2 rounded-md border border-amber-300 bg-amber-50/50 p-3 dark:bg-amber-950/20">
                             <legend className="px-1 text-sm font-medium">
@@ -293,6 +323,11 @@ export function ReceiveExpectedLotDialog({
                         <Label htmlFor="rel-coc">Certificate of Conformance <span className="text-muted-foreground">(optional — photo or PDF)</span></Label>
                         <Input id="rel-coc" type="file" accept="image/*,application/pdf" capture="environment"
                             onChange={(e) => setCocFile(e.target.files?.[0] ?? null)} />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="rel-slip">Packing slip <span className="text-muted-foreground">(optional — photo or PDF)</span></Label>
+                        <Input id="rel-slip" type="file" accept="image/*,application/pdf" capture="environment"
+                            onChange={(e) => setSlipFile(e.target.files?.[0] ?? null)} />
                     </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="rel-location">Put away at</Label>

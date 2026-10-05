@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { Clock, Hourglass, PackageCheck, PackageX, ShieldAlert } from "lucide-react";
+import { Clock, Download, Hourglass, PackageCheck, PackageX, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCsv } from "@/lib/csv";
 import { api } from "@/lib/api/generated";
 import {
     ChartCard, DateRangeToggle, KpiCard, KpiGrid, SimpleHorizontalBarChart, StackedBarChart,
@@ -18,6 +20,24 @@ const metricsOptions = (days: number) =>
     });
 
 const reasonLabel = (code: string) => HOLD_LABELS[code] ?? code;
+
+/** The page's numbers as one sheet, for the monthly report: the summary, then each day. */
+function exportMetrics(m: Metrics) {
+    const rows: (string | number | null)[][] = [
+        ["Summary", `Last ${m.days} days`, ""],
+        ["Lots received", m.lots_received, ""],
+        ["Waiting for a decision", m.awaiting_decision, m.oldest_wait_days != null ? `oldest ${m.oldest_wait_days} days` : ""],
+        ["Median days to a decision", m.median_days_to_decision, ""],
+        ["Median inspection hours", m.median_inspection_hours, ""],
+        ["Lots rejected", m.lots_rejected, ""],
+        ["Pieces rejected", m.pieces_rejected, ""],
+        ["Rejected PPM", m.ppm_rejected, ""],
+        ...m.held_now.map((h) => ["Held now", reasonLabel(h.reason), h.lots] as (string | number)[]),
+        ...m.holds_released.map((h) => ["Holds released", reasonLabel(h.reason), h.lots] as (string | number)[]),
+        ...m.receipts.map((r) => ["Received", r.date, r.lots] as (string | number)[]),
+    ];
+    downloadCsv(`receiving_metrics_${m.days}d`, ["Measure", "Value", "Detail"], rows);
+}
 
 /**
  * Receiving's own numbers — how the dock is doing, as opposed to how the suppliers are
@@ -38,7 +58,12 @@ export function ReceivingMetricsPage() {
                         How the dock is doing over the last {days} days. Supplier performance is on Supplier Quality.
                     </p>
                 </div>
-                <DateRangeToggle value={range} onChange={setRange} />
+                <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" disabled={!m} onClick={() => m && exportMetrics(m)}>
+                        <Download className="mr-1 h-4 w-4" /> CSV
+                    </Button>
+                    <DateRangeToggle value={range} onChange={setRange} />
+                </div>
             </div>
 
             <KpiGrid columns={4}>

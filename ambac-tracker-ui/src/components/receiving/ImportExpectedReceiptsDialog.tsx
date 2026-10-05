@@ -85,9 +85,9 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Import open PO lines</DialogTitle>
+                    <DialogTitle>Import expected deliveries</DialogTitle>
                     <DialogDescription>
-                        What&rsquo;s on order in your ERP, typed into the template: each row
+                        Your ERP&rsquo;s open PO lines, typed into the template: each row
                         becomes an expected receipt, matched on the ERP&rsquo;s PO number and line.
                         Uploading again updates quantities and dates. The sheet is the ERP&rsquo;s word:
                         a line it shows open is expected — even one received before, which is

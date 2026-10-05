@@ -113,3 +113,18 @@ class BuyerTests(APITestCase):
         self.assertNotIn(str(cores.id), queued)
         from Tracker.services.qms.incoming_inspection import build_incoming_rows
         self.assertNotIn(str(cores.id), [r["id"] for r in build_incoming_rows()])
+
+    def test_an_overage_past_the_tolerance_needs_accepting(self):
+        lot = self._expect(self.today, qty="100", po="4500999")
+        self.tenant.settings = {**(self.tenant.settings or {}), "over_receipt_tolerance_pct": 5}
+        self.tenant.save(update_fields=["settings"])
+        url = f"/api/MaterialLots/{lot.id}/receive/"
+        within = self._expect(self.today, qty="100", po="4501000")
+        self.assertEqual(self.client.post(f"/api/MaterialLots/{within.id}/receive/", {"quantity": "105"},
+                                          format="json").status_code, 200)
+        over = self.client.post(url, {"quantity": "120"}, format="json")
+        self.assertEqual(over.status_code, 400)
+        self.assertIn("accept the overage", over.json()["detail"])
+        ok = self.client.post(url, {"quantity": "120", "accept_overage": True}, format="json")
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.assertEqual(float(ok.json()["ordered_quantity"]), 100.0)

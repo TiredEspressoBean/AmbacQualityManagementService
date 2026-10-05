@@ -206,7 +206,7 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
                          quantity: Decimal | None = None, storage_location: str | None = None,
                          remainder: str | None = None, received_as_quantity=None,
                          received_as_unit: str = "", heat_number: str | None = None,
-                         source_type: str | None = None):
+                         source_type: str | None = None, accept_overage: bool = False):
     """ON_ORDER → RECEIVED: the truck arrived. Numbers the lot (ours, `next_lot_number`,
     unless ``lot_number`` gives one), records the supplier's lot number as printed,
     who took it in, and when.
@@ -276,7 +276,15 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
             update += ["ordered_quantity", "short_receipt"]
         elif short_by < 0:
             # More came than was ordered. Normal enough to accept, worth recording: the
-            # lot keeps what was ordered so the overage shows.
+            # lot keeps what was ordered so the overage shows. A tenant can set a tolerance
+            # (settings["over_receipt_tolerance_pct"]); beyond it, someone has to say so.
+            tolerance = (locked.tenant.settings or {}).get("over_receipt_tolerance_pct")
+            if tolerance not in (None, "") and not accept_overage:
+                allowed = ordered * Decimal(str(tolerance)) / Decimal(100)
+                if -short_by > allowed:
+                    raise ValueError(
+                        f"{-short_by} more than the {ordered} ordered — over the {tolerance}% "
+                        f"allowed. Count again, or accept the overage to keep it.")
             locked.ordered_quantity = ordered
             update.append("ordered_quantity")
 

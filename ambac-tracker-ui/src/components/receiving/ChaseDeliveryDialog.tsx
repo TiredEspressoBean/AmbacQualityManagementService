@@ -49,8 +49,9 @@ export function ChaseDeliveryDialog({ target, open, onOpenChange }: {
     const [note, setNote] = useState("");
     const [promised, setPromised] = useState("");
     const chase = useMutation({
+        // Multipart (see useLocations): send the date only when one was given.
         mutationFn: () => api.api_MaterialLots_chase_create(
-            { note, promised_date: promised || null }, { params: { id: target.lot_id } }),
+            { note, ...(promised ? { promised_date: promised } : {}) }, { params: { id: target.lot_id } }),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ["late-deliveries"] });
             void qc.invalidateQueries({ queryKey: ["material-lots"] });

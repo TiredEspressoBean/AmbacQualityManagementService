@@ -53,6 +53,7 @@ REPORT_ADAPTERS: tuple[str, ...] = (
     "Tracker.reports.adapters.location_label.LocationLabelAdapter",
     "Tracker.reports.adapters.cycle_count.CycleCountSheetAdapter",
     "Tracker.reports.adapters.cycle_count.CycleCountReportAdapter",
+    "Tracker.reports.adapters.lot_trace.LotTraceAdapter",
 )
 
 

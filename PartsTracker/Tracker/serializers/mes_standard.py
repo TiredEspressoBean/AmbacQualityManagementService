@@ -669,6 +669,9 @@ class ReceiveExpectedLotSerializer(serializers.Serializer):
     heat_number = serializers.CharField(required=False, allow_blank=True, max_length=64)
     source_type = serializers.ChoiceField(
         choices=SOURCE_TYPE_CHOICES, required=False, allow_blank=True)
+    accept_overage = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Keep a delivery larger than the tenant's over-receipt tolerance allows.")
 
 
 # Where rejected material goes, decided at rejection (use-as-is is a later concession).

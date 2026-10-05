@@ -18,6 +18,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
 import { resolveScan } from "@/lib/scan";
+import { DataExportMenu } from "@/components/data-export-menu";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import {
@@ -94,8 +95,12 @@ export function ShippingPage() {
                     )
             ) : (
                 <div className="space-y-2">
-                    <Input placeholder="Search shipment, customer, serial, tracking…" value={search}
-                        onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input placeholder="Search shipment, customer, serial, tracking…" value={search}
+                            onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+                        <DataExportMenu modelName="CustomerShipments" filename="shipments" size="sm" variant="outline"
+                            className="ml-auto" {...(search ? { queryParams: { search } } : {})} />
+                    </div>
                     <div className="overflow-x-auto rounded-lg border">
                         <table className="w-full text-sm">
                             <thead>

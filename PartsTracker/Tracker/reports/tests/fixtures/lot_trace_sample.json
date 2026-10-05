@@ -1,0 +1,22 @@
+{
+  "our_org": "Demo Plant",
+  "lot_number": "LOT-2026-00042",
+  "item_name": "Seal & O-Ring Kit",
+  "status": "In Use",
+  "quantity": "400 EA",
+  "supplier": "Acme Seals",
+  "supplier_lot_number": "AS-88123",
+  "heat_number": null,
+  "source_type": "Manufacturer",
+  "erp_po": "4500123 / 10",
+  "received_date": "2026-09-30",
+  "parent_lot_number": null,
+  "split_lots": ["LOT-2026-00042-01"],
+  "uses": [
+    {"lot_number": "LOT-2026-00042", "used": "2 EA", "step": "Assemble", "part": "INJ-1001", "built_into": null, "work_order": "WO-2026-0031", "order": "ORD-2026-0007", "customer": "Fleet Diesel Co", "shipped": "SHP-2026-000014 · 2026-10-05"},
+    {"lot_number": "LOT-2026-00042-01", "used": "2 EA", "step": "Assemble", "part": "INJ-1002", "built_into": "PUMP-77", "work_order": "WO-2026-0033", "order": null, "customer": null, "shipped": null}
+  ],
+  "customers": ["Fleet Diesel Co"],
+  "issued_by": "Quinn QA",
+  "issued_date": "2026-10-05"
+}

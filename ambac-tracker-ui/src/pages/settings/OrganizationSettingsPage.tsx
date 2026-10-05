@@ -61,6 +61,9 @@ const formSchema = z.object({
     address: z.string().max(500).optional(),
     default_timezone: z.string(),
     change_control_mode: z.enum(["SIMPLIFIED", "REGULATED"]),
+    // Receiving: how far over the ordered quantity a delivery may be before the clerk has
+    // to accept the overage. Blank = no limit. Kept in Tenant.settings.
+    over_receipt_tolerance_pct: z.string().regex(/^(\d+(\.\d+)?)?$/, "A percentage, or blank for no limit"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -96,12 +99,20 @@ export function OrganizationSettingsPage() {
                 ((settings as { change_control_mode?: string }).change_control_mode === "REGULATED"
                     ? "REGULATED"
                     : "SIMPLIFIED") as "SIMPLIFIED" | "REGULATED",
+            over_receipt_tolerance_pct: (() => {
+                const v = (settings.settings as { over_receipt_tolerance_pct?: number | null } | undefined)?.over_receipt_tolerance_pct;
+                return v == null ? "" : String(v);
+            })(),
         } : undefined,
     });
 
     const onSubmit = async (values: FormValues) => {
         try {
-            await updateSettings.mutateAsync(values);
+            const { over_receipt_tolerance_pct, ...rest } = values;
+            await updateSettings.mutateAsync({
+                ...rest,
+                settings: { over_receipt_tolerance_pct: over_receipt_tolerance_pct === "" ? null : Number(over_receipt_tolerance_pct) },
+            });
             toast.success("Organization settings updated");
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Failed to update settings");
@@ -488,6 +499,25 @@ export function OrganizationSettingsPage() {
                                                 it, and the person who approves it cannot release the
                                                 notice. Applies to actions taken after the switch; open
                                                 changes continue under the mode at their next action.
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="over_receipt_tolerance_pct"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Over-receipt tolerance (%)</FormLabel>
+                                            <FormControl>
+                                                <Input className="w-32" inputMode="decimal" placeholder="No limit" {...field} />
+                                            </FormControl>
+                                            <FormDescription>
+                                                How much more than the ordered quantity a delivery may be before
+                                                the receiving clerk has to accept the overage on purpose. Blank:
+                                                any overage is taken and simply recorded.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

@@ -31,7 +31,9 @@ export function useMoveLot() {
     const invalidate = useInvalidate();
     return useMutation({
         mutationFn: ({ id, to, quantity, reason }: { id: string; to: string; quantity?: string | null; reason?: string }) =>
-            api.api_MaterialLots_move_create({ to, quantity: quantity || null, reason: reason ?? "" }, { params: { id } }),
+            // MaterialLots actions go as multipart (the viewset lists MultiPart first, for
+            // CoC uploads), where a null travels as the text "null" — so leave it out.
+            api.api_MaterialLots_move_create({ to, reason: reason ?? "", ...(quantity ? { quantity } : {}) }, { params: { id } }),
         onSuccess: invalidate,
     });
 }

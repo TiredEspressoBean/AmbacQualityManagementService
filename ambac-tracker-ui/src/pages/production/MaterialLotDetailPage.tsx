@@ -94,7 +94,7 @@ export function MaterialLotDetailPage() {
                 <div className="flex flex-wrap gap-2">
                     {!l.holds_cores && (l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
                         <Button size="sm" onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } })}>
-                            {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
+                            {l.status === "QUARANTINE" ? "Review hold" : "Inspect"}
                         </Button>
                     )}
                     {l.status !== "ON_ORDER" && (
@@ -110,6 +110,10 @@ export function MaterialLotDetailPage() {
                     )}
                     <Button size="sm" variant="outline" onClick={() => setDocsOpen(true)}>
                         <FileText className="mr-1 h-4 w-4" /> Documents
+                    </Button>
+                    <Button size="sm" variant="outline"
+                        onClick={() => void downloadReport("lot_trace", { lot_id: lotId })}>
+                        <FileText className="mr-1 h-4 w-4" /> Trace (PDF)
                     </Button>
                     <Button size="sm" variant="outline"
                         onClick={() => void downloadReport("receiving_inspection_record", { lot_id: lotId })}>

@@ -155,7 +155,7 @@ export function MaterialsPage() {
             extraToolbarContent={
                 <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-                        <FileUp className="h-4 w-4 mr-1" /> Import POs
+                        <FileUp className="h-4 w-4 mr-1" /> Import expected deliveries
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setReceiptsOpen(true)}
                         title="What was received, by PO line, to post in the ERP">
@@ -311,7 +311,7 @@ export function MaterialsPage() {
                         {!l.holds_cores && (l.status === "AWAITING_INSPECTION" || l.status === "RECEIVED" || l.status === "QUARANTINE") && (
                             <Button size="sm"
                                 onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId: String(l.id) } })}>
-                                {l.status === "QUARANTINE" ? "Resolve" : "Inspect"}
+                                {l.status === "QUARANTINE" ? "Review hold" : "Inspect"}
                             </Button>
                         )}
                         {l.awaiting_return && (

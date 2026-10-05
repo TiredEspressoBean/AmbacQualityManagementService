@@ -494,8 +494,9 @@ export const useShipBack = () => {
     return useMutation({
         mutationFn: (vars: { id: string; note?: string; rma_number?: string; replacement_promised_date?: string | null }) =>
             api.api_MaterialLots_ship_back_create(
+                // Multipart: a null date would arrive as the text "null" — omit it.
                 { note: vars.note ?? "", rma_number: vars.rma_number ?? "",
-                  replacement_promised_date: vars.replacement_promised_date || null },
+                  ...(vars.replacement_promised_date ? { replacement_promised_date: vars.replacement_promised_date } : {}) },
                 { params: { id: vars.id }, headers: csrf() }),
         onSuccess: () => invalidateLotAndDispositions(queryClient),
     });

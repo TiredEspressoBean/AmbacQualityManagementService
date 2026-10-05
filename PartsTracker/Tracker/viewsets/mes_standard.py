@@ -646,7 +646,9 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     @extend_schema(request=ChaseExpectedReceiptSerializer, responses={200: MaterialLotSerializer},
                    description="Record a chase of an expected delivery — what the supplier said, and "
                                "a new promised date if given. The first promise is kept for on-time scoring.")
-    @action(detail=True, methods=['post'], url_path='chase')
+    # JSON only: the viewset takes multipart first (CoC uploads), where a null date
+    # arrives as the text "null".
+    @action(detail=True, methods=['post'], url_path='chase', parser_classes=[parsers.JSONParser])
     def chase(self, request, pk=None):
         from Tracker.services.mes.material_lot import chase_expected_receipt
         lot = self.get_object()
@@ -662,7 +664,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     @extend_schema(request=MoveLotRequestSerializer, responses={200: MaterialLotSerializer},
                    description="Move a lot to another location, recorded (who, when, from where). "
                                "With a quantity less than what's left, that much is split off and moves.")
-    @action(detail=True, methods=['post'], url_path='move')
+    @action(detail=True, methods=['post'], url_path='move', parser_classes=[parsers.JSONParser])
     def move(self, request, pk=None):
         from Tracker.services.mes.locations import move_lot
         lot = self.get_object()
@@ -974,6 +976,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
                 received_as_unit=ser.validated_data.get('received_as_unit') or '',
                 heat_number=ser.validated_data.get('heat_number'),
                 source_type=ser.validated_data.get('source_type'),
+                accept_overage=ser.validated_data.get('accept_overage', False),
             )
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1240,7 +1243,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(request=ShipBackSerializer, responses={200: MaterialLotSerializer})
-    @action(detail=True, methods=['post'], url_path='ship-back')
+    @action(detail=True, methods=['post'], url_path='ship-back', parser_classes=[parsers.JSONParser])
     def ship_back(self, request, pk=None):
         """The dock ships a return-to-supplier lot back (→ Returned)."""
         from Tracker.services.qms.lot_reject import ship_back
