@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { Package, Clock, CheckCircle2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,19 @@ type DispositionRow = {
     status: string;
 };
 
+type UndecidedRow = { id: string; report: string; item: string; description: string; created: string };
+
+// Failed reports nobody has decided on — raise a CAPA, or record why not
+// (services/qms/capa_decision). The decision itself lives on the report's page.
+const undecidedColumns: AnalyticsColumnDef<UndecidedRow>[] = [
+    { key: "report", header: "Report", accessor: (r) => <span className="font-mono text-xs text-primary">{r.report}</span>,
+      sortable: true, sortValue: (r) => r.report },
+    { key: "item", header: "Part / lot", accessor: (r) => r.item },
+    { key: "description", header: "Finding",
+      accessor: (r) => <span className="truncate max-w-[260px] block" title={r.description}>{r.description}</span> },
+    { key: "created", header: "Reported", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.created },
+];
+
 export function NcrAnalysisPage() {
     const [range, setRange] = useState<DateRange>("30d");
 
@@ -43,6 +58,18 @@ export function NcrAnalysisPage() {
     const { data: dispositionData, isLoading: isLoadingDisposition } = useDispositionBreakdown({ days: rangeToDays(range) });
     const { data: agingData, isLoading: isLoadingAging } = useNcrAging();
     const { data: dispositionsResponse, isLoading: isLoadingTable } = useOpenDispositions(20);
+    const { data: undecided, isLoading: isLoadingUndecided } = useQuery({
+        queryKey: ["ncr-awaiting-decision"],
+        queryFn: () => api.api_QualityReports_list({ queries: {
+            status: "FAIL", capa_decision__isnull: true, ordering: "created_at", limit: 50 } }),
+    });
+    const undecidedRows: UndecidedRow[] = useMemo(() => (undecided?.results ?? []).map((q) => ({
+        id: String(q.id),
+        report: q.report_number || "—",
+        item: q.part_display || "—",
+        description: q.description || "",
+        created: q.created_at ? new Date(q.created_at).toLocaleDateString() : "",
+    })), [undecided]);
 
     // Transform NCR trend data for chart
     const ncrChartData = useMemo(() => {
@@ -257,6 +284,22 @@ export function NcrAnalysisPage() {
                     </div>
                 </ChartCard>
             </div>
+
+            {/* Failed reports with no CAPA decision yet (ISO 9001 10.2.1: evaluate the need for action) */}
+            <ChartCard
+                title={`Awaiting a CAPA decision${undecided?.count ? ` (${undecided.count})` : ""}`}
+                description="Failed reports nobody has decided on yet: raise a CAPA, or record why one isn't needed"
+                isLoading={isLoadingUndecided}
+            >
+                <AnalyticsTable
+                    data={undecidedRows}
+                    columns={undecidedColumns}
+                    rowLink={(row) => `/details/QualityReports/${row.id}`}
+                    maxRows={10}
+                    emptyMessage="Every failed report has a CAPA decision"
+                    compact
+                />
+            </ChartCard>
 
             {/* Open Dispositions Table */}
             <ChartCard

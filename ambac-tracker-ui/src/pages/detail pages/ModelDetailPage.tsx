@@ -1,3 +1,4 @@
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import React, { useState, useMemo } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,14 @@ type RelatedModel = {
     getValue?: (modelData: any) => string | number | null; // Custom getter for the related ID
 };
 
+// TanStack's `to` is a route path, not an href: a "?a=b" left in it fails the
+// exact match and falls through to a param route (Create CAPA landed on
+// /quality/capas/$id). Split the query out into `search`.
+function splitHref(href: string): { to: string; search?: Record<string, string> } {
+    const [to, query] = href.split("?", 2);
+    return query ? { to, search: Object.fromEntries(new URLSearchParams(query)) } : { to };
+}
+
 type ActionButton = {
     label: string;
     icon?: React.ReactNode;
@@ -33,6 +42,9 @@ type ActionButton = {
     getUrl: (modelData: ModelData) => string;
     // Optional condition to show/hide the button
     condition?: (modelData: ModelData) => boolean;
+    // Shown only to users holding this permission (the API enforces it regardless;
+    // this just stops the button leading somewhere they can't finish).
+    permission?: string;
 };
 
 export type FieldsConfig = {
@@ -97,10 +109,13 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                                                          }) => {
     const [selectedDocument, setSelectedDocument] = useState<DocumentWithSource | null>(null);
     const navigate = useNavigate();
+    const goTo = (href: string) => navigate(splitHref(href) as Parameters<typeof navigate>[0]);
 
     // Filter action buttons based on their conditions
+    const { has } = usePermissionSet();
     const visibleActionButtons = (fieldsConfig.actionButtons || []).filter(
-        (button) => !button.condition || button.condition(modelData)
+        (button) => (!button.condition || button.condition(modelData))
+            && (!button.permission || has(button.permission))
     );
 
     const {
@@ -223,7 +238,7 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                                             key={idx}
                                             variant={button.variant || "default"}
                                             size="sm"
-                                            onClick={() => navigate({ to: button.getUrl(modelData) })}
+                                            onClick={() => goTo(button.getUrl(modelData))}
                                         >
                                             {button.icon}
                                             {button.label}

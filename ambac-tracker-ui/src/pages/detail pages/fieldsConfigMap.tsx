@@ -3,7 +3,7 @@ import type { FieldsConfig } from './ModelDetailPage';
 import DocumentsSection from './DocumentsSection';
 import AuditTrail from './AuditTrail';
 import { PartLinkedRecordsSection } from './PartLinkedRecordsSection';
-import { QRMeasurementsSection } from './QRMeasurementsSection';
+import { QRDetailSections } from './QRCapaDecisionSection';
 import { Link } from '@tanstack/react-router';
 
 // List of model types that have detail page configurations
@@ -67,6 +67,7 @@ export const createModelConfig = (config: {
         variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
         getUrl: (modelData: any) => string;
         condition?: (modelData: any) => boolean;
+        permission?: string;
     }>;
     linkedRecordsComponent?: React.FC<{ modelData: any }>;
 }): FieldsConfig => {
@@ -1093,6 +1094,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         variant: 'default',
                         getUrl: (modelData) => `/quality/capas/new?quality_reports=${modelData.id}`,
                         condition: (modelData) => modelData.status === 'FAIL',
+                        permission: 'initiate_capa',
                     },
                     {
                         label: 'Edit Report',
@@ -1100,7 +1102,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         getUrl: (modelData) => `/editor/quality-reports/${modelData.id}/edit`,
                     },
                 ],
-                linkedRecordsComponent: QRMeasurementsSection,
+                linkedRecordsComponent: QRDetailSections,
             });
 
         case 'quarantinedisposition':

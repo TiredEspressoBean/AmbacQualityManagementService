@@ -34,7 +34,7 @@ from Tracker.serializers.qms import (
     MeasurementDefinitionSerializer,
     CAPASerializer, CapaTasksSerializer, RcaRecordSerializer, CapaVerificationSerializer,
     FiveWhysSerializer, FishboneSerializer,
-    FPIRecordSerializer,
+    FPIRecordSerializer, CapaDecisionRequestSerializer,
 )
 from Tracker.serializers.dms import ThreeDModelSerializer, HeatMapAnnotationsSerializer
 # Module-level so `request_approval` can name it in @extend_schema; the
@@ -58,8 +58,14 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
     # batch_execution reaches batch-scope inspection reports (part is null on
     # those); batch_execution__parts is the traveler read pattern — "the batch
     # reports for this part" via the batch's member-parts M2M.
-    filterset_fields = ['status', 'part', 'step', 'part__work_order',
-                        'batch_execution', 'batch_execution__parts']
+    filterset_fields = {
+        'status': ['exact'], 'part': ['exact'], 'step': ['exact'], 'part__work_order': ['exact'],
+        'batch_execution': ['exact'], 'batch_execution__parts': ['exact'],
+        # capa_decision__isnull=true + status=FAIL: failed reports nobody has decided on.
+        'capa_decision': ['exact', 'isnull'],
+    }
+    action_permissions = {'capa_decision': ['initiate_capa']}
+    crud_exempt_actions = {'capa_decision'}
     ordering_fields = ['id', 'status', 'created_at']
     ordering = ['-created_at']
     search_fields = ['description', 'part__ERP_id']
@@ -75,6 +81,22 @@ class QualityReportViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin
             'step', 'step__part_type',
             'file',
         ).prefetch_related('operators', 'errors', 'equipment_links__equipment')
+
+    @extend_schema(request=CapaDecisionRequestSerializer, responses={200: QualityReportsSerializer},
+                   description="Record that a failed report needs no CAPA, or that the decision "
+                               "is deferred, with the reason. (CAPA raised is set by the CAPA.)")
+    @action(detail=True, methods=['post'], url_path='capa-decision', parser_classes=[parsers.JSONParser])
+    def capa_decision(self, request, pk=None):
+        from Tracker.services.qms.capa_decision import record_decision
+        report = self.get_object()
+        req = CapaDecisionRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            report = record_decision(report, decision=req.validated_data['decision'],
+                                     note=req.validated_data['note'], user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(QualityReportsSerializer(report, context={'request': request}).data)
 
 
 class ErrorTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
@@ -853,10 +875,18 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         from django.utils import timezone
         capa_type = serializer.validated_data.get('capa_type')
         initiated_date = tenant_today(self.tenant)
-        serializer.save(
+        capa = serializer.save(
             initiated_by=self.request.user,
             capa_number=CAPA.generate_capa_number(capa_type, initiated_date)
         )
+        # The reports this CAPA was raised for now say so (CAPA raised).
+        from Tracker.services.qms.capa_decision import stamp_promoted
+        stamp_promoted(capa, self.request.user)
+
+    def perform_update(self, serializer):
+        # A report linked to the CAPA later says CAPA raised too.
+        from Tracker.services.qms.capa_decision import stamp_promoted
+        stamp_promoted(serializer.save(), self.request.user)
 
     @action(detail=True, methods=['get'], url_path='blocking-items')
     def blocking_items(self, request, pk=None):

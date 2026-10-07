@@ -293,6 +293,16 @@ class StepExecutionEquipment(models.Model):
         return f"{self.equipment} ({self.role}) → {self.step_execution}"
 
 
+# Whether a failed report needed a CAPA (ISO 9001 10.2.1(b): evaluate the need for
+# action). Null on the report = nobody has decided yet. Module-level so the API names
+# one enum for it.
+CAPA_DECISION_CHOICES = [
+    ('PROMOTED', 'CAPA raised'),
+    ('NOT_REQUIRED', 'No CAPA needed'),
+    ('DEFERRED', 'Deferred'),
+]
+
+
 class QualityReports(SecureModel):
     """
     Records an instance of a quality issue or operational anomaly identified during part production.
@@ -479,6 +489,17 @@ class QualityReports(SecureModel):
                   "exclusive with step_execution - a report is per-part OR per-batch, "
                   "never both.",
     )
+
+    # === CAPA DECISION ===
+    # The quality manager's call on a failed report: raise a CAPA, or not, and why.
+    # An NCR nobody promoted must be distinguishable from one nobody looked at, so
+    # null (undecided) is meaningful and nothing defaults it. Set only through
+    # services/qms/capa_decision.py; PROMOTED is stamped when a CAPA links the report.
+    capa_decision = models.CharField(max_length=20, choices=CAPA_DECISION_CHOICES, null=True, blank=True)
+    capa_decision_note = models.TextField(blank=True, default='')
+    capa_decided_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='capa_decisions')
+    capa_decided_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name_plural = 'Error Reports'

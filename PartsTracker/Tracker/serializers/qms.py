@@ -4,6 +4,7 @@ import logging
 from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
+from Tracker.models.qms import CAPA_DECISION_CHOICES
 from Tracker.models import (
     # QMS models
     QualityErrorsList, MeasurementResult, QualityReports,
@@ -185,6 +186,12 @@ class QualityReportPersonnelSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name().strip() or obj.user.username
 
 
+class CapaDecisionRequestSerializer(serializers.Serializer):
+    """A person's call on a failed report: no CAPA needed, or put off — and why."""
+    decision = serializers.ChoiceField(choices=[('NOT_REQUIRED', 'No CAPA needed'), ('DEFERRED', 'Deferred')])
+    note = serializers.CharField(help_text="Why — required; it's what an auditor reads.")
+
+
 class QualityReportsSerializer(SecureModelMixin):
     """Quality reports serializer"""
     measurements = MeasurementResultSerializer(many=True, required=False)
@@ -212,6 +219,10 @@ class QualityReportsSerializer(SecureModelMixin):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     detected_by_info = serializers.SerializerMethodField()
     verified_by_info = serializers.SerializerMethodField()
+    # Whether this failure needed a CAPA (services/qms/capa_decision.py). Read-only
+    # here: recorded through the `capa-decision` action, or stamped by a CAPA.
+    capa_decision = serializers.ChoiceField(choices=CAPA_DECISION_CHOICES, read_only=True, allow_null=True)
+    capa_decided_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = QualityReports
@@ -222,12 +233,19 @@ class QualityReportsSerializer(SecureModelMixin):
                   "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",  # Receiving / OSP inspection
                   "step_execution", "substep", "batch_execution",  # Inspection-event provenance (which visit/batch, which substep)
                   "equipment_links", "personnel_links",  # New role-tagged shape
-                  "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived"]
+                  "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived",
+                  "capa_decision", "capa_decision_note", "capa_decided_by", "capa_decided_by_name", "capa_decided_at"]
         # Provenance is written by the capture services (inline_capture /
         # operator_capture), never by an API client hand-filing a report.
         read_only_fields = ("report_number", "created_at",
                             "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",
-                            "step_execution", "substep", "batch_execution")
+                            "step_execution", "substep", "batch_execution",
+                            "capa_decision_note", "capa_decided_by", "capa_decided_at")
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_capa_decided_by_name(self, obj):
+        u = obj.capa_decided_by
+        return ((u.get_full_name() or "").strip() or u.email) if u is not None else None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):
