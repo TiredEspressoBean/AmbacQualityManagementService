@@ -612,6 +612,64 @@ class DemoQualitySeeder(BaseSeeder):
                 dropped += 1
         return dropped
 
+    def link_inspector_gauge(self):
+        """Put an out-of-cal gauge on the inspector's home page.
+
+        `GaugeNagTile` ("Your gauges") lists equipment the user **used** in the
+        last 7 days whose calibration is due or overdue. "Used" means a GAUGE-role
+        `QualityReportEquipment` row on a report they filed.
+
+        Nothing in the seed ever created a GAUGE row — only PRODUCTION ones — so
+        the tile always read "Nothing you've used in the last 7 days is due for
+        calibration" and the compliance exhibit the training script teaches
+        ("a gauge overdue for cal shouldn't be used") could not be shown. The
+        overdue gauge already existed; the link to the inspector did not.
+
+        Idempotent: one GAUGE row per report, replaced on re-run.
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+        from Tracker.models import (CalibrationRecord, EquipmentRole, QualityReports,
+                                    QualityReportEquipment)
+
+
+        # An overdue gauge beats one merely due soon — the tile is a nag, and
+        # "overdue" is the state the script tells trainees to notice.
+        today = self.today.date() if hasattr(self.today, "date") else self.today
+        rec = (CalibrationRecord.objects
+               .filter(due_date__lte=today).exclude(result="FAIL")
+               .select_related("equipment").order_by("due_date").first())
+        if rec is None or rec.equipment_id is None:
+            return 0
+
+
+
+        # Everyone who has filed a report, rather than `users['qa_staff']` —
+        # that list holds the QA Manager only, so keying off it put the nag on
+        # Maria's home and left Sarah's (the one the training script teaches)
+        # empty. Filing a report is also exactly what the nag means by "used",
+        # so this needs no user list. A shared torque wrench out of cal is a
+        # problem for everyone who touched it.
+        #
+        # No date filter here: `my_gauge_nag` applies its own 7-day window when
+        # the tile renders, so attaching to each filer's latest report is both
+        # sufficient and immune to seeder ordering.
+        filers = (QualityReports.objects.exclude(detected_by=None)
+                  .values_list("detected_by", flat=True).distinct())
+        linked = 0
+        for user_id in set(filers):
+            # Their most recent report, so it falls inside the nag's 7-day window.
+            qr = (QualityReports.objects.filter(detected_by_id=user_id)
+                  .order_by("-created_at").first())
+            if qr is None:
+                continue
+            qr.equipment_links.filter(role=EquipmentRole.GAUGE).delete()
+            QualityReportEquipment.objects.create(
+                quality_report=qr, equipment=rec.equipment, role=EquipmentRole.GAUGE,
+            )
+            linked += 1
+        return linked
+
     def _enrich_auto_dispositions(self, qa_users, operators):
         """Advance the bare auto-created NCRs through a realistic lifecycle.
 

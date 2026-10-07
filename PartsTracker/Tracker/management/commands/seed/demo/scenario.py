@@ -195,11 +195,25 @@ class DemoScenario(BaseSeeder):
             result['manufacturing']
         )
 
+        # Last, deliberately: it attaches an out-of-cal gauge to each inspector's
+        # most recent quality report, and reports are still being written by
+        # showcase, qa_walk and the training exercises above. Run it inside the
+        # quality seeder (which is called much earlier) and only the QA Manager
+        # has filed anything yet, so the nag lands on the wrong home page.
+        nagged = self._link_gauge_nag()
+        self.log(f"\nLinked {nagged} inspector gauge(s) for the home calibration nag")
+
         self.log("\n" + "=" * 60)
         self.log("DEMO SCENARIO: Complete")
         self.log("=" * 60)
 
         return result
+
+    def _link_gauge_nag(self):
+        """Give every inspector an out-of-cal gauge on their home page."""
+        seeder = DemoQualitySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.link_inspector_gauge()
 
     def _seed_companies(self):
         """Create demo companies."""

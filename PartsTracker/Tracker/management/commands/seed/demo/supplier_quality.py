@@ -142,6 +142,27 @@ class DemoSupplierQualitySeeder(BaseSeeder):
             result["coc_lots"] += 1
 
         # --- Qualification hold: unqualified supplier soft-holds on receipt ---
+        # Arm the two gates HERE, not in receiving.py. Both are opt-in per item and
+        # nothing else in the seed turns any of the four on, so before this no lot
+        # in a demo tenant ever carried a hold — not the self-clearing ones, not a
+        # manager release, not two at once, all of which the docs describe.
+        #
+        # Ordering is the whole trick. receiving.py runs first and routes its lots
+        # while the gates are still off, so they pass. The qualifications above
+        # exist by now, so arming here holds only a lot from a supplier who has
+        # none. Arm them in receiving.py instead and EVERY lot quarantines, because
+        # at that point nobody is qualified yet.
+        #
+        # RCV-MAT-HOLD is from Bargain Bolts, who deliberately have no
+        # qualification, and is given no heat number — so it holds for BOTH
+        # reasons. It is the only exhibit showing several holds on one lot, each
+        # clearing on its own.
+        if not (part_type.requires_supplier_qualification
+                and part_type.requires_heat_number):
+            part_type.requires_supplier_qualification = True
+            part_type.requires_heat_number = True
+            part_type.save(update_fields=['requires_supplier_qualification',
+                                          'requires_heat_number'])
         recv_step = receiving.get("step") if isinstance(receiving, dict) else None
         if recv_step is not None and user is not None:
             held, created = MaterialLot.objects.update_or_create(
@@ -158,9 +179,14 @@ class DemoSupplierQualitySeeder(BaseSeeder):
             )
             if created or held.status == "RECEIVED":
                 receiving_inspection.route_received_lot(held, user)
+            held.refresh_from_db()
             result["held_lot"] = held
+            if not held.hold_reason:
+                self.log("  WARNING: RCV-MAT-HOLD did not hold — check that "
+                         "receiving.py armed requires_supplier_qualification")
 
         self.log(f"  Created {len(result['qualifications'])} qualifications, "
                  f"{len(result['part_approvals'])} part approvals, "
-                 f"CoC on {result['coc_lots']} lot(s), 1 held lot (unqualified supplier)")
+                 f"CoC on {result['coc_lots']} lot(s), "
+                 f"1 held lot ({result['held_lot'].hold_reason or 'NOT HELD — see warning'})")
         return result
