@@ -112,7 +112,9 @@ export async function flushSubstepCaptures({
 }
 
 /** Advance the operator to the next part in the StartWorkDialog queue.
- *  No-op when the queue is empty or essential context is missing. */
+ *  With nothing left queued the batch is finished: leave the step (for its work
+ *  order, else operator home) — staying put left a spent "Complete step" button
+ *  whose second press only met a cohort warning. No-op when context is missing. */
 export async function advanceToNextQueuedPart({
     queue,
     workOrderId,
@@ -122,9 +124,13 @@ export async function advanceToNextQueuedPart({
     workOrderId: string | null;
     navigate: ReturnType<typeof useNavigate>;
 }) {
-    if (!queue || !workOrderId) return;
-    const ids = queue.split(",").filter(Boolean);
-    if (ids.length === 0) return;
+    const ids = (queue ?? "").split(",").filter(Boolean);
+    if (ids.length === 0) {
+        if (workOrderId) navigate({ to: "/workorder/$workOrderId", params: { workOrderId } });
+        else navigate({ to: "/production/operator" });
+        return;
+    }
+    if (!workOrderId) return;
 
     const [nextPartId, ...rest] = ids;
 
