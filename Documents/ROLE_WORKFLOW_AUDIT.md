@@ -3475,6 +3475,40 @@ has no owner to go back to"* — so **Shipping R1 is unwalkable regardless** of 
 disassembly gap. The whole repair-and-return path (IN_REBUILD → REBUILT → RETURNED, and
 the DECLINED → RETURNED_UNREPAIRED ending) has no representative unit.
 
+**PARTIAL CORRECTION, same day, found while reviewing a peer's reman seed plan.**
+My problem statement above was overstated, and the overstatement would mislead
+anyone building on it.
+
+**There IS an automatic path.** `core_steps.finish_route` (`core_steps.py:128`)
+transitions a core when its unit reaches the end of its route — `IN_DISASSEMBLY →
+DISASSEMBLED` via `complete_core_disassembly`, `IN_REBUILD → REBUILT` via
+`complete_rebuild`. So "a core that entered teardown could never leave it" is wrong
+as written, and so is that sentence in commit `05f18cc`.
+
+**But the finding survives in substance, and is sharper for it.** The transition
+fires at the *route terminal*, and for a teardown the route is the whole authored
+one. `_scoped_step_ids` returns `None` for anything not under rebuild, and says why:
+
+> *"Teardown has no resolved scope: every core goes through the same disassembly,
+> which is why teardown can batch and rebuild cannot."*
+
+A rebuild is scoped to the operations that rebuild actually needs, so reaching the
+end of it means something. A teardown is not scoped, so the core walks all twelve
+steps — Cleaning, Nozzle Inspection, Flow Testing, Assembly, Nitride Coating, Final
+Test, Packaging — and is marked **DISASSEMBLED only after being fully reassembled
+and packaged.**
+
+So the accurate statement is not *"a teardown cannot be completed"* but **"a teardown
+cannot be completed at the point teardown actually ends"** — which is the only point
+at which the exit decision (rebuild vs harvest) is a real choice. The wiring below is
+still the right fix; it just closes a narrower, more precise gap than I first claimed.
+
+**Consequence for the repair-and-return lane, which I had also got wrong:**
+`complete_rebuild` is reachable the same way, so a REPAIR_RETURN core finishing its
+*scoped* rebuild route does become REBUILT, and `return_to_customer` then accepts it.
+Shipping R1 is therefore blocked only by the absence of a REPAIR_RETURN core in the
+demo — not, as I implied, by a missing writer for REBUILT.
+
 **FIXED 2026-10-07 (the product half).**
 
 - `useCoreLifecycleAction` gained a `complete_disassembly` action (`useReleaseCore.ts`).
