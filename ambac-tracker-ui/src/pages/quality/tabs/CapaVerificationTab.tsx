@@ -1,3 +1,4 @@
+import { format, parseISO } from "date-fns";
 import { useState } from "react"
 import { schemas, type EffectivenessResultEnum } from "@/lib/api/generated"
 import { asUserInfo } from "@/lib/extended-types"
@@ -133,7 +134,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         setFormData({
             verification_method: verification.verification_method || "",
             verification_criteria: verification.verification_criteria || "",
-            verification_date: new Date().toISOString().split('T')[0],
+            verification_date: format(new Date(), "yyyy-MM-dd"),  // today here, not in UTC
             effectiveness_result: "",
             verification_notes: "",
         })
@@ -186,7 +187,9 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         setFormData((prev) => ({ ...prev, [field]: value }))
     }
 
-    const VerificationDialog = () => (
+    // A JSX value, not a component: a component defined in this body is a new
+    // type on every render, so React remounted it per keystroke and typing broke.
+    const verificationDialog = (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -251,7 +254,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         </Dialog>
     )
 
-    const CompleteVerificationDialog = () => (
+    const completeVerificationDialog = (
         <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -409,7 +412,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                                                 {verification.verification_date && (
                                                     <div className="flex items-center gap-1">
                                                         <Calendar className="h-3 w-3" />
-                                                        {new Date(verification.verification_date).toLocaleDateString()}
+                                                        {parseISO(verification.verification_date).toLocaleDateString()}
                                                     </div>
                                                 )}
                                                 {verification.self_verified && (
@@ -446,8 +449,8 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                     )}
                 </CardContent>
             </Card>
-            <VerificationDialog />
-            <CompleteVerificationDialog />
+            {verificationDialog}
+            {completeVerificationDialog}
             <SecondPersonCosignDialog
                 open={cosignOpen}
                 onOpenChange={(v) => {

@@ -1,3 +1,4 @@
+import { parseISO } from "date-fns";
 import { useState } from "react"
 import { schemas, type RcaMethodEnum } from "@/lib/api/generated"
 import { asUserInfo } from "@/lib/extended-types"
@@ -139,7 +140,9 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
         setFormData((prev) => ({ ...prev, [field]: value }))
     }
 
-    const RcaDialog = () => (
+    // A JSX value, not a component: a component defined in this body is a new
+    // type on every render, so React remounted it per keystroke and typing broke.
+    const rcaDialog = (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -333,7 +336,7 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                         </Button>
                     </CardContent>
                 </Card>
-                <RcaDialog />
+                {rcaDialog}
             </>
         )
     }
@@ -363,7 +366,7 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                                             <>Conducted by {asUserInfo(rca.conducted_by_info)?.username}</>
                                         )}
                                         {rca.conducted_date && (
-                                            <> on {new Date(rca.conducted_date).toLocaleDateString()}</>
+                                            <> on {parseISO(rca.conducted_date).toLocaleDateString()}</>
                                         )}
                                     </CardDescription>
                                 </div>
@@ -491,7 +494,7 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                     </Card>
                 ))}
             </div>
-            <RcaDialog />
+            {rcaDialog}
         </>
     )
 }

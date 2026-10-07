@@ -30,7 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 import { useRetrieveTrainingRecord } from "@/hooks/useRetrieveTrainingRecord";
 import { useCreateTrainingRecord } from "@/hooks/useCreateTrainingRecord";
@@ -257,7 +257,7 @@ export default function EditTrainingRecordFormPage() {
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
-                                                {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                                                {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -265,7 +265,7 @@ export default function EditTrainingRecordFormPage() {
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
                                             mode="single"
-                                            selected={field.value ? new Date(field.value) : undefined}
+                                            selected={field.value ? parseISO(field.value) : undefined}
                                             onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                                             initialFocus
                                         />
@@ -325,7 +325,7 @@ export default function EditTrainingRecordFormPage() {
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
-                                                {field.value ? format(new Date(field.value), "PPP") : "No expiration"}
+                                                {field.value ? format(parseISO(field.value), "PPP") : "No expiration"}
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -333,7 +333,7 @@ export default function EditTrainingRecordFormPage() {
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
                                             mode="single"
-                                            selected={field.value ? new Date(field.value) : undefined}
+                                            selected={field.value ? parseISO(field.value) : undefined}
                                             onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
                                             initialFocus
                                         />

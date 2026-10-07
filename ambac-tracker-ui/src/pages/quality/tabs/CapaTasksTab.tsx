@@ -293,7 +293,9 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
         )
     }
 
-    const TaskDialog = () => (
+    // A JSX value, not a component: a component defined in this body is a new
+    // type on every render, so React remounted it per keystroke and typing broke.
+    const taskDialog = (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -393,7 +395,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
         </Dialog>
     )
 
-    const CompleteDialog = () => (
+    const completeDialog = (
         <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
@@ -504,8 +506,8 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                     </div>
                 </CardContent>
             </Card>
-            <TaskDialog />
-            <CompleteDialog />
+            {taskDialog}
+            {completeDialog}
         </>
     )
 }

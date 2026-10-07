@@ -31,7 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 import { ReportButton } from "@/components/reports/ReportButton";
 import { useRetrieveCalibrationRecord } from "@/hooks/useRetrieveCalibrationRecord";
@@ -252,7 +252,7 @@ export default function EditCalibrationRecordFormPage() {
                                                         !field.value && "text-muted-foreground"
                                                     )}
                                                 >
-                                                    {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                                                    {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -260,7 +260,7 @@ export default function EditCalibrationRecordFormPage() {
                                         <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
                                                 mode="single"
-                                                selected={field.value ? new Date(field.value) : undefined}
+                                                selected={field.value ? parseISO(field.value) : undefined}
                                                 onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                                                 initialFocus
                                             />
@@ -288,7 +288,7 @@ export default function EditCalibrationRecordFormPage() {
                                                         !field.value && "text-muted-foreground"
                                                     )}
                                                 >
-                                                    {field.value ? format(new Date(field.value), "PPP") : "Pick a date"}
+                                                    {field.value ? format(parseISO(field.value), "PPP") : "Pick a date"}
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -296,7 +296,7 @@ export default function EditCalibrationRecordFormPage() {
                                         <PopoverContent className="w-auto p-0" align="start">
                                             <Calendar
                                                 mode="single"
-                                                selected={field.value ? new Date(field.value) : undefined}
+                                                selected={field.value ? parseISO(field.value) : undefined}
                                                 onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                                                 initialFocus
                                             />
