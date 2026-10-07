@@ -1827,6 +1827,11 @@ class RcaRecord(SecureModel):
     root_cause_verified_at = models.DateTimeField(null=True, blank=True)
     root_cause_verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='rca_verifications')
     self_verified = models.BooleanField(default=False, help_text="True if conductor verified their own RCA")
+    # The record of WHY, for a self-verification: approve_rca demands 10+ characters
+    # of justification there, and an auditor's "why did the same person do both?"
+    # needs the answer kept, not merely typed once (2026-10-07).
+    verification_notes = models.TextField(
+        blank=True, help_text="Notes given at verification; the justification for a self-verification")
 
     # Conductor
     conducted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='rca_conducted')

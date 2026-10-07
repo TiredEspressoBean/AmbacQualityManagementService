@@ -916,3 +916,101 @@ class RCASelfVerificationTestCase(TenantTestCase):
         self.rca_no_self.refresh_from_db()
         self.assertEqual(self.rca_no_self.root_cause_verified_by, self.reviewer)
         self.assertFalse(self.rca_no_self.self_verified)
+
+
+
+class RcaAuthorAndApprovalTests(TenantTestCase):
+    """RCA authorship and approval over the API (2026-10-06).
+
+    No create path set conducted_by, so every UI-made RCA had a null author; and
+    /approve/ set VERIFIED unconditionally, never consulting the self-verification
+    rule (which lived in verify_root_cause, reachable only from tests) and never
+    setting self_verified. Now the creator is recorded and approve IS verification."""
+
+    def setUp(self):
+        super().setUp()
+        self.reviewer = User.objects.create_user(
+            username='rca-reviewer', email='rca-reviewer@example.com', password='x',
+            tenant=self.tenant_a)
+        perms = ['add_rcarecord', 'view_rcarecord', 'view_capa', 'review_rca',
+                 'full_tenant_access']
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, perms)
+        self.grant_tenant_permissions(self.reviewer, self.tenant_a, perms)
+
+    def _client(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+        client.credentials(HTTP_X_TENANT_ID=str(self.tenant_a.id))
+        return client
+
+    def _rca(self, allow_self=False):
+        capa = CAPA.objects.create(
+            tenant=self.tenant_a, capa_type='CORRECTIVE', severity='MAJOR',
+            problem_statement='Bore out of round', initiated_by=self.user_a,
+            assigned_to=self.user_a, allow_self_verification=allow_self)
+        resp = self._client(self.user_a).post('/api/RcaRecords/', {
+            'capa': str(capa.id), 'rca_method': 'FIVE_WHYS',
+            'problem_description': 'Bore out of round',
+            'root_cause_summary': 'Worn spindle bearing',
+            'five_whys_data': {'why_1_question': 'Why?', 'why_1_answer': 'Spindle runout',
+                               'identified_root_cause': 'Worn spindle bearing'},
+        }, format='json')
+        self.assertEqual(resp.status_code, 201, resp.content)
+        return RcaRecord.objects.get(pk=resp.data['id'])
+
+    def test_the_creator_is_recorded_as_conductor(self):
+        self.assertEqual(self._rca().conducted_by_id, self.user_a.id)
+
+    def test_the_author_cannot_approve_their_own_rca(self):
+        rca = self._rca()
+        resp = self._client(self.user_a).post(f'/api/RcaRecords/{rca.id}/approve/', {}, format='json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        # The sentence itself, not Django's list repr "['…']".
+        self.assertEqual(resp.json()['detail'], "Self-verification of RCA is not permitted for this CAPA")
+        rca.refresh_from_db()
+        self.assertEqual(rca.root_cause_verification_status, 'UNVERIFIED')
+
+    def test_another_reviewer_approves(self):
+        rca = self._rca()
+        resp = self._client(self.reviewer).post(f'/api/RcaRecords/{rca.id}/approve/', {}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        rca.refresh_from_db()
+        self.assertEqual((rca.root_cause_verification_status, rca.root_cause_verified_by_id,
+                          rca.self_verified), ('VERIFIED', self.reviewer.id, False))
+
+    def test_where_allowed_the_author_approves_with_a_justification_on_record(self):
+        rca = self._rca(allow_self=True)
+        client = self._client(self.user_a)
+        short = client.post(f'/api/RcaRecords/{rca.id}/approve/', {'verification_notes': 'ok'},
+                            format='json')
+        self.assertEqual(short.status_code, 400)
+        resp = client.post(f'/api/RcaRecords/{rca.id}/approve/', {
+            'verification_notes': 'Two-person shop; reviewed against the gauge data'},
+            format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        rca.refresh_from_db()
+        self.assertTrue(rca.self_verified)
+        # The justification is the record an auditor asks for — kept, not just checked.
+        self.assertEqual(rca.verification_notes, 'Two-person shop; reviewed against the gauge data')
+
+    def test_backfill_takes_the_author_from_the_audit_log_and_never_guesses(self):
+        import importlib
+        from django.apps import apps as django_apps
+        from django.contrib.contenttypes.models import ContentType
+        from auditlog.models import LogEntry
+        backfill = importlib.import_module(
+            'Tracker.migrations.0223_rca_verification_notes').backfill_conducted_by
+        logged = self._rca()
+        unlogged = self._rca()
+        RcaRecord.objects.filter(pk__in=[logged.pk, unlogged.pk]).update(conducted_by=None)
+        ct = ContentType.objects.get_for_model(RcaRecord)
+        LogEntry.objects.filter(content_type=ct, object_pk__in=[str(logged.pk), str(unlogged.pk)]).delete()
+        LogEntry.objects.create(content_type=ct, object_pk=str(logged.pk), object_repr='rca',
+                                action=LogEntry.Action.CREATE, actor=self.reviewer, changes={})
+
+        backfill(django_apps, None)
+
+        logged.refresh_from_db()
+        unlogged.refresh_from_db()
+        self.assertEqual(logged.conducted_by_id, self.reviewer.id)
+        self.assertIsNone(unlogged.conducted_by_id)  # no entry: left null, not guessed

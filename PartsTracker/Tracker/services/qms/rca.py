@@ -54,28 +54,23 @@ def verify_root_cause(rca: RcaRecord, user, verification_notes: str | None = Non
     rca.root_cause_verified_by = user
     rca.root_cause_verified_at = timezone.now()
     rca.self_verified = is_self_verification
+    rca.verification_notes = (verification_notes or '').strip()
     rca.save()
     return rca
 
 
-def approve_rca(rca: RcaRecord, user) -> RcaRecord:
-    """Approve an RCA record (reviewer sign-off).
+def approve_rca(rca: RcaRecord, user, verification_notes: str | None = None) -> RcaRecord:
+    """Approve an RCA record (reviewer sign-off) — the `approve` viewset action.
 
-    Distinct from `verify_root_cause`: this is the reviewer workflow
-    exposed at the `approve` viewset action; no self-verification rules
-    apply here because the reviewer is explicitly a different persona.
+    Approving marks the root cause verified, so it is `verify_root_cause`, with the
+    same independence rule (ISO 9001 10.2): the RCA's conductor can approve it only
+    where the CAPA allows self-verification, with a justification. This used to set
+    VERIFIED unconditionally on the assumption that the reviewer is a different
+    person; nothing checked that, and `self_verified` was never set (2026-10-06).
     The `review_rca` perm is enforced declaratively at the viewset via
     `RcaRecordViewSet.action_permissions`.
     """
-    rca.root_cause_verification_status = RootCauseVerificationStatus.VERIFIED
-    rca.root_cause_verified_by = user
-    rca.root_cause_verified_at = timezone.now()
-    rca.save(update_fields=[
-        'root_cause_verification_status',
-        'root_cause_verified_by',
-        'root_cause_verified_at',
-    ])
-    return rca
+    return verify_root_cause(rca, user, verification_notes=verification_notes)
 
 
 def create_rca_record(

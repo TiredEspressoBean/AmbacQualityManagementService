@@ -1218,6 +1218,15 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
             'capa', 'conducted_by', 'root_cause_verified_by'
         ).prefetch_related('root_causes', 'five_whys', 'fishbone')
 
+    def perform_create(self, serializer):
+        # The self-verification guard (services/qms/rca.verify_root_cause) keys on
+        # conducted_by, and no create path set it: every RCA made in the UI had a
+        # null author, so its author could verify it unchallenged. The author is
+        # whoever records it unless the caller names the conductor.
+        if not serializer.validated_data.get('conducted_by'):
+            serializer.validated_data['conducted_by'] = self.request.user
+        super().perform_create(serializer)
+
     @extend_schema(
         request=None,
         responses={200: RcaRecordSerializer, 400: OpenApiTypes.OBJECT},
@@ -1239,22 +1248,30 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
             )
 
     @extend_schema(
-        request=None,
+        request=inline_serializer(name="RcaApproveInput", fields={
+            "verification_notes": serializers.CharField(
+                required=False, allow_blank=True,
+                help_text=("Justification, required (10+ characters) when the RCA's "
+                           "conductor approves it and the CAPA allows self-verification.")),
+        }),
         responses={200: RcaRecordSerializer, 400: OpenApiTypes.OBJECT},
     )
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_rca(self, request, pk=None):
-        """Approve RCA record"""
+        """Approve RCA record — verifies its root cause, under the independence rule:
+        the conductor can't approve their own RCA unless the CAPA allows it."""
         # `review_rca` perm enforced declaratively via action_permissions on the viewset.
         from Tracker.services.qms.rca import approve_rca as approve_rca_service
 
         rca = self.get_object()
         try:
-            approve_rca_service(rca, request.user)
+            approve_rca_service(rca, request.user,
+                                verification_notes=request.data.get('verification_notes'))
             return Response(RcaRecordSerializer(rca).data)
         except Exception as e:
+            # The service raises Django's ValidationError, whose str() is its list repr.
             return Response(
-                {'detail': str(e)},
+                {'detail': '; '.join(e.messages) if getattr(e, 'messages', None) else str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

@@ -1327,9 +1327,11 @@ class RcaRecordSerializer(SecureModelMixin):
             'quality_reports', 'dispositions',
             'root_causes', 'five_whys', 'fishbone',
             'five_whys_data', 'fishbone_data',  # write-only fields
+            'verification_notes',
             'created_at', 'updated_at', 'archived'
         )
-        read_only_fields = ('root_cause_verified_at', 'created_at', 'updated_at', 'self_verified')
+        read_only_fields = ('root_cause_verified_at', 'created_at', 'updated_at', 'self_verified',
+                            'verification_notes')
 
     # Fishbone cause fields that arrive as strings and get split into lists.
     _FISHBONE_CAUSE_FIELDS = (
