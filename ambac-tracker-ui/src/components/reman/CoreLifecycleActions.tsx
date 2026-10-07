@@ -16,9 +16,10 @@ import { useScrapCore } from "@/hooks/useScrapCore";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import { isScrappable } from "@/lib/reman/core-stages";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 function detailOf(err: unknown, fallback: string) {
-    const d = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+    const d = apiErrorMessage(err);
     return d ?? fallback;
 }
 

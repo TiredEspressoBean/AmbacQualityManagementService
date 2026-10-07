@@ -21,6 +21,7 @@ import { getCookie } from "@/lib/utils"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
 import { matchKey } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type CapaVerificationTabProps = {
     capa: any
@@ -160,7 +161,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
             toast.success("Verification completed successfully")
             setCompleteDialogOpen(false)
         } catch (error: any) {
-            toast.error(error?.response?.data?.detail || "Failed to complete verification")
+            toast.error(apiErrorMessage(error) || "Failed to complete verification")
             console.error(error)
         }
     }
@@ -177,7 +178,7 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
         } catch (error: any) {
             // Surface the server's own co-sign error verbatim (throttled / wrong
             // person / not permitted / self-verification).
-            setCosignError(error?.response?.data?.detail || "Verification failed.")
+            setCosignError(apiErrorMessage(error) || "Verification failed.")
         } finally {
             setCosignPending(false)
         }

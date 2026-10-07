@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { StockItemCombobox, stockItemFields, useStockItems } from "@/components/receiving/StockItemCombobox";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRecordExpectedReceipt } from "@/hooks/useReceivingMutations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     open: boolean;
@@ -94,7 +95,7 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                 },
                 onError: (err: unknown) => {
                     const detail =
-                        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                        apiErrorMessage(err);
                     toast.error(detail ?? "Could not record the expected receipt");
                 },
             },

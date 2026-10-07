@@ -34,6 +34,7 @@ import {
     type OperatorResponses,
 } from "@/components/dwi/shared/OperatorResponseContext";
 import { buildCaptures, findMissingRequired } from "@/lib/dwi/build-captures";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 export type CohortPart = { id: string; label: string };
 
@@ -112,11 +113,7 @@ export function BatchPanel({
                     onChange?.();
                 },
                 onError: (err: unknown) => {
-                    const detail = (err as {
-                        response?: { data?: { detail?: string | string[] } };
-                    })?.response?.data?.detail;
-                    const msg = Array.isArray(detail) ? detail.join("; ") : detail;
-                    toast.error(msg ?? "Could not start batch.");
+                    toast.error(apiErrorMessage(err) ?? "Could not start batch.");
                 },
             },
         );

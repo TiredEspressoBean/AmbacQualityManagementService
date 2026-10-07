@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useExtendShelfLife } from "@/hooks/useReceivingMutations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     lotId: string;
@@ -52,7 +53,7 @@ export function ExtendShelfLifeDialog({ lotId, lotNumber, currentExpiration, ope
                 },
                 onError: (err: unknown) => {
                     const detail =
-                        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                        apiErrorMessage(err);
                     toast.error(detail ?? "Could not extend shelf life");
                 },
             },

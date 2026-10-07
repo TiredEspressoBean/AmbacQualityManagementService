@@ -16,9 +16,10 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
     cycleCountOptions, useApplyCount, useRecordCount, useSubmitCount, type CountEntry,
 } from "@/hooks/useCycleCounts";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
 
 const WHAT: Record<string, { label: string; tone: string }> = {
     SHORT: { label: "Short", tone: "text-amber-700" },

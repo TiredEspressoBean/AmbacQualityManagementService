@@ -35,6 +35,7 @@ import {
     type SignatureVerificationData,
 } from "@/components/approval/SignatureVerification";
 import { useFpiPass } from "@/hooks/useFpiRecords";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type FpiSignOffDialogProps = {
     open: boolean;
@@ -130,7 +131,7 @@ export function FpiSignOffDialog({
                     // not permitted / segregation of duties), so collapsing them
                     // into "something went wrong" would waste that.
                     const resp = (err as { response?: { data?: Record<string, unknown> } })?.response;
-                    const detail = (resp?.data?.detail as string)
+                    const detail = apiErrorMessage(err)
                         || (resp?.data?.error as string)
                         || "Could not sign off the FPI.";
                     setError(detail);

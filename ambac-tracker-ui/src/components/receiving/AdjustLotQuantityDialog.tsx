@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdjustLotQuantity } from "@/hooks/useReceivingMutations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     lotId: string;
@@ -38,7 +39,7 @@ export function AdjustLotQuantityDialog({ lotId, lotNumber, remaining, unitOfMea
                 onOpenChange(false);
             },
             onError: (err: unknown) => {
-                const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                const detail = apiErrorMessage(err);
                 toast.error(detail ?? "Could not adjust the lot");
             },
         });

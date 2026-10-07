@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Package, Trash2, Eye, Link as LinkIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 // Default params
 const DEFAULT_LIST_PARAMS = {
@@ -130,7 +131,7 @@ function ComponentActionDialog({ component, action, onClose }: {
         setErpId(""); setReason(""); onClose();
     };
     const fail = (e: unknown, fallback: string) => {
-        const d = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+        const d = apiErrorMessage(e);
         toast.error(d ?? fallback);
     };
     const accept = useMutation({

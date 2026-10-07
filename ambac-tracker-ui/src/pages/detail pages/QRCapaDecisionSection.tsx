@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { api } from "@/lib/api/generated";
 import { QRMeasurementsSection } from "./QRMeasurementsSection";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const LABEL: Record<string, string> = {
     PROMOTED: "CAPA raised",
@@ -17,7 +18,7 @@ const LABEL: Record<string, string> = {
 };
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string; note?: string[] } } })?.response?.data?.detail
+    apiErrorMessage(err)
     ?? (err as { response?: { data?: { note?: string[] } } })?.response?.data?.note?.[0] ?? fallback;
 
 /**

@@ -4,6 +4,7 @@ import { queryOptions, skipToken, useMutation, useQuery, useQueryClient } from "
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { underRoot } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 /** Cache-key roots this module owns. Prefix invalidations match against these
  *  rather than repeating the string, so a rename lands in one place. Keys
@@ -609,7 +610,7 @@ export function useMarkStaged() {
       api.api_WorkCenters_mark_staged_create(v),
     onSuccess: () => qc.invalidateQueries(underRoot(ROOT.stagingList)),
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't update staging"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't update staging"),
   });
 }
 
@@ -637,7 +638,7 @@ export function useRecordPick() {
       qc.invalidateQueries(underRoot(ROOT.planning));
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't record the pick"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't record the pick"),
   });
 }
 
@@ -730,7 +731,7 @@ export function useCreateMakeup() {
       qc.invalidateQueries(makeupStatusOptions(id));
       toast.success("Make-up parts created");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create make-up parts"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't create make-up parts"),
   });
 }
 
@@ -745,7 +746,7 @@ export function useUpdateWorkOrder() {
       qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order updated — re-solve to apply");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't update work order"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't update work order"),
   });
 }
 
@@ -761,7 +762,7 @@ export function useSetWorkOrderQuantity() {
       const msg = r?.added ? `Added ${r.added} part(s)` : r?.cancelled ? `Cancelled ${r.cancelled} unstarted part(s)` : "Quantity unchanged";
       toast.success(`${msg} — re-solve to apply`);
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't change quantity"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't change quantity"),
   });
 }
 
@@ -818,7 +819,7 @@ export function useReleaseForScheduling() {
     // offers the override, so don't shout an error toast over it.
     onError: (e: any) => {
       if (e?.response?.status !== 409) {
-        toast.error(e?.response?.data?.detail ?? "Couldn't release the work order");
+        toast.error(apiErrorMessage(e) ?? "Couldn't release the work order");
       }
     },
   });
@@ -894,7 +895,7 @@ export function useBulkRelease() {
       }
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't release the work orders"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't release the work orders"),
   });
 }
 
@@ -910,7 +911,7 @@ export function useUnreleaseForScheduling() {
       toast.success("Release withdrawn — re-solve to drop it");
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't withdraw the release"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't withdraw the release"),
   });
 }
 
@@ -924,7 +925,7 @@ export function useHoldWorkOrder() {
       qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order held — re-solve to drop it");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't hold work order"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't hold work order"),
   });
 }
 
@@ -939,7 +940,7 @@ export function useReleaseWorkOrder() {
       qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Hold cleared — re-solve to reschedule");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't release hold"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't release hold"),
   });
 }
 
@@ -954,7 +955,7 @@ export function useCancelWorkOrder() {
       qc.invalidateQueries(underRoot(ROOT.workOrder));
       toast.success("Work order cancelled");
     },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't cancel work order"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't cancel work order"),
   });
 }
 
@@ -1088,7 +1089,7 @@ export function usePlanWorkOrder() {
       }
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't create the work order"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't create the work order"),
   });
 }
 
@@ -1106,7 +1107,7 @@ export function useExplodeWorkOrder() {
       else toast.success("BOM exploded — nothing new needed");
     },
     onError: (e: any) =>
-      toast.error(e?.response?.data?.detail ?? "Couldn't explode the BOM"),
+      toast.error(apiErrorMessage(e) ?? "Couldn't explode the BOM"),
   });
 }
 
@@ -1283,8 +1284,7 @@ export function useUndoScheduleEdit() {
       toast.success(`Undid ${r.kind} — ${r.task_count} task${r.task_count === 1 ? "" : "s"} restored`);
     },
     onError: (e: unknown) => {
-      const detail = (e as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail;
+      const detail = apiErrorMessage(e);
       toast.error(detail ?? "Nothing to undo");
     },
     meta: { suppressGlobalError: true },

@@ -26,6 +26,7 @@ import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
 import {Link} from "@tanstack/react-router";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader";
 import {useRetrieveContentTypes} from "@/hooks/useRetrieveContentTypes";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 // Use generated schema for disposition form
 const formSchema = schemas.QuarantineDispositionRequest.pick({
@@ -176,7 +177,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
         } catch (err: any) {
             console.error("API Error:", err);
             // Try to extract error message from response
-            const errorMessage = err?.response?.data?.detail
+            const errorMessage = apiErrorMessage(err)
                 || err?.response?.data?.message
                 || err?.message
                 || (disposition?.id ? "Failed to update Disposition" : "Failed to create Disposition");

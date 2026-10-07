@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkExpectedReceipts } from "@/hooks/useReceivingMutations";
 import type { SourceRow } from "@/hooks/useScheduling";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Draft = {
     row: SourceRow;
@@ -92,8 +93,7 @@ export function ExpectFromShortagesDialog({ rows, open, onOpenChange, onDone }: 
                     onOpenChange(false);
                 },
                 onError: (err: unknown) => {
-                    const detail = (err as { response?: { data?: { detail?: string } } })
-                        ?.response?.data?.detail;
+                    const detail = apiErrorMessage(err);
                     toast.error(detail ?? "Could not record the expected receipts — none were saved.");
                 },
             },

@@ -19,6 +19,7 @@ import { SOURCE_TYPE_OPTIONS, type SourceType } from "@/components/receiving/lot
 import { useReceiveExpectedLot, useUploadLotCoC } from "@/hooks/useReceivingMutations";
 import { useCreateDocument } from "@/hooks/useCreateDocument";
 import { useContentTypeMapping } from "@/hooks/useContentTypes";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     lotId: string;
@@ -174,7 +175,7 @@ export function ReceiveExpectedLotDialog({
                 },
                 onError: (err: unknown) => {
                     const detail =
-                        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                        apiErrorMessage(err);
                     toast.error(detail ?? "Could not receive the lot");
                 },
             },

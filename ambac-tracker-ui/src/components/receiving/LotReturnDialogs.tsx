@@ -13,9 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { useRejectRemainder, useShipBack } from "@/hooks/useReceivingMutations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
 
 type Base = { lotId: string; lotNumber: string; open: boolean; onOpenChange: (o: boolean) => void };
 

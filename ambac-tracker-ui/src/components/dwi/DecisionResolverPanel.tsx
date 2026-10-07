@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useDecisionOptions, useResolveDecision } from "@/hooks/parts";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 export function DecisionResolverPanel({
     partId,
@@ -101,8 +102,7 @@ export function DecisionResolverPanel({
                     onResolved?.();
                 },
                 onError: (err: unknown) => {
-                    const detail = (err as { response?: { data?: { detail?: string } } })
-                        ?.response?.data?.detail;
+                    const detail = apiErrorMessage(err);
                     const msg = detail ?? "Couldn't resolve the decision.";
                     // Keep the dialog open on a co-sign failure so the lead can
                     // retype, and show the server's reason there rather than

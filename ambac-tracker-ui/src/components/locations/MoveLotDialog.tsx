@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocationInput } from "@/components/locations/LocationInput";
 import { useMoveLot } from "@/hooks/useLocations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string; to?: string[] } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
 
 /**
  * Move a lot — all of it, or some of it (split off first; the rest stays put). The

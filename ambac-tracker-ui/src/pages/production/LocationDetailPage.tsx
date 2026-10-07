@@ -14,9 +14,10 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { locationContentsOptions, useMoveLot, useMoveParts } from "@/hooks/useLocations";
 import { resolveScan } from "@/lib/scan";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 

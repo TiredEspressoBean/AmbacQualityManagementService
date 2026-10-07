@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
 
 export type ChaseTarget = {
     lot_id: string;

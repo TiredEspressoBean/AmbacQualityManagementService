@@ -21,6 +21,7 @@ import { api } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 import { blobErrorMessage, downloadBlob } from "@/lib/download";
 import { getCookie } from "@/lib/utils";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Result = Schema<"MasterWorkbookResult">;
 type SheetResult = Schema<"MasterWorkbookSheetResult">;
@@ -42,7 +43,7 @@ function Panel({ title, aside, children }: { title: string; aside?: React.ReactN
 }
 
 function errorDetail(err: unknown, fallback: string) {
-    return (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    return apiErrorMessage(err) ?? fallback;
 }
 
 function SheetRow({ sheet }: { sheet: SheetResult }) {

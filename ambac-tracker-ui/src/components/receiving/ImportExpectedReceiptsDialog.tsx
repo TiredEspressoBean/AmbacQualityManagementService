@@ -12,6 +12,7 @@ import { blobErrorMessage, downloadBlob } from "@/lib/download";
 import { useImportExpectedReceipts } from "@/hooks/useReceivingMutations";
 import type { Schema } from "@/lib/api/types";
 import { CancelExpectedReceiptDialog } from "@/components/receiving/CancelExpectedReceiptDialog";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Result = Schema<"ExpectedReceiptImportResult">;
 
@@ -57,7 +58,7 @@ export function ImportExpectedReceiptsDialog({ open, onOpenChange }: Props) {
                 if (r.errors === 0) toast.success(`${r.created} added, ${r.updated} updated.`);
             },
             onError: (err: unknown) => {
-                const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                const detail = apiErrorMessage(err);
                 toast.error(detail ?? "Couldn't read that file.");
             },
         });

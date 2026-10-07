@@ -9,6 +9,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { matchKey } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 export type OrderLine = {
   id: string;
@@ -109,8 +110,7 @@ export function usePlanOrderLine(orderId: string) {
       );
     },
     onError: (e: unknown) => {
-      const detail = (e as { response?: { data?: { detail?: string } } })
-        ?.response?.data?.detail;
+      const detail = apiErrorMessage(e);
       toast.error(detail ?? "Couldn't plan this line");
     },
   });

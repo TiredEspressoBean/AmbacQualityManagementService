@@ -22,6 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const fmt = (d: string | null) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
@@ -47,8 +48,7 @@ function PlanTeardownButton({ row }: { row: RecoverRow }) {
           setOpen(false);
         },
         onError: (err: unknown) => {
-          const detail = (err as { response?: { data?: { detail?: string } } })
-            ?.response?.data?.detail;
+          const detail = apiErrorMessage(err);
           toast.error(detail ?? "Could not plan the teardown.");
         },
       },

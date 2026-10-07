@@ -24,6 +24,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { matchKey } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type CapaTasksTabProps = {
     capa: any
@@ -199,7 +200,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
             // signature failures both come back as a 400 with a reason.
             const message =
                 error?.response?.data?.error ||
-                error?.response?.data?.detail ||
+                apiErrorMessage(error) ||
                 "Failed to complete task"
             setCompleteError(message)
             toast.error(message)

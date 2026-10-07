@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useStartTeardownBatch } from "@/hooks/useStartTeardownBatch";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { useReleaseCore } from "@/hooks/useReleaseCore";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type WorkableCore = {
     id: string | number;
@@ -14,7 +15,7 @@ type WorkableCore = {
 };
 
 function errorDetail(err: unknown, fallback: string) {
-    const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+    const detail = apiErrorMessage(err);
     return detail ?? fallback;
 }
 
@@ -62,8 +63,7 @@ export function WorkThisUnit({ core }: { core: WorkableCore }) {
                         {
                             onSuccess: (res) => workUnit(partId, String(res.work_order_id)),
                             onError: (err: unknown) => {
-                                const detail = (err as { response?: { data?: { detail?: string } } })
-                                    ?.response?.data?.detail;
+                                const detail = apiErrorMessage(err);
                                 toast.error(detail ?? "Could not start the teardown.");
                             },
                         },

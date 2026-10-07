@@ -48,6 +48,7 @@ import { schemas } from "@/lib/api/generated"
 import type { Schema } from "@/lib/api/types"
 import { isFieldRequired } from "@/lib/zod-config"
 import { matchKey } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 // Use generated schema - error messages handled by global error map
 const formSchema = schemas.QuarantineDispositionRequest.pick({
@@ -279,7 +280,7 @@ export default function EditDispositionFormPage() {
 
     const csrf = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" })
     const extractError = (err: any, m: "edit" | "create") =>
-        err?.response?.data?.detail || err?.response?.data?.message || err?.message
+        apiErrorMessage(err) || err?.response?.data?.message || err?.message
         || (m === "edit" ? "Failed to update disposition" : "Failed to create disposition")
 
     // Everything except the decision — disposition_type is read-only on update.

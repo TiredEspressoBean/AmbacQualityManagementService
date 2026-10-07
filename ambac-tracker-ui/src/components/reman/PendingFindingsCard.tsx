@@ -19,12 +19,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const headers = () => ({ "X-CSRFToken": getCookie("csrftoken") });
 
 function detailOf(err: unknown, fallback: string) {
-    const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
-    return typeof data?.detail === "string" ? data.detail : fallback;
+    return apiErrorMessage(err) ?? fallback;
 }
 
 export function PendingFindingsCard({ coreId }: { coreId: string }) {

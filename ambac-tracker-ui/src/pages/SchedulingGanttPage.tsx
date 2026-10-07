@@ -64,6 +64,7 @@ import { BulkReassignDialog } from "@/components/scheduling/BulkReassignDialog";
 import { UnscheduledPanel } from "@/components/scheduling/UnscheduledPanel";
 import { PullInWorkDialog } from "@/components/scheduling/PullInWorkDialog";
 import { ActiveRunBanner } from "@/components/scheduling/ActiveRunBanner";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const FENCE = {
   frozen: { name: "Frozen", color: "#ef4444" },
@@ -962,13 +963,13 @@ export function SchedulingGanttPage() {
         );
       }
     } catch (e: any) {
-      const why = e?.response?.data?.detail ?? "the new time wasn't allowed";
+      const why = apiErrorMessage(e) ?? "the new time wasn't allowed";
       // Say the outcome is PARTIAL. The resource change stuck and is visible on the
       // board, so an error alone reads as "nothing happened" and a success alone
       // reads as "it all worked" — neither is true.
       toast.error(reassigned
         ? `Reassigned, but kept its original time — ${why}`
-        : (e?.response?.data?.detail ?? "Couldn't move the task there"));
+        : (apiErrorMessage(e) ?? "Couldn't move the task there"));
       throw e;
     }
   }, [move, laneReassign, timeChanged]);
@@ -984,10 +985,10 @@ export function SchedulingGanttPage() {
         { task_ids: meta.taskIds, start_time: start.toISOString() });
       if (!reassigned) toast.success(`Moved ${r?.moved ?? meta.count} parts & pinned`);
     } catch (e: any) {
-      const why = e?.response?.data?.detail ?? "the new time wasn't allowed";
+      const why = apiErrorMessage(e) ?? "the new time wasn't allowed";
       toast.error(reassigned
         ? `Reassigned, but kept the original time — ${why}`
-        : (e?.response?.data?.detail ?? "Couldn't move the batch there"));
+        : (apiErrorMessage(e) ?? "Couldn't move the batch there"));
       throw e;   // rolls the bar back
     }
   }, [moveBatch, batchMeta, laneReassign, timeChanged]);

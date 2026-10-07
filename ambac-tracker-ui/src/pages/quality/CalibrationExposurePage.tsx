@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@/lib/api/generated";
 import { blobErrorMessage, downloadBlob } from "@/lib/download";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const calibrationExposureOptions = (id: string) =>
     queryOptions({
@@ -49,7 +50,7 @@ export function CalibrationExposurePage() {
         }
     };
 
-    const detail = (error as { response?: { data?: { detail?: string } } } | null)?.response?.data?.detail;
+    const detail = apiErrorMessage(error);
 
     return (
         <div className="container mx-auto max-w-5xl space-y-4 p-4 sm:p-6">

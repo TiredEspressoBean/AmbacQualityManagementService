@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCancelExpectedReceipt } from "@/hooks/useReceivingMutations";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Props = {
     lotId: string;
@@ -34,7 +35,7 @@ export function CancelExpectedReceiptDialog({ lotId, label, open, onOpenChange, 
                 onOpenChange(false);
             },
             onError: (err: unknown) => {
-                const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+                const detail = apiErrorMessage(err);
                 toast.error(detail ?? "Could not cancel the expected receipt");
             },
         });

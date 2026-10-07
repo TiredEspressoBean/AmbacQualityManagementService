@@ -9,6 +9,7 @@ import { HOLD_LABELS, SELF_CLEARING_HOLDS, lotHolds } from "@/components/receivi
 import { useConfirmWholeLotReject, useReleaseHold, useUpdateLotHeatNumber } from "@/hooks/useReceivingMutations";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Lot = Schema<"MaterialLot">;
 
@@ -60,7 +61,7 @@ function HoldCard({ lot, reason, several }: { lot: Lot; reason: string; several:
     const selfClearing = SELF_CLEARING_HOLDS.includes(reason);
 
     const errorOf = (err: unknown, fallback: string) =>
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+        apiErrorMessage(err) ?? fallback;
 
     return (
         <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50/50 p-3 text-sm dark:bg-amber-950/20">

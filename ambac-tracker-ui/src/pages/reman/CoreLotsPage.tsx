@@ -35,6 +35,7 @@ import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import {
     useAssignCoreIdentity, useCoreLots, useReceiveCoreLot, type CoreLot,
 } from "@/hooks/useCoreLots";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const GRADES = [
     { value: "A", label: "A — excellent" },
@@ -53,11 +54,7 @@ const SOURCES = [
 const NO_CUSTOMER = "__none__";
 
 function detailOf(err: unknown, fallback: string) {
-    const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
-    if (!data) return fallback;
-    if (typeof data.detail === "string") return data.detail;
-    const first = Object.values(data)[0];
-    return Array.isArray(first) ? String(first[0]) : fallback;
+    return apiErrorMessage(err) ?? fallback;
 }
 
 function ReceiveLotDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {

@@ -90,6 +90,7 @@ import {
     type CompletionContext,
 } from "./completion-adapters";
 import type { OperatorRuntimeSearchParams } from "@/lib/routes/operator-runtime-search";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const captureStateOptions = (executionId: unknown, enabled: boolean) =>
     queryOptions({
@@ -590,8 +591,7 @@ export function OperatorSubstepRuntimePage() {
                                 },
                                 onError: (err: unknown) => {
                                     const msg =
-                                        (err as { response?: { data?: { detail?: string } } })
-                                            ?.response?.data?.detail ??
+                                        apiErrorMessage(err) ??
                                         "Could not mark not applicable.";
                                     toast.error(msg);
                                 },

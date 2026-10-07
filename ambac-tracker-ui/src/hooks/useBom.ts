@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 /** Pick the BOM to work on for a part type: an editable DRAFT if one exists, else the
  *  effective RELEASED, else the latest. (Same rule as the Part Type BOM panel.) */
@@ -63,7 +64,7 @@ export function useCreateBom() {
         part_type: partTypeId, bom_type: "ASSEMBLY", status: "DRAFT", revision: "A",
       }),
     onSuccess: () => { invalidate(); toast.success("Draft BOM created"); },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create BOM"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't create BOM"),
   });
 }
 
@@ -74,7 +75,7 @@ export function useReleaseBom() {
     mutationFn: (bomId: string) =>
       api.api_BOMs_release_create(undefined, { params: { id: bomId } }),
     onSuccess: () => { invalidate(); toast.success("BOM released"); },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't release BOM"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't release BOM"),
   });
 }
 
@@ -87,7 +88,7 @@ export function useCreateBomRevision() {
         { change_description: "Edited from Part Type form" },
         { params: { id: bomId } }),
     onSuccess: () => { invalidate(); toast.success("New draft revision started"); },
-    onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Couldn't create revision"),
+    onError: (e: any) => toast.error(apiErrorMessage(e) ?? "Couldn't create revision"),
   });
 }
 

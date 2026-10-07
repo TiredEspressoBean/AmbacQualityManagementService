@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 export type Shipment = Schema<"CustomerShipment">;
 export type ReadyOrder = Schema<"ReadyToShipOrder">;
@@ -72,4 +73,4 @@ export function useUpdateShipment() {
 }
 
 export const errorOf = (err: unknown, fallback: string) =>
-    (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? fallback;
+    apiErrorMessage(err) ?? fallback;
