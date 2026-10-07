@@ -686,10 +686,18 @@ def accept(report, user):
 
 
 def reject(report, user):
-    """Reject the inspected lot (→ REJECTED).
+    """Reject the inspected lot (→ REJECTED). **A primitive — prefer
+    ``lot_reject.reject_lot``.**
 
-    Phase 2 TODO: route through QUARANTINE and spawn a ``QuarantineDisposition``
-    (RETURN_TO_SUPPLIER / USE_AS_IS / SCRAP) instead of going straight to REJECTED.
+    This moves the lot and nothing else. It opens no ``QuarantineDisposition``, so a lot
+    rejected through here alone is a dead end: ``Ship back`` is gated on an open
+    RETURN_TO_SUPPLIER disposition, and nothing would ever open one.
+
+    ``lot_reject.reject_lot`` is the whole decision — it splits a partial reject, honours
+    the ``reject_whole_lot`` permission (holding the lot as a request without it), opens
+    the disposition and applies it to the lot. It calls this function as one step of
+    that. Every caller in the product goes through it; the one seeder that didn't
+    produced a lot in a state no user could reach.
     """
     if report.material_lot_id is None:
         raise ValueError("Report is not a receiving inspection (no material_lot).")

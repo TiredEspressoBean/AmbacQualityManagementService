@@ -332,11 +332,68 @@ class DemoRemanSeeder(BaseSeeder):
         # Classify the item master: what can actually come back out of a core
         self._classify_recoverability()
 
+        # A core on a work order — without one, every reman workflow is unreachable
+        result['teardown_wo'] = self._start_a_teardown_batch(result['cores'], users)
+
         self.log(f"  Created {len(result['bom_lines'])} disassembly BOM lines")
         self.log(f"  Created {len(result['cores'])} cores")
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _start_a_teardown_batch(self, cores, users):
+        """Put RECEIVED cores onto a teardown work order and open disassembly.
+
+        Every core in the demo sat at RECEIVED or at an end state, and none was ever
+        on a work order. The core detail page says it plainly — "Cores join one when
+        teardown starts" — so with no teardown started, the whole reman lane had no
+        entry point: no unit to open in the DWI runtime, nothing to grade at the
+        bench, no scope to resolve, and nothing to send for over-and-above
+        authorisation.
+
+        Driven through `start_teardown_batch` rather than by writing rows: it creates
+        the WO, moves each unit onto the route's entry step (a core's position is its
+        part's — without that there is nowhere to open it), and runs the real
+        disassembly transition per core. Setting the fields by hand would reproduce
+        the shape and none of the behaviour, which is what left the rest of the demo
+        hollow.
+        """
+        from Tracker.services.reman.teardown import start_teardown_batch
+
+        employees = users.get('employees', []) if isinstance(users, dict) else []
+        user = employees[0] if employees else None
+        if user is None:
+            self.log("  Skipped teardown batch: no employees", warning=True)
+            return None
+
+        # Same core type, RECEIVED, and on no work order — `_validate_batch`'s rules.
+        # A core has no work_order of its own: its position is its part's, so the
+        # check reads through `core.part.work_order_id`.
+        candidates = [
+            c for c in cores
+            if c.status == 'RECEIVED' and c.part_id is not None
+            and c.part.work_order_id is None
+        ]
+        by_type = {}
+        for core in candidates:
+            by_type.setdefault(core.core_type_id, []).append(core)
+        batch = next((v for v in by_type.values() if v), [])
+        if not batch:
+            self.log("  Skipped teardown batch: no RECEIVED cores free of a work order",
+                     warning=True)
+            return None
+
+        try:
+            wo = start_teardown_batch(batch, user)
+        except Exception as e:                      # validation differences across seeds
+            self.log(f"  Skipped teardown batch: {e}", warning=True)
+            return None
+
+        # ASCII only: the seed log goes to a Windows console, where a non-ASCII dash
+        # comes out as mojibake.
+        self.log(f"  Started teardown {wo.ERP_id} with {len(batch)} core(s) "
+                 f"- the reman lane now has a unit to work")
+        return wo
 
     def _classify_recoverability(self):
         """Mark which component types can be recovered from a torn-down core.

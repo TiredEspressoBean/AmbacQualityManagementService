@@ -1,6 +1,7 @@
 """Base channel interface + a small in-process registry.
 
-Phase 1 ships ConsoleChannel only; Phase 2 adds Email and In-App.
+Three channels implement it: `console`, `email` and `in_app`. All are registered at
+import by `channels/__init__.py`.
 """
 from __future__ import annotations
 

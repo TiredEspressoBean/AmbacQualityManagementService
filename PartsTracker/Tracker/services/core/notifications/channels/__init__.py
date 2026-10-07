@@ -6,8 +6,9 @@ themselves — the dispatcher creates the outbox row, the worker task picks
 it up and calls `channel.send(row)`, and the task updates `status` /
 `sent_at` / `error` based on the return value or exception.
 
-Phase 1 ships only ConsoleChannel, which logs to stdout. Email and in-app
-channels land in Phase 2.
+Three channels ship, all registered at import below: `console` (logs to stdout, for
+dev and tests), `email` (Django core mail) and `in_app` (read back through the inbox
+endpoint).
 """
 from __future__ import annotations
 

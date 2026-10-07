@@ -117,6 +117,7 @@ class DemoReceivingSeeder(BaseSeeder):
             part_type.purchase_lead_time_days = part_type.purchase_lead_time_days or 14
             part_type.save(update_fields=['can_buy', 'purchase_lead_time_days'])
 
+
         def make_lot(suffix, qty, days_ago, late=False):
             received = today - timedelta(days=days_ago)
             # On-time: promised on/after receipt. Late: promised before receipt.
@@ -132,6 +133,9 @@ class DemoReceivingSeeder(BaseSeeder):
                     'received_by': received_by,
                     'quantity': Decimal(qty), 'quantity_remaining': Decimal(qty),
                     'unit_of_measure': 'EA', 'status': 'RECEIVED',
+                    # The part type requires one (armed above). These lots carry it
+                    # so they pass the gate; RCV-MAT-HOLD deliberately does not.
+                    'heat_number': f"HT-2026-{suffix}",
                     'location': seed_location(self.tenant, 'Receiving Dock', kind='DOCK', receiving_dock=True),
                 },
             )
@@ -160,7 +164,20 @@ class DemoReceivingSeeder(BaseSeeder):
         rejected = make_lot('0006', '80', 6)
         try:
             report = receiving_inspection.open_inspection(rejected, received_by)
-            receiving_inspection.reject(report, received_by)
+            # Reject through `reject_lot`, NOT `receiving_inspection.reject`. The latter
+            # is the primitive: it moves the lot to REJECTED and nothing else. The
+            # disposition that says what physically HAPPENS to the goods is opened by
+            # the caller, and `Ship back` is gated on an open RETURN_TO_SUPPLIER one —
+            # so a lot seeded the primitive way is a dead end the dock can never return,
+            # which is a state no user of the product can actually reach.
+            # A whole-lot reject takes `reject_whole_lot`; for anyone without it this
+            # correctly becomes a *request* that holds the lot, so run it as QA.
+            from Tracker.services.qms.lot_reject import reject_lot
+            reject_lot(
+                report, (users.get('qa_manager') if isinstance(users, dict) else None) or received_by,
+                disposition_type='RETURN_TO_SUPPLIER', whole_lot=True,
+                description='Plating blistered on the thread relief across the lot.')
+            rejected.refresh_from_db()
             result['lots'].append(rejected)
             # Raise a SCAR against the supplier for the rejected lot (SQM).
             from Tracker.services.qms.scar import open_scar_for_lot
@@ -169,6 +186,62 @@ class DemoReceivingSeeder(BaseSeeder):
         except ValueError as e:
             self.log(f"  Skipped reject/SCAR flow: {e}", warning=True)
 
+        # --- Expected receipts: the half of the lifecycle that happens BEFORE the dock ---
+        # Every lot above has already arrived, so nothing exercised `ON_ORDER` — "ordered
+        # but not yet delivered, an expected receipt, not physical stock". Without one,
+        # three receiving workflows have nothing to act on: knowing what is expected,
+        # chasing a late delivery, and reconciling a short or over delivery.
+        #
+        # ON_ORDER is safe to seed: planning counts it as incoming supply, while
+        # consumption and staging use an ACCEPTED/IN_USE allowlist, so it can never be
+        # picked or issued.
+        def make_expected(suffix, qty, due_in_days, *, ordered=None):
+            """A lot on order. No received_date, no received_by — it isn't here yet."""
+            lot, _ = MaterialLot.objects.update_or_create(
+                tenant=self.tenant, lot_number=f"RCV-EXP-{suffix}",
+                defaults={
+                    'material_type': part_type, 'supplier': supplier,
+                    'supplier_lot_number': f"SUP-EXP-{suffix}",
+                    'erp_po_number': f"PO-2026-EXP{suffix}", 'erp_po_line': '1',
+                    'promised_date': today + timedelta(days=due_in_days),
+                    'received_date': None, 'received_by': None,
+                    'quantity': Decimal(qty), 'quantity_remaining': Decimal(qty),
+                    'ordered_quantity': Decimal(ordered or qty),
+                    'unit_of_measure': 'EA', 'status': 'ON_ORDER',
+                },
+            )
+            return lot
+
+        expected_due = make_expected('0101', '200', 4)          # due later this week
+        expected_late = make_expected('0102', '150', -3)        # promised 3 days ago, nothing said
+        expected_chased = make_expected('0103', '300', -5)      # late, and the buyer rang them
+
+        # Chase through the SERVICE, not by setting fields. It writes the RecordEdit
+        # trail and — the point of the exhibit — preserves `original_promised_date`, so
+        # the supplier's on-time record is still judged against the FIRST promise. A
+        # supplier cannot improve their OTD by asking for a later date.
+        try:
+            from Tracker.services.mes.material_lot import chase_expected_receipt
+            chase_expected_receipt(
+                expected_chased, user=received_by,
+                note="Spoke to their scheduler: held at the plating sub-tier, "
+                     "re-promised for Friday.",
+                promised_date=today + timedelta(days=2))
+        except (ValueError, ImportError) as e:
+            self.log(f"  Skipped chase exhibit: {e}", warning=True)
+
+        result['lots'] += [expected_due, expected_late, expected_chased]
+
+        # --- Short delivery: 60 ordered, 40 arrived, remainder still on order ---
+        # `ordered_quantity` is what makes a receipt short; without it nothing can tell
+        # a full delivery from a partial one. 0004 arrived at 40 above.
+        short = next((l for l in result['lots'] if l.lot_number == 'RCV-MAT-0004'), None)
+        if short is not None:
+            short.ordered_quantity = Decimal('60')
+            short.short_receipt = 'BACKORDERED'
+            short.save(update_fields=['ordered_quantity', 'short_receipt', 'updated_at'])
+
         self.log(f"  Created RECEIVING step, {len(result['rulesets'])} sampling rulesets, "
-                 f"{len(result['lots'])} material lots")
+                 f"{len(result['lots'])} material lots "
+                 f"(3 on order, 1 chased, 1 short)")
         return result
