@@ -101,3 +101,32 @@ export function apiErrorField(body: ApiErrorBody | undefined, field: string): st
     if (Array.isArray(value) && typeof value[0] === "string") return value[0];
     return undefined;
 }
+
+/**
+ * The server's own sentence for a failed request, for a toast or an inline alert.
+ *
+ * Without it a refusal reads "Request failed with status code 400" — axios's message —
+ * and a deliberate "Self-approval is not permitted" looks like the app breaking. DRF
+ * puts the sentence in `detail` (a string, or a list), `non_field_errors`, or under a
+ * field name; a list is joined rather than shown as one. Undefined when the body carries
+ * no message (a network error, a 500 page), so callers fall back to their own wording.
+ */
+export function apiErrorMessage(error: unknown): string | undefined {
+    const body = apiErrorBody(error);
+    if (!body) return undefined;
+    const text = (v: unknown): string | undefined => {
+        if (typeof v === "string") return v || undefined;
+        if (Array.isArray(v)) {
+            const parts = v.filter((x): x is string => typeof x === "string" && x !== "");
+            return parts.length ? parts.join(" ") : undefined;
+        }
+        return undefined;
+    };
+    const top = text(body.detail) ?? text(body.non_field_errors);
+    if (top) return top;
+    for (const [field, value] of Object.entries(body)) {
+        const msg = text(value);
+        if (msg) return field === "detail" ? msg : `${field.replace(/_/g, " ")}: ${msg}`;
+    }
+    return undefined;
+}

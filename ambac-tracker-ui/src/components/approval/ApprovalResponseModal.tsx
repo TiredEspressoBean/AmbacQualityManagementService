@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { apiErrorBody, apiErrorField, apiErrorMessage } from "@/lib/api/describeApiError";
 import {
     Dialog,
     DialogContent,
@@ -115,21 +116,15 @@ export function ApprovalResponseModal({
                 handleClose();
                 onSuccess?.();
             },
-            onError: (err: { response?: { data?: Record<string, any> }; message?: string }) => {
-                const apiError = err?.response?.data;
-                let message = "Failed to submit response";
-
-                if (apiError?.non_field_errors?.[0]) {
-                    message = apiError.non_field_errors[0];
-                } else if (apiError?.password?.[0]) {
-                    message = "Invalid password";
-                } else if (apiError?.detail) {
-                    message = apiError.detail;
-                } else if (err?.message) {
-                    message = err.message;
-                }
-
-                setError(message);
+            onError: (err: unknown) => {
+                // A password field error says why it failed ("Invalid password"), not
+                // "password: …"; anything else is the server's own sentence.
+                const body = apiErrorBody(err);
+                setError(
+                    (apiErrorField(body, "password") && "Invalid password")
+                    || apiErrorMessage(err)
+                    || "Failed to submit response",
+                );
             },
         });
     };

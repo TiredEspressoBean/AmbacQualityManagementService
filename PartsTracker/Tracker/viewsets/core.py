@@ -2205,8 +2205,9 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
             return Response(ApprovalResponseSerializer(response).data)
 
         except Exception as e:
+            # str() of a Django ValidationError is its list repr — "['Self-approval…']".
             return Response(
-                {'detail': str(e)},
+                {'detail': '; '.join(e.messages) if getattr(e, 'messages', None) else str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -2390,7 +2391,7 @@ class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMi
             )
         except Exception as e:
             return Response(
-                {'detail': str(e)},
+                {'detail': '; '.join(e.messages) if getattr(e, 'messages', None) else str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

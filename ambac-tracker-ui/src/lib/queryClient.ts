@@ -1,7 +1,7 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { recordCaughtError } from './error-log'
-import { describeApiError } from './api/describeApiError'
+import { apiErrorMessage, describeApiError } from './api/describeApiError'
 
 /**
  * Enrich the error-log buffer (and, in dev, the console) with a source-locating
@@ -71,7 +71,9 @@ export const queryClient = new QueryClient({
             const meta = mutation.meta as MutationMeta | undefined;
             if (meta?.suppressGlobalError) return;
             toast.error(meta?.errorMessage ?? "Operation failed", {
-                description: error instanceof Error ? error.message : undefined,
+                // The server's sentence when it gave one ("Self-approval is not permitted"),
+                // not axios's "Request failed with status code 400".
+                description: apiErrorMessage(error) ?? (error instanceof Error ? error.message : undefined),
             });
         },
         onSuccess: (_data, _vars, _ctx, mutation) => {
