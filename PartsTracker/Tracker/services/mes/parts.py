@@ -749,7 +749,15 @@ def _blocks_terminal_exit(current_status, new_status, allow_terminal_exit: bool)
 
 
 def _load_parts_scoped(tenant_id, part_ids: list, *, lock: bool = False) -> dict:
-    """Fetch parts for the given tenant, keyed by id. Missing ids are absent.
+    """Fetch parts for the given tenant, keyed by **str(id)**. Missing ids are absent.
+
+    Keyed by string, and looked up with `str(pid)`, so it does not matter whether the
+    caller passes `UUID`s (service callers, which hold ORM values) or strings (the API,
+    where ids arrive as JSON). Django coerces either for the `id__in` query, so the rows
+    always came back — but keying by `p.id` made every string lookup miss, and the three
+    bulk actions reported `{"ok": false, "error": "Part not found"}` for parts that were
+    sitting right there. HTTP 200, nothing written. Every test called these services
+    directly with `UUID`s, so only the API path was ever broken.
 
     `lock=True` takes SELECT ... FOR UPDATE (must run inside a transaction) so a
     bulk mutation serializes against concurrent advancement / disposition writes
@@ -757,7 +765,7 @@ def _load_parts_scoped(tenant_id, part_ids: list, *, lock: bool = False) -> dict
     qs = Parts.unscoped.filter(tenant_id=tenant_id, id__in=part_ids)
     if lock:
         qs = qs.select_for_update()
-    return {p.id: p for p in qs}
+    return {str(p.id): p for p in qs}
 
 
 def bulk_increment(tenant_id, part_ids: list, operator) -> list[BulkResult]:
@@ -766,7 +774,7 @@ def bulk_increment(tenant_id, part_ids: list, operator) -> list[BulkResult]:
     with transaction.atomic():
         parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
-            part = parts.get(pid)
+            part = parts.get(str(pid))
             if part is None:
                 results.append(BulkResult(id=pid, ok=False, error="Part not found"))
                 continue
@@ -794,7 +802,7 @@ def bulk_rollback(
     with transaction.atomic():
         parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
-            part = parts.get(pid)
+            part = parts.get(str(pid))
             if part is None:
                 results.append(BulkResult(id=pid, ok=False, error="Part not found"))
                 continue
@@ -841,7 +849,7 @@ def bulk_set_status(
     with transaction.atomic():
         parts = _load_parts_scoped(tenant_id, part_ids, lock=True)
         for pid in part_ids:
-            part = parts.get(pid)
+            part = parts.get(str(pid))
             if part is None:
                 results.append(BulkResult(id=pid, ok=False, error="Part not found"))
                 continue

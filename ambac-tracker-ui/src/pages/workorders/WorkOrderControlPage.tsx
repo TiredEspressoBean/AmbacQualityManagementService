@@ -1217,30 +1217,35 @@ export function WorkOrderControlPage() {
     // In-process rework steps for the "send to rework" picker (2c).
     const reworkSteps = (wo?.steps ?? []).filter((s) => s.node_type === "REWORK");
 
+    // These endpoints answer 200 with a per-id result list, so a wholly failed bulk
+    // action still looks like success unless someone reads `results`. Advance did;
+    // set-status and scrap did not, which is how a string-vs-UUID bug that made every
+    // bulk write a no-op stayed invisible — the row showed the new status, the server
+    // had written nothing. Dedupe identical reasons so a cohort blocked on the same
+    // thing doesn't repeat itself.
+    function reportBulkFailures(
+        data: { results?: { ok?: boolean; error?: string; id?: string }[] },
+        fallback: string,
+    ) {
+        const failures = (data.results ?? []).filter((r) => !r.ok);
+        if (failures.length === 0) return;
+        const reasons = new Set<string>();
+        failures.forEach((f) => { if (f.error) reasons.add(f.error); });
+        setBulkErrorBanner(reasons.size > 0
+            ? `${failures.length} part(s) ${fallback}: ${[...reasons].join("; ")}`
+            : `${failures.length} part(s) ${fallback}.`);
+    }
+
     function applyToIds(ids: string[], action: Action) {
         setParts((prev) => prev.map((p) => (ids.includes(p.id) ? applyAction(p, wo?.steps ?? [], action) : p)));
         if (action.kind === "advance") {
             // Privileged emergency action; the engine is event-driven for the
             // default operator flow. Guarded at the UI by `canForceAdvance` and
             // by tenant permissions on the API.
+            // Surfaces the engine's own blocker reasons (substep gate, FPI,
+            // quarantine, …) so supervisors know what to resolve.
             bulkIncrementMutation.mutate(ids, {
-                onSuccess: (data) => {
-                    const failures = (data.results as { ok?: boolean; error?: string; id?: string }[]).filter((r) => !r.ok);
-                    if (failures.length === 0) return;
-                    // Surface the actual blocker reasons returned by the
-                    // engine (substep gate, FPI, quarantine, etc.) so
-                    // supervisors know what to resolve. Dedupe identical
-                    // messages so a cohort blocked on the same reason
-                    // doesn't repeat noise.
-                    const reasons = new Set<string>();
-                    failures.forEach((f) => {
-                        if (f.error) reasons.add(f.error);
-                    });
-                    const summary = reasons.size > 0
-                        ? `${failures.length} part(s) blocked: ${[...reasons].join("; ")}`
-                        : `${failures.length} part(s) failed to advance.`;
-                    setBulkErrorBanner(summary);
-                },
+                onSuccess: (data) => reportBulkFailures(data, "blocked"),
             });
         } else if (action.kind === "split") {
             // Lot-cohesion engine: pull part(s) off the cohort so they
@@ -1274,9 +1279,13 @@ export function WorkOrderControlPage() {
                 },
             });
         } else if (action.kind === "status") {
-            bulkSetStatusMutation.mutate({ ids, status: action.status });
+            bulkSetStatusMutation.mutate({ ids, status: action.status }, {
+                onSuccess: (data) => reportBulkFailures(data, "could not be updated"),
+            });
         } else if (action.kind === "scrap") {
-            bulkSetStatusMutation.mutate({ ids, status: "SCRAPPED", reason: action.reason });
+            bulkSetStatusMutation.mutate({ ids, status: "SCRAPPED", reason: action.reason }, {
+                onSuccess: (data) => reportBulkFailures(data, "could not be scrapped"),
+            });
         } else if (action.kind === "move") {
             void Promise.all(
                 ids.map((id) => updatePart.mutateAsync({ id, data: { step: action.stepId } })),
