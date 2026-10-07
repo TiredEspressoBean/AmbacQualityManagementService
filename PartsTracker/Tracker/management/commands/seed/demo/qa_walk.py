@@ -184,7 +184,7 @@ class DemoQaWalkSeeder(BaseSeeder):
                 part_by_suffix.get('005'), step_map.get('Nitride Coating'), operator)
             result['shipment'] = shipment
 
-            # 006 — bare OPEN disposition assigned to Sarah, no linked QR.
+            # 006 — untriaged OPEN disposition assigned to Sarah, with its failed QR.
             quarantine_dispo = self._create_open_disposition(
                 part_by_suffix.get('006'), approver)
             result['quarantine_disposition'] = quarantine_dispo
@@ -604,8 +604,11 @@ class DemoQaWalkSeeder(BaseSeeder):
         return shipped
 
     def _create_open_disposition(self, part, assigned_user):
-        """Bare OPEN disposition, no linked QR, assigned to Sarah. This is the
-        background 'you already have work waiting' exhibit."""
+        """Untriaged OPEN disposition assigned to Sarah, linked to the failed
+        torque-check report it came from. This is the background 'you already have
+        work waiting' exhibit. It used to have no linked QR — but a disposition always
+        stems from a failed report and the API requires one, so its edit form could
+        never be saved (found walking the QA Inspector onboarding, 2026-10-07)."""
         if not (part and assigned_user):
             return None
         created_at = self.today - timedelta(hours=10)
@@ -640,4 +643,17 @@ class DemoQaWalkSeeder(BaseSeeder):
             },
         )
         QuarantineDisposition.objects.filter(pk=disp.pk).update(created_at=created_at)
+        qr, _ = QualityReports.objects.update_or_create(
+            tenant=self.tenant, report_number='QR-QA-INSPECT-006-TQ',
+            defaults={
+                'part': part, 'step': None, 'status': 'FAIL',
+                'description': 'Torque check failed on assembly bolt at Assembly station.',
+                'detected_by': assigned_user, 'verified_by': None,
+                'sampling_method': 'manual', 'is_first_piece': False,
+                'file': None, 'sampling_audit_log': None,
+            },
+        )
+        QualityReports.objects.filter(pk=qr.pk).update(created_at=created_at - timedelta(hours=1))
+        disp.quality_reports.add(qr)
+        self._drop_tag_along_dispositions(disp, qr)
         return disp
