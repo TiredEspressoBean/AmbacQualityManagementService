@@ -4816,6 +4816,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/InspectionInbox/qa-signoffs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description QA-gated steps whose submitted work waits for a sign-off, optionally for one work order (the work order page's exceptions panel). */
+        get: operations["api_InspectionInbox_qa_signoffs_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/InspectionInbox/sign-off-step/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step's substeps. */
+        post: operations["api_InspectionInbox_sign_off_step_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/JobRoles/": {
         parameters: {
             query?: never;
@@ -8445,6 +8479,23 @@ export interface paths {
          *     automatically; no manual pick).
          */
         get: operations["api_Parts_decision_options_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Parts/{id}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The serial's history, newest first: the audit log of the part and of every record about it (step executions, measurements, material draws, quality reports, dispositions, overrides), derived on read. */
+        get: operations["api_Parts_history_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -24298,12 +24349,13 @@ export interface components {
         InspectionInboxSeveritySeverityEnum: "NORMAL" | "TIGHTENED" | "REDUCED";
         /**
          * @description * `fpi` - fpi
+         *     * `qa_signoff` - qa_signoff
          *     * `receiving` - receiving
          *     * `outside_process` - outside_process
          *     * `in_process` - in_process
          * @enum {string}
          */
-        InspectionInboxTypeEnum: "fpi" | "receiving" | "outside_process" | "in_process";
+        InspectionInboxTypeEnum: "fpi" | "qa_signoff" | "receiving" | "outside_process" | "in_process";
         IntegrationCatalogItem: {
             provider: string;
             name: string;
@@ -28096,6 +28148,30 @@ export interface components {
          * @enum {string}
          */
         PartApprovalTypeEnum: "PPAP" | "FAI";
+        PartHistoryChange: {
+            field: string;
+            old: string | null;
+            new: string | null;
+        };
+        /** @description One audit-log entry about a serial or a record about it (services/mes/part_history). */
+        PartHistoryEntry: {
+            id: number;
+            /** Format: date-time */
+            timestamp: string;
+            /** @description created / updated / deleted */
+            action: string;
+            actor_id: number | null;
+            /** @description Empty when the system made the change. */
+            actor_name: string;
+            record_type: string;
+            record_id: string;
+            record: string;
+            changes: components["schemas"]["PartHistoryChange"][];
+        };
+        PartHistoryPage: {
+            count: number;
+            results: components["schemas"]["PartHistoryEntry"][];
+        };
         PartIncrementInputRequest: {
             /** @description Decision result for branching steps: 'pass', 'fail', 'default', 'alternate', or measurement value */
             decision?: string;
@@ -31421,6 +31497,18 @@ export interface components {
         PcrRejectPayloadRequest: {
             reason: string;
         };
+        /** @description A QA-gated step on a work order whose submitted work waits for a sign-off. */
+        PendingQaSignoff: {
+            /** Format: uuid */
+            work_order_id: string;
+            work_order: string;
+            /** Format: uuid */
+            step_id: string;
+            step: string;
+            units: number;
+            /** Format: date-time */
+            oldest_entered_at: string | null;
+        };
         PermissionListResponse: {
             permissions: {
                 [key: string]: unknown;
@@ -34554,6 +34642,17 @@ export interface components {
          * @enum {string}
          */
         ShortReceiptEnum: "BACKORDERED" | "CLOSED";
+        SignOffStepRequestRequest: {
+            /** Format: uuid */
+            work_order: string;
+            /** Format: uuid */
+            step: string;
+        };
+        SignOffStepResult: {
+            /** @description Advancement after the sign-off: advanced / blocked / ... */
+            status: string;
+            parts_advanced: number;
+        };
         /** @description Serializer for self-service tenant signup. */
         SignupRequest: {
             company_name: string;
@@ -48305,6 +48404,50 @@ export interface operations {
             };
         };
     };
+    api_InspectionInbox_qa_signoffs_list: {
+        parameters: {
+            query?: {
+                work_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingQaSignoff"][];
+                };
+            };
+        };
+    };
+    api_InspectionInbox_sign_off_step_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignOffStepRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignOffStepResult"];
+                };
+            };
+        };
+    };
     api_JobRoles_list: {
         parameters: {
             query?: {
@@ -54799,6 +54942,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionOptionsResponse"];
+                };
+            };
+        };
+    };
+    api_Parts_history_retrieve: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartHistoryPage"];
                 };
             };
         };

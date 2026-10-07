@@ -5,7 +5,10 @@ import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, 
 import { Link } from "@tanstack/react-router";
 import { useWorkOrderStepHistory } from "@/hooks/useWorkOrderStepHistory";
 import { OspShipmentsCard } from "@/components/workorder/OspShipmentsCard";
-import { memo } from "react";
+import { memo, useState } from "react";
+import { useQaSignoffs } from "@/hooks/useInspectionInbox";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { QaSignOffDialog, type SignOffTarget } from "@/components/qa/QaSignOffDialog";
 
 // Guard against null / invalid dates so a missing timestamp renders nothing
 // rather than "Invalid Date".
@@ -42,7 +45,14 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
     const reworkCount = parts.filter(p => p.part_status === 'REWORK_IN_PROGRESS' || p.part_status === 'REWORK_NEEDED').length;
     const scrappedCount = parts.filter(p => p.part_status === 'SCRAPPED').length;
     const awaitingQaCount = parts.filter(p => p.part_status === 'AWAITING_QA').length;
-    const totalExceptions = quarantinedCount + reworkCount + scrappedCount + awaitingQaCount;
+    // Units parked at a QA-gated step until someone signs it off. Their status stays
+    // IN_PROGRESS, so the counts above can't see them (services/qms/step_signoff).
+    const { data: pendingSignoffs = [] } = useQaSignoffs(workOrder?.id ?? "");
+    const { has } = usePermissionSet();
+    const canSignOff = has("sign_off_fpi");
+    const [signOff, setSignOff] = useState<SignOffTarget | null>(null);
+    const awaitingSignoffCount = pendingSignoffs.reduce((n, g) => n + g.units, 0);
+    const totalExceptions = quarantinedCount + reworkCount + scrappedCount + awaitingQaCount + awaitingSignoffCount;
 
     // Fetch step history for digital traveler
     const { data: stepHistoryData, isLoading: stepHistoryLoading } = useWorkOrderStepHistory(
@@ -169,6 +179,21 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                         </p>
                     ) : (
                         <div className="flex flex-wrap gap-2">
+                            {pendingSignoffs.map((g) => (
+                                <button
+                                    key={g.step_id}
+                                    type="button"
+                                    disabled={!canSignOff}
+                                    title={canSignOff ? "Sign off this step" : "Waiting for a QA inspector to sign off"}
+                                    onClick={() => setSignOff({ workOrderId: g.work_order_id, stepId: g.step_id, step: g.step,
+                                                               workOrder: g.work_order, units: g.units })}
+                                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                >
+                                    <Badge className={`bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-sm ${canSignOff ? "cursor-pointer hover:opacity-90" : ""}`}>
+                                        Awaiting QA sign-off · {g.step} · {g.units}
+                                    </Badge>
+                                </button>
+                            ))}
                             {awaitingQaCount > 0 && (
                                 <button
                                     type="button"
@@ -237,6 +262,7 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                     >
                         View in Control Center →
                     </Link>
+                    <QaSignOffDialog target={signOff} onOpenChange={(o) => { if (!o) setSignOff(null); }} />
                 </CardContent>
             </Card>
 

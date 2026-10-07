@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
     ArrowRight, CheckCircle2, ClipboardCheck, Gauge, Inbox, PackageSearch,
-    PauseCircle, Ruler, Siren, Truck,
+    PauseCircle, Ruler, ShieldCheck, Siren, Truck,
 } from "lucide-react";
 import { useAuthUser, type AuthUser } from "@/hooks/useAuthUser";
 import { PersonaSwitcher } from "@/components/home/PersonaSwitcher";
@@ -31,6 +31,7 @@ import { useClaimApproval } from "@/hooks/useClaimApproval";
 import { useClaimableApprovals } from "@/hooks/useClaimableApprovals";
 import { useGaugeNag } from "@/hooks/useGaugeNag";
 import { useInspectionInbox, type InspectionInboxRow } from "@/hooks/useInspectionInbox";
+import { QaSignOffDialog, type SignOffTarget } from "@/components/qa/QaSignOffDialog";
 import { useMyCapaTasks } from "@/hooks/useMyCapaTasks";
 import { useMyDispositions } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
@@ -48,6 +49,7 @@ const TYPE_META: Record<string, { label: string; icon: React.ComponentType<{ cla
     outside_process: { label: "OSP returns", icon: Truck },
     in_process: { label: "In-process", icon: Ruler },
     fpi: { label: "First piece", icon: ClipboardCheck },
+    qa_signoff: { label: "QA sign-off", icon: ShieldCheck },
 };
 
 /** "0.6" hours → "35m"; "5" → "5h"; "50" → "2d". */
@@ -156,6 +158,7 @@ function InboxList() {
     const navigate = useNavigate();
     const { data: allRows = [], isLoading } = useInspectionInbox();
     const [typeFilter, setTypeFilter] = useState<InboxType | "all">("all");
+    const [signOff, setSignOff] = useState<SignOffTarget | null>(null);
 
     // FPI rows live in the banner, not the list.
     const rows = useMemo(() => allRows.filter((r) => r.type !== "fpi"), [allRows]);
@@ -181,6 +184,12 @@ function InboxList() {
             toast.info(`Held: ${row.blocked_reason.replace(/_/g, " ").toLowerCase()}`, {
                 description: "Resolve the hold from the incoming queue.",
             });
+            return;
+        }
+        if (row.type === "qa_signoff") {
+            const [workOrderId, stepId] = row.id.split(":");
+            setSignOff({ workOrderId, stepId, step: row.title.replace(/^QA sign-off · /, ""),
+                         workOrder: row.wo ?? "", units: row.quantity ?? 1 });
             return;
         }
         if (row.subject_kind === "material_lot") {
@@ -279,6 +288,7 @@ function InboxList() {
                     );
                 })}
             </div>
+            <QaSignOffDialog target={signOff} onOpenChange={(o) => { if (!o) setSignOff(null); }} />
         </div>
     );
 }

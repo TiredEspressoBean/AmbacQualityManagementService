@@ -3406,13 +3406,14 @@ export type InspectionInboxRow = {
 export type InspectionInboxTypeEnum =
   /**
    * * `fpi` - fpi
+   * `qa_signoff` - qa_signoff
    * `receiving` - receiving
    * `outside_process` - outside_process
    * `in_process` - in_process
    *
-   * @enum fpi, receiving, outside_process, in_process
+   * @enum fpi, qa_signoff, receiving, outside_process, in_process
    */
-  "fpi" | "receiving" | "outside_process" | "in_process";
+  "fpi" | "qa_signoff" | "receiving" | "outside_process" | "in_process";
 export type SubjectKindEnum =
   /**
    * * `fpi_record` - fpi_record
@@ -11764,6 +11765,32 @@ export type PartApprovalRequest = {
   expiry_date?: (string | null) | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
+};
+export type PartHistoryEntry = {
+  id: number;
+  timestamp: string;
+  /**
+   * created / updated / deleted
+   */
+  action: string;
+  actor_id: number | null;
+  /**
+   * Empty when the system made the change.
+   */
+  actor_name: string;
+  record_type: string;
+  record_id: string;
+  record: string;
+  changes: Array<PartHistoryChange>;
+};
+export type PartHistoryChange = {
+  field: string;
+  old: string | null;
+  new: string | null;
+};
+export type PartHistoryPage = {
+  count: number;
+  results: Array<PartHistoryEntry>;
 };
 export type PartSelect = {
   id: string;
@@ -20531,6 +20558,7 @@ const IncomingInspectionRow = z.object({
 });
 const InspectionInboxTypeEnum = z.enum([
   "fpi",
+  "qa_signoff",
   "receiving",
   "outside_process",
   "in_process",
@@ -20570,6 +20598,22 @@ const InspectionInboxRow = z.object({
   severity: InspectionInboxSeverity.nullable(),
   resume: z.string().nullable(),
   blocked_reason: z.string().nullable(),
+});
+const PendingQaSignoff = z.object({
+  work_order_id: z.string().uuid(),
+  work_order: z.string(),
+  step_id: z.string().uuid(),
+  step: z.string(),
+  units: z.number().int(),
+  oldest_entered_at: z.string().datetime({ offset: true }).nullable(),
+});
+const SignOffStepRequestRequest = z.object({
+  work_order: z.string().uuid(),
+  step: z.string().uuid(),
+});
+const SignOffStepResult = z.object({
+  status: z.string(),
+  parts_advanced: z.number().int(),
 });
 const JobRole = z.object({
   id: z.string().uuid(),
@@ -22391,6 +22435,26 @@ const DecisionOptionsResponse = z.object({
   default_branch: z.object({}).partial().passthrough().nullish(),
   alternate_branch: z.object({}).partial().passthrough().nullish(),
   qa_suggested: z.string().nullish(),
+});
+const PartHistoryChange = z.object({
+  field: z.string(),
+  old: z.string().nullable(),
+  new: z.string().nullable(),
+});
+const PartHistoryEntry = z.object({
+  id: z.number().int(),
+  timestamp: z.string().datetime({ offset: true }),
+  action: z.string(),
+  actor_id: z.number().int().nullable(),
+  actor_name: z.string(),
+  record_type: z.string(),
+  record_id: z.string(),
+  record: z.string(),
+  changes: z.array(PartHistoryChange),
+});
+const PartHistoryPage = z.object({
+  count: z.number().int(),
+  results: z.array(PartHistoryEntry),
 });
 const PartIncrementInputRequest = z
   .object({ decision: z.string().min(1) })
@@ -28437,6 +28501,9 @@ export const schemas = {
   InspectionInboxSeveritySeverityEnum,
   InspectionInboxSeverity,
   InspectionInboxRow,
+  PendingQaSignoff,
+  SignOffStepRequestRequest,
+  SignOffStepResult,
   JobRole,
   PaginatedJobRoleList,
   JobRoleRequest,
@@ -28613,6 +28680,9 @@ export const schemas = {
   PatchedPartsRequest,
   CompleteStepResponse,
   DecisionOptionsResponse,
+  PartHistoryChange,
+  PartHistoryEntry,
+  PartHistoryPage,
   PartIncrementInputRequest,
   PartsRejoinToLotInputRequest,
   PartsRejoinToLotResponse,
@@ -38564,6 +38634,36 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
   },
   {
     method: "get",
+    path: "/api/InspectionInbox/qa-signoffs/",
+    alias: "api_InspectionInbox_qa_signoffs_list",
+    description: `QA-gated steps whose submitted work waits for a sign-off, optionally for one work order (the work order page&#x27;s exceptions panel).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "work_order",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(PendingQaSignoff),
+  },
+  {
+    method: "post",
+    path: "/api/InspectionInbox/sign-off-step/",
+    alias: "api_InspectionInbox_sign_off_step_create",
+    description: `Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step&#x27;s substeps.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SignOffStepRequestRequest,
+      },
+    ],
+    response: SignOffStepResult,
+  },
+  {
+    method: "get",
     path: "/api/integration-sync-logs/",
     alias: "api_integration_sync_logs_list",
     description: `Read-only sync log history. Admin/staff only.`,
@@ -39106,7 +39206,10 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -39145,10 +39248,7 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -43530,7 +43630,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/Orders/import-preview/",
@@ -43566,10 +43669,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Orders/import-template/:template_format/",
@@ -44798,6 +44898,36 @@ automatically; no manual pick).`,
       },
     ],
     response: DecisionOptionsResponse,
+  },
+  {
+    method: "get",
+    path: "/api/Parts/:id/history/",
+    alias: "api_Parts_history_retrieve",
+    description: `The serial&#x27;s history, newest first: the audit log of the part and of every record about it (step executions, measurements, material draws, quality reports, dispositions, overrides), derived on read.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: PartHistoryPage,
   },
   {
     method: "post",
@@ -49090,7 +49220,10 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/RebuildScopePresets/:id/version-history/",
@@ -49182,10 +49315,7 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: RebuildSlotOverride,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/RebuildSlotOverrides/:id/",
@@ -54608,7 +54738,10 @@ record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is
       },
     ],
     response: StorageLocation,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StorageLocations/:id/",
@@ -54666,10 +54799,7 @@ record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is
       },
     ],
     response: StorageLocation,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/StorageLocations/:id/",
@@ -59298,7 +59428,10 @@ Admins can check any user; regular users can only check themselves.`,
 Admins can check any user; regular users can only check themselves.`,
     requestFormat: "json",
     response: EffectivePermissionsResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/UserWorkCenterMemberships/",
@@ -59380,10 +59513,7 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: UserWorkCenterMembership,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "put",
     path: "/api/UserWorkCenterMemberships/:id/",

@@ -267,11 +267,16 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             ];
             toast.success(`Step complete — lot advanced (${advanced.length} part${advanced.length === 1 ? "" : "s"} moved).`);
         } else if (result.status === "blocked") {
-            const blockers = result.blockers_by_part ?? {};
-            const reasons = new Set<string>();
-            Object.values(blockers).forEach((list) =>
-                (list as string[]).forEach((r) => reasons.add(r)),
-            );
+            // This unit's own blockers. The result lists every cohort part's, and an
+            // operator looking at one unit was shown another's ("No active
+            // StepExecution" for a core nobody has started yet) as if it were theirs.
+            const byPart: Record<string, string[]> = {
+                ...(result.blockers_by_part ?? {}),
+                ...(result.split_parts_blocked ?? {}),
+            };
+            const mine = byPart[partId] ?? [];
+            const othersWaiting = Object.keys(byPart).filter((id) => id !== partId).length;
+            const reasons = new Set<string>(mine);
             // Classify the blocker set: a hard per-part failure (quarantine,
             // out-of-spec, sampling fail, unauthorized operator) is not the
             // same UX as "the other cohort parts haven't finished yet." Use
@@ -285,7 +290,7 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             );
             const description = reasonList.length > 0
                 ? reasonList.slice(0, 3).join("; ")
-                : "Other parts in the cohort still have work to do.";
+                : `Waiting on ${othersWaiting} other unit${othersWaiting === 1 ? "" : "s"} in the lot.`;
             if (hasHardFail) {
                 toast.error("FAIL recorded — part held for disposition", { description });
             } else if (hasSignoffPending) {

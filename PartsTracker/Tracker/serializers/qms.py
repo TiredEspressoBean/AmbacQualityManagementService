@@ -2177,7 +2177,7 @@ class InspectionInboxSeveritySerializer(serializers.Serializer):
 
 # Named for ENUM_NAME_OVERRIDES — a bare "type" field otherwise collides with
 # MeasurementDefinition.type and renames the long-exported TypeEnum.
-INSPECTION_INBOX_TYPES = ["fpi", "receiving", "outside_process", "in_process"]
+INSPECTION_INBOX_TYPES = ["fpi", "qa_signoff", "receiving", "outside_process", "in_process"]
 
 
 class InspectionInboxRowSerializer(serializers.Serializer):
@@ -2197,6 +2197,26 @@ class InspectionInboxRowSerializer(serializers.Serializer):
     severity = InspectionInboxSeveritySerializer(allow_null=True)
     resume = serializers.CharField(allow_null=True)
     blocked_reason = serializers.CharField(allow_null=True)
+
+
+class PendingQaSignoffSerializer(serializers.Serializer):
+    """A QA-gated step on a work order whose submitted work waits for a sign-off."""
+    work_order_id = serializers.UUIDField()
+    work_order = serializers.CharField()
+    step_id = serializers.UUIDField()
+    step = serializers.CharField()
+    units = serializers.IntegerField()
+    oldest_entered_at = serializers.DateTimeField(allow_null=True)
+
+
+class SignOffStepRequestSerializer(serializers.Serializer):
+    work_order = serializers.UUIDField()
+    step = serializers.UUIDField()
+
+
+class SignOffStepResultSerializer(serializers.Serializer):
+    status = serializers.CharField(help_text="Advancement after the sign-off: advanced / blocked / ...")
+    parts_advanced = serializers.IntegerField()
 
 
 class MaterialLotBulkRowSerializer(serializers.Serializer):

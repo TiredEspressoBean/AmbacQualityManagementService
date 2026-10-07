@@ -246,11 +246,36 @@ def _fpi_rows():
         }
 
 
+def _qa_signoff_rows():
+    """QA-gated steps whose submitted work waits for a sign-off. Without this row the
+    unit was parked with no inspector able to see it (services.qms.step_signoff)."""
+    from Tracker.services.qms.step_signoff import pending_signoffs
+    for g in pending_signoffs():
+        yield {
+            "type": "qa_signoff",
+            "subject_kind": "operation",
+            "id": f"{g['work_order_id']}:{g['step_id']}",
+            "title": f"QA sign-off · {g['step']}",
+            "detail": f"{g['units']} unit{'' if g['units'] == 1 else 's'} waiting",
+            "wo": g["work_order"],
+            "quantity": g["units"],
+            "age_hours": _hours_since(g["oldest_entered_at"]),
+            # Work is parked until someone signs — urgent, like a first piece.
+            "due_tone": "orange",
+            "due_label": "work is parked until signed off",
+            "plan": None,
+            "severity": None,
+            "resume": None,
+            "blocked_reason": None,
+        }
+
+
 def build_inbox_rows():
     """The inspector inbox rows: FPI first, then by urgency tone, then age.
     A flat list (the ``build_incoming_rows`` convention) — clients derive the
     type-count chips (with oldest-age; counts alone hide rot) from the rows."""
-    rows = [*_fpi_rows(), *_receiving_rows(), *_outside_process_rows(), *_in_process_rows()]
+    rows = [*_fpi_rows(), *_qa_signoff_rows(), *_receiving_rows(), *_outside_process_rows(),
+            *_in_process_rows()]
 
     tone_rank = {"red": 0, "orange": 1, "green": 2, "gray": 3}
     rows.sort(key=lambda r: (

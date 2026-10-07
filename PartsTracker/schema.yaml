@@ -12759,6 +12759,54 @@ paths:
                 items:
                   $ref: '#/components/schemas/InspectionInboxRow'
           description: ''
+  /api/InspectionInbox/qa-signoffs/:
+    get:
+      operationId: api_InspectionInbox_qa_signoffs_list
+      description: QA-gated steps whose submitted work waits for a sign-off, optionally
+        for one work order (the work order page's exceptions panel).
+      parameters:
+      - in: query
+        name: work_order
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PendingQaSignoff'
+          description: ''
+  /api/InspectionInbox/sign-off-step/:
+    post:
+      operationId: api_InspectionInbox_sign_off_step_create
+      description: Sign off a QA-gated step for a work order (the step-level requires_qa_signoff
+        gate), then re-run advancement. Needs sign_off_fpi — the same authority as
+        first-piece buy-off; refused to whoever completed the step's substeps.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignOffStepRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignOffStepResult'
+          description: ''
   /api/JobRoles/:
     get:
       operationId: api_JobRoles_list
@@ -21273,6 +21321,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DecisionOptionsResponse'
+          description: ''
+  /api/Parts/{id}/history/:
+    get:
+      operationId: api_Parts_history_retrieve
+      description: 'The serial''s history, newest first: the audit log of the part
+        and of every record about it (step executions, measurements, material draws,
+        quality reports, dispositions, overrides), derived on read.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: offset
+        schema:
+          type: integer
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartHistoryPage'
           description: ''
   /api/Parts/{id}/increment/:
     post:
@@ -56559,12 +56650,14 @@ components:
     InspectionInboxTypeEnum:
       enum:
       - fpi
+      - qa_signoff
       - receiving
       - outside_process
       - in_process
       type: string
       description: |-
         * `fpi` - fpi
+        * `qa_signoff` - qa_signoff
         * `receiving` - receiving
         * `outside_process` - outside_process
         * `in_process` - in_process
@@ -63647,6 +63740,71 @@ components:
       description: |-
         * `PPAP` - PPAP
         * `FAI` - First Article (FAI / AS9102)
+    PartHistoryChange:
+      type: object
+      properties:
+        field:
+          type: string
+        old:
+          type: string
+          nullable: true
+        new:
+          type: string
+          nullable: true
+      required:
+      - field
+      - new
+      - old
+    PartHistoryEntry:
+      type: object
+      description: One audit-log entry about a serial or a record about it (services/mes/part_history).
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        action:
+          type: string
+          description: created / updated / deleted
+        actor_id:
+          type: integer
+          nullable: true
+        actor_name:
+          type: string
+          description: Empty when the system made the change.
+        record_type:
+          type: string
+        record_id:
+          type: string
+        record:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartHistoryChange'
+      required:
+      - action
+      - actor_id
+      - actor_name
+      - changes
+      - id
+      - record
+      - record_id
+      - record_type
+      - timestamp
+    PartHistoryPage:
+      type: object
+      properties:
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartHistoryEntry'
+      required:
+      - count
+      - results
     PartIncrementInputRequest:
       type: object
       properties:
@@ -69420,6 +69578,34 @@ components:
           minLength: 1
       required:
       - reason
+    PendingQaSignoff:
+      type: object
+      description: A QA-gated step on a work order whose submitted work waits for
+        a sign-off.
+      properties:
+        work_order_id:
+          type: string
+          format: uuid
+        work_order:
+          type: string
+        step_id:
+          type: string
+          format: uuid
+        step:
+          type: string
+        units:
+          type: integer
+        oldest_entered_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - oldest_entered_at
+      - step
+      - step_id
+      - units
+      - work_order
+      - work_order_id
     PermissionListResponse:
       type: object
       properties:
@@ -75855,6 +76041,29 @@ components:
       description: |-
         * `BACKORDERED` - More coming
         * `CLOSED` - That's all
+    SignOffStepRequestRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        step:
+          type: string
+          format: uuid
+      required:
+      - step
+      - work_order
+    SignOffStepResult:
+      type: object
+      properties:
+        status:
+          type: string
+          description: 'Advancement after the sign-off: advanced / blocked / ...'
+        parts_advanced:
+          type: integer
+      required:
+      - parts_advanced
+      - status
     SignupRequest:
       type: object
       description: Serializer for self-service tenant signup.

@@ -50,6 +50,7 @@ from Tracker.serializers.qms import (
     RecordInspectionRequestSerializer, RecordUnitsRequestSerializer, RecordBulkRequestSerializer,
     SamplePlanResponseSerializer, MaterialLotBulkCreateSerializer,
     IncomingInspectionRowSerializer, InspectionInboxRowSerializer,
+    PendingQaSignoffSerializer, SignOffStepRequestSerializer, SignOffStepResultSerializer,
 )
 from Tracker.services.qms import receiving_inspection
 from Tracker.services.qms import incoming_inspection
@@ -1389,6 +1390,49 @@ class InspectionInboxViewSet(viewsets.ViewSet):
     def list(self, request):
         rows = inspection_inbox.build_inbox_rows()
         return Response(InspectionInboxRowSerializer(rows, many=True).data)
+
+    @extend_schema(
+        parameters=[OpenApiParameter('work_order', str, required=False)],
+        responses=PendingQaSignoffSerializer(many=True),
+        description="QA-gated steps whose submitted work waits for a sign-off, optionally "
+                    "for one work order (the work order page's exceptions panel).",
+    )
+    @action(detail=False, methods=['get'], url_path='qa-signoffs')
+    def qa_signoffs(self, request):
+        from Tracker.models import WorkOrder
+        from Tracker.services.qms.step_signoff import pending_signoffs
+        wo = None
+        if request.query_params.get('work_order'):
+            wo = WorkOrder.objects.filter(pk=request.query_params['work_order']).first()  # tenant-safe: .objects auto-scopes
+            if wo is None:
+                return Response([])
+        return Response(PendingQaSignoffSerializer(pending_signoffs(wo), many=True).data)
+
+    @extend_schema(
+        request=SignOffStepRequestSerializer, responses=SignOffStepResultSerializer,
+        description="Sign off a QA-gated step for a work order (the step-level "
+                    "requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — "
+                    "the same authority as first-piece buy-off; refused to whoever "
+                    "completed the step's substeps.",
+    )
+    @action(detail=False, methods=['post'], url_path='sign-off-step', parser_classes=[parsers.JSONParser])
+    def sign_off_step(self, request):
+        from Tracker.models import Steps, WorkOrder
+        from Tracker.services.qms.step_signoff import sign_off_step
+        if not request.user.has_tenant_perm('sign_off_fpi'):
+            return Response({'detail': "Signing off a step needs QA sign-off authority."},
+                            status=status.HTTP_403_FORBIDDEN)
+        req = SignOffStepRequestSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        wo = WorkOrder.objects.filter(pk=req.validated_data['work_order']).first()  # tenant-safe: .objects auto-scopes
+        step = Steps.objects.filter(pk=req.validated_data['step']).first()  # tenant-safe: .objects auto-scopes
+        if wo is None or step is None:
+            return Response({'detail': "No such work order or step."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            result = sign_off_step(wo, step, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': result.status, 'parts_advanced': len(result.parts_advanced)})
 
 
 # ===== MATERIAL USAGE VIEWSETS =====
