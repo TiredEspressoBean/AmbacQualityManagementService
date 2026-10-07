@@ -174,7 +174,30 @@ export function WorkOrderCoresCard(
                                                         Work
                                                     </Button>
                                                 )}
-                                                {core.status === "IN_REBUILD" ? (
+                                                {core.status === "IN_DISASSEMBLY" ? (
+                                                    // Closing the teardown is what makes a unit's exit
+                                                    // decidable — every release, authorisation and
+                                                    // return downstream needs DISASSEMBLED.
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span>
+                                                                <Button
+                                                                    size="sm" variant="outline" disabled={busy}
+                                                                    onClick={() => act(core,
+                                                                        { id, action: "complete_disassembly" },
+                                                                        "teardown complete — ready for its exit")}
+                                                                >
+                                                                    <PackageCheck className="mr-1 h-4 w-4" />
+                                                                    {busy ? "Closing…" : "Complete teardown"}
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            Everything worth keeping is off the unit. This is
+                                                            what opens its exit — rebuild, or harvest to stock.
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : core.status === "IN_REBUILD" ? (
                                                     <span className="inline-flex gap-1">
                                                         <Button size="sm" variant="outline" asChild>
                                                             <Link to="/reman/cores/$id/rebuild" params={{ id }}>

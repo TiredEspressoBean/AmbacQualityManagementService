@@ -105,6 +105,11 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
     # Releasing is the terminal act of teardown, so it rides the perm that governs
     # completing one rather than adding a third codename for the same authority.
     action_permissions = {
+        # The act the `complete_disassembly` codename is named for. It was left on the
+        # CRUD mapping while the two actions that merely FOLLOW it rode the codename —
+        # so the perm governed the consequences of closing a teardown but not the
+        # closing itself.
+        'complete_disassembly': ['complete_disassembly'],
         'release_to_rebuild': ['complete_disassembly'],
         'release_to_inventory': ['complete_disassembly'],
         # Gate and dispatch are core-lifecycle changes, gated on change_core rather
@@ -114,6 +119,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'return_to_customer': ['change_core'],
     }
     crud_exempt_actions = {
+        'complete_disassembly',
         'release_to_rebuild', 'release_to_inventory',
         'request_authorisation_action', 'record_authorisation_action',
         'return_to_customer',

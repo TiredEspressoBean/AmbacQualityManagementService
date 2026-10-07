@@ -39,21 +39,33 @@ export function useReleaseCore() {
 
 
 /**
- * The rest of the repair-and-return lifecycle: pause for authorisation, record what
- * the customer said, dispatch the unit back. Same invalidation as `useReleaseCore` —
- * each changes the core's status, and the work-order surface is where that is read.
+ * The rest of the core lifecycle: close out a teardown, pause for authorisation,
+ * record what the customer said, dispatch the unit back. Same invalidation as
+ * `useReleaseCore` — each changes the core's status, and the work-order surface is
+ * where that is read.
+ *
+ * `complete_disassembly` had a service, an endpoint and its own permission, and no
+ * caller anywhere in the app. A core could be started into teardown and never taken
+ * out of it, which stranded everything downstream: release to rebuild or inventory,
+ * authorisation, and the return all require DISASSEMBLED or later.
  */
 export function useCoreLifecycleAction() {
     const queryClient = useQueryClient();
     return useMutation<
         unknown,
         unknown,
+        | { id: string; action: "complete_disassembly" }
         | { id: string; action: "request_authorisation" }
         | { id: string; action: "record_authorisation"; approved: boolean; note?: string }
         | { id: string; action: "return"; reference?: string }
     >({
         mutationFn: (v) => {
             const headers = { "X-CSRFToken": getCookie("csrftoken") };
+            if (v.action === "complete_disassembly") {
+                return api.api_Cores_complete_disassembly_create(undefined, {
+                    params: { id: v.id }, headers,
+                });
+            }
             if (v.action === "request_authorisation") {
                 return api.api_Cores_request_authorisation_create(undefined, {
                     params: { id: v.id }, headers,
