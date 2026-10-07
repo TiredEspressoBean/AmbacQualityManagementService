@@ -57,6 +57,20 @@ class InspectionInboxTests(TenantTestCase):
         self.assertEqual(row["severity"]["rejects_in_window"], 2)
         self.assertIsNone(row["blocked_reason"])
 
+    def test_a_customers_bulk_cores_are_not_receiving_inspection(self):
+        """Core lots are graded unit by unit as they're identified — the inbox chip
+        excludes them, as /production/incoming always did (they had drifted apart)."""
+        from Tracker.services.qms.incoming_inspection import build_incoming_rows
+        self._lot()
+        cores = self._lot(n="CORELOT-1", status="RECEIVED")
+        MaterialLot.objects.filter(pk=cores.pk).update(holds_cores=True)
+
+        inbox = [r["id"] for r in build_inbox_rows() if r["type"] == "receiving"]
+        queue = [r["id"] for r in build_incoming_rows() if r.get("source") == "PURCHASED_LOT"]
+        self.assertNotIn(str(cores.id), inbox)
+        self.assertEqual(len(inbox), 1)
+        self.assertEqual(sorted(inbox), sorted(queue))  # the chip and the queue agree
+
     def test_blocked_lot_sinks_but_stays_counted(self):
         self._lot(n="LOT-HELD", status="QUARANTINE", hold="SUPPLIER_UNQUALIFIED")
 

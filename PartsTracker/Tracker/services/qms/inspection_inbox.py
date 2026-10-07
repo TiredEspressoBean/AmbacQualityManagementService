@@ -25,7 +25,7 @@ work order's expected_completion; FPI is always red (queue-jumper).
 """
 from __future__ import annotations
 
-from django.db.models import Count, Min, Q
+from django.db.models import Count, Min
 from django.utils import timezone
 
 from Tracker.services.core.clock import tenant_today
@@ -123,10 +123,10 @@ def _resume_progress(lot) -> str | None:
 
 def _receiving_rows():
     from Tracker.models import MaterialLot
-    qs = (MaterialLot.objects  # tenant-safe: .objects auto-scopes
-          .filter(archived=False)
-          .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
-                  | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
+    from Tracker.services.qms.incoming_inspection import awaiting_inspection
+    # The same lots /production/incoming lists — one filter, so the chip and the
+    # queue can't disagree (core lots showed in the chip and not the queue).
+    qs = (awaiting_inspection(MaterialLot.objects)  # tenant-safe: .objects auto-scopes
           .select_related("material_type", "material", "supplier"))
     for lot in qs:
         received_dt = None

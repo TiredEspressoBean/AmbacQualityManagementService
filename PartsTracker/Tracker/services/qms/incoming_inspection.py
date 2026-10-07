@@ -16,18 +16,24 @@ from __future__ import annotations
 from django.db.models import Q
 
 
+def awaiting_inspection(qs):
+    """Lots still needing a receiving decision: RECEIVED / AWAITING_INSPECTION, plus
+    soft-held at receiving (QUARANTINE with a hold_reason, e.g. unqualified supplier).
+    Shared by this queue and the inspector's inbox, which drifted apart when each kept
+    its own copy (the inbox lost the core-lot exclusion). A third copy is the
+    MaterialLot list's `inspection_pending` lens (MaterialLotViewSet.get_queryset) —
+    change the rule there too."""
+    return (qs.filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
+            .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
+                    | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
+            # A customer's bulk cores are graded unit by unit as they're identified,
+            # not sampled as supplier stock.
+            .filter(holds_cores=False))
+
+
 def _lot_rows():
     from Tracker.models import MaterialLot
-    # Awaiting inspection (RECEIVED / AWAITING_INSPECTION) + soft-held at receiving
-    # (QUARANTINE with a hold_reason, e.g. unqualified supplier) — mirrors the
-    # MaterialLot queue's `inspection_pending` lens.
-    qs = (MaterialLot.objects  # tenant-safe: .objects auto-scopes (request context)
-          .filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
-          .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
-                  | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
-          # A customer's bulk cores are graded unit by unit as they're identified, not
-          # sampled as supplier stock.
-          .filter(holds_cores=False)
+    qs = (awaiting_inspection(MaterialLot.objects)  # tenant-safe: .objects auto-scopes (request context)
           .select_related("material_type", "material", "supplier"))
     for lot in qs:
         yield {
