@@ -226,7 +226,7 @@ STAFF_OPERATIONAL_WRITE = [
     # Equipment & Calibration
     'add_equipments', 'change_equipments',
     'add_equipmenttype', 'change_equipmenttype',
-    'add_calibrationrecord', 'change_calibrationrecord',
+    # (Calibration records are CALIBRATION_RECORD_WRITE — evidence, not equipment config.)
     # Scheduling & time. NOT here: work-centers (routing master data → AUTHORING;
     # changing a WC's kind re-routes whole surfaces) and shifts (solver working
     # windows → SCHEDULING_PLANNER, with the rest of the calendar inputs).
@@ -238,10 +238,7 @@ STAFF_OPERATIONAL_WRITE = [
     # have no delete UI and stay delete-ungranted.
     'add_milestone', 'change_milestone', 'delete_milestone',
     'add_milestonetemplate', 'change_milestonetemplate',
-    'add_lifelimitdefinition', 'change_lifelimitdefinition',
-    # delete_: the part type page's Life Limits panel removes a link (soft delete;
-    # linking the pair again revives it).
-    'add_parttypelifelimit', 'change_parttypelifelimit', 'delete_parttypelifelimit',
+    # (Life-limit definitions and their part-type links are LIFE_LIMIT_WRITE.)
     'add_lifetracking', 'change_lifetracking',
     # Quality records
     'add_qualityreports', 'change_qualityreports',
@@ -271,7 +268,7 @@ STAFF_OPERATIONAL_WRITE = [
     # bulk-record endpoint (POST → add_); change/delete stay immutable
     'add_measurementresult', 'change_measurementresult',
     'add_stepexecutionmeasurement',
-    'add_spcbaseline', 'change_spcbaseline',
+    # (SPC baselines — frozen control limits — are SPC_BASELINE_WRITE.)
     # Documents & 3D — records in/out; deletion + classification are gated
     'add_documents', 'change_documents',
     # Document associations (attach/detach a doc to additional entities).
@@ -290,9 +287,8 @@ STAFF_OPERATIONAL_WRITE = [
     'add_approvalrequest', 'change_approvalrequest',
     'add_approvalresponse',
     'respond_to_approval',
-    # Sampling — rules editable by quality doers today; deletes are manager-tier
-    'add_samplingrule', 'change_samplingrule',
-    'add_samplingruleset', 'change_samplingruleset',
+    # Sampling rules are SAMPLING_RULE_WRITE (quality doers, not every staff role);
+    # deletes are manager-tier.
     'add_samplinganalytics', 'change_samplinganalytics',
     # Process change — anyone can raise/edit/submit a change request. Note:
     # the `propose` action also requires add_processes (it forks a draft
@@ -300,8 +296,7 @@ STAFF_OPERATIONAL_WRITE = [
     # so deciding a PCR stays with authoring roles even though the PCR row
     # itself is broadly writable.
     'add_processchangerequest', 'change_processchangerequest',
-    # Training
-    'add_trainingrecord', 'change_trainingrecord',
+    # (Training records are TRAINING_RECORD_WRITE — qualification evidence, not operational.)
     # Master data & config (not compliance-shaped)
     'add_companies', 'change_companies',
     'add_externalapiorderidentifier', 'change_externalapiorderidentifier',
@@ -380,6 +375,8 @@ SOD_APPROVAL_PERMISSIONS = [
     'approve_capa', 'close_capa', 'verify_capa',
     'review_rca',
     'approve_disposition', 'close_disposition',
+    # Deciding a step override (it lets a part past a blocker) — never self-approved.
+    'approve_stepoverride',
     # Rejecting a whole lot back to the vendor (VDMR). A tenant may also grant it to
     # its inspectors' group; without it an inspector's whole-lot reject is a request.
     'reject_whole_lot',
@@ -419,6 +416,49 @@ DECISION_RESOLUTION_PERMISSIONS = [
 # comment anticipated.
 TRAINING_GATE_OVERRIDE_PERMISSIONS = [
     'override_training_gate',
+]
+
+# Writing a training record certifies someone as qualified — the evidence the training
+# gate, "prove qualification before starting" and ISO 9001 7.2 all read. It used to sit
+# in STAFF_OPERATIONAL_WRITE, so an operator could award themselves a certification.
+# Held by the same tier as the gate override plus the authoring roles; withheld from
+# Operator and QA Inspector (an inspector who can't waive the gate once shouldn't be
+# able to certify standing qualification) and from Purchasing. Delete stays in
+# MANAGER_DELETE_PERMISSIONS.
+TRAINING_RECORD_WRITE = [
+    'add_trainingrecord', 'change_trainingrecord',
+]
+
+# Quality-control records that sat in STAFF_OPERATIONAL_WRITE, so an operator could
+# write them (each proven by probing as an operator, 2026-10-06):
+# - a calibration record — a PASS also returns OUT_OF_SERVICE equipment to service;
+# - a sampling rule set / rule — e.g. AQL 1.0 -> 6.5, severity NORMAL -> REDUCED;
+# - a life-limit definition — e.g. a hard limit -> 999999.
+# Withheld from Operator (the people these controls constrain) and Purchasing; every
+# other staff role keeps them for now. Separate lists so each can narrow on its own
+# (sampling to quality doers, life limits to engineering/quality) when that's decided.
+# Supplier qualifications and part approvals don't need this: they create PENDING and
+# only the approve_*-gated `grant` gives them force — the pattern these should follow.
+CALIBRATION_RECORD_WRITE = [
+    'add_calibrationrecord', 'change_calibrationrecord',
+]
+SAMPLING_RULE_WRITE = [
+    'add_samplingrule', 'change_samplingrule',
+    'add_samplingruleset', 'change_samplingruleset',
+]
+# Frozen SPC control limits: quality planning like sampling rules, not measurement
+# entry. The viewset also used to skip model permissions entirely (any tenant user).
+SPC_BASELINE_WRITE = [
+    'add_spcbaseline', 'change_spcbaseline',
+]
+LIFE_LIMIT_WRITE = [
+    'add_lifelimitdefinition', 'change_lifelimitdefinition',
+    # The link IS the limit's application: unlinking stops a harvested component
+    # inheriting its core's accumulated life (reman _transfer_life_tracking) and drops
+    # a lot's per-type shelf life to the default — so it travels with the definition.
+    # delete_: the part type page's Life Limits panel removes a link (soft delete;
+    # linking the pair again revives it).
+    'add_parttypelifelimit', 'change_parttypelifelimit', 'delete_parttypelifelimit',
 ]
 
 # First Piece Inspection buy-off: who may pass / fail / waive an FPI. Setup
@@ -605,6 +645,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *SOD_APPROVAL_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
@@ -650,6 +695,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *SOD_APPROVAL_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
@@ -687,6 +737,10 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
             # Resolve (close) NCR dispositions
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)
@@ -715,6 +769,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
@@ -768,6 +827,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             # Resolve (close) NCR dispositions
             *DISPOSITION_RESOLUTION_PERMISSIONS,
             # Resolve MANUAL decision-point routing (4a)
@@ -799,6 +863,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
             *COMPLIANCE_PERMISSIONS,
@@ -819,6 +888,11 @@ GROUP_PRESETS = {
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
+            *CALIBRATION_RECORD_WRITE,
+            *SAMPLING_RULE_WRITE,
+            *LIFE_LIMIT_WRITE,
+            *SPC_BASELINE_WRITE,
+            *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',

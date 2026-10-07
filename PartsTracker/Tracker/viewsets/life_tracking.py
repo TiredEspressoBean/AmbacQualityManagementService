@@ -169,6 +169,14 @@ class LifeTrackingViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """
     queryset = LifeTracking.unscoped.select_related('definition', 'content_type', 'override_approved_by')
     serializer_class = LifeTrackingSerializer
+    # Resetting life to zero and overriding a part's limits are life-limit authority
+    # (LIFE_LIMIT_WRITE, which Operator doesn't hold) — not POST's add_lifetracking,
+    # which every staff role has for recording usage (`increment`).
+    action_permissions = {
+        'reset': ['change_lifelimitdefinition'],
+        'apply_override': ['change_lifelimitdefinition'],
+    }
+    crud_exempt_actions = {'reset', 'apply_override'}
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['definition', 'cached_status', 'source', 'content_type', 'object_id']
     ordering_fields = ['accumulated', 'created_at', 'cached_status']

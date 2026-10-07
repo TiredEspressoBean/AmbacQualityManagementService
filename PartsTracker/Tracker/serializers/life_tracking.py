@@ -108,12 +108,27 @@ class LifeTrackingSerializer(SecureModelMixin):
             'reset_history', 'cached_status',
             'created_at', 'updated_at', 'archived'
         )
+        # Limit overrides and resets go through the gated apply_override / reset actions
+        # (which record who and why); writable here, anyone could raise a limit, name
+        # someone else as approver, or rewrite the reset history.
         read_only_fields = (
             'created_at', 'updated_at', 'cached_status',
             'current_value', 'remaining', 'remaining_to_soft_limit',
             'percent_used', 'status', 'is_blocked',
             'effective_hard_limit', 'effective_soft_limit',
+            'hard_limit_override', 'soft_limit_override',
+            'override_reason', 'override_approved_by', 'reset_history',
         )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # A record may start with accumulated life (a core arriving with history), but
+        # afterwards life only moves by `increment` or a recorded `reset`.
+        if self.instance is not None and 'accumulated' in attrs                 and attrs['accumulated'] != self.instance.accumulated:
+            raise serializers.ValidationError(
+                {'accumulated': "Accumulated life can't be edited — record usage with increment, "
+                                "or reset it after an overhaul."})
+        return attrs
 
     # Non-null: `LifeTracking.content_type` is a required FK, so this always returns a
     # string. Annotated because an un-annotated SerializerMethodField silently becomes

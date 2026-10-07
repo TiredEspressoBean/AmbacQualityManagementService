@@ -39,9 +39,7 @@ ALLOWED_UNREACHABLE = {
     # (IMMUTABLE_MODELS + DB immutability triggers). ModelViewSet boilerplate
     # exposes the writes; the perm gate is what enforces immutability at the
     # API layer.
-    ('ApprovalResponseViewSet', 'update'),
-    ('ApprovalResponseViewSet', 'partial_update'),
-    ('ApprovalResponseViewSet', 'destroy'),
+    # (ApprovalResponseViewSet is read-only now — no write routes to allow-list.)
     ('StepExecutionMeasurementViewSet', 'update'),
     ('StepExecutionMeasurementViewSet', 'partial_update'),
     ('StepExecutionMeasurementViewSet', 'destroy'),

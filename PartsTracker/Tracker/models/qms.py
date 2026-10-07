@@ -3129,6 +3129,11 @@ class StepOverride(SecureModel):
     class Meta:
         verbose_name = 'Step Override'
         verbose_name_plural = 'Step Overrides'
+        permissions = [
+            # Approving / rejecting lets a part past a block (a failed measurement, a
+            # missing QA sign-off) — quality authority, never the requester's own.
+            ("approve_stepoverride", "Can approve or reject step override requests"),
+        ]
         ordering = ['-requested_at']
         indexes = [
             models.Index(fields=['step_execution', 'status']),

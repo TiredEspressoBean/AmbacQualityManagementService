@@ -721,19 +721,26 @@ class SPCViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         })
 
 
-class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for SPC Baselines (frozen control limits).
 
-    Standard CRUD plus custom actions:
-        POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-        POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
+    Read-only, plus the two ways a baseline changes:
+        POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+        POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
+
+    It used to be a full ModelViewSet with permission_classes overridden to drop
+    TenantModelPermissions, so any tenant user could write control limits, status,
+    frozen_by and superseded_by directly. Model permissions apply again (inherited from
+    TenantScopedMixin), and direct create/update/delete are gone.
     """
     queryset = SPCBaseline.unscoped.all()
     serializer_class = SPCBaselineSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = [IsAuthenticated, TenantAccessPermission]
+    action_permissions = {'supersede': ['change_spcbaseline']}
+    # Superseding changes an existing baseline — change_, not POST's default add_.
+    crud_exempt_actions = {'supersede'}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['measurement_definition', 'chart_type', 'status', 'frozen_by']
     search_fields = ['notes', 'measurement_definition__label']

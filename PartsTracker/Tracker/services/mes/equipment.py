@@ -64,3 +64,18 @@ def create_new_equipment_version(equipment, *, user=None, change_description=Non
             wc.equipment.remove(equipment)
             wc.equipment.add(new)
     return new
+
+
+def check_status_change(equipment, new_status) -> None:
+    """Refuse putting a machine back IN_SERVICE while its latest calibration failed.
+
+    A FAIL calibration sets OUT_OF_SERVICE (work_order.apply_calibration_result_to_
+    equipment) and that status is what the measurement-capture guard reads. A plain
+    status edit used to clear it, returning a failed gauge to use with no passing
+    calibration on record. Recording a PASS is the way back (it restores IN_SERVICE
+    itself). Raises ValueError."""
+    from Tracker.models.mes_standard import EquipmentStatus
+    if (new_status == EquipmentStatus.IN_SERVICE and equipment.status != EquipmentStatus.IN_SERVICE
+            and equipment.calibration_status == 'FAILED'):
+        raise ValueError(f"{equipment.name}'s last calibration failed — record a passing "
+                         f"calibration to return it to service.")

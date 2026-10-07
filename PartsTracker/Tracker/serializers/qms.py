@@ -926,7 +926,31 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         return wo.ERP_id if wo else None
 
     def create(self, validated_data):
+        # A type given on create is the disposition DECISION, so it goes through the
+        # same authorized path as POST .../decide/ (decide_disposition records
+        # who authorized it) — never straight into save(), which applies it to the
+        # part (USE_AS_IS -> READY_FOR_NEXT_STEP) with nobody authorizing it. The
+        # caller must hold approve_disposition; without it, open the disposition and
+        # have it decided (with a co-signer) through `decide`.
+        disposition_type = validated_data.pop('disposition_type', None)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if disposition_type and not (user and user.has_tenant_perm('approve_disposition')):
+            raise serializers.ValidationError({'disposition_type': [
+                "Choosing the disposition needs approve_disposition. Open the disposition "
+                "without a type, then decide it (a co-signer can authorize)."]})
         instance = super().create(validated_data)
+        if disposition_type:
+            from Tracker.services.qms.disposition import decide_disposition
+            try:
+                instance = decide_disposition(
+                    instance, disposition_type=disposition_type, authorized_by=user,
+                    customer_approval={
+                        'reference': validated_data.get('customer_approval_reference'),
+                        'date': validated_data.get('customer_approval_date'),
+                    })
+            except ValueError as e:
+                raise serializers.ValidationError({'disposition_type': [str(e)]})
         self._route_if_rework(instance)
         return instance
 
@@ -1510,6 +1534,12 @@ class CapaVerificationSerializer(SecureModelMixin):
     capa_info = serializers.SerializerMethodField()
     verified_by_info = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A verification belongs to the CAPA it verified; it can't be moved to another.
+        if self.instance is not None:
+            self.fields['capa'].read_only = True
+
     class Meta:
         model = CapaVerification
         fields = (
@@ -1691,8 +1721,12 @@ class StepOverrideSerializer(SecureModelMixin):
             'used', 'used_at',
             'created_at', 'updated_at', 'archived'
         )
+        # Everything that gives an override force is set by the services: who asked
+        # (the requester, server-side), and the decision — status, approver, expiry,
+        # use. Writable, a POST could create an APPROVED override for itself.
         read_only_fields = (
-            'requested_at', 'approved_at', 'used_at',
+            'requested_by', 'requested_at', 'approved_by', 'approved_at', 'status',
+            'expires_at', 'used', 'used_at',
             'created_at', 'updated_at'
         )
 
@@ -1753,6 +1787,15 @@ class FPIRecordSerializer(SecureModelMixin):
     waived_by_info = serializers.SerializerMethodField()
     acknowledged_by_info = serializers.SerializerMethodField()
     equipment_info = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # What an FPI is OF is fixed once it exists: re-pointing a passed FPI at
+        # another work order, step, machine, shift or part would move its buy-off
+        # onto work it never covered.
+        if self.instance is not None:
+            for name in ('work_order', 'step', 'part_type', 'designated_part', 'equipment', 'shift_date'):
+                self.fields[name].read_only = True
 
     class Meta:
         from Tracker.models import FPIRecord

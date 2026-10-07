@@ -1658,6 +1658,15 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     filterset_fields = ['status', 'block_type', 'step_execution']
     ordering_fields = ['requested_at', 'approved_at', 'expires_at']
     ordering = ['-requested_at']
+    # Deciding needs approve_stepoverride (the SoD approve tier), not just
+    # POST's add_stepoverride; the service refuses self-approval.
+    action_permissions = {'approve': ['approve_stepoverride'], 'reject': ['approve_stepoverride']}
+    crud_exempt_actions = {'approve', 'reject'}
+    # A request is raised, then decided through approve/reject — not edited.
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def perform_create(self, serializer):
+        serializer.save(requested_by=self.request.user)
 
     def get_serializer_class(self):
         # Import here to avoid circular import

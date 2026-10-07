@@ -2300,17 +2300,18 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
             OpenApiParameter(name='approver', description='Filter by approver user ID', required=False, type=int),
         ]
     ),
-    create=extend_schema(description="Create a new approval response"),
     retrieve=extend_schema(description="Retrieve a specific approval response"),
-    update=extend_schema(description="Update an approval response"),
-    partial_update=extend_schema(description="Partially update an approval response"),
 )
-class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
+class ApprovalResponseViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ReadOnlyModelViewSet):
     """
-    ViewSet for managing approval responses.
-
-    Approval responses record individual approver decisions with signature capture,
+    Approval responses: individual approver decisions with signature capture,
     identity verification, and delegation support.
+
+    Read-only. A response is an e-signature, so it is only ever written by the gated
+    ApprovalRequest `submit-response` action (or `delegate` here), which set the
+    approver from the request and run the SoD checks. A direct POST used to accept
+    any `approver` and `decision`, and the post_save signal then applied the decision
+    to the content object — a forged signature with real effect.
     """
     queryset = ApprovalResponse.unscoped.all()
     serializer_class = ApprovalResponseSerializer

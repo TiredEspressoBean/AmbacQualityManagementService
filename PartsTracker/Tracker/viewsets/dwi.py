@@ -540,7 +540,12 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
 
 class SubstepGateCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """Per-node attestation / signature gate completions."""
+    """Per-node attestation / signature gate completions.
+
+    An attestation is signed by whoever is logged in, when they sign, from where
+    they are — all set here, none taken from the request body. Once signed it
+    can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+    happens on this endpoint, so verification_method stays NONE."""
 
     queryset = SubstepGateCompletion.unscoped.select_related(
         'step_execution', 'substep', 'completed_by',
@@ -550,6 +555,11 @@ class SubstepGateCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ['step_execution', 'substep', 'node_id', 'completed_by']
     ordering_fields = ['completed_at']
     ordering = ['-completed_at']
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def perform_create(self, serializer):
+        from Tracker.throttling import get_client_ip
+        serializer.save(completed_by=self.request.user, ip_address=get_client_ip(self.request) or None)
 
 
 class SubstepResponseViewSet(TenantScopedMixin, viewsets.ModelViewSet):

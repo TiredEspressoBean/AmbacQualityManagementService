@@ -171,8 +171,7 @@ export interface paths {
         /** @description List approval responses with filtering */
         get: operations["api_ApprovalResponses_list"];
         put?: never;
-        /** @description Create a new approval response */
-        post: operations["api_ApprovalResponses_create"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -188,20 +187,12 @@ export interface paths {
         };
         /** @description Retrieve a specific approval response */
         get: operations["api_ApprovalResponses_retrieve"];
-        /** @description Update an approval response */
-        put: operations["api_ApprovalResponses_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description ViewSet for managing approval responses.
-         *
-         *     Approval responses record individual approver decisions with signature capture,
-         *     identity verification, and delegation support.
-         */
-        delete: operations["api_ApprovalResponses_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /** @description Partially update an approval response */
-        patch: operations["api_ApprovalResponses_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/ApprovalResponses/{id}/delegate/": {
@@ -957,6 +948,40 @@ export interface paths {
         head?: never;
         /** @description Partially update a calibration record */
         patch: operations["api_CalibrationRecords_partial_update"];
+        trace?: never;
+    };
+    "/api/CalibrationRecords/{id}/exposure/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What the gauge measured between its last good calibration and this one, which found it unfit (ISO 9001 7.1.5.2). A list to decide on; nothing is quarantined or raised. */
+        get: operations["api_CalibrationRecords_exposure_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/CalibrationRecords/{id}/exposure-export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The exposure list as an .xlsx, with the window it was drawn from. */
+        get: operations["api_CalibrationRecords_exposure_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/CalibrationRecords/due-soon/": {
@@ -9721,6 +9746,23 @@ export interface paths {
         patch: operations["api_QualityReports_partial_update"];
         trace?: never;
     };
+    "/api/QualityReports/{id}/capa-decision/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record that a failed report needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.) */
+        post: operations["api_QualityReports_capa_decision_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/QualityReports/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -10068,7 +10110,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Approve RCA record */
+        /**
+         * @description Approve RCA record — verifies its root cause, under the independence rule:
+         *     the conductor can't approve their own RCA unless the CAPA allows it.
+         */
         post: operations["api_RcaRecords_approve_create"];
         delete?: never;
         options?: never;
@@ -12528,30 +12573,12 @@ export interface paths {
         };
         /** @description Retrieve a specific step override request */
         get: operations["api_StepOverrides_retrieve"];
-        /**
-         * @description ViewSet for managing step override requests.
-         *
-         *     Overrides allow bypassing step advancement blocks with approval workflow.
-         *     Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-         */
-        put: operations["api_StepOverrides_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description ViewSet for managing step override requests.
-         *
-         *     Overrides allow bypassing step advancement blocks with approval workflow.
-         *     Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-         */
-        delete: operations["api_StepOverrides_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description ViewSet for managing step override requests.
-         *
-         *     Overrides allow bypassing step advancement blocks with approval workflow.
-         *     Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-         */
-        patch: operations["api_StepOverrides_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/StepOverrides/{id}/approve/": {
@@ -13387,10 +13414,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Per-node attestation / signature gate completions. */
+        /**
+         * @description Per-node attestation / signature gate completions.
+         *
+         *     An attestation is signed by whoever is logged in, when they sign, from where
+         *     they are — all set here, none taken from the request body. Once signed it
+         *     can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+         *     happens on this endpoint, so verification_method stays NONE.
+         */
         get: operations["api_SubstepGateCompletions_list"];
         put?: never;
-        /** @description Per-node attestation / signature gate completions. */
+        /**
+         * @description Per-node attestation / signature gate completions.
+         *
+         *     An attestation is signed by whoever is logged in, when they sign, from where
+         *     they are — all set here, none taken from the request body. Once signed it
+         *     can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+         *     happens on this endpoint, so verification_method stays NONE.
+         */
         post: operations["api_SubstepGateCompletions_create"];
         delete?: never;
         options?: never;
@@ -13405,17 +13446,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Per-node attestation / signature gate completions. */
+        /**
+         * @description Per-node attestation / signature gate completions.
+         *
+         *     An attestation is signed by whoever is logged in, when they sign, from where
+         *     they are — all set here, none taken from the request body. Once signed it
+         *     can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+         *     happens on this endpoint, so verification_method stays NONE.
+         */
         get: operations["api_SubstepGateCompletions_retrieve"];
-        /** @description Per-node attestation / signature gate completions. */
-        put: operations["api_SubstepGateCompletions_update"];
+        put?: never;
         post?: never;
-        /** @description Per-node attestation / signature gate completions. */
-        delete: operations["api_SubstepGateCompletions_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /** @description Per-node attestation / signature gate completions. */
-        patch: operations["api_SubstepGateCompletions_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/SubstepResources/": {
@@ -19350,22 +19395,19 @@ export interface paths {
         /**
          * @description ViewSet for SPC Baselines (frozen control limits).
          *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
+         *     Read-only, plus the two ways a baseline changes:
+         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
          *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
+         *
+         *     It used to be a full ModelViewSet with permission_classes overridden to drop
+         *     TenantModelPermissions, so any tenant user could write control limits, status,
+         *     frozen_by and superseded_by directly. Model permissions apply again (inherited from
+         *     TenantScopedMixin), and direct create/update/delete are gone.
          */
         get: operations["api_spc_baselines_list"];
         put?: never;
-        /**
-         * @description ViewSet for SPC Baselines (frozen control limits).
-         *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-         *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-         */
-        post: operations["api_spc_baselines_create"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -19382,42 +19424,23 @@ export interface paths {
         /**
          * @description ViewSet for SPC Baselines (frozen control limits).
          *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
+         *     Read-only, plus the two ways a baseline changes:
+         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
          *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
+         *
+         *     It used to be a full ModelViewSet with permission_classes overridden to drop
+         *     TenantModelPermissions, so any tenant user could write control limits, status,
+         *     frozen_by and superseded_by directly. Model permissions apply again (inherited from
+         *     TenantScopedMixin), and direct create/update/delete are gone.
          */
         get: operations["api_spc_baselines_retrieve"];
-        /**
-         * @description ViewSet for SPC Baselines (frozen control limits).
-         *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-         *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-         */
-        put: operations["api_spc_baselines_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description ViewSet for SPC Baselines (frozen control limits).
-         *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-         *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-         */
-        delete: operations["api_spc_baselines_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description ViewSet for SPC Baselines (frozen control limits).
-         *
-         *     Standard CRUD plus custom actions:
-         *         POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-         *         POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-         *         GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-         */
-        patch: operations["api_spc_baselines_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/spc-baselines/{id}/supersede/": {
@@ -21215,6 +21238,35 @@ export interface components {
          */
         CadenceEnum: "weekly" | "monthly";
         /**
+         * @description What a gauge measured between its last good calibration and the one that found it
+         *     unfit (ISO 9001 7.1.5.2). A list to decide on — nothing is acted on.
+         */
+        CalibrationExposure: {
+            /** Format: uuid */
+            calibration_id: string;
+            /** Format: uuid */
+            equipment_id: string;
+            equipment_name: string;
+            result: string;
+            as_found_in_tolerance: boolean | null;
+            /**
+             * Format: date
+             * @description Null when there's no earlier good calibration on record.
+             */
+            window_start: string | null;
+            /** Format: uuid */
+            window_start_calibration_id: string | null;
+            window_start_result: string | null;
+            /** Format: date */
+            window_end: string;
+            window_sentence: string;
+            count: number;
+            reports: components["schemas"]["ExposedReport"][];
+        };
+        CalibrationExposureError: {
+            detail: string;
+        };
+        /**
          * @description Serializer for CalibrationRecord model.
          *
          *     Records a calibration event for a piece of equipment.
@@ -21317,6 +21369,25 @@ export interface components {
         CancelExpectedReceiptRequest: {
             /** @description Why it won't come — the ERP cancelled the line, or it was already received. */
             reason: string;
+        };
+        /**
+         * @description * `PROMOTED` - CAPA raised
+         *     * `NOT_REQUIRED` - No CAPA needed
+         *     * `DEFERRED` - Deferred
+         * @enum {string}
+         */
+        CapaDecisionEnum: "PROMOTED" | "NOT_REQUIRED" | "DEFERRED";
+        /**
+         * @description * `NOT_REQUIRED` - No CAPA needed
+         *     * `DEFERRED` - Deferred
+         * @enum {string}
+         */
+        CapaDecisionRequestDecisionEnum: "NOT_REQUIRED" | "DEFERRED";
+        /** @description A person's call on a failed report: no CAPA needed, or put off — and why. */
+        CapaDecisionRequestRequest: {
+            decision: components["schemas"]["CapaDecisionRequestDecisionEnum"];
+            /** @description Why — required; it's what an auditor reads. */
+            note: string;
         };
         /** @description CAPA task assignee serializer */
         CapaTaskAssignee: {
@@ -23395,6 +23466,24 @@ export interface components {
             /** @default true */
             create: boolean;
         };
+        /** @description A quality report a gauge was used on inside its exposure window. */
+        ExposedReport: {
+            /** Format: uuid */
+            id: string;
+            report_number: string;
+            /** @description The part's ERP id, or the material lot's number. */
+            part: string;
+            /** Format: uuid */
+            part_id: string | null;
+            /** Format: uuid */
+            material_lot_id: string | null;
+            step: string;
+            /** Format: date-time */
+            created_at: string;
+            inspector: string;
+            status: string;
+            role: string;
+        };
         /**
          * @description Governed shelf-life extension: a re-tested lot gets a new use-by date,
          *     with a required reason (and the approver taken from the request user).
@@ -24689,17 +24778,17 @@ export interface components {
              * Format: decimal
              * @description Override hard limit for this specific instance
              */
-            hard_limit_override?: string | null;
+            readonly hard_limit_override: string | null;
             /**
              * Format: decimal
              * @description Override soft limit for this specific instance
              */
-            soft_limit_override?: string | null;
+            readonly soft_limit_override: string | null;
             /** @description Reason for limit override */
-            override_reason?: string;
-            override_approved_by?: number | null;
+            readonly override_reason: string;
+            readonly override_approved_by: number | null;
             /** @description History of resets/overhauls */
-            reset_history?: unknown;
+            readonly reset_history: unknown;
             /** @description Cached status, updated on save */
             readonly cached_status: string;
             /** Format: date-time */
@@ -24773,21 +24862,6 @@ export interface components {
              *     * `RESET` - Reset After Rebuild
              */
             source?: components["schemas"]["LifeTrackingSourceEnum"];
-            /**
-             * Format: decimal
-             * @description Override hard limit for this specific instance
-             */
-            hard_limit_override?: string | null;
-            /**
-             * Format: decimal
-             * @description Override soft limit for this specific instance
-             */
-            soft_limit_override?: string | null;
-            /** @description Reason for limit override */
-            override_reason?: string;
-            override_approved_by?: number | null;
-            /** @description History of resets/overhauls */
-            reset_history?: unknown;
             archived?: boolean;
         };
         /** @description Serializer for resetting life tracking (after overhaul) */
@@ -28470,21 +28544,6 @@ export interface components {
             /** Format: date-time */
             due_date?: string | null;
         };
-        /** @description Approval response serializer */
-        PatchedApprovalResponseRequest: {
-            /** Format: uuid */
-            approval_request?: string;
-            approver?: number;
-            decision?: components["schemas"]["ApprovalResponseDecisionEnum"];
-            comments?: string | null;
-            /** @description Base64 encoded signature image (PNG) */
-            signature_data?: string | null;
-            /** @description e.g., 'I approve as QA Manager' */
-            signature_meaning?: string | null;
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
-            delegated_to?: number | null;
-            archived?: boolean;
-        };
         /**
          * @description Approval template serializer.
          *
@@ -29330,21 +29389,6 @@ export interface components {
              *     * `RESET` - Reset After Rebuild
              */
             source?: components["schemas"]["LifeTrackingSourceEnum"];
-            /**
-             * Format: decimal
-             * @description Override hard limit for this specific instance
-             */
-            hard_limit_override?: string | null;
-            /**
-             * Format: decimal
-             * @description Override soft limit for this specific instance
-             */
-            soft_limit_override?: string | null;
-            /** @description Reason for limit override */
-            override_reason?: string;
-            override_approved_by?: number | null;
-            /** @description History of resets/overhauls */
-            reset_history?: unknown;
             archived?: boolean;
         };
         /**
@@ -30263,99 +30307,6 @@ export interface components {
             notes?: string;
             archived?: boolean;
         };
-        /** @description Full SPC Baseline serializer with all fields and computed properties. */
-        PatchedSPCBaselineRequest: {
-            /**
-             * Format: uuid
-             * @description The measurement definition this baseline applies to
-             */
-            measurement_definition?: string;
-            /**
-             * @description Type of control chart (X-bar R, X-bar S, or I-MR)
-             *
-             *     * `XBAR_R` - X̄-R
-             *     * `XBAR_S` - X̄-S
-             *     * `I_MR` - I-MR
-             */
-            chart_type?: components["schemas"]["ChartTypeEnum"];
-            /** @description Number of samples per subgroup (n=2 to 25 for X-bar charts, n=1 for I-MR) */
-            subgroup_size?: number;
-            /**
-             * Format: decimal
-             * @description X-bar chart Upper Control Limit
-             */
-            xbar_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description X-bar chart Center Line (grand mean)
-             */
-            xbar_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description X-bar chart Lower Control Limit
-             */
-            xbar_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Upper Control Limit
-             */
-            range_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Center Line
-             */
-            range_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Lower Control Limit
-             */
-            range_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Upper Control Limit
-             */
-            individual_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Center Line
-             */
-            individual_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Lower Control Limit
-             */
-            individual_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Moving Range chart Upper Control Limit
-             */
-            mr_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Moving Range chart Center Line
-             */
-            mr_cl?: string | null;
-            /**
-             * @description Current status of this baseline
-             *
-             *     * `ACTIVE` - Active
-             *     * `SUPERSEDED` - Superseded
-             */
-            status?: components["schemas"]["BaselineStatusEnum"];
-            /** @description User who froze/created this baseline */
-            frozen_by?: number | null;
-            /**
-             * Format: uuid
-             * @description The baseline that replaced this one
-             */
-            superseded_by?: string | null;
-            /** @description Reason for superseding this baseline */
-            superseded_reason?: string;
-            /** @description Number of data points used to calculate this baseline */
-            sample_count?: number;
-            /** @description Additional notes about this baseline */
-            notes?: string;
-        };
         /** @description Enhanced sampling rule serializer */
         PatchedSamplingRuleRequest: {
             rule_type?: components["schemas"]["RuleTypeEnum"];
@@ -30605,49 +30556,6 @@ export interface components {
             status?: components["schemas"]["StepExecutionStatusEnum"];
             archived?: boolean;
         };
-        /** @description Serializer for step override requests. */
-        PatchedStepOverrideRequest: {
-            /** Format: uuid */
-            step_execution?: string;
-            /**
-             * @description Type of block being overridden
-             *
-             *     * `QA_SIGNOFF` - QA Signoff Required
-             *     * `FPI_REQUIRED` - FPI Required
-             *     * `MEASUREMENT_FAILED` - Measurement Failed
-             *     * `QUARANTINE` - Part Quarantined
-             *     * `SAMPLING_REQUIRED` - Sampling Required
-             *     * `BATCH_INCOMPLETE` - Batch Incomplete
-             *     * `TRAINING_EXPIRED` - Training Expired
-             *     * `CALIBRATION_EXPIRED` - Calibration Expired
-             *     * `REGULATORY_HOLD` - Regulatory Hold
-             *     * `ROLLBACK` - Step Rollback
-             *     * `OTHER` - Other
-             */
-            block_type?: components["schemas"]["BlockTypeEnum"];
-            requested_by?: number;
-            /** @description Justification for the override */
-            reason?: string;
-            /** @description User who approved/rejected the override */
-            approved_by?: number | null;
-            /**
-             * @description Current status of the override request
-             *
-             *     * `PENDING` - Pending
-             *     * `APPROVED` - Approved
-             *     * `REJECTED` - Rejected
-             *     * `EXPIRED` - Expired
-             */
-            status?: components["schemas"]["StepOverrideStatusEnum"];
-            /**
-             * Format: date-time
-             * @description When this override expires
-             */
-            expires_at?: string | null;
-            /** @description Whether this override has been used */
-            used?: boolean;
-            archived?: boolean;
-        };
         /** @description One step's standard times — setup, cycle, load/unload, attention, SMED setup. */
         PatchedStepTimingRecordRequest: {
             /**
@@ -30818,42 +30726,6 @@ export interface components {
             marked_not_applicable?: boolean;
             /** @description Operator notes captured at completion; required when marking N/A. */
             notes?: string;
-            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
-            signature_data?: string | null;
-            /** @description Short human-readable description of what the signature attests to. */
-            signature_meaning?: string | null;
-            /**
-             * Format: date-time
-             * @description When identity verification (password / SSO) succeeded.
-             */
-            verified_at?: string | null;
-            /**
-             * @description How the signing operator's identity was verified.
-             *
-             *     * `PASSWORD` - Password
-             *     * `SSO` - SSO
-             *     * `NONE` - None
-             */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
-            /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
-        };
-        /** @description Per-node attestation / signature gate records. */
-        PatchedSubstepGateCompletionRequest: {
-            /**
-             * Format: uuid
-             * @description The execution record where this gate was completed.
-             */
-            step_execution?: string;
-            /**
-             * Format: uuid
-             * @description The substep the gate node lives in.
-             */
-            substep?: string;
-            /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
-            node_id?: string;
-            /** @description Operator who confirmed/signed the gate. */
-            completed_by?: number;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
             /** @description Short human-readable description of what the signature attests to. */
@@ -32601,6 +32473,12 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             archived?: boolean;
+            readonly capa_decision: (components["schemas"]["CapaDecisionEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly capa_decision_note: string;
+            readonly capa_decided_by: number | null;
+            readonly capa_decided_by_name: string | null;
+            /** Format: date-time */
+            readonly capa_decided_at: string | null;
         };
         /** @description Quality reports serializer */
         QualityReportsRequest: {
@@ -32838,6 +32716,10 @@ export interface components {
             /** Format: uuid */
             capa_id: string;
             capa_number: string;
+        };
+        RcaApproveInputRequest: {
+            /** @description Justification, required (10+ characters) when the RCA's conductor approves it and the CAPA allows self-verification. */
+            verification_notes?: string;
         };
         /**
          * @description * `FIVE_WHYS` - 5 Whys
@@ -33851,99 +33733,6 @@ export interface components {
             readonly frozen_at: string;
             /** @description Number of data points used to calculate this baseline */
             sample_count?: number;
-        };
-        /** @description Full SPC Baseline serializer with all fields and computed properties. */
-        SPCBaselineRequest: {
-            /**
-             * Format: uuid
-             * @description The measurement definition this baseline applies to
-             */
-            measurement_definition: string;
-            /**
-             * @description Type of control chart (X-bar R, X-bar S, or I-MR)
-             *
-             *     * `XBAR_R` - X̄-R
-             *     * `XBAR_S` - X̄-S
-             *     * `I_MR` - I-MR
-             */
-            chart_type: components["schemas"]["ChartTypeEnum"];
-            /** @description Number of samples per subgroup (n=2 to 25 for X-bar charts, n=1 for I-MR) */
-            subgroup_size?: number;
-            /**
-             * Format: decimal
-             * @description X-bar chart Upper Control Limit
-             */
-            xbar_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description X-bar chart Center Line (grand mean)
-             */
-            xbar_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description X-bar chart Lower Control Limit
-             */
-            xbar_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Upper Control Limit
-             */
-            range_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Center Line
-             */
-            range_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description Range (or S) chart Lower Control Limit
-             */
-            range_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Upper Control Limit
-             */
-            individual_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Center Line
-             */
-            individual_cl?: string | null;
-            /**
-             * Format: decimal
-             * @description Individual chart Lower Control Limit
-             */
-            individual_lcl?: string | null;
-            /**
-             * Format: decimal
-             * @description Moving Range chart Upper Control Limit
-             */
-            mr_ucl?: string | null;
-            /**
-             * Format: decimal
-             * @description Moving Range chart Center Line
-             */
-            mr_cl?: string | null;
-            /**
-             * @description Current status of this baseline
-             *
-             *     * `ACTIVE` - Active
-             *     * `SUPERSEDED` - Superseded
-             */
-            status?: components["schemas"]["BaselineStatusEnum"];
-            /** @description User who froze/created this baseline */
-            frozen_by?: number | null;
-            /**
-             * Format: uuid
-             * @description The baseline that replaced this one
-             */
-            superseded_by?: string | null;
-            /** @description Reason for superseding this baseline */
-            superseded_reason?: string;
-            /** @description Number of data points used to calculate this baseline */
-            sample_count?: number;
-            /** @description Additional notes about this baseline */
-            notes?: string;
         };
         SPCCapabilityResponse: {
             definition: components["schemas"]["MeasurementDefinitionSPC"];
@@ -35340,7 +35129,7 @@ export interface components {
              */
             block_type: components["schemas"]["BlockTypeEnum"];
             readonly block_type_display: string;
-            requested_by: number;
+            readonly requested_by: number;
             readonly requested_by_info: {
                 [key: string]: unknown;
             } | null;
@@ -35352,7 +35141,7 @@ export interface components {
             /** @description Justification for the override */
             reason: string;
             /** @description User who approved/rejected the override */
-            approved_by?: number | null;
+            readonly approved_by: number | null;
             readonly approved_by_info: {
                 [key: string]: unknown;
             } | null;
@@ -35369,16 +35158,16 @@ export interface components {
              *     * `REJECTED` - Rejected
              *     * `EXPIRED` - Expired
              */
-            status?: components["schemas"]["StepOverrideStatusEnum"];
+            readonly status: components["schemas"]["StepOverrideStatusEnum"];
             readonly status_display: string;
             /**
              * Format: date-time
              * @description When this override expires
              */
-            expires_at?: string | null;
+            readonly expires_at: string | null;
             readonly is_expired: boolean;
             /** @description Whether this override has been used */
-            used?: boolean;
+            readonly used: boolean;
             /**
              * Format: date-time
              * @description When this override was used
@@ -35410,27 +35199,8 @@ export interface components {
              *     * `OTHER` - Other
              */
             block_type: components["schemas"]["BlockTypeEnum"];
-            requested_by: number;
             /** @description Justification for the override */
             reason: string;
-            /** @description User who approved/rejected the override */
-            approved_by?: number | null;
-            /**
-             * @description Current status of the override request
-             *
-             *     * `PENDING` - Pending
-             *     * `APPROVED` - Approved
-             *     * `REJECTED` - Rejected
-             *     * `EXPIRED` - Expired
-             */
-            status?: components["schemas"]["StepOverrideStatusEnum"];
-            /**
-             * Format: date-time
-             * @description When this override expires
-             */
-            expires_at?: string | null;
-            /** @description Whether this override has been used */
-            used?: boolean;
             archived?: boolean;
         };
         /**
@@ -36292,7 +36062,7 @@ export interface components {
             /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
             node_id: string;
             /** @description Operator who confirmed/signed the gate. */
-            completed_by: number;
+            readonly completed_by: number;
             readonly completed_by_name: string | null;
             /**
              * Format: date-time
@@ -36307,7 +36077,7 @@ export interface components {
              * Format: date-time
              * @description When identity verification (password / SSO) succeeded.
              */
-            verified_at?: string | null;
+            readonly verified_at: string | null;
             /**
              * @description How the signing operator's identity was verified.
              *
@@ -36315,9 +36085,9 @@ export interface components {
              *     * `SSO` - SSO
              *     * `NONE` - None
              */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            readonly verification_method: components["schemas"]["VerificationMethodEnum"];
             /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
+            readonly ip_address: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -36337,27 +36107,10 @@ export interface components {
             substep: string;
             /** @description UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts. */
             node_id: string;
-            /** @description Operator who confirmed/signed the gate. */
-            completed_by: number;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
             /** @description Short human-readable description of what the signature attests to. */
             signature_meaning?: string | null;
-            /**
-             * Format: date-time
-             * @description When identity verification (password / SSO) succeeded.
-             */
-            verified_at?: string | null;
-            /**
-             * @description How the signing operator's identity was verified.
-             *
-             *     * `PASSWORD` - Password
-             *     * `SSO` - SSO
-             *     * `NONE` - None
-             */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
-            /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
         };
         SubstepReorderRequestRequest: {
             /** Format: uuid */
@@ -39466,31 +39219,6 @@ export interface operations {
             };
         };
     };
-    api_ApprovalResponses_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApprovalResponseRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalResponseRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalResponseRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalResponse"];
-                };
-            };
-        };
-    };
     api_ApprovalResponses_retrieve: {
         parameters: {
             query?: never;
@@ -39502,83 +39230,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalResponse"];
-                };
-            };
-        };
-    };
-    api_ApprovalResponses_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Approval Response. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApprovalResponseRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ApprovalResponseRequest"];
-                "multipart/form-data": components["schemas"]["ApprovalResponseRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalResponse"];
-                };
-            };
-        };
-    };
-    api_ApprovalResponses_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Approval Response. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_ApprovalResponses_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Approval Response. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedApprovalResponseRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedApprovalResponseRequest"];
-                "multipart/form-data": components["schemas"]["PatchedApprovalResponseRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {
@@ -41523,6 +41174,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalibrationRecord"];
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_exposure_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Calibration Record. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationExposure"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationExposureError"];
+                };
+            };
+        };
+    };
+    api_CalibrationRecords_exposure_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Calibration Record. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };
@@ -56640,6 +56343,13 @@ export interface operations {
             query?: {
                 batch_execution?: string;
                 batch_execution__parts?: string[];
+                /**
+                 * @description * `PROMOTED` - CAPA raised
+                 *     * `NOT_REQUIRED` - No CAPA needed
+                 *     * `DEFERRED` - Deferred
+                 */
+                capa_decision?: "DEFERRED" | "NOT_REQUIRED" | "PROMOTED" | null;
+                capa_decision__isnull?: boolean;
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -56785,6 +56495,32 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedQualityReportsRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedQualityReportsRequest"];
                 "multipart/form-data": components["schemas"]["PatchedQualityReportsRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_QualityReports_capa_decision_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Error Report. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapaDecisionRequestRequest"];
             };
         };
         responses: {
@@ -57321,7 +57057,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RcaApproveInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RcaApproveInputRequest"];
+                "multipart/form-data": components["schemas"]["RcaApproveInputRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -61838,83 +61580,6 @@ export interface operations {
             };
         };
     };
-    api_StepOverrides_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Override. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StepOverrideRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["StepOverrideRequest"];
-                "multipart/form-data": components["schemas"]["StepOverrideRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StepOverride"];
-                };
-            };
-        };
-    };
-    api_StepOverrides_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Override. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_StepOverrides_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Override. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedStepOverrideRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedStepOverrideRequest"];
-                "multipart/form-data": components["schemas"]["PatchedStepOverrideRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StepOverride"];
-                };
-            };
-        };
-    };
     api_StepOverrides_approve_create: {
         parameters: {
             query?: never;
@@ -63438,83 +63103,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubstepGateCompletion"];
-                };
-            };
-        };
-    };
-    api_SubstepGateCompletions_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep gate completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubstepGateCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepGateCompletionRequest"];
-                "multipart/form-data": components["schemas"]["SubstepGateCompletionRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubstepGateCompletion"];
-                };
-            };
-        };
-    };
-    api_SubstepGateCompletions_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep gate completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_SubstepGateCompletions_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep gate completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedSubstepGateCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepGateCompletionRequest"];
-                "multipart/form-data": components["schemas"]["PatchedSubstepGateCompletionRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {
@@ -73640,31 +73228,6 @@ export interface operations {
             };
         };
     };
-    api_spc_baselines_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SPCBaselineRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SPCBaselineRequest"];
-                "multipart/form-data": components["schemas"]["SPCBaselineRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SPCBaseline"];
-                };
-            };
-        };
-    };
     api_spc_baselines_retrieve: {
         parameters: {
             query?: never;
@@ -73676,83 +73239,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SPCBaseline"];
-                };
-            };
-        };
-    };
-    api_spc_baselines_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this SPC Baseline. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SPCBaselineRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SPCBaselineRequest"];
-                "multipart/form-data": components["schemas"]["SPCBaselineRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SPCBaseline"];
-                };
-            };
-        };
-    };
-    api_spc_baselines_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this SPC Baseline. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_spc_baselines_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this SPC Baseline. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedSPCBaselineRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedSPCBaselineRequest"];
-                "multipart/form-data": components["schemas"]["PatchedSPCBaselineRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {

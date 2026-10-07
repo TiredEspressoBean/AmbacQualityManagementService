@@ -1898,6 +1898,16 @@ class EquipmentsSerializer(SecureModelMixin):
     _NON_VERSIONING_FIELDS = frozenset(
         {'archived', 'status', 'is_schedulable', 'runs_unattended', 'batch_capacity', 'batch_mode'})
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None and 'status' in attrs:
+            from Tracker.services.mes.equipment import check_status_change
+            try:
+                check_status_change(self.instance, attrs['status'])
+            except ValueError as e:
+                raise serializers.ValidationError({'status': str(e)})
+        return attrs
+
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let
         archive and status changes through as a plain save."""

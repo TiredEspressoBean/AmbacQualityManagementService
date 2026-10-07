@@ -33,6 +33,8 @@ def approve_step_override(
         raise ValueError(
             f"Cannot approve override with status '{override.status}'"
         )
+    if override.requested_by_id and override.requested_by_id == getattr(user, 'id', None):
+        raise ValueError("You can't approve your own override request — someone else has to.")
 
     if expiry_hours is None:
         step = override.step_execution.step if override.step_execution else None

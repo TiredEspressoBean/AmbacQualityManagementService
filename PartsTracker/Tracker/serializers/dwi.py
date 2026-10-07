@@ -345,7 +345,11 @@ class SubstepGateCompletionSerializer(SecureModelMixin):
             'verified_at', 'verification_method', 'ip_address',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('completed_at', 'created_at', 'updated_at')
+        # Who signed, from where, and whether identity was verified are the server's
+        # to record (SubstepGateCompletionViewSet.perform_create), never the client's:
+        # writable, an operator could sign as someone else, backdated, "verified".
+        read_only_fields = ('completed_by', 'completed_at', 'verified_at', 'verification_method',
+                            'ip_address', 'created_at', 'updated_at')
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_completed_by_name(self, obj) -> str | None:

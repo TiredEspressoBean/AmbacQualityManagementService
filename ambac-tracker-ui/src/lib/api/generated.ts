@@ -1343,6 +1343,38 @@ export type CAPARequest = {
   quality_reports?: Array<string> | undefined;
   dispositions?: Array<string> | undefined;
 };
+export type CalibrationExposure = {
+  calibration_id: string;
+  equipment_id: string;
+  equipment_name: string;
+  result: string;
+  as_found_in_tolerance: boolean | null;
+  /**
+   * Null when there's no earlier good calibration on record.
+   */
+  window_start: string | null;
+  window_start_calibration_id: string | null;
+  window_start_result: string | null;
+  window_end: string;
+  window_sentence: string;
+  count: number;
+  reports: Array<ExposedReport>;
+};
+export type ExposedReport = {
+  id: string;
+  report_number: string;
+  /**
+   * The part's ERP id, or the material lot's number.
+   */
+  part: string;
+  part_id: string | null;
+  material_lot_id: string | null;
+  step: string;
+  created_at: string;
+  inspector: string;
+  status: string;
+  role: string;
+};
 export type CalibrationRecord = {
   id: string;
   equipment: string;
@@ -1459,6 +1491,23 @@ export type CalibrationRecordRequest = {
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
+export type CapaDecisionRequestRequest = {
+  decision: CapaDecisionRequestDecisionEnum;
+  /**
+   * Why — required; it's what an auditor reads.
+   *
+   * @minLength 1
+   */
+  note: string;
+};
+export type CapaDecisionRequestDecisionEnum =
+  /**
+   * * `NOT_REQUIRED` - No CAPA needed
+   * `DEFERRED` - Deferred
+   *
+   * @enum NOT_REQUIRED, DEFERRED
+   */
+  "NOT_REQUIRED" | "DEFERRED";
 export type CapaTaskAssigneeRequest = {
   task: string;
   user: number;
@@ -3732,33 +3781,27 @@ export type LifeTracking = {
    * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
   effective_soft_limit: string;
-  hard_limit_override?:
-    | /**
-     * Override hard limit for this specific instance
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-     */
-    (string | null)
-    | undefined;
-  soft_limit_override?:
-    | /**
-     * Override soft limit for this specific instance
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-     */
-    (string | null)
-    | undefined;
-  override_reason?: /**
-   * Reason for limit override
+  /**
+   * Override hard limit for this specific instance
    *
-   * @maxLength 200
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
    */
-  string | undefined;
-  override_approved_by?: (number | null) | undefined;
-  reset_history?: /**
+  hard_limit_override: string | null;
+  /**
+   * Override soft limit for this specific instance
+   *
+   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
+   */
+  soft_limit_override: string | null;
+  /**
+   * Reason for limit override
+   */
+  override_reason: string;
+  override_approved_by: number | null;
+  /**
    * History of resets/overhauls
    */
-  unknown | undefined;
+  reset_history: unknown;
   /**
    * Cached status, updated on save
    */
@@ -3814,33 +3857,6 @@ export type LifeTrackingRequest = {
     * `RESET` - Reset After Rebuild
      */
   LifeTrackingSourceEnum | undefined;
-  hard_limit_override?:
-    | /**
-     * Override hard limit for this specific instance
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-     */
-    (string | null)
-    | undefined;
-  soft_limit_override?:
-    | /**
-     * Override soft limit for this specific instance
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-     */
-    (string | null)
-    | undefined;
-  override_reason?: /**
-   * Reason for limit override
-   *
-   * @maxLength 200
-   */
-  string | undefined;
-  override_approved_by?: (number | null) | undefined;
-  reset_history?: /**
-   * History of resets/overhauls
-   */
-  unknown | undefined;
   archived?: boolean | undefined;
 };
 export type LocationContents = {
@@ -8006,6 +8022,11 @@ export type QualityReports = {
   errors_info: Array<unknown>;
   file_info: {};
   archived?: boolean | undefined;
+  capa_decision: CapaDecisionEnum | NullEnum | null;
+  capa_decision_note: string;
+  capa_decided_by: number | null;
+  capa_decided_by_name: string | null;
+  capa_decided_at: string | null;
 };
 export type QualityReportStatusEnum =
   /**
@@ -8095,6 +8116,15 @@ export type QualityReportPersonnelRoleEnum =
   | "WITNESS"
   | "TRAINER"
   | "TRAINEE";
+export type CapaDecisionEnum =
+  /**
+   * * `PROMOTED` - CAPA raised
+   * `NOT_REQUIRED` - No CAPA needed
+   * `DEFERRED` - Deferred
+   *
+   * @enum PROMOTED, NOT_REQUIRED, DEFERRED
+   */
+  "PROMOTED" | "NOT_REQUIRED" | "DEFERRED";
 export type PaginatedQuarantineDispositionList = {
   /**
    * @example 123
@@ -9520,18 +9550,16 @@ export type StepOverride = {
    * Justification for the override
    */
   reason: string;
-  approved_by?:
-    | /**
-     * User who approved/rejected the override
-     */
-    (number | null)
-    | undefined;
+  /**
+   * User who approved/rejected the override
+   */
+  approved_by: number | null;
   approved_by_info: {};
   /**
    * When override was approved
    */
   approved_at: string | null;
-  status?: /**
+  /**
      * Current status of the override request
     
     * `PENDING` - Pending
@@ -9539,19 +9567,17 @@ export type StepOverride = {
     * `REJECTED` - Rejected
     * `EXPIRED` - Expired
      */
-  StepOverrideStatusEnum | undefined;
+  status: StepOverrideStatusEnum;
   status_display: string;
-  expires_at?:
-    | /**
-     * When this override expires
-     */
-    (string | null)
-    | undefined;
+  /**
+   * When this override expires
+   */
+  expires_at: string | null;
   is_expired: boolean;
-  used?: /**
+  /**
    * Whether this override has been used
    */
-  boolean | undefined;
+  used: boolean;
   /**
    * When this override was used
    */
@@ -10079,26 +10105,22 @@ export type SubstepGateCompletion = {
      */
     (string | null)
     | undefined;
-  verified_at?:
-    | /**
-     * When identity verification (password / SSO) succeeded.
-     */
-    (string | null)
-    | undefined;
-  verification_method?: /**
+  /**
+   * When identity verification (password / SSO) succeeded.
+   */
+  verified_at: string | null;
+  /**
      * How the signing operator's identity was verified.
     
     * `PASSWORD` - Password
     * `SSO` - SSO
     * `NONE` - None
      */
-  VerificationMethodEnum | undefined;
-  ip_address?:
-    | /**
-     * Client IP at signing time; captured for audit defense.
-     */
-    (string | null)
-    | undefined;
+  verification_method: VerificationMethodEnum;
+  /**
+   * Client IP at signing time; captured for audit defense.
+   */
+  ip_address: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -12044,25 +12066,6 @@ export type PatchedApprovalRequestRequest = Partial<{
   escalate_to: number | null;
   due_date: string | null;
 }>;
-export type PatchedApprovalResponseRequest = Partial<{
-  approval_request: string;
-  approver: number;
-  decision: ApprovalResponseDecisionEnum;
-  comments: string | null;
-  /**
-   * Base64 encoded signature image (PNG)
-   */
-  signature_data: string | null;
-  /**
-   * e.g., 'I approve as QA Manager'
-   *
-   * @maxLength 200
-   */
-  signature_meaning: string | null;
-  verification_method: VerificationMethodEnum;
-  delegated_to: number | null;
-  archived: boolean;
-}>;
 export type PatchedApprovalTemplateRequest = Partial<{
   /**
    * @minLength 1
@@ -12802,29 +12805,6 @@ export type PatchedLifeTrackingRequest = Partial<{
     * `RESET` - Reset After Rebuild
      */
   source: LifeTrackingSourceEnum;
-  /**
-   * Override hard limit for this specific instance
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-   */
-  hard_limit_override: string | null;
-  /**
-   * Override soft limit for this specific instance
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,2})?$
-   */
-  soft_limit_override: string | null;
-  /**
-   * Reason for limit override
-   *
-   * @maxLength 200
-   */
-  override_reason: string;
-  override_approved_by: number | null;
-  /**
-   * History of resets/overhauls
-   */
-  reset_history: unknown;
   archived: boolean;
 }>;
 export type PatchedMaterialLotRequest = Partial<{
@@ -13815,123 +13795,6 @@ export type PatchedRepairCodeRequest = Partial<{
   notes: string;
   archived: boolean;
 }>;
-export type PatchedSPCBaselineRequest = Partial<{
-  /**
-   * The measurement definition this baseline applies to
-   */
-  measurement_definition: string;
-  /**
-     * Type of control chart (X-bar R, X-bar S, or I-MR)
-    
-    * `XBAR_R` - X̄-R
-    * `XBAR_S` - X̄-S
-    * `I_MR` - I-MR
-     */
-  chart_type: ChartTypeEnum;
-  /**
-   * Number of samples per subgroup (n=2 to 25 for X-bar charts, n=1 for I-MR)
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  subgroup_size: number;
-  /**
-   * X-bar chart Upper Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  xbar_ucl: string | null;
-  /**
-   * X-bar chart Center Line (grand mean)
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  xbar_cl: string | null;
-  /**
-   * X-bar chart Lower Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  xbar_lcl: string | null;
-  /**
-   * Range (or S) chart Upper Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  range_ucl: string | null;
-  /**
-   * Range (or S) chart Center Line
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  range_cl: string | null;
-  /**
-   * Range (or S) chart Lower Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  range_lcl: string | null;
-  /**
-   * Individual chart Upper Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  individual_ucl: string | null;
-  /**
-   * Individual chart Center Line
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  individual_cl: string | null;
-  /**
-   * Individual chart Lower Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  individual_lcl: string | null;
-  /**
-   * Moving Range chart Upper Control Limit
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  mr_ucl: string | null;
-  /**
-   * Moving Range chart Center Line
-   *
-   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-   */
-  mr_cl: string | null;
-  /**
-     * Current status of this baseline
-    
-    * `ACTIVE` - Active
-    * `SUPERSEDED` - Superseded
-     */
-  status: BaselineStatusEnum;
-  /**
-   * User who froze/created this baseline
-   */
-  frozen_by: number | null;
-  /**
-   * The baseline that replaced this one
-   */
-  superseded_by: string | null;
-  /**
-   * Reason for superseding this baseline
-   */
-  superseded_reason: string;
-  /**
-   * Number of data points used to calculate this baseline
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  sample_count: number;
-  /**
-   * Additional notes about this baseline
-   */
-  notes: string;
-}>;
 export type PatchedSamplingRuleRequest = Partial<{
   rule_type: RuleTypeEnum;
   /**
@@ -14149,54 +14012,6 @@ export type PatchedStepExecutionRequest = Partial<{
    */
   decision_result: string;
   status: StepExecutionStatusEnum;
-  archived: boolean;
-}>;
-export type PatchedStepOverrideRequest = Partial<{
-  step_execution: string;
-  /**
-     * Type of block being overridden
-    
-    * `QA_SIGNOFF` - QA Signoff Required
-    * `FPI_REQUIRED` - FPI Required
-    * `MEASUREMENT_FAILED` - Measurement Failed
-    * `QUARANTINE` - Part Quarantined
-    * `SAMPLING_REQUIRED` - Sampling Required
-    * `BATCH_INCOMPLETE` - Batch Incomplete
-    * `TRAINING_EXPIRED` - Training Expired
-    * `CALIBRATION_EXPIRED` - Calibration Expired
-    * `REGULATORY_HOLD` - Regulatory Hold
-    * `ROLLBACK` - Step Rollback
-    * `OTHER` - Other
-     */
-  block_type: BlockTypeEnum;
-  requested_by: number;
-  /**
-   * Justification for the override
-   *
-   * @minLength 1
-   */
-  reason: string;
-  /**
-   * User who approved/rejected the override
-   */
-  approved_by: number | null;
-  /**
-     * Current status of the override request
-    
-    * `PENDING` - Pending
-    * `APPROVED` - Approved
-    * `REJECTED` - Rejected
-    * `EXPIRED` - Expired
-     */
-  status: StepOverrideStatusEnum;
-  /**
-   * When this override expires
-   */
-  expires_at: string | null;
-  /**
-   * Whether this override has been used
-   */
-  used: boolean;
   archived: boolean;
 }>;
 export type PatchedStepTimingRecordRequest = Partial<{
@@ -14431,55 +14246,6 @@ export type PatchedSubstepCompletionRequest = Partial<{
    * Operator notes captured at completion; required when marking N/A.
    */
   notes: string;
-  /**
-   * Base64 PNG signature blob, matching the ApprovalResponse format.
-   */
-  signature_data: string | null;
-  /**
-   * Short human-readable description of what the signature attests to.
-   *
-   * @maxLength 200
-   */
-  signature_meaning: string | null;
-  /**
-   * When identity verification (password / SSO) succeeded.
-   */
-  verified_at: string | null;
-  /**
-     * How the signing operator's identity was verified.
-    
-    * `PASSWORD` - Password
-    * `SSO` - SSO
-    * `NONE` - None
-     */
-  verification_method: VerificationMethodEnum;
-  /**
-   * Client IP at signing time; captured for audit defense.
-   *
-   * @minLength 1
-   */
-  ip_address: string | null;
-}>;
-export type PatchedSubstepGateCompletionRequest = Partial<{
-  /**
-   * The execution record where this gate was completed.
-   */
-  step_execution: string;
-  /**
-   * The substep the gate node lives in.
-   */
-  substep: string;
-  /**
-   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts.
-   *
-   * @minLength 1
-   * @maxLength 64
-   */
-  node_id: string;
-  /**
-   * Operator who confirmed/signed the gate.
-   */
-  completed_by: number;
   /**
    * Base64 PNG signature blob, matching the ApprovalResponse format.
    */
@@ -16269,149 +16035,6 @@ export type SPCBaselineFreezeRequest = {
    */
   string | undefined;
 };
-export type SPCBaselineRequest = {
-  /**
-   * The measurement definition this baseline applies to
-   */
-  measurement_definition: string;
-  /**
-     * Type of control chart (X-bar R, X-bar S, or I-MR)
-    
-    * `XBAR_R` - X̄-R
-    * `XBAR_S` - X̄-S
-    * `I_MR` - I-MR
-     */
-  chart_type: ChartTypeEnum;
-  subgroup_size?: /**
-   * Number of samples per subgroup (n=2 to 25 for X-bar charts, n=1 for I-MR)
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  xbar_ucl?:
-    | /**
-     * X-bar chart Upper Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  xbar_cl?:
-    | /**
-     * X-bar chart Center Line (grand mean)
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  xbar_lcl?:
-    | /**
-     * X-bar chart Lower Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  range_ucl?:
-    | /**
-     * Range (or S) chart Upper Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  range_cl?:
-    | /**
-     * Range (or S) chart Center Line
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  range_lcl?:
-    | /**
-     * Range (or S) chart Lower Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  individual_ucl?:
-    | /**
-     * Individual chart Upper Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  individual_cl?:
-    | /**
-     * Individual chart Center Line
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  individual_lcl?:
-    | /**
-     * Individual chart Lower Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  mr_ucl?:
-    | /**
-     * Moving Range chart Upper Control Limit
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  mr_cl?:
-    | /**
-     * Moving Range chart Center Line
-     *
-     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
-     */
-    (string | null)
-    | undefined;
-  status?: /**
-     * Current status of this baseline
-    
-    * `ACTIVE` - Active
-    * `SUPERSEDED` - Superseded
-     */
-  BaselineStatusEnum | undefined;
-  frozen_by?:
-    | /**
-     * User who froze/created this baseline
-     */
-    (number | null)
-    | undefined;
-  superseded_by?:
-    | /**
-     * The baseline that replaced this one
-     */
-    (string | null)
-    | undefined;
-  superseded_reason?: /**
-   * Reason for superseding this baseline
-   */
-  string | undefined;
-  sample_count?: /**
-   * Number of data points used to calculate this baseline
-   *
-   * @minimum 0
-   * @maximum 2147483647
-   */
-  number | undefined;
-  notes?: /**
-   * Additional notes about this baseline
-   */
-  string | undefined;
-};
 export type SPCCapabilityResponse = {
   definition: MeasurementDefinitionSPC;
   sample_size: number;
@@ -16991,38 +16614,12 @@ export type StepOverrideRequest = {
     * `OTHER` - Other
      */
   block_type: BlockTypeEnum;
-  requested_by: number;
   /**
    * Justification for the override
    *
    * @minLength 1
    */
   reason: string;
-  approved_by?:
-    | /**
-     * User who approved/rejected the override
-     */
-    (number | null)
-    | undefined;
-  status?: /**
-     * Current status of the override request
-    
-    * `PENDING` - Pending
-    * `APPROVED` - Approved
-    * `REJECTED` - Rejected
-    * `EXPIRED` - Expired
-     */
-  StepOverrideStatusEnum | undefined;
-  expires_at?:
-    | /**
-     * When this override expires
-     */
-    (string | null)
-    | undefined;
-  used?: /**
-   * Whether this override has been used
-   */
-  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type StepRequest = {
@@ -17394,63 +16991,6 @@ export type SubstepCompletionRequest = {
    * Operator notes captured at completion; required when marking N/A.
    */
   string | undefined;
-  signature_data?:
-    | /**
-     * Base64 PNG signature blob, matching the ApprovalResponse format.
-     */
-    (string | null)
-    | undefined;
-  signature_meaning?:
-    | /**
-     * Short human-readable description of what the signature attests to.
-     *
-     * @maxLength 200
-     */
-    (string | null)
-    | undefined;
-  verified_at?:
-    | /**
-     * When identity verification (password / SSO) succeeded.
-     */
-    (string | null)
-    | undefined;
-  verification_method?: /**
-     * How the signing operator's identity was verified.
-    
-    * `PASSWORD` - Password
-    * `SSO` - SSO
-    * `NONE` - None
-     */
-  VerificationMethodEnum | undefined;
-  ip_address?:
-    | /**
-     * Client IP at signing time; captured for audit defense.
-     *
-     * @minLength 1
-     */
-    (string | null)
-    | undefined;
-};
-export type SubstepGateCompletionRequest = {
-  /**
-   * The execution record where this gate was completed.
-   */
-  step_execution: string;
-  /**
-   * The substep the gate node lives in.
-   */
-  substep: string;
-  /**
-   * UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks (minted client-side per decision #18). Stable across the substep's lifetime as long as the engineer doesn't cut-paste the node - see src/lib/dwi/node-id.ts.
-   *
-   * @minLength 1
-   * @maxLength 64
-   */
-  node_id: string;
-  /**
-   * Operator who confirmed/signed the gate.
-   */
-  completed_by: number;
   signature_data?:
     | /**
      * Base64 PNG signature blob, matching the ApprovalResponse format.
@@ -18652,30 +18192,6 @@ const PaginatedApprovalResponseList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(ApprovalResponse),
 });
-const ApprovalResponseRequest = z.object({
-  approval_request: z.string().uuid(),
-  approver: z.number().int(),
-  decision: ApprovalResponseDecisionEnum,
-  comments: z.string().nullish(),
-  signature_data: z.string().nullish(),
-  signature_meaning: z.string().max(200).nullish(),
-  verification_method: VerificationMethodEnum.optional(),
-  delegated_to: z.number().int().nullish(),
-  archived: z.boolean().optional(),
-});
-const PatchedApprovalResponseRequest = z
-  .object({
-    approval_request: z.string().uuid(),
-    approver: z.number().int(),
-    decision: ApprovalResponseDecisionEnum,
-    comments: z.string().nullable(),
-    signature_data: z.string().nullable(),
-    signature_meaning: z.string().max(200).nullable(),
-    verification_method: VerificationMethodEnum,
-    delegated_to: z.number().int().nullable(),
-    archived: z.boolean(),
-  })
-  .partial();
 const ApprovalResponseDelegateRequestRequest = z.object({
   delegatee_id: z.number().int(),
   reason: z.string().min(1),
@@ -19384,6 +18900,33 @@ const PatchedCalibrationRecordRequest = z
     archived: z.boolean(),
   })
   .partial();
+const ExposedReport = z.object({
+  id: z.string().uuid(),
+  report_number: z.string(),
+  part: z.string(),
+  part_id: z.string().uuid().nullable(),
+  material_lot_id: z.string().uuid().nullable(),
+  step: z.string(),
+  created_at: z.string().datetime({ offset: true }),
+  inspector: z.string(),
+  status: z.string(),
+  role: z.string(),
+});
+const CalibrationExposure = z.object({
+  calibration_id: z.string().uuid(),
+  equipment_id: z.string().uuid(),
+  equipment_name: z.string(),
+  result: z.string(),
+  as_found_in_tolerance: z.boolean().nullable(),
+  window_start: z.string().nullable(),
+  window_start_calibration_id: z.string().uuid().nullable(),
+  window_start_result: z.string().nullable(),
+  window_end: z.string(),
+  window_sentence: z.string(),
+  count: z.number().int(),
+  reports: z.array(ExposedReport),
+});
+const CalibrationExposureError = z.object({ detail: z.string() });
 const GaugeNagRow = z.object({
   equipment_id: z.string(),
   equipment_name: z.string(),
@@ -21188,17 +20731,6 @@ const LifeTrackingRequest = z.object({
     .optional(),
   reference_date: z.string().nullish(),
   source: LifeTrackingSourceEnum.optional(),
-  hard_limit_override: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-    .nullish(),
-  soft_limit_override: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-    .nullish(),
-  override_reason: z.string().max(200).optional(),
-  override_approved_by: z.number().int().nullish(),
-  reset_history: z.unknown().optional(),
   archived: z.boolean().optional(),
 });
 const LifeTracking = z.object({
@@ -21226,14 +20758,14 @@ const LifeTracking = z.object({
   hard_limit_override: z
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-    .nullish(),
+    .nullable(),
   soft_limit_override: z
     .string()
     .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-    .nullish(),
-  override_reason: z.string().max(200).optional(),
-  override_approved_by: z.number().int().nullish(),
-  reset_history: z.unknown().optional(),
+    .nullable(),
+  override_reason: z.string(),
+  override_approved_by: z.number().int().nullable(),
+  reset_history: z.unknown(),
   cached_status: z.string(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -21247,17 +20779,6 @@ const PatchedLifeTrackingRequest = z
     accumulated: z.string().regex(/^-?\d{0,10}(?:\.\d{0,2})?$/),
     reference_date: z.string().nullable(),
     source: LifeTrackingSourceEnum,
-    hard_limit_override: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-      .nullable(),
-    soft_limit_override: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,2})?$/)
-      .nullable(),
-    override_reason: z.string().max(200),
-    override_approved_by: z.number().int().nullable(),
-    reset_history: z.unknown(),
     archived: z.boolean(),
   })
   .partial();
@@ -21543,6 +21064,7 @@ const QualityReportPersonnel = z.object({
   signed_at: z.string().datetime({ offset: true }).nullish(),
   notes: z.string().max(200).optional(),
 });
+const CapaDecisionEnum = z.enum(["PROMOTED", "NOT_REQUIRED", "DEFERRED"]);
 const QualityReports = z.object({
   id: z.string().uuid(),
   report_number: z.string(),
@@ -21581,6 +21103,11 @@ const QualityReports = z.object({
   errors_info: z.array(z.unknown()),
   file_info: z.object({}).partial().passthrough().nullable(),
   archived: z.boolean().optional(),
+  capa_decision: z.union([CapaDecisionEnum, NullEnum]).nullable(),
+  capa_decision_note: z.string(),
+  capa_decided_by: z.number().int().nullable(),
+  capa_decided_by_name: z.string().nullable(),
+  capa_decided_at: z.string().datetime({ offset: true }).nullable(),
 });
 const AdjustQuantityRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
@@ -23348,6 +22875,11 @@ const PatchedQualityReportsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const CapaDecisionRequestDecisionEnum = z.enum(["NOT_REQUIRED", "DEFERRED"]);
+const CapaDecisionRequestRequest = z.object({
+  decision: CapaDecisionRequestDecisionEnum,
+  note: z.string().min(1),
+});
 const CurrentStateEnum = z.enum(["OPEN", "IN_PROGRESS", "CLOSED"]);
 const DispositionTypeEnum = z.enum([
   "REWORK",
@@ -23583,6 +23115,9 @@ const PatchedRcaRecordRequest = z
     fishbone_data: FishboneNestedRequest,
     archived: z.boolean(),
   })
+  .partial();
+const RcaApproveInputRequest = z
+  .object({ verification_notes: z.string() })
   .partial();
 const RebuildScopePreset = z.object({
   id: z.string().uuid(),
@@ -24826,14 +24361,14 @@ const StepOverride = z.object({
   requested_by_info: z.object({}).partial().passthrough().nullable(),
   requested_at: z.string().datetime({ offset: true }),
   reason: z.string(),
-  approved_by: z.number().int().nullish(),
+  approved_by: z.number().int().nullable(),
   approved_by_info: z.object({}).partial().passthrough().nullable(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
-  status: StepOverrideStatusEnum.optional(),
+  status: StepOverrideStatusEnum,
   status_display: z.string(),
-  expires_at: z.string().datetime({ offset: true }).nullish(),
+  expires_at: z.string().datetime({ offset: true }).nullable(),
   is_expired: z.boolean(),
-  used: z.boolean().optional(),
+  used: z.boolean(),
   used_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -24848,27 +24383,9 @@ const PaginatedStepOverrideList = z.object({
 const StepOverrideRequest = z.object({
   step_execution: z.string().uuid(),
   block_type: BlockTypeEnum,
-  requested_by: z.number().int(),
   reason: z.string().min(1),
-  approved_by: z.number().int().nullish(),
-  status: StepOverrideStatusEnum.optional(),
-  expires_at: z.string().datetime({ offset: true }).nullish(),
-  used: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
-const PatchedStepOverrideRequest = z
-  .object({
-    step_execution: z.string().uuid(),
-    block_type: BlockTypeEnum,
-    requested_by: z.number().int(),
-    reason: z.string().min(1),
-    approved_by: z.number().int().nullable(),
-    status: StepOverrideStatusEnum,
-    expires_at: z.string().datetime({ offset: true }).nullable(),
-    used: z.boolean(),
-    archived: z.boolean(),
-  })
-  .partial();
 const AttentionTypeEnum = z.enum(["full", "load_unload", "unattended"]);
 const StepTimingRecord = z.object({
   id: z.string().uuid(),
@@ -25382,9 +24899,9 @@ const SubstepGateCompletion = z.object({
   completed_at: z.string().datetime({ offset: true }),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
-  verified_at: z.string().datetime({ offset: true }).nullish(),
-  verification_method: VerificationMethodEnum.optional(),
-  ip_address: z.string().nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullable(),
+  verification_method: VerificationMethodEnum,
+  ip_address: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
@@ -25398,26 +24915,9 @@ const SubstepGateCompletionRequest = z.object({
   step_execution: z.string().uuid(),
   substep: z.string().uuid(),
   node_id: z.string().min(1).max(64),
-  completed_by: z.number().int(),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
-  verified_at: z.string().datetime({ offset: true }).nullish(),
-  verification_method: VerificationMethodEnum.optional(),
-  ip_address: z.string().min(1).nullish(),
 });
-const PatchedSubstepGateCompletionRequest = z
-  .object({
-    step_execution: z.string().uuid(),
-    substep: z.string().uuid(),
-    node_id: z.string().min(1).max(64),
-    completed_by: z.number().int(),
-    signature_data: z.string().nullable(),
-    signature_meaning: z.string().max(200).nullable(),
-    verified_at: z.string().datetime({ offset: true }).nullable(),
-    verification_method: VerificationMethodEnum,
-    ip_address: z.string().min(1).nullable(),
-  })
-  .partial();
 const SubstepResource = z.object({
   id: z.string().uuid(),
   substep: z.string().uuid(),
@@ -28145,61 +27645,6 @@ const PaginatedSPCBaselineListList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(SPCBaselineList),
 });
-const SPCBaselineRequest = z.object({
-  measurement_definition: z.string().uuid(),
-  chart_type: ChartTypeEnum,
-  subgroup_size: z.number().int().gte(0).lte(2147483647).optional(),
-  xbar_ucl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  xbar_cl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  xbar_lcl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  range_ucl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  range_cl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  range_lcl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  individual_ucl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  individual_cl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  individual_lcl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  mr_ucl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  mr_cl: z
-    .string()
-    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-    .nullish(),
-  status: BaselineStatusEnum.optional(),
-  frozen_by: z.number().int().nullish(),
-  superseded_by: z.string().uuid().nullish(),
-  superseded_reason: z.string().optional(),
-  sample_count: z.number().int().gte(0).lte(2147483647).optional(),
-  notes: z.string().optional(),
-});
 const SPCBaseline = z.object({
   id: z.string().uuid(),
   measurement_definition: z.string().uuid(),
@@ -28267,63 +27712,6 @@ const SPCBaseline = z.object({
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
-const PatchedSPCBaselineRequest = z
-  .object({
-    measurement_definition: z.string().uuid(),
-    chart_type: ChartTypeEnum,
-    subgroup_size: z.number().int().gte(0).lte(2147483647),
-    xbar_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    xbar_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    xbar_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    range_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    range_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    range_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    individual_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    individual_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    individual_lcl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    mr_ucl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    mr_cl: z
-      .string()
-      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
-      .nullable(),
-    status: BaselineStatusEnum,
-    frozen_by: z.number().int().nullable(),
-    superseded_by: z.string().uuid().nullable(),
-    superseded_reason: z.string(),
-    sample_count: z.number().int().gte(0).lte(2147483647),
-    notes: z.string(),
-  })
-  .partial();
 const SupersedeRequestRequest = z.object({ reason: z.string() }).partial();
 const SPCBaselineFreezeRequest = z.object({
   measurement_definition_id: z.string().uuid(),
@@ -28647,6 +28035,17 @@ const PatchedTenantAwareUserDetailsRequest = z
   })
   .partial();
 const PasswordResetConfirmResponse = z.object({ detail: z.string() });
+const ApprovalResponseRequest = z.object({
+  approval_request: z.string().uuid(),
+  approver: z.number().int(),
+  decision: ApprovalResponseDecisionEnum,
+  comments: z.string().nullish(),
+  signature_data: z.string().nullish(),
+  signature_meaning: z.string().max(200).nullish(),
+  verification_method: VerificationMethodEnum.optional(),
+  delegated_to: z.number().int().nullish(),
+  archived: z.boolean().optional(),
+});
 const CapaTaskAssigneeRequest = z.object({
   task: z.string().uuid(),
   user: z.number().int(),
@@ -28768,8 +28167,6 @@ export const schemas = {
   ApprovalResponseSubmitRequestRequest,
   ListMetadataResponse,
   PaginatedApprovalResponseList,
-  ApprovalResponseRequest,
-  PatchedApprovalResponseRequest,
   ApprovalResponseDelegateRequestRequest,
   ApprovalTemplate,
   PaginatedApprovalTemplateList,
@@ -28835,6 +28232,9 @@ export const schemas = {
   PaginatedCalibrationRecordList,
   CalibrationRecordRequest,
   PatchedCalibrationRecordRequest,
+  ExposedReport,
+  CalibrationExposure,
+  CalibrationExposureError,
   GaugeNagRow,
   CalibrationStats,
   PaginatedCapaTasksList,
@@ -29068,6 +28468,7 @@ export const schemas = {
   QualityReportEquipment,
   QualityReportPersonnelRoleEnum,
   QualityReportPersonnel,
+  CapaDecisionEnum,
   QualityReports,
   AdjustQuantityRequest,
   CancelExpectedReceiptRequest,
@@ -29264,6 +28665,8 @@ export const schemas = {
   MeasurementResultRequest,
   QualityReportsRequest,
   PatchedQualityReportsRequest,
+  CapaDecisionRequestDecisionEnum,
+  CapaDecisionRequestRequest,
   CurrentStateEnum,
   DispositionTypeEnum,
   DispositionAffectedPart,
@@ -29277,6 +28680,7 @@ export const schemas = {
   FishboneNestedRequest,
   RcaRecordRequest,
   PatchedRcaRecordRequest,
+  RcaApproveInputRequest,
   RebuildScopePreset,
   PaginatedRebuildScopePresetList,
   RebuildScopePresetRequest,
@@ -29412,7 +28816,6 @@ export const schemas = {
   StepOverride,
   PaginatedStepOverrideList,
   StepOverrideRequest,
-  PatchedStepOverrideRequest,
   AttentionTypeEnum,
   StepTimingRecord,
   PaginatedStepTimingRecordList,
@@ -29453,7 +28856,6 @@ export const schemas = {
   SubstepGateCompletion,
   PaginatedSubstepGateCompletionList,
   SubstepGateCompletionRequest,
-  PatchedSubstepGateCompletionRequest,
   SubstepResource,
   PaginatedSubstepResourceList,
   SubstepResourceRequest,
@@ -29776,9 +29178,7 @@ export const schemas = {
   BaselineStatusEnum,
   SPCBaselineList,
   PaginatedSPCBaselineListList,
-  SPCBaselineRequest,
   SPCBaseline,
-  PatchedSPCBaselineRequest,
   SupersedeRequestRequest,
   SPCBaselineFreezeRequest,
   MeasurementDefinitionSPC,
@@ -29825,6 +29225,7 @@ export const schemas = {
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,
   PasswordResetConfirmResponse,
+  ApprovalResponseRequest,
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
@@ -30487,21 +29888,6 @@ POST: Executes the query.`,
     response: PaginatedApprovalResponseList,
   },
   {
-    method: "post",
-    path: "/api/ApprovalResponses/",
-    alias: "api_ApprovalResponses_create",
-    description: `Create a new approval response`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApprovalResponseRequest,
-      },
-    ],
-    response: ApprovalResponse,
-  },
-  {
     method: "get",
     path: "/api/ApprovalResponses/:id/",
     alias: "api_ApprovalResponses_retrieve",
@@ -30515,64 +29901,6 @@ POST: Executes the query.`,
       },
     ],
     response: ApprovalResponse,
-  },
-  {
-    method: "put",
-    path: "/api/ApprovalResponses/:id/",
-    alias: "api_ApprovalResponses_update",
-    description: `Update an approval response`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApprovalResponseRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: ApprovalResponse,
-  },
-  {
-    method: "patch",
-    path: "/api/ApprovalResponses/:id/",
-    alias: "api_ApprovalResponses_partial_update",
-    description: `Partially update an approval response`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedApprovalResponseRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: ApprovalResponse,
-  },
-  {
-    method: "delete",
-    path: "/api/ApprovalResponses/:id/",
-    alias: "api_ApprovalResponses_destroy",
-    description: `ViewSet for managing approval responses.
-
-Approval responses record individual approver decisions with signature capture,
-identity verification, and delegation support.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "post",
@@ -31876,6 +31204,42 @@ aren&#x27;t all completed, or if membership crosses WO boundaries.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/CalibrationRecords/:id/exposure-export/",
+    alias: "api_CalibrationRecords_exposure_export_retrieve",
+    description: `The exposure list as an .xlsx, with the window it was drawn from.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/CalibrationRecords/:id/exposure/",
+    alias: "api_CalibrationRecords_exposure_retrieve",
+    description: `What the gauge measured between its last good calibration and this one, which found it unfit (ISO 9001 7.1.5.2). A list to decide on; nothing is quarantined or raised.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CalibrationExposure,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
   },
   {
     method: "get",
@@ -34585,10 +33949,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CycleCounts/:id/",
@@ -34619,7 +33980,10 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CycleCounts/:id/differences-xlsx/",
@@ -39722,10 +39086,7 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -39764,7 +39125,10 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "patch",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -44146,10 +43510,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Orders/import-preview/",
@@ -44185,7 +43546,10 @@ const endpoints3 = makeApi([
       },
     ],
     response: ImportStatusResponse,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Orders/import-template/:template_format/",
@@ -48636,6 +48000,16 @@ Usage:
         schema: z.array(z.string().uuid()).optional(),
       },
       {
+        name: "capa_decision",
+        type: "Query",
+        schema: z.enum(["DEFERRED", "NOT_REQUIRED", "PROMOTED"]).nullish(),
+      },
+      {
+        name: "capa_decision__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -48882,6 +48256,26 @@ Usage:
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/QualityReports/:id/capa-decision/",
+    alias: "api_QualityReports_capa_decision_create",
+    description: `Record that a failed report needs no CAPA, or that the decision is deferred, with the reason. (CAPA raised is set by the CAPA.)`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CapaDecisionRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QualityReports,
   },
   {
     method: "get",
@@ -49470,9 +48864,15 @@ the completion blockers.`,
     method: "post",
     path: "/api/RcaRecords/:id/approve/",
     alias: "api_RcaRecords_approve_create",
-    description: `Approve RCA record`,
+    description: `Approve RCA record — verifies its root cause, under the independence rule:
+the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ verification_notes: z.string() }).partial(),
+      },
       {
         name: "id",
         type: "Path",
@@ -49747,10 +49147,7 @@ the completion blockers.`,
       },
     ],
     response: PaginatedRebuildSlotOverrideList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/RebuildSlotOverrides/",
@@ -49765,7 +49162,10 @@ const endpoints4 = makeApi([
       },
     ],
     response: RebuildSlotOverride,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/RebuildSlotOverrides/:id/",
@@ -52462,10 +51862,15 @@ to current versions. Delete is the SecureModel soft-delete (archive).`,
     alias: "api_spc_baselines_list",
     description: `ViewSet for SPC Baselines (frozen control limits).
 
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
+Read-only, plus the two ways a baseline changes:
+    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
+    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline
+
+It used to be a full ModelViewSet with permission_classes overridden to drop
+TenantModelPermissions, so any tenant user could write control limits, status,
+frozen_by and superseded_by directly. Model permissions apply again (inherited from
+TenantScopedMixin), and direct create/update/delete are gone.`,
     requestFormat: "json",
     parameters: [
       {
@@ -52512,35 +51917,20 @@ Standard CRUD plus custom actions:
     response: PaginatedSPCBaselineListList,
   },
   {
-    method: "post",
-    path: "/api/spc-baselines/",
-    alias: "api_spc_baselines_create",
-    description: `ViewSet for SPC Baselines (frozen control limits).
-
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: SPCBaselineRequest,
-      },
-    ],
-    response: SPCBaseline,
-  },
-  {
     method: "get",
     path: "/api/spc-baselines/:id/",
     alias: "api_spc_baselines_retrieve",
     description: `ViewSet for SPC Baselines (frozen control limits).
 
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
+Read-only, plus the two ways a baseline changes:
+    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
+    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline
+
+It used to be a full ModelViewSet with permission_classes overridden to drop
+TenantModelPermissions, so any tenant user could write control limits, status,
+frozen_by and superseded_by directly. Model permissions apply again (inherited from
+TenantScopedMixin), and direct create/update/delete are gone.`,
     requestFormat: "json",
     parameters: [
       {
@@ -52550,76 +51940,6 @@ Standard CRUD plus custom actions:
       },
     ],
     response: SPCBaseline,
-  },
-  {
-    method: "put",
-    path: "/api/spc-baselines/:id/",
-    alias: "api_spc_baselines_update",
-    description: `ViewSet for SPC Baselines (frozen control limits).
-
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: SPCBaselineRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SPCBaseline,
-  },
-  {
-    method: "patch",
-    path: "/api/spc-baselines/:id/",
-    alias: "api_spc_baselines_partial_update",
-    description: `ViewSet for SPC Baselines (frozen control limits).
-
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedSPCBaselineRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SPCBaseline,
-  },
-  {
-    method: "delete",
-    path: "/api/spc-baselines/:id/",
-    alias: "api_spc_baselines_destroy",
-    description: `ViewSet for SPC Baselines (frozen control limits).
-
-Standard CRUD plus custom actions:
-    POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-    POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-    GET /api/spc-baselines/active/?measurement_id&#x3D;X - Get active baseline`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "post",
@@ -54272,70 +53592,6 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
     response: StepOverride,
   },
   {
-    method: "put",
-    path: "/api/StepOverrides/:id/",
-    alias: "api_StepOverrides_update",
-    description: `ViewSet for managing step override requests.
-
-Overrides allow bypassing step advancement blocks with approval workflow.
-Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: StepOverrideRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: StepOverride,
-  },
-  {
-    method: "patch",
-    path: "/api/StepOverrides/:id/",
-    alias: "api_StepOverrides_partial_update",
-    description: `ViewSet for managing step override requests.
-
-Overrides allow bypassing step advancement blocks with approval workflow.
-Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedStepOverrideRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: StepOverride,
-  },
-  {
-    method: "delete",
-    path: "/api/StepOverrides/:id/",
-    alias: "api_StepOverrides_destroy",
-    description: `ViewSet for managing step override requests.
-
-Overrides allow bypassing step advancement blocks with approval workflow.
-Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
     method: "post",
     path: "/api/StepOverrides/:id/approve/",
     alias: "api_StepOverrides_approve_create",
@@ -55202,10 +54458,7 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: ImportStatusResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepTimings/import-template/:template_format/",
@@ -55393,7 +54646,10 @@ record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is
       },
     ],
     response: StorageLocation,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "delete",
     path: "/api/StorageLocations/:id/",
@@ -55751,7 +55007,12 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
     method: "get",
     path: "/api/SubstepGateCompletions/",
     alias: "api_SubstepGateCompletions_list",
-    description: `Per-node attestation / signature gate completions.`,
+    description: `Per-node attestation / signature gate completions.
+
+An attestation is signed by whoever is logged in, when they sign, from where
+they are — all set here, none taken from the request body. Once signed it
+can&#x27;t be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+happens on this endpoint, so verification_method stays NONE.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55796,7 +55057,12 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
     method: "post",
     path: "/api/SubstepGateCompletions/",
     alias: "api_SubstepGateCompletions_create",
-    description: `Per-node attestation / signature gate completions.`,
+    description: `Per-node attestation / signature gate completions.
+
+An attestation is signed by whoever is logged in, when they sign, from where
+they are — all set here, none taken from the request body. Once signed it
+can&#x27;t be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+happens on this endpoint, so verification_method stays NONE.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55811,7 +55077,12 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
     method: "get",
     path: "/api/SubstepGateCompletions/:id/",
     alias: "api_SubstepGateCompletions_retrieve",
-    description: `Per-node attestation / signature gate completions.`,
+    description: `Per-node attestation / signature gate completions.
+
+An attestation is signed by whoever is logged in, when they sign, from where
+they are — all set here, none taken from the request body. Once signed it
+can&#x27;t be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+happens on this endpoint, so verification_method stays NONE.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55821,61 +55092,6 @@ Body: { &quot;reason&quot;: &quot;&lt;text&gt;&quot; } — required.`,
       },
     ],
     response: SubstepGateCompletion,
-  },
-  {
-    method: "put",
-    path: "/api/SubstepGateCompletions/:id/",
-    alias: "api_SubstepGateCompletions_update",
-    description: `Per-node attestation / signature gate completions.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: SubstepGateCompletionRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SubstepGateCompletion,
-  },
-  {
-    method: "patch",
-    path: "/api/SubstepGateCompletions/:id/",
-    alias: "api_SubstepGateCompletions_partial_update",
-    description: `Per-node attestation / signature gate completions.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedSubstepGateCompletionRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SubstepGateCompletion,
-  },
-  {
-    method: "delete",
-    path: "/api/SubstepGateCompletions/:id/",
-    alias: "api_SubstepGateCompletions_destroy",
-    description: `Per-node attestation / signature gate completions.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "get",
@@ -59917,10 +59133,7 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "put",
     path: "/api/UserInvitations/:id/",
@@ -60147,7 +59360,10 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: UserWorkCenterMembership,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "put",
     path: "/api/UserWorkCenterMemberships/:id/",

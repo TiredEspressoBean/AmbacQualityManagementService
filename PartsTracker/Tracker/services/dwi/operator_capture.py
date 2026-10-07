@@ -721,7 +721,10 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
         # via the void-QR flow later. The apply_calibration_result_to_equipment
         # signal on a FAIL calibration is what sets this status; this is where
         # that flag becomes load-bearing.
-        if equipment and equipment.status == EquipmentStatus.OUT_OF_SERVICE:
+        # The calibration result is checked too, not only the status flag: the
+        # flag is a copy of it that an edit could get out of step with.
+        if equipment and (equipment.status == EquipmentStatus.OUT_OF_SERVICE
+                          or equipment.calibration_status == 'FAILED'):
             from django.core.exceptions import ValidationError
             raise ValidationError(
                 f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "

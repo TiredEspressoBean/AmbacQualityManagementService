@@ -731,33 +731,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedApprovalResponseList'
           description: ''
-    post:
-      operationId: api_ApprovalResponses_create
-      description: Create a new approval response
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalResponse'
-          description: ''
   /api/ApprovalResponses/{id}/:
     get:
       operationId: api_ApprovalResponses_retrieve
@@ -782,98 +755,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalResponse'
           description: ''
-    put:
-      operationId: api_ApprovalResponses_update
-      description: Update an approval response
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Approval Response.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ApprovalResponseRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalResponse'
-          description: ''
-    patch:
-      operationId: api_ApprovalResponses_partial_update
-      description: Partially update an approval response
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Approval Response.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedApprovalResponseRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedApprovalResponseRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedApprovalResponseRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalResponse'
-          description: ''
-    delete:
-      operationId: api_ApprovalResponses_destroy
-      description: |-
-        ViewSet for managing approval responses.
-
-        Approval responses record individual approver decisions with signature capture,
-        identity verification, and delegation support.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Approval Response.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/ApprovalResponses/{id}/delegate/:
     post:
       operationId: api_ApprovalResponses_delegate_create
@@ -3358,6 +3239,63 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/CalibrationRecords/{id}/exposure/:
+    get:
+      operationId: api_CalibrationRecords_exposure_retrieve
+      description: What the gauge measured between its last good calibration and this
+        one, which found it unfit (ISO 9001 7.1.5.2). A list to decide on; nothing
+        is quarantined or raised.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Calibration Record.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationExposure'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationExposureError'
+          description: ''
+  /api/CalibrationRecords/{id}/exposure-export/:
+    get:
+      operationId: api_CalibrationRecords_exposure_export_retrieve
+      description: The exposure list as an .xlsx, with the window it was drawn from.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Calibration Record.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/CalibrationRecords/due-soon/:
     get:
       operationId: api_CalibrationRecords_due_soon_list
@@ -23721,6 +23659,23 @@ paths:
             format: uuid
         explode: true
         style: form
+      - in: query
+        name: capa_decision
+        schema:
+          type: string
+          nullable: true
+          enum:
+          - DEFERRED
+          - NOT_REQUIRED
+          - PROMOTED
+        description: |-
+          * `PROMOTED` - CAPA raised
+          * `NOT_REQUIRED` - No CAPA needed
+          * `DEFERRED` - Deferred
+      - in: query
+        name: capa_decision__isnull
+        schema:
+          type: boolean
       - name: limit
         required: false
         in: query
@@ -24048,6 +24003,37 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/QualityReports/{id}/capa-decision/:
+    post:
+      operationId: api_QualityReports_capa_decision_create
+      description: Record that a failed report needs no CAPA, or that the decision
+        is deferred, with the reason. (CAPA raised is set by the CAPA.)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Error Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapaDecisionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityReports'
+          description: ''
   /api/QualityReports/export/{export_format}/:
     get:
       operationId: api_QualityReports_export_retrieve
@@ -24876,7 +24862,9 @@ paths:
   /api/RcaRecords/{id}/approve/:
     post:
       operationId: api_RcaRecords_approve_create
-      description: Approve RCA record
+      description: |-
+        Approve RCA record — verifies its root cause, under the independence rule:
+        the conductor can't approve their own RCA unless the CAPA allows it.
       parameters:
       - in: path
         name: id
@@ -24887,6 +24875,17 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RcaApproveInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RcaApproveInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RcaApproveInputRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -31040,106 +31039,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/StepOverride'
           description: ''
-    put:
-      operationId: api_StepOverrides_update
-      description: |-
-        ViewSet for managing step override requests.
-
-        Overrides allow bypassing step advancement blocks with approval workflow.
-        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Step Override.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StepOverrideRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/StepOverrideRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/StepOverrideRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StepOverride'
-          description: ''
-    patch:
-      operationId: api_StepOverrides_partial_update
-      description: |-
-        ViewSet for managing step override requests.
-
-        Overrides allow bypassing step advancement blocks with approval workflow.
-        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Step Override.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedStepOverrideRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedStepOverrideRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedStepOverrideRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StepOverride'
-          description: ''
-    delete:
-      operationId: api_StepOverrides_destroy
-      description: |-
-        ViewSet for managing step override requests.
-
-        Overrides allow bypassing step advancement blocks with approval workflow.
-        Supports rollback requests, measurement failures, QA signoff bypasses, etc.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Step Override.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/StepOverrides/{id}/approve/:
     post:
       operationId: api_StepOverrides_approve_create
@@ -33208,7 +33107,13 @@ paths:
   /api/SubstepGateCompletions/:
     get:
       operationId: api_SubstepGateCompletions_list
-      description: Per-node attestation / signature gate completions.
+      description: |-
+        Per-node attestation / signature gate completions.
+
+        An attestation is signed by whoever is logged in, when they sign, from where
+        they are — all set here, none taken from the request body. Once signed it
+        can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+        happens on this endpoint, so verification_method stays NONE.
       parameters:
       - in: query
         name: completed_by
@@ -33260,7 +33165,13 @@ paths:
           description: ''
     post:
       operationId: api_SubstepGateCompletions_create
-      description: Per-node attestation / signature gate completions.
+      description: |-
+        Per-node attestation / signature gate completions.
+
+        An attestation is signed by whoever is logged in, when they sign, from where
+        they are — all set here, none taken from the request body. Once signed it
+        can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+        happens on this endpoint, so verification_method stays NONE.
       tags:
       - api
       requestBody:
@@ -33288,7 +33199,13 @@ paths:
   /api/SubstepGateCompletions/{id}/:
     get:
       operationId: api_SubstepGateCompletions_retrieve
-      description: Per-node attestation / signature gate completions.
+      description: |-
+        Per-node attestation / signature gate completions.
+
+        An attestation is signed by whoever is logged in, when they sign, from where
+        they are — all set here, none taken from the request body. Once signed it
+        can't be edited or deleted (no PUT/PATCH/DELETE). No identity re-verification
+        happens on this endpoint, so verification_method stays NONE.
       parameters:
       - in: path
         name: id
@@ -33309,94 +33226,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SubstepGateCompletion'
           description: ''
-    put:
-      operationId: api_SubstepGateCompletions_update
-      description: Per-node attestation / signature gate completions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep gate completion.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubstepGateCompletionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SubstepGateCompletionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SubstepGateCompletionRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubstepGateCompletion'
-          description: ''
-    patch:
-      operationId: api_SubstepGateCompletions_partial_update
-      description: Per-node attestation / signature gate completions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep gate completion.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepGateCompletionRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubstepGateCompletion'
-          description: ''
-    delete:
-      operationId: api_SubstepGateCompletions_destroy
-      description: Per-node attestation / signature gate completions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep gate completion.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/SubstepResources/:
     get:
       operationId: api_SubstepResources_list
@@ -46903,10 +46732,15 @@ paths:
       description: |-
         ViewSet for SPC Baselines (frozen control limits).
 
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
+        Read-only, plus the two ways a baseline changes:
+            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
             GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
+
+        It used to be a full ModelViewSet with permission_classes overridden to drop
+        TenantModelPermissions, so any tenant user could write control limits, status,
+        frozen_by and superseded_by directly. Model permissions apply again (inherited from
+        TenantScopedMixin), and direct create/update/delete are gone.
       parameters:
       - in: query
         name: chart_type
@@ -46979,49 +46813,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedSPCBaselineListList'
           description: ''
-    post:
-      operationId: api_spc_baselines_create
-      description: |-
-        ViewSet for SPC Baselines (frozen control limits).
-
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-            GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SPCBaseline'
-          description: ''
   /api/spc-baselines/{id}/:
     get:
       operationId: api_spc_baselines_retrieve
       description: |-
         ViewSet for SPC Baselines (frozen control limits).
 
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
+        Read-only, plus the two ways a baseline changes:
+            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline (add_spcbaseline)
+            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline (change_spcbaseline)
             GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
+
+        It used to be a full ModelViewSet with permission_classes overridden to drop
+        TenantModelPermissions, so any tenant user could write control limits, status,
+        frozen_by and superseded_by directly. Model permissions apply again (inherited from
+        TenantScopedMixin), and direct create/update/delete are gone.
       parameters:
       - in: path
         name: id
@@ -47042,112 +46848,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SPCBaseline'
           description: ''
-    put:
-      operationId: api_spc_baselines_update
-      description: |-
-        ViewSet for SPC Baselines (frozen control limits).
-
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-            GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this SPC Baseline.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SPCBaselineRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SPCBaseline'
-          description: ''
-    patch:
-      operationId: api_spc_baselines_partial_update
-      description: |-
-        ViewSet for SPC Baselines (frozen control limits).
-
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-            GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this SPC Baseline.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSPCBaselineRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSPCBaselineRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSPCBaselineRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SPCBaseline'
-          description: ''
-    delete:
-      operationId: api_spc_baselines_destroy
-      description: |-
-        ViewSet for SPC Baselines (frozen control limits).
-
-        Standard CRUD plus custom actions:
-            POST /api/spc-baselines/freeze/ - Freeze current limits as new baseline
-            POST /api/spc-baselines/{id}/supersede/ - Supersede/unfreeze a baseline
-            GET /api/spc-baselines/active/?measurement_id=X - Get active baseline
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this SPC Baseline.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/spc-baselines/{id}/supersede/:
     post:
       operationId: api_spc_baselines_supersede_create
@@ -50444,6 +50144,68 @@ components:
       description: |-
         * `weekly` - Weekly
         * `monthly` - Monthly
+    CalibrationExposure:
+      type: object
+      description: |-
+        What a gauge measured between its last good calibration and the one that found it
+        unfit (ISO 9001 7.1.5.2). A list to decide on — nothing is acted on.
+      properties:
+        calibration_id:
+          type: string
+          format: uuid
+        equipment_id:
+          type: string
+          format: uuid
+        equipment_name:
+          type: string
+        result:
+          type: string
+        as_found_in_tolerance:
+          type: boolean
+          nullable: true
+        window_start:
+          type: string
+          format: date
+          nullable: true
+          description: Null when there's no earlier good calibration on record.
+        window_start_calibration_id:
+          type: string
+          format: uuid
+          nullable: true
+        window_start_result:
+          type: string
+          nullable: true
+        window_end:
+          type: string
+          format: date
+        window_sentence:
+          type: string
+        count:
+          type: integer
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExposedReport'
+      required:
+      - as_found_in_tolerance
+      - calibration_id
+      - count
+      - equipment_id
+      - equipment_name
+      - reports
+      - result
+      - window_end
+      - window_sentence
+      - window_start
+      - window_start_calibration_id
+      - window_start_result
+    CalibrationExposureError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
     CalibrationRecord:
       type: object
       description: |-
@@ -50649,6 +50411,38 @@ components:
             received.
       required:
       - reason
+    CapaDecisionEnum:
+      enum:
+      - PROMOTED
+      - NOT_REQUIRED
+      - DEFERRED
+      type: string
+      description: |-
+        * `PROMOTED` - CAPA raised
+        * `NOT_REQUIRED` - No CAPA needed
+        * `DEFERRED` - Deferred
+    CapaDecisionRequestDecisionEnum:
+      enum:
+      - NOT_REQUIRED
+      - DEFERRED
+      type: string
+      description: |-
+        * `NOT_REQUIRED` - No CAPA needed
+        * `DEFERRED` - Deferred
+    CapaDecisionRequestRequest:
+      type: object
+      description: 'A person''s call on a failed report: no CAPA needed, or put off
+        — and why.'
+      properties:
+        decision:
+          $ref: '#/components/schemas/CapaDecisionRequestDecisionEnum'
+        note:
+          type: string
+          minLength: 1
+          description: Why — required; it's what an auditor reads.
+      required:
+      - decision
+      - note
     CapaTaskAssignee:
       type: object
       description: CAPA task assignee serializer
@@ -54970,6 +54764,48 @@ components:
           default: true
       required:
       - work_order_id
+    ExposedReport:
+      type: object
+      description: A quality report a gauge was used on inside its exposure window.
+      properties:
+        id:
+          type: string
+          format: uuid
+        report_number:
+          type: string
+        part:
+          type: string
+          description: The part's ERP id, or the material lot's number.
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        material_lot_id:
+          type: string
+          format: uuid
+          nullable: true
+        step:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        inspector:
+          type: string
+        status:
+          type: string
+        role:
+          type: string
+      required:
+      - created_at
+      - id
+      - inspector
+      - material_lot_id
+      - part
+      - part_id
+      - report_number
+      - role
+      - status
+      - step
     ExtendShelfLifeRequest:
       type: object
       description: |-
@@ -57729,22 +57565,26 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
           nullable: true
           description: Override hard limit for this specific instance
         soft_limit_override:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
           nullable: true
           description: Override soft limit for this specific instance
         override_reason:
           type: string
+          readOnly: true
           description: Reason for limit override
-          maxLength: 200
         override_approved_by:
           type: integer
+          readOnly: true
           nullable: true
         reset_history:
+          readOnly: true
           description: History of resets/overhauls
         cached_status:
           type: string
@@ -57771,12 +57611,17 @@ components:
       - definition_unit
       - effective_hard_limit
       - effective_soft_limit
+      - hard_limit_override
       - id
       - is_blocked
       - object_id
+      - override_approved_by
+      - override_reason
       - percent_used
       - remaining
       - remaining_to_soft_limit
+      - reset_history
+      - soft_limit_override
       - status
       - updated_at
     LifeTrackingIncrementRequest:
@@ -57893,27 +57738,6 @@ components:
             * `ESTIMATED` - Estimated
             * `TRANSFERRED` - Transferred from Core
             * `RESET` - Reset After Rebuild
-        hard_limit_override:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          nullable: true
-          description: Override hard limit for this specific instance
-        soft_limit_override:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          nullable: true
-          description: Override soft limit for this specific instance
-        override_reason:
-          type: string
-          description: Reason for limit override
-          maxLength: 200
-        override_approved_by:
-          type: integer
-          nullable: true
-        reset_history:
-          description: History of resets/overhauls
         archived:
           type: boolean
       required:
@@ -64825,36 +64649,6 @@ components:
           type: string
           format: date-time
           nullable: true
-    PatchedApprovalResponseRequest:
-      type: object
-      description: Approval response serializer
-      properties:
-        approval_request:
-          type: string
-          format: uuid
-        approver:
-          type: integer
-        decision:
-          $ref: '#/components/schemas/ApprovalResponseDecisionEnum'
-        comments:
-          type: string
-          nullable: true
-        signature_data:
-          type: string
-          nullable: true
-          description: Base64 encoded signature image (PNG)
-        signature_meaning:
-          type: string
-          nullable: true
-          description: e.g., 'I approve as QA Manager'
-          maxLength: 200
-        verification_method:
-          $ref: '#/components/schemas/VerificationMethodEnum'
-        delegated_to:
-          type: integer
-          nullable: true
-        archived:
-          type: boolean
     PatchedApprovalTemplateRequest:
       type: object
       description: |-
@@ -66269,27 +66063,6 @@ components:
             * `ESTIMATED` - Estimated
             * `TRANSFERRED` - Transferred from Core
             * `RESET` - Reset After Rebuild
-        hard_limit_override:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          nullable: true
-          description: Override hard limit for this specific instance
-        soft_limit_override:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
-          nullable: true
-          description: Override soft limit for this specific instance
-        override_reason:
-          type: string
-          description: Reason for limit override
-          maxLength: 200
-        override_approved_by:
-          type: integer
-          nullable: true
-        reset_history:
-          description: History of resets/overhauls
         archived:
           type: boolean
     PatchedMaterialLotRequest:
@@ -67834,123 +67607,6 @@ components:
           type: string
         archived:
           type: boolean
-    PatchedSPCBaselineRequest:
-      type: object
-      description: Full SPC Baseline serializer with all fields and computed properties.
-      properties:
-        measurement_definition:
-          type: string
-          format: uuid
-          description: The measurement definition this baseline applies to
-        chart_type:
-          allOf:
-          - $ref: '#/components/schemas/ChartTypeEnum'
-          description: |-
-            Type of control chart (X-bar R, X-bar S, or I-MR)
-
-            * `XBAR_R` - X̄-R
-            * `XBAR_S` - X̄-S
-            * `I_MR` - I-MR
-        subgroup_size:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Number of samples per subgroup (n=2 to 25 for X-bar charts,
-            n=1 for I-MR)
-        xbar_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Upper Control Limit
-        xbar_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Center Line (grand mean)
-        xbar_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Lower Control Limit
-        range_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Upper Control Limit
-        range_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Center Line
-        range_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Lower Control Limit
-        individual_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Upper Control Limit
-        individual_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Center Line
-        individual_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Lower Control Limit
-        mr_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Moving Range chart Upper Control Limit
-        mr_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Moving Range chart Center Line
-        status:
-          allOf:
-          - $ref: '#/components/schemas/BaselineStatusEnum'
-          description: |-
-            Current status of this baseline
-
-            * `ACTIVE` - Active
-            * `SUPERSEDED` - Superseded
-        frozen_by:
-          type: integer
-          nullable: true
-          description: User who froze/created this baseline
-        superseded_by:
-          type: string
-          format: uuid
-          nullable: true
-          description: The baseline that replaced this one
-        superseded_reason:
-          type: string
-          description: Reason for superseding this baseline
-        sample_count:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Number of data points used to calculate this baseline
-        notes:
-          type: string
-          description: Additional notes about this baseline
     PatchedSamplingRuleRequest:
       type: object
       description: Enhanced sampling rule serializer
@@ -68345,60 +68001,6 @@ components:
           $ref: '#/components/schemas/StepExecutionStatusEnum'
         archived:
           type: boolean
-    PatchedStepOverrideRequest:
-      type: object
-      description: Serializer for step override requests.
-      properties:
-        step_execution:
-          type: string
-          format: uuid
-        block_type:
-          allOf:
-          - $ref: '#/components/schemas/BlockTypeEnum'
-          description: |-
-            Type of block being overridden
-
-            * `QA_SIGNOFF` - QA Signoff Required
-            * `FPI_REQUIRED` - FPI Required
-            * `MEASUREMENT_FAILED` - Measurement Failed
-            * `QUARANTINE` - Part Quarantined
-            * `SAMPLING_REQUIRED` - Sampling Required
-            * `BATCH_INCOMPLETE` - Batch Incomplete
-            * `TRAINING_EXPIRED` - Training Expired
-            * `CALIBRATION_EXPIRED` - Calibration Expired
-            * `REGULATORY_HOLD` - Regulatory Hold
-            * `ROLLBACK` - Step Rollback
-            * `OTHER` - Other
-        requested_by:
-          type: integer
-        reason:
-          type: string
-          minLength: 1
-          description: Justification for the override
-        approved_by:
-          type: integer
-          nullable: true
-          description: User who approved/rejected the override
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StepOverrideStatusEnum'
-          description: |-
-            Current status of the override request
-
-            * `PENDING` - Pending
-            * `APPROVED` - Approved
-            * `REJECTED` - Rejected
-            * `EXPIRED` - Expired
-        expires_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When this override expires
-        used:
-          type: boolean
-          description: Whether this override has been used
-        archived:
-          type: boolean
     PatchedStepTimingRecordRequest:
       type: object
       description: One step's standard times — setup, cycle, load/unload, attention,
@@ -68664,57 +68266,6 @@ components:
           type: string
           description: Operator notes captured at completion; required when marking
             N/A.
-        signature_data:
-          type: string
-          nullable: true
-          description: Base64 PNG signature blob, matching the ApprovalResponse format.
-        signature_meaning:
-          type: string
-          nullable: true
-          description: Short human-readable description of what the signature attests
-            to.
-          maxLength: 200
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When identity verification (password / SSO) succeeded.
-        verification_method:
-          allOf:
-          - $ref: '#/components/schemas/VerificationMethodEnum'
-          description: |-
-            How the signing operator's identity was verified.
-
-            * `PASSWORD` - Password
-            * `SSO` - SSO
-            * `NONE` - None
-        ip_address:
-          type: string
-          nullable: true
-          minLength: 1
-          description: Client IP at signing time; captured for audit defense.
-    PatchedSubstepGateCompletionRequest:
-      type: object
-      description: Per-node attestation / signature gate records.
-      properties:
-        step_execution:
-          type: string
-          format: uuid
-          description: The execution record where this gate was completed.
-        substep:
-          type: string
-          format: uuid
-          description: The substep the gate node lives in.
-        node_id:
-          type: string
-          minLength: 1
-          description: 'UUIDv7 of the AttestationCheckpoint node in Substep.body_blocks
-            (minted client-side per decision #18). Stable across the substep''s lifetime
-            as long as the engineer doesn''t cut-paste the node - see src/lib/dwi/node-id.ts.'
-          maxLength: 64
-        completed_by:
-          type: integer
-          description: Operator who confirmed/signed the gate.
         signature_data:
           type: string
           nullable: true
@@ -71930,9 +71481,36 @@ components:
           readOnly: true
         archived:
           type: boolean
+        capa_decision:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/CapaDecisionEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        capa_decision_note:
+          type: string
+          readOnly: true
+        capa_decided_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        capa_decided_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        capa_decided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
       required:
       - accept_number
       - batch_execution
+      - capa_decided_at
+      - capa_decided_by
+      - capa_decided_by_name
+      - capa_decision
+      - capa_decision_note
       - created_at
       - detected_by_info
       - equipment_links
@@ -72424,6 +72002,13 @@ components:
       required:
       - capa_id
       - capa_number
+    RcaApproveInputRequest:
+      type: object
+      properties:
+        verification_notes:
+          type: string
+          description: Justification, required (10+ characters) when the RCA's conductor
+            approves it and the CAPA allows self-verification.
     RcaMethodEnum:
       enum:
       - FIVE_WHYS
@@ -74542,126 +74127,6 @@ components:
       - measurement_definition
       - measurement_label
       - status_display
-    SPCBaselineRequest:
-      type: object
-      description: Full SPC Baseline serializer with all fields and computed properties.
-      properties:
-        measurement_definition:
-          type: string
-          format: uuid
-          description: The measurement definition this baseline applies to
-        chart_type:
-          allOf:
-          - $ref: '#/components/schemas/ChartTypeEnum'
-          description: |-
-            Type of control chart (X-bar R, X-bar S, or I-MR)
-
-            * `XBAR_R` - X̄-R
-            * `XBAR_S` - X̄-S
-            * `I_MR` - I-MR
-        subgroup_size:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Number of samples per subgroup (n=2 to 25 for X-bar charts,
-            n=1 for I-MR)
-        xbar_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Upper Control Limit
-        xbar_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Center Line (grand mean)
-        xbar_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: X-bar chart Lower Control Limit
-        range_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Upper Control Limit
-        range_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Center Line
-        range_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Range (or S) chart Lower Control Limit
-        individual_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Upper Control Limit
-        individual_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Center Line
-        individual_lcl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Individual chart Lower Control Limit
-        mr_ucl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Moving Range chart Upper Control Limit
-        mr_cl:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
-          nullable: true
-          description: Moving Range chart Center Line
-        status:
-          allOf:
-          - $ref: '#/components/schemas/BaselineStatusEnum'
-          description: |-
-            Current status of this baseline
-
-            * `ACTIVE` - Active
-            * `SUPERSEDED` - Superseded
-        frozen_by:
-          type: integer
-          nullable: true
-          description: User who froze/created this baseline
-        superseded_by:
-          type: string
-          format: uuid
-          nullable: true
-          description: The baseline that replaced this one
-        superseded_reason:
-          type: string
-          description: Reason for superseding this baseline
-        sample_count:
-          type: integer
-          maximum: 2147483647
-          minimum: 0
-          description: Number of data points used to calculate this baseline
-        notes:
-          type: string
-          description: Additional notes about this baseline
-      required:
-      - chart_type
-      - measurement_definition
     SPCCapabilityResponse:
       type: object
       properties:
@@ -77442,6 +76907,7 @@ components:
           readOnly: true
         requested_by:
           type: integer
+          readOnly: true
         requested_by_info:
           type: object
           additionalProperties: {}
@@ -77457,6 +76923,7 @@ components:
           description: Justification for the override
         approved_by:
           type: integer
+          readOnly: true
           nullable: true
           description: User who approved/rejected the override
         approved_by_info:
@@ -77473,6 +76940,7 @@ components:
         status:
           allOf:
           - $ref: '#/components/schemas/StepOverrideStatusEnum'
+          readOnly: true
           description: |-
             Current status of the override request
 
@@ -77486,6 +76954,7 @@ components:
         expires_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
           description: When this override expires
         is_expired:
@@ -77493,6 +76962,7 @@ components:
           readOnly: true
         used:
           type: boolean
+          readOnly: true
           description: Whether this override has been used
         used_at:
           type: string
@@ -77512,20 +76982,24 @@ components:
           type: boolean
       required:
       - approved_at
+      - approved_by
       - approved_by_info
       - block_type
       - block_type_display
       - created_at
+      - expires_at
       - id
       - is_expired
       - reason
       - requested_at
       - requested_by
       - requested_by_info
+      - status
       - status_display
       - step_execution
       - step_execution_info
       - updated_at
+      - used
       - used_at
     StepOverrideRequest:
       type: object
@@ -77551,40 +77025,15 @@ components:
             * `REGULATORY_HOLD` - Regulatory Hold
             * `ROLLBACK` - Step Rollback
             * `OTHER` - Other
-        requested_by:
-          type: integer
         reason:
           type: string
           minLength: 1
           description: Justification for the override
-        approved_by:
-          type: integer
-          nullable: true
-          description: User who approved/rejected the override
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StepOverrideStatusEnum'
-          description: |-
-            Current status of the override request
-
-            * `PENDING` - Pending
-            * `APPROVED` - Approved
-            * `REJECTED` - Rejected
-            * `EXPIRED` - Expired
-        expires_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When this override expires
-        used:
-          type: boolean
-          description: Whether this override has been used
         archived:
           type: boolean
       required:
       - block_type
       - reason
-      - requested_by
       - step_execution
     StepOverrideStatusEnum:
       enum:
@@ -79142,6 +78591,7 @@ components:
           maxLength: 64
         completed_by:
           type: integer
+          readOnly: true
           description: Operator who confirmed/signed the gate.
         completed_by_name:
           type: string
@@ -79165,11 +78615,13 @@ components:
         verified_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
           description: When identity verification (password / SSO) succeeded.
         verification_method:
           allOf:
           - $ref: '#/components/schemas/VerificationMethodEnum'
+          readOnly: true
           description: |-
             How the signing operator's identity was verified.
 
@@ -79178,6 +78630,7 @@ components:
             * `NONE` - None
         ip_address:
           type: string
+          readOnly: true
           nullable: true
           description: Client IP at signing time; captured for audit defense.
         created_at:
@@ -79194,10 +78647,13 @@ components:
       - completed_by_name
       - created_at
       - id
+      - ip_address
       - node_id
       - step_execution
       - substep
       - updated_at
+      - verification_method
+      - verified_at
     SubstepGateCompletionRequest:
       type: object
       description: Per-node attestation / signature gate records.
@@ -79217,9 +78673,6 @@ components:
             (minted client-side per decision #18). Stable across the substep''s lifetime
             as long as the engineer doesn''t cut-paste the node - see src/lib/dwi/node-id.ts.'
           maxLength: 64
-        completed_by:
-          type: integer
-          description: Operator who confirmed/signed the gate.
         signature_data:
           type: string
           nullable: true
@@ -79230,27 +78683,7 @@ components:
           description: Short human-readable description of what the signature attests
             to.
           maxLength: 200
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When identity verification (password / SSO) succeeded.
-        verification_method:
-          allOf:
-          - $ref: '#/components/schemas/VerificationMethodEnum'
-          description: |-
-            How the signing operator's identity was verified.
-
-            * `PASSWORD` - Password
-            * `SSO` - SSO
-            * `NONE` - None
-        ip_address:
-          type: string
-          nullable: true
-          minLength: 1
-          description: Client IP at signing time; captured for audit defense.
       required:
-      - completed_by
       - node_id
       - step_execution
       - substep
