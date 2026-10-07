@@ -1,6 +1,7 @@
 import { useQuery, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
+import { toast } from "sonner";
 import type { components, operations } from "@/lib/api/generated-types";
 import type { Schema } from "@/lib/api/types";
 
@@ -112,6 +113,8 @@ export type SubmitSubstepResponse = {
     response_count: number;
     quality_report_id: string | null;
     measurement_count: number;
+    /** Recorded, but the operator should know (e.g. a gauge past its calibration due date). */
+    warnings?: string[];
 };
 
 export function useSubmitSubstep() {
@@ -126,7 +129,9 @@ export function useSubmitSubstep() {
                 params: { id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             }) as Promise<SubmitSubstepResponse>,
-        onSuccess: () => {
+        onSuccess: (data) => {
+            // Shown here so every screen that submits a substep surfaces them.
+            for (const w of data?.warnings ?? []) toast.warning(w, { duration: 10_000 });
             // Invalidate substep + completion queries so badges and
             // operator-side counters refresh.
             qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });

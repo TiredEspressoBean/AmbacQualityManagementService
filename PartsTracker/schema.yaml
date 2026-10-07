@@ -67366,25 +67366,22 @@ components:
           type: string
         resolution_notes:
           type: string
-        resolution_completed:
-          type: boolean
-        resolution_completed_by:
-          type: integer
-          nullable: true
-        resolution_completed_at:
-          type: string
-          format: date-time
-          nullable: true
         containment_action:
           type: string
           description: Immediate action taken to prevent escape
-        containment_completed_at:
-          type: string
-          format: date-time
-          nullable: true
-        containment_completed_by:
+        containment_completed:
+          type: boolean
+          writeOnly: true
+        containment_performed_by:
           type: integer
           nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
+        resolution_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the resolution (rework, repair, scrap), if
+            not the person closing it.
         requires_customer_approval:
           type: boolean
         customer_approval_received:
@@ -67403,13 +67400,6 @@ components:
           type: string
           description: 'How product was rendered unusable: crushed, marked, etc.'
           maxLength: 100
-        scrap_verified_by:
-          type: integer
-          nullable: true
-        scrap_verified_at:
-          type: string
-          format: date-time
-          nullable: true
         part:
           type: string
           format: uuid
@@ -71647,8 +71637,10 @@ components:
           type: string
         resolution_completed:
           type: boolean
+          readOnly: true
         resolution_completed_by:
           type: integer
+          readOnly: true
           nullable: true
         resolution_completed_by_name:
           type: string
@@ -71656,6 +71648,7 @@ components:
         resolution_completed_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
         decision_authorized_by:
           type: integer
@@ -71675,13 +71668,25 @@ components:
         containment_completed_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
         containment_completed_by:
           type: integer
+          readOnly: true
           nullable: true
         containment_completed_by_name:
           type: string
           readOnly: true
+        containment_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
+        resolution_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the resolution (rework, repair, scrap), if
+            not the person closing it.
         requires_customer_approval:
           type: boolean
         customer_approval_received:
@@ -71702,6 +71707,7 @@ components:
           maxLength: 100
         scrap_verified_by:
           type: integer
+          readOnly: true
           nullable: true
         scrap_verified_by_name:
           type: string
@@ -71709,6 +71715,7 @@ components:
         scrap_verified_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
         part:
           type: string
@@ -71808,6 +71815,8 @@ components:
       - can_be_completed
       - choices_data
       - completion_blockers
+      - containment_completed_at
+      - containment_completed_by
       - containment_completed_by_name
       - created_at
       - decision_authorized_at
@@ -71817,8 +71826,13 @@ components:
       - id
       - material_lot_number
       - quality_reports
+      - resolution_completed
+      - resolution_completed_at
+      - resolution_completed_by
       - resolution_completed_by_name
       - rework_limit_exceeded
+      - scrap_verified_at
+      - scrap_verified_by
       - scrap_verified_by_name
       - severity_display
       - step_info
@@ -71865,25 +71879,22 @@ components:
           type: string
         resolution_notes:
           type: string
-        resolution_completed:
-          type: boolean
-        resolution_completed_by:
-          type: integer
-          nullable: true
-        resolution_completed_at:
-          type: string
-          format: date-time
-          nullable: true
         containment_action:
           type: string
           description: Immediate action taken to prevent escape
-        containment_completed_at:
-          type: string
-          format: date-time
-          nullable: true
-        containment_completed_by:
+        containment_completed:
+          type: boolean
+          writeOnly: true
+        containment_performed_by:
           type: integer
           nullable: true
+          description: Who carried out the containment, if not the person recording
+            it.
+        resolution_performed_by:
+          type: integer
+          nullable: true
+          description: Who carried out the resolution (rework, repair, scrap), if
+            not the person closing it.
         requires_customer_approval:
           type: boolean
         customer_approval_received:
@@ -71902,13 +71913,6 @@ components:
           type: string
           description: 'How product was rendered unusable: crushed, marked, etc.'
           maxLength: 100
-        scrap_verified_by:
-          type: integer
-          nullable: true
-        scrap_verified_at:
-          type: string
-          format: date-time
-          nullable: true
         part:
           type: string
           format: uuid
@@ -72122,6 +72126,10 @@ components:
           - $ref: '#/components/schemas/Fishbone'
           readOnly: true
           nullable: true
+        verification_notes:
+          type: string
+          readOnly: true
+          description: Notes given at verification; the justification for a self-verification
         created_at:
           type: string
           format: date-time
@@ -72150,6 +72158,7 @@ components:
       - root_causes
       - self_verified
       - updated_at
+      - verification_notes
     RcaRecordRequest:
       type: object
       description: RCA record serializer
@@ -79132,11 +79141,16 @@ components:
           nullable: true
         measurement_count:
           type: integer
+        warnings:
+          type: array
+          items:
+            type: string
       required:
       - completion_id
       - measurement_count
       - quality_report_id
       - response_count
+      - warnings
     SubstepTranslation:
       type: object
       description: Localized title + body for a substep.

@@ -799,6 +799,15 @@ class QuarantineDisposition(SecureModel):
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='containment_actions'
     )
+    # *_completed_by / *_at record who RECORDED the step, stamped by the server (the
+    # logged-in user, now). *_performed_by is who physically did it, when that was
+    # someone else (a clerk entering work done on the floor). Kept apart on purpose:
+    # the record must say who vouched for it as well as who did it (user decision
+    # 2026-10-07).
+    containment_performed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text="Who carried out the containment, if not the person recording it.",
+    )
 
     # Customer approval tracking (simple - airgapped LAN)
     requires_customer_approval = models.BooleanField(default=False)
@@ -826,6 +835,10 @@ class QuarantineDisposition(SecureModel):
     resolution_completed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='completed_dispositions')
     resolution_completed_at = models.DateTimeField(null=True, blank=True)
+    resolution_performed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text="Who carried out the resolution (rework, repair, scrap), if not the person closing it.",
+    )
 
     # Decision authorization. The disposition decision (choosing the
     # disposition_type) is the authorized act, per AS9100/ISO 9001 8.7 and

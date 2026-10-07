@@ -832,6 +832,9 @@ class QuarantineDispositionSerializer(SecureModelMixin):
     work_order_erp_id = serializers.SerializerMethodField()
     decision_authorized_by_name = serializers.SerializerMethodField()
 
+    # Write-only intent: mark containment complete (stamps who recorded it and when).
+    containment_completed = serializers.BooleanField(write_only=True, required=False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # The disposition decision (`disposition_type`) is an authorized act that
@@ -858,7 +861,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'decision_authorized_by', 'decision_authorized_at', 'decision_authorized_by_name',
             # Containment tracking
             'containment_action', 'containment_completed_at', 'containment_completed_by',
-            'containment_completed_by_name',
+            'containment_completed_by_name', 'containment_completed', 'containment_performed_by',
+            'resolution_performed_by',
             # Customer approval tracking
             'requires_customer_approval', 'customer_approval_received',
             'customer_approval_reference', 'customer_approval_date',
@@ -891,6 +895,13 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # Decision authority is recorded by the `decide` service, never by a
             # direct write.
             'decision_authorized_by', 'decision_authorized_at', 'decision_authorized_by_name',
+            # Who RECORDED containment, scrap verification and resolution is stamped
+            # by the server (services.qms.disposition); the forms set the optional
+            # *_performed_by instead (user decision 2026-10-07). Writable, anyone
+            # could be named as having completed or verified a step.
+            'containment_completed_by', 'containment_completed_at',
+            'scrap_verified_by', 'scrap_verified_at',
+            'resolution_completed', 'resolution_completed_by', 'resolution_completed_at',
             'created_at', 'updated_at',
         )
 
@@ -939,7 +950,10 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             raise serializers.ValidationError({'disposition_type': [
                 "Choosing the disposition needs approve_disposition. Open the disposition "
                 "without a type, then decide it (a co-signer can authorize)."]})
+        containment_done = validated_data.pop('containment_completed', False)
+        scrap_verified = validated_data.pop('scrap_verified', None)
         instance = super().create(validated_data)
+        self._record_stamps(instance, user, containment_done, scrap_verified)
         if disposition_type:
             from Tracker.services.qms.disposition import decide_disposition
             try:
@@ -974,7 +988,11 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         if closing:
             validated_data.pop('current_state', None)
 
+        containment_done = validated_data.pop('containment_completed', False)
+        scrap_verified = validated_data.pop('scrap_verified', None)
         instance = super().update(instance, validated_data)
+        user = getattr(self.context.get('request'), 'user', None)
+        self._record_stamps(instance, user, containment_done, scrap_verified)
         self._route_if_rework(instance)
 
         if closing:
@@ -989,6 +1007,16 @@ class QuarantineDispositionSerializer(SecureModelMixin):
                 raise serializers.ValidationError({'current_state': [str(e)]})
 
         return instance
+
+    def _record_stamps(self, instance, user, containment_done, scrap_verified):
+        from Tracker.services.qms.disposition import record_containment_complete, record_scrap_verification
+        try:
+            if containment_done:
+                record_containment_complete(instance, user)
+            if scrap_verified is not None and scrap_verified != instance.scrap_verified:
+                record_scrap_verification(instance, user, verified=scrap_verified)
+        except ValueError as e:
+            raise serializers.ValidationError({'containment_completed': [str(e)]})
 
     def _route_if_rework(self, instance):
         """2b (lifecycle Y): when QA's decision is REWORK/REPAIR, route the part to

@@ -159,6 +159,8 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 'response_count': drf_serializers.IntegerField(),
                 'quality_report_id': drf_serializers.CharField(allow_null=True),
                 'measurement_count': drf_serializers.IntegerField(),
+                # Recorded, but the operator should know (e.g. an overdue gauge).
+                'warnings': drf_serializers.ListField(child=drf_serializers.CharField()),
             },
         ),
     )
@@ -249,6 +251,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 'response_count': result.response_count,
                 'quality_report_id': result.quality_report_id,
                 'measurement_count': result.measurement_count,
+                'warnings': result.warnings,
             },
             status=status.HTTP_200_OK,
         )

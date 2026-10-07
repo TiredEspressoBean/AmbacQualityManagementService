@@ -30168,15 +30168,13 @@ export interface components {
             due_date?: string | null;
             description?: string;
             resolution_notes?: string;
-            resolution_completed?: boolean;
-            resolution_completed_by?: number | null;
-            /** Format: date-time */
-            resolution_completed_at?: string | null;
             /** @description Immediate action taken to prevent escape */
             containment_action?: string;
-            /** Format: date-time */
-            containment_completed_at?: string | null;
-            containment_completed_by?: number | null;
+            containment_completed?: boolean;
+            /** @description Who carried out the containment, if not the person recording it. */
+            containment_performed_by?: number | null;
+            /** @description Who carried out the resolution (rework, repair, scrap), if not the person closing it. */
+            resolution_performed_by?: number | null;
             requires_customer_approval?: boolean;
             customer_approval_received?: boolean;
             /** @description PO#, email reference, or approval document number */
@@ -30186,9 +30184,6 @@ export interface components {
             scrap_verified?: boolean;
             /** @description How product was rendered unusable: crushed, marked, etc. */
             scrap_verification_method?: string;
-            scrap_verified_by?: number | null;
-            /** Format: date-time */
-            scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
             /**
@@ -32543,11 +32538,11 @@ export interface components {
             due_date?: string | null;
             description?: string;
             resolution_notes?: string;
-            resolution_completed?: boolean;
-            resolution_completed_by?: number | null;
+            readonly resolution_completed: boolean;
+            readonly resolution_completed_by: number | null;
             readonly resolution_completed_by_name: string;
             /** Format: date-time */
-            resolution_completed_at?: string | null;
+            readonly resolution_completed_at: string | null;
             readonly decision_authorized_by: number | null;
             /** Format: date-time */
             readonly decision_authorized_at: string | null;
@@ -32555,9 +32550,13 @@ export interface components {
             /** @description Immediate action taken to prevent escape */
             containment_action?: string;
             /** Format: date-time */
-            containment_completed_at?: string | null;
-            containment_completed_by?: number | null;
+            readonly containment_completed_at: string | null;
+            readonly containment_completed_by: number | null;
             readonly containment_completed_by_name: string;
+            /** @description Who carried out the containment, if not the person recording it. */
+            containment_performed_by?: number | null;
+            /** @description Who carried out the resolution (rework, repair, scrap), if not the person closing it. */
+            resolution_performed_by?: number | null;
             requires_customer_approval?: boolean;
             customer_approval_received?: boolean;
             /** @description PO#, email reference, or approval document number */
@@ -32567,10 +32566,10 @@ export interface components {
             scrap_verified?: boolean;
             /** @description How product was rendered unusable: crushed, marked, etc. */
             scrap_verification_method?: string;
-            scrap_verified_by?: number | null;
+            readonly scrap_verified_by: number | null;
             readonly scrap_verified_by_name: string;
             /** Format: date-time */
-            scrap_verified_at?: string | null;
+            readonly scrap_verified_at: string | null;
             /** Format: uuid */
             part?: string | null;
             /**
@@ -32646,15 +32645,13 @@ export interface components {
             due_date?: string | null;
             description?: string;
             resolution_notes?: string;
-            resolution_completed?: boolean;
-            resolution_completed_by?: number | null;
-            /** Format: date-time */
-            resolution_completed_at?: string | null;
             /** @description Immediate action taken to prevent escape */
             containment_action?: string;
-            /** Format: date-time */
-            containment_completed_at?: string | null;
-            containment_completed_by?: number | null;
+            containment_completed?: boolean;
+            /** @description Who carried out the containment, if not the person recording it. */
+            containment_performed_by?: number | null;
+            /** @description Who carried out the resolution (rework, repair, scrap), if not the person closing it. */
+            resolution_performed_by?: number | null;
             requires_customer_approval?: boolean;
             customer_approval_received?: boolean;
             /** @description PO#, email reference, or approval document number */
@@ -32664,9 +32661,6 @@ export interface components {
             scrap_verified?: boolean;
             /** @description How product was rendered unusable: crushed, marked, etc. */
             scrap_verification_method?: string;
-            scrap_verified_by?: number | null;
-            /** Format: date-time */
-            scrap_verified_at?: string | null;
             /** Format: uuid */
             part?: string | null;
             /**
@@ -32768,6 +32762,8 @@ export interface components {
             readonly root_causes: components["schemas"]["RootCause"][];
             readonly five_whys: components["schemas"]["FiveWhys"] | null;
             readonly fishbone: components["schemas"]["Fishbone"] | null;
+            /** @description Notes given at verification; the justification for a self-verification */
+            readonly verification_notes: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -36386,6 +36382,7 @@ export interface components {
             response_count: number;
             quality_report_id: string | null;
             measurement_count: number;
+            warnings: string[];
         };
         /** @description Localized title + body for a substep. */
         SubstepTranslation: {

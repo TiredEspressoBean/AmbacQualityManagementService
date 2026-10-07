@@ -1705,7 +1705,13 @@ class StepExecution(SecureModel):
         help_text="Which visit this is (1st, 2nd, 3rd time at this step)"
     )
 
-    # Entry tracking (set when part enters step)
+    # Entry tracking (set when part enters step).
+    # Deliberately auto_now_add — NOT backdatable (user decision 2026-10-07). It is
+    # traceability evidence: when the part really reached the step. Making it writable
+    # (default=timezone.now) would let any code path, and the serializers, rewrite
+    # execution history. History from the ERP at go-live, if ever needed, goes through a
+    # separate import path that marks rows as imported — this is why the earlier
+    # go-live-history feature was removed. Seeds backdate with a queryset .update().
     entered_at = models.DateTimeField(auto_now_add=True)
     assigned_to = models.ForeignKey(
         User, null=True, blank=True,

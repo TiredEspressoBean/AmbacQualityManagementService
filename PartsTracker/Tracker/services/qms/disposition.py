@@ -303,3 +303,34 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
         "Routed part %s to rework step %s from disposition %s",
         part.id, target.id, disposition.pk,
     )
+
+
+def record_containment_complete(disposition, user) -> None:
+    """Containment is done: stamp who recorded it and when (the logged-in user, now).
+    Who physically did it, if someone else, is `containment_performed_by` — the
+    caller's to set. Idempotent: an already-recorded containment keeps its stamp."""
+    if disposition.containment_completed_at:
+        return
+    if not (disposition.containment_action or "").strip():
+        raise ValueError("Describe the containment action before marking it complete.")
+    disposition.containment_completed_by = user if getattr(user, "is_authenticated", False) else None
+    disposition.containment_completed_at = timezone.now()
+    disposition.save(update_fields=["containment_completed_by", "containment_completed_at", "updated_at"])
+
+
+def record_scrap_verification(disposition, user, *, verified: bool) -> None:
+    """Scrap verified (or un-verified): the verifier is whoever records it — this is
+    their own attestation that the product was rendered unusable, so there is no
+    separate "performed by"."""
+    if verified and not disposition.scrap_verified_at:
+        disposition.scrap_verified = True
+        disposition.scrap_verified_by = user if getattr(user, "is_authenticated", False) else None
+        disposition.scrap_verified_at = timezone.now()
+    elif not verified:
+        disposition.scrap_verified = False
+        disposition.scrap_verified_by = None
+        disposition.scrap_verified_at = None
+    else:
+        return
+    disposition.save(update_fields=["scrap_verified", "scrap_verified_by", "scrap_verified_at", "updated_at"])
+

@@ -119,3 +119,22 @@ class OutOfServiceEquipmentBlocksMeasurementTests(TenantContextMixin, VectorTest
             cap, substep=self.substep, step_execution=self.step_execution,
             user=self.user,
         )
+
+    def test_an_overdue_gauge_records_the_reading_with_a_warning(self):
+        """Overdue is a scheduling lapse, not evidence the gauge is wrong (user decision
+        2026-10-07): the reading is recorded and the operator is warned. A FAILED
+        calibration stays refused."""
+        import datetime
+        from Tracker.models import CalibrationRecord, EquipmentType, StepExecutionMeasurement
+        gauge_type = EquipmentType.objects.create(tenant=self.tenant, name='Micrometer', requires_calibration=True)
+        gauge = Equipments.objects.create(tenant=self.tenant, name='Late Micrometer', equipment_type=gauge_type,
+                                          status=EquipmentStatus.IN_SERVICE)
+        long_ago = datetime.date.today() - datetime.timedelta(days=400)
+        CalibrationRecord.objects.create(tenant=self.tenant, equipment=gauge, calibration_date=long_ago,
+                                         due_date=long_ago + datetime.timedelta(days=365), result='PASS')
+        cap = {'kind': 'measurement', 'measurement_definition_id': self.md.pk, 'value_numeric': 10.02,
+               'value_string': '', 'equipment_id': gauge.pk}
+        warning = _handle_measurement(cap, substep=self.substep, step_execution=self.step_execution,
+                                      user=self.user)
+        self.assertIn('Late Micrometer', warning)
+        self.assertTrue(StepExecutionMeasurement.objects.filter(step_execution=self.step_execution).exists())

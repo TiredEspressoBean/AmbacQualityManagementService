@@ -1133,6 +1133,10 @@ export type RcaRecord = {
   root_causes: Array<RootCause>;
   five_whys: FiveWhys;
   fishbone: Fishbone;
+  /**
+   * Notes given at verification; the justification for a self-verification
+   */
+  verification_notes: string;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -8160,10 +8164,10 @@ export type QuarantineDisposition = {
     | undefined;
   description?: string | undefined;
   resolution_notes?: string | undefined;
-  resolution_completed?: boolean | undefined;
-  resolution_completed_by?: (number | null) | undefined;
+  resolution_completed: boolean;
+  resolution_completed_by: number | null;
   resolution_completed_by_name: string;
-  resolution_completed_at?: (string | null) | undefined;
+  resolution_completed_at: string | null;
   decision_authorized_by: number | null;
   decision_authorized_at: string | null;
   decision_authorized_by_name: string;
@@ -8171,9 +8175,21 @@ export type QuarantineDisposition = {
    * Immediate action taken to prevent escape
    */
   string | undefined;
-  containment_completed_at?: (string | null) | undefined;
-  containment_completed_by?: (number | null) | undefined;
+  containment_completed_at: string | null;
+  containment_completed_by: number | null;
   containment_completed_by_name: string;
+  containment_performed_by?:
+    | /**
+     * Who carried out the containment, if not the person recording it.
+     */
+    (number | null)
+    | undefined;
+  resolution_performed_by?:
+    | /**
+     * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
+     */
+    (number | null)
+    | undefined;
   requires_customer_approval?: boolean | undefined;
   customer_approval_received?: boolean | undefined;
   customer_approval_reference?: /**
@@ -8190,9 +8206,9 @@ export type QuarantineDisposition = {
    * @maxLength 100
    */
   string | undefined;
-  scrap_verified_by?: (number | null) | undefined;
+  scrap_verified_by: number | null;
   scrap_verified_by_name: string;
-  scrap_verified_at?: (string | null) | undefined;
+  scrap_verified_at: string | null;
   part?: (string | null) | undefined;
   material_lot?:
     | /**
@@ -13633,15 +13649,19 @@ export type PatchedQuarantineDispositionRequest = Partial<{
   due_date: string | null;
   description: string;
   resolution_notes: string;
-  resolution_completed: boolean;
-  resolution_completed_by: number | null;
-  resolution_completed_at: string | null;
   /**
    * Immediate action taken to prevent escape
    */
   containment_action: string;
-  containment_completed_at: string | null;
-  containment_completed_by: number | null;
+  containment_completed: boolean;
+  /**
+   * Who carried out the containment, if not the person recording it.
+   */
+  containment_performed_by: number | null;
+  /**
+   * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
+   */
+  resolution_performed_by: number | null;
   requires_customer_approval: boolean;
   customer_approval_received: boolean;
   /**
@@ -13658,8 +13678,6 @@ export type PatchedQuarantineDispositionRequest = Partial<{
    * @maxLength 100
    */
   scrap_verification_method: string;
-  scrap_verified_by: number | null;
-  scrap_verified_at: string | null;
   part: string | null;
   /**
    * The rejected material lot this disposition decides.
@@ -15304,15 +15322,23 @@ export type QuarantineDispositionRequest = {
     | undefined;
   description?: string | undefined;
   resolution_notes?: string | undefined;
-  resolution_completed?: boolean | undefined;
-  resolution_completed_by?: (number | null) | undefined;
-  resolution_completed_at?: (string | null) | undefined;
   containment_action?: /**
    * Immediate action taken to prevent escape
    */
   string | undefined;
-  containment_completed_at?: (string | null) | undefined;
-  containment_completed_by?: (number | null) | undefined;
+  containment_completed?: boolean | undefined;
+  containment_performed_by?:
+    | /**
+     * Who carried out the containment, if not the person recording it.
+     */
+    (number | null)
+    | undefined;
+  resolution_performed_by?:
+    | /**
+     * Who carried out the resolution (rework, repair, scrap), if not the person closing it.
+     */
+    (number | null)
+    | undefined;
   requires_customer_approval?: boolean | undefined;
   customer_approval_received?: boolean | undefined;
   customer_approval_reference?: /**
@@ -15329,8 +15355,6 @@ export type QuarantineDispositionRequest = {
    * @maxLength 100
    */
   string | undefined;
-  scrap_verified_by?: (number | null) | undefined;
-  scrap_verified_at?: (string | null) | undefined;
   part?: (string | null) | undefined;
   material_lot?:
     | /**
@@ -18711,6 +18735,7 @@ const RcaRecord = z.object({
   root_causes: z.array(RootCause),
   five_whys: FiveWhys.nullable(),
   fishbone: Fishbone.nullable(),
+  verification_notes: z.string(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -22904,26 +22929,28 @@ const QuarantineDisposition = z.object({
   due_date: z.string().nullish(),
   description: z.string().optional(),
   resolution_notes: z.string().optional(),
-  resolution_completed: z.boolean().optional(),
-  resolution_completed_by: z.number().int().nullish(),
+  resolution_completed: z.boolean(),
+  resolution_completed_by: z.number().int().nullable(),
   resolution_completed_by_name: z.string(),
-  resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
+  resolution_completed_at: z.string().datetime({ offset: true }).nullable(),
   decision_authorized_by: z.number().int().nullable(),
   decision_authorized_at: z.string().datetime({ offset: true }).nullable(),
   decision_authorized_by_name: z.string(),
   containment_action: z.string().optional(),
-  containment_completed_at: z.string().datetime({ offset: true }).nullish(),
-  containment_completed_by: z.number().int().nullish(),
+  containment_completed_at: z.string().datetime({ offset: true }).nullable(),
+  containment_completed_by: z.number().int().nullable(),
   containment_completed_by_name: z.string(),
+  containment_performed_by: z.number().int().nullish(),
+  resolution_performed_by: z.number().int().nullish(),
   requires_customer_approval: z.boolean().optional(),
   customer_approval_received: z.boolean().optional(),
   customer_approval_reference: z.string().max(100).optional(),
   customer_approval_date: z.string().nullish(),
   scrap_verified: z.boolean().optional(),
   scrap_verification_method: z.string().max(100).optional(),
-  scrap_verified_by: z.number().int().nullish(),
+  scrap_verified_by: z.number().int().nullable(),
   scrap_verified_by_name: z.string(),
-  scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
+  scrap_verified_at: z.string().datetime({ offset: true }).nullable(),
   part: z.string().uuid().nullish(),
   material_lot: z.string().uuid().nullish(),
   material_lot_number: z.string().nullable(),
@@ -22968,20 +22995,16 @@ const QuarantineDispositionRequest = z.object({
   due_date: z.string().nullish(),
   description: z.string().optional(),
   resolution_notes: z.string().optional(),
-  resolution_completed: z.boolean().optional(),
-  resolution_completed_by: z.number().int().nullish(),
-  resolution_completed_at: z.string().datetime({ offset: true }).nullish(),
   containment_action: z.string().optional(),
-  containment_completed_at: z.string().datetime({ offset: true }).nullish(),
-  containment_completed_by: z.number().int().nullish(),
+  containment_completed: z.boolean().optional(),
+  containment_performed_by: z.number().int().nullish(),
+  resolution_performed_by: z.number().int().nullish(),
   requires_customer_approval: z.boolean().optional(),
   customer_approval_received: z.boolean().optional(),
   customer_approval_reference: z.string().max(100).optional(),
   customer_approval_date: z.string().nullish(),
   scrap_verified: z.boolean().optional(),
   scrap_verification_method: z.string().max(100).optional(),
-  scrap_verified_by: z.number().int().nullish(),
-  scrap_verified_at: z.string().datetime({ offset: true }).nullish(),
   part: z.string().uuid().nullish(),
   material_lot: z.string().uuid().nullish(),
   quantity: z
@@ -23008,20 +23031,16 @@ const PatchedQuarantineDispositionRequest = z
     due_date: z.string().nullable(),
     description: z.string(),
     resolution_notes: z.string(),
-    resolution_completed: z.boolean(),
-    resolution_completed_by: z.number().int().nullable(),
-    resolution_completed_at: z.string().datetime({ offset: true }).nullable(),
     containment_action: z.string(),
-    containment_completed_at: z.string().datetime({ offset: true }).nullable(),
-    containment_completed_by: z.number().int().nullable(),
+    containment_completed: z.boolean(),
+    containment_performed_by: z.number().int().nullable(),
+    resolution_performed_by: z.number().int().nullable(),
     requires_customer_approval: z.boolean(),
     customer_approval_received: z.boolean(),
     customer_approval_reference: z.string().max(100),
     customer_approval_date: z.string().nullable(),
     scrap_verified: z.boolean(),
     scrap_verification_method: z.string().max(100),
-    scrap_verified_by: z.number().int().nullable(),
-    scrap_verified_at: z.string().datetime({ offset: true }).nullable(),
     part: z.string().uuid().nullable(),
     material_lot: z.string().uuid().nullable(),
     quantity: z
@@ -25212,6 +25231,7 @@ const SubstepSubmitResponse = z.object({
   response_count: z.number().int(),
   quality_report_id: z.string().nullable(),
   measurement_count: z.number().int(),
+  warnings: z.array(z.string()),
 });
 const SubstepReorderRequestRequest = z.object({
   step: z.string().uuid(),

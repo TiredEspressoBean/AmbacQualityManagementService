@@ -101,6 +101,45 @@ class DispositionTests(_Fixture):
         self.assertEqual(resp.json()["decision_authorized_by"], self.boss.id)
 
 
+class DispositionWhoRecordedTests(_Fixture):
+    """Who RECORDED containment / scrap verification / resolution is stamped by the
+    server; who PERFORMED it is the form's optional field (user decision 2026-10-07)."""
+
+    def test_the_recorder_is_stamped_and_the_performer_is_separate(self):
+        from Tracker.models import QualityReports, QuarantineDisposition
+        report = QualityReports.objects.create(tenant=self.tenant, status="FAIL", part=self.part,
+                                               detected_by=self.boss)
+        created = self.client.post("/api/QuarantineDispositions/", {
+            "part": str(self.part.id), "quality_reports": [str(report.id)], "description": "burr",
+            "containment_action": "Segregated the lot", "containment_completed": True,
+            "containment_completed_by": self.other.id,           # ignored: read-only
+            "containment_completed_at": "2020-01-01T00:00:00Z",  # ignored: read-only
+            "containment_performed_by": self.other.id,
+            "scrap_verified": True, "scrap_verified_by": self.other.id,
+        }, format="json")
+        self.assertEqual(created.status_code, 201, created.content)
+        d = QuarantineDisposition.objects.get(pk=created.json()["id"])
+        self.assertEqual((d.containment_completed_by_id, d.containment_performed_by_id), (self.boss.id, self.other.id))
+        self.assertGreater(d.containment_completed_at.year, 2020)
+        self.assertEqual((d.scrap_verified, d.scrap_verified_by_id), (True, self.boss.id))
+        patch = self.client.patch(f"/api/QuarantineDispositions/{d.id}/",
+                                  {"resolution_completed_by": self.other.id,
+                                   "resolution_performed_by": self.other.id}, format="json")
+        self.assertEqual(patch.status_code, 200, patch.content)
+        d.refresh_from_db()
+        self.assertIsNone(d.resolution_completed_by_id)   # stamped on close, not writable
+        self.assertEqual(d.resolution_performed_by_id, self.other.id)
+
+    def test_containment_needs_an_action_before_it_is_complete(self):
+        from Tracker.models import QualityReports
+        report = QualityReports.objects.create(tenant=self.tenant, status="FAIL", part=self.part,
+                                               detected_by=self.boss)
+        resp = self.client.post("/api/QuarantineDispositions/", {
+            "part": str(self.part.id), "quality_reports": [str(report.id)], "description": "burr",
+            "containment_completed": True}, format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+
+
 class SpcBaselineTests(_Fixture):
     def test_no_direct_writes_and_operators_cannot_freeze(self):
         self.assertEqual(self.client.post("/api/spc-baselines/", {}, format="json").status_code, 405)

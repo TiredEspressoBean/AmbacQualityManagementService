@@ -69,7 +69,7 @@ Submit shape (frontend → backend):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from django.db import transaction
@@ -108,6 +108,9 @@ class SubmitResult:
     response_count: int
     quality_report_id: Optional[str]
     measurement_count: int
+    # Recorded, but worth telling the operator (e.g. a gauge past its calibration due
+    # date). Not refusals — those raise ValidationError.
+    warnings: list[str] = field(default_factory=list)
 
 
 def submit_substep(
@@ -193,6 +196,7 @@ def submit_substep(
             report = None
         response_count = 0
         measurement_count = 0
+        warnings: list[str] = []
 
         for cap in captures:
             kind = cap.get("kind")
@@ -201,10 +205,12 @@ def submit_substep(
                 continue
 
             if kind == "measurement":
-                _handle_measurement(
+                warning = _handle_measurement(
                     cap, substep, step_execution, user, sample_number,
                     batch_execution=batch_execution,
                 )
+                if warning and warning not in warnings:
+                    warnings.append(warning)
                 # MeasurementInput doesn't write SubstepResponse — its row
                 # lives in StepExecutionMeasurement (+ MeasurementResult via
                 # promotion). We still count it for the response total so
@@ -378,6 +384,7 @@ def submit_substep(
             response_count=response_count,
             quality_report_id=str(report.id) if report else None,
             measurement_count=measurement_count,
+            warnings=warnings,
         )
 
 
@@ -708,6 +715,7 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
     value_string = cap.get("value_string") or ""
     equipment_id = cap.get("equipment_id")
     equipment = None
+    overdue_warning = None
     if equipment_id:
         from Tracker.models import Equipments, EquipmentStatus
         # A gauge id from another tenant resolves to None, so the capture
@@ -730,6 +738,12 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
                 f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
                 f"missing calibration). Recalibrate or pick a different gauge."
             )
+        # Overdue is a scheduling lapse, not evidence the gauge is wrong: record the
+        # reading, but tell the operator (user decision 2026-10-07). A tenant setting
+        # for strict refusal can come later. A FAILED calibration stays refused above.
+        if equipment and equipment.calibration_status == 'OVERDUE':
+            overdue_warning = (f"{equipment.name} is past its calibration due date — the reading "
+                               f"was recorded; tell QA so the gauge gets recalibrated.")
 
     record_dwi_measurement(
         step_execution=step_execution,
@@ -742,6 +756,7 @@ def _handle_measurement(cap, substep, step_execution, user, sample_number=None, 
         sample_number=sample_number,
         batch_execution=batch_execution,
     )
+    return overdue_warning
 
 
 def _write_substep_response(*, substep, step_execution=None, batch_execution=None, user, cap) -> Optional[SubstepResponse]:

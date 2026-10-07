@@ -57,11 +57,10 @@ const formSchema = schemas.QuarantineDispositionRequest.pick({
     assigned_to: true,
     description: true,
     resolution_notes: true,
-    resolution_completed_by: true,
-    resolution_completed_at: true,
+    resolution_performed_by: true,
     containment_action: true,
-    containment_completed_at: true,
-    containment_completed_by: true,
+    containment_completed: true,
+    containment_performed_by: true,
     requires_customer_approval: true,
     customer_approval_received: true,
     customer_approval_reference: true,
@@ -79,11 +78,10 @@ type FormValues = Pick<
     | "assigned_to"
     | "description"
     | "resolution_notes"
-    | "resolution_completed_by"
-    | "resolution_completed_at"
+    | "resolution_performed_by"
     | "containment_action"
-    | "containment_completed_at"
-    | "containment_completed_by"
+    | "containment_completed"
+    | "containment_performed_by"
     | "requires_customer_approval"
     | "customer_approval_received"
     | "customer_approval_reference"
@@ -204,11 +202,10 @@ export default function EditDispositionFormPage() {
             assigned_to: disposition.assigned_to,
             description: disposition.description ?? "",
             resolution_notes: disposition.resolution_notes ?? "",
-            resolution_completed_by: disposition.resolution_completed_by,
-            resolution_completed_at: disposition.resolution_completed_at ?? new Date().toISOString(),
+            resolution_performed_by: disposition.resolution_performed_by ?? null,
             containment_action: disposition.containment_action ?? "",
-            containment_completed_at: disposition.containment_completed_at,
-            containment_completed_by: disposition.containment_completed_by,
+            containment_completed: false,
+            containment_performed_by: disposition.containment_performed_by ?? null,
             requires_customer_approval: disposition.requires_customer_approval ?? false,
             customer_approval_received: disposition.customer_approval_received ?? false,
             customer_approval_reference: disposition.customer_approval_reference ?? "",
@@ -229,11 +226,10 @@ export default function EditDispositionFormPage() {
             assigned_to: undefined,
             description: "",
             resolution_notes: "",
-            resolution_completed_by: undefined,
-            resolution_completed_at: new Date().toISOString(),
+            resolution_performed_by: null,
             containment_action: "",
-            containment_completed_at: undefined,
-            containment_completed_by: undefined,
+            containment_completed: false,
+            containment_performed_by: null,
             requires_customer_approval: false,
             customer_approval_received: false,
             customer_approval_reference: "",
@@ -616,52 +612,47 @@ export default function EditDispositionFormPage() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <FormField
                                                         control={control}
-                                                        name="containment_completed_by"
+                                                        name="containment_performed_by"
                                                         render={({ field }) => (
                                                             <FormItem className="flex flex-col">
-                                                                <FormLabel>Completed By</FormLabel>
+                                                                <FormLabel>Performed by <span className="text-muted-foreground">(if not you)</span></FormLabel>
                                                                 <FormControl>
                                                                     <Combobox
                                                                         value={field.value == null ? null : String(field.value)}
-                                                                        onChange={(v) => v && field.onChange(Number(v))}
+                                                                        onChange={(v) => field.onChange(v ? Number(v) : null)}
                                                                         options={employees.map((emp) => ({ value: String(emp.id), label: empLabel(emp) }))}
                                                                         placeholder="Select employee"
                                                                         searchPlaceholder="Search..."
                                                                         emptyText="No employees found."
+                                                                        clearLabel="Nobody else"
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
-                                                    <FormField
-                                                        control={control}
-                                                        name="containment_completed_at"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-col">
-                                                                <FormLabel>Completed At</FormLabel>
-                                                                <Popover>
-                                                                    <PopoverTrigger asChild>
-                                                                        <FormControl>
-                                                                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                                {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                            </Button>
-                                                                        </FormControl>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                                        <Calendar
-                                                                            mode="single"
-                                                                            selected={field.value ? new Date(field.value) : undefined}
-                                                                            onSelect={(date) => field.onChange(date?.toISOString())}
-                                                                            initialFocus
-                                                                        />
-                                                                    </PopoverContent>
-                                                                </Popover>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                    {disposition?.containment_completed_at ? (
+                                                        <div className="flex flex-col justify-end text-sm text-muted-foreground">
+                                                            Containment recorded by {disposition.containment_completed_by_name ?? "—"} on{" "}
+                                                            {format(new Date(disposition.containment_completed_at), "PPP")}
+                                                        </div>
+                                                    ) : (
+                                                        <FormField
+                                                            control={control}
+                                                            name="containment_completed"
+                                                            render={({ field }) => (
+                                                                <FormItem className="flex flex-row items-end space-x-3 space-y-0 pb-2">
+                                                                    <FormControl>
+                                                                        <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
+                                                                    </FormControl>
+                                                                    <div className="space-y-1 leading-none">
+                                                                        <FormLabel>Containment complete</FormLabel>
+                                                                        <FormDescription>Records you, and now, as having recorded it.</FormDescription>
+                                                                    </div>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    )}
                                                 </div>
                                                 {/* Document upload for containment evidence */}
                                                 {mode === "edit" && dispositionId && dispositionContentType && (
@@ -786,56 +777,34 @@ export default function EditDispositionFormPage() {
                                             )}
                                         />
 
-                                        {/* Resolution Completed By/At */}
+                                        {/* Resolution: who did the work (optional); who recorded it is stamped on close */}
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <FormField
                                                 control={control}
-                                                name="resolution_completed_by"
+                                                name="resolution_performed_by"
                                                 render={({ field }) => (
                                                     <FormItem className="flex flex-col">
-                                                        <FormLabel>Resolution Completed By</FormLabel>
+                                                        <FormLabel>Resolution performed by <span className="text-muted-foreground">(if not you)</span></FormLabel>
                                                         <FormControl>
                                                             <Combobox
                                                                 value={field.value == null ? null : String(field.value)}
-                                                                onChange={(v) => v && field.onChange(Number(v))}
+                                                                onChange={(v) => field.onChange(v ? Number(v) : null)}
                                                                 options={employees.map((emp) => ({ value: String(emp.id), label: empLabel(emp) }))}
                                                                 placeholder="Select employee"
                                                                 searchPlaceholder="Search..."
                                                                 emptyText="No employees found."
+                                                                clearLabel="Nobody else"
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-                                            <FormField
-                                                control={control}
-                                                name="resolution_completed_at"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-col">
-                                                        <FormLabel>Resolution Completed At</FormLabel>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <FormControl>
-                                                                    <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                        {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                    </Button>
-                                                                </FormControl>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0" align="start">
-                                                                <Calendar
-                                                                    mode="single"
-                                                                    selected={field.value ? new Date(field.value) : undefined}
-                                                                    onSelect={(date) => field.onChange(date?.toISOString())}
-                                                                    initialFocus
-                                                                />
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="flex flex-col justify-end text-sm text-muted-foreground">
+                                                {disposition?.resolution_completed_at
+                                                    ? `Resolution recorded on ${format(new Date(disposition.resolution_completed_at), "PPP")}`
+                                                    : "Closing the disposition records who resolved it, and when."}
+                                            </div>
                                         </div>
 
                                         {/* Related Part */}
