@@ -1,9 +1,12 @@
-import { useNavigate } from "@tanstack/react-router";
+import { parseISO } from "date-fns";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useCalibrationRecords } from "@/hooks/useCalibrationRecords";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditCalibrationRecordActionCell } from "@/components/edit-calibration-record-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Schema } from "@/lib/api/types";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { foundUnfit } from "@/lib/calibration-exposure";
 
 const col = createColumnHelper<Schema<"CalibrationRecord">>();
 
@@ -30,6 +33,7 @@ function useCalibrationRecordsList({
 
 export function CalibrationRecordsPage() {
     const navigate = useNavigate();
+    const canSeeReports = usePermissionSet().has("view_qualityreports");
 
     return (
         <ModelEditorPage
@@ -64,10 +68,21 @@ export function CalibrationRecordsPage() {
                 col({
                     header: "Result",
                     renderCell: (record) => (
-                        <StatusBadge
-                            status={record.result?.toUpperCase() || 'PASS'}
-                            label={record.result_display}
-                        />
+                        <div className="space-y-1">
+                            <StatusBadge
+                                status={record.result?.toUpperCase() || 'PASS'}
+                                label={record.result_display}
+                            />
+                            {canSeeReports && foundUnfit(record) && (
+                                <Link
+                                    to="/quality/calibrations/records/$id/exposure"
+                                    params={{ id: record.id }}
+                                    className="block text-xs text-primary hover:underline"
+                                >
+                                    What it measured
+                                </Link>
+                            )}
+                        </div>
                     ),
                 }),
                 col({
@@ -81,7 +96,7 @@ export function CalibrationRecordsPage() {
                     header: "Calibration Date",
                     renderCell: (record) =>
                         record.calibration_date
-                            ? new Date(record.calibration_date).toLocaleDateString()
+                            ? parseISO(record.calibration_date).toLocaleDateString()
                             : "—",
                 }),
                 col({
@@ -91,7 +106,7 @@ export function CalibrationRecordsPage() {
                         const isOverdue = record.status === 'OVERDUE';
                         return (
                             <span className={isOverdue ? "text-destructive font-medium" : ""}>
-                                {new Date(record.due_date).toLocaleDateString()}
+                                {parseISO(record.due_date).toLocaleDateString()}
                                 {isOverdue && " (Overdue)"}
                             </span>
                         );

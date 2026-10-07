@@ -2,6 +2,7 @@
 from datetime import timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, inline_serializer
 from rest_framework import viewsets, filters, serializers
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 
 from Tracker.models import CalibrationRecord, Equipments
 from Tracker.serializers.calibration import (
+    CalibrationExposureSerializer,
     CalibrationRecordSerializer,
     CalibrationStatsSerializer,
 )
@@ -73,6 +75,12 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     """
     queryset = CalibrationRecord.unscoped.all()
     serializer_class = CalibrationRecordSerializer
+    # The exposure list names parts and their inspection results, so reading it takes
+    # quality-report access on top of the calibration record's own view permission.
+    action_permissions = {
+        'exposure': ['view_qualityreports'],
+        'exposure_export': ['view_qualityreports'],
+    }
     # Create-only (see _CalibrationRecordImport). The same equipment + date + certificate
     # is the same calibration: it matches the existing record, so it is refused in
     # `create` mode and can't be changed in any mode — never a second record.
@@ -261,6 +269,50 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         used_within = int(request.query_params.get('used_within', 7))
         due_within = int(request.query_params.get('due_within', 7))
         return Response(my_gauge_nag(request.user, used_within, due_within))
+
+    def _exposure(self):
+        from Tracker.services.qms.calibration_exposure import exposure_for
+        return exposure_for(self.get_object())
+
+    @extend_schema(
+        responses={200: CalibrationExposureSerializer,
+                   400: inline_serializer(name="CalibrationExposureError",
+                                          fields={"detail": serializers.CharField()})},
+        description=("What the gauge measured between its last good calibration and this one, "
+                     "which found it unfit (ISO 9001 7.1.5.2). A list to decide on; nothing "
+                     "is quarantined or raised."))
+    @action(detail=True, methods=['get'], url_path='exposure', pagination_class=None,
+            filter_backends=[])
+    def exposure(self, request, pk=None):
+        from dataclasses import asdict
+        from Tracker.services.qms.calibration_exposure import NotFoundUnfit, window_sentence
+        try:
+            exp = self._exposure()
+        except NotFoundUnfit as e:
+            return Response({'detail': str(e)}, status=400)
+        data = {**asdict(exp), 'window_sentence': window_sentence(exp), 'count': len(exp.reports)}
+        return Response(CalibrationExposureSerializer(data).data)
+
+    @extend_schema(
+        responses={(200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
+                   OpenApiTypes.BINARY},
+        description="The exposure list as an .xlsx, with the window it was drawn from.")
+    @action(detail=True, methods=['get'], url_path='exposure-export', pagination_class=None,
+            filter_backends=[])
+    def exposure_export(self, request, pk=None):
+        from django.http import HttpResponse
+        from Tracker.services.qms.calibration_exposure import NotFoundUnfit, exposure_workbook
+        try:
+            exp = self._exposure()
+        except NotFoundUnfit as e:
+            return Response({'detail': str(e)}, status=400)
+        resp = HttpResponse(
+            exposure_workbook(exp, request.tenant),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        name = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in exp.equipment_name)
+        resp['Content-Disposition'] = (
+            f'attachment; filename="measured_by_{name}_{exp.window_end:%Y-%m-%d}.xlsx"')
+        return resp
 
     @extend_schema(
         description="Get calibration history for a specific piece of equipment",

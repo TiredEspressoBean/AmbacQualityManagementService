@@ -73,3 +73,35 @@ class CalibrationStatsSerializer(serializers.Serializer):
     due_soon = serializers.IntegerField()
     overdue = serializers.IntegerField()
     compliance_rate = serializers.FloatField()
+
+
+class ExposedReportSerializer(serializers.Serializer):
+    """A quality report a gauge was used on inside its exposure window."""
+    id = serializers.UUIDField()
+    report_number = serializers.CharField()
+    part = serializers.CharField(help_text="The part's ERP id, or the material lot's number.")
+    part_id = serializers.UUIDField(allow_null=True)
+    material_lot_id = serializers.UUIDField(allow_null=True)
+    step = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    inspector = serializers.CharField()
+    status = serializers.CharField()
+    role = serializers.CharField()
+
+
+class CalibrationExposureSerializer(serializers.Serializer):
+    """What a gauge measured between its last good calibration and the one that found it
+    unfit (ISO 9001 7.1.5.2). A list to decide on — nothing is acted on."""
+    calibration_id = serializers.UUIDField()
+    equipment_id = serializers.UUIDField()
+    equipment_name = serializers.CharField()
+    result = serializers.CharField()
+    as_found_in_tolerance = serializers.BooleanField(allow_null=True)
+    window_start = serializers.DateField(
+        allow_null=True, help_text="Null when there's no earlier good calibration on record.")
+    window_start_calibration_id = serializers.UUIDField(allow_null=True)
+    window_start_result = serializers.CharField(allow_null=True)
+    window_end = serializers.DateField()
+    window_sentence = serializers.CharField()
+    count = serializers.IntegerField()
+    reports = ExposedReportSerializer(many=True)

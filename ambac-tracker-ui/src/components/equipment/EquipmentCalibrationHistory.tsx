@@ -9,11 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCalibrationRecords } from "@/hooks/useCalibrationRecords";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { foundUnfit } from "@/lib/calibration-exposure";
 
 export function EquipmentCalibrationHistory({ equipmentId }: { equipmentId: string }) {
     const { data, isLoading } = useCalibrationRecords({ equipment: equipmentId, ordering: "-calibration_date", limit: 5 });
     const rows = data?.results ?? [];
     const total = data?.count ?? 0;
+    const canSeeReports = usePermissionSet().has("view_qualityreports");
 
     return (
         <div className="space-y-3">
@@ -45,7 +48,18 @@ export function EquipmentCalibrationHistory({ equipmentId }: { equipmentId: stri
                                         <Badge variant="destructive" className="ml-2">Overdue</Badge>
                                     )}
                                 </TableCell>
-                                <TableCell>{r.result_display}</TableCell>
+                                <TableCell>
+                                    {r.result_display}
+                                    {canSeeReports && foundUnfit(r) && (
+                                        <Link
+                                            to="/quality/calibrations/records/$id/exposure"
+                                            params={{ id: r.id }}
+                                            className="ml-2 text-xs text-primary hover:underline"
+                                        >
+                                            What it measured
+                                        </Link>
+                                    )}
+                                </TableCell>
                                 <TableCell className="text-muted-foreground">{r.performed_by || r.external_lab || "—"}</TableCell>
                             </TableRow>
                         ))}
