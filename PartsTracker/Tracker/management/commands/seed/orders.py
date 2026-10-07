@@ -489,6 +489,9 @@ class OrderSeeder(BaseSeeder):
             assigned_to=operator,
             status='IN_PROGRESS',
         )
+        # entered_at is auto_now_add: Django overwrites it on insert, so a backdated
+        # value only sticks through a queryset update (as the reman seed does).
+        StepExecution.objects.filter(pk=execution.pk).update(entered_at=entry_time)
 
         # Backdate
         StepExecution.objects.filter(pk=execution.pk).update(
@@ -592,7 +595,7 @@ class OrderSeeder(BaseSeeder):
             # Assign an operator for this step
             operator = random.choice(employees) if employees else None
 
-            StepExecution.objects.create(
+            done = StepExecution.objects.create(
                 tenant=part.tenant,
                 part=part,
                 step=step,
@@ -604,6 +607,7 @@ class OrderSeeder(BaseSeeder):
                 completed_by=operator,
                 status='COMPLETED',
             )
+            StepExecution.objects.filter(pk=done.pk).update(entered_at=entry_time)  # auto_now_add; see above
 
             current_time = exit_time + timedelta(minutes=random.randint(5, 30))
 
@@ -612,7 +616,7 @@ class OrderSeeder(BaseSeeder):
             operator = random.choice(employees) if employees else None
             started_at = current_time + timedelta(minutes=random.randint(1, 10))
 
-            StepExecution.objects.create(
+            current = StepExecution.objects.create(
                 tenant=part.tenant,
                 part=part,
                 step=target_step,
@@ -623,6 +627,7 @@ class OrderSeeder(BaseSeeder):
                 assigned_to=operator,
                 status='IN_PROGRESS',
             )
+            StepExecution.objects.filter(pk=current.pk).update(entered_at=current_time)  # auto_now_add; see above
 
     def _advance_work_order_batch(self, work_order, target_step_index):
         """Advance work order parts through process with realistic branching."""

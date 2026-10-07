@@ -546,6 +546,9 @@ class DemoOrdersSeeder(BaseSeeder):
                 next_step=next_step,
                 status='COMPLETED' if completed else 'IN_PROGRESS',
             )
+            # entered_at is auto_now_add: Django overwrites it on insert, so a backdated
+            # value only sticks through a queryset update (as the reman seed does).
+            StepExecution.objects.filter(pk=execution.pk).update(entered_at=entry_time)
             result['step_executions'] += 1
             created = True
 

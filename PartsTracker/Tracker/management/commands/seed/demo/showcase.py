@@ -378,7 +378,7 @@ class DemoShowcaseSeeder(BaseSeeder):
             entered = self.today - timedelta(days=2 * (count - i) + 1)
             exited = self.today - timedelta(days=2 * (count - i))
 
-            StepExecution.objects.update_or_create(
+            execution, _ = StepExecution.objects.update_or_create(
                 tenant=self.tenant,
                 part=hero_part,
                 step=step,
@@ -393,6 +393,9 @@ class DemoShowcaseSeeder(BaseSeeder):
                     "status": "COMPLETED",
                 },
             )
+            # entered_at is auto_now_add: Django overwrites it on insert, so a backdated
+            # value only sticks through a queryset update (as the reman seed does).
+            StepExecution.objects.filter(pk=execution.pk).update(entered_at=entered)
 
             if getattr(step, "requires_qa_signoff", False):
                 QualityReports.objects.update_or_create(
