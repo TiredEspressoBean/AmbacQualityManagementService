@@ -111,6 +111,18 @@ WITHHELD_PERMS = {
     # edited. There is no change endpoint, so the perm is granted to no role.
     'change_documentlink':
         'links are immutable; managed via attach (add) / detach (delete) only',
+    # No endpoint writes these (removed from STAFF_OPERATIONAL_WRITE 2026-10-06): a
+    # grant with nothing to gate is a live hole the day someone adds a viewset.
+    # Grant again alongside the endpoint that needs it.
+    'add_qaapproval': 'no endpoint writes QA approvals',
+    'change_qaapproval': 'no endpoint writes QA approvals',
+    'add_steprequirement': 'no endpoint writes step requirements',
+    'change_steprequirement': 'no endpoint writes step requirements',
+    'add_samplinganalytics': 'sampling analytics are derived, not written via the API',
+    'change_samplinganalytics': 'sampling analytics are derived, not written via the API',
+    'add_generatedreport': 'report audit rows are written by the report service',
+    'change_generatedreport': 'report audit rows are written by the report service',
+    'change_measurementresult': 'measurement results are immutable once recorded',
 }
 
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete

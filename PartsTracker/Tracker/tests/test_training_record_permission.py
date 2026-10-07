@@ -43,13 +43,33 @@ class QualityControlRecordWriteTests(SimpleTestCase):
     service. Withheld from Operator and Purchasing; each list can narrow later."""
 
     def test_operators_and_purchasing_cannot_write_them(self):
-        from Tracker.presets import CALIBRATION_RECORD_WRITE, LIFE_LIMIT_WRITE, SAMPLING_RULE_WRITE
-        guarded = set(CALIBRATION_RECORD_WRITE) | set(SAMPLING_RULE_WRITE) | set(LIFE_LIMIT_WRITE)
+        from Tracker.presets import (CALIBRATION_RECORD_WRITE, LIFE_LIMIT_WRITE, SAMPLING_RULE_WRITE,
+                                     SPC_BASELINE_WRITE)
+        guarded = (set(CALIBRATION_RECORD_WRITE) | set(SAMPLING_RULE_WRITE) | set(LIFE_LIMIT_WRITE)
+                   | set(SPC_BASELINE_WRITE))
         # Unlinking a limit from its part type defeats it as surely as raising it.
         self.assertIn("delete_parttypelifelimit", LIFE_LIMIT_WRITE)
         self.assertFalse(guarded & set(STAFF_OPERATIONAL_WRITE))
         for group in ("operator", "purchasing", "customer", "auditor"):
             self.assertFalse(guarded & set(GROUP_PRESETS[group].get("permissions", [])), group)
-        for group in ("tenant_admin", "qa_manager", "qa_inspector", "production_manager",
-                      "shift_lead", "document_controller", "engineering"):
-            self.assertTrue(guarded <= set(GROUP_PRESETS[group]["permissions"]), group)
+
+    def _holders(self, perms):
+        return {g for g, p in GROUP_PRESETS.items() if set(perms) <= set(p.get("permissions", []))}
+
+    def test_each_list_reaches_exactly_its_roles(self):
+        from Tracker.presets import (CALIBRATION_RECORD_WRITE, LIFE_LIMIT_WRITE, SAMPLING_RULE_WRITE,
+                                     SPC_BASELINE_WRITE)
+        staff = {"tenant_admin", "qa_manager", "qa_inspector", "production_manager", "shift_lead",
+                 "document_controller", "engineering"}
+        quality = {"tenant_admin", "qa_manager", "qa_inspector"}
+        self.assertEqual(self._holders(CALIBRATION_RECORD_WRITE), staff)
+        self.assertEqual(self._holders(SPC_BASELINE_WRITE), staff)
+        # Narrowed 2026-10-06: sampling is a quality decision, life limits an
+        # engineering specification.
+        self.assertEqual(self._holders(SAMPLING_RULE_WRITE), quality)
+        self.assertEqual(self._holders(LIFE_LIMIT_WRITE), quality | {"engineering"})
+
+    def test_grants_with_no_endpoint_are_gone(self):
+        for perm in ("add_qaapproval", "add_steprequirement", "add_samplinganalytics",
+                     "add_generatedreport", "change_measurementresult", "add_approvalresponse"):
+            self.assertNotIn(perm, STAFF_OPERATIONAL_WRITE, perm)

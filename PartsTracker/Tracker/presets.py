@@ -173,6 +173,11 @@ CLASSIFIED_DOCUMENT_VIEW = [
 # write grants anywhere — enforced by test_permission_coverage.py + DB triggers.
 
 STAFF_OPERATIONAL_WRITE = [
+    # (Removed 2026-10-06, no endpoint behind them — a grant with nothing to gate
+    # becomes a live hole the day someone adds one: add/change for qaapproval,
+    # steprequirement, samplinganalytics and generatedreport, change_measurementresult
+    # (results are immutable), and add_approvalresponse (ApprovalResponses is
+    # read-only; responses come from submit-response).)
     # Production records
     'add_orders', 'change_orders',
     # Recording what a customer asked for is order administration. Turning that demand
@@ -202,7 +207,6 @@ STAFF_OPERATIONAL_WRITE = [
     'add_stepoverride', 'change_stepoverride',
     'add_fpirecord', 'change_fpirecord',
     'add_batchexecution', 'change_batchexecution',
-    'add_steprequirement', 'change_steprequirement',
     # DWI runtime — completions + per-node responses + gate completions
     'add_substepcompletion', 'change_substepcompletion',
     'add_substepgatecompletion', 'change_substepgatecompletion',
@@ -244,7 +248,6 @@ STAFF_OPERATIONAL_WRITE = [
     'add_qualityreports', 'change_qualityreports',
     'add_qualityerrorslist', 'change_qualityerrorslist',
     'add_qualityreportdefect', 'change_qualityreportdefect',
-    'add_qaapproval', 'change_qaapproval',
     'add_quarantinedisposition', 'change_quarantinedisposition',
     # Supplier quality / part approval (records managed by QA; delete is opted
     # out — retired via status, not destroyed. `approve_*` live in SOD below.)
@@ -266,7 +269,7 @@ STAFF_OPERATIONAL_WRITE = [
     'add_rootcause', 'change_rootcause',
     # Measurements & SPC — operators record step measurements via the
     # bulk-record endpoint (POST → add_); change/delete stay immutable
-    'add_measurementresult', 'change_measurementresult',
+    'add_measurementresult',
     'add_stepexecutionmeasurement',
     # (SPC baselines — frozen control limits — are SPC_BASELINE_WRITE.)
     # Documents & 3D — records in/out; deletion + classification are gated
@@ -279,17 +282,13 @@ STAFF_OPERATIONAL_WRITE = [
     'add_documentlink', 'delete_documentlink',
     'add_threedmodel', 'change_threedmodel',
     'add_heatmapannotations', 'change_heatmapannotations', 'delete_heatmapannotations',
-    # Reports
-    'add_generatedreport', 'change_generatedreport',
     # Approvals — route for approval + respond; workflow admin is gated.
     # Responses are e-signature records: DB-immutable once written (add only;
     # delegation is a crud-exempt action gated on respond_to_approval).
     'add_approvalrequest', 'change_approvalrequest',
-    'add_approvalresponse',
     'respond_to_approval',
     # Sampling rules are SAMPLING_RULE_WRITE (quality doers, not every staff role);
     # deletes are manager-tier.
-    'add_samplinganalytics', 'change_samplinganalytics',
     # Process change — anyone can raise/edit/submit a change request. Note:
     # the `propose` action also requires add_processes (it forks a draft
     # process), and approve/reject additionally gate on change_processes —
@@ -434,9 +433,11 @@ TRAINING_RECORD_WRITE = [
 # - a calibration record — a PASS also returns OUT_OF_SERVICE equipment to service;
 # - a sampling rule set / rule — e.g. AQL 1.0 -> 6.5, severity NORMAL -> REDUCED;
 # - a life-limit definition — e.g. a hard limit -> 999999.
-# Withheld from Operator (the people these controls constrain) and Purchasing; every
-# other staff role keeps them for now. Separate lists so each can narrow on its own
-# (sampling to quality doers, life limits to engineering/quality) when that's decided.
+# Withheld from Operator (the people these controls constrain) and Purchasing.
+# Narrowed further (user decision 2026-10-06): sampling rules are a quality decision —
+# QA Manager, QA Inspector, Tenant Admin; life limits are an engineering specification
+# — Engineering plus those quality roles. Calibration and SPC baselines stay with every
+# other staff role.
 # Supplier qualifications and part approvals don't need this: they create PENDING and
 # only the approve_*-gated `grant` gives them force — the pattern these should follow.
 CALIBRATION_RECORD_WRITE = [
@@ -770,8 +771,6 @@ GROUP_PRESETS = {
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
-            *SAMPLING_RULE_WRITE,
-            *LIFE_LIMIT_WRITE,
             *SPC_BASELINE_WRITE,
             *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
@@ -828,8 +827,6 @@ GROUP_PRESETS = {
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
-            *SAMPLING_RULE_WRITE,
-            *LIFE_LIMIT_WRITE,
             *SPC_BASELINE_WRITE,
             *TRAINING_RECORD_WRITE,
             # Resolve (close) NCR dispositions
@@ -864,8 +861,6 @@ GROUP_PRESETS = {
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
-            *SAMPLING_RULE_WRITE,
-            *LIFE_LIMIT_WRITE,
             *SPC_BASELINE_WRITE,
             *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
@@ -889,7 +884,6 @@ GROUP_PRESETS = {
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
-            *SAMPLING_RULE_WRITE,
             *LIFE_LIMIT_WRITE,
             *SPC_BASELINE_WRITE,
             *TRAINING_RECORD_WRITE,

@@ -139,7 +139,11 @@ class StepOverrideRewireTests(AdvancementRewiresBase):
             reason="bypass for test",
             status=OverrideStatus.PENDING,
         )
-        approve_step_override(override, self.user)
+        # Someone other than the requester approves — self-approval is refused.
+        from django.contrib.auth import get_user_model
+        approver = get_user_model().objects.create_user(
+            username="override-approver", email="approver@x.test", password="x", tenant=self.tenant)
+        approve_step_override(override, approver)
 
         part.refresh_from_db()
         self.assertEqual(part.step_id, step_b.id)

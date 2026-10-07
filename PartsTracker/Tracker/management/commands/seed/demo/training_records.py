@@ -40,7 +40,11 @@ DEMO_TRAINING_TYPES = [
 # Operation/equipment-scoped requirements (authorization gate).
 DEMO_TRAINING_REQUIREMENTS = [
     {'training_key': 'FLOW-CERT', 'step_name': 'Flow Testing', 'notes': 'Required per WI-1003'},
-    {'training_key': 'NOZ-CERT', 'step_name': 'Nozzle Inspection', 'notes': 'Required per WI-1002'},
+    # Level 2, not the usual 1, so the training gate has something to refuse in the
+    # demo: mike.ops holds NOZ-CERT at level 1 (refused -> second-person override by a
+    # shift lead); dave.wilson holds level 2, so the solver still has a qualified operator.
+    {'training_key': 'NOZ-CERT', 'step_name': 'Nozzle Inspection', 'notes': 'Required per WI-1002',
+     'min_level': 2},
     {'training_key': 'ASSEMBLY-CERT', 'step_name': 'Assembly', 'notes': 'Required per WI-1001'},
     {'training_key': 'TORQUE-CERT', 'step_name': 'Assembly', 'notes': 'Torque wrench operation required'},
     {'training_key': 'FLOW-CERT', 'equipment_type_name': 'Flow Bench', 'notes': 'Required for flow test equipment'},
@@ -195,7 +199,7 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
                 # for Assembly/Nozzle Inspection and the solver's labor preflight
                 # refused every solve (LaborInfeasible). The level-3 drama lives
                 # on the JOB-ROLE profiles (competency-matrix demo), not here.
-                defaults={'notes': req_data.get('notes', ''), 'min_level': 1},
+                defaults={'notes': req_data.get('notes', ''), 'min_level': req_data.get('min_level', 1)},
             )
             requirements.append(req)
         return requirements
