@@ -63,6 +63,12 @@ class DemoSeedFlowsTests(TestCase):
             stranded = Core.objects.filter(status__in=["IN_DISASSEMBLY", "DISASSEMBLED"],
                                            part__work_order__isnull=True)
             self.assertEqual(list(stranded.values_list("core_number", flat=True)), [])
+            # Teardown runs on the reman route, entering at Core Receiving — not on
+            # the new-build route, which a name-ordered pick once chose.
+            teardown = Core.objects.filter(part__work_order__isnull=False)
+            self.assertEqual(set(teardown.values_list("part__work_order__process__name", flat=True)),
+                             {"Injector Reman"})
+            self.assertFalse(teardown.filter(part__step__name="Machining").exists())
             self.assertTrue(Core.objects.filter(status="DISASSEMBLED").exists())
 
     def test_both_fulfilment_modes_leave_teardown_their_own_way(self):

@@ -536,9 +536,11 @@ class DemoRemanSeeder(BaseSeeder):
             (pt for pt in part_types if pt.name == 'Common Rail Injector'), None)
         if injector is None:
             return
+        # By intent, not by name: with the new-build process also approved,
+        # order_by('name') picked "Injector Build" and every teardown ran on it.
         process = Processes.objects.filter(
             tenant=self.tenant, part_type=injector, status='APPROVED',
-            is_current_version=True, archived=False,
+            is_current_version=True, archived=False, is_remanufactured=True,
         ).order_by('name').first()
         if process is None:
             self.log("  No approved injector process — teardown will not be startable")
