@@ -502,8 +502,10 @@ class QualityReports(SecureModel):
     capa_decided_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        verbose_name_plural = 'Error Reports'
-        verbose_name = 'Error Report'
+        # Was 'Error Report', a legacy name nothing else uses; it leaked into the
+        # admin, validation messages and audit timelines. Codenames are unchanged.
+        verbose_name_plural = 'Quality Reports'
+        verbose_name = 'Quality Report'
         permissions = [
             ("approve_qualityreports", "Can approve quality reports"),
             ("approve_own_qualityreports", "Can approve own quality reports"),
