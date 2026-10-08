@@ -334,3 +334,37 @@ class CorePartDispositionTests(TenantContextMixin, VectorTestCase):
         self._disposition("USE_AS_IS")
         self.core.part.refresh_from_db()
         self.assertEqual(self.core.part.part_status, PartsStatus.DISMANTLED)
+
+
+class ShippedUnitDispositionTests(TenantContextMixin, VectorTestCase):
+    """A shipped unit is at the customer (2026-10-07). Scrap or return-to-supplier
+    used to outrank SHIPPED in the cascade's terminal precedence and rewrite it, so
+    the record said a unit that left had been scrapped here."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import CustomerShipment
+        self.tenant = Tenant.objects.create(name="Shipped Disp", slug="shipped-disp", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        company = Companies.objects.create(tenant=self.tenant, name="Acme")
+        order = Orders.objects.create(tenant=self.tenant, name="ORD-SHIP", company=company,
+                                      order_status=OrdersStatus.IN_PROGRESS)
+        self.shipment = CustomerShipment.objects.create(tenant=self.tenant, customer=company)
+        self.part = Parts.objects.create(tenant=self.tenant, ERP_id="P-SHIP", work_order=None, order=order)
+        Parts.objects.filter(pk=self.part.pk).update(part_status=PartsStatus.SHIPPED,
+                                                     customer_shipment=self.shipment)
+
+    def test_deciding_scrap_or_return_on_a_shipped_unit_is_refused(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        for kind in ("SCRAP", "RETURN_TO_SUPPLIER"):
+            d = QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part, description="field find")
+            with self.assertRaisesRegex(ValueError, f"already shipped on {self.shipment.shipment_number}"):
+                decide_disposition(d, disposition_type=kind, authorized_by=None)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, PartsStatus.SHIPPED)
+
+    def test_the_save_cascade_leaves_a_shipped_unit_shipped(self):
+        QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part,
+                                             disposition_type="SCRAP", description="seeded")
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, PartsStatus.SHIPPED)

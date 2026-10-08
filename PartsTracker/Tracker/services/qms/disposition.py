@@ -100,6 +100,11 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         part = Parts.objects.select_for_update().get(pk=disposition.part_id)
         if part.part_status == new_status:
             return  # idempotent no-op
+        if part.part_status == PartsStatus.SHIPPED:
+            # Gone to the customer: nothing here can scrap or cancel it, and a
+            # disposition on it is a record (decide_disposition refuses the decision;
+            # this is the backstop for the model-save cascade).
+            return
         if terminal_rank.get(part.part_status, 0) > terminal_rank.get(new_status, 0):
             return  # current terminal status outranks this decision — don't regress it
         # Loop-back-only guard: REWORK/REPAIR only routes parts that are still
@@ -130,6 +135,9 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
 # them as the highest-authority decisions — requiring recorded customer / design
 # approval (a concession or deviation) before the disposition is authorized.
 _APPROVAL_REQUIRED_TYPES = {'USE_AS_IS', 'REPAIR'}
+
+# Decisions that act on a unit we hold — refused once it has shipped.
+_OFF_SITE_REFUSED_TYPES = {'SCRAP', 'RETURN_TO_SUPPLIER'}
 
 
 def decide_disposition(
@@ -171,6 +179,21 @@ def decide_disposition(
         raise ValueError(
             "A material lot can't be reworked or repaired here — return it to the supplier "
             "(who can sort or rework it), scrap it, or use it as-is on a concession.")
+
+    # A shipped unit is at the customer: we can't scrap it or send it back to a
+    # supplier, and writing either would make the record say it never left.
+    if disposition_type in _OFF_SITE_REFUSED_TYPES and disposition.part_id:
+        from Tracker.models import Parts
+        # Read fresh: the cached `disposition.part` can predate the shipment.
+        part = Parts.objects.select_related('customer_shipment__customer').get(  # tenant-safe: by the disposition's FK
+            pk=disposition.part_id)
+        if part.part_status == 'SHIPPED':
+            shipment = part.customer_shipment
+            where = f" on {shipment.shipment_number} to {shipment.customer.name}" if shipment else ""
+            raise ValueError(
+                f"{part.ERP_id} has already shipped{where}. It isn't here to "
+                f"{'scrap' if disposition_type == 'SCRAP' else 'return to a supplier'} "
+                "— handle it as a customer return.")
 
     if disposition_type in _APPROVAL_REQUIRED_TYPES:
         reference = str((customer_approval or {}).get('reference') or '').strip()
