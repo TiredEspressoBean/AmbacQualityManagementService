@@ -40,6 +40,26 @@ def _under_rebuild(part) -> bool:
         return False
 
 
+def _rebuild_scope(part):
+    """The operations this core's rebuild actually needs, or None when scope doesn't apply.
+
+    Resolved here, in the data layer, because it needs the ORM — the solver is pure.
+    `_scoped_step_ids` returns None for anything not under rebuild (teardown has no
+    resolved scope: every core runs the same disassembly), and None for a rebuild whose
+    scope came back empty, where falling back to the authored route is the safe
+    direction. Both cases mean "schedule the nominal route", which is what the solver
+    did for everything before this.
+    """
+    from Tracker.models import Core
+    try:
+        core = part.core_role
+    except Core.DoesNotExist:
+        return None
+    from Tracker.services.reman.core_steps import _scoped_step_ids
+    ids = _scoped_step_ids(core)
+    return tuple(ids) if ids else None
+
+
 # --- DTOs -------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -117,6 +137,10 @@ class PartData:
     # rebuild, whose scope — which operations it visits — is its own. A core is a part
     # (Documents/CORE_AS_PART_DESIGN.md); this replaces the separate CoreData path.
     individual: bool = False
+    # The operations that scope actually resolved to, when something already knows —
+    # a core under rebuild. None means "no resolved scope, schedule the nominal route",
+    # which is the case for every ordinary part and for a core in teardown.
+    scoped_step_ids: tuple | None = None
 
 
 @dataclass(frozen=True)
@@ -546,6 +570,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                     if (p.id, p.step_id) in open_execs else 0.0
                 ),
                 individual=_under_rebuild(p),
+                scoped_step_ids=_rebuild_scope(p),
             )
             for p in wo.parts.all()
             # A deleted part is not work to schedule (read off the prefetch).
