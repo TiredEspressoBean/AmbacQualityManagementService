@@ -855,7 +855,7 @@ erDiagram
 | Entity         | Description                   | Key Relationships                            | Notes                                                     |
 |----------------|-------------------------------|----------------------------------------------|-----------------------------------------------------------|
 | **Companies**  | Customer organizations        | Users, Orders                                | Parent entity for customer isolation                      |
-| **Users**      | System actors                 | Companies, all entities                      | RBAC groups: Admin, QA_Manager, QA_Inspector, Production_Manager, Production_Operator, Document_Controller, Customer |
+| **Users**      | System actors                 | Companies, all entities                      | 15 RBAC groups — see RBAC & Data Isolation below; `Tracker/presets.py` is the authority |
 | **Orders**     | Customer orders               | Companies, Users, WorkOrders                 | HubSpot sync, APQP phase tracking                         |
 | **WorkOrders** | Production batches/jobs       | Orders, Parts, SamplingAuditLog              | ERP integration, timing tracking                          |
 | **Parts**      | Individual manufactured items | WorkOrders, PartTypes, Steps, QualityReports | Serial number tracking, step-by-step lifecycle            |
@@ -1133,17 +1133,34 @@ The system runs as four separate Azure App Services sharing infrastructure:
 
 ### RBAC & Data Isolation
 
-* **RBAC:** Ten role-based groups with two-layer permission system.
-  - **System Admin** - Platform administrator (417 permissions) — manages all tenants, not auto-seeded for customers
-  - **Tenant Admin** - Customer business admin (306 permissions) — full access within their organization
-  - **QA_Manager** - QA management (224 permissions) — approve inspections, manage documents, full CAPA control
-  - **QA_Inspector** - Quality inspections (131 permissions) — initiate CAPAs, conduct RCA
-  - **Production_Manager** - Production oversight (199 permissions) — scheduling, work orders, BOM management
-  - **Operator** - Production floor work (111 permissions) — create/update parts, record measurements
-  - **Document_Controller** - Document management (122 permissions) — classification, approval templates
-  - **Engineering** - Design and ECOs (149 permissions) — process design, measurement definitions, BOM
-  - **Auditor** - Read-only audit access (71 permissions) — anonymized sensitive data
-  - **Customer** - External portal access (14 permissions) — view own orders, filtered by `for_user()`
+* **RBAC:** Fifteen role-based groups with a two-layer permission system.
+  Counts below are from `Tracker/presets.py` as of 2026-10-08; regenerate rather
+  than hand-editing them, and treat `presets.py` as the authority.
+  - **System Admin** - Platform administrator (3 permissions) — manages all tenants, not auto-seeded for customers
+  - **Tenant Admin** - Customer business admin (506) — full access within their organization
+  - **QA Manager** - QA management (463) — approve dispositions and CAPAs, classify documents, approve supplier qualifications
+  - **QA Inspector** - Quality inspections (290) — perform inspections, create quality reports, initiate CAPAs
+  - **Production Manager** - Production oversight (466) — scheduling, work orders, release
+  - **Operator** - Production floor work (270) — run steps, record measurements, flag issues
+  - **Shift Lead** - Floor supervisor (287) — FPI sign-off, manual decision points, training-gate override, shift notes
+  - **Planner** - Owns the plan (293) — release, promised dates, the solve and its calendars
+  - **Engineering** - Design and ECOs (363) — processes, routings, specs, life limits
+  - **Purchasing** - Supplier seat (275) — qualification, sourcing, expected receipts (**no POs**)
+  - **Receiving** - Inbound dock (272) — receipt, incoming inspection, holds, put-away
+  - **Shipping** - Outbound dock (270) — shipments, packing lists and CoCs, subcontract send-out
+  - **Document Controller** - Document management (412) — classification, approval templates
+  - **Auditor** - Read-only audit access (138) — sees the whole tenant, changes nothing, **not** granted the classified document tiers
+  - **Customer** - External portal access (17) — view own orders, filtered by `for_user()`
+
+  > **Note on the counts.** A bigger number is not more senior. `System Admin`
+  > holds 3 because it is a platform marker, not a tenant role; `Operator` holds
+  > 270 because the shared staff base (`STAFF_VIEW_PERMISSIONS` +
+  > `STAFF_OPERATIONAL_WRITE`) is broad. What separates the roles is a short list
+  > of specific authorities — see `docs/roles/index.md`.
+  >
+  > **Group names have no underscores.** Earlier revisions of this file used
+  > `QA_Manager`, `Production_Operator` and similar, and referred to a
+  > `Supplier_Quality` group. None of those names exist.
 
   - **Two-layer system:**
     1. `role_type` (admin/staff/auditor/customer) determines DATA FILTERING via `for_user()`

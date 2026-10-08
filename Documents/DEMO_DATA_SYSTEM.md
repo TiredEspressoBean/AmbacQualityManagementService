@@ -667,7 +667,7 @@ Workflow for sign-offs:
 Each user type should have a tailored demo experience with data "in their queue."
 
 #### Mike Rodriguez (Operator)
-**Role:** Production_Operator
+**Role:** Operator
 **Primary View:** Work queue, step completion
 
 | Demo Need | Data Required | Status |
@@ -681,7 +681,7 @@ Each user type should have a tailored demo experience with data "in their queue.
 **Demo script:** Log in as Mike → See work queue → Select a part → Complete step with measurement → Show next part auto-appears
 
 #### Sarah Chen (QA Inspector)
-**Role:** QA_Inspector
+**Role:** QA Inspector
 **Primary View:** Inspection queue, SPC, quality reports
 
 | Demo Need | Data Required | Status |
@@ -696,7 +696,7 @@ Each user type should have a tailored demo experience with data "in their queue.
 **Demo script:** Log in as Sarah → See SPC alert → Review quarantined part → Approve disposition → Check CAPA task → Approve pending approval request
 
 #### Maria Santos (QA Manager)
-**Role:** QA_Manager
+**Role:** QA Manager
 **Primary View:** Quality dashboard, CAPAs, disposition approvals, SPC oversight
 
 | Demo Need | Data Required | Status |
@@ -711,7 +711,7 @@ Each user type should have a tailored demo experience with data "in their queue.
 **Demo script:** Log in as Maria → Review quality dashboard → Check CAPA status → Approve disposition → Review SPC violation → Approve document revision
 
 #### Lisa Park (Document Controller)
-**Role:** Document_Controller
+**Role:** Document Controller
 **Primary View:** Document library, pending approvals, revision history
 
 | Demo Need | Data Required | Status |
@@ -726,7 +726,7 @@ Each user type should have a tailored demo experience with data "in their queue.
 **Demo script:** Log in as Lisa → View document library → Check pending approvals → Review revision history → Initiate approval workflow → Show controlled distribution
 
 #### Jennifer Walsh (Production Manager)
-**Role:** Production_Manager
+**Role:** Production Manager
 **Primary View:** Dashboard, orders, CAPAs, approvals
 
 | Demo Need | Data Required | Status |
@@ -2137,7 +2137,7 @@ Rev 4.0 - Tightened flow rate tolerance from +/- 20 to +/- 15 per CAPA-2024-003
 | Email | dave.wilson@demo.ambac.com |
 | Password | demo123 |
 | Name | Dave Wilson |
-| Role | Production_Operator |
+| Role | Operator |
 | Purpose | Demo expired training blocking |
 
 **Training Demo Scenarios:**

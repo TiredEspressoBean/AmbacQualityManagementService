@@ -1,6 +1,28 @@
 # Product Vision and Context
 
-**Purpose:** Articulate the strategic vision, market opportunity, and long-term direction for the Ambac Quality Management System. Separates "why this matters" (vision) from "what we built" (roadmap) and "how it works" (architecture).
+**Purpose:** Articulate the strategic vision, market opportunity, and long-term direction for UQMES. Separates "why this matters" (vision) from "what we built" (roadmap) and "how it works" (architecture).
+
+> ## ⚠️ Parts of this document are superseded
+>
+> **Last substantive revision: February 2026.** The market analysis and the
+> problem framing still hold. **The module roadmap does not.**
+>
+> This document proposes quoting, sales orders, purchase orders, job costing and
+> invoicing as future modules. **Those are now explicitly out of bounds.** UQMES
+> is not an ERP and does not hold or carry financial decisions. The product
+> boundary in `CLAUDE.md` is normative and supersedes every "future module" list
+> below.
+>
+> Where a flow appears to need a price — over-and-above authorisation on a
+> repair, a buy decision on a kit — UQMES produces the **scope** (what work, what
+> parts, and the finding behind each), exports it, and records the answer.
+> Pricing happens in the system that owns it.
+>
+> `REMAN_REBUILD_LOOP_DESIGN.md` §3.2 states the reasoning at length, and
+> `MES_FEATURE_TIERS.md` correctly lists purchase orders as an ERP
+> responsibility. Prefer those over the sections below.
+>
+> The sections that contradict the boundary are marked inline.
 
 ---
 
@@ -88,7 +110,11 @@ A self-contained Quality Management System with:
 
 ### Where This Could Go
 
-**Long-term vision:** Become the **manufacturing operating system for mid-market companies** — the platform that runs their entire operation from quote to cash, with AI-native intelligence and compliance built into every workflow.
+**Long-term vision:** Become the **manufacturing operating system for mid-market companies** — the platform that runs their entire operation, with AI-native intelligence and compliance built into every workflow.
+
+> ⚠️ **Superseded wording.** This previously read "from quote to cash". UQMES
+> does not quote and does not carry cash. It runs the *operation*; the money
+> lives in the customer's ERP.
 
 **The transformation:**
 - **Today:** QMS/DMS with AI and customer portal
@@ -372,6 +398,15 @@ Not competing as "better QMS" but as **"the platform that runs your manufacturin
 - **Supplier Management** (purchase orders, incoming inspection, supplier scorecards)
 - **Basic Financials** (job costing, invoicing — NOT full accounting/GL)
 
+> ⚠️ **Superseded.** Quoting, sales orders, purchase orders, job costing and
+> invoicing are **out of bounds** — see the banner at the top of this file.
+>
+> What actually got built from this list: `Orders` records *demand* (what a
+> customer asked for), not accounting. Supplier management exists as
+> qualification, expected receipts and incoming inspection — **no POs**. The
+> only financial touchpoints are `Core`'s credit fields and enough cost sense in
+> the APS to weigh a constraint.
+
 **Market:** Mid-market manufacturers ($5-50M revenue) across aerospace, automotive, medical devices
 
 **Strategy:** Transition from "I build what you need" to "we have a product with these modules." Productize the custom work from lean phase. Position as **"the platform that runs your manufacturing operations"** not just "better QMS."
@@ -648,6 +683,12 @@ Not competing as "better QMS" but as **"the platform that runs your manufacturin
 - Add supplier management (POs, incoming inspection, scorecards)
 - Add basic financials (job costing, invoicing)
 - Position as "manufacturing operations platform" not "QMS"
+
+> ⚠️ **Superseded.** This phase was not taken. Order management shipped as
+> *demand only*; supplier management shipped without POs; financials were
+> dropped entirely. The positioning line still holds — UQMES is a manufacturing
+> operations platform, and it stays out of the ERP's lane deliberately rather
+> than for want of time.
 - 50-100 customers across aerospace/automotive/medical
 
 **Phase 3: Network effects ignition**

@@ -552,6 +552,13 @@ of February; see the currency note above.
 
 ### Group & Permission Management
 
+> **Historical record — superseded.** The group list and permission counts in
+> this section describe what shipped at the time of the entry and are kept as
+> history; they are deliberately **not** updated. As of 2026-10-08 there are
+> **15** groups, the names have no underscores, and the presets live in
+> `Tracker/presets.py` (not `permissions.py`, which now holds the DRF permission
+> classes). See `docs/roles/index.md` for the current picture.
+
 - ✅ **Completed:** Declarative permission system (`Tracker/permissions.py`)
     - 7 groups: Admin, QA_Manager, QA_Inspector, Production_Manager, Production_Operator, Document_Controller, Customer
     - Module-aware permission structure (core, qms, mes, dms)
@@ -577,6 +584,13 @@ of February; see the currency note above.
 ## 8. Access Control & Security
 
 ### Role-Based Access Control (RBAC)
+
+> **Historical record — superseded.** The group list and permission counts in
+> this section describe what shipped at the time of the entry and are kept as
+> history; they are deliberately **not** updated. As of 2026-10-08 there are
+> **15** groups, the names have no underscores, and the presets live in
+> `Tracker/presets.py` (not `permissions.py`, which now holds the DRF permission
+> classes). See `docs/roles/index.md` for the current picture.
 
 - ✅ **Completed:** 7 user groups with Django permissions:
     1. Admin - All permissions (128 total)
