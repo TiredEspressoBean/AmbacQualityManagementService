@@ -204,7 +204,7 @@ The unit of work is a **step**, not a job.
 | 11 | Read and acknowledge shift notes and notifications at clock-in | ✅ | ✅ | **verified end to end 2026-10-07** — note received, MUST ACKNOWLEDGE, acked, recorded with name + timestamp |
 | 12 | Be called over as the second person on someone else's gate | ✅ | ✅ | **verified live 2026-10-07** on both gates — training override and reassignment |
 | R1 | Grade a component at teardown, with the part in your hand | ✅ | ✅ | **verified 2026-10-07** — Component Grading substep, walked end to end |
-| R2 | Raise a finding at the bench when a reused part fails later | ⛔ | ✅ | **Blocked — same root as Shift Lead R1, confirmed 2026-10-07.** Raising a finding means writing `proposed_grade` on a `HarvestedComponent`, and the only thing that writes one is the `rebuildFindingCapture` DWI node, which is **authored into no substep** (rework item 2). All 3 harvested components have `proposed_grade: ""`. The node, the capture component and `PendingFindingsCard`'s apply/dismiss are all implemented. |
+| R2 | Raise a finding at the bench when a reused part fails later | ⚠️ | ✅ | **Authored and reachable in principle; not demonstrable on current demo data (2026-10-08).** `rebuildFindingCapture` is now authored — step **Nozzle Inspection**, optional substep *"Report a component found worse (reman)"* (confirmed in `Substep.body_blocks`). But the demo's only core under rebuild, CORE-240210-0007, **does not have Nozzle Inspection in its resolved scope** (its 5 operations are Cleaning, Flow Testing, Assembly, Final Test, Packaging), so it never visits the step. The 7 units that ARE at Nozzle Inspection are ordinary parts, not cores, so a component finding has no subject there. The mechanism is proven to work from the other end — the seed raises one through `findings.record_finding` and Shift Lead R1 decides it. **What is missing is a rebuild whose scope includes the step the node sits on.** |
 | R3 | Work a rebuild step whose scope was only settled this morning | ⚠️ | ✅ | `scope.py` resolves it and writes nothing — **the derive-on-read claim is now confirmed in the browser**: the rebuild plan page renders operations + slots with a per-row *Because/Why*, and states it reserves and orders nothing. Bench-side half still not walked (needs a core on a work order with a settled scope). |
 
 | C1 | Pull one unit out of a batch and send it back for rework | ⚠️ | ❌ | **Walked 2026-10-07 — found a bug.** Bulk bar offers *Previous step / Move to step… / Set status… / Send to QA / Rework / Quarantine / Scrap / Split selection…*. **Rework** refuses correctly (rework step has no inspection substep — demo authoring gap). **Quarantine returns HTTP 200 and writes nothing** — string-vs-UUID key bug in `_load_parts_scoped`, affecting all three bulk actions. See the BUG section above. |
@@ -302,7 +302,7 @@ The unit of work is the **shift**.
 | 9 | See who is qualified for what | ✅ | ✅ | training matrix (verified under QA Manager row 8) + current/expiring/expired on the hero |
 | 10 | Escalate what the shift cannot solve | ✅ | ✅ | **Report exception** on the Exceptions tab; existing items carry source and severity |
 
-| R1 | Decide a pending finding — apply or dismiss | ⛔ | ✅ | **Block mechanically confirmed 2026-10-07.** `PendingFindingsCard` filters on `proposed_grade` being set (`PendingFindingsCard.tsx:35`) and returns `null` when empty, so it never renders. All 3 `HarvestedComponent` rows have `proposed_grade: ""`. **A "finding" IS a proposed re-grade**, and the only thing that writes one is the `rebuildFindingCapture` DWI node — the node authored into no substep (rework item 2). Apply/dismiss mutations, toasts and the plan re-resolve are all implemented. Same root as Operator R2. |
+| R1 | Decide a pending finding — apply or dismiss | ⚠️ | ✅ | **Walked end to end 2026-10-08, after the reseed authored the capture nodes.** `PendingFindingsCard` rendered for the first time in this audit: *"1 finding to decide — Raised at the bench after teardown. Nothing below has changed the plan yet — applying one re-grades the component, and this plan re-resolves from it."* Injector Body, **Grade A → B**, *"Light pitting on the seat face, visible only after cleaning"*, attributed to Lisa Park with a timestamp. **Apply** → toast `Injector Body: grade is now B`, card cleared. Verified in the DB: `condition_grade` A→B, `proposed_grade` emptied, and the application appended to `condition_notes` as a trail. **Dismiss** is offered beside it (takes a reason). **Docs ⚠️: undocumented.** |
 | R2 | Request customer authorisation for over-and-above | ⚠️ | ✅ | **Walked 2026-10-07.** From an IN_REBUILD core the card offers **Authorise…** → status becomes *Awaiting customer authorisation*. `send_for_authorisation` refuses when nothing exceeds the sold rebuild level (*"Nothing on … goes beyond the rebuild level that was sold, so there is nothing to authorise"*) — it compares resolved scope against the `RebuildScopePreset`. **Docs ⚠️: undocumented.** |
 | R3 | Decide a torn-down unit's exit: rebuild, harvest, or return | ⚠️ | ✅ | **Walked 2026-10-07 after fixing the teardown dead-end.** A DISASSEMBLED core offers **Rebuild to stock** / **Release to inventory**, each with a tooltip explaining the consequence (identity kept and stocked as reman FG, vs components accepted and the core consumed). Chose rebuild → **In Rebuild**. The third exit (*return*) is unreachable — no `REPAIR_RETURN` core exists. **Docs ⚠️: undocumented.** |
 
@@ -399,31 +399,31 @@ docs currently get wrong by omission:
 | 9 | Chase a late delivery | ✅ | ✅ | **lit 2026-10-07** — RCV-EXP-0103 chased; UI shows *"first promised 2026-10-02"* beside the new date |
 | 10 | Hand receipts to the ERP | — | — | **row should be rewritten** — Glovia is human-bridged; UQMES produces the document, a person carries it |
 
-| 11 | Stage and kit material to the bench for the next shift | ⛔ | ✅ | **Blocked on the deferred scheduling surface — architecturally, not accidentally.** `/production/staging` is built (By station / By material, station filter, 8h window, PDF, Refresh) and states the honest empty state: **"No active schedule — solve first."** `staging.py` says why: it answers *"what does this STATION need next"*, which *"can only be asked at all because the schedule knows when work arrives"* — distinct from `work_order_material_requirements` ("what does this JOB need"). Re-walk with the scheduling surface. |
+| 11 | Stage and kit material to the bench for the next shift | ⚠️ | ✅ | **Walked 2026-10-08, unblocked by the solve.** `/production/staging` now lists the next 8 h of scheduled work per station — Assembly Cell, Grading Bench, Machine Shop, Pack & Ship, Teardown Bay — each job with its WO, step, part type, unit count and a relative time (*now*, *in 58m*, *in 3h*), and each material line with quantity, source lot and location (*Injector Spring ×2 · STOCK-CRI-SPR · Main Stores*). Optional lines are marked. Steps consuming nothing say so rather than showing an empty table. **Confirm** staged a line → station went **0/1 → 1/1 staged**, the row became *took 2 · STOCK-CRI-SPR*, and it recorded **"Staged by Jennifer Walsh"**. **Took another** handles the picker grabbing a different lot. It also carries the staleness warning: *"The schedule is stale — these times may have moved. Re-solve before staging to them."* **Docs ⚠️: undocumented.** |
 | R1 | Receive a core | ✅ | ✅ | **walked 2026-10-07** — scan identity band, photograph as received, grade arrival condition, sign off |
 | R2 | Receive a bulk core lot and identify units from it | ⚠️ | ✅ | **Walked end to end 2026-10-07.** `/reman/core-lots` had an honest empty state (*"No bulk lots waiting… received here with Receive in bulk"*). **Receive in bulk** → *"A counted delivery with no serials. Units are given identities later, one at a time, and are exchange cores."* The core-type picker offered **only** Common Rail Injector — the lot must be of a type cores were received as, or with a disassembly BOM, so purchased stock can't be counted into the core bank. Received 40 → `Received CORELOT-2026-0001: 40 × Common Rail Injector`, listed **40 / 40** unidentified at Receiving Dock with the reference beneath. **Identify a unit** → grade (A/B/C/Scrap), source, serial, notes, plus an **Identify and next** for working down a pallet → `CORE-2026-0001 identified from CORELOT-2026-0001`, count **40/40 → 39/40**. **Verified in the DB:** core RECEIVED, grade B, serial `MFS-INJ-440219`, part CORE_BANKED, `fulfilment_mode=EXCHANGE` (enforced — *"definitional, not shop policy"*), and **`part.received_in_lot → CORELOT-2026-0001`**, so the trace back to the receipt holds exactly as the module claims. **Docs ⚠️: undocumented.** |
 
 ## Shipping
 
-> **Rows 1–9 blocked by post-audit rework item 3** — the shipping code is complete
+> **Rows 1–7 and 9 walked 2026-10-08 once the reseed landed.** Row 8 remains open. — the shipping code is complete
 > and coherent; no seeded route can reach it. Re-walk once the two processes are
 > authored with a `SHIPPED` terminal.
 
 | # | Workflow | Docs | Code | Notes |
 |---|----------|------|------|-------|
-| 1 | See what is ready | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 2 | Confirm it passed and is complete | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 3 | Create the shipment | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 4 | Produce the paperwork | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 5 | Ship partially | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 6 | Record carrier and tracking | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 7 | Undo a mistake | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 8 | Return customer property | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
-| 9 | Know whether we are on time | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
+| 1 | See what is ready | ✅ | ✅ | **Walked 2026-10-08, after the reseed.** `/production/shipments` — header states the boundary: *"What can go to customers now, and what has gone. Invoicing stays in your ERP."* Tabs **Ready to ship (6)** / **Shipped**, grouped by order with the customer named (ORD-2024-0042 · Midwest Fleet Services), columns Serial / Item / Work order / Line · due / Waiting at. |
+| 2 | Confirm it passed and is complete | ✅ | ✅ | **Walked 2026-10-08.** Each unit shows *Waiting at: Ship step*, and the ship dialog states the release check in words: *"Each part at a Ship step completes it, so its sign-off checks must be done."* — the ISO 9001 §8.6 gate runs through `advance_part_step` exactly as it would for one part. |
+| 3 | Create the shipment | ✅ | ✅ | **Walked 2026-10-08.** Selected 3 units → **Ship …** → `SHP-2026-000003 shipped to Midwest Fleet Services.`, landing on the shipment detail. |
+| 4 | Produce the paperwork | ✅ | ✅ | **Walked 2026-10-08.** Shipment detail offers **Packing list**, **CoC**, **Edit paperwork** and **Void…**. Paperwork block shows Carrier, Tracking, ERP shipper / packing slip, Expected delivery; Units table lists each serial with its WO and order; History records CREATED with actor and time. |
+| 5 | Ship partially | ✅ | ✅ | **Walked 2026-10-08.** Per-unit checkboxes; **Ship …** stays disabled until something is selected. Shipped 3 of 6 → board recounted **Ready to ship (6) → (3)** with the correct three (014/015/016) still waiting. |
+| 6 | Record carrier and tracking | ✅ | ✅ | **Walked 2026-10-08.** Carrier `FedEx Freight`, tracking `7742 9910 3356`, ERP slip `PS-2026-00841`, all recorded and shown. Tracking is explicitly *(can add later)* and **Edit paperwork** exists for it — the dock often ships before the number comes back. |
+| 7 | Undo a mistake | ⚠️ | ✅ | **Affordance inspected 2026-10-08; not executed, to avoid disturbing the freshly staged shipping data.** **Void…** states the distinction exactly: *"For a shipment recorded by mistake — the parts didn't go. They return to their Ship step (sign-off runs again) or to stock. Goods that went and came back are a return, not a void."* Takes a reason. Same void-vs-return semantics as the lot ship-back. |
+| 8 | Return customer property | ⚠️ | ✅ | **Walked 2026-10-08 — and my earlier block reason was WRONG.** This never depended on a `SHIPPED` terminal: the shipping board has a second half for **lots**, filtered on `owner__isnull=False`, independent of any ship step — *"A customer's own material, still here: it can go back to them, grouped under them."* It was blocked only because **0 of 13 demo lots have an `owner`**. Set one temporarily and the board grew a dedicated **Customer property · \<customer\>** group with its own Ship action and columns *Their material · lot / Here / Location*; the dialog is lot-aware (*"Ship 1 lot… Blank quantity ships the whole lot; less splits that much off and the rest stays"*), so partial return works. Reverted after. `MaterialLot.owner` is a developed concept citing **ISO 9001 §8.5.3** in the model and enforced throughout — consumption draws customer property only for that customer's work, requirements never cover anyone else's demand, dock metrics exclude it from receipts, and the lot label prints it *"so nobody draws it into someone else's job"*. **Remaining gap is demo data only: seed one customer-owned lot.** |
+| 9 | Know whether we are on time | ⚠️ | ⚠️ | **Measured 2026-10-08: implemented, but unmeasurable in the demo.** The page shows *On time, last 90 days: —* with 24 shipped units. `delivery_performance` returns `{deliveries: 0, on_time_pct: None}` because it keys on `work_order__order_line__due_date`, and **0 of 18 work orders have an `order_line` at all** — so no shipment can be attributed to a line, and the board's *Line · due* column is empty for the same reason. Not a bug; a demo-data gap, and a narrow one. OTD to the SUPPLIER works (dock metrics); OTD to the CUSTOMER has nothing to measure. |
 
 | 10 | Send parts out to a subcontract vendor, and record them back | ⚠️ | ✅ | **Walked 2026-10-07** on WO-2024-0042-A. `OutsideProcessPanel` on the WO Control page: *2 at vendor · 1 to inspect*. **Send out** → dialog (vendor preselected, *PO / packing-slip reference*, qty `2 of 2 ready`, optional pick-specific-units) → toast `OSP-2026-000004 — 2 parts sent to Apex Plating Co`, panel recounted to *2 at vendor · 0 ready*. **Receive back** and **Inspect** both route into the **operator substep runtime** (`/operator/steps/…/substeps?execution=…&osp_shipment=…`) — the return inspection *is* a step execution, not a side dialog. That runtime is **properly authored**: Coating Thickness `12 +3 −2 µm`, photo capture, Pass/Fail/Pending result, and a required signature. Completion not walked — `react-signature-canvas` can't be driven synthetically (known tooling limit, not a defect). **Docs ⚠️: subcontract/outside processing appears in no doc at all** — another instance of unmentioned capability. |
-| R1 | Return a rejected core to its owner | ⛔ | ✅ | **Blocked, two ways, verified 2026-10-07.** (a) All 8 demo cores are EXCHANGE — `returns_to_customer` is False for every one, and `return_to_customer` refuses an exchange unit by design. (b) It needs REBUILT/DECLINED, and no core can even reach DISASSEMBLED — see the reman dead-end finding. Service is implemented and correct. |
-| R2 | Ship a rebuilt unit with a cert describing what was replaced | ⛔ | ⛔ | **Blocked — rework item 3:** no seeded route ends at a `SHIPPED` terminal, so `ready_to_ship()` is structurally empty. Not walkable until the process split. |
+| R1 | Return a rejected core to its owner | ⚠️ | ✅ | **Unblocked by the reseed, but not completable with this tooling (2026-10-08).** The demo now has a REPAIR_RETURN unit — CORE-240210-0007, `returns_to_customer=True`, IN_REBUILD on Injector Reman. `return_to_customer` needs REBUILT or DECLINED; REBUILT is reached by finishing the scoped rebuild route (`complete_rebuild` via `finish_route`). That route's last step, **Final Test**, carries a `signature` substep (*Final leak / pressure test*), and `react-signature-canvas` cannot be driven synthetically — the same known limit that stopped the outside-processing return. Service, precondition and UI are all verified present; only the walk is blocked, by the harness rather than the product. |
+| R2 | Ship a rebuilt unit with a cert describing what was replaced | ⚠️ | ✅ | **Same position as Shipping R1 — reachable, blocked by the signature substep, not by the product.** Worth recording what IS confirmed: `componentInstallCapture` is authored on **Assembly**, in substep *"Record the components fitted (reman)"*, and Assembly **is** in CORE-240210-0007's resolved scope — so the as-built record (what actually went in) is collected on the one unit that will be returned. The shipment surface itself is walked (rows 3–4): **CoC** is offered beside **Packing list** on every shipment. What is unwalked is the join — a cert carrying the as-built list for a returned rebuild. |
 
 | C1 | Export-control screening before anything leaves | ⚠️ | ⚠️ | **Gate logic verified in isolation 2026-10-07; completely unexercised by the demo.** `for_export_control(user)` is wired into `SecureManager.for_user()` via `_apply_security_filters`, excludes `itar_controlled=True` rows for a non-US person, and logs each denial to a separate `compliance.access_control` logger for SIEM, citing NIST 800-171 / CMMC. Probed directly: `us_person=True` → allowed; `us_person=False` → denied with *ITAR_VIOLATION: User is not a US Person (22 CFR 120.62)*. EAR denied-country list is `BLR CUB IRN PRK RUS SYR`. **Nothing exercises it:** 0 of 153 parts are `itar_controlled`, 0 carry an ECCN, 0 require an export licence, 0 of 4 documents are controlled, and **all 8 demo users are `us_person=True`** — so neither side of the filter can fire. **Dead escape hatch:** `can_access_itar_data` falls back to `getattr(user, 'itar_authorized', False)` — commented *"explicit ITAR authorization (e.g. TAA or license)"* — but **`itar_authorized` appears exactly once in the codebase, in that `getattr` default.** No field, no migration, nothing sets it, so a non-US person holding a TAA or licence can never be granted access. The screen *at the point of shipment* still needs rework item 3. |
 
@@ -431,27 +431,27 @@ docs currently get wrong by omission:
 
 | # | Workflow | Docs | Code | Notes |
 |---|----------|------|------|-------|
-| 1 | Produce a schedule | ? | ? | |
-| 2 | Find out why something is not on it | ? | ? | |
-| 3 | Dispatch people | ? | ? | |
-| 4 | Adjust by hand | ? | ? | |
-| 5 | React to a disruption | ? | ? | breakdown, absence, hot job |
-| 6 | Test a change before committing | ? | ? | |
-| 7 | Get the plan to the floor | ? | ? | |
-| 8 | See whether the floor followed it | ? | ? | |
+| 1 | Produce a schedule | ⚠️ | ✅ | **Walked 2026-10-08 as jennifer.mgr (Production Manager).** `/production/schedule`. Solve is gated on `add_scheduleresult` — held only by the PM and tenant admin — so as mike.ops the toolbar is absent and the empty state reads *"No active schedule yet — run Solve"* without an action; as the PM it gains **Undo / Solve / What-if / Dispatch** and the empty state offers Solve. Solve dispatches a Celery task; with no worker the banner says so honestly: *"Solving the schedule — queued 6s ago, waiting for a worker."* With a worker it completed **FEASIBLE in 182.7 s**, writing 1 `ScheduleResult` and **571 `ScheduledTask`s**. Header then carries the whole objective: *FEASIBLE · within 66% · 571 tasks · makespan 357.1 h · lateness 121,800 (priority-wtd) · solved in 181087 ms (machine 72452 · people 108635 ms) · ⏰ 2 late orders* — including the **two-phase split**, machine then people. **Docs ⚠️: undocumented.** |
+| 2 | Find out why something is not on it | ⚠️ | ✅ | **Walked 2026-10-08 — one of the best surfaces in the product.** *Not scheduled* (17 before the solve, **6 after**) opens *"Why isn't this scheduled?"*: *"6 of 17 open work order(s) aren't fully on the board"*, grouped **by cause** with counts and a remedy per group. **NOTHING LEFT TO WORK (2)** — *"All 8 unit(s) are finished, shipped, scrapped or quarantined"* → *"Close the work order, or release the quarantined units."* **NOT PLACED BY THE LAST SOLVE (4)** — per-WO placed ratios (*12/18 placed*, *10/11*, *5/6*) and an honest admission: *"nothing above explains it — the solve most likely ran out of horizon or time"* → *"Re-solve with a longer time limit, or widen the horizon."* Each row is clickable straight into the work-order editor — diagnose and fix without leaving the dialog. `diagnostics.py` / `infeasibility.py`. **Docs ⚠️: undocumented.** |
+| 3 | Dispatch people | ⚠️ | ✅ | **Walked 2026-10-08.** **Dispatch** → toast `Dispatched: 259/265 attended tasks covered`, and the schedule header gains a standing **"14 uncovered"** chip. Coverage is reported rather than assumed, and the gap stays visible on the board instead of only in the toast. `scheduling/dispatch.py`. **Docs ⚠️: undocumented.** |
+| 4 | Adjust by hand | ⚠️ | ✅ | **Walked 2026-10-08.** Clicking a Gantt bar opens a task panel: work order, due date, machine, work centre, operator, start/end, **fence zone** (Frozen), live status (*▶ Running ~41 min left*), planner pin, material state. Reassign is honest about what it does — *"Reassign — applies now, re-solve to optimize"*. The operator picker is **filtered by eligibility** (4 of 9 users for Assembly Cell, via work-centre membership), not a flat list. Assigned an uncovered task to Dave Wilson → toast `Operator updated`, panel updated, and the header recounted **14 → 13 uncovered** live. Also offers **Pin** (planner lock), **Merge into batch** and **Edit WO**. **Docs ⚠️: undocumented.** |
+| 5 | React to a disruption | ⚠️ | ✅ | **Spine walked 2026-10-08; the three disruption types not each walked separately.** The mechanism is reactive staleness: signals flip `ScheduleResult.is_stale` when the world changes under the live plan — new or cancelled demand, a part leaving the flow (SCRAPPED / CANCELLED / QUARANTINED), lost capacity — and `staleness.mark_active_schedule_stale` is the single entry point so bulk `.update()` paths in `services/qms/` trip it identically rather than slipping past the signals. **Deliberately NOT tripped by routine step advances**, with the reason stated: *"an actuals drift on every advance would leave the flag permanently on and meaningless."* It is *"a hint, not an auto-solve"*. Verified in the browser: `is_stale: true` and the header carries a **`stale — re-solve`** badge, from which the planner can Solve or What-if first. **Docs ⚠️: undocumented.** |
+| 6 | Test a change before committing | ⚠️ | ✅ | **Walked end to end 2026-10-08 — one of the strongest surfaces in the product.** **What-if** runs a second solve as a DRAFT (`is_draft: True`, its own `ScheduleResult`), leaving the live plan untouched. The board gains a **Live / Draft** toggle and a comparison panel, *"What-if draft — review vs live"*, that states the trade-off in both directions rather than selling the change: **makespan 357.1 → 284.5 h (−72.6 h)** but **lateness 121,800 → 811,111 (+689,311)**, moves 571 tasks. It also warns what the change costs the existing plan: *"⚠ 58 frozen task(s) had to move — the world changed under the pinned plan. Review before committing."* **Commit draft** / **Discard** — discarded, and the live figures returned exactly (357.1 h, 121,800, 14 uncovered). **Docs ⚠️: undocumented.** |
+| 7 | Get the plan to the floor | ⚠️ | ✅ | **Walked 2026-10-08, same action as row 3.** Dispatch is the hand-off: it assigns people to the solved tasks and reports what it could not cover. The floor-side half (the operator's queue reflecting it) was already walked under Operator rows. The Control Center also carries a **Dispatch List** button, a separate printable path to the same plan. **Docs ⚠️: undocumented.** |
+| 8 | See whether the floor followed it | ⚠️ | ⚠️ | **Mechanism verified, no data yet — and that is by design (2026-10-08).** `scheduling/actuals.py` is **capture-only**: it stamps `ScheduledTask.actual_start` / `actual_end` as a part enters and leaves a step, and its docstring is explicit that it *"deliberately does NOT re-time the plan or mark the schedule stale — the solver already pins in-progress ops at solve time, and routine step advances are intentionally not a re-solve trigger."* Measured now: **0 of 1142 tasks carry an actual**, because capture is forward-looking and this schedule was solved after all of the demo's step activity. So planned-vs-actual is real but needs work to move *after* a solve before it shows anything. **Not re-walkable without advancing parts post-solve.** |
 
-| 9 | Author non-working time — holidays, shutdowns, PTO, training | ? | ? | `PlantCalendarException`, `LaborCalendarBlock`; a stale calendar breaks the plan on day one |
-| R1 | Schedule work whose route isn't known until teardown | ? | ? | the hardest scheduling case in the shop |
+| 9 | Author non-working time — holidays, shutdowns, PTO, training | ⚠️ | ✅ | **Verified 2026-10-08, including that the solver honours it — which is the half that matters.** All four kinds are authored: `PlantCalendarException` — *Labor Day (HOLIDAY) 2026-10-12*, *Quarterly Inventory Count (INVENTORY) 2026-11-04*, *Winter Shutdown (SHUTDOWN) 2026-12-24→31*; `LaborCalendarBlock` — a user's *PTO (ONCE) 2026-10-09*, another's *TRAINING (ONCE) 2026-10-14*, and an *ALL MEETING (WEEKLY)*; plus one `Shift` (Day, 06:00–18:00). **The live solve respected the holiday**: 2026-10-12 carries **0 of 571 tasks** while 2026-10-13 carries 119. The row's own warning — *"a stale calendar breaks the plan on day one"* — is therefore guarded against, not merely modelled. **Docs ⚠️: undocumented.** |
+| R1 | Schedule work whose route isn't known until teardown | ⚠️ | ⚠️ | **Walked 2026-10-08, and it surfaced a real disagreement between two subsystems.** `routing.py` schedules the **nominal** route — DEFAULT edges only, from the part's current step; ALTERNATE (rework) and ESCALATION branches are *"not scheduled up front; a re-solve handles a part that actually fails"*, which keeps the scheduled subgraph acyclic. So the answer to the row is: **book the nominal route, and re-solve when reality diverges.** Measured on the live schedule: a teardown core (IN_DISASSEMBLY) books all **10** steps, Core Receiving → Packaging; a core **DISASSEMBLED and awaiting its exit decision books 0**, which is correct — nothing is known yet. **But CORE-240210-0007 (IN_REBUILD) books 7 steps including Nozzle Inspection and Nitride Coating, which its resolved rebuild scope EXCLUDES** (the rebuild plan lists 5 operations). So the solver reserves capacity for operations the rebuild plan says will be skipped — `skip_out_of_scope` then marks them SKIPPED at runtime. The scheduler is the pessimistic one, which is the safe direction, but it inflates booked load (the board reads **220%**) and makespan for every reman unit. `routing.py`'s design note does not mention rebuild scope at all, which suggests the two were built independently rather than reconciled. **Not a defect — a stated deferral.** Per the user (2026-10-08): *"Reman side may be a bit weird, that is planned. Because of the tree versus sequential nature of reman I'm waiting until I have real data to fully flesh out the scheduling system strategy."* So the solver treating a reman unit as a sequential nominal route, rather than consuming the resolved rebuild scope, is a known simplification held open until real shop data arrives — reman is tree-shaped (what comes off a unit determines what goes back on) and the sequential model is the placeholder. **Recorded so the 220% load figure and the inflated reman makespan are read as a consequence of that choice, not as a bug.** |
 
 ## Production Manager
 
 | # | Workflow | Docs | Code | Notes |
 |---|----------|------|------|-------|
 | 1 | See what is at risk | ✅ | ✅ | **verified 2026-10-07** as `jennifer.mgr` — late jobs, quarantine, CAPAs, FPY, supplier quals, competency coverage |
-| 2 | Release work | ? | ? | no `release` permission exists; release appears to be the schedule's **Dispatch** — deferred with that surface |
-| 3 | Promise a date | ? | ? | CTP/RCCP sits on the scheduling surface — deferred |
+| 2 | Release work | ⚠️ | ⚠️ | **Walked 2026-10-08 — and my earlier note was wrong. Release is NOT the schedule's Dispatch**; it has its own service, `services/mes/release.py`, *"the planner's authorization gate"*. Its stated design is unusual and worth keeping: **the gate is advisory, not blocking** — *"a failing check never refuses; it demands a written reason, which is stored on the work order. Blocking here would just teach people to fake the data."* `EditWorkOrderDialog` on the scheduling surface uses it properly: `useReleaseReadiness` renders blockers and warnings, then `WorkOrders.release` writes `released_at`, `released_by` and — when readiness fails — `release_override_reason`. **Inconsistency found:** the WO Control Center has a button also labelled **Release (N)** that calls `handleBulkTransition(ids, 'IN_PROGRESS')` — a plain status flip. It runs no readiness check and writes none of the three release fields, so a unit 'released' there has no recorded releaser, no timestamp and no override reason. **Scope of the consequence:** `data.py:471` notes *"`released_at` is recorded but never filters — the plan stays date-driven"*, and the demo runs `release_mode=auto`, so today the bypass costs only the audit fields. **Under `release_mode=MANUAL` the solver filters on release**, and a work order 'released' from the Control Center would silently never be planned. Demo state: **0 of 18 work orders have `released_at` set.** |
+| 3 | Promise a date | ⚠️ | ⚠️ | **Surface located, not walked (2026-10-08).** CTP/RCCP lives in `services/planning/` — `rccp.py` (rough-cut capacity), `flow_times.py`, `material_load.py`, `workload_control.py`. CLAUDE.md records a real bug already fixed here: CTP measured capacity over whole-month buckets, so a promise 20 days out credited 176 h or 352 h depending on whether the window crossed a month boundary — over-promising by 3× in the bad case. Now measured as `[now, due date)`. Not walked because the promise surface was not reached in this pass; the solver work above took the session's remaining budget. **Next session's first scheduling target.** |
 | 4 | Resolve escalations | ✅ | ✅ | holds `resolve_step_decision`; Control Center **Exceptions** is the shared surface (verified under Shift Lead) |
-| 5 | Balance capacity and staffing | ⚠️ | ? | staffing half is live (**competency coverage**: uncovered 0, single-operator 0); capacity half is deferred |
+| 5 | Balance capacity and staffing | ⚠️ | ✅ | **Both halves now seen (2026-10-08).** Staffing was already confirmed (competency coverage: uncovered 0, single-operator 0). The capacity half is live on the solved board: per-resource booked hours down the left rail — Final Test Bench FTB-1 **265.8 h**, Torque Wrench TW-26 **187.2 h**, Flow Test Stand #1 **108.4 h**, Packaging PK-1 **93.2 h**, Disassembly Press DP-1 **92.0 h**, against near-idle Machine Shop 0.0 h and Wash Line 0.5 h — plus a headline **220%** load figure and **⏰ 2 late orders**. Dispatch reports staffing coverage against it (`259/265 attended tasks covered`, **13–14 uncovered**), so the two halves are read together on one surface. Note the 220% and the reman makespan are inflated by the nominal-route booking described in Scheduler R1 — a stated deferral, not a measurement error. |
 | 6 | Approve over-and-above and deviations | ⚠️ | ✅ | **half misframed** — a deviation is a QA decision (`approve_disposition`), which the PM does **not** hold |
 | 7 | Review OTD and throughput | ⚠️ | ✅ | **First pass yield 53.8%** on the hero; OTD lives on the supplier scorecard (verified) — no single throughput view |
 | 8 | Maintain the data planning depends on | ✅ | ✅ | **Master Workbook** — 21 sheets in load order, validate-then-commit, nothing kept unless every row loads |
@@ -3226,6 +3226,41 @@ process design and should wait.
 - **Operator R1** re-confirmed on a real core, with the same copy-vs-control drift
   already filed (instruction says three-way sort, control offers Pass/Fail/Pending).
 
+### Method note: three false negatives in one day, all from the query, not the system
+
+**Recorded 2026-10-08. Worth more than any single row, because it is how this audit
+nearly shipped wrong answers.**
+
+Three times in one session a search returned "nothing" and the nothing was mine:
+
+1. **`grep -v REBUILT_TO_STOCK`** while asking what writes `REBUILT`. The one line that
+   writes it — `rebuild_execution.py:79` — is
+   `core.status = 'REBUILT' if core.returns_to_customer else 'REBUILT_TO_STOCK'`, so my
+   own exclusion ate the answer. I was a message away from telling a peer that nothing
+   sets REBUILT and the repair-and-return ending was unreachable.
+2. **`getattr(ss, 'content', None) or ''`** when checking which substeps carry the reman
+   capture nodes. `Substep` has no `content` field — the authored body is
+   **`body_blocks`** — so every row searched as an empty string and the query reported
+   the nodes authored nowhere. They were authored.
+3. **`| head`** on the groups spreading `STAFF_OPERATIONAL_WRITE`, reported as eight when
+   there are nine.
+
+The shape is identical each time: **a query that cannot find the thing returns the same
+answer as a system that does not contain it.** Absence of evidence arrived looking
+exactly like evidence of absence, and in two of the three cases it would have become a
+filed finding against working code.
+
+The habit that caught all three was the same one: before sending a negative finding,
+prove the query can find a positive. Where the claim is "nothing does X", the check is
+to make the search find something it is known to contain — a field that definitely
+exists, a row that definitely matches — and only then trust the empty result.
+
+**This does not retract the original finding that the three capture nodes were authored
+nowhere.** That one holds on independent evidence: all `HarvestedComponent` rows had
+`proposed_grade: ''`, the `PendingFindingsCard` never rendered, and the authoring had to
+be *added* in the seed before the card worked. But it was established with an unsound
+query, and it happened to be right — which is a different thing from being verified.
+
 ## Post-audit rework — item 2: the demo has no new-manufacture process
 
 **Found 2026-10-07, prompted by the user's question, and it reframes several
@@ -3608,6 +3643,62 @@ the two processes:
 authors one route, and authors it incompletely*. Item 2 (no new-manufacture process),
 the reman capture nodes (authored nowhere), and this (no shippable terminal) are the
 same gap seen from three directions.
+
+### The demo's lateness is a seeded capacity shortfall, not a scheduling defect
+
+**Investigated 2026-10-08 after the solver walk, by experiment rather than inspection.**
+
+The board reads **220% load, makespan 357 h, 2 late orders**, and weighted lateness in
+the hundreds of thousands. That is not the scheduler misbehaving.
+
+**Machine side — nine of ten steps have exactly one eligible machine.**
+
+| Step | Machines | load |
+|---|---|---|
+| Final Test (FTB-1) | 1 | 265.8 h — **108% of the 246.9 h horizon capacity** |
+| Assembly (Torque Wrench TW-26) | 1 | 187.1 h — 76% |
+| Packaging (PK-1) | 1 | 93.2 h — 38% |
+| Flow Testing | **2** | 117.7 h — 24% |
+
+**Tested it:** added a calibrated second Final Test bench and re-solved as a what-if.
+The solver used it — 37 of 99 tasks moved, FTB-1 fell **265.8 → 186.8 h (108% → 76%)**.
+**Delivery did not improve**: still 2 late orders, WO-2024-0042-A still +7 d, and
+WO-SHOWCASE-01 went +5 d → +6 d. Relieving Final Test simply hands the queue to the
+Torque Wrench, which was already at 76% and is the other step every unit must pass. A
+chain of single points moves its bottleneck; it does not lose it.
+
+**Labour is the constraint underneath both.** Total scheduled work is **3,758 h**
+against a labour supply of **2,222 h** — and that counts all 9 users as operators on the
+single Day Shift. Excluding the QA manager, document controller and customer contact
+puts it near **230%**, which is where the board's 220% comes from. It is also why
+Dispatch reports 13–14 uncovered tasks and why the people phase of the solve (108 s)
+costs more than the machine phase (72 s).
+
+**So: a seeded shop with one shift, ~6 operators and no redundant machines cannot
+deliver its seeded order book.** The scheduler is reporting that correctly, in detail,
+and refusing to pretend otherwise. **Fixing it is a seed change** — a second shift, more
+operators, or less demand — not a code change.
+
+**An accidental validation:** the first attempt at the experiment failed because the new
+bench was cloned without a calibration record, and `get_step_equipment_affinities`
+silently dropped it — *"machines that can't be used right now — not in service, or with
+lapsed calibration — are dropped so the solver never assigns work to them."* An
+uncalibrated test bench being refused production work is exactly right, and it is why
+the bench did not appear in the planner UI either.
+
+**Two findings that are NOT explained by the seed**, and would persist in a real shop:
+
+1. **The solve never gets close to optimal.** All runs finish FEASIBLE at a
+   **66–99.6% optimality gap** against a 180 s limit. Objective figures are therefore
+   not comparable between runs: two solves on *identical* inputs gave weighted lateness
+   121,800 and 811,111. **The What-if panel presents exactly this as the effect of a
+   change** (*"makespan 357.1 → 284.5 h, lateness 121,800 → 811,111"*), which is a real
+   trap for a planner deciding whether to commit a draft. Worth either closing the gap
+   or labelling the comparison with it.
+2. **The frozen fence is overridden at scale.** `is_pinned` is False for all 569 tasks —
+   nothing is planner-pinned — yet `relaxed_pin_count` is **59** against **184 frozen**
+   tasks: a third of the frozen set moved. The solver is right to (the fence is a soft
+   penalty by design, `solver.py:79`), but the board presents **Frozen** as a lock.
 
 ## Post-audit rework — item 1: deviation permits and conditional spec
 
