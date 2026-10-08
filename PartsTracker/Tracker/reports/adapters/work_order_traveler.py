@@ -72,6 +72,22 @@ class TravelerOperation(BaseModel):
     inspector: Optional[str] = None     # e.g. "S. Chen · 7/13"
     acc_rej: Optional[str] = None       # e.g. "ACC" / "REJ"
     remarks: Optional[str] = None
+    # As-built traceability for the resolved serial (2026-10-08): what was
+    # actually measured, which lots went in, how many visits, any override.
+    recorded: list[str] = Field(default_factory=list)   # "Torque 25 Nm ✓ · M. Ops 10/6"
+    materials: list[str] = Field(default_factory=list)  # "Lot STOCK-CRI-SOL · Solenoid Coil × 1"
+    visits: int = 0                                     # >1 means the step was reworked
+    overrides: list[str] = Field(default_factory=list)  # "Training expired — approved S. Chen"
+
+
+class TravelerSerial(BaseModel):
+    """One serial on the work order, for the traveler's per-serial lines."""
+
+    serial: str
+    step: Optional[str] = None
+    status: str
+    open_ncrs: int = 0
+    shipped: bool = False
 
 
 class WorkOrderTravelerContext(BaseModel):
@@ -114,6 +130,14 @@ class WorkOrderTravelerContext(BaseModel):
     final_signoff: Optional[str] = None
     qa_release: Optional[str] = None
     date_released: Optional[str] = None
+
+    # ---- Traceability (2026-10-08) ----
+    # The resolved serial's nonconformances and how each was dispositioned.
+    nonconformances: list[str] = Field(default_factory=list)
+    # One line per serial on the work order — where each unit is, and whether it
+    # carries an open nonconformance. Empty on a single-serial work order.
+    serials: list["TravelerSerial"] = Field(default_factory=list)
+    serials_truncated: int = 0          # serials beyond the printed cap
 
     # ---- Document metadata ----
     tenant_name: str
@@ -276,6 +300,59 @@ def _fmt_measurement(m) -> str:
     return label
 
 
+def _fmt_recorded(m) -> str:
+    """A recorded StepExecutionMeasurement, e.g. 'Assembly Torque 25 Nm ✓ · M. Ops 10/6'."""
+    d = m.measurement_definition
+    label = d.label if d else "Measurement"
+    if m.value is not None:
+        value = _fmt_dec(m.value) + (f" {d.unit}" if d and d.unit else "")
+    else:
+        value = (m.string_value or "—").strip()
+    verdict = {True: " ✓", False: " ✗ OUT OF SPEC"}.get(m.is_within_spec, "")
+    who = _join_person_date(m.recorded_by, m.recorded_at)
+    return f"{label} {value}{verdict}" + (f" · {who}" if who else "")
+
+
+def _fmt_usage(u) -> str:
+    """A material draw at a step, e.g. 'Lot STOCK-CRI-SOL · Solenoid Coil × 1'."""
+    lot = u.lot
+    if lot is not None:
+        item = getattr(getattr(lot, "material", None), "name", None) or             getattr(getattr(lot, "material_type", None), "name", None) or ""
+        text = f"Lot {lot.lot_number}" + (f" · {item}" if item else "")
+    elif u.harvested_component_id:
+        text = f"Harvested {u.harvested_component}"
+    else:
+        text = "Material"
+    qty = _fmt_dec(u.qty_consumed) if u.qty_consumed is not None else None
+    if qty:
+        text += f" × {qty}"
+    if u.is_substitute:
+        text += " (substitute)"
+    return text
+
+
+def _fmt_override(o) -> str:
+    """A step override, e.g. 'Training expired — approved S. Chen 10/6: <reason>'."""
+    kind = o.get_block_type_display() if hasattr(o, "get_block_type_display") else str(o.block_type)
+    state = o.get_status_display() if hasattr(o, "get_status_display") else str(o.status)
+    who = _join_person_date(o.approved_by, o.approved_at)
+    text = f"{kind} — {state.lower()}" + (f" {who}" if who else "")
+    reason = (o.reason or "").strip()
+    return text + (f": {reason}" if reason else "")
+
+
+def _fmt_disposition(d) -> str:
+    """A nonconformance and its disposition, e.g. 'DISP-0012 · Use as is · Closed · authorised S. Chen 10/6'."""
+    number = d.disposition_number or "Disposition"
+    kind = d.get_disposition_type_display() if d.disposition_type else "Undecided"
+    state = d.get_current_state_display() if hasattr(d, "get_current_state_display") else str(d.current_state)
+    text = f"{number} · {kind} · {state}"
+    who = _join_person_date(d.decision_authorized_by, d.decision_authorized_at)
+    if who:
+        text += f" · authorised {who}"
+    return text
+
+
 def _resolve_drawing(part_type) -> tuple[Optional[str], Optional[str]]:
     """Resolve (drawing_number, drawing_revision) from a controlled Document
     of a 'Drawing' DocumentType attached to the part type.
@@ -346,7 +423,8 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         process = wo.process
         part_type = process.part_type if (process and process.part_type) else None
 
-        part_number = part_type.ERP_id if part_type else ""
+        # ERP_id is nullable: a part type with no part number printed nothing but a 500.
+        part_number = (part_type.ERP_id or "") if part_type else ""
         part_name = part_type.name if part_type else "-"
         revision: Optional[str] = None
         if part_type and getattr(part_type, "version", None):
@@ -359,6 +437,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         # (the job-release form). tenant-safe: explicit tenant filter.
         target_part = self._resolve_part(wo, tenant, validated_params.get("part"))
         exec_by_step, qr_by_step = self._history_maps(target_part, tenant)
+        trace_by_step = self._trace_maps(target_part, tenant)
 
         # Routing — ProcessStep rows are scoped through the (tenant-checked)
         # process; ProcessStep itself is not a SecureModel.
@@ -382,6 +461,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 operator, inspector, acc_rej, remarks = self._step_actuals(
                     exec_by_step.get(step.id), qr_by_step.get(step.id),
                 )
+                trace = trace_by_step.get(step.id, {})
                 operations.append(TravelerOperation(
                     seq=str(ps.order),
                     op_number=(getattr(step, "operation_number", "") or "").strip() or None,
@@ -396,6 +476,10 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                     inspector=inspector,
                     acc_rej=acc_rej,
                     remarks=remarks,
+                    recorded=trace.get("recorded", []),
+                    materials=trace.get("materials", []),
+                    visits=trace.get("visits", 0),
+                    overrides=trace.get("overrides", []),
                 ))
 
         order = wo.related_order
@@ -432,9 +516,83 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 f"https://{getattr(tenant, 'slug', None) or 'example'}"
                 f".ambactracker.example/workorder/{wo.id}"
             ),
+            nonconformances=self._nonconformances(target_part, tenant),
+            **self._serials(wo, tenant),
             tenant_name=tenant.name,
             generated_date=today,
         )
+
+    # A work order's per-serial lines stop here; the rest are counted, not listed.
+    SERIAL_CAP = 200
+
+    def _trace_maps(self, part, tenant) -> dict:
+        """Per step, for the resolved serial: recorded measurements, lots drawn,
+        number of visits, and step overrides. Empty when no part is resolved."""
+        if part is None:
+            return {}
+        from Tracker.models import MaterialUsage, StepExecutionMeasurement, StepOverride
+
+        out: dict = {}
+
+        def slot(step_id):
+            return out.setdefault(step_id, {"recorded": [], "materials": [], "visits": 0, "overrides": []})
+
+        for ex in part.step_executions.all():
+            slot(ex.step_id)["visits"] += 1
+        # tenant-safe: every query below is keyed to the tenant-checked part.
+        for m in (StepExecutionMeasurement.objects
+                  .filter(tenant=tenant, step_execution__part=part)
+                  .select_related("measurement_definition", "recorded_by", "step_execution")
+                  .order_by("recorded_at")):
+            slot(m.step_execution.step_id)["recorded"].append(_fmt_recorded(m))
+        for u in (MaterialUsage.objects
+                  .filter(tenant=tenant, part=part)
+                  .select_related("lot__material", "lot__material_type", "harvested_component")
+                  .order_by("consumed_at")):
+            if u.step_id:
+                slot(u.step_id)["materials"].append(_fmt_usage(u))
+        for o in (StepOverride.objects
+                  .filter(tenant=tenant, step_execution__part=part)
+                  .select_related("approved_by", "step_execution")
+                  .order_by("requested_at")):
+            slot(o.step_execution.step_id)["overrides"].append(_fmt_override(o))
+        return out
+
+    def _nonconformances(self, part, tenant) -> list[str]:
+        """The resolved serial's dispositions, oldest first."""
+        if part is None:
+            return []
+        from Tracker.models import QuarantineDisposition
+        # tenant-safe: explicit tenant filter
+        return [_fmt_disposition(d) for d in (
+            QuarantineDisposition.objects
+            .filter(tenant=tenant, part=part)
+            .select_related("decision_authorized_by")
+            .order_by("created_at"))]
+
+    def _serials(self, wo, tenant) -> dict:
+        """One line per serial on a multi-serial work order (empty for a single one)."""
+        from django.db.models import Count, Q
+        from Tracker.models import Parts
+
+        # tenant-safe: explicit tenant filter
+        qs = (Parts.objects.filter(tenant=tenant, work_order=wo)
+              .select_related("step")
+              .annotate(open_ncrs=Count(
+                  "quarantinedisposition",
+                  filter=~Q(quarantinedisposition__current_state="CLOSED"), distinct=True))
+              .order_by("ERP_id"))
+        total = qs.count()
+        if total < 2:
+            return {"serials": [], "serials_truncated": 0}
+        rows = [TravelerSerial(
+            serial=p.ERP_id,
+            step=(p.step.name if p.step_id else None),
+            status=p.get_part_status_display(),
+            open_ncrs=p.open_ncrs,
+            shipped=(p.part_status == "SHIPPED"),
+        ) for p in qs[:self.SERIAL_CAP]]
+        return {"serials": rows, "serials_truncated": max(0, total - self.SERIAL_CAP)}
 
     def _resolve_part(self, wo, tenant, part_id):
         """The part whose as-built history fills the routing rows: an explicit

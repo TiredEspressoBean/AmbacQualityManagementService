@@ -258,12 +258,29 @@
             #text(size: 7.5pt, fill: muted, font: sans-font)[• #spec]
           ]
         ]
+        // As-built for the printed serial — the actual next to the spec.
+        if op.at("visits", default: 0) > 1 [
+          #v(2pt)
+          #tone-badge(str(op.visits) + " visits — reworked", "warn")
+        ]
+        for r in op.at("recorded", default: ()) [
+          #v(1pt)
+          #text(size: 7.5pt, font: sans-font)[▸ #r]
+        ]
+        for m in op.at("materials", default: ()) [
+          #v(1pt)
+          #text(size: 7.5pt, font: sans-font)[◦ #m]
+        ]
+        for o in op.at("overrides", default: ()) [
+          #v(1pt)
+          #text(size: 7.5pt, font: sans-font, fill: rgb("#9a5b00"))[Override: #o]
+        ]
       },
       // Fill-in fields — tall bordered boxes for handwriting; as-built = chip.
       signoff(value: op.operator, h: 32pt),
       signoff(value: op.inspector, h: 32pt),
-      signoff(h: 32pt),
-      signoff(h: 32pt),
+      signoff(value: if op.acc_rej == "ACC" { "✓" } else { none }, h: 32pt),
+      signoff(value: if op.acc_rej == "REJ" { "✗" } else { none }, h: 32pt),
       signoff(value: op.remarks, h: 32pt),
     )),
     column-gutter: 12pt,
@@ -273,6 +290,34 @@
 ]
 
 #v(6pt)
+
+// ── Serials on this work order — where each unit is (2026-10-08) ─────────────
+#if data.at("serials", default: ()).len() > 0 [
+  = Serials — #str(data.serials.len() + data.at("serials_truncated", default: 0))
+
+  #text(size: 8pt, fill: muted, font: sans-font)[
+    Where each unit stands as of #data.generated_date. Print a single serial's
+    as-built record from its part page.
+  ]
+  #v(4pt)
+  #set text(size: 8pt)
+  #report-table(
+    (1.4fr, 2fr, 1.2fr, 0.9fr),
+    ([Serial], [Current step], [Status], [Open NCRs]),
+    data.serials.map(s => (
+      text(font: mono-font)[#s.serial],
+      if s.step != none [#s.step] else [#text(fill: muted)[—]],
+      [#s.status],
+      if s.open_ncrs > 0 { tone-badge(str(s.open_ncrs), "warn") } else { text(fill: muted)[—] },
+    )),
+    column-gutter: 12pt,
+    edge-inset: 6pt,
+  )
+  #if data.at("serials_truncated", default: 0) > 0 [
+    #text(size: 7.5pt, fill: muted, font: sans-font)[…and #str(data.serials_truncated) more serials on the live work order.]
+  ]
+  #v(6pt)
+]
 
 // ── Closeout — the sign-off key has one row per operation and flows after the
 // routing (a long routing's key may span pages); Final Release + footer are
@@ -320,7 +365,10 @@
     capture("Qty rejected", value: data.qty_rejected),
     capture("Qty scrapped", value: data.qty_scrapped),
     capture("Date completed", value: data.date_completed),
-    grid.cell(colspan: 4, capture("NCR # / Disposition — record any nonconformance raised and how it was dispositioned", h: 15pt)),
+    grid.cell(colspan: 4, capture(
+      "NCR # / Disposition — record any nonconformance raised and how it was dispositioned",
+      value: if data.at("nonconformances", default: ()).len() > 0 { data.nonconformances.join(linebreak()) } else { none },
+      h: 15pt)),
     capture("Final inspection — sign-off / date", value: data.final_signoff),
     grid.cell(colspan: 2, capture("QA release — “released for shipment” stamp / signature", value: data.qa_release)),
     capture("Date released", value: data.date_released),

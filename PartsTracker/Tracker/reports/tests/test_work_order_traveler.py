@@ -143,3 +143,39 @@ class WorkOrderTravelerAsBuiltUnitTests(SimpleTestCase):
 
         # No execution + no report → all blank.
         self.assertEqual(adapter._step_actuals(None, None), (None, None, None, None))
+
+
+class WorkOrderTravelerTraceabilityTests(SimpleTestCase):
+    """As-built traceability on the traveler (2026-10-08): what was measured, which lots
+    went in, rework visits, overrides, nonconformances, and a line per serial."""
+
+    def test_as_built_and_serial_lines_compile(self):
+        from Tracker.reports.services.typst_generator import generate_typst_pdf
+        data = TestWorkOrderTravelerAdapter._load_fixture()
+        op = data["operations"][0]
+        op.update(operator="M. Ops · 10/6", acc_rej="REJ", visits=2,
+                  recorded=["Torque 25 Nm ✓ · M. Ops 10/6", "Angle 12.9° ✗ OUT OF SPEC · S. Chen 10/6"],
+                  materials=["Lot L-1 · Solenoid Coil × 1 (substitute)"],
+                  overrides=["Training expired — approved S. Chen 10/6: cover"])
+        data["nonconformances"] = ["DISP-0001 · Rework · Closed · authorised S. Chen 10/6"]
+        data["serials"] = [{"serial": f"S-{i}", "step": "Ship", "status": "Shipped",
+                            "open_ncrs": i % 2, "shipped": True} for i in range(3)]
+        data["serials_truncated"] = 5
+        ctx = WorkOrderTravelerContext(**data)
+        pdf = generate_typst_pdf(WorkOrderTravelerAdapter.template_path, ctx.model_dump(mode="json"))
+        self.assertTrue(pdf.startswith(b"%PDF"))
+
+    def test_formatters(self):
+        from decimal import Decimal
+        from types import SimpleNamespace as NS
+        from Tracker.reports.adapters.work_order_traveler import _fmt_recorded, _fmt_usage
+        defn = NS(label="Torque", unit="Nm")
+        ok = NS(measurement_definition=defn, value=Decimal("25"), string_value=None,
+                is_within_spec=True, recorded_by=None, recorded_at=None)
+        bad = NS(measurement_definition=defn, value=Decimal("31.5"), string_value=None,
+                 is_within_spec=False, recorded_by=None, recorded_at=None)
+        self.assertEqual(_fmt_recorded(ok), "Torque 25 Nm ✓")
+        self.assertEqual(_fmt_recorded(bad), "Torque 31.5 Nm ✗ OUT OF SPEC")
+        usage = NS(lot=NS(lot_number="L-9", material=NS(name="Spring"), material_type=None),
+                   harvested_component_id=None, qty_consumed=Decimal("2"), is_substitute=False)
+        self.assertEqual(_fmt_usage(usage), "Lot L-9 · Spring × 2")
