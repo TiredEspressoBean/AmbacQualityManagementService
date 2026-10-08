@@ -540,6 +540,7 @@ export type AuditLog = {
    */
   action: ActionEnum;
   changes?: unknown | undefined;
+  changes_display: Array<AuditChange>;
 };
 export type ActionEnum =
   /**
@@ -551,6 +552,11 @@ export type ActionEnum =
    * @enum 0, 1, 2, 3
    */
   0 | 1 | 2 | 3;
+export type AuditChange = {
+  field: string;
+  old: string | null;
+  new: string | null;
+};
 export type BOM = {
   id: string;
   part_type: string;
@@ -2111,6 +2117,78 @@ export type ModeEnum =
    * @enum saas, dedicated
    */
   "saas" | "dedicated";
+export type CustomerOrder = {
+  id: string;
+  /**
+   * Auto-generated internal order number: ORD-YYYY-####
+   */
+  order_number: string;
+  name: string;
+  latest_note: {
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  };
+  notes_timeline: Array<{
+    timestamp: string | null;
+    user: string;
+    visibility: string;
+    message: string;
+  }>;
+  order_status: string;
+  order_status_code: string;
+  estimated_completion: string | null;
+  original_completion_date: string | null;
+  process_stages: Array<{
+    name: string;
+    is_completed: boolean;
+    is_current: boolean;
+    step_id: string;
+    order: number;
+    sampling_info?:
+      | Partial<{
+          total_parts: number;
+          sampled_parts: number;
+          sampling_rate: number;
+        }>
+      | undefined;
+  }>;
+  gate_info: {
+    current_gate_name: string;
+    current_gate_full_name: string;
+    is_in_progress: boolean;
+    current_position?: number | undefined;
+    total_gates?: number | undefined;
+    progress_percent?: number | undefined;
+    gates: Array<{
+      name: string;
+      full_name: string;
+      is_current: boolean;
+      is_completed: boolean;
+    }>;
+  };
+  parts_summary: {
+    total_parts: number;
+    completed_parts: number;
+    progress_percent: number;
+  };
+  shipments: Array<TrackerShipment>;
+  company_name: string | null;
+  customer_first_name: string | null;
+  customer_last_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type TrackerShipment = {
+  id: string;
+  shipment_number: string;
+  shipped_at: string | null;
+  expected_delivery: string | null;
+  carrier: string;
+  tracking_number: string;
+  serials: Array<string>;
+};
 export type CustomerRule = {
   id: string;
   /**
@@ -5701,68 +5779,6 @@ export type PaginatedCustomerOrderList = {
     (string | null)
     | undefined;
   results: Array<CustomerOrder>;
-};
-export type CustomerOrder = {
-  id: string;
-  /**
-   * Auto-generated internal order number: ORD-YYYY-####
-   */
-  order_number: string;
-  name: string;
-  latest_note: {
-    timestamp: string | null;
-    user: string;
-    visibility: string;
-    message: string;
-  };
-  notes_timeline: Array<{
-    timestamp: string | null;
-    user: string;
-    visibility: string;
-    message: string;
-  }>;
-  order_status: string;
-  order_status_code: string;
-  estimated_completion: string | null;
-  original_completion_date: string | null;
-  process_stages: Array<{
-    name: string;
-    is_completed: boolean;
-    is_current: boolean;
-    step_id: string;
-    order: number;
-    sampling_info?:
-      | Partial<{
-          total_parts: number;
-          sampled_parts: number;
-          sampling_rate: number;
-        }>
-      | undefined;
-  }>;
-  gate_info: {
-    current_gate_name: string;
-    current_gate_full_name: string;
-    is_in_progress: boolean;
-    current_position?: number | undefined;
-    total_gates?: number | undefined;
-    progress_percent?: number | undefined;
-    gates: Array<{
-      name: string;
-      full_name: string;
-      is_current: boolean;
-      is_completed: boolean;
-    }>;
-  };
-  parts_summary: {
-    total_parts: number;
-    completed_parts: number;
-    progress_percent: number;
-  };
-  company_name: string | null;
-  customer_first_name: string | null;
-  customer_last_name: string | null;
-  created_at: string;
-  updated_at: string;
 };
 export type PaginatedCustomerRuleList = {
   /**
@@ -25771,6 +25787,15 @@ const ClockInRequest = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional().default(""),
 });
+const TrackerShipment = z.object({
+  id: z.string().uuid(),
+  shipment_number: z.string(),
+  shipped_at: z.string().datetime({ offset: true }).nullable(),
+  expected_delivery: z.string().nullable(),
+  carrier: z.string(),
+  tracking_number: z.string(),
+  serials: z.array(z.string()),
+});
 const CustomerOrder = z.object({
   id: z.string().uuid(),
   order_number: z.string(),
@@ -25837,6 +25862,7 @@ const CustomerOrder = z.object({
       progress_percent: z.number(),
     })
     .nullable(),
+  shipments: z.array(TrackerShipment),
   company_name: z.string().nullable(),
   customer_first_name: z.string().nullable(),
   customer_last_name: z.string().nullable(),
@@ -26763,6 +26789,11 @@ const ActionEnum = z.union([
   z.literal(2),
   z.literal(3),
 ]);
+const AuditChange = z.object({
+  field: z.string(),
+  old: z.string().nullable(),
+  new: z.string().nullable(),
+});
 const AuditLog = z.object({
   id: z.number().int(),
   object_pk: z.string().max(255),
@@ -26775,6 +26806,7 @@ const AuditLog = z.object({
   timestamp: z.string().datetime({ offset: true }),
   action: ActionEnum,
   changes: z.unknown().nullish(),
+  changes_display: z.array(AuditChange),
 });
 const PaginatedAuditLogList = z.object({
   count: z.number().int(),
@@ -29023,6 +29055,7 @@ export const schemas = {
   PatchedTimeEntryRequest,
   ClockOutInputRequest,
   ClockInRequest,
+  TrackerShipment,
   CustomerOrder,
   PaginatedCustomerOrderList,
   InviteViewerInputRequest,
@@ -29146,6 +29179,7 @@ export const schemas = {
   VectorSearchRequestRequest,
   VectorSearchResponse,
   ActionEnum,
+  AuditChange,
   AuditLog,
   PaginatedAuditLogList,
   ContentType,

@@ -1,6 +1,7 @@
+import { useEffect } from "react";
 import { useRetrieveAuditLogEntries } from "@/hooks/useRetrieveAuditLogEntries";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
 type Props = {
     objectId: string | number;
@@ -13,9 +14,15 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
     // Normalize content types (handles both array and paginated formats)
     const contentTypes = Array.isArray(contentTypesRaw) ? contentTypesRaw : [];
 
-    const contentTypeId = contentTypes.find(
-        (ct: { model?: string; id?: number }) => ct.model?.toLowerCase() === modelType.toLowerCase()
-    )?.id;
+    const contentTypeId = resolveContentTypeId(contentTypes, modelType);
+    const typesLoaded = contentTypes.length > 0;
+    const unresolved = typesLoaded && contentTypeId === undefined;
+    useEffect(() => {
+        // Loud in development: an unplaceable model is a config gap, not a quiet record.
+        if (unresolved && import.meta.env.DEV) {
+            console.warn(`AuditTrail: no content type for modelType "${modelType}" — add it to CONTENT_TYPE_ALIASES.`);
+        }
+    }, [unresolved, modelType]);
 
     const { data, isLoading, error } = useRetrieveAuditLogEntries({
         object_pk: String(objectId),
@@ -26,6 +33,10 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
         enabled: !!contentTypeId && !!objectId,
     });
 
+    // A model the lookup can't place must say so — it used to fall through to "No
+    // audit history", indistinguishable from a record that genuinely has none.
+    if (unresolved)
+        return <p className="text-sm text-muted-foreground">Activity history isn&rsquo;t available for this kind of record.</p>;
     if (isLoading)
         return <p className="text-sm text-muted-foreground">Loading audit log...</p>;
     if (error)
@@ -66,18 +77,20 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
                                         {actionLabel(entry.action)}
                                     </span>
                                     <span className="text-sm font-medium text-foreground">
-                                        {entry.actor ?? "System"}
+                                        {actorName(entry.actor_info) ?? (entry.actor != null ? `User ${entry.actor}` : "System")}
                                     </span>
                                 </div>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {formatDistanceToNow(new Date(entry?.timestamp), { addSuffix: true })}
+                                {/* The absolute time is the record; the relative one is a convenience. */}
+                                <span className="text-right text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+                                    {format(new Date(entry.timestamp), "PP p")}
+                                    <span className="block">{formatDistanceToNow(new Date(entry.timestamp), { addSuffix: true })}</span>
                                 </span>
                             </div>
                             
                             <div className="text-sm text-muted-foreground mt-2">
-                                {entry.changes && typeof entry.changes === "object"
-                                    ? renderChanges(entry.changes as Record<string, unknown>, entry.action)
-                                    : <span className="italic">No change details available</span>}
+                                {/* changes_display names foreign keys ("Released By: Jennifer Walsh",
+                                    not 187) and drops empty values; built server-side. */}
+                                {renderChanges(entry.changes_display ?? [], entry.action)}
                             </div>
                         </div>
                     </div>
@@ -86,6 +99,38 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
         </div>
     );
 };
+
+/** Detail-page model names that aren't their Django model's name. */
+const CONTENT_TYPE_ALIASES: Record<string, string> = {
+    customers: "user",          // the Customers view lists User rows
+    users: "user",
+    errortypes: "qualityerrorslist",
+    trackerorders: "orders",
+};
+
+/**
+ * The content type for a detail page's modelType. Content types are the lowercased
+ * class name (`workorder`), while page configs are often plural (`workorders`), so an
+ * exact match silently missed nine pages. Tries the alias, the name as given, then
+ * the name without its plural "s".
+ */
+function resolveContentTypeId(types: { model?: string; id?: number }[], modelType: string): number | undefined {
+    const want = modelType.toLowerCase();
+    const candidates = [CONTENT_TYPE_ALIASES[want], want, want.endsWith("s") ? want.slice(0, -1) : undefined]
+        .filter((c): c is string => !!c);
+    for (const c of candidates) {
+        const hit = types.find((t) => t.model?.toLowerCase() === c);
+        if (hit?.id !== undefined) return hit.id;
+    }
+    return undefined;
+}
+
+/** A person's name, not their numeric id: "Maria Santos", else the username. */
+function actorName(info: { first_name?: string | null; last_name?: string | null; username?: string } | null | undefined): string | null {
+    if (!info) return null;
+    const full = [info.first_name, info.last_name].filter(Boolean).join(" ").trim();
+    return full || info.username || null;
+}
 
 function actionLabel(action: number): string {
     switch (action) {
@@ -101,38 +146,22 @@ function actionLabel(action: number): string {
 }
 
 function renderChanges(
-    changes: Record<string, unknown>,
+    changes: { field: string; old?: string | null; new?: string | null }[],
     action: number
 ): React.ReactNode {
-    const IGNORED_FIELDS = ["id", "created_at", "modified_at", "created_by"];
-
-    const safeEntries = Object.entries(changes).filter(
-        ([field, val]) =>
-            !IGNORED_FIELDS.includes(field) &&
-            Array.isArray(val) &&
-            val.length === 2 &&
-            !(val[0] === null && val[1] === null)
-    ) as [string, [any, any]][];
-
-    const filtered =
-        action === 0
-            ? safeEntries.filter(([_, [oldVal]]) => oldVal !== null).slice(0, 3)
-            : safeEntries;
-
-    if (filtered.length === 0) {
-        return (
-            <span className="italic text-muted-foreground">No significant changes</span>
-        );
+    // A create lists only the first few fields set; an update lists every change.
+    const shown = action === 0 ? changes.slice(0, 3) : changes;
+    if (shown.length === 0) {
+        return <span className="italic text-muted-foreground">No significant changes</span>;
     }
-
     return (
         <ul className="space-y-0.5 list-disc list-inside">
-            {filtered.map(([field, [oldVal, newVal]]) => (
-                <li key={field}>
-                    <span className="font-medium">{formatFieldName(field)}:</span>{" "}
+            {shown.map((c) => (
+                <li key={c.field}>
+                    <span className="font-medium">{formatFieldName(c.field)}:</span>{" "}
                     <span className="text-muted-foreground">
-            {formatValue(oldVal)} → {formatValue(newVal)}
-          </span>
+                        {action === 0 || c.old == null ? (c.new ?? "—") : `${c.old} → ${c.new ?? "—"}`}
+                    </span>
                 </li>
             ))}
         </ul>
@@ -143,13 +172,5 @@ function formatFieldName(field: string): string {
     return field.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-function formatValue(val: any): string {
-    if (val === null || val === undefined) return "—";
-    if (typeof val === "string" && val.startsWith("Tracker.")) {
-        const parts = val.split(".");
-        return parts[2] ?? parts[1] ?? val;
-    }
-    return String(val);
-}
 
 export default AuditTrailComponent;

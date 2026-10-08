@@ -20674,6 +20674,11 @@ export interface components {
          * @enum {string}
          */
         AttentionTypeEnum: "full" | "load_unload" | "unattended";
+        AuditChange: {
+            field: string;
+            old: string | null;
+            new: string | null;
+        };
         /** @description Enhanced audit log serializer */
         AuditLog: {
             readonly id: number;
@@ -20691,6 +20696,7 @@ export interface components {
             action: components["schemas"]["ActionEnum"];
             /** Change message */
             changes?: unknown;
+            readonly changes_display: components["schemas"]["AuditChange"][];
         };
         /** @description Brief TenantGroup shape embedded in the auth-user payload. */
         AuthUserTenantGroup: {
@@ -22314,6 +22320,7 @@ export interface components {
                 completed_parts: number;
                 progress_percent: number;
             } | null;
+            readonly shipments: components["schemas"]["TrackerShipment"][];
             readonly company_name: string | null;
             readonly customer_first_name: string | null;
             readonly customer_last_name: string | null;
@@ -37466,6 +37473,22 @@ export interface components {
             part: components["schemas"]["TracePart"] | null;
             /** @description Assemblies it went into, innermost first. */
             built_into: components["schemas"]["TracePart"][];
+        };
+        /**
+         * @description What shipped against an order, as a customer may see it: the shipment and the
+         *     serials in it — no internal detail.
+         */
+        TrackerShipment: {
+            /** Format: uuid */
+            id: string;
+            shipment_number: string;
+            /** Format: date-time */
+            shipped_at: string | null;
+            /** Format: date */
+            expected_delivery: string | null;
+            carrier: string;
+            tracking_number: string;
+            serials: string[];
         };
         /** @description Operators x training-types competency matrix. */
         TrainingMatrix: {
@@ -56581,7 +56604,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this Error Report. */
+                /** @description A UUID string identifying this Quality Report. */
                 id: string;
             };
             cookie?: never;
@@ -56603,7 +56626,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this Error Report. */
+                /** @description A UUID string identifying this Quality Report. */
                 id: string;
             };
             cookie?: never;
@@ -56631,7 +56654,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this Error Report. */
+                /** @description A UUID string identifying this Quality Report. */
                 id: string;
             };
             cookie?: never;
@@ -56652,7 +56675,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this Error Report. */
+                /** @description A UUID string identifying this Quality Report. */
                 id: string;
             };
             cookie?: never;
@@ -56680,7 +56703,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this Error Report. */
+                /** @description A UUID string identifying this Quality Report. */
                 id: string;
             };
             cookie?: never;

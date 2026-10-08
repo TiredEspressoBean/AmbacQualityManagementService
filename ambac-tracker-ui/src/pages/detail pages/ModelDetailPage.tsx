@@ -67,6 +67,9 @@ export type FieldsConfig = {
     relatedModels?: RelatedModel[];
     // Action buttons to display in the header
     actionButtons?: ActionButton[];
+    // Anything else for the header's right side that isn't a navigation button —
+    // e.g. the part page's as-built Traveler report.
+    headerExtras?: (modelData: any) => React.ReactNode;
     subcomponents?: {
         RendererSidebarComponent?: React.FC<{
             modelType: string;
@@ -231,8 +234,9 @@ const ModelDetailPage: React.FC<ModelDetailPageProps> = ({
                                     );
                                 })()}
                             </div>
-                            {visibleActionButtons.length > 0 && (
+                            {(visibleActionButtons.length > 0 || fieldsConfig.headerExtras) && (
                                 <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                                    {fieldsConfig.headerExtras?.(modelData)}
                                     {visibleActionButtons.map((button, idx) => (
                                         <Button
                                             key={idx}

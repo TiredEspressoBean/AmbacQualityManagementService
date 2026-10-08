@@ -605,17 +605,46 @@ class TenantGroupSerializer(serializers.ModelSerializer):
 
 # ===== AUDIT LOG SERIALIZERS =====
 
+class AuditChangeSerializer(serializers.Serializer):
+    field = serializers.CharField()
+    old = serializers.CharField(allow_null=True)
+    new = serializers.CharField(allow_null=True)
+
+
+class _AuditLogListSerializer(serializers.ListSerializer):
+    """Names a page's foreign-key values in one pass, not one query per entry."""
+
+    def to_representation(self, data):
+        from Tracker.services.core.audit_display import resolve_fk_names
+        items = list(data.all() if hasattr(data, 'all') else data)
+        self.child.context['audit_fk_names'] = resolve_fk_names(items)
+        return super().to_representation(items)
+
+
 class AuditLogSerializer(serializers.ModelSerializer):
     """Enhanced audit log serializer"""
     content_type_name = serializers.CharField(source='content_type.model', read_only=True)
     actor_info = serializers.SerializerMethodField()
+    # `changes` as words: foreign keys named ("Released By: Jennifer Walsh", not 187),
+    # m2m changes as verbs, empty values dropped (services/core/audit_display).
+    changes_display = serializers.SerializerMethodField()
 
     class Meta:
         model = LogEntry
+        list_serializer_class = _AuditLogListSerializer
         fields = (
             'id', 'object_pk', 'object_repr', 'content_type', 'content_type_name', 'actor', 'actor_info', 'remote_addr',
-            'timestamp', 'action', 'changes')
-        read_only_fields = ('id', 'timestamp', 'content_type_name', 'actor_info')
+            'timestamp', 'action', 'changes', 'changes_display')
+        read_only_fields = ('id', 'timestamp', 'content_type_name', 'actor_info', 'changes_display')
+
+    @extend_schema_field(AuditChangeSerializer(many=True))
+    def get_changes_display(self, obj):
+        from dataclasses import asdict
+        from Tracker.services.core.audit_display import display_changes, resolve_fk_names
+        names = self.context.get('audit_fk_names')
+        if names is None:
+            names = resolve_fk_names([obj])
+        return [asdict(c) for c in display_changes(obj, names)]
 
     # Declared as a bare object, the generated client parsed it to `{}` — every key
     # stripped — so the audit log, Recent changes and record history all read the

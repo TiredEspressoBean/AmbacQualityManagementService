@@ -31,6 +31,7 @@ from Tracker.models import (
     MilestoneTemplate, Milestone,
 )
 from Tracker.serializers.mes_lite import (
+    PartHistoryPageSerializer,
     OrdersSerializer, OrderLineSerializer, CustomerOrderSerializer, PartsSerializer, PartSelectSerializer, CustomerPartsSerializer,
     WorkOrderSerializer, WorkOrderListSerializer,
     StepsSerializer, StepSerializer, PartTypesSerializer, PartTypeSourcingSerializer, PartTypeSelectSerializer, ProcessesSerializer,
@@ -266,6 +267,8 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         'split_from_lot': ['change_parts'],
         'rejoin_to_lot': ['change_parts'],
         'move': ['change_parts'],
+        # The part's history spans the audit log of every record about it.
+        'history': ['view_logentry'],
     }
 
     @extend_schema(request=MovePartsRequestSerializer, responses=MovePartsResultSerializer,
@@ -585,6 +588,29 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             # caller on the ordinary path.
             "decided_by": decider.get_full_name() or decider.username,
         })
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='limit', type=int, required=False),
+            OpenApiParameter(name='offset', type=int, required=False),
+        ],
+        responses={200: PartHistoryPageSerializer},
+        description=("The serial's history, newest first: the audit log of the part and of "
+                     "every record about it (step executions, measurements, material draws, "
+                     "quality reports, dispositions, overrides), derived on read."))
+    @action(detail=True, methods=["get"], url_path="history", pagination_class=None,
+            filter_backends=[])
+    def history(self, request, pk=None):
+        from dataclasses import asdict
+        from Tracker.services.mes.part_history import part_history
+        try:
+            limit = max(1, min(int(request.query_params.get('limit', 50)), 200))
+            offset = max(0, int(request.query_params.get('offset', 0)))
+        except ValueError:
+            return Response({'detail': 'limit and offset must be integers.'}, status=400)
+        total, rows = part_history(self.get_object(), limit=limit, offset=offset)
+        return Response(PartHistoryPageSerializer(
+            {'count': total, 'results': [asdict(r) for r in rows]}).data)
 
     @extend_schema(
         description="Check if part can be rolled back to previous step",

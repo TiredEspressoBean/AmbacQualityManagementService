@@ -365,6 +365,18 @@ class TrackerPageOrderSerializer(SecureModelMixin):
         return None
 
 
+class TrackerShipmentSerializer(serializers.Serializer):
+    """What shipped against an order, as a customer may see it: the shipment and the
+    serials in it — no internal detail."""
+    id = serializers.UUIDField()
+    shipment_number = serializers.CharField()
+    shipped_at = serializers.DateTimeField(allow_null=True)
+    expected_delivery = serializers.DateField(allow_null=True)
+    carrier = serializers.CharField(allow_blank=True)
+    tracking_number = serializers.CharField(allow_blank=True)
+    serials = serializers.ListField(child=serializers.CharField())
+
+
 class CustomerOrderSerializer(serializers.ModelSerializer):
     """
     Read-only serializer for customer-facing order tracking.
@@ -384,6 +396,8 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
     process_stages = serializers.SerializerMethodField()
     gate_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
+    # Traceability a customer can see (2026-10-08): what shipped, when, which serials.
+    shipments = serializers.SerializerMethodField()
 
     # Notes (filtered to visible only)
     latest_note = serializers.SerializerMethodField()
@@ -411,6 +425,7 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
             'process_stages',
             'gate_info',
             'parts_summary',
+            'shipments',
             'company_name',
             'customer_first_name',
             'customer_last_name',
@@ -418,6 +433,29 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
             'updated_at',
         )
         read_only_fields = fields  # All fields are read-only
+
+    @extend_schema_field(TrackerShipmentSerializer(many=True))
+    def get_shipments(self, obj):
+        """The order's shipments, newest first, each with its serials. Voided ones
+        (a recording mistake) are left out."""
+        from Tracker.models import Parts
+        by_shipment: dict = {}
+        for part in (Parts.objects  # tenant-safe: auto-scoped; the order is the caller's
+                     .filter(order=obj, customer_shipment__isnull=False,
+                             customer_shipment__is_voided=False)
+                     .select_related('customer_shipment')
+                     .order_by('ERP_id')):
+            s = part.customer_shipment
+            entry = by_shipment.setdefault(s.pk, {
+                'id': s.pk, 'shipment_number': s.shipment_number, 'shipped_at': s.shipped_at,
+                'expected_delivery': s.expected_delivery, 'carrier': s.carrier or '',
+                'tracking_number': s.tracking_number or '', 'serials': [],
+            })
+            entry['serials'].append(part.ERP_id)
+        # Newest first; an undated shipment sorts last.
+        rows = sorted(by_shipment.values(),
+                      key=lambda e: (e['shipped_at'] is not None, e['shipped_at'] or 0), reverse=True)
+        return TrackerShipmentSerializer(rows, many=True).data
 
     @extend_schema_field({"type": "array", "items": _STAGE_SCHEMA})
     def get_process_stages(self, obj):
@@ -2201,3 +2239,27 @@ class OutsideProcessShipmentSerializer(SecureModelMixin):
             'status', 'created_at', 'updated_at',
             'supplier_name', 'step_name', 'status_display', 'quantity',
         )
+
+
+class PartHistoryChangeSerializer(serializers.Serializer):
+    field = serializers.CharField()
+    old = serializers.CharField(allow_null=True)
+    new = serializers.CharField(allow_null=True)
+
+
+class PartHistoryEntrySerializer(serializers.Serializer):
+    """One audit-log entry about a serial or a record about it (services/mes/part_history)."""
+    id = serializers.IntegerField()
+    timestamp = serializers.DateTimeField()
+    action = serializers.CharField(help_text="created / updated / deleted")
+    actor_id = serializers.IntegerField(allow_null=True)
+    actor_name = serializers.CharField(help_text='Empty when the system made the change.')
+    record_type = serializers.CharField()
+    record_id = serializers.CharField()
+    record = serializers.CharField()
+    changes = PartHistoryChangeSerializer(many=True)
+
+
+class PartHistoryPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = PartHistoryEntrySerializer(many=True)

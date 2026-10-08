@@ -2,6 +2,8 @@ import { api } from '@/lib/api/generated';
 import type { FieldsConfig } from './ModelDetailPage';
 import DocumentsSection from './DocumentsSection';
 import AuditTrail from './AuditTrail';
+import { PartHistory } from '@/components/parts/PartHistory';
+import { ReportButton } from '@/components/reports/ReportButton';
 import { PartLinkedRecordsSection } from './PartLinkedRecordsSection';
 import { QRDetailSections } from './QRCapaDecisionSection';
 import { Link } from '@tanstack/react-router';
@@ -270,6 +272,15 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     title: part.ERP_id || 'Part',
                     subtitle: part.part_type_name || undefined,
                 }),
+                // This serial's as-built traveler: its work order's routing, filled
+                // with who did each step, what was measured, the lots that went in.
+                headerExtras: (part) => part.work_order ? (
+                    <ReportButton
+                        reportType="work_order_traveler"
+                        label="Traveler"
+                        params={{ id: String(part.work_order), part: String(part.id) }}
+                    />
+                ) : null,
                 sections: {
                     header: [],
                     info: [
@@ -330,7 +341,8 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                 ],
                 subcomponents: {
                     DocumentsSectionComponent: DocumentsSection,
-                    AuditTrailComponent: AuditTrail,
+                    // The serial's whole history, not just the part row's changes.
+                    AuditTrailComponent: PartHistory,
                     LinkedRecordsComponent: PartLinkedRecordsSection,
                 },
             };

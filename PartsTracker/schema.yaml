@@ -23917,7 +23917,7 @@ paths:
         schema:
           type: string
           format: uuid
-        description: A UUID string identifying this Error Report.
+        description: A UUID string identifying this Quality Report.
         required: true
       tags:
       - api
@@ -23965,7 +23965,7 @@ paths:
         schema:
           type: string
           format: uuid
-        description: A UUID string identifying this Error Report.
+        description: A UUID string identifying this Quality Report.
         required: true
       tags:
       - api
@@ -24025,7 +24025,7 @@ paths:
         schema:
           type: string
           format: uuid
-        description: A UUID string identifying this Error Report.
+        description: A UUID string identifying this Quality Report.
         required: true
       tags:
       - api
@@ -24084,7 +24084,7 @@ paths:
         schema:
           type: string
           format: uuid
-        description: A UUID string identifying this Error Report.
+        description: A UUID string identifying this Quality Report.
         required: true
       tags:
       - api
@@ -24105,7 +24105,7 @@ paths:
         schema:
           type: string
           format: uuid
-        description: A UUID string identifying this Error Report.
+        description: A UUID string identifying this Quality Report.
         required: true
       tags:
       - api
@@ -48995,6 +48995,21 @@ components:
         * `full` - Full attention (operator tied to the machine)
         * `load_unload` - Load/unload only (machine runs unattended between)
         * `unattended` - Unattended (robot/cobot fed — setup only)
+    AuditChange:
+      type: object
+      properties:
+        field:
+          type: string
+        old:
+          type: string
+          nullable: true
+        new:
+          type: string
+          nullable: true
+      required:
+      - field
+      - new
+      - old
     AuditLog:
       type: object
       description: Enhanced audit log serializer
@@ -49037,9 +49052,15 @@ components:
         changes:
           nullable: true
           title: Change message
+        changes_display:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditChange'
+          readOnly: true
       required:
       - action
       - actor_info
+      - changes_display
       - content_type
       - content_type_name
       - id
@@ -52396,6 +52417,11 @@ components:
             progress_percent:
               type: number
           readOnly: true
+        shipments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackerShipment'
+          readOnly: true
         company_name:
           type: string
           nullable: true
@@ -52433,6 +52459,7 @@ components:
       - original_completion_date
       - parts_summary
       - process_stages
+      - shipments
       - updated_at
     CustomerRule:
       type: object
@@ -81469,6 +81496,41 @@ components:
       - quantity
       - step
       - work_order
+    TrackerShipment:
+      type: object
+      description: |-
+        What shipped against an order, as a customer may see it: the shipment and the
+        serials in it — no internal detail.
+      properties:
+        id:
+          type: string
+          format: uuid
+        shipment_number:
+          type: string
+        shipped_at:
+          type: string
+          format: date-time
+          nullable: true
+        expected_delivery:
+          type: string
+          format: date
+          nullable: true
+        carrier:
+          type: string
+        tracking_number:
+          type: string
+        serials:
+          type: array
+          items:
+            type: string
+      required:
+      - carrier
+      - expected_delivery
+      - id
+      - serials
+      - shipment_number
+      - shipped_at
+      - tracking_number
     TrainingMatrix:
       type: object
       description: Operators x training-types competency matrix.
