@@ -217,6 +217,10 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     execution.status = 'IN_PROGRESS'
     execution.training_authorization = snapshot
     execution.save()
+    # Work has actually begun, so the work order is no longer merely pending. No-op
+    # once it is past PENDING. Distinct from release, which authorizes it (release.py).
+    from Tracker.services.mes.work_order import mark_started
+    mark_started(execution.subject_work_order)
     # The first step started on a RECEIVED core begins its teardown. No-op otherwise.
     if execution.part_id:
         from Tracker.services.reman.core_steps import on_step_started

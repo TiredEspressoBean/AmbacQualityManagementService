@@ -825,6 +825,14 @@ export function useReleaseForScheduling() {
   });
 }
 
+export type BulkReleaseResult = {
+  id: string; erp_id: string; ok: boolean; released: boolean;
+  overridden?: boolean; blockers?: ReleaseCheck[]; warnings?: ReleaseCheck[];
+};
+export type BulkReleaseResponse = {
+  results: BulkReleaseResult[]; released: number; blocked: number;
+};
+
 /** The planner's "what can I pull in?" inbox — open work orders awaiting release,
  *  each with its readiness already evaluated. */
 export type ReleaseQueueRow = {
@@ -882,7 +890,7 @@ export function useBulkRelease() {
     mutationFn: ({ ids, override_reason }: { ids: string[]; override_reason?: string }) =>
       api.api_WorkOrders_bulk_release_create(
         { ids, override_reason: override_reason ?? "" }
-      ) as Promise<{ released: number; blocked: number; results: any[] }>,
+      ) as Promise<BulkReleaseResponse>,
     onSuccess: (d) => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));

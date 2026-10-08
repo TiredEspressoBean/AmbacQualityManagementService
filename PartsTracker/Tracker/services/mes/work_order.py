@@ -281,6 +281,29 @@ def bulk_add_parts_to_workorder(
     return new_parts
 
 
+def mark_started(work_order: WorkOrder) -> bool:
+    """A work order is IN_PROGRESS once someone actually starts work on it.
+
+    Nothing used to make this transition. Work ran perfectly well on a PENDING order
+    (`try_advance_lot` accepts PENDING, IN_PROGRESS and WAITING_FOR_OPERATOR), so a job
+    could be half-built and still read "Pending" on every board — and the only thing
+    that moved it was a Control Center button mislabelled "Release", which flipped the
+    status instead of authorizing the order.
+
+    Status is now the FACT that work began. Authorization is `released_at` and belongs
+    to `services/mes/release.py`; the two answer different questions and a planner needs
+    both — released-but-not-started is exactly the queue workload control manages.
+
+    Returns True when it moved the order. No-op for anything already past PENDING, so a
+    held, cancelled or completed order is never resurrected by someone opening a step.
+    """
+    if work_order is None or work_order.workorder_status != WorkOrderStatus.PENDING:
+        return False
+    work_order.workorder_status = WorkOrderStatus.IN_PROGRESS
+    work_order.save(update_fields=['workorder_status', 'updated_at'])
+    return True
+
+
 def cascade_order_status(work_order: WorkOrder) -> None:
     """Auto-complete the parent Order when all its WorkOrders are terminal.
 

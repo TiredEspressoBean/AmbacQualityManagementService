@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBulkRelease, type BulkReleaseResult } from "@/hooks/useScheduling";
 import { Upload } from "lucide-react";
 import { DataImportDialog } from "@/components/data-import-dialog";
 import {
@@ -95,6 +96,7 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
     qa_completed: number;
     current_hold: CurrentHold | null;
     process_id: string | null;
+    released_at: string | null;
 } {
     const proc = (w.process_info ?? {}) as ProcessInfo;
     const order = (w.related_order_info ?? {}) as RelatedOrderInfo;
@@ -122,6 +124,10 @@ function adaptWorkOrder(w: WorkOrderList): MockWorkOrder & {
         qa_completed: qa.completed ?? 0,
         current_hold: hold,
         process_id: proc.id ?? null,
+        // Authorized to be worked, and when. Distinct from status, which says whether
+        // work has actually started — a planner needs both, and released-but-not-started
+        // is the queue workload control manages.
+        released_at: w.released_at ?? null,
     };
 }
 
@@ -218,6 +224,29 @@ export function WorkOrdersControlCenterPage() {
     const bulkTransition = useBulkTransitionWorkOrders();
     const bulkPlaceOnHold = useBulkPlaceOnHoldWorkOrders();
     const bulkClearHold = useBulkClearHoldWorkOrders();
+
+    // Releasing is the planner's AUTHORIZATION that the job can be worked as written —
+    // routing, timings, a trained operator rostered for every step, material. It is not
+    // a status flip: this used to set IN_PROGRESS, which authorized nothing, ran no
+    // readiness check and left no record of who released the work or why. Status now
+    // tracks whether work has STARTED (set when a step execution opens); `released_at`
+    // records that it was authorized, and who by.
+    const bulkRelease = useBulkRelease();
+    const [blocked, setBlocked] = useState<BulkReleaseResult[]>([]);
+    const [overrideReason, setOverrideReason] = useState("");
+
+    function handleBulkRelease(ids: string[], override_reason?: string) {
+        setBulkError(null);
+        bulkRelease.mutate({ ids, override_reason }, {
+            onSuccess: (d) => {
+                // The gate is advisory: a blocked order is re-offered with a reason
+                // rather than refused, because a planner often knows what the data
+                // doesn't. Releasing anyway is recorded, not silent.
+                setBlocked(d.results.filter((r) => !r.ok));
+                if (d.results.every((r) => r.ok)) setOverrideReason("");
+            },
+        });
+    }
 
     function handleBulkTransition(ids: string[], status: WorkOrderStatusEnum, notes?: string) {
         const real = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
@@ -403,6 +432,48 @@ export function WorkOrdersControlCenterPage() {
                     <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
                         {woError && <div>Failed to load work orders: {woError.message}</div>}
                         {exError && <div>Failed to load exceptions: {exError.message}</div>}
+                    </div>
+                )}
+                {blocked.length > 0 && (
+                    <div className="space-y-2 rounded-md border border-amber-500/60 bg-amber-500/10 p-3 text-sm">
+                        <div className="font-medium">
+                            {blocked.length} work order{blocked.length === 1 ? "" : "s"} not ready to release
+                        </div>
+                        <ul className="space-y-1">
+                            {blocked.map((b) => (
+                                <li key={b.id}>
+                                    <span className="font-mono">{b.erp_id}</span>
+                                    <span className="text-muted-foreground">
+                                        {" — "}
+                                        {(b.blockers ?? []).map((x) => x.detail).join("; ")}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        {/* Advisory, not blocking: the planner may know the shortage is
+                            covered or the operator certifies Friday. The reason is kept
+                            on the work order as the record of that judgement. */}
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <Input
+                                className="h-8 max-w-md"
+                                placeholder="Why release these anyway? (recorded on the work order)"
+                                value={overrideReason}
+                                onChange={(e) => setOverrideReason(e.target.value)}
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!overrideReason.trim() || bulkRelease.isPending}
+                                onClick={() =>
+                                    handleBulkRelease(blocked.map((b) => b.id), overrideReason.trim())
+                                }
+                            >
+                                Release anyway
+                            </Button>
+                            <button className="underline" onClick={() => setBlocked([])}>
+                                Dismiss
+                            </button>
+                        </div>
                     </div>
                 )}
                 {bulkError && (
@@ -633,6 +704,33 @@ export function WorkOrdersControlCenterPage() {
                                                     <TableCell>
                                                         <div className="flex items-center gap-1.5">
                                                             <WoStatusBadge status={r.status} />
+                                                            {/* Authorization, not progress. A planner releasing in bulk
+                                                                could not previously see which orders were already
+                                                                released — the one thing this view is for. */}
+                                                            {r.released_at ? (
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Badge variant="outline" className="text-[10px]">
+                                                                            Released
+                                                                        </Badge>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        Authorized {new Date(r.released_at).toLocaleDateString()} —
+                                                                        status says whether work has started
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            ) : (
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Badge variant="secondary" className="text-[10px] opacity-70">
+                                                                            Not released
+                                                                        </Badge>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        Not yet authorized for the floor
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            )}
                                                             {r.current_hold != null && (
                                                                 <Tooltip>
                                                                     <TooltipTrigger asChild>
@@ -732,7 +830,7 @@ export function WorkOrdersControlCenterPage() {
                     <FleetBulkBar
                         selectedIds={Array.from(selected)}
                         workOrders={workOrders}
-                        onRelease={(ids) => handleBulkTransition(ids, "IN_PROGRESS")}
+                        onRelease={(ids) => handleBulkRelease(ids)}
                         onHold={(ids, reason, notes) => handleBulkPlaceOnHold(ids, reason, notes)}
                         onClearHold={(ids) => handleBulkClearHold(ids)}
                         onChangeStatus={(ids, status) => handleBulkTransition(ids, status)}
