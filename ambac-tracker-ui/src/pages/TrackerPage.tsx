@@ -94,6 +94,7 @@ export default function TrackerPage() {
                     estimatedCompletion={order.estimated_completion}
                     gateInfo={order.gate_info}
                     latestNote={order.latest_note}
+                    shipments={order.shipments}
                     stages={(order.process_stages ?? []).map((stage: any) => ({
                         name: stage.name,
                         timestamp: stage.timestamp,

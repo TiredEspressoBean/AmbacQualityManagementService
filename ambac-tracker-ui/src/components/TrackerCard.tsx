@@ -19,6 +19,8 @@ import { formatDistanceToNow, format, differenceInDays } from "date-fns"
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ReportButton } from "@/components/reports/ReportButton"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 
 type OrderStage = {
     name: string
@@ -51,6 +53,17 @@ type NoteEntry = {
     message: string
 }
 
+/** What shipped against the order, as a customer may see it. */
+export type TrackerShipment = {
+    id: string
+    shipment_number: string
+    shipped_at?: string | null
+    expected_delivery?: string | null
+    carrier: string
+    tracking_number: string
+    serials: string[]
+}
+
 type OrderTrackerProps = {
     orderId: string
     orderName?: string
@@ -60,7 +73,11 @@ type OrderTrackerProps = {
     estimatedCompletion?: string | null
     gateInfo?: GateInfo | null
     latestNote?: NoteEntry | null
+    shipments?: TrackerShipment[]
 }
+
+/** Serials beyond this collapse into "+N more" on a shipment line. */
+const SERIALS_SHOWN = 8
 
 function getStatusIcon(stage: { is_completed: boolean; is_current: boolean }, size: "sm" | "md" = "md") {
     const sizeClass = size === "sm" ? "w-4 h-4" : "w-5 h-5"
@@ -81,9 +98,13 @@ export function ExpandableOrderTracker({
     stages,
     estimatedCompletion,
     gateInfo,
-    latestNote
+    latestNote,
+    shipments = [],
 }: OrderTrackerProps) {
     const [open, setOpen] = useState(false)
+    // The certificate is a generated report — offered only to those who can generate one.
+    const canExport = usePermissionSet().has("export_data")
+    const shippedSerials = shipments.reduce((n, s) => n + s.serials.length, 0)
 
     const total = stages.length
     const completed = stages.filter(s => s.is_completed).length
@@ -185,6 +206,14 @@ export function ExpandableOrderTracker({
                     </div>
                 )}
 
+                {/* Shipped so far (collapsed view) */}
+                {shippedSerials > 0 && !open && (
+                    <p className="pt-2 text-xs text-muted-foreground">
+                        {shippedSerials} serial{shippedSerials === 1 ? "" : "s"} shipped in {shipments.length} shipment{shipments.length === 1 ? "" : "s"}
+                        {shipments[0]?.shipped_at && ` · latest ${format(new Date(shipments[0].shipped_at), "PP")}`}
+                    </p>
+                )}
+
                 {/* Expanded Content */}
                 <CollapsibleContent className="space-y-4 pt-4">
                     {/* Latest Note */}
@@ -257,6 +286,46 @@ export function ExpandableOrderTracker({
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Shipments (expanded) — what left, when, and which serials */}
+                    {shipments.length > 0 && (
+                        <div>
+                            <h4 className="text-xs font-medium text-muted-foreground mb-2">
+                                Shipped — {shippedSerials} serial{shippedSerials === 1 ? "" : "s"}
+                            </h4>
+                            <ul className="space-y-2">
+                                {shipments.map((sh) => (
+                                    <li key={sh.id} className="rounded-md border p-2 text-xs space-y-1">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-medium font-mono">{sh.shipment_number}</span>
+                                            <span className="text-muted-foreground tabular-nums">
+                                                {sh.shipped_at ? format(new Date(sh.shipped_at), "PP") : "Not yet shipped"}
+                                            </span>
+                                        </div>
+                                        {(sh.carrier || sh.tracking_number) && (
+                                            <p className="text-muted-foreground">
+                                                {[sh.carrier, sh.tracking_number && `tracking ${sh.tracking_number}`].filter(Boolean).join(" · ")}
+                                            </p>
+                                        )}
+                                        <p className="font-mono text-muted-foreground break-words">
+                                            {sh.serials.slice(0, SERIALS_SHOWN).join(", ")}
+                                            {sh.serials.length > SERIALS_SHOWN && ` +${sh.serials.length - SERIALS_SHOWN} more`}
+                                        </p>
+                                        {canExport && (
+                                            <div onClick={(e) => e.stopPropagation()}>
+                                                <ReportButton
+                                                    reportType="shipment_coc"
+                                                    label="Certificate of Conformance"
+                                                    params={{ shipment_id: sh.id }}
+                                                    size="sm"
+                                                />
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
