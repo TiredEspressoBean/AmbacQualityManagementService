@@ -168,6 +168,10 @@ class DemoScenario(BaseSeeder):
             result['manufacturing'], result['models_3d'], result['users']
         )
 
+        # Phase 4d2: torn-down cores leave teardown (stock / rebuild). After showcase,
+        # which releases the assembly BOM a rebuild scope is resolved from.
+        self._release_walked_cores(result['users'])
+
         # Phase 4e: QA Inspector Onboarding Walkthrough exhibit
         # (needs OSP step from Phase 3b, DWI substeps from Phase 4c;
         #  runs before CAPAs since it doesn't depend on them.)
@@ -401,7 +405,8 @@ class DemoScenario(BaseSeeder):
         equipment = manufacturing.get('equipment', [])
 
         seeder = DemoOrdersSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
-        result = seeder.seed(company_list, users, part_types, process, equipment)
+        result = seeder.seed(company_list, users, part_types, process, equipment,
+                             build_process=manufacturing.get('build_process'))
 
         # Seed workflow execution data for created parts
         workflow_result = seeder.seed_workflow_execution(process, users, equipment)
@@ -413,7 +418,15 @@ class DemoScenario(BaseSeeder):
         # Seed batch-execution history at the Cleaning batch step
         seeder.seed_batch_executions(process, users)
 
+        # Last: shipping completes each unit's Ship step, so its history must exist.
+        result['shipments'] = seeder.seed_shipments(users)
+
         return result
+
+    def _release_walked_cores(self, users):
+        seeder = DemoRemanSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.release_walked_cores(users)
 
     def _backfill_batch_captures(self, users):
         """Phase 4c2: seed bath-temp readings on the sealed Cleaning loads.

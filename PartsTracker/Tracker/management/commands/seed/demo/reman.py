@@ -131,6 +131,8 @@ DEMO_CORES = [
         'customer_name': 'Northern Trucking Co',
         'core_credit_value': Decimal('110.00'),
         'core_credit_issued': True,
+        # Exchange: Northern already had a unit from stock; this one is a parts source.
+        'release': 'INVENTORY',
         'components': [
             {
                 'component_name': 'Injector Body',
@@ -223,8 +225,17 @@ DEMO_CORES = [
         'source_type': 'CUSTOMER_RETURN',
         'source_reference': 'WTY-63271',
         'customer_name': 'Midwest Fleet Services',
-        'core_credit_value': Decimal('185.00'),
-        'core_credit_issued': True,
+        # A warranty unit: Midwest's own injector, repaired and sent back to them —
+        # so no exchange credit, and its parts never enter the harvest pool.
+        'fulfilment_mode': 'REPAIR_RETURN',
+        'core_credit_value': None,
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        # Found worse at the bench after teardown graded it A. Recorded through
+        # findings.record_finding, so it waits on a lead (the pending-findings card):
+        # on a repair-and-return unit a scope change is the customer's to authorise.
+        'finding': {'component': 'Nozzle', 'grade': 'B',
+                    'finding': 'Light pitting on the seat face, visible only after cleaning.'},
         'components': [
             {
                 'component_name': 'Injector Body',
@@ -286,6 +297,8 @@ class DemoRemanSeeder(BaseSeeder):
     - One scrapped core example
     """
 
+    WALKED_STATUSES = ('IN_DISASSEMBLY', 'DISASSEMBLED')
+
     def __init__(self, stdout, style, tenant, scale='small'):
         super().__init__(stdout, style, scale=scale)
         self.tenant = tenant
@@ -320,9 +333,6 @@ class DemoRemanSeeder(BaseSeeder):
         # Create cores
         result['cores'] = self._create_cores(companies, users)
 
-        # Create harvested components from disassembled cores
-        result['components'] = self._create_harvested_components(result['cores'], users)
-
         # Repair codes + the rebuild level that groups them
         result['repair_codes'] = self._create_repair_codes(part_types)
 
@@ -332,6 +342,10 @@ class DemoRemanSeeder(BaseSeeder):
         # Classify the item master: what can actually come back out of a core
         self._classify_recoverability()
 
+        # Cores further along than RECEIVED get there through the teardown services,
+        # on a work order. Before the RECEIVED-core batch below, which would take them.
+        result['components'] = self._walk_teardown(result['cores'], users)
+
         # A core on a work order — without one, every reman workflow is unreachable
         result['teardown_wo'] = self._start_a_teardown_batch(result['cores'], users)
 
@@ -340,6 +354,99 @@ class DemoRemanSeeder(BaseSeeder):
         self.log(f"  Created {len(result['components'])} harvested components")
 
         return result
+
+    def _walk_teardown(self, cores, users):
+        """Take the cores whose story is past RECEIVED there through the services.
+
+        One teardown work order (start_teardown_batch) for all of them. The ones that
+        finished teardown are harvested and completed (complete_core_disassembly),
+        then leave the way their fulfilment mode says (services/reman/release): an
+        exchange core marked 'release': 'INVENTORY' gives its components to stock, a
+        repair-and-return core goes into rebuild on the same work order. One stays
+        DISASSEMBLED with a component decision still pending — on the work order,
+        where "Complete teardown" and the release actions live. The exits themselves
+        run later (release_walked_cores): rebuild needs the released assembly BOM.
+
+        Returns the harvested components.
+        """
+        from Tracker.services.reman.core import complete_core_disassembly
+        from Tracker.services.reman.teardown import start_teardown_batch
+
+        employees = users.get('employees', []) if isinstance(users, dict) else []
+        if not employees:
+            self.log("  Skipped teardown walk: no employees", warning=True)
+            return []
+        config = {c['core_number']: c for c in DEMO_CORES}
+        batch = [c for c in cores
+                 if config[c.core_number]['status'] in self.WALKED_STATUSES
+                 and c.status == 'RECEIVED' and c.part_id and c.part.work_order_id is None]
+        if not batch:
+            return []
+        wo = start_teardown_batch(batch, employees[0])
+
+        components = []
+        for core in batch:
+            data = config[core.core_number]
+            if data['status'] == 'DISASSEMBLED':
+                core.refresh_from_db()
+                complete_core_disassembly(core, employees[1] if len(employees) > 1 else employees[0])
+            # The services stamp now(); the story has dates.
+            received = self.today - timedelta(days=data['received_days_ago'])
+            stamps = {'disassembly_started_at': received + timedelta(
+                days=data['received_days_ago'] - data['disassembly_started_days_ago'])}
+            if 'disassembly_completed_days_ago' in data:
+                stamps['disassembly_completed_at'] = received + timedelta(
+                    days=data['received_days_ago'] - data['disassembly_completed_days_ago'])
+            Core.objects.filter(pk=core.pk).update(**stamps)
+            core.refresh_from_db()
+            if data['status'] == 'DISASSEMBLED':
+                # After the dates are set: components take the teardown's completion time.
+                components += self._create_harvested_components([core], users)
+
+        self.log(f"  Walked {len(batch)} core(s) through teardown on {wo.ERP_id}")
+        return components
+
+    def release_walked_cores(self, users):
+        """The torn-down cores' exits, and a bench finding on the one in rebuild.
+
+        A separate phase because rebuild needs a released assembly BOM to resolve a
+        scope from (release_core_to_rebuild refuses without one), and the showcase
+        seeder releases it — after this seeder's main phase.
+        """
+        from Tracker.services.reman.release import release_core_to_inventory, release_core_to_rebuild
+
+        employees = users.get('employees', []) if isinstance(users, dict) else []
+        if not employees:
+            return 0
+        released = 0
+        for data in DEMO_CORES:
+            release = data.get('release')
+            core = Core.objects.filter(tenant=self.tenant, core_number=data['core_number'],
+                                       status='DISASSEMBLED').first()
+            if core is None or release is None:
+                continue
+            if release == 'INVENTORY':
+                release_core_to_inventory(core, employees[0])
+            elif release == 'REBUILD':
+                release_core_to_rebuild(core, employees[0])
+            released += 1
+            if data.get('finding'):
+                self._raise_finding(core, data['finding'], employees[-1])
+        self.log(f"  Released {released} torn-down core(s)")
+        return released
+
+    def _raise_finding(self, core, spec, user):
+        """Record one bench finding on this core's own component (by name, else any)."""
+        from Tracker.services.reman.findings import record_finding
+
+        components = list(core.harvested_components.filter(is_scrapped=False)
+                          .select_related('component_type').order_by('component_type__name'))
+        target = next((c for c in components if spec['component'] in c.component_type.name),
+                      components[0] if components else None)
+        if target is None or target.condition_grade == spec['grade']:
+            self.log(f"  No component on {core.core_number} to raise a finding on", warning=True)
+            return None
+        return record_finding(target, grade=spec['grade'], finding=spec['finding'], user=user)
 
     def _start_a_teardown_batch(self, cores, users):
         """Put RECEIVED cores onto a teardown work order and open disassembly.
@@ -629,6 +736,11 @@ class DemoRemanSeeder(BaseSeeder):
         if core_data.get('core_credit_issued') and disassembly_completed_at:
             core_credit_issued_at = disassembly_completed_at + timedelta(days=1)
 
+        # Teardown states are reached through the teardown services (_walk_teardown),
+        # not written: a core written as IN_DISASSEMBLY/DISASSEMBLED sat on no work
+        # order, so nothing in the product could complete or release it.
+        walked = core_data['status'] in self.WALKED_STATUSES
+
         # Create the core with ALL fields explicitly set. A core is a part: a new one goes
         # through create_core so it has its part; an existing one is updated in place.
         core_fields = {
@@ -641,10 +753,11 @@ class DemoRemanSeeder(BaseSeeder):
                 'source_reference': core_data['source_reference'],
                 'condition_grade': core_data['condition_grade'],
                 'condition_notes': core_data['condition_notes'],
-                'status': core_data['status'],
-                'disassembly_started_at': disassembly_started_at,
-                'disassembly_completed_at': disassembly_completed_at,
-                'disassembled_by': disassembled_by,
+                'status': 'RECEIVED' if walked else core_data['status'],
+                'disassembly_started_at': None if walked else disassembly_started_at,
+                'disassembly_completed_at': None if walked else disassembly_completed_at,
+                'disassembled_by': None if walked else disassembled_by,
+                'fulfilment_mode': core_data.get('fulfilment_mode', 'EXCHANGE'),
                 'core_credit_value': core_data.get('core_credit_value'),
                 'core_credit_issued': core_data.get('core_credit_issued', False),
                 'core_credit_issued_at': core_credit_issued_at,
@@ -655,6 +768,11 @@ class DemoRemanSeeder(BaseSeeder):
             core = create_core(tenant=self.tenant, core_number=core_data['core_number'],
                                **core_fields)
         else:
+            if walked and core.part_id and core.part.work_order_id:
+                # Already walked on an earlier run: don't drag it back to RECEIVED.
+                for f in ('status', 'disassembly_started_at', 'disassembly_completed_at',
+                          'disassembled_by'):
+                    core_fields.pop(f)
             Core.objects.filter(pk=core.pk).update(**core_fields)
             core.refresh_from_db()
         sync_part_status(core)

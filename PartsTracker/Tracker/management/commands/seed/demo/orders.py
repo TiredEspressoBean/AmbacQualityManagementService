@@ -33,6 +33,7 @@ DEMO_ORDERS = [
         'days_ago': 10,
         'estimated_completion_days': 5,
         'status': OrdersStatus.IN_PROGRESS,
+        'process': 'build',
         'work_order': {
             'ERP_id': 'WO-2024-0042-A',
             'priority': WorkOrderPriority.HIGH,
@@ -42,23 +43,23 @@ DEMO_ORDERS = [
             'quantity': 24,
         },
         'parts': [
-            # 16 complete
-            {'serial': 'INJ-0042-001', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-002', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-003', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-004', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-005', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-006', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-007', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-008', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-009', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-010', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-011', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-012', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-013', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-014', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-015', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
-            {'serial': 'INJ-0042-016', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED},
+            # 16 finished: 10 already shipped, 6 waiting at Ship (the clerk's queue)
+            {'serial': 'INJ-0042-001', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-002', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-003', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-004', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-005', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-006', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-007', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-008', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-009', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-010', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True},
+            {'serial': 'INJ-0042-011', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-012', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-013', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-014', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-015', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-016', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
             # 2 quarantined
             {'serial': 'INJ-0042-017', 'step': 'Flow Testing', 'part_status': PartsStatus.QUARANTINED},
             # 1 in rework
@@ -71,38 +72,41 @@ DEMO_ORDERS = [
             # 1 scrapped
             {'serial': 'INJ-0042-023', 'step': None, 'part_status': PartsStatus.SCRAPPED},
             # 1 early stage
-            {'serial': 'INJ-0042-024', 'step': 'Component Grading', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-024', 'step': 'Machining', 'part_status': PartsStatus.IN_PROGRESS},
         ],
     },
     {
         'order_number': 'ORD-2024-0038',
         'name': 'Great Lakes Diesel Order - 12 Injectors',
-        'company_name': 'Great Lakes Diesel Supply',
+        'company_name': 'Great Lakes Diesel',  # must match company.py's DEMO_COMPANIES
         'days_ago': 25,
         'estimated_completion_days': -5,  # already past due (shipped)
         'status': OrdersStatus.COMPLETED,
+        'process': 'build',
+        'shipped_days_ago': 6,
         'work_order': {
             'ERP_id': 'WO-2024-0038-A',
             'priority': WorkOrderPriority.NORMAL,
-            'workorder_status': WorkOrderStatus.COMPLETED,
+            'workorder_status': WorkOrderStatus.IN_PROGRESS,
             'created_days_ago': 24,
             'expected_completion_days': -6,
             'quantity': 12,
         },
         'parts': [
-            # All shipped - some required rework (these triggered CAPA)
-            {'serial': 'INJ-0038-001', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-002', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-003', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': True},
-            {'serial': 'INJ-0038-004', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-005', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-006', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-007', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': True},
-            {'serial': 'INJ-0038-008', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': True},
-            {'serial': 'INJ-0038-009', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
-            {'serial': 'INJ-0038-010', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': True},
-            {'serial': 'INJ-0038-011', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': True},
-            {'serial': 'INJ-0038-012', 'step': 'Complete', 'part_status': PartsStatus.COMPLETED, 'reworked': False},
+            # 11 shipped, 1 scrapped - the failures triggered CAPA-2024-003
+            {'serial': 'INJ-0038-001', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            {'serial': 'INJ-0038-002', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            {'serial': 'INJ-0038-003', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
+            {'serial': 'INJ-0038-004', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            {'serial': 'INJ-0038-005', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            {'serial': 'INJ-0038-006', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            {'serial': 'INJ-0038-007', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
+            {'serial': 'INJ-0038-008', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
+            {'serial': 'INJ-0038-009', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
+            # Scrapped at Nozzle Inspection (QR-0038-010-NI, SCRAP disposition) — never shipped.
+            {'serial': 'INJ-0038-010', 'step': None, 'part_status': PartsStatus.SCRAPPED},
+            {'serial': 'INJ-0038-011', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
+            {'serial': 'INJ-0038-012', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
         ],
     },
     {
@@ -112,6 +116,7 @@ DEMO_ORDERS = [
         'days_ago': 1,
         'estimated_completion_days': 10,
         'status': OrdersStatus.PENDING,
+        'process': 'build',
         'work_order': {
             'ERP_id': 'WO-2024-0048-A',
             'priority': WorkOrderPriority.NORMAL,
@@ -138,7 +143,7 @@ class DemoOrdersSeeder(BaseSeeder):
         self.tenant = tenant
         self.today = timezone.now()
 
-    def seed(self, companies, users, part_types, process, equipment=None):
+    def seed(self, companies, users, part_types, process, equipment=None, build_process=None):
         """
         Create all demo orders.
 
@@ -147,6 +152,8 @@ class DemoOrdersSeeder(BaseSeeder):
             users: dict with user lists
             part_types: list of PartTypes
             process: the Processes object to use
+            build_process: the new-manufacture process; orders marked 'process': 'build'
+                use it (falls back to ``process``)
             equipment: list of Equipments objects (optional)
 
         Returns:
@@ -173,6 +180,10 @@ class DemoOrdersSeeder(BaseSeeder):
         for order_data in DEMO_ORDERS:
             # Get company by name
             company = company_map.get(order_data['company_name'])
+            if company is None:
+                # An order with no customer can't ship, and nothing else says so.
+                self.log(f"  No company named {order_data['company_name']!r} for "
+                         f"{order_data['order_number']}", warning=True)
 
             # Create order
             order = self._create_order(order_data, company)
@@ -181,7 +192,9 @@ class DemoOrdersSeeder(BaseSeeder):
             # Create work order
             wo_data = order_data.get('work_order')
             if wo_data:
-                work_order = self._create_work_order(wo_data, order, process)
+                wo_process = (build_process if order_data.get('process') == 'build' and build_process
+                              else process)
+                work_order = self._create_work_order(wo_data, order, wo_process)
                 result['work_orders'].append(work_order)
 
                 # Create parts
@@ -333,6 +346,8 @@ class DemoOrdersSeeder(BaseSeeder):
         return part
 
     def seed_workflow_execution(self, process, users, equipment=None):
+        # ``process`` is kept for the caller's signature; each part walks the route of
+        # its own work order's process (reman or new build).
         """
         Create workflow execution data for existing parts.
 
@@ -363,15 +378,16 @@ class DemoOrdersSeeder(BaseSeeder):
             ERP_id__startswith='INJ-'
         )
 
-        # Get process steps in order
-        process_steps = ProcessStep.objects.filter(
-            process=process
-        ).select_related('step').order_by('order')
+        # Each process's main route, in order. Rework steps sit off the main line
+        # (reached by fail edges), so a part's history doesn't walk through them.
+        routes = {}
 
-        ordered_steps = [ps.step for ps in process_steps]
-        if not ordered_steps:
-            self.log("  No process steps found", warning=True)
-            return result
+        def route_of(proc):
+            if proc.pk not in routes:
+                routes[proc.pk] = [ps.step for ps in ProcessStep.objects.filter(process=proc)
+                                   .select_related('step').order_by('order')
+                                   if ps.step.step_type != 'REWORK']
+            return routes[proc.pk]
 
         # Get equipment by name for specific steps
         equipment_map = {}
@@ -380,6 +396,7 @@ class DemoOrdersSeeder(BaseSeeder):
 
         # Map steps to equipment
         step_equipment_map = {
+            'Machining': ['CNC Lathe HL-1'],
             'Flow Testing': ['Flow Test Stand #1', 'Flow Test Stand #2'],
             'Assembly': ['Torque Wrench TW-25', 'Torque Wrench TW-26'],
             'Cleaning': ['Ultrasonic Cleaner UC-1'],
@@ -392,8 +409,17 @@ class DemoOrdersSeeder(BaseSeeder):
             operators = [None]
 
         for part in parts:
+            ordered_steps = route_of(part.work_order.process) if part.work_order_id else []
+            if not ordered_steps:
+                continue
             # Determine which steps the part has completed
             current_step = part.step
+            if current_step is not None and current_step.step_type == 'REWORK':
+                # In rework after failing Flow Testing: the main line up to and including
+                # that test is history, and Rework is where it is now.
+                ft = next((i for i, s in enumerate(ordered_steps) if s.name == 'Flow Testing'), None)
+                if ft is not None:
+                    ordered_steps = ordered_steps[:ft + 1] + [current_step]
 
             # Skip scrapped/cancelled parts with no step
             if not current_step and part.part_status in [PartsStatus.SCRAPPED, PartsStatus.CANCELLED]:
@@ -494,7 +520,7 @@ class DemoOrdersSeeder(BaseSeeder):
 
         # Determine next step for completed executions
         next_step = None
-        if completed and step.name != 'Complete':
+        if completed and not step.is_terminal:
             # Look up next step in process (simplified - assumes linear flow)
             process_steps = ProcessStep.objects.filter(
                 process=part.work_order.process
@@ -596,6 +622,33 @@ class DemoOrdersSeeder(BaseSeeder):
 
         # Return next entry time
         return exited_at if exited_at else started_at
+
+    def seed_shipments(self, users):
+        """Ship the finished units marked 'ship' through the shipping service, one
+        shipment per order: each completes its Ship step (gate and all), so the units
+        end SHIPPED, the order shows a shipment and Great Lakes' work order completes.
+        The rest of Midwest's finished units stay at Ship — the clerk's queue."""
+        from Tracker.models import CustomerShipment
+        from Tracker.services.mes.shipping import ship
+
+        self.log("Shipping finished units...")
+        clerk = (users.get('managers') or users.get('employees') or [None])[0]
+        shipped = 0
+        for order_data in DEMO_ORDERS:
+            serials = [p['serial'] for p in order_data.get('parts', []) if p.get('ship')]
+            parts = list(Parts.objects.filter(  # tenant-safe: explicit tenant filter
+                tenant=self.tenant, ERP_id__in=serials, customer_shipment__isnull=True))
+            if not parts:
+                continue
+            shipment = ship(tenant=self.tenant, user=clerk, parts=parts, carrier='UPS Freight',
+                            tracking_number=f"1Z-DEMO-{order_data['order_number'][-4:]}",
+                            reference=order_data['order_number'])
+            # shipped_at defaults to now; backdate to the story's ship date.
+            CustomerShipment.objects.filter(pk=shipment.pk).update(  # tenant-safe: by pk
+                shipped_at=self.today - timedelta(days=order_data.get('shipped_days_ago', 1)))
+            shipped += len(parts)
+        self.log(f"  Shipped {shipped} units")
+        return {'shipped': shipped}
 
     def seed_fpi_records(self, work_orders, part_types, users, equipment):
         """
@@ -704,8 +757,11 @@ class DemoOrdersSeeder(BaseSeeder):
             self.log("  No Cleaning step found; skipping batch executions", warning=True)
             return {'batch_executions': 0}
 
-        order_of = {ps.step_id: ps.order for ps in process_steps}
-        cleaning_order = order_of.get(cleaning.id, 0)
+        # Cleaning is shared by the reman and new-build routes; each part is measured
+        # against its own work order's route.
+        route_ps = ProcessStep.objects.filter(
+            process__in=ProcessStep.objects.filter(step=cleaning).values('process'))
+        order_of = {(ps.process_id, ps.step_id): ps.order for ps in route_ps}
 
         # A real user for started_by (non-null PROTECT FK).
         operator = (users.get('employees') or users.get('managers') or [None])[0]
@@ -724,8 +780,9 @@ class DemoOrdersSeeder(BaseSeeder):
         for p in parts:
             if not p.work_order_id or not p.step_id:
                 continue
-            o = order_of.get(p.step_id)
-            if o is None:
+            o = order_of.get((p.work_order.process_id, p.step_id))
+            cleaning_order = order_of.get((p.work_order.process_id, cleaning.id))
+            if o is None or cleaning_order is None:
                 continue
             if o > cleaning_order:
                 past[p.work_order_id].append(p)

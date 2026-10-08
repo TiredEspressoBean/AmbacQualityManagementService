@@ -100,6 +100,15 @@ def _photo(step, key, label, required=False):
     return {"type": "photoCapture", "attrs": {"node_id": _nid(step, key), "label": label, "required": required}}
 
 
+def _reman_capture(node_type, step, key, label, required=True, **extra):
+    """Reman teardown / rebuild capture (harvestedComponentCapture,
+    componentInstallCapture, rebuildFindingCapture). They read the unit's core, so
+    they belong on reman work; on a step new builds share, put them in their own
+    substep that a new build can mark not-applicable."""
+    return {"type": node_type, "attrs": {"node_id": _nid(step, key), "label": label,
+                                         "required": required, **extra}}
+
+
 def _scan(step, key, label, required=True):
     return {"type": "scanInput", "attrs": {"node_id": _nid(step, key), "label": label, "required": required}}
 
@@ -320,6 +329,12 @@ class DemoDwiSeeder(BaseSeeder):
                         _callout("note", "Keep the core's identity band with the body group until grading."),
                         _scan("Disassembly", "core-serial", "Scan core serial / identity band"),
                         _photo("Disassembly", "teardown-photo", "Photograph the teardown layout", required=False),
+                        # Strict: every component the disassembly BOM expects is graded or
+                        # marked missing — the grades resolve the rebuild's scope.
+                        _reman_capture("harvestedComponentCapture", "Disassembly", "harvest",
+                                       "Grade each component as it comes out",
+                                       enumerate_from="disassembly_bom", manual_component_types=[],
+                                       strict_enumeration=True),
                     ),
                 },
             ],
@@ -385,6 +400,18 @@ class DemoDwiSeeder(BaseSeeder):
                         _attest_signature("Nozzle Inspection", "signoff", "Inspector sign-off"),
                     ),
                 },
+                {
+                    "title": "Report a component found worse (reman)",
+                    "order": 2,
+                    # Only when a reused component fails here. Recording proposes a
+                    # change to the rebuild's scope; a lead applies or dismisses it.
+                    "is_optional": True,
+                    "body": _doc(
+                        _para("If a component teardown graded as reusable fails here, record it. A lead decides whether the rebuild changes."),
+                        _reman_capture("rebuildFindingCapture", "Nozzle Inspection", "finding",
+                                       "Component found worse", required=False),
+                    ),
+                },
             ],
             "Flow Testing": [
                 {
@@ -421,6 +448,18 @@ class DemoDwiSeeder(BaseSeeder):
                         ),
                     ),
                 },
+                {
+                    "title": "Record the components fitted (reman)",
+                    "order": 1,
+                    # Assembly is shared with new build, which has no core to fit
+                    # against: a new-build unit marks this not applicable.
+                    "allow_not_applicable": True,
+                    "body": _doc(
+                        _para("Record each component fitted to the rebuilt core, against its rebuild plan."),
+                        _callout("note", "Repair-and-return units take back only their own components."),
+                        _reman_capture("componentInstallCapture", "Assembly", "install", "Components fitted"),
+                    ),
+                },
             ],
             "Final Test": [
                 {
@@ -433,6 +472,38 @@ class DemoDwiSeeder(BaseSeeder):
                         *maybe_measure("Final Test", "leak-pressure", "Leak Test Pressure", characteristic="FT-07"),
                         _quality_status("Final Test", "final-result", "Final test result"),
                         _attest_signature("Final Test", "release-signoff", "Release sign-off"),
+                    ),
+                },
+            ],
+            # New build only: the body is turned from bar stock, measured as it comes off.
+            "Machining": [
+                {
+                    "title": "Turn the injector body",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _para("Load bar stock, run the body program, and measure the first body off the lathe and every tenth after."),
+                        _callout("caution", "Bore out of tolerance stops the lot - don't run on while you adjust offsets."),
+                        *maybe_measure("Machining", "body-od", "Body OD", characteristic="MC-01"),
+                        _quality_status("Machining", "machining-result", "Body result"),
+                    ),
+                },
+            ],
+            # A unit that failed a test is repaired here, then re-enters Nozzle
+            # Inspection. The repair is inspected before it leaves, so the record says
+            # what was wrong, what was done and who accepted it.
+            "Rework": [
+                {
+                    "title": "Repair and inspect the rework",
+                    "order": 0,
+                    "is_inspection_point": True,
+                    "body": _doc(
+                        _para("Repair the failure recorded on the NCR, then inspect the repair before the unit goes back to inspection."),
+                        _callout("note", "Work to the disposition's rework instruction. Anything beyond it needs a new disposition."),
+                        _error_types("Rework", "rework-defects", "Defects corrected", required=True, min_rows=1),
+                        _photo("Rework", "rework-photo", "Photograph the repaired area", required=False),
+                        _quality_status("Rework", "rework-result", "Rework inspection result"),
+                        _inspection_signatures("Rework", "rework-signoff", require_detected=True),
                     ),
                 },
             ],

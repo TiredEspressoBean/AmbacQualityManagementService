@@ -38,13 +38,14 @@ _INJECTOR_PART_TYPE = "Common Rail Injector"
 # it's calibration-overdue, so is_operational already excludes it; TW-26 covers it.)
 _SCHEDULABLE = [
     "Ultrasonic Cleaner UC-1", "Flow Test Stand #1", "Flow Test Stand #2",
-    "Torque Wrench TW-26", "Final Test Bench FTB-1",
+    "Torque Wrench TW-26", "Final Test Bench FTB-1", "CNC Lathe HL-1",
     "Disassembly Press DP-1", "Grading Bench GB-1", "Rework Station RW-1",
     "Packaging Station PK-1",
 ]
 
 # step name -> [(equipment name, affinity)]
 _AFFINITIES = {
+    "Machining":         [("CNC Lathe HL-1", "dialed_in")],
     "Disassembly":       [("Disassembly Press DP-1", "dialed_in")],
     "Component Grading": [("Grading Bench GB-1", "dialed_in")],
     "Cleaning":          [("Ultrasonic Cleaner UC-1", "dialed_in")],
@@ -61,8 +62,9 @@ _AFFINITIES = {
 # step name -> (setup, cycle, load_unload, attention). Every scheduled in-house step
 # gets an honest duration (machine-less steps included). Omitted on purpose:
 # "Nitride Coating" (OSP — its time is vendor lead time, not in-house work) and
-# "Complete" (terminal, not scheduled).
+# "Complete" / "Ship" (terminal, not scheduled).
 _TIMINGS = {
+    "Machining":         (30, 25, 2, AttentionType.LOAD_UNLOAD),  # bar stock → body (new build)
     "Core Receiving":    (5, 10, 1, AttentionType.FULL),          # receive + grade cores
     "Disassembly":       (10, 40, 2, AttentionType.FULL),         # teardown
     "Component Grading": (5, 20, 1, AttentionType.FULL),          # grade/sort components

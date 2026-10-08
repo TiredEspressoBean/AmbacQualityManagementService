@@ -156,6 +156,7 @@ DEMO_PROCESS = {
         },
         {
             'name': 'Complete', 'order': 10, 'description': 'Order complete and ready to ship',
+            'terminal_status': 'COMPLETED',
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': False, 'requires_qa_signoff': False,
             'sampling_required': False, 'min_sampling_rate': 0.0,
@@ -179,11 +180,59 @@ DEMO_PROCESS = {
     ],
 }
 
+# New manufacture — the default kind of work. Raw stock is machined, then joins the
+# same downstream steps as reman (wash, inspect, assemble, test, pack) and ends at a
+# Ship step: terminal SHIPPED, which is what makes a unit appear in the shipping
+# queue. No core receiving, disassembly or component grading. Steps named in `route`
+# that aren't in `new_steps` are the shared steps DEMO_PROCESS defines.
+DEMO_BUILD_PROCESS = {
+    'name': 'Injector Build',
+    'is_remanufactured': False,
+    'new_steps': [
+        {
+            'name': 'Machining', 'order': 1, 'description': 'Turn and bore the injector body from bar stock',
+            'pass_threshold': 1.0, 'expected_duration': None,
+            'block_on_quarantine': True, 'requires_qa_signoff': False,
+            'sampling_required': False, 'min_sampling_rate': 0.0,
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
+            'block_on_measurement_failure': True, 'block_on_spc_violation': False,
+            'override_expiry_hours': 24, 'undo_window_minutes': 30, 'rollback_requires_approval': False,
+            'requires_batch_completion': False,
+            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
+        },
+        {
+            'name': 'Ship', 'order': 99, 'description': 'Ship to the customer',
+            'terminal_status': 'SHIPPED',
+            'pass_threshold': 1.0, 'expected_duration': None,
+            'block_on_quarantine': False, 'requires_qa_signoff': False,
+            'sampling_required': False, 'min_sampling_rate': 0.0,
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
+            'block_on_measurement_failure': False, 'block_on_spc_violation': False,
+            'override_expiry_hours': 24, 'undo_window_minutes': 0, 'rollback_requires_approval': True,
+            'requires_batch_completion': False,
+            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
+        },
+    ],
+    'route': ['Machining', 'Cleaning', 'Nozzle Inspection', 'Assembly', 'Flow Testing',
+              'Final Test', 'Packaging', 'Ship'],
+    # Fail paths go to the shared Rework step; reworked parts re-enter inspection.
+    'rework_from': ['Nozzle Inspection', 'Flow Testing', 'Final Test'],
+    'rework_reentry': 'Nozzle Inspection',
+}
+
 # Demo equipment types
 # EquipmentType model fields: name, description, requires_calibration, default_calibration_interval_days,
 # is_portable, track_downtime
 # Note: requires_calibration drives whether calibration tracking is enabled for equipment of this type
 DEMO_EQUIPMENT_TYPES = [
+    {
+        'name': 'CNC Lathe',
+        'description': 'CNC turning centre for injector bodies',
+        'requires_calibration': False,
+        'default_calibration_interval_days': None,
+        'is_portable': False,
+        'track_downtime': True,
+    },
     {
         'name': 'Flow Bench',
         'description': 'Precision flow testing equipment',
@@ -277,6 +326,7 @@ DEMO_EQUIPMENT_TYPES = [
 # Calibration tracking happens via CalibrationRecord model, NOT on Equipments directly
 DEMO_EQUIPMENT = [
     # Production machines — finite scheduled resources (schedulable=True).
+    {'name': 'CNC Lathe HL-1', 'type': 'CNC Lathe', 'serial': 'HL-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},
     {'name': 'Flow Test Stand #1', 'type': 'Flow Bench', 'serial': 'FTS-001', 'calibration_days': 30, 'location': 'QA Lab', 'schedulable': True},
     {'name': 'Flow Test Stand #2', 'type': 'Flow Bench', 'serial': 'FTS-002', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
     {'name': 'Torque Wrench TW-25', 'type': 'Torque Tool', 'serial': 'TW-025', 'calibration_days': -15, 'location': 'Tool Crib', 'schedulable': True},  # OVERDUE → is_operational excludes from solve
@@ -310,6 +360,16 @@ DEMO_EQUIPMENT = [
 # Tolerances are relative to nominal (not absolute spec limits)
 # Numeric fields have precision 9, scale 6 - values must be < 1000
 DEMO_MEASUREMENTS = [
+    {
+        'label': 'Body OD',
+        'step': 'Machining',
+        'unit': 'mm',
+        'nominal': 6.000,
+        'lower_tol': 0.010,
+        'upper_tol': 0.010,
+        'type': 'NUMERIC',
+        'spc_enabled': True,
+    },
     {
         'label': 'Flow Rate',
         'step': 'Flow Testing',
@@ -420,8 +480,11 @@ class DemoManufacturingSeeder(BaseSeeder):
         # Create process and steps (needs part_type)
         primary_part_type = result['part_types'][0] if result['part_types'] else None
         process, steps = self._create_process_and_steps(primary_part_type)
-        result['processes'] = [process]
-        result['steps'] = steps
+        # Reman stays processes[0]: the seeders that take "the" process walk reman steps.
+        build_process, build_steps = self._create_build_process(primary_part_type)
+        result['processes'] = [process, build_process]
+        result['build_process'] = build_process
+        result['steps'] = steps + build_steps
 
         # Link part types back to process (circular dependency)
         self._link_part_types_to_process(result['part_types'], process)
@@ -554,7 +617,10 @@ class DemoManufacturingSeeder(BaseSeeder):
         step_map = {}
         for step_data in DEMO_PROCESS['steps']:
             step_name = step_data['name']
-            is_terminal = step_name == 'Complete'
+            # Terminal status comes from the route definition (it used to be a hard-coded
+            # 'COMPLETED', so no step was ever SHIPPED and the shipping queue — the Ship
+            # step IS the queue — was empty by construction).
+            is_terminal = bool(step_data.get('terminal_status'))
             is_entry = step_data['order'] == 1
             is_rework = step_name == 'Rework'
 
@@ -607,7 +673,7 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'decision_type': 'QA_RESULT' if step_data.get('requires_qa_signoff', False) else '',
                     # Terminal step
                     'is_terminal': is_terminal,
-                    'terminal_status': 'COMPLETED' if is_terminal else '',
+                    'terminal_status': step_data.get('terminal_status', ''),
                     # Cycle control
                     'max_visits': step_data.get('max_visits'),
                     'revisit_assignment': step_data.get('revisit_assignment', 'ANY'),
@@ -632,6 +698,73 @@ class DemoManufacturingSeeder(BaseSeeder):
         self._create_step_edges(process, step_map)
 
         return process, steps
+
+    def _create_build_process(self, part_type):
+        """The new-manufacture route (DEMO_BUILD_PROCESS). Its own steps are created the
+        same way as the reman ones; the shared steps are looked up by name."""
+        cfg = DEMO_BUILD_PROCESS
+        process, _ = Processes.objects.update_or_create(
+            tenant=self.tenant, name=cfg['name'], part_type=part_type,
+            defaults={
+                'is_remanufactured': cfg['is_remanufactured'],
+                'category': 'MANUFACTURING',
+                'status': ProcessStatus.APPROVED,
+                'change_description': 'Initial demo process setup',
+                'approved_at': timezone.now(),
+                'approved_by': None,
+            },
+        )
+        new_steps = {}
+        for step_data in cfg['new_steps']:
+            is_terminal = bool(step_data.get('terminal_status'))
+            step, _ = Steps.objects.update_or_create(
+                tenant=self.tenant, name=step_data['name'], part_type=part_type,
+                defaults={
+                    'description': step_data['description'],
+                    'pass_threshold': step_data.get('pass_threshold', 1.0),
+                    'expected_duration': step_data.get('expected_duration'),
+                    'block_on_quarantine': step_data.get('block_on_quarantine', False),
+                    'requires_qa_signoff': step_data.get('requires_qa_signoff', False),
+                    'sampling_required': step_data.get('sampling_required', False),
+                    'min_sampling_rate': step_data.get('min_sampling_rate', 0.0),
+                    'requires_first_piece_inspection': step_data.get('requires_first_piece_inspection', False),
+                    'fpi_scope': step_data.get('fpi_scope', 'PER_WORKORDER'),
+                    'block_on_measurement_failure': step_data.get('block_on_measurement_failure', False),
+                    'block_on_spc_violation': step_data.get('block_on_spc_violation', False),
+                    'override_expiry_hours': step_data.get('override_expiry_hours', 24),
+                    'undo_window_minutes': step_data.get('undo_window_minutes', 15),
+                    'rollback_requires_approval': step_data.get('rollback_requires_approval', True),
+                    'requires_batch_completion': step_data.get('requires_batch_completion', False),
+                    'part_advancement_mode': step_data.get('part_advancement_mode', 'COHORT'),
+                    'step_type': 'TERMINAL' if is_terminal else 'START',
+                    'is_decision_point': False,
+                    'decision_type': '',
+                    'is_terminal': is_terminal,
+                    'terminal_status': step_data.get('terminal_status', ''),
+                    'max_visits': step_data.get('max_visits'),
+                    'revisit_assignment': step_data.get('revisit_assignment', 'ANY'),
+                    'revisit_role': None,
+                },
+            )
+            new_steps[step.name] = step
+        step_map = {s.name: s for s in Steps.objects.filter(tenant=self.tenant, part_type=part_type)}
+        route = cfg['route']
+        for i, name in enumerate(route, start=1):
+            ProcessStep.objects.update_or_create(
+                process=process, step=step_map[name],
+                defaults={'order': i, 'is_entry_point': i == 1, 'is_exit_point': i == len(route)})
+        # Rework sits after the route, reached only by the fail edges.
+        ProcessStep.objects.update_or_create(
+            process=process, step=step_map['Rework'],
+            defaults={'order': len(route) + 1, 'is_entry_point': False, 'is_exit_point': False})
+        edges = [(a, b, EdgeType.DEFAULT) for a, b in zip(route, route[1:])]
+        edges += [(name, 'Rework', EdgeType.ALTERNATE) for name in cfg['rework_from']]
+        edges += [('Rework', cfg['rework_reentry'], EdgeType.DEFAULT)]
+        for frm, to, edge_type in edges:
+            StepEdge.objects.update_or_create(
+                process=process, from_step=step_map[frm], to_step=step_map[to], edge_type=edge_type,
+                defaults={'condition_measurement': None, 'condition_operator': '', 'condition_value': None})
+        return process, list(new_steps.values())
 
     def _create_step_edges(self, process, step_map):
         """Create edges between steps including rework loops.

@@ -29,6 +29,10 @@ from ..base import BaseSeeder
 # any machine eligible for a step is also placed at that step's station).
 _STATIONS = (
     # code, name, kind, description, step_names, equipment_names
+    ("MACH-01", "Machine Shop", WorkCenterKind.PRODUCTION,
+     "CNC turning of injector bodies for new-build work.",
+     ("Machining",),
+     ("CNC Lathe HL-1",)),
     ("TEAR-01", "Teardown Bay", WorkCenterKind.PRODUCTION,
      "Core intake and disassembly of incoming reman cores.",
      ("Core Receiving", "Disassembly"),
@@ -55,7 +59,7 @@ _STATIONS = (
      ("Rework Station RW-1",)),
     ("PACK-01", "Pack & Ship", WorkCenterKind.PRODUCTION,
      "Final packaging and shipment staging.",
-     ("Packaging", "Complete"),
+     ("Packaging", "Complete", "Ship"),
      ("Packaging Station PK-1",)),
     ("INSP-01", "Inspection Bench", WorkCenterKind.INSPECTION,
      "Dedicated QA inspection station (dimensional / visual). Inspection in the "
