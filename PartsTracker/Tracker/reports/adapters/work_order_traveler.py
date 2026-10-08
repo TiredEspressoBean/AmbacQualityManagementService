@@ -438,6 +438,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         target_part = self._resolve_part(wo, tenant, validated_params.get("part"))
         exec_by_step, qr_by_step = self._history_maps(target_part, tenant)
         trace_by_step = self._trace_maps(target_part, tenant)
+        signoff_by_step = self._signoff_map(wo, tenant) if target_part else {}
 
         # Routing — ProcessStep rows are scoped through the (tenant-checked)
         # process; ProcessStep itself is not a SecureModel.
@@ -460,6 +461,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 description = (step.description or "").strip() or None
                 operator, inspector, acc_rej, remarks = self._step_actuals(
                     exec_by_step.get(step.id), qr_by_step.get(step.id),
+                    signoff_by_step.get(step.id),
                 )
                 trace = trace_by_step.get(step.id, {})
                 operations.append(TravelerOperation(
@@ -648,9 +650,22 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                 qr_by_step[qr.step_id] = qr
         return exec_by_step, qr_by_step
 
-    def _step_actuals(self, execution, quality_report):
+    def _signoff_map(self, wo, tenant) -> dict:
+        """The QA sign-off (QaApproval) of each step on this work order, by step id."""
+        from Tracker.models import QaApproval
+        # tenant-safe: explicit tenant filter
+        return {a.step_id: a for a in (
+            QaApproval.objects.filter(tenant=tenant, work_order=wo, archived=False)
+            .select_related("qa_staff").order_by("created_at"))}
+
+    def _step_actuals(self, execution, quality_report, qa_signoff=None):
         """(operator, inspector, acc_rej, remarks) for one routing row, from the
-        step's latest StepExecution + QualityReports. All None when absent."""
+        step's latest StepExecution + QualityReports, else its QA sign-off. All None
+        when absent.
+
+        Inspector is whoever inspected — the report's verifier/detector, or on a QA
+        sign-off step with no report, the QaApproval's signer. It used to come only from
+        a report, so a signed-off step printed its inspector nowhere (2026-10-08)."""
         operator = inspector = acc_rej = remarks = None
 
         if execution is not None:
@@ -671,6 +686,9 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             desc = (quality_report.description or "").strip()
             if desc:
                 remarks = desc
+        elif qa_signoff is not None:
+            inspector = _join_person_date(qa_signoff.qa_staff, qa_signoff.created_at)
+            acc_rej = "ACC"  # a QA sign-off is the step's acceptance
 
         return operator, inspector, acc_rej, remarks
 

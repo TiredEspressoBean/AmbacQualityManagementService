@@ -179,3 +179,14 @@ class WorkOrderTravelerTraceabilityTests(SimpleTestCase):
         usage = NS(lot=NS(lot_number="L-9", material=NS(name="Spring"), material_type=None),
                    harvested_component_id=None, qty_consumed=Decimal("2"), is_substitute=False)
         self.assertEqual(_fmt_usage(usage), "Lot L-9 · Spring × 2")
+
+    def test_a_qa_signoff_without_a_report_prints_its_inspector(self):
+        import datetime
+        from types import SimpleNamespace as NS
+        adapter = WorkOrderTravelerAdapter()
+        signoff = NS(qa_staff=NS(first_name="Sarah", last_name="Chen", email="s@x", username="s",
+                                 get_full_name=lambda: "Sarah Chen"),
+                     created_at=datetime.datetime(2026, 10, 6, 12, 0))
+        _, inspector, acc_rej, _ = adapter._step_actuals(None, None, signoff)
+        self.assertTrue(inspector.startswith("Sarah C."), inspector)
+        self.assertEqual(acc_rej, "ACC")
