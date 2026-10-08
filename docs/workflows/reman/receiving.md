@@ -105,6 +105,18 @@ you, recorded at receipt:
 For customer returns with a credit agreement, enter the **Credit Value**. It can
 be marked issued later, from the core's page.
 
+!!! warning "Telling the customer is yours, not the system's"
+    A customer's core is **their property** in your custody. uqmes identifies it,
+    records its condition, labels it and ringfences it so no other customer's
+    work can consume it.
+
+    It does **not** tell the customer anything. If a core arrives damaged beyond
+    what they declared, or turns out not worth rebuilding, that conversation is
+    the reman team's to have directly — no notification goes out and nothing
+    appears on their tracker.
+
+    Record the condition here so the shop has its trace; then pick up the phone.
+
 !!! info "The credit is a note, not a transaction"
     uqmes does not price, invoice or pay anything. Recording a credit as issued
     stamps *when* and *by whom* on this record so the shop has its own trace —

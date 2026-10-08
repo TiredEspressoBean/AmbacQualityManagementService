@@ -4,14 +4,9 @@
 **Prerequisites:** None
 **Goal:** Learn to track parts through production steps and record measurements
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! note "Role Name"
-    This training is for the **Production_Operator** role in the system.
+    This training is for the **Operator** role in the system.
 
 !!! info "Demo Environment Login"
     **Email:** mike.ops@demo.ambac.com

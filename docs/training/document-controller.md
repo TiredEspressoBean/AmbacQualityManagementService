@@ -4,11 +4,6 @@
 **Prerequisites:** None
 **Goal:** Learn to manage controlled documents, revisions, approvals, and document compliance
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! note "Training Data Setup"
     Exercises reference sample documents (e.g., "WI-TRAIN-001", "DOC-REJECT-TRAIN"). Your administrator should set up training data, or you can create test documents following the exercise patterns.

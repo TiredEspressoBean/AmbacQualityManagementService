@@ -3,16 +3,24 @@
 This guide is for the person who decides **what the shop takes on, when it is
 admitted, and where it runs** — the planning and scheduling side of uqmes.
 
-!!! info "There is no Planner group"
-    Unlike the other role guides, this one does not correspond to a group you
-    can be put in. **Solving and committing** a schedule are gated on
-    **Production Manager** or **Tenant Admin**; ask for one of those if Solve
-    and Commit aren't available to you.
+!!! info "Planner is a group, and it covers scheduling too"
+    There is a **Planner** group, and it holds everything on this page: running
+    and committing a solve, working the board by hand, and the calendars the
+    plan is built on — shifts, overtime, holidays, PTO, changeovers and who is
+    rostered where.
 
-    Working the board — moving, pinning, reassigning, dispatching — is a wider
-    permission, also held by **QA Manager** and **Shift Lead**. So half of this
-    guide applies to you even without a planner role. See [Who can touch the
-    board](../workflows/scheduling/gantt.md#who-can-touch-the-board).
+    **Production Manager** and **Tenant Admin** hold the same authority, which is
+    why most plants never staff this separately. The group exists so a facility
+    that *does* staff planning separately can.
+
+    Working the board — moving, pinning, reassigning, dispatching — is wider than
+    the group: **QA Manager** and **Shift Lead** hold it as well, so a shift lead
+    can run the board for their shift without being able to re-plan the shop. See
+    [Who can touch the board](../workflows/scheduling/gantt.md#who-can-touch-the-board).
+
+    Two things stay with the manager even though they look adjacent: **work
+    centres and equipment** (Engineering defines the plant; the planner uses it)
+    and **cancelling a work order** — breaking a commitment to a customer.
 
 !!! info "How to use this guide"
     It maps the decisions you own to the surface each is made on, and links to
@@ -26,7 +34,7 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
 |----------|---------|---------|
 | Can we take this order at all? | Months | [Capacity Planning](../workflows/scheduling/capacity.md) |
 | What do we let onto the floor now? | Weeks | [Releasing Work](../workflows/scheduling/releasing.md) |
-| Where does it run, and in what order? | Days | [Schedule (Gantt)](../workflows/scheduling/gantt.md) — day to day this is [Scheduler](scheduler.md) work |
+| Where does it run, and in what order? | Days | [Schedule (Gantt)](../workflows/scheduling/gantt.md) — see [Running the board](#running-the-board) |
 | What do we buy, build or **recover** to support it? | Weeks | [Requirements](../workflows/scheduling/overview.md#requirements) |
 | What goes to each bench tomorrow? | Hours | [Staging List](../workflows/scheduling/overview.md#staging-list) |
 
@@ -71,6 +79,69 @@ no amount of re-solving fixes it.
 solve honours the pin — but softly: if the move turns out infeasible against the
 global constraints, the solve relaxes it rather than failing. Use it when you
 know something the model doesn't, and check it survived.
+
+## Running the board
+
+Planning and scheduling are different horizons, but they are **one role** in
+uqmes — the same surface, behind the same gates. Sequencing on the board is part
+of planning, not a separate trade.
+
+| | Longer horizon | Shorter horizon |
+|---|---------|-----------|
+| **Span** | Months to weeks | Days to hours |
+| **Question** | Can we take it, and what do we release? | Where does it run, in what order, and who does it? |
+| **Surfaces** | Capacity Planning, Requirements, Releasing | Schedule (Gantt), Dispatch, Staging |
+
+### The loop
+
+1. **Solve** — the solver places every task it can
+2. Read **Not scheduled** — what it couldn't place, and why
+3. **Dispatch** — assign operators to the placed work
+4. Adjust by hand where you know something the solver doesn't
+5. Re-solve when the shop moves
+
+The header carries solver status, task count, **makespan**, **weighted lateness**
+and how long the solve took.
+
+!!! tip "Judge a draft by disruption, not only by lateness"
+    The board compares the two — *makespan X → Y h*, *lateness X → Y*, *moves N
+    tasks*. A better lateness figure that moves 500 tasks can cost more in
+    disruption than it saves. See [Comparing before you
+    commit](../workflows/scheduling/gantt.md#comparing-before-you-commit).
+
+### Why isn't my job on the board?
+
+**Not scheduled** answers it directly, grouped by reason, each row naming the
+work order, how many units were placed, and the fix. Twelve reasons, from *On
+hold* and *Not released* through *No trained operator* and *Material short* to
+*Added since the last solve*.
+
+Several resolve themselves on the next solve, and the dialog says so when the
+schedule is stale.
+
+### Dispatch
+
+Dispatch assigns operators to placed tasks, **per lot rather than per piece**.
+Until it runs, late tasks read *Uncovered — no operator assigned*, which is a
+one-click problem rather than a training one.
+
+### Moving something by hand
+
+Drag a task and the rest of that unit's route **ripples with it**. Two checks run
+first — the schedule horizon and the work order's release date — and a **pinned
+successor** stops a ripple and is named.
+
+**Merge** and **Break** decide whether an order's units travel as one lot or
+separately. **Unpin** is what a pinned-successor refusal is asking for.
+
+### When the shop fights the plan
+
+| Symptom | Look at |
+|---------|---------|
+| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no cycle time contributes no load |
+| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) |
+| The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) |
+| A promise failed on people, not machines | The training matrix — a binding resource can be a certification |
 
 ## Promising a date
 

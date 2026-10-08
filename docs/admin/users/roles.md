@@ -31,69 +31,44 @@ Role type is set per user and determines baseline behavior.
 
 ## Built-in Groups
 
-### Admin
-Full system access:
-- All permissions (400+)
-- Can configure system
-- Can manage users
+There are **15** built-in group presets. Each one's name below is exactly what
+appears in the Groups editor.
 
-### QA_Manager
-Quality management:
-- Manage quality reports
-- Approve dispositions
-- Close CAPAs
-- View production data
-- Respond to approvals
+| Group | Perms | What it is for |
+|-------|------:|----------------|
+| **System Admin** | 3 | Platform administrator — manages all tenants and system settings |
+| **Tenant Admin** | 506 | Full access within one organization |
+| **QA Manager** | 463 | Quality management, approvals, CAPA control |
+| **QA Inspector** | 290 | Perform inspections, create quality reports, initiate CAPAs |
+| **Production Manager** | 466 | Production operations, work orders, scheduling |
+| **Operator** | 270 | Production floor work, inspections, data entry |
+| **Shift Lead** | 287 | Floor supervisor: operator work plus team visibility and quality oversight |
+| **Planner** | 293 | Releasing work, promising dates, running the schedule and its calendars |
+| **Engineering** | 363 | Engineering changes, drawing control, design work |
+| **Purchasing** | 275 | Supplier qualification, part approvals, expected receipts |
+| **Receiving** | 272 | The inbound dock: receipt, incoming inspection, holds, put-away |
+| **Shipping** | 270 | The outbound dock: shipments, packing lists and CoCs, subcontract send-out |
+| **Document Controller** | 412 | Controlled documents, revisions and approvals |
+| **Auditor** | 138 | Read-only for audits: sees everything, changes nothing |
+| **Customer** | 17 | External portal — their own orders only |
 
-### QA_Inspector
-Quality inspection:
-- Create quality reports
-- Record measurements
-- View orders
-- Initiate CAPAs
-- Conduct RCA
+!!! warning "Group names have no underscores"
+    Older documentation used underscored names — "Production_Operator",
+    "QA_Manager", "Document_Controller" and similar. **Those names do not
+    exist.** The real names are as written above: plain words with spaces, and
+    the floor role is **Operator**, not "Production Operator".
 
-### Production_Manager
-Production operations:
-- Manage orders and work orders
-- View quality data
-- Update parts
-- Respond to approvals
+    There is also no "Supplier_Quality" group. That work is split: the buyer
+    side is [Purchasing](../../roles/purchasing.md), and approving a supplier
+    qualification is [QA Manager](../../roles/qa-manager.md).
 
-### Production_Operator
-Production floor:
-- View orders and parts
-- Create and update parts
-- Record data
-- Basic MES access
+!!! note "The permission counts are a size, not a ranking"
+    A bigger number is not more senior. **Auditor** holds 138 and can change
+    nothing; **Operator** holds 270 because the shared staff base is broad. What
+    separates the roles is a short list of specific authorities — see [Role
+    Comparison](../../roles/index.md#what-tells-the-roles-apart).
 
-### Document_Controller
-Document management:
-- Full document CRUD
-- Classification control
-- Confidential/restricted/secret access
-- Approval template management
-
-### Engineering
-Technical access:
-- Create and edit documents (drawings, specs)
-- View confidential/restricted documents
-- Initiate CAPAs for design issues
-- Respond to approvals
-
-### Supplier_Quality
-Supplier management:
-- Incoming inspection (create quality reports)
-- Reject dispositions for incoming material
-- Initiate CAPAs for supplier issues
-- Conduct RCA
-- Manage supplier documents (certs, SCARs)
-
-### Customer
-Portal access:
-- View own orders
-- View shared documents
-- No internal access
+For what each group can actually *do*, see the [Role Guides](../../roles/index.md).
 
 ## Creating Custom Groups
 

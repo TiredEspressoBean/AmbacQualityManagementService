@@ -127,9 +127,9 @@ Navigate to **Admin** > **User Management**:
 
 | User | Groups | Purpose |
 |------|--------|---------|
-| Training Operator | Production_Operator | Operator exercises |
-| Training Inspector | QA_Inspector | Inspector exercises |
-| Training Manager | Production_Manager | Manager exercises |
+| Training Operator | Operator | Operator exercises |
+| Training Inspector | QA Inspector | Inspector exercises |
+| Training Manager | Production Manager | Manager exercises |
 
 #### 2. Customer
 

@@ -3,12 +3,19 @@
 **The dock.** Taking material in, proving it is what was ordered, and putting it
 somewhere findable.
 
-!!! info "There is no Receiving group"
-    Like [Planner](planner.md), this describes a **job**, not a group you can be
-    put in. The work is usually held by **Purchasing**, whose description says so
-    — *"supplier qualification, part approvals, expected receipts and incoming
-    lots (purchase orders stay in the ERP)"* — and shared with **Operator**,
-    **Shift Lead** and **Production Manager** depending on the shop.
+!!! info "Receiving is a group — and it is not Purchasing"
+    There is a **Receiving** group you can be put in. It is deliberately distinct
+    from [Purchasing](purchasing.md): the buyer places and chases the order and
+    owns the supplier relationship; Receiving is the person who physically takes
+    the delivery, inspects it, and puts it away.
+
+    At a small plant one person holds both — the roles compose, as QA Inspector
+    and Shift Lead already do. **Operator**, **Shift Lead** and **Production
+    Manager** can also do this work.
+
+    What Receiving does **not** carry is the authority to settle what it finds:
+    rejecting a whole lot (a VDMR) and approving a disposition are QA's call. The
+    dock raises those; it does not close them.
 
     If something here isn't available to you, it is a permission question for
     whoever administers groups, not a sign you are on the wrong page.

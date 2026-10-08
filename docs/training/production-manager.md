@@ -4,11 +4,6 @@
 **Prerequisites:** None
 **Goal:** Learn to create orders, manage work orders, monitor production, and coordinate with quality
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! note "Training Data Setup"
     Exercises reference sample data (e.g., "TRAIN-PM-001", "TRAIN-BOTTLE"). Your administrator should set up training data, or you can create your own test records following the exercise patterns.

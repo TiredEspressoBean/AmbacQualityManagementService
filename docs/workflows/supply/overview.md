@@ -507,6 +507,8 @@ A held lot shows an amber **Held at receiving** panel on its inspection page.
     So clearing one and seeing the lot stay put is the system working. Look for
     the next card.
 
+![A lot held for two reasons at once](../../assets/qa-inspector/qa-02-multihold.png)
+
 | Hold | How it clears |
 |------|---------------|
 | **Awaiting CoC** | Upload the certificate — including the photo or PDF taken at receipt |
@@ -518,7 +520,11 @@ A held lot shows an amber **Held at receiving** panel on its inspection page.
 | **Whole-lot reject requested** | Someone confirms or declines — see [Who can reject a whole lot](#who-can-reject-a-whole-lot) |
 
 **The first three clear themselves.** You are not asking permission, you are
-supplying what was needed.
+supplying what was needed — the heat-number box above is on the panel itself, and
+saving it lifts that hold without anyone's approval.
+
+The panel states the rule at the top: *"Held for 2 reasons — each clears on its
+own."*
 
 **The next two are judgements.** They offer **Release hold…**, with a **required
 reason**, to someone holding the disposition-approval permission. The lot then

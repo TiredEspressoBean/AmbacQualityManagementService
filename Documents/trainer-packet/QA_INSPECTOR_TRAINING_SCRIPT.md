@@ -24,6 +24,17 @@ cross-references (§N) point into the walkthrough.
 > and its screenshots have **not been recaptured yet** — see *Refreshing
 > screenshots* at the bottom. Until then, teach from the live screen, not from
 > images.
+>
+> Four screens *have* been captured and live in the published docs, if you want
+> them for slides: the QA home page, the multi-hold receiving panel, the FPI
+> sign-off dialog and the disposition co-sign dialog —
+> `docs/assets/qa-inspector/`.
+
+> **Verified 2026-10-06.** Every journey below was walked live as `sarah.qa`
+> against a fresh `seed_demo`. Corrections from that pass are marked where they
+> occur; the hold exhibit, the FPI shortcut, part 001's state, the serial count
+> and the gauges tile all changed. If a step here disagrees with the screen
+> again, the screen is right — and please update this file.
 
 ---
 
@@ -115,12 +126,18 @@ state its journey needs; a reseed restores all of it. (Full detail:
 
 | Serial | Journey | State the trainee sees |
 |---|---|---|
-| `INJ-QA-INSPECT-001` | 4 — FPI buy-off | IN_PROGRESS @ Nozzle Inspection, first piece complete, **PENDING FPI** |
+| `INJ-QA-INSPECT-001` | 4 — FPI buy-off | **QUARANTINED** @ Nozzle Inspection, first piece complete, **PENDING FPI** (it also carries a PASS and a FAIL QR and an open disposition; the buy-off still works) |
 | `INJ-QA-INSPECT-002` | 5 — Sampled inspection | AWAITING_QA @ Nozzle Inspection, **Sample** ("Post-repair verification") |
 | `INJ-QA-INSPECT-003` | 6 — Fail + disposition | IN_PROGRESS @ Flow Testing, fresh — you fail it **live** |
 | `INJ-QA-INSPECT-004` | 7 — Re-inspection | AWAITING_QA @ Flow Testing, visit 2 (historical FAIL QR + CLOSED REWORK disposition) |
 | `INJ-QA-INSPECT-005` | 8 — OSP return | AWAITING_QA @ Nitride Coating, RETURNED from Apex Plating |
 | `INJ-QA-INSPECT-006` | 1 (background) | QUARANTINED @ Assembly, bare OPEN disposition on Sarah |
+
+!!! note "The work order seeds eight parts, not six"
+    `INJ-QA-INSPECT-007` and `-008` exist as the historical first pieces for
+    downstream steps, so sections 5, 7 and 8 aren't blocked by an FPI banner the
+    walker didn't cause. They have no journey of their own — don't let a trainee
+    counting parts think something is missing.
 
 **Two states WO-QA-INSPECT-01 doesn't stage** — a part mid-rework and a
 scrapped closed record — are borrowed from the older demo storyline, exactly as
@@ -169,9 +186,15 @@ answers at `/quality/inbox`).
 
 ## Journey 2 — The scanner is your GPS  (walkthrough §1)
 
-**Why:** The barcode reader isn't a data-entry tool; it's a navigator. Every
-scan resolves to the **parent work order** and lands you on WO Detail — the
-shared surface where exceptions live and the DWI capture path begins.
+**Why:** The barcode reader isn't a data-entry tool; it's a navigator. A scanned
+**work order or part** resolves to the **parent work order** and lands you on WO
+Detail — the shared surface where exceptions live and the DWI capture path
+begins.
+
+The box also takes **lot numbers, serials and location labels** (`LOC:<name>`) —
+its placeholder reads *"Scan or type a work order, serial, lot or location…"*.
+Those land on the matching record rather than a work order, and matter more to
+receiving and stores than to an inspector.
 
 **You do:** scan the **header barcode** on the WO-QA-INSPECT-01 traveler (or
 type `WO-QA-INSPECT-01` in the scan box).
@@ -209,8 +232,23 @@ where a lot is accepted into stock or held.
 
 **You see:** the **Receiving Inspection Queue** — *Lot # · Material · Supplier ·
 Qty · Status · Actions*, purchased lots only (5 rows on a fresh seed), each with
-**Inspect**. `RCV-INJ-HOLD` (Bargain Bolts, QUARANTINE, "Unqualified supplier")
-is a hold exhibit — don't inspect it.
+**Inspect**. `RCV-MAT-HOLD` (Bargain Bolts, QUARANTINE) is the hold exhibit.
+
+**Do open it** — `Inspect` is how you reach the hold panel, and it is the richest
+screen in this journey:
+
+> **Held for 2 reasons — each clears on its own.**
+> *Held at receiving: Unqualified supplier* — "A quality manager can release this
+> hold, or the lot can be rejected."
+> *Held at receiving: Awaiting heat number* — an inline **Heat number** box and
+> **Save**: "The lot moves on as soon as it's saved."
+
+**Teaching point:** paperwork clears itself, judgements need authority. Sarah can
+type the heat number; she cannot release the supplier hold, and the panel tells
+her who can. The lot leaves quarantine only when the **last** hold goes — so
+clearing one and seeing nothing happen is the system working.
+
+Then come back out without accepting it.
 
 **You do:** **Inspect** `RCV-INJ-0001` (Great Lakes, 250 EA) → the lot detail
 shows the CoC panel, the **Sample plan (C0, level III, TIGHTENED): Inspect 29 of
@@ -250,6 +288,14 @@ confirmed"** — the first piece is complete and waiting on QA.
 
 **You see the FPI banner** with three buttons: **Sign off & pass · Fail ·
 Waive**.
+
+!!! warning "There is a shortcut, and it can only pass"
+    The WO **Control** page carries its own *First piece waiting on QA* card with
+    a **Sign off** button, whose dialog offers only **Confirm sign-off**. It is
+    the quick path to a pass and has **no Fail and no Waive**.
+
+    Teach the runtime route. Mention the shortcut so a lead who finds it knows
+    what it does *not* offer.
 
 **You do:** **Sign off & pass** → confirmation dialog (*"By signing off you
 attest… conforms. This is recorded against your name and releases the run."*),
@@ -441,6 +487,17 @@ and a CAPA (the pattern).
   (Equipment / Current / Due Soon / Overdue / Compliance). The home *Your
   gauges* tile is the point-of-use nag; a gauge overdue for cal shouldn't be
   used.
+
+**On a fresh seed the tile reads:** *"1 gauge you used in the last 7 days needs
+calibration within 7 days"* — **Torque Wrench TW-25 — overdue 15d**. That is the
+exhibit; point at it.
+
+!!! note "This was dark until 2026-10-06"
+    The tile needs a GAUGE-role equipment link on a report the user filed, and
+    nothing in the seed ever created one — it only made PRODUCTION links. The
+    overdue gauge existed; the link to the inspector did not, so the tile always
+    showed its empty state. Fixed in `quality.py::link_inspector_gauge`, called
+    last from the scenario so every inspector's report exists by then.
 - **Notifications** (bell popover / `/notifications`): the feed of what fired
   for Sarah — CAPA assignments, `ncr.opened` on a fail, etc. Show *Mark all
   read* and the filters.

@@ -18,9 +18,19 @@ As a QA Inspector, you:
 - Perform inspections at quality gates
 - Record measurements and inspection data
 - Create quality reports (NCRs) for non-conformances
-- Apply sampling rules to lots
 - Document defects with annotations
-- Support disposition decisions
+- Record disposition decisions
+
+!!! note "You record decisions; you don't recommend them"
+    There is no *recommend then wait* step. Choosing the disposition type **is**
+    the authorized act, and the record stores who authorized it and when. If you
+    don't hold the permission, an approver co-signs on your screen — see
+    [Dispositions](../workflows/quality/dispositions.md#who-can-decide-and-co-signing).
+
+!!! note "Sampling is decided for you"
+    A rule flags the part and the plan is calculated — *"Inspect 29 of 250 ·
+    Accept ≤ 0 · Reject ≥ 1"*. Your job is to answer **"why this part?"** from
+    the Sample flag and its reason, not to choose the sample size.
 
 ## Getting Started
 
@@ -35,6 +45,7 @@ As a QA Inspector, you:
 | Page | Location | Purpose |
 |------|----------|---------|
 | **Home** | Home | Your inspection queue — first pieces, incoming, OSP returns |
+| **Incoming Inspection** | Supply > Incoming Inspection | Purchased lots **and** OSP returns, one queue |
 | **Work Orders** | Production > Work Orders | Work order detail and history |
 | **Quality Reports** | Quality > Quality Reports | NCRs you've created |
 | **Dispositions** | Quality > Dispositions | Quarantined parts |
@@ -223,25 +234,52 @@ If 3D models are configured:
 
 ## First Piece Inspection (FPI)
 
-### Performing FPI
+On a step's first pass, one part is the **first piece**. The operator runs the
+work instruction on it; you buy it off before the rest of the batch runs.
 
-1. Receive first piece from operator
-2. Perform all required measurements
-3. Check against all specifications
-4. Record results
-5. Approve or reject
+!!! important "It is a batch gate, not a per-part check"
+    The work order's control page says so plainly: *"No part moves past these
+    steps until the first piece is bought off."* A missing or failed FPI holds
+    the whole batch.
 
-### FPI Decision
+### Where it appears
 
-**If Pass:**
-- Click **Approve FPI**
-- Batch is released
-- Production continues
+A pending FPI shows on your **Home** page as a red banner — one row per waiting
+first piece, with the step, work order, part and a waiting-age timer — offering
+**I'm on it** (acknowledge) and **Start check**.
 
-**If Fail:**
-- Click **Reject FPI**
-- Enter rejection reason
-- Operator must adjust and resubmit
+### Two routes, with different options
+
+| Route | What you get |
+|-------|--------------|
+| **The runtime** — work order → Start Work → tick the part → Start | **Sign off & pass · Fail · Waive** |
+| **The control page** — *First piece waiting on QA* card → **Sign off** | **Sign off only** |
+
+!!! warning "The quick route cannot fail or waive"
+    The control page's **Sign off** is a shortcut to the pass outcome. If the
+    first piece is **not** acceptable, go through the runtime, where Fail and
+    Waive exist.
+
+### Signing off
+
+![The FPI sign-off confirmation](../assets/qa-inspector/qa-03-fpi-signoff.png)
+
+The dialog states what you are attesting to:
+
+> By signing off you attest that the setup is correct and the first piece
+> conforms, and this releases the run. It is recorded against your name.
+
+Add notes — gauges used, observations — and confirm. The banner turns green and
+the run is released.
+
+!!! important "Separation of duties"
+    The operator signed the inspection substeps; **you** sign the buy-off. They
+    must be different people — if you had also signed the substeps, the buy-off
+    is refused.
+
+    An inspector who lacks `sign_off_fpi` is not stuck: the banner offers an
+    inline co-signature for an authorized colleague, the same pattern as a
+    [disposition decision](../workflows/quality/dispositions.md#who-can-decide-and-co-signing).
 
 ## Incoming Inspection
 

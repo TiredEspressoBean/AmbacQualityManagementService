@@ -16,11 +16,32 @@ Our training is:
 | Role | Duration | Prerequisites |
 |------|----------|---------------|
 | [Production Operator](operator.md) | 2-4 hours | None |
+| [Shift Lead](shift-lead.md) | 3-4 hours | Operator training |
 | [QA Inspector](qa-inspector.md) | 4-6 hours | None |
 | [QA Manager](qa-manager.md) | 4-6 hours | Inspector training recommended |
 | [Production Manager](production-manager.md) | 3-5 hours | None |
+| [Planner](planner.md) | 4-5 hours | None |
+| [Engineering](engineering.md) | 4-5 hours | None |
+| [Purchasing](purchasing.md) | 3-4 hours | None |
+| [Receiving](receiving.md) | 3-4 hours | None |
+| [Shipping](shipping.md) | 2-3 hours | None |
 | [Document Controller](document-controller.md) | 3-4 hours | None |
 | [Administrator](administrator.md) | 6-8 hours | Understanding of all roles |
+
+### Orientation, not training
+
+Two roles need showing around rather than teaching. Neither has anything to
+practise — one cannot write at all, the other is external.
+
+| Role | Duration | For |
+|------|----------|-----|
+| [Auditor](auditor.md) | 1 hour | Internal and external auditors |
+| [Customer Portal](customer.md) | 30 min | Hand this to your customer |
+
+!!! info "Roles compose, and so does their training"
+    Holding more than one group is normal. A QA Inspector who is also a Shift
+    Lead takes both tracks — Shift Lead assumes Operator and teaches only what is
+    added on top, rather than repeating it.
 
 ## Cross-Cutting Modules
 
@@ -45,14 +66,25 @@ Remanufacturing is fully operational. Life tracking core functionality works (vi
 !!! tip "SPC Training"
     All production floor staff should complete **SPC Fundamentals** to understand control charts and process capability. This is referenced throughout the role-specific training guides.
 
-!!! info "Additional Roles"
-    The following system roles do not yet have dedicated training guides:
+!!! info "Every role group now has a track"
+    All 15 permission presets are covered. **System Admin** and **Tenant Admin**
+    are both served by [Administrator training](administrator.md); every other
+    group has its own page above.
 
-    - **Supplier Quality** - External supplier quality management
-    - **Engineering** - Engineering document and CAPA access
-    - **Customer** - Customer portal (view-only access to their orders)
+    There is **no "Supplier Quality" group**, despite older documentation saying
+    so. That work splits between [Purchasing](purchasing.md) and
+    [QA Manager](qa-manager.md), who holds the approval authority.
 
-    Contact your administrator for guidance on these roles.
+!!! warning "Most tracks log in as a broader account"
+    The demo seeds accounts for Operator, Shift Lead, QA Inspector, QA Manager,
+    Production Manager, Document Controller, Tenant Admin and Customer only.
+
+    Planner, Engineering, Purchasing, Receiving, Shipping and Auditor training
+    therefore signs in as **Tenant Admin** or **Production Manager**, which hold
+    those permissions plus more. Everything in those guides works — but the
+    screen will show more than the guide describes, and the trainee will not
+    experience the role's real boundaries. Seed a dedicated account before
+    running them for real.
 
 ## Training Environment
 

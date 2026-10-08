@@ -126,7 +126,7 @@ assigned when a request is raised:
 |------------------|--------|
 | **Default approvers** | Specific users assigned every time |
 | **Default groups** | Every member of those groups assigned |
-| **Auto-assign by role** | Assigns the named group, e.g. `QA_Manager` |
+| **Auto-assign by role** | Assigns the named group, e.g. `QA Manager` |
 
 The starter **Document Release** template has no default approvers and no
 default groups — it auto-assigns by role to **QA Manager** only. So a Document

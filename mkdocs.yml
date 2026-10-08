@@ -40,23 +40,34 @@ nav:
   - Role Guides:
     - Overview: roles/index.md
     - Operator: roles/operator.md
+    - Shift Lead: roles/shift-lead.md
     - QA Inspector: roles/qa-inspector.md
     - QA Manager: roles/qa-manager.md
     - Production Manager: roles/production-manager.md
     - Planner: roles/planner.md
-    - Scheduler: roles/scheduler.md
+    - Engineering: roles/engineering.md
+    - Purchasing: roles/purchasing.md
     - Receiving: roles/receiving.md
     - Shipping: roles/shipping.md
     - Document Controller: roles/document-controller.md
+    - Auditor: roles/auditor.md
     - Administrator: roles/administrator.md
     - Customer Portal: roles/customer.md
   - Training:
     - Training Program: training/index.md
     - Operator Training: training/operator.md
+    - Shift Lead Training: training/shift-lead.md
     - QA Inspector Training: training/qa-inspector.md
     - QA Manager Training: training/qa-manager.md
     - Production Manager Training: training/production-manager.md
+    - Planner Training: training/planner.md
+    - Engineering Training: training/engineering.md
+    - Purchasing Training: training/purchasing.md
+    - Receiving Training: training/receiving.md
+    - Shipping Training: training/shipping.md
     - Document Controller Training: training/document-controller.md
+    - Auditor Orientation: training/auditor.md
+    - Customer Portal Orientation: training/customer.md
     - Administrator Training: training/administrator.md
     - SPC Fundamentals: training/spc-fundamentals.md
     - Training Data Setup: training/training-data-setup.md

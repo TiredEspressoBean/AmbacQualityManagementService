@@ -188,7 +188,7 @@ Prepare data for external audits:
 
 | Permission | Allows | Groups |
 |------------|--------|--------|
-| `view_auditlog` | View full system audit trail | Admin, QA_Manager, Document_Controller |
+| `view_auditlog` | View full system audit trail | Admin, QA Manager, Document Controller |
 | `export_auditlog` | Export audit data for auditors | Admin |
 
 Standard users see history of records they can access via record detail pages.

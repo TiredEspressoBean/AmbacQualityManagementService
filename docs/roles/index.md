@@ -2,10 +2,28 @@
 
 uqmes serves different roles in your organization. Find your role below for a tailored guide covering your specific workflows and responsibilities.
 
-## Available Role Guides
+!!! info "Roles compose"
+    These are **groups you can be put in**, and holding more than one is normal
+    rather than exceptional — a QA Inspector who is also a Shift Lead gets both
+    sets of permissions, added together. Nothing here is exclusive.
+
+    Every guide below corresponds to a real group, one for one.
+
+!!! note "Looking for Scheduler?"
+    There isn't a separate one. Planning and scheduling are **one role** here —
+    the same surface, behind the same gates. Sequencing on the board is part of
+    planning, not a separate trade. See [Running the
+    board](planner.md#running-the-board).
+
+## On the floor
 
 ### [Operator](operator.md)
 Production floor workers moving parts through manufacturing steps. Learn to work a step's substeps, record measurements, and flag quality issues.
+
+### [Shift Lead](shift-lead.md)
+Operator plus supervisor authority: FPI sign-off, manual decision points, training-gate overrides, shift notes, and the board for your shift.
+
+## Quality
 
 ### [QA Inspector](qa-inspector.md)
 Quality inspection, measurements, and NCR creation. Learn to perform inspections, create quality reports, and recommend dispositions.
@@ -13,14 +31,21 @@ Quality inspection, measurements, and NCR creation. Learn to perform inspections
 ### [QA Manager](qa-manager.md)
 Quality oversight, CAPA management, approvals, and analytics. Learn to approve dispositions, manage CAPAs, and analyze quality trends.
 
+## Planning & production
+
 ### [Production Manager](production-manager.md)
 Order and work order management, and production oversight. Learn to create orders, manage work orders, and monitor progress.
 
 ### [Planner](planner.md)
-Planning. Release work onto the floor, promise dates against real capacity, decide what to buy, build or recover, and decide a core's exit after teardown. Running the board day to day is [Scheduler](scheduler.md).
+Release work onto the floor, promise dates against real capacity, decide what to buy, build or recover, run the schedule, and decide a core's exit after teardown.
 
-### [Scheduler](scheduler.md)
-Runs the board day to day: solve, dispatch, and fix what didn't schedule.
+### [Engineering](engineering.md)
+Define what the shop builds and how: part types, processes, routings, work instructions, specs, life limits and cycle times.
+
+## Supply
+
+### [Purchasing](purchasing.md)
+Supplier relationships, qualification, expected deliveries and sourcing facts. Purchase orders stay in your ERP.
 
 ### [Receiving](receiving.md)
 The dock — expected deliveries, receiving, holds, returns and cycle counts.
@@ -28,11 +53,18 @@ The dock — expected deliveries, receiving, holds, returns and cycle counts.
 ### [Shipping](shipping.md)
 Getting finished work out, with the right paperwork, on time.
 
+## Governance
+
 ### [Document Controller](document-controller.md)
 Document management, revisions, and approvals. Learn to upload documents, manage revisions, and route for approval.
 
+### [Auditor](auditor.md)
+Read everything, change nothing. A seat for internal and external audits, with no write permission of any kind.
+
 ### [Administrator](administrator.md)
 System configuration, users, and setup. Learn to manage users, configure processes, and maintain system settings.
+
+## External
 
 ### [Customer Portal](customer.md)
 External customers viewing order status. Learn to track orders, view progress, and access shared documents.
@@ -60,6 +92,22 @@ Supervisors can also preview the floor landings of the people they oversee:
 This is why instructions in one role guide may not match what you see — check
 which landing you are on before assuming a page is missing.
 
+### Not every role has a Home surface yet
+
+Home landings exist for **Operator**, **QA Inspector**, **QA Manager**,
+**Production Manager**, **Shift Lead**, **Engineering**, **Document Controller**
+and **Tenant Admin**. **Purchasing** has cards but no landing of its own.
+
+!!! warning "Planner, Receiving, Shipping and Auditor have no Home blocks"
+    If one of those is your *only* group, Home will be empty. The role works —
+    its permissions and its pages are all live — but nothing has been built for
+    it on Home yet.
+
+    Use the sidebar to reach your work: **Scheduling** for Planner, **Supply**
+    for Receiving and Shipping, and the analysis and compliance pages for
+    Auditor. Most people holding these also hold a role that does have a
+    landing, which is why this is easy to miss.
+
 ### Late deliveries
 
 **Purchasing**, **Production Manager** and **Tenant Admin** get a **Late
@@ -86,19 +134,57 @@ Purchasing had no Home blocks of its own.
 
 ## Role Comparison
 
-| Capability | Operator | Inspector | QA Manager | Production | Doc Controller | Admin |
-|------------|:--------:|:---------:|:----------:|:----------:|:--------------:|:-----:|
-| View orders | Yes | Yes | Yes | Yes | Yes | Yes |
-| Complete steps | Yes | Yes | Yes | Yes | - | Yes |
-| Record measurements | Yes | Yes | Yes | - | - | Yes |
-| Create NCRs | - | Yes | Yes | - | - | Yes |
-| Approve dispositions | - | - | Yes | - | - | Yes |
-| Manage CAPAs | - | - | Yes | - | - | Yes |
-| Upload documents | - | Yes | Yes | Yes | Yes | Yes |
-| Approve documents | - | - | Yes | - | Yes | Yes |
-| Create orders | - | - | - | Yes | - | Yes |
-| Manage users | - | - | - | - | - | Yes |
-| Configure system | - | - | - | - | - | Yes |
+### What every staff role can already do
+
+The table below only shows what **tells the roles apart**. Before reading it,
+know that every internal role — Operator and Shipping included — shares a common
+base and can already:
+
+- view orders, work orders, parts and their histories
+- run steps, record measurements and complete work
+- raise a quality report (NCR)
+- upload documents
+- create orders and work orders
+- see the whole tenant's data
+
+!!! warning "The shared base is broad"
+    Several of those are wider than the job title suggests — an Operator can
+    create an order. If your facility needs a tighter floor role, build a custom
+    group rather than assuming the preset is already narrow. See
+    [Permissions](../admin/users/permissions.md).
+
+**[Customer](customer.md) is the exception** and shares none of it: no tenant-wide
+visibility, no write access to production, and row filtering that limits them to
+their own orders.
+
+### What tells the roles apart
+
+| Capability | Op | Lead | QA&nbsp;Insp | QA&nbsp;Mgr | Prod&nbsp;Mgr | Planner | Eng | Purch | Recv | Ship | Doc&nbsp;Ctl | Audit | Admin |
+|------------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Sign off an FPI | – | Yes | Yes | Yes | Yes | – | – | – | – | – | – | – | Yes |
+| Resolve a manual decision point | – | Yes | Yes | Yes | Yes | – | – | – | – | – | – | – | Yes |
+| Override the training gate | – | Yes | – | Yes | Yes | – | – | – | – | – | – | – | Yes |
+| Write training records | – | Yes | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
+| Close a disposition | – | Yes | Yes | Yes | Yes | – | – | – | – | – | – | – | Yes |
+| **Approve** a disposition | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
+| Initiate a CAPA | – | Yes | Yes | Yes | Yes | – | – | Yes | Yes | – | – | – | Yes |
+| **Approve** a CAPA | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
+| Classify documents | – | – | – | Yes | – | – | – | – | – | – | Yes | – | Yes |
+| Author processes & routings | – | – | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
+| Cancel a work order | – | – | – | Yes | Yes | – | – | – | – | – | Yes | – | Yes |
+| Run / commit a solve | – | – | – | – | Yes | Yes | – | – | – | – | – | – | Yes |
+| Work the board by hand | – | Yes | – | Yes | Yes | Yes | – | – | – | – | – | – | Yes |
+| **Approve** a supplier qualification | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
+| Manage users | – | – | – | – | – | – | – | – | – | – | – | – | Yes |
+
+!!! note "Approve is always narrower than do"
+    Notice the pattern: many roles can *raise* a nonconformance, a CAPA or a
+    supplier qualification, and only QA Manager can **approve** one. That
+    separation is the point — it is what an auditor checks, and it is why
+    Receiving can start a supplier problem but not settle it.
+
+**Auditor holds no write permission at all**, by design. An empty row across the
+Audit column is the feature.
 
 ## Finding Your Role
 

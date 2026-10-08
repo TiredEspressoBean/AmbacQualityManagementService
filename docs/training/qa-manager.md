@@ -4,11 +4,6 @@
 **Prerequisites:** QA Inspector training recommended
 **Goal:** Learn to oversee quality operations, approve dispositions, manage CAPAs, and analyze quality data
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! note "Training Data Setup"
     Exercises in this guide reference sample data (e.g., "DISP-TRAIN-001", "CAPA-TRAIN-COMPLETE"). Your administrator should set up this training data before you begin. If specific records aren't available, create your own test records following the exercise patterns.

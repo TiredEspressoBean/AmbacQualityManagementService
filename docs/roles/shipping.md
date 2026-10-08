@@ -3,10 +3,20 @@
 **The other end of the building.** Getting finished work to the customer with the
 right paperwork, and knowing afterwards whether it went on time.
 
-!!! info "There is no Shipping group"
-    As with [Receiving](receiving.md), this is a **job** rather than a group. The
-    work sits with whoever your shop gives it to — commonly **Operator**, **Shift
-    Lead** or **Production Manager**.
+!!! info "Shipping is a group"
+    There is a **Shipping** group you can be put in, as there is for
+    [Receiving](receiving.md). It needs nothing beyond the ordinary staff
+    permissions — shipping, voiding a shipment, outside processing and the export
+    behind a CoC are all already there — so **Operator**, **Shift Lead** and
+    **Production Manager** can do this work too.
+
+    It exists as a named role so a person can hold it, be trained for it, and be
+    found in the system as the one who ships.
+
+!!! warning "Shipping is not release authority"
+    Releasing product is a quality act (ISO 9001 §8.6), and the Ship step's own
+    sign-off substeps enforce it. Being in the Shipping group does not let you
+    release something that hasn't passed.
 
 ## What is ready to go
 

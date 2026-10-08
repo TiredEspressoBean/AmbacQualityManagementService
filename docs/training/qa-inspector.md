@@ -4,11 +4,6 @@
 **Prerequisites:** None (Operator training recommended)
 **Goal:** Learn to perform inspections, record results, create quality reports, and manage dispositions
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! info "Demo Environment Login"
     **Email:** sarah.qa@demo.ambac.com

@@ -120,7 +120,6 @@ STAFF_VIEW_PERMISSIONS = [
     'view_samplingrule', 'view_samplingruleset', 'view_samplingdecision',
     'view_samplinganalytics', 'view_samplingauditlog', 'view_samplingtriggerstate',
     'view_samplingseveritystate',
-    'view_samplingseveritystate',
     # Process Change Control
     'view_processchangerequest', 'view_processchangeorder', 'view_processchangenotice',
     # Training. `view_training_matrix` lives here (not per-group) as a
@@ -927,6 +926,122 @@ GROUP_PRESETS = {
     },
 
     # -------------------------------------------------------------------------
+    # PLANNER - Owns the plan: what runs, in what order, and what we promise
+    # -------------------------------------------------------------------------
+    # Release onto the floor, promised dates, the solve, and the calendars the plan
+    # is built on. At a plant this size the Production Manager usually holds this as
+    # well — which is why PM keeps every permission below rather than handing them
+    # over. The roles compose; this one exists so a facility that staffs planning
+    # separately can, and so the training has something to be about.
+    #
+    # The docs carry both a Planner and a Scheduler page, but the product does not
+    # distinguish them: both work the same surface, behind the same gates, and in
+    # the demo they are the same person. One role, named for the wider job —
+    # sequencing on the board is part of planning, not a separate trade.
+    #
+    # Deliberately NOT included, though the PM has them and they look adjacent:
+    # work centres and equipment (that is Engineering defining the plant, not the
+    # planner using it), notification schedules, shift notes (the lead's voice to
+    # the floor), and `delete_workorder` — cancelling a job is a commitment to a
+    # customer being broken, which stays with the manager.
+    'planner': {
+        'name': 'Planner',
+        'description': 'Owns the plan: releasing work, promising dates, running and '
+                       'adjusting the schedule, and the calendars it is built on',
+        'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            # Full tenant visibility (sees all data, not just relationship-filtered)
+            'full_tenant_access',
+            # The solve itself: run it, commit a what-if draft, discard one.
+            'add_scheduleresult',
+            # Everything the planner does to a solved board by hand — move, pin,
+            # reassign machine or operator, dispatch, undo.
+            'change_scheduledtask', 'delete_scheduleslot',
+            # Solver settings and the release policy (AUTO vs MANUAL) live here.
+            'add_optimizationconfig', 'change_optimizationconfig',
+            # Non-working time. A stale calendar breaks the plan on day one, so the
+            # person who owns the plan owns the calendar: holidays and shutdowns…
+            'add_plantcalendarexception', 'change_plantcalendarexception',
+            'delete_plantcalendarexception',
+            # …PTO and training blocks against named people…
+            'add_laborcalendarblock', 'change_laborcalendarblock',
+            'delete_laborcalendarblock',
+            # …the shift patterns capacity is measured against, and overtime.
+            'add_shift', 'change_shift', 'delete_shift',
+            'add_overtimewindow', 'change_overtimewindow', 'delete_overtimewindow',
+            # Sequence-dependent setup between jobs on the same resource.
+            'add_workcenterchangeover', 'change_workcenterchangeover',
+            'delete_workcenterchangeover',
+            # Who is rostered where. This is the labour side of capacity — the
+            # unstaffable blocker at release reads exactly this.
+            'add_userworkcentermembership', 'change_userworkcentermembership',
+            'delete_userworkcentermembership',
+        ],
+    },
+
+    # -------------------------------------------------------------------------
+    # RECEIVING - The inbound dock
+    # -------------------------------------------------------------------------
+    # Distinct from Purchasing, which also mentions receiving: the buyer places
+    # and chases the order and owns the supplier relationship; this role is the
+    # person who physically takes the delivery, inspects it, and puts it away. At
+    # a small plant one person may hold both — the roles compose, as QA Inspector
+    # and Shift Lead already do — but they are different jobs and separating them
+    # is what lets a larger facility staff them separately.
+    #
+    # Deliberately NOT narrower than Operator. The view base and operational write
+    # already cover receiving inspection, lots, staging and core receipt; what this
+    # role adds is an identity to assign a person to and a curriculum to train them
+    # against. Authority held back from it is the same held back from every doer:
+    # `reject_whole_lot` (a VDMR is QA's call) and `approve_disposition` (deciding
+    # what happens to rejected goods). The dock raises those; it does not settle them.
+    'receiving': {
+        'name': 'Receiving',
+        'description': 'The inbound dock: expected deliveries, receipt and incoming '
+                       'inspection, holds, put-away and staging to the bench',
+        'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            # Full tenant visibility (sees all data, not just relationship-filtered)
+            'full_tenant_access',
+            # A rejected lot raises a SCAR against the supplier (MaterialLot.raise_scar).
+            'initiate_capa',
+            # The dock keeps the list of places stock is put away, not just adds to it:
+            # bins get renamed, merged and retired as the floor is rearranged.
+            'change_storagelocation',
+        ],
+    },
+
+    # -------------------------------------------------------------------------
+    # SHIPPING - The outbound dock
+    # -------------------------------------------------------------------------
+    # Ships finished units and returns a customer's own property (ISO 9001 §8.5.3),
+    # produces the paperwork that travels with the goods, and sends work out to
+    # subcontract vendors and books it back in.
+    #
+    # Needs nothing beyond the staff base — shipping, voiding a shipment, outside
+    # processing and `export_data` for the CoC are all already there. It exists as a
+    # named role for the same reason Receiving does: so a person can hold it, be
+    # trained for it, and be found in the system as the one who ships. Release of
+    # product is a quality act (ISO 9001 §8.6) and the Ship step's own sign-off
+    # substeps enforce it; this role does not carry a separate release authority.
+    'shipping': {
+        'name': 'Shipping',
+        'description': 'The outbound dock: shipping finished units and customer '
+                       'property, packing lists and CoCs, and subcontract send-out',
+        'permissions': [
+            *STAFF_VIEW_PERMISSIONS,
+            *CLASSIFIED_DOCUMENT_VIEW,
+            *STAFF_OPERATIONAL_WRITE,
+            # Full tenant visibility (sees all data, not just relationship-filtered)
+            'full_tenant_access',
+        ],
+    },
+
+    # -------------------------------------------------------------------------
     # AUDITOR - Read-only, audit independence
     # -------------------------------------------------------------------------
     # View base only: auditors must not mutate what they audit, and don't get
@@ -934,7 +1049,8 @@ GROUP_PRESETS = {
     # persons for export-controlled technical data).
     'auditor': {
         'name': 'Auditor',
-        'description': 'Read-only access for audits, anonymized sensitive data',
+        'description': 'Read-only access for audits: sees the whole tenant, changes '
+                       'nothing, and is not granted the classified document tiers',
         'permissions': [
             *STAFF_VIEW_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)

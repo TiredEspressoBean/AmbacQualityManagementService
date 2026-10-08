@@ -61,13 +61,32 @@ Scrap, Rework, and Return to Supplier need no approval reference.
 Recording a decision requires **`approve_disposition`**.
 
 If you don't hold it, you don't have to hand the record off: an authorized
-approver can **co-sign inline**. Enter their email as the co-signer and the
-decision is recorded against *them* as the authority, with you as the caller.
-This keeps the QA Manager out of the loop for routine decisions without
-misattributing authority.
+approver can **co-sign inline**. Choose the disposition type and press **Update
+Disposition** as normal — the editor will not commit, and instead opens
+**Authorize disposition decision**:
+
+![The Authorize disposition decision dialog](../../assets/qa-inspector/qa-04-cosign.png)
+
+It asks for the approver's **email**, their **signature**, an explicit *"I
+authorize this disposition decision"* tick, and their **password** — captioned
+*"Their password, to verify their identity. They are not logged in here."*
+
+!!! important "This is a co-signature, not a login switch"
+    The approver never logs in. They authenticate on **your** screen, the
+    decision commits, and the record carries **their** name as the authority with
+    you as the caller.
+
+    Trainees routinely read this dialog as an error. It isn't — it is the gate
+    doing its job, and it is how a routine decision keeps moving without
+    misattributing who authorised it.
 
 Either way the record stores **who authorized it and when** — that pair is what
 8.7 asks for.
+
+!!! tip "Closing is yours even when the decision wasn't"
+    Authoring the decision and **closing** the disposition are different
+    permissions on the same record. An inspector who needed a co-signature for
+    the decision can still close it once the work is done and re-inspected.
 
 ## Severity
 

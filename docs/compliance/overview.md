@@ -117,19 +117,30 @@ The following depend on deployment configuration and are **not application featu
 
 ### 3. Granular RBAC
 
-9 predefined groups with module-based permissions:
+15 predefined groups with module-based permissions:
 
 | Group | Primary Access |
 |-------|----------------|
-| Admin | Full system access |
-| QA_Manager | Quality reports, dispositions, CAPA closure |
-| QA_Inspector | Inspections, measurements, CAPA initiation |
-| Production_Manager | Orders, work orders, parts |
-| Production_Operator | Part tracking, data recording |
-| Document_Controller | Full document control, all classifications |
-| Engineering | Technical documents, design CAPAs |
-| Supplier_Quality | Incoming inspection, supplier CAPAs |
-| Customer | Read-only portal access |
+| System Admin | Platform-level: all tenants |
+| Tenant Admin | Full access within one organization |
+| QA Manager | Quality reports, dispositions, CAPA closure, approvals |
+| QA Inspector | Inspections, measurements, CAPA initiation |
+| Production Manager | Orders, work orders, parts, scheduling |
+| Operator | Part tracking, data recording |
+| Shift Lead | Operator plus FPI sign-off, decision points, training overrides |
+| Planner | Release, promised dates, the solve and its calendars |
+| Engineering | Processes, routings, specs, technical documents |
+| Purchasing | Supplier qualification, expected receipts, sourcing |
+| Receiving | Incoming receipt and inspection, holds, put-away |
+| Shipping | Shipments, packing lists and CoCs, subcontract send-out |
+| Document Controller | Full document control, all classifications |
+| Auditor | Read-only across the tenant; no write permission |
+| Customer | Read-only portal access to their own orders |
+
+!!! note "Separation of duties is the design"
+    Many roles can *raise* a nonconformance, a CAPA or a supplier qualification;
+    only **QA Manager** can approve one. See [Role
+    Comparison](../roles/index.md#what-tells-the-roles-apart).
 
 **Key files**: `Tracker/permissions.py`
 

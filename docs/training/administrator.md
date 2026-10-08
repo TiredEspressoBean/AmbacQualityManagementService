@@ -4,11 +4,6 @@
 **Prerequisites:** Understanding of all user roles
 **Goal:** Learn to configure the system, manage users, set up processes, and maintain system health
 
-!!! abstract "Curriculum revision"
-    **Rev A — 2026-09-15.** Cite this revision on the training record, so the
-    competence evidence names what was actually taught. Reference documentation
-    changes continuously; this curriculum is revised deliberately.
-
 
 !!! info "Demo Environment Login"
     **Email:** admin@demo.ambac.com
@@ -130,7 +125,7 @@ By the end of this module, you will:
    - First Name: Training
    - Last Name: User One
    - User Type: Internal
-   - Groups: Add to "Production_Operator" group
+   - Groups: Add to "Operator" group
 3. Save
 
 ---
@@ -277,11 +272,11 @@ Users → Groups → Permissions
 
 | Group | Typical Permissions |
 |-------|---------------------|
-| **Production_Operator** | View orders/parts, create parts |
-| **QA_Inspector** | Above + quality reports, initiate CAPAs, conduct RCA |
-| **QA_Manager** | Above + approve dispositions, manage CAPAs, approvals |
-| **Production_Manager** | Manage orders, work orders, view all |
-| **Document_Controller** | Manage documents, revisions, classifications |
+| **Operator** | View orders/parts, create parts |
+| **QA Inspector** | Above + quality reports, initiate CAPAs, conduct RCA |
+| **QA Manager** | Above + approve dispositions, manage CAPAs, approvals |
+| **Production Manager** | Manage orders, work orders, view all |
+| **Document Controller** | Manage documents, revisions, classifications |
 | **Admin** | Full system access |
 
 ---
