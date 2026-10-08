@@ -152,7 +152,7 @@ class GroupSeeder:
         from auditlog.context import disable_auditlog
         from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
-        from Tracker.presets import GROUP_PRESETS
+        from Tracker.presets import GROUP_PRESETS, grantable_permissions
 
         created = []
         # Suppress auditlog while seeding. The Admin group's
@@ -179,11 +179,12 @@ class GroupSeeder:
                 if was_created:
                     # Assign permissions
                     if preset['permissions'] == '__all__':
-                        # Admin gets all permissions
-                        group.permissions.set(Permission.objects.all())
+                        # Admin gets every permission a tenant may hold — which is not
+                        # literally every row: Django's own admin perms are excluded.
+                        group.permissions.set(grantable_permissions())
                     else:
-                        perms = Permission.objects.filter(codename__in=preset['permissions'])
-                        group.permissions.set(perms)
+                        group.permissions.set(
+                            grantable_permissions(preset['permissions']))
 
                     created.append(group)
 
@@ -231,10 +232,12 @@ class GroupSeeder:
         """
         from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
-        from Tracker.presets import GROUP_PRESETS
+        from Tracker.presets import GROUP_PRESETS, grantable_permissions
 
         preset_by_name = {preset['name']: preset for preset in GROUP_PRESETS.values()}
-        all_perm_ids = set(Permission.objects.values_list('id', flat=True))
+        # Grantable only — the reconciler is what REVOKES, so this is also the repair
+        # path for groups that already hold an admin.* perm from the old bare filter.
+        all_perm_ids = set(grantable_permissions().values_list('id', flat=True))
 
         results = {
             'groups_inspected': 0,
@@ -255,9 +258,8 @@ class GroupSeeder:
                 desired_ids = all_perm_ids
             else:
                 desired_ids = set(
-                    Permission.objects.filter(
-                        codename__in=preset['permissions']
-                    ).values_list('id', flat=True)
+                    grantable_permissions(preset['permissions'])
+                    .values_list('id', flat=True)
                 )
 
             existing_ids = set(group.permissions.values_list('id', flat=True))
@@ -287,7 +289,7 @@ class GroupSeeder:
         """
         from django.contrib.auth.models import Permission
         from Tracker.models import TenantGroup
-        from Tracker.presets import GROUP_PRESETS
+        from Tracker.presets import GROUP_PRESETS, grantable_permissions
 
         # Build lookup by name
         preset_by_name = {preset['name']: preset for preset in GROUP_PRESETS.values()}
@@ -307,10 +309,9 @@ class GroupSeeder:
                 continue
 
             if preset['permissions'] == '__all__':
-                group.permissions.set(Permission.objects.all())
+                group.permissions.set(grantable_permissions())
             else:
-                perms = Permission.objects.filter(codename__in=preset['permissions'])
-                group.permissions.set(perms)
+                group.permissions.set(grantable_permissions(preset['permissions']))
 
             results['groups_updated'] += 1
 

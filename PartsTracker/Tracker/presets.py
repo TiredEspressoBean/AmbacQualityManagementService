@@ -999,6 +999,36 @@ def get_all_preset_permissions():
     return all_perms
 
 
+#: Apps whose permissions a tenant group may never hold. Django's own `admin` app
+#: registers add/change/delete/view_logentry — the same four codenames django-auditlog
+#: registers, and the only ambiguous codenames in the system (4 of 746).
+#:
+#: A preset naming `view_logentry` means the auditlog one: that is what `/api/auditlog/`
+#: enforces. But `filter(codename__in=[...])` matches BOTH, so every role granted audit
+#: visibility silently also received `admin.view_logentry`. Ten groups held it, Operator
+#: among them. Permission *checks* read codename strings
+#: (`User.get_tenant_permissions`), so the extra grant changed no answer — it just put
+#: tenant roles in another app's permission space, which is the shape of thing a
+#: permission review flags and nobody can explain.
+#:
+#: Excluded by app rather than by codename, and here rather than at each call site,
+#: because the rule is the general one: a tenant group has no business holding `admin.*`.
+_NON_TENANT_PERMISSION_APPS = ('admin',)
+
+
+def grantable_permissions(codenames=None):
+    """Permissions a tenant group may be granted — all of them, or those named.
+
+    `codenames=None` means "everything grantable", for the `__all__` presets; passing a
+    list filters to those codenames. Either way Django's admin permissions are excluded.
+    """
+    from django.contrib.auth.models import Permission
+
+    qs = Permission.objects.exclude(
+        content_type__app_label__in=_NON_TENANT_PERMISSION_APPS)
+    return qs if codenames is None else qs.filter(codename__in=codenames)
+
+
 
 def validate_presets():
     """

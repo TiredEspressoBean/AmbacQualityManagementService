@@ -1144,7 +1144,10 @@ class TenantGroupViewSet(viewsets.ModelViewSet):
         if not isinstance(codenames, list):
             raise ValidationError({'permissions': 'Must be a list of permission codenames.'})
 
-        perms = Permission.objects.filter(codename__in=codenames)
+        # Tenant-grantable only: a bare codename filter also matches Django's admin
+        # permissions, which share four codenames with django-auditlog (see presets).
+        from Tracker.presets import grantable_permissions
+        perms = grantable_permissions(codenames)
 
         if request.method == 'PUT':
             group.permissions.set(perms)
