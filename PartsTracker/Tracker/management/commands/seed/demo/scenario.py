@@ -41,6 +41,7 @@ from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
 from .dwi import DemoDwiSeeder
+from .dark_exhibits import DemoDarkExhibitSeeder
 from .showcase import DemoShowcaseSeeder
 
 
@@ -199,6 +200,13 @@ class DemoScenario(BaseSeeder):
             result['manufacturing']
         )
 
+        # Phase 9: light the exhibits that are built but have nothing to show.
+        # Runs here because every block depends on orders, work orders, parts, lots,
+        # BOMs and step executions already existing — order lines are derived from
+        # work orders, and consumption draws against steps a part has actually run.
+        self.log("\n--- Phase 9: Dark Exhibits ---")
+        result['dark_exhibits'] = self._seed_dark_exhibits(result['users'])
+
         # Last, deliberately: it attaches an out-of-cal gauge to each inspector's
         # most recent quality report, and reports are still being written by
         # showcase, qa_walk and the training exercises above. Run it inside the
@@ -212,6 +220,12 @@ class DemoScenario(BaseSeeder):
         self.log("=" * 60)
 
         return result
+
+    def _seed_dark_exhibits(self, users):
+        """Populate the surfaces the role audit found built-but-empty."""
+        seeder = DemoDarkExhibitSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed(users)
 
     def _link_gauge_nag(self):
         """Give every inspector an out-of-cal gauge on their home page."""

@@ -84,3 +84,85 @@ class DemoSeedFlowsTests(TestCase):
             bodies = json.dumps(list(Substep.objects.values_list("body_blocks", flat=True)))
             for node in ("harvestedComponentCapture", "componentInstallCapture", "rebuildFindingCapture"):
                 self.assertIn(f'"{node}"', bodies, node)
+
+
+class DemoSeedDarkExhibitTests(TestCase):
+    """Phase 9 lights the surfaces the role audit found built-but-empty.
+
+    Each of these was verified working in code and then found with nothing to show
+    in the browser, which is a worse failure than a bug: the feature looks absent.
+    They are asserted here because a seed regression would put them back in the dark
+    silently, and only a walk would notice.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", stdout=StringIO())
+        cls.tenant = Tenant.objects.get(slug="demo")
+
+    def test_customer_orders_carry_dated_demand_lines(self):
+        """Shipping row 9 — `delivery_performance` keys on
+        `work_order__order_line__due_date`, so without dated lines no shipment can be
+        attributed and the board reads "On time: —" beside shipped units."""
+        from Tracker.models import OrderLine
+        from Tracker.services.mes.shipping import delivery_performance
+        with tenant_context(self.tenant):
+            lines = OrderLine.objects.all()
+            self.assertTrue(lines.exists(), "no order lines — OTD cannot be measured")
+            self.assertFalse(lines.filter(due_date__isnull=True).exists(),
+                             "an undated line measures nothing")
+            self.assertTrue(WorkOrder.objects.filter(order_line__isnull=False).exists(),
+                            "no work order is pegged to a line")
+            perf = delivery_performance(self.tenant)
+            self.assertGreater(perf["deliveries"], 0, "nothing to score")
+            self.assertIsNotNone(perf["on_time_pct"])
+
+    def test_material_usage_records_what_was_drawn(self):
+        """Operator row 5 — with no usages the traveller's lots-drawn, recorded-values
+        and overrides sections are dead for EVERY serial, and the backward trace from
+        a part to its lots has nothing in it."""
+        from Tracker.models import MaterialUsage
+        with tenant_context(self.tenant):
+            usages = MaterialUsage.objects.select_related("lot", "part", "step")
+            self.assertTrue(usages.exists(), "no material was ever drawn")
+            u = usages.first()
+            self.assertIsNotNone(u.lot_id, "a usage with no lot traces nothing")
+            self.assertIsNotNone(u.step_id, "a usage with no step can't reach a traveller row")
+            self.assertGreater(u.qty_consumed, 0)
+
+    def test_a_cycle_count_waits_to_be_applied(self):
+        """Receiving row 8 — submitting is the counter's job and applying needs
+        `apply_cyclecount`. A pre-applied count would teach neither half."""
+        from Tracker.models import CycleCount
+        with tenant_context(self.tenant):
+            counts = CycleCount.objects.all()
+            self.assertTrue(counts.exists(), "no cycle count to work")
+            self.assertTrue(counts.filter(status="SUBMITTED").exists(),
+                            "no count is waiting for a lead to apply it")
+
+    def test_one_lot_is_a_customers_own_property(self):
+        """Shipping row 8 — the board's customer-property half filters on
+        `owner__isnull=False` (ISO 9001 8.5.3)."""
+        from Tracker.models import MaterialLot
+        with tenant_context(self.tenant):
+            self.assertTrue(MaterialLot.objects.filter(owner__isnull=False).exists(),
+                            "no customer property — that half of the board stays empty")
+
+    def test_a_customer_requires_a_coc_on_every_shipment(self):
+        """Shipping rows 3-4 — the badge the clerk reads before packing."""
+        from Tracker.models import Companies
+        with tenant_context(self.tenant):
+            self.assertTrue(Companies.objects.filter(requires_coc_on_shipment=True).exists(),
+                            "no CoC customer — the badge never renders")
+
+    def test_document_control_has_a_review_and_a_classification_to_see(self):
+        """Document Controller rows 6 and 7 — the review loop and the tiers are what
+        the role is most distinctively for, and both were dark."""
+        from Tracker.models import Documents
+        with tenant_context(self.tenant):
+            self.assertTrue(Documents.objects.filter(review_date__isnull=False).exists(),
+                            "nothing is due for review — the tile reads 0 forever")
+            above_internal = Documents.objects.exclude(
+                classification__in=["", "public", "internal", "PUBLIC", "INTERNAL"])
+            self.assertTrue(above_internal.exists(),
+                            "every document is Internal — tier filtering is unobservable")

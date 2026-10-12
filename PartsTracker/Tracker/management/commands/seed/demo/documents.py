@@ -43,19 +43,17 @@ DEMO_APPROVAL_TEMPLATES = [
         'allow_self_approval': False,
         'default_due_days': 5,
         'escalation_days': 3,
-        'auto_assign_by_role': 'QA_Manager',
+        # Group name, matched exactly — see the note on CAPA Approval below.
+        'auto_assign_by_role': 'QA Manager',
     },
-    {
-        'template_name': 'Engineering Change',
-        'approval_type': 'ECO',
-        'approval_flow_type': 'ALL_REQUIRED',
-        'delegation_policy': 'DISABLED',
-        'approval_sequence': 'SEQUENTIAL',
-        'allow_self_approval': False,
-        'default_due_days': 7,
-        'escalation_days': 5,
-        'auto_assign_by_role': 'Production_Manager',
-    },
+    # No ECO template. Approving an engineering change is a PLM act, and
+    # `CHANGE_CONTROL_PLAN.md` lists "ECR / ECO / ECN as an originating workflow"
+    # under Non-Goals — *"Engineering changes originate in PLM. We support inbound
+    # ingestion only."* `MES_FEATURE_TIERS.md` puts `ECO/ECR workflow` with Arena
+    # and Windchill, in the same boundary table that puts purchase orders in the
+    # ERP. Nothing in the codebase ever requests an ECO approval: the only
+    # reference outside the template lists is the enum member itself. Process
+    # change is PCR -> PCO -> PCN, below.
     {
         'template_name': 'CAPA Closure',
         'approval_type': 'CAPA_MAJOR',
@@ -66,7 +64,7 @@ DEMO_APPROVAL_TEMPLATES = [
         'default_due_days': 3,
         'escalation_days': 2,
         'default_threshold': 2,
-        'auto_assign_by_role': 'QA_Manager',
+        'auto_assign_by_role': 'QA Manager',
     },
     {
         # The template `auto_request_capa_approval` looks up for the
@@ -83,6 +81,49 @@ DEMO_APPROVAL_TEMPLATES = [
         # Must match the TenantGroup name exactly (the role lookup is by group
         # name) — it's "QA Manager", not "QA_Manager".
         'auto_assign_by_role': 'QA Manager',
+    },
+    # --- Change control -----------------------------------------------------
+    # `services/change_control/process_change.py` looks these up by
+    # `approval_type` and raises a 400 when they're absent:
+    #   submit_pcr   -> PCR_APPROVAL  (process_change.py:120)
+    #   submit_pco   -> PCO_APPROVAL  (process_change.py:521)
+    #   release_pcn  -> PCN_RELEASE
+    # Without them a PCR cannot leave DRAFT, which strands the whole
+    # PCR -> PCO -> PCN chain at step one and makes change control look unbuilt.
+    # The tenant had an `ECO` template, which is the old name for this and is
+    # not what any of the three services ask for.
+    {
+        'template_name': 'Process Change Request',
+        'approval_type': 'PCR_APPROVAL',
+        'approval_flow_type': 'ALL_REQUIRED',
+        'delegation_policy': 'DISABLED',
+        'approval_sequence': 'SEQUENTIAL',
+        'allow_self_approval': False,
+        'default_due_days': 5,
+        'escalation_days': 3,
+        'auto_assign_by_role': 'QA Manager',
+    },
+    {
+        'template_name': 'Process Change Order',
+        'approval_type': 'PCO_APPROVAL',
+        'approval_flow_type': 'ALL_REQUIRED',
+        'delegation_policy': 'DISABLED',
+        'approval_sequence': 'SEQUENTIAL',
+        'allow_self_approval': False,
+        'default_due_days': 7,
+        'escalation_days': 5,
+        'auto_assign_by_role': 'Production Manager',
+    },
+    {
+        'template_name': 'Process Change Notice',
+        'approval_type': 'PCN_RELEASE',
+        'approval_flow_type': 'ALL_REQUIRED',
+        'delegation_policy': 'OPTIONAL',
+        'approval_sequence': 'PARALLEL',
+        'allow_self_approval': False,
+        'default_due_days': 3,
+        'escalation_days': 2,
+        'auto_assign_by_role': 'Document Controller',
     },
 ]
 

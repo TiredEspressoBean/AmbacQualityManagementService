@@ -138,116 +138,146 @@ DOCUMENT_TYPES = [
 # =============================================================================
 
 APPROVAL_TEMPLATES = [
+    # NOTE: `auto_assign_by_role` and `default_groups_names` are matched against
+    # TenantGroup.name EXACTLY — `approval.py` filters
+    # `user_roles__group__name=...` and the M2M uses `name__in=[...]`. Group names
+    # have NO underscores ("QA Manager", "Document Controller", "Tenant Admin").
+    # These carried the old underscored convention, so on every tenant provisioned
+    # from this file the lookups matched ZERO rows and the templates auto-assigned
+    # to nobody — silently, because a filter that finds nothing is not an error.
+    # Measured on the demo tenant before the fix: 3 of 4 templates matched 0 users.
     {
         "template_name": "Document Release Approval",
         "approval_type": "DOCUMENT_RELEASE",
-        "auto_assign_by_role": "QA_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 5,
         "escalation_days": 3,
-        "default_groups_names": ["QA_Manager", "Document_Controller"],
+        "default_groups_names": ["QA Manager", "Document Controller"],
     },
     {
         "template_name": "Critical CAPA Approval",
         "approval_type": "CAPA_CRITICAL",
-        "auto_assign_by_role": "Admin",
+        "auto_assign_by_role": "Tenant Admin",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "DISABLED",
         "approval_sequence": "SEQUENTIAL",
         "allow_self_approval": False,
         "default_due_days": 3,
         "escalation_days": 1,
-        "default_groups_names": ["QA_Manager", "Production_Manager", "Admin"],
+        "default_groups_names": ["QA Manager", "Production Manager", "Tenant Admin"],
     },
     {
         "template_name": "Major CAPA Approval",
         "approval_type": "CAPA_MAJOR",
-        "auto_assign_by_role": "QA_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 5,
         "escalation_days": 2,
-        "default_groups_names": ["QA_Manager", "Production_Manager"],
+        "default_groups_names": ["QA Manager", "Production Manager"],
     },
+    # No ECO template: approving an engineering change is a PLM act, out of scope
+    # per CHANGE_CONTROL_PLAN.md Non-Goals. Nothing requests this type. Process
+    # change is PCR_APPROVAL -> PCO_APPROVAL -> PCN_RELEASE.
     {
-        "template_name": "Engineering Change Order Approval",
-        "approval_type": "ECO",
-        "auto_assign_by_role": "Production_Manager",
-        "approval_flow_type": "ALL_REQUIRED",
-        "delegation_policy": "OPTIONAL",
-        "approval_sequence": "SEQUENTIAL",
-        "allow_self_approval": False,
-        "default_due_days": 7,
-        "escalation_days": 3,
-        "default_groups_names": ["QA_Manager", "Production_Manager"],
-    },
-    {
+        # Certifying someone on UQMES itself: a trainee finishes a role track, a
+        # supervisor writes the TrainingRecord, and the `training_record` report
+        # prints the evidence with its Employee / Trainer / Supervisor signatures.
+        # QA Manager approves because QA owns the training matrix and competence
+        # evidence (ISO 9001 7.2) — the trainer delivers, somebody else attests.
+        # `allow_self_approval` stays False for exactly that reason.
+        #
+        # NOTE: currently inert. Nothing raises a TRAINING_CERT approval yet, so
+        # this reserves the slot rather than enforcing anything. Wiring it means a
+        # service requesting one when a training record is created.
         "template_name": "Training Certification Approval",
         "approval_type": "TRAINING_CERT",
-        "auto_assign_by_role": "Production_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ANY",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 10,
         "escalation_days": 5,
-        "default_groups_names": ["Production_Manager"],
+        "default_groups_names": ["QA Manager", "Document Controller"],
     },
     {
         "template_name": "Process Approval",
         "approval_type": "PROCESS_APPROVAL",
-        "auto_assign_by_role": "QA_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "SEQUENTIAL",
         "allow_self_approval": False,
         "default_due_days": 7,
         "escalation_days": 3,
-        "default_groups_names": ["QA_Manager", "Production_Manager"],
+        "default_groups_names": ["QA Manager", "Production Manager"],
         "description": "Approval for manufacturing process definitions before production use",
     },
     {
         "template_name": "PCR Approval",
         "approval_type": "PCR_APPROVAL",
-        "auto_assign_by_role": "QA_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "SEQUENTIAL",
         "allow_self_approval": False,
         "default_due_days": 7,
         "escalation_days": 3,
-        "default_groups_names": ["QA_Manager", "Production_Manager"],
+        "default_groups_names": ["QA Manager", "Production Manager"],
         "description": "Approval for process change requests before they become orders",
     },
     {
         "template_name": "PCO Approval",
         "approval_type": "PCO_APPROVAL",
-        "auto_assign_by_role": "QA_Manager",
+        # Production, not QA. The PCR asks "is this change sound?" — a quality
+        # judgement. The PCO carries affected in-flight work orders and an
+        # effective date, so it asks "when can the floor absorb it?", which is
+        # production's call. Routing both to QA would have QA approving its own
+        # request twice and lose the separation the three stages exist for.
+        "auto_assign_by_role": "Production Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "SEQUENTIAL",
         "allow_self_approval": False,
         "default_due_days": 5,
         "escalation_days": 2,
-        "default_groups_names": ["QA_Manager", "Production_Manager"],
+        "default_groups_names": ["QA Manager", "Production Manager"],
         "description": "Approval for process change orders before implementation",
+    },
+    {
+        # The third leg of change control. PCR and PCO were defined here but
+        # PCN_RELEASE was not, so a tenant could approve a change and then stall
+        # at the notice — the point where the floor is actually told about it.
+        "template_name": "PCN Release",
+        "approval_type": "PCN_RELEASE",
+        "auto_assign_by_role": "Document Controller",
+        "approval_flow_type": "ALL_REQUIRED",
+        "delegation_policy": "OPTIONAL",
+        "approval_sequence": "PARALLEL",
+        "allow_self_approval": False,
+        "default_due_days": 3,
+        "escalation_days": 2,
+        "default_groups_names": ["Document Controller", "QA Manager"],
+        "description": "Release of a process change notice to the floor",
     },
     {
         "template_name": "CAPA Approval",
         "approval_type": "CAPA_APPROVAL",
-        "auto_assign_by_role": "QA_Manager",
+        "auto_assign_by_role": "QA Manager",
         "approval_flow_type": "ALL_REQUIRED",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 5,
         "escalation_days": 2,
-        "default_groups_names": ["QA_Manager"],
+        "default_groups_names": ["QA Manager"],
         "description": "Generic CAPA approval used by the post_save signal regardless of severity",
     },
 ]
