@@ -263,7 +263,125 @@ See [Locations & Cycle Counts](../workflows/supply/locations.md).
 
 ---
 
-## Module 8: How the Dock Is Doing
+## Module 8: Staging to the Bench
+
+### Learning Objectives
+
+1. Stage material for the next shift's scheduled work
+2. Record what was actually taken
+3. Recognise when the list is empty for a legitimate reason
+
+### 8.1 What the staging list is
+
+**Scheduling → Staging List** (`/production/staging`) — *"What to put at each
+bench before the operator gets there."* It reads the **solved schedule** and
+lists the next window of work per station.
+
+Walked 2026-10-12:
+
+> **Assembly Cell · 2 jobs · 0/2 staged**
+> WO-ASSESS-004 · Assembly · Common Rail Injector · **4 units** · 05:59 AM
+>   · Injector Spring **4** — `STOCK-CRI-SPR` · Main Stores
+>   · Seal & O-Ring Kit **(optional)** 4 — `STOCK-CRI-SEAL` · Main Stores
+>   · Solenoid Coil **4** — `STOCK-CRI-SOL` · Main Stores
+
+Every material line names **quantity, source lot and location**, so staging is a
+pick list rather than a puzzle. Optional lines are marked as optional. A step
+that consumes nothing says so rather than showing an empty table.
+
+### 8.2 Working it
+
+- **By station** / **By material** — stage bench by bench, or gather one material
+  across all benches
+- **Window** — next 4h / 8h / 12h / 24h
+- **Confirm** a line → the station count moves, e.g. **0/1 → 1/1 staged**, and the
+  row records who staged it
+- **Took another** — when you grabbed a different lot than the one suggested
+- **Mark staged** — the whole job
+- **PDF** — take it to the floor on paper
+
+!!! tip "\"Took another\" is not an error path"
+    The picker grabs what is physically nearest. Recording the lot you actually
+    took is what keeps traceability honest — the suggestion was only a suggestion.
+
+### 8.3 Two honest empty states
+
+!!! warning "An empty list usually means the window, not a fault"
+    The page defaults to the **next 8 hours**. On a plant holiday or a quiet
+    shift that is legitimately empty — it says *"Nothing scheduled in this window.
+    Try a longer window, or check the schedule board."*
+
+    In the demo, **2026-10-12 is Labor Day** in the plant calendar and the solver
+    respects it, so the 8h view is empty and the **24h** view is full. Widen the
+    window before concluding anything is broken.
+
+!!! note "The staleness banner is worth reading"
+    *"The schedule is stale — these times may have moved. Re-solve before staging
+    to them."* Staging to a stale plan puts material at the wrong bench.
+
+### Knowledge Check: Module 8
+
+1. The staging list is empty at 7am. Give two innocent explanations.
+2. You take `STOCK-CRI-SPR-02` when the line said `STOCK-CRI-SPR`. What do you press?
+3. What does the staleness banner mean for your picking?
+
+---
+
+## Module 9: Cores (reman shops)
+
+!!! info "Skip this module if your shop does not reman"
+
+### Learning Objectives
+
+1. Receive a single identified core
+2. Receive a bulk core lot and identify units from it
+
+### 9.1 A core arrives with an identity
+
+Receiving one core is its own flow: **scan the identity band**, **photograph it
+as received**, **grade its arrival condition**, and **sign off**.
+
+The photograph matters — it is the evidence of what condition the unit arrived
+in, taken before anyone touches it.
+
+### 9.2 A pallet arrives without one
+
+A counted delivery with no serials goes in as a **bulk core lot** at
+`/reman/core-lots` → **Receive in bulk**:
+
+> *"A counted delivery with no serials. Units are given identities later, one at
+> a time, and are exchange cores."*
+
+Receiving 40 gives `Received CORELOT-2026-0001: 40 × Common Rail Injector`,
+listed **40 / 40** unidentified at the Receiving Dock.
+
+!!! important "Bulk cores are exchange cores, definitionally"
+    A unit with no identity on arrival cannot be somebody's specific unit coming
+    back, so it is `EXCHANGE`. The system enforces this — it is *"definitional,
+    not shop policy"*.
+
+### 9.3 Identifying units
+
+**Identify a unit** takes grade (A / B / C / Scrap), source, serial and notes.
+**Identify and next** keeps the dialog open so you can work down a pallet.
+
+Each one drops the count — **40/40 → 39/40** — and the identified core keeps a
+link back to the lot it came from, so the trace to the receipt holds.
+
+!!! note "The core-type picker is deliberately narrow"
+    It offers only types that cores are received as, or that have a disassembly
+    BOM. Purchased stock cannot be counted into the core bank by mistake.
+
+### Knowledge Check: Module 9
+
+1. Why photograph a core before doing anything else?
+2. A customer insists a bulk-received core is their own unit. What does the
+   system say, and why?
+3. You identify 12 of a 40-core pallet and go home. What does the next person see?
+
+---
+
+## Module 10: How the Dock Is Doing
 
 ### Learning Objectives
 
@@ -306,6 +424,15 @@ location's ledger.
 
 ### Task 6: Count
 Run a blind count on one location, submit it, and say who applies it.
+
+### Task 7: Stage a bench (row 11)
+Open the staging list. If it is empty, widen the window and say why it was. Stage
+one job's material, using **Took another** on at least one line, and report what
+the station count did.
+
+### Task 8 (reman only): Receive a bulk lot (row R2)
+Receive a bulk core lot, then identify two units from it. Report the count before
+and after, and say why the system made them exchange cores.
 
 ---
 
@@ -350,6 +477,16 @@ training](operator.md#recording-the-qualification).
 ### Returns
 - Reject → Ship back with RMA → RTV sheet travels
 - Flag replacements so planning sees the end date
+
+### Staging
+- Defaults to the **next 8h** — widen before assuming it's broken
+- **Took another** records the lot you actually picked
+- Read the **staleness banner**; staging to a stale plan misplaces material
+
+### Cores
+- Single core: scan band → photograph → grade → sign off
+- Bulk lot: counted, no serials, **always exchange**
+- **Identify and next** works down a pallet
 
 ### Not yours
 - Reject a whole lot (VDMR) → QA

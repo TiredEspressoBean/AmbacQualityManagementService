@@ -2,13 +2,25 @@
 
 This guide is for external customers who access uqmes to view their order status and documents.
 
-!!! tip "Demo Account"
-    In demo mode, log in as **Tom Bradley** (tom.bradley@midwestfleet.com, password: `demo123`) to experience the Customer Portal. You'll see:
+!!! important "The portal is the Tracker page"
+    Your orders live on **Tracker**, in the sidebar — not on Home. **Home is
+    deliberately bare** for a customer: *"Use the sidebar to navigate to your
+    workflow."* If you are looking for your orders and Home looks empty, that is
+    the signpost, not a fault.
 
-    - Order ORD-2024-0042 with current progress (16 of 24 injectors complete, 2 in QA hold)
-    - Certificates of Conformance for completed orders
-    - Notification preferences for order status changes
-    - RBAC in action: Only Midwest Fleet orders visible, not other customers' data
+!!! tip "Demo Account"
+    **Tom Bradley** — tom.bradley@midwestfleet.com, password `demo123`.
+
+    Verified 2026-10-12: Tom sees **11 orders, all Midwest Fleet Services**, out
+    of 16 in the tenant. Great Lakes Diesel's and Northern Trucking's are
+    filtered out entirely. Each card shows the customer, delivery date, days
+    remaining, current stage and progress — *6 / 11 stages*.
+
+!!! note "You will see internal menu items you cannot open"
+    The sidebar is not yet filtered by role, so entries like Processes,
+    Scheduling and CAPAs are listed. They refuse you — the data behind them is
+    row-filtered and the endpoints return "permission denied". Ignore them and
+    use **Tracker**.
 
 ## Your Access
 

@@ -62,21 +62,57 @@ releasing work, or deleting a work centre.
 
 ---
 
-## Module 2: Routings Are Versioned
+## Module 2: Authoring a Routing
 
 ### Learning Objectives
 
-1. Create a new process version rather than editing in place
-2. Explain why steps are shared across versions
+1. Read the process list and its status lifecycle
+2. Build a routing graph with branches
+3. Revise an approved process the way the system intends
 
-### 2.1 Never edit a process in use
+### 2.1 The process list
 
-A process in use is not changed in place. New versions supersede old ones, and
-the old version stays readable **because parts were built to it**. That is the
-whole point: an as-built record must resolve against the routing that was in
-force at the time.
+**Processes** (`/editor/processes`) lists every routing with its **Status**,
+**Number of Steps** and whether it is a **Reman Process**. Walked 2026-10-12:
 
-### 2.2 Steps are shared across versions
+| Name | Status | Steps | Reman |
+|------|--------|------:|-------|
+| Injector Reman — Authoring Draft (SHOWCASE) | **Draft** | 12 | Yes |
+| Injector Build | **Approved** | 9 | No |
+| Injector Reman | **Approved** | 12 | Yes |
+
+Note the first two rows: a **Draft sits alongside the Approved version it will
+replace**. That is the normal working state, not a mess to tidy.
+
+### 2.2 The flow editor
+
+Opening a process gives you a graph — each step a node with its name and
+description, each connection an edge.
+
+A **QA Pass/Fail** step branches: its node shows **Pass** and **Fail** handles,
+and the edges leaving it are labelled accordingly. That is how rework lanes are
+authored — *Fail* routes to Rework, *Pass* continues down the route.
+
+!!! tip "The graph is the routing"
+    There is no separate "sequence" field to keep in step. What the edges say is
+    what the part does.
+
+### 2.3 An approved process is locked
+
+Open an approved one and the header tells you plainly:
+
+> **Process Flow Viewer** · `APPROVED` · 9 steps
+> *"This process is locked. Duplicate to make changes."*
+
+!!! important "Duplicate is the versioning mechanism"
+    You do **not** edit an approved routing. You **duplicate** it, which gives
+    you a Draft to work in, and approve that when it is ready. The old version
+    stays readable **because parts were built to it** — an as-built record has to
+    resolve against the routing that was in force at the time.
+
+    If you find yourself wanting an "unlock" button, the answer is Duplicate.
+
+### 2.4 Steps are shared across versions
 
 !!! danger "This is deliberate structural sharing, not a bug"
     Steps belong to the process *family*, not to one version of it. It is what
@@ -86,14 +122,47 @@ force at the time.
     to pin them. Doing so breaks historical resolution for every unit already
     built.
 
-See [Processes Overview](../admin/processes/overview.md) and [Change
-Control](../workflows/change-control/overview.md).
+See [Processes Overview](../admin/processes/overview.md).
+
+### 2.5 Change control, and what it can do today
+
+**Quality → Change Control** has three tabs — **Requests**, **Orders**,
+**Notices** — for PCRs, PCOs and PCNs.
+
+!!! important "You raise a change from the process editor, not from this page"
+    Change Control is the **register**. The entry point is **Propose Change** in
+    the process editor, which forks a DRAFT process and opens a PCR against it.
+
+    Each record then has its own page and its own actions:
+
+    | Record | What you can do on it |
+    |--------|------------------------|
+    | **PCR** — request | Approve · Reject · Cancel |
+    | **PCO** — order | Author · Approve · Link affected work orders · Implement · Cancel |
+    | **PCN** — notice | Release · Close, with closure evidence |
+
+!!! warning "Ignore the banner on that page"
+    It still claims creating and approving *"are all backend-built but not yet
+    exposed in the UI"*. That text is from June 2026 and was never updated when
+    the actions shipped. **The register is empty in the demo because the tenant
+    has 0 PCRs, 0 PCOs and 0 PCNs** — which is what makes the stale banner
+    convincing.
+
+    This flow is confirmed in the code but has **not been walked end to end** in a
+    browser, so treat the step order above as the shape rather than as verified
+    behaviour.
+
+    The **Draft → Approved** lifecycle above is the other half, and it is what the
+    software enforces regardless. See [Document
+    Control](../compliance/document-control.md).
 
 ### Knowledge Check: Module 2
 
 1. A customer reports a defect on a unit built six months ago. Which routing
    version do you read, and why can you still read it?
-2. Why can't you deep-copy steps into each new version?
+2. You need to change an approved routing. What is the first thing you do?
+3. Your QMS procedure says every change starts with a PCR. What can you actually
+   do in the software today?
 
 ---
 

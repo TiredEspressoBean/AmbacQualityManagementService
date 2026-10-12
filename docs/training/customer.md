@@ -15,9 +15,22 @@ respond when you are asked to approve something
     Tom Bradley is a Midwest Fleet Services contact and sees only Midwest Fleet's
     orders — which is the point of this orientation.
 
+!!! important "Start on Tracker, not Home"
+    **Tracker** in the sidebar is your portal. Home is deliberately bare for a
+    customer — *"Use the sidebar to navigate to your workflow."*
+
+    Verified 2026-10-12: Tom sees **11 orders, all Midwest Fleet Services**, out
+    of 16 in the tenant. Other customers' orders are filtered out entirely.
+
 !!! tip "This is orientation for an external user"
     Hand this to your customer. It assumes no knowledge of manufacturing systems
     and nothing about how the shop works internally.
+
+!!! note "Two rough edges to warn them about"
+    The sidebar is not yet filtered by role, so a customer sees internal menu
+    items — Processes, Scheduling, CAPAs — that refuse them when clicked. Home
+    may also show a brief *"Failed to load data"* message for the same reason.
+    Neither affects their orders.
 
 ---
 

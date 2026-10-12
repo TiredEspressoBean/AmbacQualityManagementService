@@ -188,7 +188,40 @@ back](../workflows/supply/overview.md#sending-it-back).
 
 **You can see all of it and start all of it.** You cannot close it.
 
-### 4.4 Qualifications expiring
+### 4.4 The supplier scorecard
+
+**Supply → Supplier Quality** is where a supplier's behaviour becomes a number
+rather than an impression — *"Receiving-inspection scorecards: acceptance, reject
+rate, CoC compliance, on-time delivery, and open SCARs."*
+
+Each supplier card carries its **qualification standing** — *Qualified*,
+*Conditional*, *Not qualified* — and, where there is history:
+
+| Measure | What it tells you |
+|---------|-------------------|
+| **Lots received** / **Accepted** / **Rejected** | The volume behind everything else |
+| **Reject rate** | Quality, as a rate rather than an anecdote |
+| **CoC compliance** | Whether the paperwork arrives with the goods |
+| **On-time delivery** | Their promise-keeping, scored against the **first** promise |
+| **Open SCARs** | What they already owe you an answer on |
+
+Walked 2026-10-12 — Great Lakes Diesel showed **Rating C**, **9 lots received**,
+**1 open SCAR**, and the card itself recommended an action: **"Review: suspend"**.
+
+!!! tip "The recommendation is the useful part"
+    The scorecard does not just report; it tells you when a supplier's standing
+    should change. That is the moment to act — not three months later when
+    somebody notices the reject rate.
+
+!!! note "Honest empty states"
+    A supplier with no receipts says *"No material lots received from this
+    supplier yet."* rather than showing zeros that look like bad performance.
+    A new supplier is not a failing one.
+
+Changing the standing itself is a qualification decision, and **approving it is
+QA Manager's** — you raise it.
+
+### 4.5 Qualifications expiring
 
 Home gives you **Supplier qualifications expiring** — the thing that bites
 quietly, because an expired qualification blocks receipt rather than announcing
@@ -245,7 +278,11 @@ Raise one, then identify who must approve it and why it isn't you.
 ### Task 5: Raise a SCAR
 From a rejected lot, raise a SCAR. Explain what it becomes.
 
-### Task 6: State the boundary
+### Task 6: Read a scorecard
+Open Supplier Quality. Pick the worst-performing supplier, quote its reject rate,
+CoC compliance and open SCARs, and say what the card recommends you do.
+
+### Task 7: State the boundary
 A colleague asks you to "put the PO price in so we can compare". Explain, in your
 own words, why that isn't in this system.
 
@@ -293,10 +330,17 @@ training](operator.md#recording-the-qualification).
 - Approve a disposition → QA Manager
 - A part's definition or drawing → Engineering
 
+### The scorecard
+- Reject rate · CoC compliance · on-time delivery · open SCARs
+- Standing: Qualified / Conditional / Not qualified
+- It **recommends** — *"Review: suspend"* means act now
+- "No lots received yet" ≠ poor performance
+
 ### Quiet failures to watch
 - Wrong lead time → buy recommendations at the wrong moment
 - Expired supplier qualification → blocked receipt
 - Item never marked expected → nothing can tell you it's late
+- OTD scored against the **first** promise, so re-promising doesn't repair it
 
 ---
 

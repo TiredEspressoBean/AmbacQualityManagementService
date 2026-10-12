@@ -23,7 +23,7 @@ Special actions beyond CRUD:
 respond_to_approval  - Eligible to respond to approval requests
 approve_disposition  - Can record (or co-sign) a disposition decision
 close_capa           - Can close CAPAs
-override_training_gate - Can authorize an unqualified operator onto a step
+override_training_gate - Can authorize a start the training record doesn't cover
 void_substepcompletion - Can void a recorded substep completion
 ```
 

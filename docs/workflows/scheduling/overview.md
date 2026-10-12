@@ -41,11 +41,39 @@ current is what makes the Gantt's dates believable.
 
 ## Staging List
 
-**What to put at each bench before the operator gets there — the next 8 hours
-of scheduled work.**
+**What to put at each bench before the operator gets there — the next window of
+scheduled work.**
 
-View **By station** or **By material**, filter to a single station, and export
-to **PDF** for the floor.
+View **By station** or **By material**, filter to a single station, choose the
+window — **4h / 8h / 12h / 24h**, defaulting to 8 — and export to **PDF** for
+the floor.
+
+Each station shows its jobs with a staged count (*2 jobs · 0/2 staged*), and
+each job lists its materials with quantity, **source lot** and **location** —
+*Injector Spring ×4 · STOCK-CRI-SPR · Main Stores*. Optional lines are marked
+**(optional)**. A step that consumes nothing says so rather than showing an
+empty table.
+
+### Recording what was picked
+
+| Action | Does |
+|--------|------|
+| **Confirm** | Marks that line staged; the station count moves, and it records who staged it |
+| **Took another** | You picked a different lot than the one suggested — records the lot actually taken |
+| **Mark staged** | The whole job at once |
+
+!!! tip "\"Took another\" is not an error path"
+    The picker grabs what is physically nearest. Recording the real lot is what
+    keeps traceability honest — the suggestion was only a suggestion.
+
+!!! warning "An empty list is usually the window, not a fault"
+    The page defaults to **8 hours**. On a plant holiday, a shutdown, or a quiet
+    shift that is legitimately empty, and it says so: *"Nothing scheduled in this
+    window. Try a longer window, or check the schedule board."*
+
+    **Widen the window before concluding anything is broken.** This doubles as
+    the quickest way to confirm a calendar exception reached the solver — add a
+    holiday, and that day's 8-hour view empties while a 24-hour one does not.
 
 !!! warning "Watch for the staleness banner"
     The staging list is derived from the last solve. If the schedule has moved

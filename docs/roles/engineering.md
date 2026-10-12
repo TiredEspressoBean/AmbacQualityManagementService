@@ -36,8 +36,30 @@ the old version stays readable because parts were built to it.
     what lets date snapshots resolve. Treat a step as belonging to the process
     family, not to one version of it.
 
-See [Processes Overview](../admin/processes/overview.md) and [Change
-Control](../workflows/change-control/overview.md).
+!!! important "Duplicate is how you revise"
+    An approved process is **locked** — the flow editor says so: *"This process
+    is locked. Duplicate to make changes."* You duplicate it, work in the Draft,
+    and approve that. A Draft sitting beside the Approved version it will replace
+    is the normal working state.
+
+See [Processes Overview](../admin/processes/overview.md).
+
+!!! important "A formal change starts in the process editor, not on the Change Control page"
+    **Quality → Change Control** is the *register* — it lists PCRs, PCOs and PCNs.
+    You **raise** one from the process editor: **Propose Change** forks a DRAFT
+    process and opens a PCR against it.
+
+    From there each record has its own page with its own actions — a PCR can be
+    approved, rejected or cancelled; a PCO authored, approved, linked to affected
+    work orders and implemented; a PCN released and closed with evidence.
+
+!!! note "The page carries a stale banner"
+    It still says creating and approving *"are all backend-built but not yet
+    exposed in the UI"*. That text dates from June 2026 and was not updated when
+    the actions shipped. The register looks empty in the demo because the tenant
+    has **0 PCRs, 0 POs and 0 PCNs** — not because the feature is missing.
+
+    See [Change Control](../workflows/change-control/overview.md).
 
 ## Cycle times are a planning input, not documentation
 

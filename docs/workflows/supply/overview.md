@@ -651,6 +651,34 @@ with your mix of free-issue work and bulk stock.
 Suppliers also show their qualification state — an unqualified supplier is
 flagged here as **Not qualified**.
 
+### The rating, and what it recommends
+
+Once a supplier has inspection history the card carries a **Rating** badge, with
+the driver as its tooltip. The thresholds are deliberately simple so a buyer can
+predict them:
+
+| Rating | When |
+|--------|------|
+| **C** — action needed | Any **open SCAR**, or reject rate **≥ 10%**, or on-time **< 85%** |
+| **A** — preferred | Reject **≤ 2%**, CoC **≥ 99%**, and on-time **≥ 95%** (or no promise data) |
+| **B** | Everything else |
+
+A supplier with no inspections yet is rated nothing at all — *"No inspection
+history yet"* — rather than scored badly for being new.
+
+A **C** rating surfaces a recommendation beside it, e.g. **Review: suspend**.
+That is the card telling you a standing change is due; acting on it is a
+qualification decision, and **approving one is QA Manager's**, not the buyer's.
+
+!!! note "On-time is scored against the FIRST promise"
+    A re-promise moves the promised date. Scoring against the latest one would
+    give a supplier who slipped twice a clean record, so the original promise is
+    what counts. See [Chasing a late delivery](#chasing-a-late-delivery).
+
+!!! note "Customer property is excluded"
+    A customer's own material sitting in your stores is not a purchase and says
+    nothing about the supplier, so it is left out of every figure here.
+
 ### Qualifying for bulk stock
 
 Parts and raw materials are gated differently, because they are different kinds

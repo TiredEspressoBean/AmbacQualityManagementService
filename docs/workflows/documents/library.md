@@ -122,15 +122,63 @@ Your administrator configures available document types.
 | **Released** | Released for use (effective date set) |
 | **Obsolete** | Superseded, no longer valid |
 
+### Taking a document out of circulation
+
+Two different acts, and the difference matters to an auditor:
+
+| | Use it when | What happens |
+|---|---|---|
+| **Obsolete** | The document was real and has been superseded | Stays in the library, marked Obsolete, with its history and the revision that replaced it |
+| **Delete** | It should never have been there — a duplicate, the wrong file, a test upload | Removed from the library |
+
+!!! important "Deleting is archiving — the record survives"
+    uqmes soft-deletes. A deleted document is taken **out of circulation**, not
+    destroyed: the row and its audit trail remain, and the deletion itself is
+    recorded. You are not removing evidence, and you could not if you tried.
+
+!!! warning "Prefer Obsolete for anything that was ever in force"
+    A superseded document that is deleted rather than obsoleted loses the one
+    thing an auditor asks for — *why* it stopped being the version people work
+    to. Obsolete says that; delete does not.
+
+    **Revisions are never deleted** at all, only archived, so a document's
+    history stays intact regardless.
+
+Deleting needs `delete_documents`, held by **Document Controller, QA Manager,
+Production Manager, Engineering and Tenant Admin** — the authoring and manager
+tiers. Operators, inspectors, the dock and auditors cannot.
+
 ## Classification Levels
 
-| Level | Access | Description |
-|-------|--------|-------------|
-| **Public** | All users | General information |
-| **Internal** | Employees | Internal use only |
-| **Confidential** | Managers+ | Sensitive information |
-| **Restricted** | Limited access | Serious impact if disclosed |
-| **Secret** | Critical access | Critical impact if disclosed |
+| Level | Who can see it | Needs |
+|-------|----------------|-------|
+| **Public** | Everyone, including customers | — |
+| **Internal** | All staff | the staff view base |
+| **Confidential** | All staff | `view_confidential_documents` |
+| **Restricted** | All staff | `view_restricted_documents` |
+| **Secret** | **Tenant Admin and Document Controller only** | `view_secret_documents` |
+
+!!! warning "Confidential and Restricted are not manager-only"
+    Every internal role — Operator and the dock included — holds both
+    `view_confidential_documents` and `view_restricted_documents`. They separate
+    staff from **customers and auditors**, not managers from the floor.
+
+    If you need a document kept from most of the shop, **Secret** is the only
+    tier that does it.
+
+!!! important "QA Manager can classify, but cannot read Secret"
+    `classify_documents` is held by **Tenant Admin, QA Manager and Document
+    Controller**. `view_secret_documents` is held by **Tenant Admin and Document
+    Controller** only.
+
+    So a QA Manager can mark a document Secret and then not be able to open it.
+    Worth knowing before you use that tier.
+
+!!! note "An auditor holds none of them"
+    The Auditor role is given neither the classified tiers nor export-control
+    access — an external auditor may not be an authorised person for
+    export-controlled technical data. A document invisible to an auditor is the
+    control working.
 
 ## Opening Documents
 

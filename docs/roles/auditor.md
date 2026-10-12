@@ -59,9 +59,14 @@ may not be an authorised person for export-controlled technical data.
     a replacement.
 
 !!! note "Overrides are recorded where they happened"
-    A supervisor authorising unqualified work leaves a reason on the step
-    execution itself, not in a separate log. Same for release overrides on a work
-    order. The exception is stored next to the thing it excepted.
+    A supervisor authorising past the training gate signs in separately, and
+    the reason lands on the **step execution itself**, not in a separate log.
+    Same for release overrides on a work order — the exception is stored next to
+    the thing it excepted.
+
+    Read these as *the record hadn't caught up*, not as *unqualified work*. The
+    pattern worth sampling is an authorisation with **no training record
+    following it**.
 
 ## Standards
 

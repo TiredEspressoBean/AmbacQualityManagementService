@@ -131,8 +131,8 @@ customer* or *Returned unrepaired*.
 !!! danger "The authorisation hold cannot be overridden"
     A unit awaiting authorisation cannot be started, captured on, or advanced,
     and **no supervisor override bypasses it**. This is unlike the training
-    gate, where a supervisor can authorise an unqualified operator through with
-    a recorded reason.
+    gate, where a second supervisor can sign in and authorise a start the
+    training record doesn't yet cover, with a recorded reason.
 
     The difference is deliberate: a training gate protects work the shop
     controls, and an authorisation hold protects a decision that is not the

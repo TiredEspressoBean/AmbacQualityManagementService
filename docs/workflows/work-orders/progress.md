@@ -27,6 +27,20 @@ Due Date, Customer, Order, and a Details link.
     **Overdue**, **On hold**, **With exceptions** and **Expedited**, plus a
     priority selector. Use it when you are working across many work orders.
 
+!!! important "There is no Expedite button — Expedited is derived"
+    A work order counts as **Expedited** when its **priority is Urgent**. To jump
+    a job to the front, set its priority; the tile and filter follow from that.
+
+!!! warning "Expediting does not record a reason"
+    Unlike holding, scrapping, rejecting, shipping back or rolling back a
+    version, a priority change takes **no reason**. The audit log keeps *who*,
+    *when* and *what* — `priority: 2 → 1`, with the actor and a timestamp — but
+    not **why**.
+
+    If the justification matters, put it in a **shift note** or the work order's
+    notes. The audit trail will not carry it for you, and six months later
+    "someone made this urgent" is all that remains.
+
 ### Work Order Detail
 
 Detailed progress view includes:

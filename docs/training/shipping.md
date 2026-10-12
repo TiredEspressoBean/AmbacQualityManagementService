@@ -185,7 +185,104 @@ See [Outside Processing](../workflows/supply/outside-processing.md).
 
 ---
 
-## Module 7: Whether You Are On Time
+## Module 7: Returning a Customer's Own Unit
+
+!!! info "Skip this module if your shop does not reman"
+
+### Learning Objectives
+
+1. Tell a repair-and-return unit from an exchange one
+2. Know what has to be true before it can go back
+3. Ship it with a certificate describing what was replaced
+
+### 7.1 Not every core goes back to its sender
+
+| Fulfilment | Whose unit is it | Where it goes |
+|------------|------------------|---------------|
+| **Repair and return** | The customer's own | Back to that customer |
+| **Exchange** | The shop's | Stock, or anyone's order |
+
+A repair-and-return unit is flagged `returns_to_customer`. It is the one case
+where shipping the *wrong physical unit* is a real failure even though the part
+number matches.
+
+### 7.2 What must be true first
+
+A unit can only be returned once it is **Rebuilt** or **Declined**. Rebuilt is
+reached by finishing its scoped rebuild route — and that route's last step
+carries a **signature** substep, so somebody signs for the final test before it
+can leave.
+
+!!! note "Declined still ships"
+    A declined unit does not go straight to 'returned' — *"it still has to
+    physically go back, and that is the same dispatch step a rebuilt unit takes."*
+    The customer gets their property either way.
+
+### 7.3 The certificate
+
+The as-built record — what components actually went in — is captured during
+**Assembly**, in the substep *"Record the components fitted (reman)"*. That is
+what lets the certificate say what was replaced rather than what was planned.
+
+A **CoC** is offered beside the **Packing list** on every shipment.
+
+!!! warning "Check the cert names the components, not the scope"
+    A rebuild plan says what was *intended*. The as-built says what *happened*.
+    For a returned unit the customer is entitled to the second one.
+
+### Knowledge Check: Module 7
+
+1. Two identical injectors, one exchange and one repair-and-return. Why does it
+   matter which one you put in the box?
+2. The customer declined the over-and-above work. Does the unit stay here?
+3. Where does the "what was replaced" list come from?
+
+---
+
+## Module 8: Export Control
+
+### Learning Objectives
+
+1. Know that the screen exists and what it does
+2. Know its current limits
+
+### 8.1 What it does
+
+Export control filters at the **data** layer, not just at the dock. A part,
+document or record marked `itar_controlled` is **excluded from the queryset** for
+anyone who is not a US person — they do not see it to ship it.
+
+Denials are logged to a separate compliance channel for your SIEM, citing NIST
+800-171 / CMMC, with the reason in plain terms:
+
+> `ITAR_VIOLATION: User is not a US Person (22 CFR 120.62)`
+
+There is also an EAR denied-country list.
+
+### 8.2 What it does not do yet
+
+!!! warning "Nothing in the demo exercises this"
+    No demo part is `itar_controlled`, none carries an ECCN, no document is
+    controlled, and **every demo user is a US person** — so neither side of the
+    filter can fire. You cannot practise it here; you can only know it is there.
+
+!!! danger "A known gap worth raising at implementation"
+    The code has a fallback for a non-US person who holds a TAA or an export
+    licence — but **the field it reads is never set anywhere**. In practice there
+    is currently no way to grant that exception.
+
+    If your facility ships controlled technical data, raise this before go-live
+    rather than discovering it with a licence in hand.
+
+### Knowledge Check: Module 8
+
+1. A controlled part is missing from your ready-to-ship list. Give the most likely
+   innocent explanation.
+2. Why is filtering at the data layer stronger than a warning at the dock?
+
+---
+
+## Module 9: Whether You Are On Time
 
 ### Learning Objectives
 
@@ -225,6 +322,18 @@ Report on-time % for the last 90 days and identify one late line.
 ### Task 6: Find the boundary
 A unit has not passed its Ship-step sign-off but the customer is chasing.
 Explain what you can and cannot do.
+
+### Task 7: Customer property (row 8)
+Find the customer-property section of the shipping board. Say how a lot gets
+there and what the dialog does with a blank quantity.
+
+### Task 8 (reman only): A returned unit (rows R1, R2)
+Find a repair-and-return unit. State what has to be true before it can ship, and
+where the certificate's "what was replaced" list comes from.
+
+### Task 9: Export control (row C1)
+Explain, without practising it, what a non-US person would and would not see, and
+name the gap your facility should raise before go-live.
 
 ---
 

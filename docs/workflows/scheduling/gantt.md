@@ -218,6 +218,36 @@ reassigns it — the machine or the operator — and applies immediately.
 Lane changes do nothing in the **Work orders** view, which groups by order
 rather than by resource.
 
+## Fence zones — how near-term work is protected
+
+The legend carries **Fence: Frozen · Slushy · Liquid**, and every task panel
+names the zone its task sits in. The zone comes from **when the task starts**,
+measured from the moment of the solve:
+
+| Zone | When it starts | What it means |
+|------|----------------|---------------|
+| **Frozen** | Within the frozen window — **2 days** by default | Committed. The solver pins these, so a re-solve leaves them where they are |
+| **Slushy** | After that, within the slushy window — **7 further days** by default | Moves are discouraged. The solver may still move one, but it is the next thing to resist |
+| **Liquid** | Everything later | Freely re-planned on every solve |
+
+Both windows are settings, not constants — a shop that commits further ahead
+widens the frozen zone.
+
+!!! note "Frozen is why a re-solve doesn't churn tomorrow"
+    Without it, every solve would re-plan the work people are already set up for.
+    The frozen zone is what makes a schedule something the floor can act on
+    rather than a figure that changes under them.
+
+!!! warning "A what-if can still move frozen tasks, and it tells you"
+    A draft that disturbs committed work warns before you commit it — *"⚠ 59
+    frozen task(s) had to move — the world changed under the pinned plan. Review
+    before committing."* That count is the real cost of the change; read it
+    beside the lateness figure, not after it.
+
+A **planner pin** (📌) is different: it is a manual lock you place, and it
+survives re-solves regardless of zone. See [Moving a task by
+hand](#moving-a-task-by-hand).
+
 ## Why the schedule goes stale
 
 A stale schedule is normal, not an error. Two different things cause it:

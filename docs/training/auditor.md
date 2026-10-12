@@ -79,10 +79,15 @@ them.
     a replacement.
 
 !!! tip "3. Overrides are recorded where they happened"
-    A supervisor authorising unqualified work leaves a reason on the **step
-    execution itself**, not in a separate log. Same for release overrides on a
-    work order. The exception is stored next to the thing it excepted — so look
-    at the record, not for a register.
+    A supervisor authorising past the training gate signs in separately, and the
+    reason lands on the **step execution itself**, not in a separate log. Same
+    for release overrides on a work order. The exception is stored next to the
+    thing it excepted — so look at the record, not for a register.
+
+    Read these as *the record hadn't caught up*, not as *unqualified work* — the
+    gate can only see what is recorded, and the authorisation already carries a
+    second person's name. What is worth sampling is an authorisation with **no
+    training record following it**.
 
 !!! tip "4. Steps are shared across process versions"
     This is deliberate structural sharing so date snapshots resolve. A step

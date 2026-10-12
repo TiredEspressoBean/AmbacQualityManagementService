@@ -70,6 +70,13 @@ generates the PDF and either downloads it or emails it to you.
 | `part_id_label_batch` | Part ID Labels (Batch) | Part list |
 | `receiving_inspection_record` | Receiving Inspection Record | Material lot / receiving inspection |
 | `rtv_sheet` | Return to Vendor (RTV) Sheet | Rejected material lot |
+| `shipment_coc` | Certificate of Conformance | Shipment detail |
+| `packing_list` | Packing List | Shipment detail |
+| `lot_trace` | Lot Trace | Material lot |
+| `cycle_count_sheet` | Cycle Count Sheet | A count, before counting |
+| `cycle_count_report` | Cycle Count Report | A submitted count |
+| `material_lot_label` | Material Lot Label | Material lot |
+| `location_label` | Location Label | Storage location |
 
 #### Return to Vendor (RTV) Sheet
 
@@ -169,13 +176,6 @@ Generating reports requires the export permission; see
 - Signature records
 
 ## Planned: Standard Reports
-
-### Certificate of Conformance
-Quality certification for shipment:
-- Order/part information
-- Specification compliance
-- Inspection results
-- Authorized signature
 
 ### Audit Trail Report
 System activity for period:

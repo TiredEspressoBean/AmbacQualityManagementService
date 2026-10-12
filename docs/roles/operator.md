@@ -43,9 +43,31 @@ Your supervisor assigns you to specific work orders:
 
 ### 2. Find Your Work Order
 
+**Fastest: use the scan box on Home.** It reads *"Scan or type a work order,
+serial, lot or location…"* — scan the thing in your hand and it opens.
+
+It takes more than work orders:
+
+| Scan or type | Opens |
+|--------------|-------|
+| A **work order** number | That work order |
+| A **serial** on a part or WIP tag | That unit |
+| A **lot number** | That material lot |
+| A **location label** (the barcode reads `LOC:…`) | That location |
+| The **QR code** on any printed label | Whatever it points at |
+
+!!! tip "Scan the unit, not the paperwork"
+    Scanning the serial takes you to the exact unit, which is the one thing a
+    work-order number can't tell you. On a job with twenty units in flight it is
+    the difference between the right part and a plausible one.
+
+Or navigate by hand:
+
 1. Navigate to **Production** > **Work Orders**
 2. Search or filter to find your assigned work order
 3. Click to open the work order detail
+
+See [Scanning](../workflows/supply/locations.md#scanning) for scanner setup.
 4. Review parts at your step
 
 ### 3. Work on Parts

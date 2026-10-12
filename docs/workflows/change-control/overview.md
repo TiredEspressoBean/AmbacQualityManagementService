@@ -6,13 +6,33 @@ happened to the jobs already running under the old version.
 
 **Quality** > **Change Control**
 
-!!! warning "The UI is read-only today"
-    The Change Control page **reads** existing records. Creating a PCR,
-    approving it, implementing it, and releasing or closing a notice are all
-    built in the backend but not yet exposed in the UI.
+!!! important "Change Control is the register; you raise a change in the process editor"
+    **Quality → Change Control** lists PCRs, PCOs and PCNs. You do not create one
+    there.
 
-    In the meantime a change is opened from the **process editor**, and the
-    remaining transitions are driven through the API or by an administrator.
+    Open the process in the **process editor**, use the header menu →
+    **Propose Change**, and the approved process forks into a Draft with a PCR
+    opened against it. From then on each record has its own page and its own
+    actions.
+
+!!! note "The page still carries a banner saying the actions aren't built"
+    It is out of date — it predates the actions shipping. The register looks
+    empty on a fresh tenant because there are no PCRs yet, which makes the
+    banner convincing.
+
+    Walked end to end 2026-10-12: Propose Change → Draft + `PCR-2026-0001` →
+    **Submit for approval** → `SUBMITTED`, with the diff captured and an approval
+    request raised.
+
+!!! warning "A tenant needs its change-control approval templates"
+    Submitting a PCR looks up the tenant's **`PCR_APPROVAL`** template, and the
+    later stages need **`PCO_APPROVAL`** and **`PCN_RELEASE`**. Without them the
+    submit refuses with *"PCR_APPROVAL approval template not found. Please
+    configure approval templates."*
+
+    New tenants get all three from the defaults. An older tenant may only have
+    the retired **`ECO`** template, which nothing looks up — see
+    [Approval Templates](../../admin/setup/approval-templates.md).
 
 ## The three artifacts
 

@@ -220,7 +220,86 @@ Use it when you know something the model doesn't, and **check it survived**.
 
 ---
 
-## Module 5: Buy, Build or Recover
+## Module 5: Non-Working Time
+
+### Learning Objectives
+
+1. Author the four kinds of non-working time
+2. Confirm the solver actually honoured it
+
+### 5.1 The calendar is yours because the plan is
+
+A stale calendar breaks the plan on day one, so the person who owns the plan owns
+the calendar. There are four kinds, and you author all of them:
+
+| Kind | What it is | Demo examples |
+|------|-----------|---------------|
+| **Plant exception** | The whole site is down | *Labor Day* (HOLIDAY) · *Quarterly Inventory Count* (INVENTORY) · *Winter Shutdown* 24–31 Dec |
+| **Labour block** | One named person is unavailable | *PTO* (once) · *Training* (once) · an *ALL MEETING* (weekly) |
+| **Shift** | The pattern capacity is measured against | Day, 06:00–18:00 |
+| **Overtime window** | Capacity you are buying back | — |
+
+### 5.2 Prove the solver honoured it
+
+Authoring is half the job. **Check the board afterwards.**
+
+Verified 2026-10-12: Labor Day carries **0 tasks**, while the next working day
+carries 119. The calendar is not decoration — the solve plans around it.
+
+!!! tip "The staging list is the fastest proof"
+    Open **Staging List** on a plant holiday and the default 8-hour window is
+    empty: *"Nothing scheduled in this window."* Widen it to 24h and the benches
+    fill up again. That round trip confirms, in about ten seconds, that your
+    exception reached the solver.
+
+!!! warning "This is also the most common false alarm"
+    *"The staging list is broken"* on a holiday morning is your calendar working.
+    Teach your leads to widen the window before raising it.
+
+### Knowledge Check: Module 5
+
+1. You add a shutdown week. What do you check before telling anyone the plan is safe?
+2. A lead says staging is empty. What two questions do you ask?
+3. Whose PTO belongs in a labour block rather than a plant exception?
+
+---
+
+## Module 6: Did the Floor Follow It?
+
+### Learning Objectives
+
+1. Read planned versus actual
+2. Understand why it is often empty, and why that is deliberate
+
+### 6.1 Capture is forward-looking
+
+Each scheduled task stamps an **actual start** and **actual end** as a part
+enters and leaves its step.
+
+!!! important "It records; it does not react"
+    Capture deliberately **does not** re-time the plan or mark the schedule
+    stale. The solver already pins in-progress operations when it solves, and
+    *"an actuals drift on every advance would leave the flag permanently on and
+    meaningless."*
+
+### 6.2 Why yours may be empty
+
+Actuals only accrue for work that moves **after** a solve. A schedule solved
+today, over a shop whose activity happened last week, will show nothing — not
+because capture is broken, but because there was nothing left to capture.
+
+!!! note "To see it work, move a part after solving"
+    Solve, then advance a unit through a step, then look again. That is the only
+    sequence that produces an actual.
+
+### Knowledge Check: Module 6
+
+1. Your board shows no actuals at all. What is the first thing to check?
+2. Why doesn't a part finishing early mark the schedule stale?
+
+---
+
+## Module 7: Buy, Build or Recover
 
 ### Learning Objectives
 
@@ -242,14 +321,14 @@ purchasing it.
     each — exports it, and records the answer. The buy decision happens in the
     system that owns the money.
 
-### Knowledge Check: Module 5
+### Knowledge Check: Module 7
 
 1. You are short twelve nozzles. What three options does the report offer?
 2. Where does the cost comparison happen?
 
 ---
 
-## Module 6: A Core's Exit
+## Module 8: A Core's Exit
 
 ### Learning Objectives
 
@@ -280,7 +359,7 @@ you are offered depends on how it is being fulfilled:
 
 See [Remanufacturing Overview](../workflows/reman/overview.md).
 
-### Knowledge Check: Module 6
+### Knowledge Check: Module 8
 
 1. A customer's own core comes back under repair-and-return. Can you harvest it?
 2. *Release to rebuild* is greyed out. What do you fix?
@@ -312,6 +391,14 @@ both lateness and disruption.
 ### Task 6: Decide a core's exit
 Find a disassembled core and choose its exit. State what the fulfilment type
 allowed and what it ruled out.
+
+### Task 7: Author non-working time, and prove it landed (row 9)
+Add a plant exception. Then open the schedule and the staging list and show that
+the solver planned around it. Say which of the four kinds you used and why.
+
+### Task 8: Read planned versus actual (row 8)
+Report how many scheduled tasks carry an actual. If it is zero, explain the
+sequence that would produce one — and why capture does not mark the plan stale.
 
 ---
 

@@ -111,7 +111,45 @@ For specific conditions:
 - Same approver as previous
 - Within thresholds
 
+## The types the system looks up by name
+
+Some workflows fetch a template **by its approval type** and refuse to proceed
+without it. These are not optional configuration — if the template is missing,
+the action fails with a message naming the type:
+
+| Approval type | Requested when | Default approver |
+|---------------|----------------|------------------|
+| `DOCUMENT_RELEASE` | A document is routed for release | QA Manager |
+| `PROCESS_APPROVAL` | A process is submitted for approval | QA Manager |
+| `PCR_APPROVAL` | A process change request is submitted | QA Manager |
+| `PCO_APPROVAL` | A process change order is submitted | Production Manager |
+| `PCN_RELEASE` | A process change notice is released | Document Controller |
+| `CAPA_APPROVAL` / `CAPA_MAJOR` / `CAPA_CRITICAL` | A CAPA needs management approval | QA Manager / Tenant Admin |
+| `TRAINING_CERT` | Reserved for certifying training | QA Manager |
+
+!!! warning "A missing template stops the workflow"
+    Submitting a process change request without a `PCR_APPROVAL` template
+    returns *"PCR_APPROVAL approval template not found. Please configure
+    approval templates."* The three change-control types are the ones most often
+    absent on an older tenant.
+
+!!! danger "Group names must match exactly"
+    **Auto-assign to group** and the default-group list are matched against the
+    group name character for character. `QA_Manager` does **not** match the group
+    **QA Manager** — and a name that matches nothing assigns **nobody**,
+    silently, because a search that finds no one is not an error.
+
+    The real names have spaces and no underscores: **QA Manager**, **Production
+    Manager**, **Document Controller**, **Tenant Admin**, **Shift Lead**,
+    **QA Inspector**, **Operator**. See [Roles](../users/roles.md).
+
+!!! note "There is no ECO template"
+    Engineering change orders originate in your PLM, not here. Nothing in uqmes
+    requests an `ECO` approval. Process change is `PCR` → `PCO` → `PCN`.
+
 ## Template Examples
+
+These are illustrative shapes, not shipped templates.
 
 ### Document Approval
 ```
@@ -126,16 +164,13 @@ Step 3: QA Approval (1 of 1) - QA Manager
 Template: CAPA Closure
 Step 1: Verification Complete (1 of 1) - QA Inspector
 Step 2: Effectiveness Confirmed (1 of 1) - QA Manager
-Step 3: Final Approval (1 of 1) - Quality Director
 ```
 
 ### Process Change
 ```
-Template: Process Change
-Step 1: Engineering (1 of 1)
-Step 2: Quality (1 of 1)
-Step 3: Operations (1 of 1)
-Step 4: Management (for major changes)
+Template: PCR Approval
+Step 1: Quality (1 of 1)      - QA Manager
+Step 2: Production (1 of 1)   - Production Manager
 ```
 
 ## Applying Templates

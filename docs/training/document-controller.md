@@ -39,25 +39,46 @@ Document control is critical for quality certifications (ISO, AS9100, etc.).
 
 ---
 
-### 1.2 Your Main Pages
+### 1.2 Your Home page
+
+Home answers *what needs me right now*. Walked 2026-10-12 as Lisa:
+
+| Block | What it showed |
+|-------|----------------|
+| **Approvals in flight** | **5** — APR-2026-0003…0007, each with its type and due date |
+| **Documents** | Needs my approval **0** · Pending approval **1** · Due for review **0** · Released **2** |
+| **Training** | Current **22** · Expiring soon **1** · Expired **1** |
+
+Every figure is a link into what it counts, and there is a scan box for looking up
+a work order, serial, lot or location.
+
+!!! important "Your approvals queue is mostly not documents"
+    Of those five in flight, **four were CAPA Approvals** and one was a Document
+    Release. That is the normal shape: a Document Controller is an **approvals
+    operator**, not only a document operator.
+
+    Read the **type** on every row before you work it. The habit of assuming the
+    queue is yours-and-document-shaped is how a CAPA approval sits for a week.
+
+### 1.3 Your Main Pages
 
 | Page | Location | Purpose |
 |------|----------|---------|
 | **Documents** | Documents | Document dashboard |
-| **Document List** | Documents > View All Documents | Complete library |
+| **Document List** | `/documents/list` | The full library, with status and classification |
 | **Inbox** | Personal > Inbox | Pending approvals |
 | **Approval History** | Approvals > History | Approval records |
 
-**Exercise 1.1:** Navigate Document Pages
+**Exercise 1.1:** Read your Home
 
-1. Visit Documents dashboard
-2. Browse document library
-3. Check Inbox for pending items
-4. Review approval history
+1. Count your approvals in flight, and say how many are **documents**
+2. Open the Documents block — how many are pending approval, and how many are
+   due for review?
+3. Find one person whose training has expired
 
 ---
 
-### 1.3 Document States
+### 1.4 Document States
 
 | State | Meaning |
 |-------|---------|
@@ -164,13 +185,54 @@ Examples:
 
 ---
 
-### 2.4 Visibility Settings
+### 2.4 Classification
 
-| Setting | Who Can Access |
-|---------|----------------|
-| **Public** | All users including customers |
-| **Internal** | All internal users |
-| **Confidential** | Specific groups only |
+**Classification is yours**, and you hold the top of it. Two different
+permissions, and they are not held by the same people:
+
+| Permission | Held by |
+|------------|---------|
+| `classify_documents` — set a document's tier | Tenant Admin, **QA Manager**, Document Controller |
+| `view_secret_documents` — read the top tier | Tenant Admin, **Document Controller** |
+
+There are **five** tiers, not three:
+
+| Tier | Who can see it |
+|------|----------------|
+| **Public** | Everyone, including customers |
+| **Internal** | All staff |
+| **Confidential** | All staff (`view_confidential_documents`) |
+| **Restricted** | All staff (`view_restricted_documents`) |
+| **Secret** | **Tenant Admin and you** |
+
+!!! warning "Confidential and Restricted are not manager-only"
+    Every internal role — Operator and the dock included — holds both. Those
+    tiers separate staff from **customers and auditors**, not managers from the
+    floor. **Secret is the only tier that narrows it within the shop**, and you
+    are one of only two roles that can read it.
+
+!!! important "A QA Manager can classify Secret and then not be able to open it"
+    They have `classify_documents` but not `view_secret_documents`. If someone
+    says a document vanished after they filed it, this is why.
+
+!!! important "Classification filters the queryset, not just the screen"
+    A document above someone's tier is **excluded from their results**. They do
+    not see it greyed out or get an error — it simply is not there.
+
+    So "I can't find the drawing" from an engineer may be classification working
+    exactly as designed. Check the tier before assuming something is lost.
+
+!!! warning "An auditor is deliberately not given the top tiers"
+    External auditors may not be authorised persons for export-controlled
+    technical data, so the Auditor role gets neither `view_secret_documents` nor
+    the export-control tier. If an auditor cannot see a document, that is the
+    control, not a permissions mistake — find them a reader with the right
+    clearance rather than reclassifying the document.
+
+!!! note "You cannot practise the upper tiers on demo data"
+    All four demo documents are **Internal**, so nothing exercises the filtering.
+    You can set a classification and see it on the row; you cannot watch it hide
+    a document from someone until your own data has tiers in it.
 
 ---
 
@@ -278,6 +340,23 @@ By the end of this module, you will:
 - [ ] Submit documents for approval
 - [ ] Track approval status
 - [ ] Handle rejections
+
+### 4.0 Working a mixed queue
+
+Before the document-specific steps: **your approvals queue is not document-only.**
+
+Walked 2026-10-12 — of five approvals in flight, **four were CAPA Approvals**
+(APR-2026-0004…0007, all due the next day) and **one was a Document Release**
+(APR-2026-0003).
+
+| Read first | Then |
+|-----------|------|
+| The **type** on the row | Whether it is yours to decide or yours to chase |
+| The **due date** | Four sharing one due date is a batch, not a coincidence |
+
+!!! warning "The commonest failure in this role is queue blindness"
+    Assuming everything in the queue is a document means CAPA approvals age
+    quietly. They carry the same urgency and the same audit consequence.
 
 ### 4.1 Submitting for Approval
 
@@ -423,6 +502,28 @@ Use consistent naming and metadata for easy finding.
    - Update (new revision)
 4. Document the review
 
+Home carries a **Due for review** tile so the backlog is visible without going
+looking for it.
+
+!!! note "Dark on demo data"
+    *Due for review* reads **0** in the demo, because no document has a review
+    interval set. The loop is real; there is just nothing in it to show you. Set
+    an interval on one of your own documents to see it populate.
+
+### 5.5 Removing a document
+
+Every row offers **Delete Document**, behind a confirmation. It is manager-tier
+authority that you hold.
+
+!!! warning "Deleting is archiving, and that is the point"
+    uqmes soft-deletes — the record and its history stay, and an auditor can
+    still reach them. What you are doing is taking it **out of circulation**, not
+    destroying evidence.
+
+    For a superseded document prefer **Obsolete**, which says *why* it left
+    circulation. Reach for delete when something should never have been in the
+    library at all — the wrong file, a duplicate, a test upload.
+
 ---
 
 ### Knowledge Check: Module 5
@@ -515,10 +616,24 @@ By the end of this module, you will:
 
 ### 7.1 Daily Tasks
 
-1. **Check Inbox** for pending approvals (if you approve)
-2. **Process upload requests** in queue
-3. **Monitor pending approvals** on submitted docs
-4. **Follow up** on stalled items
+1. **Read Home** — approvals in flight, and how many are documents
+2. **Check Inbox** for pending approvals (if you approve)
+3. **Process upload requests** in queue
+4. **Monitor pending approvals** on submitted docs
+5. **Follow up** on stalled items
+6. **Glance at Training** — expiring and expired
+
+### 7.1a Training records are yours too
+
+You hold the same training-record authority as a Shift Lead or QA Manager, and
+Home shows **Current / Expiring soon / Expired** because of it.
+
+This is not a stray permission. Competence evidence (ISO 9001 §7.2) is a
+controlled record like any other, and it sits with the people who control
+records. Writing one certifies somebody — so the **level** must be what they
+actually demonstrated, not attendance.
+
+See [Training Matrix](../workflows/tracking/training-matrix.md).
 
 ---
 
@@ -570,6 +685,27 @@ By the end of this module, you will:
 1. Generate document status report
 2. Find all documents due for review
 3. Export approval history for a document
+
+### Task 5: Read your queue (row 4)
+
+Open Home. Report how many approvals are in flight, **how many are documents and
+how many are CAPAs**, and which you would work first.
+
+### Task 6: Classify (row 7)
+
+Set a classification on a document and say who can now see it and who cannot.
+Then explain what an engineer would experience if a drawing were above their
+tier — and why an auditor is deliberately not given the top tiers.
+
+### Task 7: Remove something (row C1)
+
+A duplicate file has been uploaded by mistake. Decide between **Obsolete** and
+**Delete**, do it, and justify the choice. Say what survives either way.
+
+### Task 8: Certify someone (row 8)
+
+Create a training record. Explain why the **level** field is an assessed result
+rather than a record of attendance.
 
 ---
 
@@ -635,6 +771,23 @@ Open document → **Submit for Approval** → Select template → **Submit**
 
 ### Check Status
 Open document → **Approvals** section → View status
+
+### Classification tiers
+Public → Internal → Confidential → Restricted → **Secret**
+You and QA Manager hold the top tier. It **filters the queryset** — people don't
+see a locked document, they see no document.
+
+### Your queue is mixed
+Read the **type** on every row. Most of what's in flight is usually **CAPA
+approvals**, not documents.
+
+### Obsolete vs Delete
+**Obsolete** — superseded, says why it left circulation.
+**Delete** — it should never have been there. Soft-delete: history survives.
+
+### Approved ≠ Released
+Approved is decided. **Released** is in force. That gap is what lets you approve
+a revision ahead of the training or tooling it depends on.
 
 ---
 

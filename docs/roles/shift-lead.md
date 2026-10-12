@@ -29,14 +29,22 @@ An operator runs the work; you settle what the work runs into.
 
 ## The training gate
 
-An operator who isn't yet qualified for a step gets a warning and a stop. You
-can push it through — with a reason, which is **recorded on the step execution**
-and stays there.
+An operator the **record** says isn't qualified gets a warning and a stop. You
+can authorise it — and the common reason is the honest one: *they are trained,
+the system doesn't know yet.*
 
-!!! warning "The override is logged, and that is the point"
-    It is evidence under ISO 9001 §7.2 that the shop knowingly ran unqualified
-    work and who authorised it. Use it when the job genuinely must move; don't
-    use it as a way around a training backlog, because the record accumulates.
+!!! important "The gate reads the record, not the person"
+    A certification earned on Friday and not yet entered looks identical to one
+    that was never earned. The gate can only see the record, so the override
+    exists for the case where you know better.
+
+!!! note "It already takes two people"
+    You can't wave it through from the operator's screen. A **supervisor signs in
+    separately** to authorise — *"logged against their name"* — so the
+    authorisation carries a second person, their reason and a timestamp, recorded
+    on the step execution.
+
+    Then **enter the training record**, so the next person doesn't need you.
 
 You can also **write training records**, which is how someone stops needing the
 override. That is deliberately not an operator permission — it used to be, and

@@ -57,11 +57,40 @@ lots back where they were.
     Voiding restores the record to what it was. Shipping a second time to fix a
     mistake leaves two shipments and an on-time figure that reflects neither.
 
+## Returning a customer's own material
+
+The board has a second half, grouped under the customer it belongs to:
+**Customer property** — their material sitting in your stores, which can go back
+to them. It is filtered on the lot having an **owner**, independently of any
+Ship step, so it appears whether or not anything is on a route.
+
+The ship dialog is lot-aware: *"Blank quantity ships the whole lot; less splits
+that much off and the rest stays"* — so a partial return works.
+
+!!! note "Customer property is identified and protected throughout (ISO 9001 §8.5.3)"
+    Consumption draws it only for that customer's work, requirements never cover
+    anyone else's demand with it, dock metrics exclude it from receipts, and the
+    lot label prints the owner *"so nobody draws it into someone else's job"*.
+
 ## Seeing whether you are on time
 
 - **Shipping** shows **on-time %** over the last 90 days
 - An order's **Shipping card** shows shipped against ordered per line, the
   shipments themselves, and flags lines that are late
+
+!!! warning "If on-time reads \"—\", the orders have no dated lines"
+    The figure attributes each shipment to its work order's **order line** and
+    compares against that line's **due date**. An order with no line, or a line
+    with no due date, cannot be scored — so the board shows *"On time, last 90
+    days: —"* even beside units that plainly shipped, and the **Line · due**
+    column is empty for the same reason.
+
+    That is a data gap rather than a delivery problem. Check the order has lines
+    with due dates before reading anything into the figure.
+
+!!! note "This is OTD to the CUSTOMER"
+    Supplier on-time delivery is a different measure, on the receiving side —
+    see [Receiving Metrics](overview.md#receiving-metrics).
 
 ## Next Steps
 
