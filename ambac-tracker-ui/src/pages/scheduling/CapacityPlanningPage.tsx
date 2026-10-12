@@ -648,13 +648,19 @@ export function CapacityPlanningPage() {
           {quote.data && !quote.isFetching && (
             <div className="space-y-3 rounded-lg border p-4">
               <p className="text-lg font-semibold">
+                {/* The DATE, not its month. Both answers used to print
+                    `target_bucket`, so a due date early in a month produced
+                    "Not by 2026-11 … Earliest it fits: 2026-11" — a counter-offer
+                    restating the date just refused. The refusal is measured to the
+                    due date; the earliest-fit to a month end. */}
                 {quote.data.feasible ? (
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    Yes — capacity exists by {quote.data.target_bucket}.
+                    Yes — capacity exists by{" "}
+                    {quote.data.target_date ?? quote.data.target_bucket}.
                   </span>
                 ) : (
                   <span className="text-red-600 dark:text-red-400">
-                    Not by {quote.data.target_bucket ?? "then"}.
+                    Not by {quote.data.target_date ?? quote.data.target_bucket ?? "then"}.
                   </span>
                 )}
               </p>
@@ -685,8 +691,16 @@ export function CapacityPlanningPage() {
                     )}
                   </ul>
                   <p className="pt-1">
+                    {/* When the earliest fit is the due date's OWN month, it fits by
+                        month end but not by the date asked for — say so, or it reads
+                        as the refusal repeated back. */}
                     {quote.data.earliest_feasible_bucket
-                      ? <>Earliest it fits: <strong>{quote.data.earliest_feasible_bucket}</strong>.</>
+                      ? <>Earliest it fits:{" "}
+                          <strong>
+                            {quote.data.earliest_is_target_bucket ? "end of " : ""}
+                            {quote.data.earliest_feasible_bucket}
+                          </strong>.
+                        </>
                       : <>It doesn&rsquo;t fit anywhere in this horizon — it needs overtime, an
                          extra shift, or subcontract.</>}
                   </p>

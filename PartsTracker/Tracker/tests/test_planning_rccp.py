@@ -147,6 +147,37 @@ class RccpTests(_RccpFixture, TestCase):
         self.assertTrue(later["feasible"], later)
         self.assertIsNotNone(soon["earliest_feasible_bucket"])
 
+    def test_ctp_answers_name_the_date_asked_about_not_just_its_month(self):
+        """A refusal is measured to the DUE DATE; the earliest-fit scan starts at the
+        same bucket but measures to its END. Reporting both as the bucket label made
+        them collide: a due date early in a month read as
+        "Not by 2026-11 ... Earliest it fits: 2026-11" — a counter-offer restating the
+        date just refused, which a planner could act on and promise a customer a date
+        the shop had already rejected.
+
+        Walked in the browser 2026-10-12 (300 injectors due 2026-11-01).
+        """
+        from datetime import date
+        today = timezone.now().date()
+        # First of a month, far enough out to be in a later bucket than today's.
+        y, m = (today.year, today.month + 2) if today.month <= 10 else (today.year + 1, today.month - 10)
+        first_of_month = date(y, m, 1)
+        qty = 300  # more than the hours available by the 1st, but not by month end
+
+        r = rccp.capable_to_promise(self.tenant, self.pt.id, qty, first_of_month, months=24)
+
+        # The date asked about is reported, so the refusal can be stated precisely.
+        self.assertEqual(r["target_date"], first_of_month.isoformat())
+        self.assertNotEqual(r["target_date"], r["target_bucket"])
+
+        if not r["feasible"] and r["earliest_feasible_bucket"] == r["target_bucket"]:
+            # The exact collision: fits by month end, not by the date. The caller must
+            # be able to say "end of <bucket>" rather than repeat the refusal back.
+            self.assertTrue(
+                r["earliest_is_target_bucket"],
+                "earliest fit is the due date's own bucket but the flag doesn't say so, "
+                "so the UI cannot distinguish the counter-offer from the refusal")
+
     def test_ctp_counts_only_the_hours_between_now_and_the_due_date(self):
         """The sliding window, pinned on a date-independent case.
 

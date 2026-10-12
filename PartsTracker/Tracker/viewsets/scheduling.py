@@ -679,6 +679,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # (no routing, no process, target outside the horizon).
             'reason': serializers.CharField(required=False),
             'target_bucket': serializers.CharField(required=False, allow_null=True),
+            # The date the promise was asked about. `target_bucket` is its month, and
+            # a refusal measured to the date must not be reported as its month — see
+            # the note in `rccp.capable_to_promise`.
+            'target_date': serializers.CharField(required=False, allow_null=True),
             'binding_resources': inline_serializer(
                 name='CtpBindingResource', many=True, required=False, fields={
                     'resource': serializers.CharField(),
@@ -686,6 +690,10 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                     'free_through_target': serializers.FloatField()}),
             'earliest_feasible_bucket': serializers.CharField(
                 required=False, allow_null=True),
+            # True when the earliest fit is the due date's own month — it fits by
+            # month end but not by the date asked for, so the caller should say
+            # "end of <bucket>" rather than a bare label that reads as the refusal.
+            'earliest_is_target_bucket': serializers.BooleanField(required=False),
             'quantity': serializers.IntegerField(required=False),
             # Keyed by resource name ("labor", then each work centre), so the shape is a
             # map rather than a fixed set of fields.

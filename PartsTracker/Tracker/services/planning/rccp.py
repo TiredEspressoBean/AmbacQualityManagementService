@@ -731,8 +731,21 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     return {
         'feasible': fits,
         'target_bucket': buckets[tgt].label,
+        # The refusal is measured to the DUE DATE; the earliest-fit scan starts at
+        # the same bucket but measures to its END. Reporting only the bucket label
+        # collapsed both onto one month string, so a due date early in a month read
+        # as "Not by 2026-11 ... Earliest it fits: 2026-11" — a counter-offer that
+        # restates the date just refused, which a planner could act on and promise
+        # the customer a date the shop had already rejected. Returning the date the
+        # question was actually asked about is what makes the two answers
+        # distinguishable; neither figure changes.
+        'target_date': target_date.isoformat(),
         'binding_resources': binding,
         'earliest_feasible_bucket': earliest,
+        # True when the earliest fit is the due date's own bucket — i.e. it fits by
+        # month end but not by the date asked for. The caller needs this to say
+        # "end of 2026-11" rather than a bare "2026-11" that looks like the refusal.
+        'earliest_is_target_bucket': earliest == buckets[tgt].label,
         'quantity': quantity,
         # Zero-hour resources (e.g. an outside-process step — vendor time, not ours)
         # are omitted rather than listed as 0.

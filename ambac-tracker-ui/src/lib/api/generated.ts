@@ -1547,8 +1547,10 @@ export type CapableToPromise = {
   feasible: boolean;
   reason?: string | undefined;
   target_bucket?: (string | null) | undefined;
+  target_date?: (string | null) | undefined;
   binding_resources?: Array<CtpBindingResource> | undefined;
   earliest_feasible_bucket?: (string | null) | undefined;
+  earliest_is_target_bucket?: boolean | undefined;
   quantity?: number | undefined;
   work_content_hours?: {} | undefined;
 };
@@ -23764,8 +23766,10 @@ const CapableToPromise = z.object({
   feasible: z.boolean(),
   reason: z.string().optional(),
   target_bucket: z.string().nullish(),
+  target_date: z.string().nullish(),
   binding_resources: z.array(CtpBindingResource).optional(),
   earliest_feasible_bucket: z.string().nullish(),
+  earliest_is_target_bucket: z.boolean().optional(),
   quantity: z.number().int().optional(),
   work_content_hours: z.record(z.number()).optional(),
 });

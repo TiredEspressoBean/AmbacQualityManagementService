@@ -21614,8 +21614,10 @@ export interface components {
             feasible: boolean;
             reason?: string;
             target_bucket?: string | null;
+            target_date?: string | null;
             binding_resources?: components["schemas"]["CtpBindingResource"][];
             earliest_feasible_bucket?: string | null;
+            earliest_is_target_bucket?: boolean;
             quantity?: number;
             work_content_hours?: {
                 [key: string]: number;

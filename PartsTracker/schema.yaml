@@ -50947,6 +50947,9 @@ components:
         target_bucket:
           type: string
           nullable: true
+        target_date:
+          type: string
+          nullable: true
         binding_resources:
           type: array
           items:
@@ -50954,6 +50957,8 @@ components:
         earliest_feasible_bucket:
           type: string
           nullable: true
+        earliest_is_target_bucket:
+          type: boolean
         quantity:
           type: integer
         work_content_hours:

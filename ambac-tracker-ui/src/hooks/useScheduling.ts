@@ -502,9 +502,17 @@ export type CtpBinding = {
 export type CtpQuote = {
   feasible: boolean;
   reason?: string;
+  /** The month containing the due date. Never render this as the answer to a
+   *  yes/no — the question was asked about a DATE, and reporting its month made a
+   *  refusal and a counter-offer collide on one string. Use `target_date`. */
   target_bucket?: string;
+  /** The date the promise was asked about, ISO. */
+  target_date?: string | null;
   binding_resources?: CtpBinding[];
   earliest_feasible_bucket?: string | null;
+  /** The earliest fit is the due date's own month: it fits by month END but not by
+   *  the date asked for. Render "end of <bucket>" when this is true. */
+  earliest_is_target_bucket?: boolean;
   quantity?: number;
   work_content_hours?: Record<string, number>;
 };
