@@ -46,14 +46,20 @@ DEMO_APPROVAL_TEMPLATES = [
         # Group name, matched exactly — see the note on CAPA Approval below.
         'auto_assign_by_role': 'QA Manager',
     },
-    # No ECO template. Approving an engineering change is a PLM act, and
-    # `CHANGE_CONTROL_PLAN.md` lists "ECR / ECO / ECN as an originating workflow"
-    # under Non-Goals — *"Engineering changes originate in PLM. We support inbound
-    # ingestion only."* `MES_FEATURE_TIERS.md` puts `ECO/ECR workflow` with Arena
-    # and Windchill, in the same boundary table that puts purchase orders in the
-    # ERP. Nothing in the codebase ever requests an ECO approval: the only
-    # reference outside the template lists is the enum member itself. Process
-    # change is PCR -> PCO -> PCN, below.
+    # No ECO template. Approving an engineering change is a PLM act, and UQMES
+    # does no PLM — per the user, 2026-10-12: "I don't do anything PLM yet in this
+    # system and don't intend to." That sits alongside CLAUDE.md's product
+    # boundary, which keeps the ERP's and PLM's jobs out of this system.
+    #
+    # Two things make it safe to drop rather than repoint: nothing in the
+    # codebase ever requests an ECO approval (the only reference outside the
+    # template lists is the enum member), and the design notes agree —
+    # CHANGE_CONTROL_PLAN.md has it under Non-Goals and MES_FEATURE_TIERS.md
+    # lists it with Arena and Windchill. Those are unmaintained design history,
+    # so they corroborate the decision rather than being its basis.
+    #
+    # The enum member stays: removing it is a migration, and PPAP's ECN/ECO
+    # report hooks it. Process change is PCR -> PCO -> PCN, below.
     {
         'template_name': 'CAPA Closure',
         'approval_type': 'CAPA_MAJOR',
