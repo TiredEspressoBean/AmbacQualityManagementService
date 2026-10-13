@@ -17,16 +17,15 @@ export type AuthUserGroup = {
 // extension in sync with what the backend actually returns. Long-term fix:
 // write a tenant-aware UserDetailsSerializer so drf-spectacular emits these
 // in the spec.
+// NOTE: there is deliberately no `id` here. The endpoint returns the user as
+// `pk` (see TenantAwareUserDetails). An optional `id?: number` used to sit in
+// this block, which made `me.id` compile everywhere while always evaluating to
+// undefined — the DWI signature nodes recorded `user_id: null` for every
+// signature taken in the player because of it. Use `me.pk`.
 export type AuthUser = Awaited<ReturnType<typeof api.auth_user_retrieve>> & {
-    id?: number;
-    // Display
-    full_name?: string;
-    date_joined?: string;
-    parent_company?: { id?: string; name?: string } | null;
-    // Django user flags
-    is_staff?: boolean;
-    is_superuser?: boolean;
-    is_active?: boolean;
+    // full_name / date_joined / parent_company are on the payload now
+    // (TenantAwareUserDetailsSerializer); they used to be optional phantoms here, so
+    // the profile page fell back to the username, "—" and "No company assigned".
     // Tenant-scoped groups (UserRole memberships in the user's tenant), NOT
     // Django auth groups — TenantAwareUserDetailsSerializer.get_groups returns
     // TenantGroup rows filtered to the user's tenant. There is no separate

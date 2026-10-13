@@ -39,6 +39,7 @@ import { ReportButton } from "@/components/reports/ReportButton"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
+import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor"
 import { useRetrievePart } from "@/hooks/parts"
 import { useRetrieveParts } from "@/hooks/parts"
 import { useQualityReports } from "@/hooks/useQualityReports"
@@ -274,6 +275,7 @@ export default function EditDispositionFormPage() {
     // collect a second-person co-signature.
     const canApproveDisposition = usePermissionSet().has("approve_disposition")
     const [cosignOpen, setCosignOpen] = useState(false)
+    const [docsOpen, setDocsOpen] = useState(false)
     const [cosignError, setCosignError] = useState<string | null>(null)
     const [cosignPending, setCosignPending] = useState(false)
     const [pendingDecision, setPendingDecision] = useState<FormValues | null>(null)
@@ -1029,21 +1031,28 @@ export default function EditDispositionFormPage() {
                             </Card>
                         )}
 
-                        {/* Documents Card */}
-                        {mode === "edit" && disposition?.documents && disposition.documents.length > 0 && (
+                        {/* Documents Card — read through the shared editor (the disposition
+                            payload carries no documents; this card used to test a field the
+                            API never sent, so it never rendered). */}
+                        {mode === "edit" && dispositionId && (
                             <Card>
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm">Attached Documents ({disposition.documents.length})</CardTitle>
+                                    <CardTitle className="text-sm">Documents</CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-2">
-                                    {disposition.documents.map((doc: { id: string; file_url: string; file_name: string }) => (
-                                        <div key={doc.id} className="flex items-center gap-2 text-sm">
-                                            <FileText className="h-4 w-4 text-muted-foreground" />
-                                            <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
-                                                {doc.file_name}
-                                            </a>
-                                        </div>
-                                    ))}
+                                <CardContent>
+                                    <Button type="button" variant="outline" size="sm" className="w-full"
+                                            onClick={() => setDocsOpen(true)}>
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        View or attach documents
+                                    </Button>
+                                    <EntityDocumentsEditor
+                                        contentTypeModel="quarantinedisposition"
+                                        objectId={dispositionId}
+                                        label={disposition?.disposition_number ?? "Disposition"}
+                                        description="Evidence for this disposition: photos, rework records, customer concessions."
+                                        open={docsOpen}
+                                        onOpenChange={setDocsOpen}
+                                    />
                                 </CardContent>
                             </Card>
                         )}

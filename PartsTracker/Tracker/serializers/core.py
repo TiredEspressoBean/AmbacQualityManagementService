@@ -212,6 +212,11 @@ class AuthUserWorkCenterMembershipSerializer(serializers.Serializer):
     is_primary = serializers.BooleanField(read_only=True)
 
 
+class AuthUserCompanySerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+
+
 class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     """dj-rest-auth user-details payload + the fields the frontend needs.
 
@@ -235,16 +240,31 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
     # any un-rostered user (NULL default_shift) — they appear logged out.
     default_shift = serializers.PrimaryKeyRelatedField(read_only=True, allow_null=True)
 
+    # The profile page read these off a hand-written type that the payload never
+    # carried, so it showed the username, "—" and "No company assigned" for everyone.
+    full_name = serializers.SerializerMethodField()
+    date_joined = serializers.DateTimeField(read_only=True)
+    parent_company = serializers.SerializerMethodField()
+
     class Meta(BaseUserDetailsSerializer.Meta):
         fields = BaseUserDetailsSerializer.Meta.fields + (
             'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
             # Crew rostering — the scheduling calendar's "My crew" preset reads it.
             'default_shift',
+            'full_name', 'date_joined', 'parent_company',
         )
         read_only_fields = BaseUserDetailsSerializer.Meta.read_only_fields + (
             'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
-            'default_shift',
+            'default_shift', 'full_name', 'date_joined', 'parent_company',
         )
+
+    def get_full_name(self, obj) -> str:
+        return obj.get_full_name() or obj.get_username()
+
+    @extend_schema_field(AuthUserCompanySerializer(allow_null=True))
+    def get_parent_company(self, obj):
+        company = getattr(obj, 'parent_company', None)
+        return {'id': str(company.id), 'name': company.name} if company else None
 
     @extend_schema_field(AuthUserTenantGroupSerializer(many=True))
     def get_groups(self, obj):
