@@ -459,7 +459,9 @@ class DemoQaWalkSeeder(BaseSeeder):
                                      'signed_at': self.today.isoformat()},
                     })
             if caps:
-                submit_substep(substep=ss, step_execution=se, user=operator, captures=caps)
+                # preverified: seeded history, recorded as not password-verified.
+                submit_substep(substep=ss, step_execution=se, user=operator, captures=caps,
+                               preverified=True)
 
     def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
         """PASSED FPI so the substep runtime's FpiStatusBanner shows

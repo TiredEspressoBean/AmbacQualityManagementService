@@ -147,7 +147,9 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 'notes': drf_serializers.CharField(required=False, allow_blank=True),
                 'signature_data': drf_serializers.CharField(required=False, allow_blank=True),
                 'signature_meaning': drf_serializers.CharField(required=False, allow_blank=True),
-                'verification_method': drf_serializers.CharField(required=False, allow_blank=True),
+                # Verified signature: the signer's own password, re-checked at
+                # signing. The verification method is derived by the server.
+                'password': drf_serializers.CharField(required=False, allow_blank=True, write_only=True),
                 'marked_not_applicable': drf_serializers.BooleanField(required=False),
                 'na_reason_code': drf_serializers.CharField(required=False, allow_blank=True),
             },
@@ -233,7 +235,7 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 notes=request.data.get('notes', '') or '',
                 signature_data=request.data.get('signature_data'),
                 signature_meaning=request.data.get('signature_meaning'),
-                verification_method=request.data.get('verification_method'),
+                password=request.data.get('password'),
                 marked_not_applicable=bool(request.data.get('marked_not_applicable')),
                 na_reason_code=request.data.get('na_reason_code', '') or '',
                 ip_address=ip_address,

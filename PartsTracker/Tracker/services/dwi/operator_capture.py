@@ -30,7 +30,7 @@ Submit shape (frontend → backend):
         "step_execution": "<uuid>",
         "notes": "optional operator notes",
         "signature_data": "base64png",          # if substep.requires_signature
-        "verification_method": "PASSWORD",       # optional
+        "password": "...",                       # if substep.requires_signature (verified)
         "marked_not_applicable": false,
         "captures": [
             {"node_id": "...", "kind": "text", "value_text": "..."},
@@ -128,6 +128,8 @@ def submit_substep(
     na_reason_code: str = "",
     ip_address: Optional[str] = None,
     sample_number: Optional[int] = None,
+    password: Optional[str] = None,
+    preverified: bool = False,
 ) -> SubmitResult:
     """Persist an operator's submission for a single substep.
 
@@ -157,6 +159,27 @@ def submit_substep(
     if step_execution is not None and step_execution.part_id:
         from Tracker.services.reman.core_steps import assert_workable
         assert_workable(step_execution.part)
+
+    # Verified signature — an authored, opt-in level above the one-click
+    # attestation. A substep with `requires_signature` is signed by drawing a
+    # signature AND re-entering the signer's own password (the Part 11 shape:
+    # two components at signing, the meaning, server time). The method is
+    # derived here, never taken from the client — a request could otherwise
+    # claim PASSWORD without one. `preverified` is for server-side callers that
+    # record history (the demo seed); it records the method as NONE, honestly.
+    verification_method = None
+    if substep.requires_signature and not marked_not_applicable and not preverified:
+        if not signature_data:
+            raise ValidationError(
+                f"'{substep.title}' needs your signature: draw it, then confirm with your password.")
+        from Tracker.services.core.second_person import verify_own_password
+        refusal = verify_own_password(tenant=substep.tenant, user=user, password=password or "")
+        if refusal:
+            raise ValidationError(refusal)
+        verification_method = "PASSWORD"
+        signature_meaning = signature_meaning or substep.title
+    elif signature_data:
+        verification_method = "NONE"
 
     if marked_not_applicable:
         if substep.is_critical:
@@ -994,10 +1017,20 @@ def _record_completion(
         if ip_address:
             defaults["ip_address"] = ip_address
 
+    # A voided completion is the record of a wrong capture, and void means
+    # "capture it again". The uniqueness constraint ignores is_voided, so
+    # update_or_create used to rewrite the voided row in place — it stayed
+    # voided, the gate skips voided rows, and the re-capture never counted. Retire
+    # the voided row (soft-delete keeps it as history) and let this one be new.
+    voided = SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped execution
+        step_execution=step_execution, batch_execution=batch_execution, substep=substep,
+        is_voided=True, deleted_at__isnull=True)
+    voided.update(deleted_at=timezone.now(), archived=True)
     completion, _ = SubstepCompletion.objects.update_or_create(
         step_execution=step_execution,
         batch_execution=batch_execution,
         substep=substep,
+        deleted_at__isnull=True,
         defaults=defaults,
     )
     return completion

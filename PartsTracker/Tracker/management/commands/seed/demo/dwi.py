@@ -357,6 +357,10 @@ class DemoDwiSeeder(BaseSeeder):
                     # cycle-level QA measurement, so this substep promotes to a
                     # batch-scoped QualityReport (PASS/FAIL on the whole load).
                     "is_inspection_point": True,
+                    # Verified sign-off: releasing the cycle signs for the whole
+                    # load with a password, once — the batch half of the feature,
+                    # and a visibly different level from the one-click attestations.
+                    "requires_signature": True,
                     "body": _doc(
                         _heading("Ultrasonic clean - whole load"),
                         _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),

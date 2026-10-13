@@ -898,8 +898,11 @@ class DemoOrdersSeeder(BaseSeeder):
                         "node_id": attrs['node_id'], "kind": "attestation",
                         "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
                     })
+            # preverified: the seed replays history; nobody can re-enter a password
+            # for it, so a verified-signature substep records its method as NONE.
             submit_substep(
                 substep=substep, batch_execution=be, user=operator, captures=caps,
+                preverified=True,
             )
             # Backdate the reading + report to the load's date (submit_substep
             # stamps 'now'); .update() bypasses auto_now.

@@ -25422,7 +25422,7 @@ const SubstepSubmitRequestRequest = z
     notes: z.string(),
     signature_data: z.string(),
     signature_meaning: z.string(),
-    verification_method: z.string(),
+    password: z.string(),
     marked_not_applicable: z.boolean(),
     na_reason_code: z.string(),
   })

@@ -79626,8 +79626,9 @@ components:
           type: string
         signature_meaning:
           type: string
-        verification_method:
+        password:
           type: string
+          writeOnly: true
         marked_not_applicable:
           type: boolean
         na_reason_code:

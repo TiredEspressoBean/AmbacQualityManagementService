@@ -36596,7 +36596,7 @@ export interface components {
             notes?: string;
             signature_data?: string;
             signature_meaning?: string;
-            verification_method?: string;
+            password?: string;
             marked_not_applicable?: boolean;
             na_reason_code?: string;
         };

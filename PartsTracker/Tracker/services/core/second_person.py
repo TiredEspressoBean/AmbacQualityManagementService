@@ -151,3 +151,43 @@ def verify_second_person(
     cache.delete(throttle_key)
     cache.delete(global_key)
     return (authorizer, None)
+
+
+def verify_own_password(
+    *,
+    tenant,
+    user,
+    password: str,
+    throttle_prefix: str = 'signature_reauth',
+    fail_cap: int = 5,
+    fail_ttl: int = 900,
+    global_prefix: str = GLOBAL_THROTTLE_PREFIX,
+    global_cap: int = 10,
+    global_ttl: int = 900,
+) -> str | None:
+    """Re-authenticate the signed-in user at the moment of signing — a verified
+    e-signature, as against an attestation made under the session alone.
+
+    Same two-tier throttle as `verify_second_person`, keyed on the signer, so a
+    terminal left logged in isn't a password oracle: the per-gate counter keeps a
+    typo here from locking the person out of other gates, and the shared tier
+    bounds the total attempts against one password.
+
+    Returns None when the password is the user's, else the refusal message.
+    """
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return "Sign in to sign this step."
+    key_user = (user.email or user.get_username() or '').lower()
+    tenant_id = getattr(tenant, 'id', 'none')
+    throttle_key = f"{throttle_prefix}:{tenant_id}:{key_user}"
+    global_key = f"{global_prefix}:{tenant_id}:{key_user}"
+    for key, cap in ((throttle_key, fail_cap), (global_key, global_cap)):
+        if (cache.get(key) or 0) >= cap:
+            return DEFAULT_MESSAGES['throttled']
+    if not password:
+        return "Enter your password to sign."
+    if not user.check_password(password):
+        for key, ttl in ((throttle_key, fail_ttl), (global_key, global_ttl)):
+            cache.set(key, (cache.get(key) or 0) + 1, ttl)
+        return "That password isn't right."
+    return None

@@ -1016,8 +1016,12 @@ function SubstepExpandedBody({
                         disabled={!editable}
                         onCheckedChange={(v) => mergePending({ requires_signature: v })}
                     />
-                    <Label htmlFor={`signature-${substep.id}`} className="text-xs">
-                        Sign-off
+                    <Label
+                        htmlFor={`signature-${substep.id}`}
+                        className="text-xs"
+                        title="Verified sign-off: to complete this substep the operator draws a signature and re-enters their own password. The record carries who signed, what the signature means (the substep title), and the server's time. Use it for release and acceptance steps — final test release, inspection acceptance. Without it, signature nodes are one-click attestations under the signed-in user."
+                    >
+                        Verified sign-off
                     </Label>
                 </div>
 

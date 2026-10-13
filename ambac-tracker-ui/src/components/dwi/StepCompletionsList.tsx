@@ -177,6 +177,19 @@ export function StepCompletionsList({
                                             N/A
                                         </Badge>
                                     )}
+                                    {c.verification_method === "PASSWORD" && (
+                                        // A verified sign-off (password at signing) — the opt-in
+                                        // level above a one-click attestation. Shown here because
+                                        // this list is where QA reviews work and where an auditor
+                                        // tells the two apart.
+                                        <Badge
+                                            variant="secondary"
+                                            className="text-[10px]"
+                                            title={`Signed with password re-entry${c.signature_meaning ? ` — "${c.signature_meaning}"` : ""}${c.verified_at ? `, ${new Date(c.verified_at).toLocaleString()}` : ""}`}
+                                        >
+                                            Verified signature
+                                        </Badge>
+                                    )}
                                     {c.is_voided && (
                                         <Badge variant="destructive" className="text-[10px]">
                                             Voided
@@ -187,6 +200,9 @@ export function StepCompletionsList({
                                     {c.completed_by_name ?? "Unknown"}
                                     {c.completed_at
                                         ? ` · ${new Date(c.completed_at).toLocaleString()}`
+                                        : ""}
+                                    {c.verification_method === "PASSWORD" && c.signature_meaning
+                                        ? ` · signed "${c.signature_meaning}"`
                                         : ""}
                                 </div>
                                 {c.is_voided && (
