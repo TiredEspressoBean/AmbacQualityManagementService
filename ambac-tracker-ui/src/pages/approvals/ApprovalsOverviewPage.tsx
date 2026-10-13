@@ -35,7 +35,7 @@ function formatApprovalType(type: string): string {
 export function ApprovalsOverviewPage() {
     const { data: user } = useAuthUser()
     const { data: pendingApprovals, isLoading: pendingLoading } = useMyPendingApprovals()
-    const userId = user?.id ?? (user as { pk?: number } | undefined)?.pk
+    const userId = user?.pk
     const { data: myRequestsData, isLoading: requestsLoading } = useMySubmittedRequests(userId)
 
     const myRequests = myRequestsData?.results ?? []

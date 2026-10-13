@@ -51,7 +51,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
     const pendingApprovalRequest = approvalRequests?.find(r => r.status === 'PENDING') || null;
 
     // Check if current user can respond
-    const currentUserId = authUser?.pk || authUser?.id;
+    const currentUserId = authUser?.pk;
     // Extract group IDs from group objects — TenantGroup ids are UUID strings
     const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&

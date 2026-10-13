@@ -77,11 +77,14 @@ export function ApprovalsHistoryPage() {
         search: search || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
         approval_type: typeFilter !== "all" ? typeFilter : undefined,
-        requested_by: showMyRequestsOnly && user?.id ? user.id : undefined,
+        // `auth/user/` returns the user as `pk`, not `id`. This read used
+        // `user?.id`, which is always undefined, so the ternary never fired
+        // and "my requests only" silently returned everyone's.
+        requested_by: showMyRequestsOnly && user?.pk ? user.pk : undefined,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
         ordering: "-requested_at",
-    }), [search, statusFilter, typeFilter, showMyRequestsOnly, user?.id, page])
+    }), [search, statusFilter, typeFilter, showMyRequestsOnly, user?.pk, page])
 
     const { data, isLoading } = useApprovalRequests(queryFilters)
 
