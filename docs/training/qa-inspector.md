@@ -364,7 +364,7 @@ part:
 
 | Disposition | Part becomes | Then |
 |-------------|--------------|------|
-| Use As Is | Ready for next step | Continues production |
+| Use As Is | In progress | Back at work on its step; the operator completes it as usual |
 | Rework / Repair | Rework needed | Redone, then re-inspected |
 | Scrap | Scrapped | Verify and record the scrap method |
 | Return to Supplier | Cancelled | RMA / credit process |
