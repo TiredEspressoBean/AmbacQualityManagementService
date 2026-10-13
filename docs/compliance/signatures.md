@@ -51,6 +51,35 @@ Common signature meanings:
 
 Meanings are configured per approval template.
 
+## Two levels: attestation and verified sign-off
+
+A signature taken in a work instruction is one of two levels, chosen per substep
+by whoever authors it:
+
+| Level | What the signer does | What is recorded |
+|-------|----------------------|------------------|
+| **Attestation** | Clicks to sign | The signed-in user, the server's time |
+| **Verified sign-off** | Draws a signature and re-enters their password | The signer, the signature's meaning (the substep title), the server's time, verification method *Password*, and the IP address |
+
+In both, the signer is the signed-in user — the server stamps it, so nobody can
+sign in someone else's name — and the time is the server's.
+
+**Which level a standard asks for:**
+
+- **ISO 9001** asks that records identify who performed or authorized the work.
+  An attestation does that.
+- **AS9100** requires control of *acceptance authority media* — inspection stamps
+  and their electronic equivalents. A signature that accepts an inspection or
+  releases product is one, so it should be unique to the person and impossible to
+  use on their behalf. Use **verified sign-off** for those steps.
+- **21 CFR Part 11** (FDA-regulated customers) requires re-authentication at
+  signing, and that each signature show the signer, the time and its meaning.
+  Verified sign-off records exactly that.
+
+Wrong passwords are rate-limited, so a terminal left signed in can't be used to
+guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#verified-sign-off)
+for turning it on.
+
 ## Signing Process
 
 ### For Approvals

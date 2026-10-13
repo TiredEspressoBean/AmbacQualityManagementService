@@ -105,6 +105,24 @@ Your entry is saved when you move off it, and the player advances.
       re-saving a step cannot wipe the inspector's slot — or quietly take it
       over.
 
+## Verified sign-off
+
+Some substeps carry a **Sign-off** badge. Those need a verified signature: when
+you press **Complete step**, a *Sign* dialog opens for each one, titled with the
+substep. Draw your signature, tick the confirmation, and enter **your own
+password**.
+
+- **Wrong password** — the dialog opens again with your drawing kept; only the
+  password is cleared. Enter it again.
+- **Too many wrong passwords** — signing is locked for a few minutes. Wait, or
+  ask a lead.
+- **Cancel** — the step is not completed and that substep records nothing.
+- **Voided** — if QA voids a signed substep, it has to be signed again the next
+  time the step is completed.
+
+The record shows a **Verified signature** badge, so anyone reviewing the step can
+tell it apart from an ordinary attestation.
+
 ## Marking a substep N/A
 
 If a substep genuinely does not apply to the part in front of you:

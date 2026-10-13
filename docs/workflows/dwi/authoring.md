@@ -114,6 +114,28 @@ witnessed signoffs, and final dimensional verification.
     A safety-critical substep cannot be marked N/A by anyone. The advancement
     gate rejects the attempt.
 
+### Verified sign-off
+
+Turn on **Verified sign-off** for a substep whose completion is an acceptance or
+release decision — a final test release, an inspection acceptance, a return
+inspection. To complete it the operator draws a signature **and re-enters their
+own password**. The record carries who signed, what the signature means (the
+substep's title), and the server's time.
+
+Leave it off everywhere else. Without it, a signature in a substep is a one-click
+attestation recorded under the signed-in user — enough for most work, and much
+quicker at the bench.
+
+| Level | The operator | Use it for |
+|-------|--------------|------------|
+| **Attestation** (default) | Clicks to sign, as the signed-in user | Everyday confirmations |
+| **Verified sign-off** | Draws a signature and re-enters their password | Acceptance and release steps |
+
+It works on per-batch substeps too: one signature covers the load. A substep the
+operator marks N/A needs no signature. See
+[Electronic Signatures](../../compliance/signatures.md) for how the two levels
+map to the standards.
+
 ### Inspection points
 
 Mark a substep an **inspection point** when its result should be a queryable
