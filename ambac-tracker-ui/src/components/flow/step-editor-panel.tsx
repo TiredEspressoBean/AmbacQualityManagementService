@@ -13,7 +13,9 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DurationInput } from '@/components/ui/duration-input';
-import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown, GraduationCap, Cog } from 'lucide-react';
+import { Trash2, X, Ruler, Target, Settings, FileText, Eye, ListChecks, ArrowRight, ChevronDown, GraduationCap, Cog, Wrench } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useRetrieveRepairCodes } from '@/hooks/useRepairCodes';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useSubsteps } from '@/hooks/useSubsteps';
@@ -89,6 +91,11 @@ export interface StepEditorPanelProps {
   rejectRoutes?: { id: string; label: string }[];
   /** Create a reject (ALTERNATE) edge from this step to the given target. */
   onAddRejectEdge?: (targetId: string) => void;
+  /** Repairs this step offers — edges to Repair nodes — and whether each is
+   *  pre-approved at this step (reman; services/reman/repair_routing). */
+  repairRoutes?: { id: string; label: string; code: string | null; preApproved: boolean }[];
+  /** Set whether a repair is pre-approved at this step. Omitted when viewing. */
+  onToggleRepairPreApproval?: (targetId: string, value: boolean) => void;
   /** Editing a draft: returns the step row the draft owns for this step — the same
    *  one, or a copy made now because another process version shares it. Dialogs and
    *  the substep editor write to that row. Omitted when viewing. */
@@ -137,9 +144,12 @@ type StepNodeData = {
   outsideSupplier?: string;
   outsideSupplierName?: string;
   outsideProcessLeadDays?: number | string;
+  // Repair node
+  repairCode?: string | null;
+  repairCodeName?: string | null;
 };
 
-export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId, rejectDestinations, rejectRoutes, onAddRejectEdge, onEnsureOwnStep }: StepEditorPanelProps) {
+export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, processId, rejectDestinations, rejectRoutes, onAddRejectEdge, repairRoutes, onToggleRepairPreApproval, onEnsureOwnStep }: StepEditorPanelProps) {
   const navigate = useNavigate();
   const [rejectTarget, setRejectTarget] = useState<string>('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -487,6 +497,59 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
             </p>
           )}
         </div>
+
+        {/* REPAIR node (reman): which repair code this step carries out. A check sends
+            a unit here only when that code is raised for it. */}
+        {nodeType === 'REPAIR' && (
+          <>
+            <Separator />
+            <RepairCodePicker
+              value={(data.step as { repair_code?: string | null } | undefined)?.repair_code ?? null}
+              label={data.repairCode ?? null}
+              editable={editable}
+              onChange={(id, code, name) =>
+                onUpdate(node.id, { repair_code: id, repair_code_code: code, repair_code_name: name })}
+            />
+          </>
+        )}
+
+        {/* Repairs offered here: each branch to a Repair node, and whether it is
+            pre-approved at this step. Not pre-approved holds the unit here until a
+            lead (or, on a customer's unit, the customer) approves it. */}
+        {repairRoutes && repairRoutes.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Wrench className="h-3.5 w-3.5 text-violet-600" />
+                Repairs offered here
+              </Label>
+              <ul className="space-y-1.5">
+                {repairRoutes.map((r) => (
+                  <li key={r.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`pre-${r.id}`}
+                      checked={r.preApproved}
+                      disabled={!editable || !onToggleRepairPreApproval}
+                      onCheckedChange={(v) => onToggleRepairPreApproval?.(r.id, v === true)}
+                    />
+                    <label htmlFor={`pre-${r.id}`} className="flex-1">
+                      {r.label}
+                      {r.code && <span className="ml-1.5 font-mono text-xs text-muted-foreground">{r.code}</span>}
+                    </label>
+                    <span className="text-xs text-muted-foreground">
+                      {r.preApproved ? 'Pre-approved' : 'Needs approval'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                Ticked: goes ahead on the inspector's finding. Unticked: the unit waits here
+                for a lead, and on a customer's own unit for the customer's answer.
+              </p>
+            </div>
+          </>
+        )}
 
         {/* DECISION / gate steps: decision type + where rejects go. The node
             being a Decision step already implies "decision point" — no toggle. */}
@@ -1204,5 +1267,50 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
         )}
       </CardContent>
     </Card>
+  );
+}
+
+
+/** A Repair node's repair code. Lists the tenant's current codes. */
+function RepairCodePicker({
+  value, label, editable, onChange,
+}: {
+  value: string | null;
+  label: string | null;
+  editable: boolean;
+  onChange: (id: string | null, code: string | null, name: string | null) => void;
+}) {
+  const { data } = useRetrieveRepairCodes({ limit: 500 });
+  const codes = (data?.results ?? []).filter((c) => !c.archived);
+  return (
+    <div className="space-y-1.5">
+      <Label>Repair code</Label>
+      {editable ? (
+        <Select
+          value={value ?? ''}
+          onValueChange={(id) => {
+            const c = codes.find((x) => String(x.id) === id);
+            onChange(id || null, c?.code ?? null, c?.name ?? null);
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Which repair does this step carry out?" />
+          </SelectTrigger>
+          <SelectContent>
+            {codes.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                <span className="font-mono">{c.code}</span> — {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Badge variant="outline" className="font-mono">{label || 'Not set'}</Badge>
+      )}
+      <p className="text-xs text-muted-foreground">
+        A check sends a unit here when this code is raised for it — by teardown grading or
+        a finding at the bench. Draw the branch from the check, and onwards back into the flow.
+      </p>
+    </div>
   );
 }

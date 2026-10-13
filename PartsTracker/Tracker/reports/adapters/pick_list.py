@@ -31,13 +31,11 @@ alternate branches a released job will not run; picking those would hand the cri
 for operations that are not going to happen. The route comes from `resolve_route` walking
 DEFAULT edges from the process head — the same resolver the scheduler uses.
 
-One deliberate divergence: the scheduler additionally narrows a **reman core under
-rebuild** to its resolved scope (`resolve_route(..., keep_step_ids=...)`), so it does not
-book capacity for operations that unit will skip. This sheet does not, because it is
-built per work order from the process head rather than per unit, and because its bias
-runs the other way — over-picking is recoverable, under-picking strands a bench. So for
-a core under rebuild the sheet may offer lines the schedule has no task for; that is the
-safe direction, not an inconsistency to fix here. An off-route line is *shown*
+Reman repair branches (Repair nodes) are off the DEFAULT route, so lines pegged to them
+show as off-route here: whether a unit takes a repair is decided per unit at its check,
+and this sheet is per work order. A core's own parts for its expected repairs come from
+its rebuild kit (`reman.rebuild`), which keeps Repair-node lines for the codes raised on
+that unit. An off-route line is *shown*
 and marked not-picked rather than dropped: a line that vanishes reads as a BOM that
 never had it. A line pegged to nothing is always in scope, and if no route can be
 resolved at all nothing is filtered (silently under-picking is worse than over-picking —

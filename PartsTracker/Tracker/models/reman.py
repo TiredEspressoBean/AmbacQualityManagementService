@@ -181,6 +181,15 @@ class Core(SecureModel):
     )
 
     # Status tracking
+    # Repairs approved for THIS unit beyond what its process pre-approves: a lead's
+    # approval on an exchange unit, or the customer's recorded yes on their own unit
+    # (services/reman/repair_routing). Codes, not ids, so a code that versions keeps
+    # its approval. Who approved and how is in condition_notes and the audit log.
+    approved_repair_codes = models.JSONField(
+        default=list, blank=True,
+        help_text="Repair codes approved for this unit that its process doesn't "
+                  "pre-approve.",
+    )
     status = models.CharField(
         max_length=30,
         choices=CORE_STATUS_CHOICES,
@@ -623,15 +632,15 @@ REPAIR_CODE_TRIGGER_CHOICES = [
 class RepairCode(SecureModel):
     """Operations a finding adds to a rebuild.
 
-    A repair code is a SLOT RESOLUTION THAT EMITS OPERATIONS, which is the whole
-    idea: "recondition the nozzle" and "replace the nozzle" resolve the same slot,
-    but one is work and the other is a part. Scope and kit are therefore one
-    decision rather than two passes — see `Documents/REMAN_REBUILD_LOOP_DESIGN.md`
-    §6.4.
+    A repair code is raised by a SLOT RESOLUTION: "recondition the nozzle" and
+    "replace the nozzle" resolve the same slot, but one is work and the other is a
+    part. Scope and kit are therefore one decision rather than two passes.
 
-    Codes compose. A core with a worn nozzle and a scored valve gets the union of
-    both codes' operations, which is why this is a table of codes rather than a set
-    of authored end-to-end routes: N findings would otherwise need 2^N routes.
+    Where the work happens is a Repair node carrying the code (`Steps.repair_code`),
+    branching off the check that finds the need and rejoining the main line
+    (services/reman/repair_routing). Codes compose: a core with a worn nozzle and a
+    scored valve takes both branches, which is why this is a table of codes rather
+    than a set of authored end-to-end routes — N findings would otherwise need 2^N.
     """
 
     _is_versioned = True  # engineering judgment — what work a finding implies
@@ -659,13 +668,8 @@ class RepairCode(SecureModel):
         help_text="Which finding raises this code. ALWAYS means it is part of the "
                   "base scope and is not raised by a finding at all.",
     )
-    steps = models.ManyToManyField(
-        'Tracker.Steps',
-        blank=True,
-        related_name='repair_codes',
-        help_text="Operations this code adds to the rebuild. The unit's scope is "
-                  "the union of the operations its raised codes carry.",
-    )
+    # Where the work is done is the Repair node carrying this code
+    # (`Steps.repair_code`), not a list on the code: see services/reman/repair_routing.
     notes = models.TextField(blank=True)
 
     class Meta:

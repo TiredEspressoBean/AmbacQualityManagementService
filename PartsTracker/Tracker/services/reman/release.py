@@ -23,29 +23,22 @@ from django.utils import timezone
 
 
 def _first_rebuild_step(core):
-    """The earliest in-scope operation on the core's process, or None.
+    """Where the rebuild picks up: the next step on the main line after where teardown
+    left the unit. Returns `(step, plan)`; step is None when there's nowhere to go.
 
-    Resolved from the rebuild plan rather than from process order alone: the point of
-    scope resolution is that a unit visits only the operations its findings call for,
-    so entering at "the step after teardown" would put it through work it does not
-    need.
+    Every unit walks the whole main line (services/reman/repair_routing) — the rebuild
+    no longer enters at "its first in-scope operation", because scope no longer routes.
+    A unit that has physically been torn down stands on its last teardown step, so the
+    rebuild starts at the step after it.
     """
-    from Tracker.models import ProcessStep
+    from Tracker.models.mes_lite import EdgeType
     from Tracker.services.reman.rebuild import resolve_rebuild_plan
 
     plan = resolve_rebuild_plan(core)
-    step_ids = {op.step_id for op in plan.operations}
-    if not step_ids or core.process is None:
+    part = core.part
+    if part is None or part.step_id is None or not part.work_order_id:
         return None, plan
-
-    ordered = (
-        ProcessStep.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
-            process=core.process, step_id__in=step_ids)
-        .select_related('step')
-        .order_by('order')
-        .first()
-    )
-    return (ordered.step if ordered else None), plan
+    return part._get_edge(part.step, EdgeType.DEFAULT), plan
 
 
 @transaction.atomic
@@ -68,10 +61,10 @@ def release_core_to_rebuild(core, user=None):
         )
     step, plan = _first_rebuild_step(core)
     if step is None:
+        where = core.part.step.name if core.part and core.part.step_id else 'teardown'
         raise ValidationError(
-            f"No rebuild operations resolved for {core.core_number}. Author a rebuild "
-            "level or repair codes for this core type first — releasing it with no "
-            "scope would put it on a work order with nothing to do."
+            f"{core.core_number} has no next step on its route after {where} — check the "
+            "work order's process continues past teardown."
         )
 
     core.status = 'IN_REBUILD'
@@ -121,12 +114,13 @@ def release_core_to_inventory(core, user=None):
 
 @transaction.atomic
 def request_authorisation(core, user=None):
-    """Pause a rebuild until the customer authorises work beyond what was sold.
+    """Pause a customer's unit until they authorise repairs that aren't pre-approved.
 
-    Only over-and-above work needs a decision — the entry scope was already bought
-    (§3.3). What findings ADDED is the question, and it is derivable: the raised codes
-    minus the ones the rebuild level already included. A job whose findings raised
-    nothing new needs no gate and is not sent to one.
+    What needs their decision is derivable: the raised codes whose repairs this unit's
+    process doesn't pre-approve, minus the rebuild level they bought and anything they
+    have already approved (`repair_routing.codes_needing_approval`). A unit with none
+    needs no gate and is not sent to one. An exchange unit has no customer to ask — a
+    lead approves its repairs (`repair_routing.approve_repair`).
 
     UQMES does not quote, approve quotes or raise purchase orders (§3.2). This records
     that the unit is waiting and what it is waiting on; the conversation happens
@@ -134,8 +128,7 @@ def request_authorisation(core, user=None):
 
     Returns `(core, over_and_above)` — the codes needing a decision.
     """
-    from Tracker.services.reman.scope import default_preset_for, resolve_scope
-    from Tracker.services.reman.rebuild import resolve_rebuild_plan
+    from Tracker.services.reman.repair_routing import codes_needing_approval
 
     if core.status not in ('DISASSEMBLED', 'IN_REBUILD'):
         raise ValidationError(
@@ -143,16 +136,16 @@ def request_authorisation(core, user=None):
             "in rebuild can be sent for authorisation."
         )
 
-    plan = resolve_rebuild_plan(core)
-    scope = resolve_scope(core, plan.slots)
-    preset = default_preset_for(core.core_type)
-    sold = {c.code for c in preset.codes.filter(archived=False)} if preset else set()
-    over_and_above = [c for c in scope.raised_codes if c not in sold]
-
+    if not core.returns_to_customer:
+        raise ValidationError(
+            f"{core.core_number} is an exchange unit — it has no customer to ask. A lead "
+            "approves its repairs on the core."
+        )
+    over_and_above = codes_needing_approval(core)
     if not over_and_above:
         raise ValidationError(
-            f"Nothing on {core.core_number} goes beyond the rebuild level that was sold, "
-            "so there is nothing to authorise."
+            f"Every repair raised on {core.core_number} is pre-approved or was sold with "
+            "its rebuild level, so there is nothing to authorise."
         )
 
     core.status = 'AWAITING_AUTHORISATION'
@@ -162,24 +155,47 @@ def request_authorisation(core, user=None):
 
 
 @transaction.atomic
-def record_authorisation(core, approved: bool, user=None, note: str = ''):
+def record_authorisation(core, approved: bool, user=None, note: str = '', *,
+                         contact: str = '', method: str = '', reference: str = ''):
     """Record what the customer said. The decision was made elsewhere; this is the
     production record of it, and the thing that unblocks or ends the job.
 
-    Approved resumes the rebuild. Declined sends the unit to DECLINED — not straight
-    to returned, because it still has to physically go back, and that is the same
-    dispatch step a rebuilt unit takes.
+    Approved resumes the rebuild and approves the repairs that were waiting on them, so
+    the unit goes down those branches. Declined sends the unit to DECLINED — not
+    straight to returned, because it still has to physically go back, and that is the
+    same dispatch step a rebuilt unit takes.
+
+    `contact`, `method` and `reference` say who answered, how, and the reference to
+    trace it — nobody at the customer needs a login for their answer to be on record.
     """
+    from Tracker.services.reman.repair_routing import codes_needing_approval
+
     if core.status != 'AWAITING_AUTHORISATION':
         raise ValidationError(
             f"{core.core_number} is not awaiting authorisation (it is "
             f"{core.get_status_display()})."
         )
 
+    codes = codes_needing_approval(core) if approved else []
+    who = (user.get_full_name() or user.get_username()) if user else 'system'
+    verdict = 'approved' if approved else 'declined'
+    parts = [f"{timezone.now():%Y-%m-%d} {who}: customer {verdict}"]
+    if codes:
+        parts.append(f"repairs {', '.join(codes)}")
+    if contact.strip():
+        parts.append(f"answered by {contact.strip()}")
+    if method.strip():
+        parts.append(f"via {method.strip()}")
+    if reference.strip():
+        parts.append(f"ref {reference.strip()}")
+    line = ' — '.join(parts) + '.'
+    if (note or '').strip():
+        line += f" {note.strip()}"
+
     core.status = 'IN_REBUILD' if approved else 'DECLINED'
-    if note:
-        core.condition_notes = f"{core.condition_notes}\n{note}".strip()
-    core.save(update_fields=['status', 'condition_notes', 'updated_at'])
+    core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) | set(codes))
+    core.condition_notes = f"{core.condition_notes}\n{line}".strip()
+    core.save(update_fields=['status', 'approved_repair_codes', 'condition_notes', 'updated_at'])
     sync_part_status(core)
     return core
 

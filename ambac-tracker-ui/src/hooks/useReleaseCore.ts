@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated.ts";
 import { getCookie } from "@/lib/utils";
+import type { Schema } from "@/lib/api/types";
+
+/** What a release answered, tagged with which exit it was. */
+export type CoreReleaseResult =
+    | { to: "rebuild"; result: Schema<"CoreReleaseRebuild"> }
+    | { to: "inventory"; result: Schema<"CoreReleaseInventory"> };
 
 /**
  * Release a torn-down core to its exit: rebuild (repair and return) or inventory
@@ -12,17 +18,13 @@ import { getCookie } from "@/lib/utils";
  */
 export function useReleaseCore() {
     const queryClient = useQueryClient();
-    return useMutation<unknown, unknown, { id: string; to: "rebuild" | "inventory" }>({
-        mutationFn: ({ id, to }) =>
-            to === "rebuild"
-                ? api.api_Cores_release_to_rebuild_create(undefined, {
-                      params: { id },
-                      headers: { "X-CSRFToken": getCookie("csrftoken") },
-                  })
-                : api.api_Cores_release_to_inventory_create(undefined, {
-                      params: { id },
-                      headers: { "X-CSRFToken": getCookie("csrftoken") },
-                  }),
+    return useMutation<CoreReleaseResult, unknown, { id: string; to: "rebuild" | "inventory" }>({
+        mutationFn: async ({ id, to }): Promise<CoreReleaseResult> => {
+            const opts = { params: { id }, headers: { "X-CSRFToken": getCookie("csrftoken") } };
+            return to === "rebuild"
+                ? { to, result: await api.api_Cores_release_to_rebuild_create(undefined, opts) }
+                : { to, result: await api.api_Cores_release_to_inventory_create(undefined, opts) };
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({
                 predicate: (q) =>
@@ -56,7 +58,12 @@ export function useCoreLifecycleAction() {
         unknown,
         | { id: string; action: "complete_disassembly" }
         | { id: string; action: "request_authorisation" }
-        | { id: string; action: "record_authorisation"; approved: boolean; note?: string }
+        | {
+            id: string; action: "record_authorisation"; approved: boolean; note?: string;
+            /** Who at the customer answered, how, and the reference — no login needed. */
+            contact?: string; method?: string; reference?: string;
+        }
+        | { id: string; action: "approve_repair"; code: string; note?: string }
         | { id: string; action: "return"; reference?: string }
     >({
         mutationFn: (v) => {
@@ -73,7 +80,16 @@ export function useCoreLifecycleAction() {
             }
             if (v.action === "record_authorisation") {
                 return api.api_Cores_record_authorisation_create(
-                    { approved: v.approved, note: v.note ?? "" },
+                    {
+                        approved: v.approved, note: v.note ?? "",
+                        contact: v.contact ?? "", method: v.method ?? "", reference: v.reference ?? "",
+                    },
+                    { params: { id: v.id }, headers },
+                );
+            }
+            if (v.action === "approve_repair") {
+                return api.api_Cores_approve_repair_create(
+                    { code: v.code, note: v.note ?? "" },
                     { params: { id: v.id }, headers },
                 );
             }
@@ -85,7 +101,8 @@ export function useCoreLifecycleAction() {
         onSuccess: () => {
             queryClient.invalidateQueries({
                 predicate: (q) =>
-                    ["core", "cores", "workorder", "workorders", "rebuildplan"].includes(
+                    // "parts": a unit held at a check re-reads its repair options.
+                    ["core", "cores", "workorder", "workorders", "rebuildplan", "parts"].includes(
                         String(q.queryKey[0]).toLowerCase(),
                     ),
             });

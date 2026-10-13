@@ -230,6 +230,8 @@ export interface StepEdgeData {
   condition_measurement?: string | null;
   condition_operator?: 'gte' | 'lte' | 'eq' | '';
   condition_value?: string | null;
+  /** On a branch to a Repair node: the repair is pre-approved at this check. */
+  pre_approved?: boolean;
 }
 
 /**
@@ -277,6 +279,10 @@ export interface FlowNodeData {
 
   // Start node
   isStart?: boolean;
+
+  // Repair node (reman): the repair code it carries out
+  repairCode?: string | null;
+  repairCodeName?: string | null;
 
   // Overlay data (populated by adapters based on mode)
   overlays?: {

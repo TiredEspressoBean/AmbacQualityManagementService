@@ -292,14 +292,25 @@ def _evaluate_and_advance(
             result.status = 'blocked'
             result.blockers_by_part = per_part_blockers
         else:
-            with transaction.atomic():
-                for p in cohort:
-                    # 3d: the engine just gated every cohort part above, so
-                    # skip the redundant per-part gate inside advance_part_step
-                    # (it re-runs can_advance_from_step — the dominant cost).
-                    advance_part_step(p, operator=operator, skip_gate_check=True)
-                    result.parts_advanced.append(str(p.id))
-            result.status = 'advanced'
+            # A routing refusal (a decision with no data, a repair waiting on approval)
+            # rolls the whole cohort back and is reported as the lot's blocker, as the
+            # per-part paths do — not raised as a server error.
+            advanced = []
+            try:
+                with transaction.atomic():
+                    for p in cohort:
+                        # 3d: the engine just gated every cohort part above, so
+                        # skip the redundant per-part gate inside advance_part_step
+                        # (it re-runs can_advance_from_step — the dominant cost).
+                        current = p
+                        advance_part_step(p, operator=operator, skip_gate_check=True)
+                        advanced.append(str(p.id))
+            except ValueError as exc:
+                result.status = 'blocked'
+                result.blockers_by_part = {str(current.id): [str(exc)]}
+            else:
+                result.parts_advanced.extend(advanced)
+                result.status = 'advanced'
 
     # ----- Split path: each part evaluated solo -----
     for p in split_parts:

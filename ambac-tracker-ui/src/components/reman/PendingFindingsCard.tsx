@@ -4,7 +4,9 @@
  * RebuildFindingCapture DWI node). That is a proposal: the grade drives the slot's
  * resolution and so the rebuild's scope, so a lead applies it — the component takes the
  * new grade and this plan re-resolves — or dismisses it with a reason. Whether the new
- * scope needs the customer's authorisation stays the lead's call.
+ * scope needs the customer's authorisation stays the lead's call. A finding whose repair
+ * the check pre-approves applies itself and never lands here; one that waits holds the
+ * unit at its check (services/reman/repair_routing).
  * Documents/CORE_AS_PART_DESIGN.md; services/reman/findings.py.
  */
 import { useState } from "react";
@@ -18,6 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
+import { retrieveHarvestedComponentsOptions } from "@/hooks/useRetrieveHarvestedComponents";
+import { rebuildPlanOptions } from "@/hooks/useRebuildPlan";
 import { getCookie } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
@@ -29,17 +33,15 @@ function detailOf(err: unknown, fallback: string) {
 
 export function PendingFindingsCard({ coreId }: { coreId: string }) {
     const qc = useQueryClient();
-    const { data } = useQuery({
-        queryKey: ["harvested-components", "core", coreId],
-        queryFn: () => api.api_HarvestedComponents_list({ queries: { core: coreId, limit: 200 } }),
-    });
+    const componentsQuery = retrieveHarvestedComponentsOptions({ core: coreId, limit: 200 });
+    const { data } = useQuery(componentsQuery);
     const pending = (data?.results ?? []).filter((c) => !!c.proposed_grade);
     const [dismissing, setDismissing] = useState<{ id: string; name: string } | null>(null);
     const [reason, setReason] = useState("");
 
     const refresh = () => {
-        qc.invalidateQueries({ queryKey: ["harvested-components", "core", coreId] });
-        qc.invalidateQueries({ queryKey: ["rebuildPlan", coreId] });
+        qc.invalidateQueries(componentsQuery);
+        qc.invalidateQueries(rebuildPlanOptions(coreId));
     };
     const apply = useMutation({
         mutationFn: (id: string) =>
@@ -64,8 +66,10 @@ export function PendingFindingsCard({ coreId }: { coreId: string }) {
                     {pending.length} finding{pending.length === 1 ? "" : "s"} to decide
                 </CardTitle>
                 <CardDescription>
-                    Raised at the bench after teardown. Nothing below has changed the plan yet —
-                    applying one re-grades the component, and this plan re-resolves from it.
+                    Raised at the bench after teardown, and not something a check pre-approves —
+                    a routine repair applies itself. Nothing below has changed the plan yet:
+                    applying one re-grades the component and this plan re-resolves from it.
+                    Until you decide, the unit is held at the next check with repairs.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 pt-0">

@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
-    PartTypes, Companies, User,
+    PartTypes,
 )
 
 from ..base import BaseSeeder
@@ -145,7 +145,7 @@ DEMO_CORES = [
                 'scrap_reason': '',
             },
             {
-                'component_name': 'Nozzle',
+                'component_name': 'Injector Nozzle Assembly',
                 'condition_grade': 'B',
                 'disposition': 'REFURBISH',
                 'condition_notes': 'Good condition. Minor surface wear acceptable.',
@@ -155,7 +155,7 @@ DEMO_CORES = [
                 'scrap_reason': '',
             },
             {
-                'component_name': 'Solenoid Valve',
+                'component_name': 'Control Valve Assembly',
                 'condition_grade': 'A',
                 'disposition': 'REUSE',
                 'condition_notes': 'Pristine condition. Passes all dimensional checks.',
@@ -192,7 +192,7 @@ DEMO_CORES = [
                 'scrap_reason': '',
             },
             {
-                'component_name': 'Nozzle',
+                'component_name': 'Injector Nozzle Assembly',
                 'condition_grade': 'SCRAP',
                 'disposition': 'SCRAP',
                 'condition_notes': 'Exceeded maximum wear limits.',
@@ -202,7 +202,7 @@ DEMO_CORES = [
                 'scrap_reason': 'Nozzle tip wear beyond tolerance',
             },
             {
-                'component_name': 'Solenoid Valve',
+                'component_name': 'Control Valve Assembly',
                 'condition_grade': 'C',
                 'disposition': 'PENDING',
                 'condition_notes': 'Fair condition. Near tolerance limits.',
@@ -232,9 +232,11 @@ DEMO_CORES = [
         'core_credit_issued': False,
         'release': 'REBUILD',
         # Found worse at the bench after teardown graded it A. Recorded through
-        # findings.record_finding, so it waits on a lead (the pending-findings card):
-        # on a repair-and-return unit a scope change is the customer's to authorise.
-        'finding': {'component': 'Nozzle', 'grade': 'B',
+        # findings.record_finding (not at a check), so it waits on a lead (the
+        # pending-findings card) and the unit holds at Nozzle Inspection until it's
+        # decided. Applied, it raises NZL-RECON — pre-approved there, so the unit then
+        # goes down the Nozzle Recondition branch (services/reman/repair_routing).
+        'finding': {'component': 'Injector Nozzle Assembly', 'grade': 'C',
                     'finding': 'Light pitting on the seat face, visible only after cleaning.'},
         'components': [
             {
@@ -248,7 +250,7 @@ DEMO_CORES = [
                 'scrap_reason': '',
             },
             {
-                'component_name': 'Nozzle',
+                'component_name': 'Injector Nozzle Assembly',
                 'condition_grade': 'A',
                 'disposition': 'REUSE',
                 'condition_notes': 'Minimal wear. Within all tolerances.',
@@ -258,7 +260,7 @@ DEMO_CORES = [
                 'scrap_reason': '',
             },
             {
-                'component_name': 'Solenoid Valve',
+                'component_name': 'Control Valve Assembly',
                 'condition_grade': 'A',
                 'disposition': 'REUSE',
                 'condition_notes': 'Pristine condition. Passes all dimensional checks.',
@@ -390,6 +392,10 @@ class DemoRemanSeeder(BaseSeeder):
             if data['status'] == 'DISASSEMBLED':
                 core.refresh_from_db()
                 complete_core_disassembly(core, employees[1] if len(employees) > 1 else employees[0])
+                # A torn-down unit stands on its last teardown step — rebuild picks up at
+                # the step after it (release._first_rebuild_step). The batch put it at
+                # the route's first step; teardown itself isn't walked here.
+                self._place_after_teardown(core, wo)
             # The services stamp now(); the story has dates.
             received = self.today - timedelta(days=data['received_days_ago'])
             stamps = {'disassembly_started_at': received + timedelta(
@@ -405,6 +411,15 @@ class DemoRemanSeeder(BaseSeeder):
 
         self.log(f"  Walked {len(batch)} core(s) through teardown on {wo.ERP_id}")
         return components
+
+    def _place_after_teardown(self, core, wo):
+        """Stand a torn-down core on its process's last teardown step."""
+        from Tracker.models import Parts, ProcessStep
+        last = (ProcessStep.objects.filter(process=wo.process, step__name='Component Grading')
+                .select_related('step').first()) if wo.process_id else None
+        if last is not None and core.part_id:
+            Parts.objects.filter(pk=core.part_id).update(step=last.step)
+            core.refresh_from_db()
 
     def release_walked_cores(self, users):
         """The torn-down cores' exits, and a bench finding on the one in rebuild.
@@ -436,15 +451,23 @@ class DemoRemanSeeder(BaseSeeder):
         return released
 
     def _raise_finding(self, core, spec, user):
-        """Record one bench finding on this core's own component (by name, else any)."""
+        """Record one bench finding on this core's own component, named exactly.
+
+        No fallback: a finding whose component isn't on the unit is a seed bug. Falling
+        back to "any component" once put a nozzle finding on the injector body, and the
+        exhibit it was for silently stopped existing.
+        """
         from Tracker.services.reman.findings import record_finding
 
-        components = list(core.harvested_components.filter(is_scrapped=False)
-                          .select_related('component_type').order_by('component_type__name'))
-        target = next((c for c in components if spec['component'] in c.component_type.name),
-                      components[0] if components else None)
-        if target is None or target.condition_grade == spec['grade']:
-            self.log(f"  No component on {core.core_number} to raise a finding on", warning=True)
+        target = (core.harvested_components.filter(is_scrapped=False)
+                  .filter(component_type__name=spec['component']).first())
+        if target is None:
+            self.log(f"  {core.core_number}: no {spec['component']!r} to raise a finding on "
+                     "- finding skipped", warning=True)
+            return None
+        if target.condition_grade == spec['grade']:
+            self.log(f"  {core.core_number}: {spec['component']} is already grade "
+                     f"{spec['grade']} - finding skipped", warning=True)
             return None
         return record_finding(target, grade=spec['grade'], finding=spec['finding'], user=user)
 
@@ -570,36 +593,33 @@ class DemoRemanSeeder(BaseSeeder):
             self.log("  No Common Rail Injector part type — skipping repair codes")
             return []
 
-        def _steps(*names):
-            found = list(Steps.objects.filter(
-                tenant=self.tenant, part_type=injector, name__in=names,
-                is_current_version=True,
-            ))
-            missing = set(names) - {s.name for s in found}
-            if missing:
-                self.log(f"  Repair-code steps not found, skipped: {sorted(missing)}")
-            return found
-
         nozzle = PartTypes.objects.filter(
             tenant=self.tenant, name='Injector Nozzle Assembly').first()
 
+        # BASE-REBUILD and FLOW-VERIFY are base/level scope: every op on the route runs
+        # anyway, so they carry no Repair node and route nothing. NZL-RECON and
+        # NZL-REPLACE are repairs: each is carried by a Repair node off Nozzle
+        # Inspection (seed/demo/manufacturing DEMO_REPAIR_BRANCHES).
         specs = [
-            # (code, name, component_type, trigger, step names)
-            ('BASE-REBUILD', 'Base rebuild operations', None, 'ALWAYS',
-             ('Cleaning', 'Assembly', 'Final Test', 'Packaging')),
-            ('FLOW-VERIFY', 'Flow-test the finished unit', None, 'PRESET',
-             ('Flow Testing',)),
+            # (code, name, component_type, trigger, Repair node)
+            ('BASE-REBUILD', 'Base rebuild operations', None, 'ALWAYS', None),
+            ('FLOW-VERIFY', 'Flow-test the finished unit', None, 'PRESET', None),
             ('NZL-RECON', 'Recondition injector nozzle', nozzle, 'RECONDITION',
-             ('Nozzle Inspection', 'Nitride Coating')),
+             'Nozzle Recondition'),
+            ('NZL-REPLACE', 'Replace injector nozzle', nozzle, 'REPLACE_BUY',
+             'Nozzle Replacement'),
         ]
 
         codes = {}
-        for code, name, ctype, trigger, step_names in specs:
+        for code, name, ctype, trigger, repair_node in specs:
             obj, _ = RepairCode.objects.update_or_create(
                 tenant=self.tenant, code=code,
                 defaults={'name': name, 'component_type': ctype, 'trigger': trigger},
             )
-            obj.steps.set(_steps(*step_names))
+            if repair_node:
+                Steps.objects.filter(
+                    tenant=self.tenant, part_type=injector, name=repair_node,
+                ).update(repair_code=obj)
             codes[code] = obj
 
         preset, _ = RebuildScopePreset.objects.update_or_create(
@@ -808,6 +828,10 @@ class DemoRemanSeeder(BaseSeeder):
             for comp_data in core_data['components']:
                 comp_type = component_types.get(comp_data['component_name'])
                 if not comp_type:
+                    # Loud, not silent: a name that matched no part type used to drop
+                    # the component, and a finding meant for it landed on another.
+                    self.log(f"  {core.core_number}: no part type named "
+                             f"{comp_data['component_name']!r} - component skipped", warning=True)
                     continue
 
                 component = self._create_single_component(

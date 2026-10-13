@@ -47,7 +47,7 @@ import {
   DEMO_MODES,
   type DemoMode,
 } from '@/lib/demo-data/process-flow-demo';
-import { Save, RotateCcw, Plus, FileText, Package, Route, BarChart3, ClipboardCheck, X, Circle, Play, GitBranch, RefreshCw, Clock, CheckCircle, MoreVertical, Copy, FileEdit, Archive, ShieldCheck, Settings } from 'lucide-react';
+import { Save, RotateCcw, Plus, FileText, Package, Route, BarChart3, ClipboardCheck, X, Circle, Play, GitBranch, RefreshCw, Clock, CheckCircle, MoreVertical, Copy, FileEdit, Archive, ShieldCheck, Settings, Wrench } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,6 +75,7 @@ const NODE_TYPE_OPTIONS = [
   { type: 'TIMER', label: 'Timer/Wait Step', icon: Clock, description: 'Step with expected duration' },
   { type: 'TERMINAL', label: 'Terminal Step', icon: CheckCircle, description: 'Process end point' },
   { type: 'RECEIVING', label: 'Receiving Inspection', icon: ClipboardCheck, description: 'Incoming material inspection gate' },
+  { type: 'REPAIR', label: 'Repair', icon: Wrench, description: 'Off a check — taken when its repair code is raised' },
 ] as const;
 
 /**
@@ -103,6 +104,10 @@ export default function ProcessFlowPage() {
   // Merged into the stepEdges source fed to the canvas so they survive resyncs
   // (step edits) without needing imperative canvas access. Cleared on save/reset.
   const [pendingRejectEdges, setPendingRejectEdges] = useState<{ from_step: string; to_step: string; edge_type: string }[]>([]);
+  // Pre-approval of a repair at a check, edited on the check's panel, keyed
+  // "from->to". Kept beside the edges (like the reject edges above) so a canvas resync
+  // can't lose it, and applied to both the canvas source and the save payload.
+  const [preApprovalEdits, setPreApprovalEdits] = useState<Record<string, boolean>>({});
   const [nextStepId, setNextStepId] = useState(-1); // Negative numeric counter; stringified when used as a Step id
 
   // Process-level properties (for editing)
@@ -170,6 +175,9 @@ export default function ProcessFlowPage() {
         is_outside_process: step.is_outside_process as boolean | undefined,
         outside_supplier: step.outside_supplier as string | null,
         outside_supplier_name: step.outside_supplier_name as string | null,
+        repair_code: step.repair_code as string | null,
+        repair_code_code: step.repair_code_code as string | null,
+        repair_code_name: step.repair_code_name as string | null,
       };
     });
   }, [isDemo, processWithSteps?.process_steps]);
@@ -235,13 +243,18 @@ export default function ProcessFlowPage() {
       (isDemo
         ? DEMO_STEP_EDGES
         // eslint-disable-next-line local/no-double-cast-via-unknown -- backend step_edges shape has wider edge_type union than FlowCanvas accepts; runtime values are always within the FlowCanvas-accepted subset
-        : (processWithSteps?.step_edges as unknown as { from_step: string; to_step: string; edge_type: string }[] | undefined)) ?? [],
+        : (processWithSteps?.step_edges as unknown as { from_step: string; to_step: string; edge_type: string; pre_approved?: boolean }[] | undefined)) ?? [],
     [isDemo, processWithSteps?.step_edges],
   );
-  const mergedStepEdges = useMemo(
-    () => (pendingRejectEdges.length ? [...baseStepEdges, ...pendingRejectEdges] : baseStepEdges),
-    [baseStepEdges, pendingRejectEdges],
-  );
+  const mergedStepEdges = useMemo(() => {
+    const all: { from_step: string; to_step: string; edge_type: string; pre_approved?: boolean }[] =
+      pendingRejectEdges.length ? [...baseStepEdges, ...pendingRejectEdges] : baseStepEdges;
+    if (Object.keys(preApprovalEdits).length === 0) return all;
+    return all.map((e) => {
+      const edited = preApprovalEdits[`${e.from_step}->${e.to_step}`];
+      return edited === undefined ? e : { ...e, pre_approved: edited };
+    });
+  }, [baseStepEdges, pendingRejectEdges, preApprovalEdits]);
 
   // Initialize local steps and process props when entering edit mode
   const initializeLocalSteps = useCallback(() => {
@@ -386,6 +399,8 @@ export default function ProcessFlowPage() {
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
+          repairCode: updatedStep.repair_code_code ?? null,
+          repairCodeName: updatedStep.repair_code_name ?? null,
         },
       };
     });
@@ -444,6 +459,8 @@ export default function ProcessFlowPage() {
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,
+        // A Repair node's code (null on every other step).
+        repair_code_id: step.repair_code || null,
         // Null means "inherit the tenant default"; 'off' means this step needs nobody.
         labor_model: step.labor_model ?? null,
         // Nested one-to-one, popped out of the node diff server-side and applied to
@@ -455,6 +472,9 @@ export default function ProcessFlowPage() {
 
       // Build edges array from local edges (new graph-based format)
       const edgesToProcess = localEdges || [];
+      const repairStepIds = new Set(
+        localSteps.filter((st) => st.step_type === 'REPAIR').map((st) => String(st.id)),
+      );
       const edgesPayload = edgesToProcess.map(edge => {
         // Prefer the explicitly-authored edge_type (set via the edge inspector,
         // stored on edge.data). Fall back to the legacy id-suffix/handle
@@ -463,6 +483,18 @@ export default function ProcessFlowPage() {
         const isEscalation = edge.id.endsWith('-esc');
         const isAlternate = edge.id.endsWith('-alt') || edge.sourceHandle === 'fail';
         const inferred = isEscalation ? 'ESCALATION' : isAlternate ? 'ALTERNATE' : 'DEFAULT';
+        if (repairStepIds.has(String(edge.target))) {
+          // Into a Repair node: always an offshoot (a DEFAULT edge would put the repair
+          // on the main line), with its pre-approval at this check.
+          const edited = preApprovalEdits[`${edge.source}->${edge.target}`];
+          const stored = (edge.data as { pre_approved?: boolean } | undefined)?.pre_approved;
+          return {
+            from_step: edge.source,
+            to_step: edge.target,
+            edge_type: 'ALTERNATE',
+            pre_approved: edited ?? stored ?? false,
+          };
+        }
         return {
           from_step: edge.source,
           to_step: edge.target,
@@ -490,11 +522,12 @@ export default function ProcessFlowPage() {
       setLocalEdges(null);
       setLocalProcessProps(null);
       setPendingRejectEdges([]); // now persisted in server step_edges; avoid duplicate on refetch
+      setPreApprovalEdits({});
     } catch (error) {
       console.error('Failed to save process:', error);
       toast.error('Failed to save process');
     }
-  }, [processId, localSteps, localEdges, localProcessProps, isDemo, updateProcess]);
+  }, [processId, localSteps, localEdges, localProcessProps, isDemo, updateProcess, preApprovalEdits]);
 
   // Handler to update process-level properties
   const handleProcessPropChange = useCallback((prop: keyof ProcessProps, value: unknown) => {
@@ -519,6 +552,7 @@ export default function ProcessFlowPage() {
     setLocalEdges(null);
     setLocalProcessProps(null);
     setPendingRejectEdges([]);
+    setPreApprovalEdits({});
     setHasChanges(false);
     setSelectedNode(null);
   }, []);
@@ -556,6 +590,10 @@ export default function ProcessFlowPage() {
     setLocalSteps((prev) => prev?.map((s) => (s.id === stepId ? { ...s, id: newId } : s)) ?? prev);
     setLocalEdges((prev) => prev?.map((e) => ({ ...e, source: swap(e.source), target: swap(e.target) })) ?? prev);
     setPendingRejectEdges((prev) => prev.map((e) => ({ ...e, from_step: swap(e.from_step), to_step: swap(e.to_step) })));
+    setPreApprovalEdits((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => {
+      const [from, to] = k.split('->');
+      return [`${swap(from)}->${swap(to)}`, v];
+    })));
     setSelectedNode((prev) => {
       if (!prev || prev.id !== stepId) return prev;
       const data = prev.data as { step?: StepData };
@@ -624,6 +662,33 @@ export default function ProcessFlowPage() {
       }));
     return { routes, destinations };
   }, [selectedNode, editMode, isDemo, localEdges, pendingRejectEdges, steps]);
+
+  // The repairs the selected step offers (edges to Repair nodes), with whether each
+  // is pre-approved here — the check's panel lists them with a tick each.
+  const repairInfo = useMemo(() => {
+    if (!selectedNode) return [];
+    const sourceId = selectedNode.id;
+    const byId = new Map(steps.map((st) => [String(st.id), st]));
+    return mergedStepEdges
+      .filter((e) => e.from_step === sourceId && byId.get(String(e.to_step))?.step_type === 'REPAIR')
+      .map((e) => {
+        const target = byId.get(String(e.to_step))!;
+        return {
+          id: String(e.to_step),
+          label: target.name || `Step ${e.to_step}`,
+          code: target.repair_code_code ?? null,
+          preApproved: !!e.pre_approved,
+        };
+      });
+  }, [selectedNode, steps, mergedStepEdges]);
+
+  const handleToggleRepairPreApproval = useCallback((targetId: string, value: boolean) => {
+    const sourceId = selectedNode?.id;
+    if (!sourceId) return;
+    initializeLocalSteps(); // ensure edit state exists so the save path captures it
+    setPreApprovalEdits((prev) => ({ ...prev, [`${sourceId}->${targetId}`]: value }));
+    setHasChanges(true);
+  }, [selectedNode, initializeLocalSteps]);
 
   const handleApprove = useCallback(async () => {
     if (!processId) return;
@@ -1306,6 +1371,8 @@ export default function ProcessFlowPage() {
                     rejectDestinations={rejectInfo?.destinations}
                     rejectRoutes={rejectInfo?.routes}
                     onAddRejectEdge={handleAddRejectEdge}
+                    repairRoutes={repairInfo}
+                    onToggleRepairPreApproval={editMode && !isDemo ? handleToggleRepairPreApproval : undefined}
                     onEnsureOwnStep={editMode && !isDemo ? ensureOwnStep : undefined}
                   />
                 ) : (

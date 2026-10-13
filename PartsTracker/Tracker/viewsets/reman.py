@@ -117,12 +117,15 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'request_authorisation_action': ['change_core'],
         'record_authorisation_action': ['change_core'],
         'return_to_customer': ['change_core'],
+        # Approving a repair the process doesn't pre-approve decides what work goes into
+        # the unit — the same lead/QA tier as deciding a finding (accept_component).
+        'approve_repair': ['accept_component'],
     }
     crud_exempt_actions = {
         'complete_disassembly',
         'release_to_rebuild', 'release_to_inventory',
         'request_authorisation_action', 'record_authorisation_action',
-        'return_to_customer',
+        'return_to_customer', 'approve_repair',
     }
 
     def get_serializer_class(self):
@@ -202,7 +205,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
             200: inline_serializer(name="CoreReleaseRebuild", fields={
                 "core": CoreSerializer(),
                 "first_step": serializers.CharField(allow_null=True),
-                "operation_count": serializers.IntegerField(),
+                "expected_repair_count": serializers.IntegerField(),
             }),
             400: inline_serializer(name="CoreReleaseRebuildError", fields={
                 "detail": serializers.CharField(),
@@ -225,7 +228,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         return Response({
             'core': CoreSerializer(core, context={'request': request}).data,
             'first_step': core.part.step.name if core.part.step_id else None,
-            'operation_count': len(plan.operations),
+            'expected_repair_count': len(plan.expected_repairs),
         })
 
     @extend_schema(
@@ -265,6 +268,11 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         request=inline_serializer(name="CoreAuthorisationInput", fields={
             "approved": serializers.BooleanField(),
             "note": serializers.CharField(required=False, allow_blank=True),
+            # Who at the customer answered, how, and the reference to trace it — the
+            # customer needs no login for their answer to be on record.
+            "contact": serializers.CharField(required=False, allow_blank=True),
+            "method": serializers.CharField(required=False, allow_blank=True),
+            "reference": serializers.CharField(required=False, allow_blank=True),
         }),
         responses={200: CoreSerializer, 400: inline_serializer(
             name="CoreAuthorisationError", fields={"detail": serializers.CharField()})},
@@ -280,7 +288,10 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         try:
             core = record_authorisation(
                 core, bool(request.data.get('approved')), request.user,
-                note=request.data.get('note', ''))
+                note=request.data.get('note', ''),
+                contact=request.data.get('contact', ''),
+                method=request.data.get('method', ''),
+                reference=request.data.get('reference', ''))
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -294,8 +305,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         }), 400: inline_serializer(
             name="CoreRequestAuthorisationError",
             fields={"detail": serializers.CharField()})},
-        description="Pause a rebuild for customer authorisation of work beyond the "
-                    "rebuild level that was sold.",
+        description="Pause a customer's unit for their authorisation of repairs its "
+                    "process doesn't pre-approve and that weren't sold with its rebuild level.",
     )
     @action(detail=True, methods=['post'], url_path='request_authorisation')
     def request_authorisation_action(self, request, pk=None):
@@ -312,6 +323,31 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
             'core': CoreSerializer(core, context={'request': request}).data,
             'over_and_above': over,
         })
+
+    @extend_schema(
+        request=inline_serializer(name="CoreApproveRepairInput", fields={
+            "code": serializers.CharField(),
+            "note": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: CoreSerializer, 400: inline_serializer(
+            name="CoreApproveRepairError", fields={"detail": serializers.CharField()})},
+        description="A lead approves a repair this exchange unit's process doesn't "
+                    "pre-approve, so the unit can go down it at the check. A customer's "
+                    "own unit needs the customer's answer instead (request_authorisation).",
+    )
+    @action(detail=True, methods=['post'], url_path='approve_repair')
+    def approve_repair(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.repair_routing import approve_repair
+
+        core = self.get_object()
+        try:
+            core = approve_repair(core, (request.data.get('code') or '').strip(),
+                                  user=request.user, note=request.data.get('note', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(core, context={'request': request}).data)
 
     @extend_schema(
         request=inline_serializer(name="CoreReturnInput", fields={
@@ -770,7 +806,7 @@ class DisassemblyBOMLineViewSet(ReviveOnCreateMixin, TenantScopedMixin, viewsets
 class RepairCodeViewSet(VersionHistoryMixin, TenantScopedMixin, CSVImportMixin, DataExportMixin,
                         viewsets.ModelViewSet):
     """Repair codes — what operations a finding adds to a rebuild."""
-    queryset = RepairCode.unscoped.select_related('component_type').prefetch_related('steps')
+    queryset = RepairCode.unscoped.select_related('component_type')
     serializer_class = RepairCodeSerializer
     # A code is matched on its code (unique among current versions); `component_type`
     # is found by part type name; `steps` is `Process > Step; Process > Step`. Edits

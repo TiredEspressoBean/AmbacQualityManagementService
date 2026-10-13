@@ -230,40 +230,45 @@ export function RebuildPlanPage() {
                     )}
                 </Card>
 
-                {/* Operations before slots: what we will DO to the unit is the bigger
-                    commitment, and a slot resolution is what put each one here. */}
+                {/* Expected repairs before slots: what we will DO to the unit beyond its
+                    route is the bigger commitment, and a slot resolution put each one here.
+                    Every op on the route runs anyway; these are the branches it will take. */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex flex-wrap items-baseline gap-3">
-                            <span>Operations</span>
+                            <span>Expected repairs</span>
                             <span className="text-sm font-normal text-muted-foreground tabular-nums">
-                                {plan.operations.length}
+                                {plan.expected_repairs.length}
                             </span>
                         </CardTitle>
                         <CardDescription>
-                            The work this rebuild needs. Each one is here because the entry
-                            scope includes it or a finding raised it — nothing is on the job
-                            without a reason you can challenge.
+                            Every operation on the route runs. These are the repairs its checks
+                            will send this unit to, each because a finding or the rebuild level
+                            raised its code. One that needs approval holds the unit at its check
+                            until a lead approves it — or, on a customer's own unit, the customer
+                            does — so seek the answer before the unit gets there.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {plan.operations.length === 0 ? (
+                        {plan.expected_repairs.length === 0 ? (
                             <p className="py-6 text-center text-muted-foreground">
-                                No operations resolved — no rebuild level or repair codes are
-                                configured for this core type.
+                                No repairs expected — no finding or rebuild level raised a code that
+                                this unit's route offers a repair for.
                             </p>
                         ) : (
                             <div className="w-full overflow-x-auto rounded-md border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Operation</TableHead>
+                                            <TableHead>Repair</TableHead>
                                             <TableHead>Code</TableHead>
+                                            <TableHead>At check</TableHead>
+                                            <TableHead>Approval</TableHead>
                                             <TableHead>Because</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {plan.operations.map((op) => (
+                                        {plan.expected_repairs.map((op) => (
                                             <TableRow key={op.step_id}>
                                                 <TableCell className="font-medium">
                                                     {op.step_name}
@@ -272,6 +277,14 @@ export function RebuildPlanPage() {
                                                     <Badge variant="secondary" title={op.code_name}>
                                                         {op.code}
                                                     </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-sm">{op.check_name || "—"}</TableCell>
+                                                <TableCell>
+                                                    {op.needs_approval ? (
+                                                        <Badge variant="outline">Needs approval</Badge>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">Goes ahead</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {op.because.join("; ")}

@@ -16,6 +16,7 @@ import {
   Clock,
   PackageOpen,
   RefreshCw,
+  Wrench,
   ClipboardCheck,
   FlaskConical,
   AlertTriangle,
@@ -58,6 +59,9 @@ export interface StepNodeData {
   isStart?: boolean;
   /** Demo mode for conditional overlay rendering */
   demoMode?: DemoMode;
+  /** Repair node (reman): the repair code it carries out, and its name. */
+  repairCode?: string | null;
+  repairCodeName?: string | null;
   /** 4c — live part distribution at this step (always-on overlay, not demo-gated). */
   liveMetrics?: {
     total: number;
@@ -454,6 +458,37 @@ export const ReceivingNode = memo(({ data }: StepNodeProps) => {
 });
 ReceivingNode.displayName = 'ReceivingNode';
 
+/** Repair node (reman) - an offshoot of a check, taken only when the unit's repair
+ *  code is raised; shows the code it carries out. */
+export const RepairNode = memo(({ data }: StepNodeProps) => {
+  return (
+    <BaseNode className={cn(
+      "border-violet-500 border-dashed",
+      getHighlightClass(data)
+    )}>
+      <NodeOverlays data={data} />
+      <LiveMetricsBadge data={data} />
+      <BaseHandle type="target" position={Position.Left} />
+      <BaseNodeHeader className="bg-violet-50 dark:bg-violet-950/30">
+        <Wrench className="h-3 w-3 text-violet-600" />
+        <BaseNodeHeaderTitle>{data.label}</BaseNodeHeaderTitle>
+        <span className="text-xs bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-full font-medium font-mono">
+          {data.repairCode || 'no code'}
+        </span>
+      </BaseNodeHeader>
+      {(data.repairCodeName || data.description) && (
+        <BaseNodeContent>
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {data.repairCodeName || data.description}
+          </p>
+        </BaseNodeContent>
+      )}
+      <BaseHandle type="source" position={Position.Right} />
+    </BaseNode>
+  );
+});
+RepairNode.displayName = 'RepairNode';
+
 /** Node types map for ReactFlow - keys must match UPPERCASE step_type values from backend */
 export const flowNodeTypes = {
   TASK: TaskNode,
@@ -463,4 +498,5 @@ export const flowNodeTypes = {
   TIMER: TimerNode,
   TERMINAL: TerminalNode,
   RECEIVING: ReceivingNode,
+  REPAIR: RepairNode,
 };

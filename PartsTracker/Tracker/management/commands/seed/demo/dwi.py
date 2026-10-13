@@ -407,7 +407,7 @@ class DemoDwiSeeder(BaseSeeder):
                     # change to the rebuild's scope; a lead applies or dismisses it.
                     "is_optional": True,
                     "body": _doc(
-                        _para("If a component teardown graded as reusable fails here, record it. A lead decides whether the rebuild changes."),
+                        _para("If a component teardown graded as reusable fails here, record it. A repair this check pre-approves applies at once and the unit goes down that branch; anything else waits here for a lead."),
                         _reman_capture("rebuildFindingCapture", "Nozzle Inspection", "finding",
                                        "Component found worse", required=False),
                     ),
@@ -492,6 +492,43 @@ class DemoDwiSeeder(BaseSeeder):
             # A unit that failed a test is repaired here, then re-enters Nozzle
             # Inspection. The repair is inspected before it leaves, so the record says
             # what was wrong, what was done and who accepted it.
+            # Repair nodes (seed/demo/manufacturing DEMO_REPAIR_BRANCHES): a unit comes
+            # here only when its nozzle's repair code is raised, then rejoins at Flow
+            # Testing, which proves the repair worked.
+            "Nozzle Recondition": [
+                {
+                    "title": "Recondition the nozzle",
+                    "order": 0,
+                    "body": _doc(
+                        _para("Lap the nozzle seat and clear each spray hole. This unit is here because its nozzle was graded for reconditioning."),
+                        _callout("note", "Flow Testing comes next and proves the repair - you don't test it here."),
+                        _photo("Nozzle Recondition", "seat-after", "Seat face after lapping"),
+                        _attest_confirm(
+                            "Nozzle Recondition",
+                            "holes-clear",
+                            "Spray holes clear",
+                            "I confirm the seat is lapped and every spray hole is clear.",
+                        ),
+                    ),
+                },
+            ],
+            "Nozzle Replacement": [
+                {
+                    "title": "Fit a replacement nozzle",
+                    "order": 0,
+                    "is_critical": True,
+                    "body": _doc(
+                        _para("Fit a new nozzle assembly in place of the scrapped one. Scan the replacement so its lot is traced to this unit."),
+                        _scan("Nozzle Replacement", "new-nozzle", "Scan the replacement nozzle"),
+                        _attest_confirm(
+                            "Nozzle Replacement",
+                            "fitted",
+                            "Replacement fitted",
+                            "I confirm the replacement nozzle is seated and the old one is tagged for scrap.",
+                        ),
+                    ),
+                },
+            ],
             "Rework": [
                 {
                     "title": "Repair and inspect the rework",

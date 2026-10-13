@@ -289,10 +289,9 @@ def advance_part_step(
     # deliberately un-raising: bookkeeping must never strand a finished part.
     _consume_step_material(part, part.step, operator)
 
+    # A reman check with Repair nodes routes inside get_next_step (repair_routing):
+    # every op on the main line runs, and a repair is a branch the unit takes or not.
     next_step = part.get_next_step(decision_result)
-    # A core under rebuild visits only the operations its findings called for, and the
-    # ones it passes are recorded SKIPPED rather than silently absent.
-    next_step = reman.skip_out_of_scope(part, next_step, operator)
 
     if next_step is None:
         # Preserve HELD statuses at the terminal boundary. A QUARANTINED or
@@ -342,8 +341,10 @@ def advance_part_step(
     if part.step.is_decision_point or part.step.max_visits:
         process = part.work_order.process if part.work_order else None
         if process:
+            # A planned repair (an edge to a Repair node) is not a rework escalation.
             alt_edge = StepEdge.objects.filter(
-                process=process, from_step=part.step, edge_type=EdgeType.ALTERNATE
+                process=process, from_step=part.step, edge_type=EdgeType.ALTERNATE,
+                to_step__repair_code__isnull=True,
             ).first()
             esc_edge = StepEdge.objects.filter(
                 process=process, from_step=part.step, edge_type=EdgeType.ESCALATION

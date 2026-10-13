@@ -427,14 +427,9 @@ export const useCompleteStep = () => {
 // 4a — decision-point resolution
 // =============================================================================
 
-export type DecisionBranch = { step_id: string; step_name: string } | null;
-export type DecisionOptions = {
-    is_decision_point: boolean;
-    decision_type?: string;
-    default_branch?: DecisionBranch;
-    alternate_branch?: DecisionBranch;
-    qa_suggested?: string | null;
-};
+export type DecisionOptions = Schema<"DecisionOptionsResponse">;
+/** One repair a reman check offers (services/reman/repair_routing). */
+export type RepairBranch = Schema<"RepairBranch">;
 
 /** Decision-point metadata for a part's current step (4a). Drives the
  *  runtime resolver: branch labels for MANUAL, auto-route note for QA_RESULT. */
@@ -444,7 +439,7 @@ export const decisionOptionsOptions = (partId: string | null | undefined) =>
         queryFn: () =>
             api.api_Parts_decision_options_retrieve({
                 params: { id: String(partId) },
-            }) as Promise<DecisionOptions>,
+            }),
     });
 
 export function useDecisionOptions(partId: string | null | undefined, options?: { enabled?: boolean }) {

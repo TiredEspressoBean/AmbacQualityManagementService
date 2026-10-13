@@ -30,8 +30,8 @@ from dataclasses import dataclass, field, replace
 SERVICEABLE_GRADES = ('A', 'B')
 RECONDITIONABLE_GRADES = ('C',)
 
-# Resolutions a slot can take. The first two emit operations or nothing; the last two
-# emit demand. The vocabulary lives on the model (`SLOT_RESOLUTION_CHOICES`) because
+# Resolutions a slot can take. The first two raise a repair or nothing; the last two
+# raise demand. The vocabulary lives on the model (`SLOT_RESOLUTION_CHOICES`) because
 # `RebuildSlotOverride` stores it — these are names for the same values, not a second
 # copy of them.
 REUSE = 'REUSE'
@@ -86,7 +86,7 @@ class RebuildPlan:
     bom_revision: str | None
     entry_scope: str | None = None
     slots: list = field(default_factory=list)
-    operations: list = field(default_factory=list)
+    expected_repairs: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
 
 
@@ -302,6 +302,18 @@ def _apply_overrides(core, slots, slot_lines):
     return out
 
 
+def _repair_step_ids(core) -> set:
+    """Ids of the Repair nodes on this unit's process (steps carrying a repair code)."""
+    from Tracker.models import ProcessStep
+
+    part = getattr(core, 'part', None)
+    process = part.work_order.process if part is not None and part.work_order_id else None
+    if process is None:
+        return set()
+    return {str(sid) for sid in ProcessStep.objects.filter(  # tenant-safe: scoped by the process FK
+        process=process, step__repair_code__isnull=False).values_list('step_id', flat=True)}
+
+
 def resolve_rebuild_plan(core) -> RebuildPlan:
     """Propose what goes back into `core`, slot by slot. Writes nothing.
 
@@ -319,7 +331,7 @@ def resolve_rebuild_plan(core) -> RebuildPlan:
         return RebuildPlan(
             core_id=str(core.id), core_number=core.core_number,
             fulfilment_mode=core.fulfilment_mode, bom_revision=None,
-            entry_scope=None, slots=[], operations=[],
+            entry_scope=None, slots=[], expected_repairs=[],
             warnings=[
                 f"No released assembly BOM for {core.core_type.name}. A rebuild kit "
                 "cannot be proposed until one is released."
@@ -360,45 +372,36 @@ def resolve_rebuild_plan(core) -> RebuildPlan:
     # computed from the decided resolutions rather than the proposed ones.
     slots = _apply_overrides(core, slots, slot_lines)
 
-    # Scope is derived FROM the resolved slots, not beside them: a repair code is a
-    # slot resolution that emits operations (§6.4), so resolving the two separately
-    # is how they drift apart.
+    # Scope is derived FROM the resolved slots, not beside them: a repair code is
+    # raised by a slot resolution, so resolving the two separately is how they drift.
     from Tracker.services.reman.scope import resolve_scope
 
     scope = resolve_scope(core, slots)
     warnings.extend(scope.warnings)
 
-    # Now that the scope exists, drop slots the unit does not actually reach. A BOM
-    # line consumed at a step outside this rebuild's operations is not part of this
-    # kit — which is the over-picking defect `pick_list.py` still has on any branched
-    # process. Only filter when scope resolved something: with no codes authored,
-    # filtering would empty the kit rather than narrow it.
-    scoped_step_ids = scope.step_ids
-    if scoped_step_ids:
-        in_scope, dropped = [], 0
-        for slot, line in zip(slots, slot_lines):
-            step_id = str(line.consumed_at_step_id) if line.consumed_at_step_id else None
-            # A line with no consuming step cannot be placed, so it stays rather than
-            # being silently dropped by a filter it was never subject to.
-            if step_id is None or step_id in scoped_step_ids:
-                in_scope.append(slot)
-            else:
-                dropped += 1
-        slots = in_scope
-        if dropped:
-            warnings.append(
-                f"{dropped} BOM line(s) are consumed at operations outside this "
-                "rebuild's scope and are not in the kit."
-            )
-    else:
+    # Drop slots the unit won't reach. Every op on the main line runs, so a line
+    # consumed there is always in the kit; a line consumed at a Repair node is in it
+    # only when that repair is expected — its code raised (repair_routing). A line with
+    # no consuming step can't be placed, so it stays.
+    expected = scope.step_ids
+    repair_step_ids = _repair_step_ids(core)
+    in_kit, dropped = [], 0
+    for slot, line in zip(slots, slot_lines):
+        step_id = str(line.consumed_at_step_id) if line.consumed_at_step_id else None
+        if step_id is None or step_id not in repair_step_ids or step_id in expected:
+            in_kit.append(slot)
+        else:
+            dropped += 1
+    slots = in_kit
+    if dropped:
         warnings.append(
-            "No operations were resolved, so the kit below is the whole released BOM "
-            "rather than what this unit needs. Expect it to over-state."
+            f"{dropped} BOM line(s) are consumed at repairs this unit isn't expected to "
+            "need and are not in the kit."
         )
 
     return RebuildPlan(
         core_id=str(core.id), core_number=core.core_number,
         fulfilment_mode=core.fulfilment_mode,
         bom_revision=bom.revision, entry_scope=scope.entry_scope,
-        slots=slots, operations=scope.operations, warnings=warnings,
+        slots=slots, expected_repairs=scope.expected_repairs, warnings=warnings,
     )

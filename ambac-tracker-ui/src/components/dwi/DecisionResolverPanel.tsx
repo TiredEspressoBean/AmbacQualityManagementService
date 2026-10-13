@@ -14,16 +14,97 @@
  *
  * Branch labels come from the resolved StepEdges so the operator sees real
  * target step names ("Pass → Final Test" / "Fail → Rework").
+ *
+ * A reman check with Repair nodes (services/reman/repair_routing, 2026-10-12) also
+ * lists the repairs it offers — pre-approved or needing approval, and which this unit
+ * needs — and names the hold it would meet leaving now, in the words that decide it.
  */
 import { useState } from "react";
-import { GitBranch, Loader2, ArrowRight } from "lucide-react";
+import { GitBranch, Loader2, ArrowRight, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useDecisionOptions, useResolveDecision } from "@/hooks/parts";
+import { useDecisionOptions, useResolveDecision, type RepairBranch } from "@/hooks/parts";
+import { useCoreLifecycleAction } from "@/hooks/useReleaseCore";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+
+/** The repairs this check offers, and the hold the unit meets leaving now. A repair
+ *  this unit needs that isn't approved yet can be approved here by a lead (exchange
+ *  unit) or sent for the customer's authorisation (their own unit). */
+function RepairBranches({ branches, hold, coreId, customerUnit }: {
+    branches: RepairBranch[];
+    hold: string | null;
+    coreId: string | null;
+    customerUnit: boolean;
+}) {
+    const { has } = usePermissionSet();
+    const act = useCoreLifecycleAction();
+    if (branches.length === 0) return null;
+    const waiting = branches.filter((b) => b.needed && !b.approved);
+    const run = (v: Parameters<typeof act.mutate>[0], done: string) =>
+        act.mutate(v, {
+            onSuccess: () => toast.success(done),
+            onError: (e) => toast.error(apiErrorMessage(e) ?? "Couldn't record that."),
+        });
+    return (
+        <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Repairs at this check</span>
+            </div>
+            <ul className="mt-2 space-y-1.5">
+                {branches.map((b) => (
+                    <li key={b.step_id} className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="font-mono text-xs">{b.code}</span>
+                        <span>{b.step_name}</span>
+                        {b.pre_approved ? (
+                            <Badge variant="secondary" className="text-[10px]">Pre-approved</Badge>
+                        ) : (
+                            <Badge variant="outline" className="text-[10px]">Needs approval</Badge>
+                        )}
+                        {b.needed && (
+                            <Badge variant={b.approved ? "default" : "destructive"} className="text-[10px]">
+                                {b.approved ? "This unit goes here" : "Needed — waiting for approval"}
+                            </Badge>
+                        )}
+                    </li>
+                ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">
+                The unit takes a repair only when its finding raises that repair's code;
+                otherwise it continues down the line.
+            </p>
+            {hold && (
+                <p role="status" className="mt-2 rounded-md border border-amber-500/40 bg-amber-50/60 p-2 text-sm dark:bg-amber-950/20">
+                    {hold}
+                </p>
+            )}
+            {coreId && waiting.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                    {customerUnit ? (
+                        has("change_core") && (
+                            <Button size="sm" variant="outline" disabled={act.isPending}
+                                onClick={() => run({ id: coreId, action: "request_authorisation" },
+                                    "Sent for the customer's authorisation — record their answer on the work order.")}>
+                                Send for the customer's authorisation
+                            </Button>
+                        )
+                    ) : (
+                        has("accept_component") && waiting.map((b) => (
+                            <Button key={b.code} size="sm" variant="outline" disabled={act.isPending}
+                                onClick={() => run({ id: coreId, action: "approve_repair", code: b.code },
+                                    `${b.code} approved for this unit.`)}>
+                                Approve {b.code}
+                            </Button>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export function DecisionResolverPanel({
     partId,
@@ -40,7 +121,15 @@ export function DecisionResolverPanel({
     const [cosignFor, setCosignFor] = useState<"DEFAULT" | "ALTERNATE" | null>(null);
     const [cosignError, setCosignError] = useState<string | null>(null);
 
-    if (!data?.is_decision_point) return null;
+    const repairs = (
+        <RepairBranches
+            branches={data?.repair_branches ?? []}
+            hold={data?.repair_hold ?? null}
+            coreId={data?.repair_core_id ?? null}
+            customerUnit={!!data?.repair_customer_unit}
+        />
+    );
+    if (!data?.is_decision_point) return repairs;
 
     const def = data.default_branch ?? null;
     const alt = data.alternate_branch ?? null;
@@ -54,6 +143,8 @@ export function DecisionResolverPanel({
                     ? alt?.step_name
                     : null;
         return (
+            <div className="space-y-2">
+            {repairs}
             <div className="rounded-lg border bg-card p-3">
                 <div className="flex items-center gap-2">
                     <GitBranch className="h-4 w-4 text-muted-foreground" />
@@ -73,6 +164,7 @@ export function DecisionResolverPanel({
                         )}
                     </p>
                 )}
+            </div>
             </div>
         );
     }
@@ -121,6 +213,8 @@ export function DecisionResolverPanel({
         canResolve ? choose(decision) : setCosignFor(decision);
 
     return (
+        <div className="space-y-2">
+        {repairs}
         <div className="rounded-lg border border-amber-500/40 bg-amber-50/50 p-3 dark:bg-amber-950/20">
             <div className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-amber-600" />
@@ -192,6 +286,7 @@ export function DecisionResolverPanel({
                     }
                 />
             )}
+        </div>
         </div>
     );
 }

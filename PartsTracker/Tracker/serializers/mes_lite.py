@@ -1303,6 +1303,8 @@ class StepsSerializer(SecureModelMixin):
             'work_center', 'work_center_name',
             # Workflow engine - step type
             'step_type',
+            # Repair node (reman): the repair code this step carries out
+            'repair_code',
             # Outside processing (subcontract op — Flow B)
             'is_outside_process', 'outside_supplier', 'outside_process_lead_days',
             # Workflow engine - branching type (edges defined separately in StepEdge)
@@ -1647,6 +1649,9 @@ class StepSerializer(SecureModelMixin):
     """Step serializer - just the node properties (no process/order/branching)"""
     part_type_name = serializers.CharField(source="part_type.name", read_only=True, allow_null=True)
     outside_supplier_name = serializers.CharField(source="outside_supplier.name", read_only=True, allow_null=True)
+    # A Repair node's code, for the editor's label and picker.
+    repair_code_code = serializers.CharField(source="repair_code.code", read_only=True, allow_null=True)
+    repair_code_name = serializers.CharField(source="repair_code.name", read_only=True, allow_null=True)
 
     class Meta:
         model = Steps
@@ -1662,6 +1667,8 @@ class StepSerializer(SecureModelMixin):
             "requires_first_piece_inspection", "fpi_scope",
             # Workflow engine - step type & behavior
             "step_type", "is_decision_point", "decision_type",
+            # Repair node (reman)
+            "repair_code", "repair_code_code", "repair_code_name",
             # Outside processing (subcontract op — Flow B)
             "is_outside_process", "outside_supplier", "outside_supplier_name",
             "outside_process_lead_days",
@@ -1698,6 +1705,8 @@ class StepEdgeSerializer(SecureModelMixin):
             "from_step_name", "to_step_name",
             "condition_measurement", "condition_operator", "condition_value",
             "max_minutes", "tech_continuity",
+            # On a branch to a Repair node: the repair is pre-approved at this check.
+            "pre_approved",
         ]
 
 

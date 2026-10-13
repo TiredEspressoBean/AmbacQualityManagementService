@@ -10,7 +10,6 @@ from datetime import date, timedelta
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.test import SimpleTestCase, TestCase
 from Tracker.tests.base import TenantTestCase
-from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
 from Tracker.models import (
@@ -1561,49 +1560,53 @@ class HarvestReservationTests(TenantTestCase):
 
 
 class RebuildScopeResolutionTests(TenantTestCase):
-    """Scope is derived FROM the resolved slots, not beside them.
-
-    A repair code is a slot resolution that emits operations — "recondition the
-    nozzle" and "replace the nozzle" answer the same slot, one with work and one
-    with a part. Resolving scope and kit separately is how they drift apart, so
-    these tests drive scope through the slot resolutions rather than directly.
-    """
+    """Scope is derived FROM the resolved slots, not beside them — and since 2026-10-12
+    it PLANS the rebuild rather than routing it: the codes a unit's findings raise, and
+    the Repair nodes in its process those codes send it to (services/reman/scope)."""
 
     def setUp(self):
         super().setUp()
         from Tracker.models import (
-            Core, HarvestedComponent, PartTypes, Processes, ProcessStep,
-            RebuildScopePreset, RepairCode, Steps,
+            HarvestedComponent, PartTypes, Processes, ProcessStep, RebuildScopePreset,
+            RepairCode, StepEdge, Steps, WorkOrder, WorkOrderStatus,
         )
+        from Tracker.models.mes_lite import EdgeType
 
         self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
         self.nozzle = PartTypes.objects.create(tenant=self.tenant_a, name='Nozzle')
+        process = Processes.objects.create(
+            tenant=self.tenant_a, name='Reman', part_type=self.core_type, status='APPROVED')
 
-        def _step(name):
-            return Steps.objects.create(
-                tenant=self.tenant_a, part_type=self.core_type, name=name)
-
-        self.clean = _step('Cleaning')
-        self.assemble = _step('Assembly')
-        self.hone = _step('Hone Nozzle')
-        self.flow = _step('Flow Test')
+        def _step(name, order, **kw):
+            st = Steps.objects.create(tenant=self.tenant_a, part_type=self.core_type,
+                                      name=name, **kw)
+            ProcessStep.objects.create(process=process, step=st, order=order)
+            return st
 
         self.base = RepairCode.objects.create(
             tenant=self.tenant_a, code='BASE', name='Base rebuild', trigger='ALWAYS')
-        self.base.steps.set([self.clean, self.assemble])
-
         self.recon = RepairCode.objects.create(
             tenant=self.tenant_a, code='NZL-RECON', name='Recondition nozzle',
             component_type=self.nozzle, trigger='RECONDITION')
-        self.recon.steps.set([self.hone])
-
         self.premium = RepairCode.objects.create(
             tenant=self.tenant_a, code='FLOW', name='Flow test', trigger='PRESET')
-        self.premium.steps.set([self.flow])
 
+        self.check = _step('Nozzle Check', 1)
+        self.hone = _step('Hone Nozzle', 2, step_type='REPAIR', repair_code=self.recon)
+        self.assemble = _step('Assembly', 3)
+        self.edge = StepEdge.objects.create(process=process, from_step=self.check,
+                                            to_step=self.hone, edge_type=EdgeType.ALTERNATE,
+                                            pre_approved=True)
+        StepEdge.objects.create(process=process, from_step=self.check, to_step=self.assemble,
+                                edge_type=EdgeType.DEFAULT)
+
+        wo = WorkOrder.objects.create(tenant=self.tenant_a, ERP_id='WO-SCOPE-R', quantity=1,
+                                      workorder_status=WorkOrderStatus.IN_PROGRESS,
+                                      process=process)
         self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-SCOPE-1', core_type=self.core_type,
-            status='DISASSEMBLED', received_date=date.today(), received_by=self.user_a)
+            status='DISASSEMBLED', received_date=date.today(), received_by=self.user_a,
+            work_order=wo, step=self.check)
         self._HarvestedComponent = HarvestedComponent
         self._RebuildScopePreset = RebuildScopePreset
 
@@ -1614,9 +1617,7 @@ class RebuildScopeResolutionTests(TenantTestCase):
 
     def _slots(self):
         """Slots as the rebuild resolver would produce them, without a BOM fixture."""
-        from Tracker.services.reman.rebuild import (
-            RECONDITION, REUSE, Slot,
-        )
+        from Tracker.services.reman.rebuild import RECONDITION, REUSE, Slot
         hc = self.core.harvested_components.filter(is_scrapped=False).first()
         grade = hc.condition_grade if hc else None
         resolution = REUSE if grade in ('A', 'B') else RECONDITION
@@ -1627,81 +1628,59 @@ class RebuildScopeResolutionTests(TenantTestCase):
             reason='', candidates=[],
         )]
 
-    def test_always_codes_are_scope_whatever_the_finding(self):
+    def test_always_codes_are_raised_whatever_the_finding(self):
         from Tracker.services.reman.scope import resolve_scope
         self._harvest('A')
-        scope = resolve_scope(self.core, self._slots())
-        self.assertIn(self.clean.name, [o.step_name for o in scope.operations])
-        self.assertIn(self.assemble.name, [o.step_name for o in scope.operations])
+        self.assertIn('BASE', resolve_scope(self.core, self._slots()).raised_codes)
 
-    def test_a_finding_raises_its_code_and_says_why(self):
-        """The `because` is the point: an operation nobody can trace back to a finding
-        is one nobody can challenge, and the over-and-above quote has to show it."""
+    def test_a_finding_raises_its_repair_and_says_why(self):
+        """The `because` is the point: a repair nobody can trace back to a finding is one
+        nobody can challenge, and the over-and-above quote has to show it."""
         from Tracker.services.reman.scope import resolve_scope
         self._harvest('C')
         scope = resolve_scope(self.core, self._slots())
-        hone = next(o for o in scope.operations if o.step_name == 'Hone Nozzle')
-        self.assertEqual(hone.code, 'NZL-RECON')
+        hone = next(o for o in scope.expected_repairs if o.step_name == 'Hone Nozzle')
+        self.assertEqual((hone.code, hone.check_name), ('NZL-RECON', 'Nozzle Check'))
         self.assertTrue(any('Grade C' in b for b in hone.because))
+        self.assertFalse(hone.needs_approval)   # pre-approved at the check
 
-    def test_a_serviceable_component_raises_no_recondition_work(self):
+    def test_a_repair_not_pre_approved_is_flagged_early(self):
+        """Seen on the plan before the unit reaches the check, so the answer can be
+        sought ahead of time rather than discovered as a hold."""
+        from Tracker.services.reman.scope import resolve_scope
+        self.edge.pre_approved = False
+        self.edge.save(update_fields=['pre_approved'])
+        self._harvest('C')
+        hone = next(o for o in resolve_scope(self.core, self._slots()).expected_repairs)
+        self.assertTrue(hone.needs_approval)
+
+    def test_a_serviceable_component_raises_no_repair(self):
         from Tracker.services.reman.scope import resolve_scope
         self._harvest('B')
-        scope = resolve_scope(self.core, self._slots())
-        self.assertNotIn('Hone Nozzle', [o.step_name for o in scope.operations])
+        self.assertEqual(resolve_scope(self.core, self._slots()).expected_repairs, [])
 
     def test_a_preset_only_code_needs_the_preset(self):
-        """PRESET is what distinguishes one sold rebuild level from another: no
-        finding raises it, so without the level it is simply not on the job."""
+        """PRESET is what distinguishes one sold rebuild level from another: no finding
+        raises it, so without the level it is simply not raised."""
         from Tracker.services.reman.scope import resolve_scope
         self._harvest('A')
-        self.assertNotIn('Flow Test',
-                         [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
-
+        self.assertNotIn('FLOW', resolve_scope(self.core, self._slots()).raised_codes)
         preset = self._RebuildScopePreset.objects.create(
-            tenant=self.tenant_a, core_type=self.core_type,
-            name='Full overhaul', is_default=True)
+            tenant=self.tenant_a, core_type=self.core_type, name='Full overhaul', is_default=True)
         preset.codes.set([self.premium])
         scope = resolve_scope(self.core, self._slots())
-        self.assertIn('Flow Test', [o.step_name for o in scope.operations])
+        self.assertIn('FLOW', scope.raised_codes)
         self.assertEqual(scope.entry_scope, 'Full overhaul')
 
-    def test_a_step_two_codes_raise_is_one_operation_with_both_reasons(self):
-        """Attributing a shared step to whichever code reached it first would hide the
-        other reason — and the hidden one might be the one a customer is paying for."""
-        from Tracker.services.reman.scope import resolve_scope
-        self.recon.steps.set([self.hone, self.clean])   # Cleaning now on both codes
-        self._harvest('C')
-        scope = resolve_scope(self.core, self._slots())
-        cleaning = [o for o in scope.operations if o.step_name == 'Cleaning']
-        self.assertEqual(len(cleaning), 1, "a shared step must not duplicate")
-        self.assertGreaterEqual(len(cleaning[0].because), 2)
-
     def test_no_configuration_degrades_to_a_warning_not_an_error(self):
-        """A shop that has authored nothing should get an honest empty scope, not a
-        crash and not a silent empty list that reads as 'no work needed'."""
+        """A shop that has authored nothing gets an honest empty answer and a warning."""
         from Tracker.services.reman.scope import resolve_scope
         from Tracker.models import RepairCode
         RepairCode.objects.all().delete()
         self._harvest('A')
         scope = resolve_scope(self.core, self._slots())
-        self.assertEqual(scope.operations, [])
+        self.assertEqual(scope.expected_repairs, [])
         self.assertTrue(scope.warnings)
-
-    def test_a_retired_operation_drops_off_the_code(self):
-        """`.objects` scopes by TENANT and does not exclude soft-deleted rows, so every
-        query in these services has to say `archived=False` itself. This one was missed
-        in the first sweep: a retired step still hanging off a live code kept going on
-        the job."""
-        from Tracker.services.reman.scope import resolve_scope
-        self._harvest('A')
-        self.assertIn('Cleaning',
-                      [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
-
-        self.clean.delete()   # soft delete — archives, does not remove
-        self.assertNotIn('Cleaning',
-                         [o.step_name for o in resolve_scope(self.core, self._slots()).operations])
-
 
 class CoreReleaseTests(TenantTestCase):
     """Teardown ends in one of two places, and which one is not a free choice.
@@ -1756,24 +1735,24 @@ class CoreReleaseTests(TenantTestCase):
     def test_an_exchange_core_may_be_released_into_rebuild(self):
         """Exchange cores are normally rebuilt — to stock (decided 2026-09-24; it used
         to be refused, which left planning's exchange rebuilds unreachable). This one
-        has no scope authored, so it is refused for THAT reason, not for its mode."""
+        has no route to continue on, so it is refused for THAT reason, not its mode."""
         from django.core.exceptions import ValidationError
         from Tracker.services.reman.release import release_core_to_rebuild
 
         with self.assertRaises(ValidationError) as ctx:
             release_core_to_rebuild(self.ours, self.user_a)
         self.assertNotIn('exchange unit', str(ctx.exception))
-        self.assertIn('No rebuild operations resolved', str(ctx.exception))
+        self.assertIn('no next step on its route', str(ctx.exception))
 
-    def test_releasing_into_rebuild_needs_a_resolved_scope(self):
-        """Releasing with no operations would put a unit on a work order with nothing
+    def test_releasing_into_rebuild_needs_a_route_to_continue_on(self):
+        """Releasing with nowhere to go would put a unit on a work order with nothing
         to do, which reads as 'rebuilt' having done none of the work."""
         from django.core.exceptions import ValidationError
         from Tracker.services.reman.release import release_core_to_rebuild
 
         with self.assertRaises(ValidationError) as ctx:
             release_core_to_rebuild(self.theirs, self.user_a)
-        self.assertIn('No rebuild operations resolved', str(ctx.exception))
+        self.assertIn('no next step on its route', str(ctx.exception))
 
     def test_only_a_disassembled_core_can_be_released(self):
         from django.core.exceptions import ValidationError
@@ -2050,19 +2029,22 @@ class RecoverableSupplyTests(TenantTestCase):
         self.assertEqual(rs.sources[0]['cores'], 1)
 
 
-class ScopeAwareAdvancementTests(TenantTestCase):
-    """A unit under rebuild visits only the operations its findings called for.
+class RepairRoutingTests(TenantTestCase):
+    """Repairs are branches off checks (2026-10-12, services/reman/repair_routing).
 
-    Without this it walks DEFAULT edges through the whole authored route, doing work
-    nobody asked for — and on a repair-and-return unit, billing a customer for it.
+    Every op on the main line runs — nothing is skipped. A check sends a unit down a
+    Repair node when its code is raised; a repair the check pre-approves goes ahead on
+    the finding, anything else holds the unit there until a person decides.
+
+    Route: Grade (last teardown step) → Clean → Check → Assemble → Test, with Hone
+    (NZL-RECON, pre-approved) and Replace (NZL-REPLACE) off Check, both back to Assemble.
     """
 
     def setUp(self):
         super().setUp()
         from Tracker.models import (
-            Core, HarvestedComponent, PartTypes, Processes, ProcessStep,
-            RebuildScopePreset, RepairCode, StepEdge, Steps, WorkOrder,
-            WorkOrderStatus,
+            HarvestedComponent, PartTypes, Processes, ProcessStep, RepairCode, StepEdge,
+            Steps, WorkOrder, WorkOrderStatus,
         )
         from Tracker.models.mes_lite import EdgeType
 
@@ -2070,117 +2052,242 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         self.nozzle = PartTypes.objects.create(
             tenant=self.tenant_a, name='Nozzle', can_recover=True)
         self.process = Processes.objects.create(
-            tenant=self.tenant_a, name='Reman', part_type=self.core_type,
-            status='APPROVED')
+            tenant=self.tenant_a, name='Reman', part_type=self.core_type, status='APPROVED')
+        self.recon = RepairCode.objects.create(
+            tenant=self.tenant_a, code='NZL-RECON', name='Recondition nozzle',
+            component_type=self.nozzle, trigger='RECONDITION')
+        self.replace = RepairCode.objects.create(
+            tenant=self.tenant_a, code='NZL-REPLACE', name='Replace nozzle',
+            component_type=self.nozzle, trigger='REPLACE_BUY')
 
-        names = ['Clean', 'Hone', 'Plate', 'Assemble', 'Test']
         self.steps = {}
-        for i, n in enumerate(names, start=1):
-            st = Steps.objects.create(
-                tenant=self.tenant_a, part_type=self.core_type, name=n)
+        for i, (n, kw) in enumerate([
+                ('Grade', {}), ('Clean', {}), ('Check', {}), ('Assemble', {}), ('Test', {}),
+                ('Hone', {'step_type': 'REPAIR', 'repair_code': self.recon}),
+                ('Replace', {'step_type': 'REPAIR', 'repair_code': self.replace}),
+                ('Rework', {'step_type': 'REWORK'})], start=1):
+            st = Steps.objects.create(tenant=self.tenant_a, part_type=self.core_type, name=n, **kw)
             ProcessStep.objects.create(process=self.process, step=st, order=i)
             self.steps[n] = st
-        for a, b in zip(names, names[1:]):
-            StepEdge.objects.create(
-                process=self.process, from_step=self.steps[a], to_step=self.steps[b],
-                edge_type=EdgeType.DEFAULT)
 
-        # Scope: everything EXCEPT Hone and Plate, which only a worn nozzle raises.
-        base = RepairCode.objects.create(
-            tenant=self.tenant_a, code='BASE', name='Base', trigger='ALWAYS')
-        base.steps.set([self.steps['Clean'], self.steps['Assemble'], self.steps['Test']])
-        recon = RepairCode.objects.create(
-            tenant=self.tenant_a, code='NZL', name='Recondition nozzle',
-            component_type=self.nozzle, trigger='RECONDITION')
-        recon.steps.set([self.steps['Hone'], self.steps['Plate']])
+        def edge(a, b, t=EdgeType.DEFAULT, pre=False):
+            return StepEdge.objects.create(process=self.process, from_step=self.steps[a],
+                                           to_step=self.steps[b], edge_type=t, pre_approved=pre)
+        for a, b in [('Grade', 'Clean'), ('Clean', 'Check'), ('Check', 'Assemble'),
+                     ('Assemble', 'Test'), ('Hone', 'Assemble'), ('Replace', 'Assemble'),
+                     ('Rework', 'Check')]:
+            edge(a, b)
+        self.hone_edge = edge('Check', 'Hone', EdgeType.ALTERNATE, pre=True)
+        edge('Check', 'Replace', EdgeType.ALTERNATE, pre=False)
+        edge('Check', 'Rework', EdgeType.ALTERNATE)
 
         self.wo = WorkOrder.objects.create(
-            tenant=self.tenant_a, ERP_id='WO-SCOPE', quantity=1,
+            tenant=self.tenant_a, ERP_id='WO-REPAIR', quantity=1,
             workorder_status=WorkOrderStatus.IN_PROGRESS, process=self.process)
-        self.core = create_core(
-            tenant=self.tenant_a, core_number='CORE-SCOPE-A', core_type=self.core_type,
-            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
-            work_order=self.wo, step=self.steps['Clean'],
-            received_date=date.today(), received_by=self.user_a)
-        HarvestedComponent.objects.create(
-            tenant=self.tenant_a, core=self.core, component_type=self.nozzle,
-            condition_grade='A', disassembled_by=self.user_a)  # serviceable: no recon
-
-    def test_out_of_scope_operations_are_walked_past(self):
-        from Tracker.models import StepExecution
-        from Tracker.services.mes.parts import advance_part_step
-
-        advance_part_step(self.core.part, operator=self.user_a)
-        self.core.refresh_from_db()
-        # Hone and Plate belong to a code this unit's findings never raised.
-        self.assertEqual(self.core.part.step, self.steps['Assemble'])
-        skipped = set(
-            StepExecution.objects.filter(part=self.core.part, status='SKIPPED')
-            .values_list('step__name', flat=True))
-        self.assertEqual(skipped, {'Hone', 'Plate'})
-
-    def test_skipped_work_is_recorded_not_silently_absent(self):
-        """The traveler has to show what was deliberately NOT done — the difference
-        between 'we chose not to' and 'we forgot'."""
-        from Tracker.models import StepExecution
-        from Tracker.services.mes.parts import advance_part_step
-
-        advance_part_step(self.core.part, operator=self.user_a)
-        hone = StepExecution.objects.get(part=self.core.part, step=self.steps['Hone'])
-        self.assertEqual(hone.status, 'SKIPPED')
-        self.assertIsNotNone(hone.exited_at)
-
-    def test_a_teardown_core_walks_the_route_as_authored(self):
-        """Scope applies to rebuild only. Every core gets the same teardown, which is
-        why teardown can batch and rebuild cannot."""
-        from Tracker.models import StepExecution
-        from Tracker.services.mes.parts import advance_part_step
-
-        self.core.status = 'IN_DISASSEMBLY'
-        self.core.save(update_fields=['status'])
-        advance_part_step(self.core.part, operator=self.user_a)
-        self.core.refresh_from_db()
-        self.assertEqual(self.core.part.step, self.steps['Hone'])
-        self.assertFalse(
-            StepExecution.objects.filter(part=self.core.part, status='SKIPPED').exists())
-
-    def test_finishing_the_scope_completes_the_rebuild(self):
-        from Tracker.services.mes.parts import advance_part_step
-
-        for _ in range(6):
-            self.core.refresh_from_db()
-            if self.core.status != 'IN_REBUILD':
-                break
-            if advance_part_step(self.core.part, operator=self.user_a) == 'completed':
-                break
-        self.core.refresh_from_db()
-        self.assertEqual(self.core.status, 'REBUILT')
-
-
-    def test_a_disassembled_unit_is_released_into_its_first_in_scope_operation(self):
-        """The happy path of `release_core_to_rebuild`, which no test reached: every
-        other release test stops at a refusal before the core's process is read — so
-        removing the core's own `work_order` accessor broke every release into rebuild
-        (`Core.process` still read it) and the suite stayed green. Found in the browser,
-        2026-09-24."""
+        # Findings raise codes through the rebuild plan, which is laid out against the
+        # core type's released assembly BOM — no BOM, no slots, no codes.
         from decimal import Decimal
         from Tracker.models import BOM, BOMLine
-        from Tracker.services.reman.release import release_core_to_rebuild
-        # A rebuild plan is laid out against the core type's released assembly BOM.
-        bom = BOM.objects.create(
-            tenant=self.tenant_a, part_type=self.core_type, revision='A',
-            bom_type='ASSEMBLY', status='RELEASED', is_current_version=True)
+        bom = BOM.objects.create(tenant=self.tenant_a, part_type=self.core_type, revision='A',
+                                 bom_type='ASSEMBLY', status='RELEASED', is_current_version=True)
         BOMLine.objects.create(tenant=self.tenant_a, bom=bom, component_type=self.nozzle,
                                quantity=Decimal(1), source='BUY', line_number=1)
-        unit = create_core(
-            tenant=self.tenant_a, core_number='CORE-SCOPE-REL', core_type=self.core_type,
-            fulfilment_mode='REPAIR_RETURN', status='DISASSEMBLED', work_order=self.wo,
-            received_date=date.today(), received_by=self.user_a)
-        core, plan = release_core_to_rebuild(unit, self.user_a)
+        self.core = self._core('CORE-RR-1', 'REPAIR_RETURN', step='Clean')
+        self.hc = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=self.nozzle,
+            condition_grade='A', disassembled_by=self.user_a)
+
+    def _core(self, number, mode, *, step, status='IN_REBUILD'):
+        return create_core(
+            tenant=self.tenant_a, core_number=number, core_type=self.core_type,
+            fulfilment_mode=mode, status=status, work_order=self.wo,
+            step=self.steps[step], received_date=date.today(), received_by=self.user_a)
+
+    def _grade(self, grade):
+        self.hc.condition_grade = grade
+        self.hc.save(update_fields=['condition_grade'])
+
+    def _advance(self, core=None):
+        from Tracker.services.mes.parts import advance_part_step
+        core = core or self.core
+        core.refresh_from_db()
+        result = advance_part_step(core.part, operator=self.user_a)
+        core.refresh_from_db()
         core.part.refresh_from_db()
-        self.assertEqual(core.status, 'IN_REBUILD')
-        self.assertEqual(core.part.step, self.steps['Clean'])
-        self.assertTrue(plan.operations)
+        return result
+
+    def test_nothing_on_the_main_line_is_skipped(self):
+        """A serviceable unit walks every op. There is no SKIPPED any more: a repair not
+        needed is a branch not taken."""
+        from Tracker.models import StepExecution
+        for expected in ('Check', 'Assemble', 'Test'):
+            self._advance()
+            self.assertEqual(self.core.part.step.name, expected)
+        self.assertFalse(StepExecution.objects.filter(part=self.core.part, status='SKIPPED').exists())
+
+    def test_a_raised_pre_approved_repair_is_taken_and_rejoins(self):
+        self._grade('C')                       # reconditionable → NZL-RECON
+        self._advance()                        # Clean → Check
+        self._advance()                        # Check → Hone (pre-approved)
+        self.assertEqual(self.core.part.step.name, 'Hone')
+        self._advance()                        # Hone → Assemble
+        self.assertEqual(self.core.part.step.name, 'Assemble')
+
+    def test_a_repair_not_pre_approved_holds_a_customers_unit_for_their_answer(self):
+        from Tracker.services.reman.release import record_authorisation, request_authorisation
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        self._grade('C')
+        self._advance()                        # → Check
+        with self.assertRaisesMessage(ValueError, "the customer's answer"):
+            self._advance()
+        self.assertEqual(self.core.part.step.name, 'Check')   # held, not passed
+
+        core, asked = request_authorisation(self.core, self.user_a)
+        self.assertEqual(asked, ['NZL-RECON'])
+        core = record_authorisation(core, approved=True, user=self.user_a,
+                                    contact='J. Fleet', method='phone', reference='PO-77')
+        self.assertIn('NZL-RECON', core.approved_repair_codes)
+        self.assertIn('answered by J. Fleet', core.condition_notes)
+        self._advance()
+        self.assertEqual(self.core.part.step.name, 'Hone')
+
+    def test_on_an_exchange_unit_a_lead_approves_and_no_customer_is_asked(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import request_authorisation
+        from Tracker.services.reman.repair_routing import approve_repair
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        self.core.fulfilment_mode = 'EXCHANGE'
+        self.core.save(update_fields=['fulfilment_mode'])
+        self._grade('C')
+        self._advance()
+        with self.assertRaisesMessage(ValueError, "a lead's approval"):
+            self._advance()
+        with self.assertRaises(ValidationError):
+            request_authorisation(self.core, self.user_a)   # no customer to ask
+        approve_repair(self.core, 'NZL-RECON', user=self.user_a)
+        self._advance()
+        self.assertEqual(self.core.part.step.name, 'Hone')
+
+    def test_a_lead_cannot_approve_on_a_customers_behalf(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.repair_routing import approve_repair
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        self._grade('C')
+        with self.assertRaises(ValidationError):
+            approve_repair(self.core, 'NZL-RECON', user=self.user_a)
+
+    def test_a_repair_sold_with_the_rebuild_level_needs_no_approval(self):
+        from Tracker.models import RebuildScopePreset
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        preset = RebuildScopePreset.objects.create(
+            tenant=self.tenant_a, core_type=self.core_type, name='Standard', is_default=True)
+        preset.codes.set([self.recon])
+        self._grade('C')
+        self._advance()
+        self._advance()
+        self.assertEqual(self.core.part.step.name, 'Hone')
+
+    def test_a_pending_finding_holds_the_unit_at_a_check_only(self):
+        """Passing an unreviewed finding down the main line is the silent release this
+        replaces; a step with no repairs isn't where it's decided, so it doesn't hold."""
+        from Tracker.services.reman.findings import record_finding
+        record_finding(self.hc, grade='C', finding='Pitting on the seat', user=self.user_a)
+        self._advance()                        # Clean has no repairs → moves on
+        self.assertEqual(self.core.part.step.name, 'Check')
+        with self.assertRaisesMessage(ValueError, "waiting on a lead"):
+            self._advance()
+
+    def test_a_finding_with_no_repair_at_this_check_says_raise_an_ncr(self):
+        from Tracker.models import HarvestedComponent, PartTypes
+        from Tracker.services.reman.findings import record_finding
+        body_type = PartTypes.objects.create(tenant=self.tenant_a, name='Body', can_recover=True)
+        body = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core, component_type=body_type,
+            condition_grade='A', disassembled_by=self.user_a)
+        self._advance()
+        record_finding(body, grade='C', finding='Thread galled', user=self.user_a)
+        with self.assertRaisesMessage(ValueError, 'no planned repair'):
+            self._advance()
+
+    def test_a_serviceable_finding_waits_on_a_lead_not_an_ncr(self):
+        from Tracker.services.reman.findings import record_finding
+        self._advance()
+        record_finding(self.hc, grade='B', finding='Seat a shade dull', user=self.user_a)
+        with self.assertRaisesMessage(ValueError, "waiting on a lead"):
+            self._advance()
+
+    def test_a_scrap_finding_waits_on_a_lead_without_promising_a_branch(self):
+        """Whether scrap ends in a replace branch depends on stock the plan finds, so
+        the hold names the sign-off, not a repair."""
+        from Tracker.services.reman.findings import record_finding
+        self._advance()
+        record_finding(self.hc, grade='SCRAP', finding='Cracked', user=self.user_a)
+        with self.assertRaisesMessage(ValueError, 'proposed for scrap'):
+            self._advance()
+
+    def test_a_finding_captured_at_a_check_applies_itself_when_pre_approved(self):
+        from Tracker.models import StepExecution
+        from Tracker.services.reman.findings import record_findings_from_capture
+        self._advance()                        # → Check
+        se = StepExecution.objects.filter(part=self.core.part, step=self.steps['Check']).first() \
+            or StepExecution.objects.create(part=self.core.part, step=self.steps['Check'],
+                                            status='IN_PROGRESS', visit_number=1)
+        out = record_findings_from_capture(se, [{'harvested_id': str(self.hc.id), 'grade': 'C',
+                                                 'finding': 'Seat pitted'}], self.user_a)
+        self.hc.refresh_from_db()
+        self.assertEqual(out['applied_component_ids'], [str(self.hc.id)])
+        self.assertEqual((self.hc.condition_grade, self.hc.proposed_grade), ('C', ''))
+        self.assertIn('Applied automatically', self.hc.condition_notes)
+
+    def test_scrap_is_never_applied_without_a_lead(self):
+        from Tracker.models import StepExecution
+        from Tracker.services.reman.findings import record_findings_from_capture
+        self._advance()
+        se = StepExecution.objects.create(part=self.core.part, step=self.steps['Check'],
+                                          status='IN_PROGRESS', visit_number=9)
+        out = record_findings_from_capture(se, [{'harvested_id': str(self.hc.id),
+                                                 'grade': 'SCRAP', 'finding': 'Cracked'}],
+                                           self.user_a)
+        self.hc.refresh_from_db()
+        self.assertEqual(out['applied_component_ids'], [])
+        self.assertEqual(self.hc.proposed_grade, 'SCRAP')
+
+    def test_a_failed_inspection_goes_to_rework_not_down_a_repair(self):
+        """With repair branches and a rework branch both on the check, the ordinary
+        pass/fail lookup must not pick a Repair node."""
+        from Tracker.models.mes_lite import EdgeType
+        self.core.part.step = self.steps['Check']
+        self.assertEqual(self.core.part._get_edge(self.steps['Check'], EdgeType.ALTERNATE),
+                         self.steps['Rework'])
+
+    def test_a_teardown_core_is_not_routed_to_repairs(self):
+        self._grade('C')
+        unit = self._core('CORE-TD-1', 'EXCHANGE', step='Check', status='IN_DISASSEMBLY')
+        self._advance(unit)
+        self.assertEqual(unit.part.step.name, 'Assemble')
+
+    def test_a_repair_already_done_is_not_taken_again(self):
+        """A route that sends the unit back through the check after its repair must not
+        loop it down the same repair."""
+        from Tracker.models import StepExecution
+        self._grade('C')
+        StepExecution.objects.create(part=self.core.part, step=self.steps['Hone'],
+                                     status='COMPLETED', visit_number=1)
+        self._advance()
+        self._advance()
+        self.assertEqual(self.core.part.step.name, 'Assemble')
+
+    def test_release_picks_up_after_the_last_teardown_step(self):
+        from Tracker.services.reman.release import release_core_to_rebuild
+        # The fixture's released BOM is what release plans against.
+        unit = self._core('CORE-REL-AT', 'REPAIR_RETURN', step='Grade', status='DISASSEMBLED')
+        core, _ = release_core_to_rebuild(unit, self.user_a)
+        core.part.refresh_from_db()
+        self.assertEqual((core.status, core.part.step.name), ('IN_REBUILD', 'Clean'))
 
     def _released(self, number, mode):
         from decimal import Decimal
@@ -2192,10 +2299,7 @@ class ScopeAwareAdvancementTests(TenantTestCase):
                 bom_type='ASSEMBLY', status='RELEASED', is_current_version=True)
             BOMLine.objects.create(tenant=self.tenant_a, bom=bom, component_type=self.nozzle,
                                    quantity=Decimal(1), source='BUY', line_number=1)
-        unit = create_core(
-            tenant=self.tenant_a, core_number=number, core_type=self.core_type,
-            fulfilment_mode=mode, status='DISASSEMBLED', work_order=self.wo,
-            received_date=date.today(), received_by=self.user_a)
+        unit = self._core(number, mode, step='Grade', status='DISASSEMBLED')
         core, _ = release_core_to_rebuild(unit, self.user_a)
         return core
 
@@ -2226,7 +2330,6 @@ class ScopeAwareAdvancementTests(TenantTestCase):
         for for_reman in (False, True):
             self.assertFalse(list(usable_stock_parts(
                 self.core_type.id, tenant=self.tenant_a, for_reman=for_reman)))
-
 
 class RemanStagingTests(TenantTestCase):
     """A rebuild's kit list.

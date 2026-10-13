@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,7 +19,6 @@ import {
     useCreateRepairCode, useRetrieveRepairCode, useUpdateRepairCode,
 } from "@/hooks/useRepairCodes";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
-import { useRetrieveSteps } from "@/hooks/useRetrieveSteps";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 import type { Schema } from "@/lib/api/types";
 
@@ -47,13 +46,11 @@ export function RepairCodeFormPage() {
 
     const { data: existing, isLoading } = useRetrieveRepairCode(id ?? "", { enabled: !!id });
     const { data: partTypesData } = useRetrievePartTypes({ limit: 200 });
-    const { data: stepsData } = useRetrieveSteps({ limit: 500 });
 
     const [code, setCode] = useState("");
     const [name, setName] = useState("");
     const [trigger, setTrigger] = useState<Trigger>("RECONDITION");
     const [componentType, setComponentType] = useState<string>(ANY_COMPONENT);
-    const [stepIds, setStepIds] = useState<Set<string>>(new Set());
     const [notes, setNotes] = useState("");
 
     useEffect(() => {
@@ -62,25 +59,15 @@ export function RepairCodeFormPage() {
         setName(existing.name ?? "");
         setTrigger((existing.trigger as Trigger) ?? "RECONDITION");
         setComponentType(existing.component_type ? String(existing.component_type) : ANY_COMPONENT);
-        setStepIds(new Set((existing.steps ?? []).map(String)));
         setNotes(existing.notes ?? "");
     }, [mode, existing]);
 
     const partTypes = useMemo(() => partTypesData?.results ?? [], [partTypesData]);
-    const steps = useMemo(() => stepsData?.results ?? [], [stepsData]);
 
     const create = useCreateRepairCode();
     const update = useUpdateRepairCode();
     const saving = create.isPending || update.isPending;
 
-    function toggleStep(stepId: string) {
-        setStepIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(stepId)) next.delete(stepId);
-            else next.add(stepId);
-            return next;
-        });
-    }
 
     function submit() {
         if (!code.trim() || !name.trim()) {
@@ -92,7 +79,6 @@ export function RepairCodeFormPage() {
             name: name.trim(),
             trigger,
             component_type: componentType === ANY_COMPONENT ? null : componentType,
-            steps: Array.from(stepIds),
             notes,
         };
         const onSuccess = () => {
@@ -139,8 +125,8 @@ export function RepairCodeFormPage() {
                         {mode === "edit" ? "Edit repair code" : "New repair code"}
                     </h1>
                     <p className="text-muted-foreground">
-                        What a finding adds to a rebuild. Codes compose — a unit with two
-                        findings gets the union of both codes' operations.
+                        A repair a finding can call for. When a unit's findings raise this
+                        code, the check that offers it sends the unit down its Repair step.
                     </p>
                 </div>
             </div>
@@ -224,48 +210,31 @@ export function RepairCodeFormPage() {
                 </CardContent>
             </Card>
 
+            {/* Where this repair happens: the Repair nodes carrying this code, drawn off a
+                check in the process editor. Since 2026-10-12 a code doesn't add steps to a
+                route — every step runs, and a check sends the unit to its Repair node when
+                the code is raised. (The older per-code step list is kept as stored, unused.) */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-base">
-                        Operations it adds{" "}
-                        <span className="text-sm font-normal text-muted-foreground tabular-nums">
-                            {stepIds.size} selected
-                        </span>
-                    </CardTitle>
+                    <CardTitle className="text-base">Where it's done</CardTitle>
                     <CardDescription>
-                        A code with no operations adds no work — it would be raised and change
-                        nothing.
+                        Add a Repair step carrying this code off the check that finds the need,
+                        in the process editor. A unit goes there when this code is raised for it.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-3">
-                        {steps.length === 0 ? (
-                            <p className="py-4 text-center text-sm text-muted-foreground">
-                                No steps found.
-                            </p>
-                        ) : (
-                            steps.map((step) => {
-                                const sid = String(step.id);
-                                return (
-                                    <label
-                                        key={sid}
-                                        className="flex cursor-pointer items-center gap-2 text-sm"
-                                    >
-                                        <Checkbox
-                                            checked={stepIds.has(sid)}
-                                            onCheckedChange={() => toggleStep(sid)}
-                                        />
-                                        <span>{step.name}</span>
-                                        {step.part_type_name && (
-                                            <span className="text-muted-foreground">
-                                                · {step.part_type_name}
-                                            </span>
-                                        )}
-                                    </label>
-                                );
-                            })
-                        )}
-                    </div>
+                    {(existing?.repair_step_names ?? []).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No Repair step carries this code yet, so raising it sends a unit
+                            nowhere — a finding that raises it has no planned repair.
+                        </p>
+                    ) : (
+                        <ul className="flex flex-wrap gap-1.5">
+                            {(existing?.repair_step_names ?? []).map((n) => (
+                                <li key={n}><Badge variant="secondary">{n}</Badge></li>
+                            ))}
+                        </ul>
+                    )}
                 </CardContent>
             </Card>
 

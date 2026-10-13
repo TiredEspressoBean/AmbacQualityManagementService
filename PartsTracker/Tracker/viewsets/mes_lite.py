@@ -365,9 +365,32 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             fields={
                 "is_decision_point": serializers.BooleanField(),
                 "decision_type": serializers.CharField(required=False, allow_blank=True),
-                "default_branch": serializers.DictField(required=False, allow_null=True),
-                "alternate_branch": serializers.DictField(required=False, allow_null=True),
+                "default_branch": inline_serializer(
+                    name="DecisionBranch", required=False, allow_null=True, fields={
+                        "step_id": serializers.CharField(),
+                        "step_name": serializers.CharField(),
+                    }),
+                "alternate_branch": inline_serializer(
+                    name="DecisionAlternateBranch", required=False, allow_null=True, fields={
+                        "step_id": serializers.CharField(),
+                        "step_name": serializers.CharField(),
+                    }),
                 "qa_suggested": serializers.CharField(required=False, allow_null=True),
+                # Reman checks with Repair nodes (services/reman/repair_routing): the
+                # repairs offered here, and the hold the unit meets leaving now.
+                "repair_branches": inline_serializer(
+                    name="RepairBranch", many=True, required=False, fields={
+                        "step_id": serializers.CharField(),
+                        "step_name": serializers.CharField(),
+                        "code": serializers.CharField(),
+                        "code_name": serializers.CharField(),
+                        "pre_approved": serializers.BooleanField(),
+                        "needed": serializers.BooleanField(),
+                        "approved": serializers.BooleanField(),
+                    }),
+                "repair_hold": serializers.CharField(required=False, allow_null=True),
+                "repair_core_id": serializers.UUIDField(required=False, allow_null=True),
+                "repair_customer_unit": serializers.BooleanField(required=False),
             },
         )},
     )
@@ -382,10 +405,20 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         automatically; no manual pick)."""
         from Tracker.models.mes_lite import EdgeType
 
+        from Tracker.services.reman.repair_routing import repair_options
+
         part = self.get_object()
         step = part.step
+        repairs = (repair_options(part, step) if step is not None else
+                   {'branches': [], 'hold': None, 'core_id': None, 'customer_unit': False})
+        repair_fields = {
+            "repair_branches": repairs['branches'],
+            "repair_hold": repairs['hold'],
+            "repair_core_id": repairs['core_id'],
+            "repair_customer_unit": repairs['customer_unit'],
+        }
         if step is None or not step.is_decision_point:
-            return Response({"is_decision_point": False})
+            return Response({"is_decision_point": False, **repair_fields})
 
         def branch(edge_type):
             to_step = part._get_edge(step, edge_type)
@@ -406,6 +439,7 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             "default_branch": branch(EdgeType.DEFAULT),
             "alternate_branch": branch(EdgeType.ALTERNATE),
             "qa_suggested": qa_suggested,
+            **repair_fields,
         })
 
     @extend_schema(
@@ -2001,8 +2035,12 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         'release': ['change_workorder'],
         'unrelease': ['change_workorder'],
         'bulk_release': ['change_workorder'],
+        # Cancelling abandons a commitment and strands whatever is already on the
+        # job. Exempt from the POST->add_workorder default, which every staff role
+        # holds — without this an operator could cancel a work order.
+        'cancel': ['cancel_workorder'],
     }
-    crud_exempt_actions = {'release', 'unrelease', 'bulk_release'}
+    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel'}
 
     def get_serializer_class(self):
         """Use lightweight serializer for list, full serializer for detail/create/update."""

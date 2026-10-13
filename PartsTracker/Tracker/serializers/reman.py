@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema_field
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
     RepairCode, RebuildScopePreset, RebuildSlotOverride,
-    PartTypes, Companies, User, WorkOrder,
+    PartTypes, Companies,
 )
 from .core import SecureModelMixin
 from .fields import TenantScopedPrimaryKeyRelatedField
@@ -41,6 +41,11 @@ class CoreSerializer(SecureModelMixin):
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
     usable_component_count = serializers.IntegerField(read_only=True)
+    # Repair codes approved for this unit since its process ran. Read-only: approvals
+    # change only through approve_repair / record_authorisation. Declared so the
+    # schema says list-of-codes, not "unknown".
+    approved_repair_codes = serializers.ListField(
+        child=serializers.CharField(), read_only=True)
 
     class Meta:
         model = Core
@@ -58,6 +63,7 @@ class CoreSerializer(SecureModelMixin):
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
             'work_order', 'part',
             'harvested_component_count', 'usable_component_count',
+            'approved_repair_codes',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -359,18 +365,21 @@ class RebuildSlotSerializer(serializers.Serializer):
     candidates = RebuildCandidateSerializer(many=True)
 
 
-class ScopedOperationSerializer(serializers.Serializer):
-    """One operation the rebuild needs, and what put it there.
+class ExpectedRepairSerializer(serializers.Serializer):
+    """One repair the rebuild is expected to take, and what put it there.
 
-    `because` is the point: a planner who cannot see why an operation is on the job
+    `because` is the point: a planner who cannot see why a repair is on the job
     cannot challenge it, and the over-and-above quote has to show a customer which
-    finding drove which cost.
+    finding drove which cost. `needs_approval` flags a repair the check doesn't
+    pre-approve, so its answer can be sought before the unit arrives.
     """
     step_id = serializers.CharField()
     step_name = serializers.CharField()
     code = serializers.CharField()
     code_name = serializers.CharField()
     because = serializers.ListField(child=serializers.CharField())
+    check_name = serializers.CharField(allow_blank=True)
+    needs_approval = serializers.BooleanField()
 
 
 class RebuildPlanSerializer(serializers.Serializer):
@@ -381,28 +390,32 @@ class RebuildPlanSerializer(serializers.Serializer):
     bom_revision = serializers.CharField(allow_null=True)
     entry_scope = serializers.CharField(allow_null=True)
     slots = RebuildSlotSerializer(many=True)
-    operations = ScopedOperationSerializer(many=True)
+    expected_repairs = ExpectedRepairSerializer(many=True)
     warnings = serializers.ListField(child=serializers.CharField())
 
 
 class RepairCodeSerializer(SecureModelMixin):
-    """A slot resolution that emits operations — see the design's §6.4."""
+    """A repair raised by a slot resolution, done at the Repair nodes carrying it."""
     component_type_name = serializers.CharField(
         source='component_type.name', read_only=True, allow_null=True)
-    step_names = serializers.SerializerMethodField()
+    # The Repair nodes that carry this code (Steps.repair_code) — where a check sends a
+    # unit when the code is raised.
+    repair_step_names = serializers.SerializerMethodField()
 
     class Meta:
         model = RepairCode
         fields = (
             'id', 'code', 'name', 'component_type', 'component_type_name',
-            'trigger', 'steps', 'step_names', 'notes',
+            'trigger', 'repair_step_names', 'notes',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
-    def get_step_names(self, obj):
-        return [s.name for s in obj.steps.all()]
+    def get_repair_step_names(self, obj):
+        from Tracker.models import Steps
+        return sorted({s.name for s in Steps.objects.filter(  # tenant-safe: .objects auto-scopes
+            repair_code__code=obj.code, archived=False)})
 
     # Retiring a code is not a revision of it.
     _NON_VERSIONING_FIELDS = frozenset({'archived'})
@@ -412,23 +425,15 @@ class RepairCodeSerializer(SecureModelMixin):
 
         This passed the request positionally where `apply_versioned_update` takes
         `non_versioning_fields` and `default_update` by keyword, so every edit of a
-        repair code was a TypeError (500). `steps` is a many-to-many, which
-        `create_new_version` can't take: it is set on whichever row comes back, and a
-        new version with no `steps` in the edit keeps the old one's.
+        repair code was a TypeError (500).
         """
         from Tracker.services.core.versioning import apply_versioned_update
-        steps = validated_data.pop('steps', None)
         request = self.context.get('request')
-        result = apply_versioned_update(
+        return apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
             version_kwargs={'user': getattr(request, 'user', None)})
-        if steps is not None:
-            result.steps.set(steps)
-        elif result.pk != instance.pk:
-            result.steps.set(instance.steps.all())
-        return result
 
 
 class RebuildScopePresetSerializer(SecureModelMixin):

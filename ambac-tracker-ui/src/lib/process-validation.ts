@@ -399,6 +399,37 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
     }
   }
 
+  // Repair nodes (reman): each carries a repair code and leads back into the flow;
+  // otherwise raising its code sends a unit nowhere, or into a dead end.
+  for (const node of nodes) {
+    if (getStepType(node) !== 'REPAIR') continue;
+    const data = node.data as { repairCode?: string | null } | undefined;
+    if (!data?.repairCode) {
+      issues.push({
+        type: 'error',
+        message: `Repair step "${getNodeName(node)}" has no repair code — no finding can send a unit to it`,
+        nodeId: node.id,
+        nodeName: getNodeName(node),
+      });
+    }
+    if (!edges.some(e => e.target === node.id)) {
+      issues.push({
+        type: 'warning',
+        message: `Repair step "${getNodeName(node)}" isn't offered by any check — draw a branch to it from the check that finds the need`,
+        nodeId: node.id,
+        nodeName: getNodeName(node),
+      });
+    }
+    if (!edges.some(e => e.source === node.id)) {
+      issues.push({
+        type: 'error',
+        message: `Repair step "${getNodeName(node)}" doesn't lead back into the flow`,
+        nodeId: node.id,
+        nodeName: getNodeName(node),
+      });
+    }
+  }
+
   // Separate errors and warnings
   const errors = issues.filter(i => i.type === 'error');
   const warnings = issues.filter(i => i.type === 'warning');

@@ -74,18 +74,21 @@ def record_finding(component, *, grade: str, finding: str, user):
 
 
 @transaction.atomic
-def apply_finding(component, *, user):
+def apply_finding(component, *, user, note: str | None = None):
     """A lead accepts the finding: the component takes the proposed grade.
 
     The rebuild plan is derived from grades, so it re-resolves on its next read — the
     same path a teardown grade takes. A SCRAP grade scraps the component.
+
+    `note` replaces the "Finding applied" wording when nobody decided — a finding the
+    check pre-approves applies itself (`repair_routing.auto_apply_pre_approved`).
     """
     from Tracker.services.reman.harvested_component import scrap_component
 
     if not component.proposed_grade:
         raise ValidationError(f"{component} has no finding waiting.")
     old, new = component.condition_grade, component.proposed_grade
-    note = (f"Finding applied ({_stamp(user)}): grade {old} → {new}. "
+    note = (f"{note or 'Finding applied'} ({_stamp(user)}): grade {old} → {new}. "
             f"{component.proposed_finding}")
     component.condition_grade = new
     component.condition_notes = f"{component.condition_notes}\n{note}".strip()
@@ -119,6 +122,10 @@ def record_findings_from_capture(step_execution, rows: list[dict], user) -> dict
 
     Each row names one of THIS unit's own harvested components; the core is reached
     through the step execution's part (a core is a part).
+
+    A finding whose repair this check pre-approves applies at once — that is the
+    process's standing authorisation. Anything else (not pre-approved, scrap, or no
+    repair offered here) waits for a lead, and the unit holds at the check meanwhile.
     """
     from Tracker.models import HarvestedComponent
     from Tracker.services.reman.core_steps import core_of
@@ -126,7 +133,9 @@ def record_findings_from_capture(step_execution, rows: list[dict], user) -> dict
     core = core_of(step_execution.part) if step_execution.part_id else None
     if core is None:
         raise ValidationError("A rebuild finding is recorded on a core — a part playing a core role.")
-    ids = []
+    from Tracker.services.reman.repair_routing import auto_apply_pre_approved
+
+    ids, applied = [], []
     with transaction.atomic():
         for idx, row in enumerate(rows):
             component = HarvestedComponent.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
@@ -139,4 +148,6 @@ def record_findings_from_capture(step_execution, rows: list[dict], user) -> dict
             except ValidationError as exc:
                 raise ValidationError(f"row {idx}: {' '.join(exc.messages)}") from exc
             ids.append(str(component.id))
-    return {'harvested_component_ids': ids}
+            if auto_apply_pre_approved(component, step_execution, user):
+                applied.append(str(component.id))
+    return {'harvested_component_ids': ids, 'applied_component_ids': applied}

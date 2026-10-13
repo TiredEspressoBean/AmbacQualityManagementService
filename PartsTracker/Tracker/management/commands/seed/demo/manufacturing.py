@@ -177,8 +177,44 @@ DEMO_PROCESS = {
             'requires_batch_completion': False,
             'max_visits': 3, 'revisit_assignment': 'DIFFERENT', 'revisit_role_name': None,  # Different operator for rework
         },
+        # Repair nodes (2026-10-12): offshoots of Nozzle Inspection that a unit takes
+        # only when its nozzle's repair code is raised, then rejoin at Flow Testing.
+        # Their codes are attached by the reman seeder (it owns the repair codes).
+        {
+            'name': 'Nozzle Recondition', 'order': 12, 'is_repair': True,
+            'description': 'Lap the nozzle seat and clear the spray holes',
+            'pass_threshold': 1.0, 'expected_duration': None,
+            'block_on_quarantine': False, 'requires_qa_signoff': False,
+            'sampling_required': False, 'min_sampling_rate': 0.0,
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
+            'block_on_measurement_failure': False, 'block_on_spc_violation': False,
+            'override_expiry_hours': 24, 'undo_window_minutes': 30, 'rollback_requires_approval': True,
+            'requires_batch_completion': False,
+            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
+        },
+        {
+            'name': 'Nozzle Replacement', 'order': 13, 'is_repair': True,
+            'description': 'Fit a replacement nozzle assembly',
+            'pass_threshold': 1.0, 'expected_duration': None,
+            'block_on_quarantine': False, 'requires_qa_signoff': False,
+            'sampling_required': False, 'min_sampling_rate': 0.0,
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
+            'block_on_measurement_failure': False, 'block_on_spc_violation': False,
+            'override_expiry_hours': 24, 'undo_window_minutes': 30, 'rollback_requires_approval': True,
+            'requires_batch_completion': False,
+            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
+        },
     ],
 }
+
+# Which of Nozzle Inspection's repairs are pre-approved there — part of the approved
+# process. Reconditioning a nozzle is routine; replacing one adds cost, so it waits for
+# a lead (and, on a customer's own unit, the customer).
+DEMO_REPAIR_BRANCHES = [
+    # (check, repair node, pre_approved, rejoins at)
+    ('Nozzle Inspection', 'Nozzle Recondition', True, 'Flow Testing'),
+    ('Nozzle Inspection', 'Nozzle Replacement', False, 'Flow Testing'),
+]
 
 # New manufacture — the default kind of work. Raw stock is machined, then joins the
 # same downstream steps as reman (wash, inspect, assemble, test, pack) and ends at a
@@ -625,7 +661,9 @@ class DemoManufacturingSeeder(BaseSeeder):
             is_rework = step_name == 'Rework'
 
             # Set step_type based on step purpose
-            if is_entry:
+            if step_data.get('is_repair'):
+                step_type = 'REPAIR'
+            elif is_entry:
                 step_type = 'START'
             elif is_terminal:
                 step_type = 'TERMINAL'
@@ -792,9 +830,14 @@ class DemoManufacturingSeeder(BaseSeeder):
             ('Rework', 'Nozzle Inspection', EdgeType.DEFAULT),  # Re-enter inspection after rework
         ]
 
-        all_edges = linear_edges + rework_edges
+        all_edges = [(a, b, t, False) for a, b, t in linear_edges + rework_edges]
+        # Repair branches: check → Repair node (an offshoot, drawn as ALTERNATE), and
+        # Repair node → where it rejoins the main line.
+        for check, repair, pre_approved, rejoin in DEMO_REPAIR_BRANCHES:
+            all_edges.append((check, repair, EdgeType.ALTERNATE, pre_approved))
+            all_edges.append((repair, rejoin, EdgeType.DEFAULT, False))
 
-        for from_step_name, to_step_name, edge_type in all_edges:
+        for from_step_name, to_step_name, edge_type, pre_approved in all_edges:
             from_step = step_map[from_step_name]
             to_step = step_map[to_step_name]
 
@@ -807,6 +850,7 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'condition_measurement': None,
                     'condition_operator': '',
                     'condition_value': None,
+                    'pre_approved': pre_approved,
                 }
             )
 

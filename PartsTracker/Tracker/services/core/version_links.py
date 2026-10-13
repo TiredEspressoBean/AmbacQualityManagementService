@@ -158,6 +158,7 @@ LINKS = {
 
     # --- RepairCode (spec) ---------------------------------------------------------------
     'RebuildScopePreset.codes': FOLLOWS,
+    'Steps.repair_code': FOLLOWS,      # a Repair node carries the code's current version
 
     # --- SPCBaseline (own supersede mechanism) -------------------------------------------
     'SPCBaseline.superseded_by': MODEL,
@@ -193,7 +194,6 @@ LINKS = {
     'QaApproval.step': STAYS,
     'QualityReports.step': STAYS,
     'QuarantineDisposition.step': STAYS,
-    'RepairCode.steps': COPIES,
     'SamplingRuleSet.step': MANAGED,
     'SamplingSeverityState.step': STAYS,
     'SamplingTriggerState.step': STAYS,

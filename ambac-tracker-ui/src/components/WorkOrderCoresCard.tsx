@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/tooltip";
 
 import { useCoreLifecycleAction, useReleaseCore } from "@/hooks/useReleaseCore";
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 import type { Schema } from "@/lib/api/types";
@@ -35,6 +40,8 @@ export function WorkOrderCoresCard(
     { cores, workOrderId }: { cores: WorkOrderCore[]; workOrderId?: string },
 ) {
     const [pending, setPending] = useState<string | null>(null);
+    // The customer's answer, recorded by staff: who answered, how, and the reference.
+    const [answering, setAnswering] = useState<{ core: WorkOrderCore; approved: boolean } | null>(null);
     const release = useReleaseCore();
     const lifecycle = useCoreLifecycleAction();
     // Teardown and rebuild are worked in the DWI operator runtime, at the step the unit
@@ -60,16 +67,15 @@ export function WorkOrderCoresCard(
             { id: String(core.id), to },
             {
                 onSuccess: (data) => {
-                    if (to === "rebuild") {
-                        const d = data as { first_step?: string; operation_count?: number };
+                    if (data.to === "rebuild") {
+                        const n = data.result.expected_repair_count;
                         toast.success(
-                            `${core.core_number} released into rebuild — ${d.operation_count ?? 0} ` +
-                            `operations, starting at ${d.first_step ?? "?"}`,
+                            `${core.core_number} released into rebuild at ${data.result.first_step ?? "?"} — ` +
+                            `${n} expected repair${n === 1 ? "" : "s"}`,
                         );
                     } else {
-                        const d = data as { accepted_count?: number };
                         toast.success(
-                            `${core.core_number} harvested — ${d.accepted_count ?? 0} components to stock`,
+                            `${core.core_number} harvested — ${data.result.accepted_count} components to stock`,
                         );
                     }
                 },
@@ -205,14 +211,16 @@ export function WorkOrderCoresCard(
                                                                 Plan
                                                             </Link>
                                                         </Button>
-                                                        <Button
-                                                            size="sm" variant="ghost" disabled={busy}
-                                                            onClick={() => act(core,
-                                                                { id, action: "request_authorisation" },
-                                                                "sent for customer authorisation")}
-                                                        >
-                                                            Authorise…
-                                                        </Button>
+                                                        {core.returns_to_customer && (
+                                                            <Button
+                                                                size="sm" variant="ghost" disabled={busy}
+                                                                onClick={() => act(core,
+                                                                    { id, action: "request_authorisation" },
+                                                                    "sent for customer authorisation")}
+                                                            >
+                                                                Authorise…
+                                                            </Button>
+                                                        )}
                                                     </span>
                                                 ) : core.status === "AWAITING_AUTHORISATION" ? (
                                                     // The conversation happened elsewhere; these
@@ -220,19 +228,15 @@ export function WorkOrderCoresCard(
                                                     <span className="inline-flex gap-1">
                                                         <Button
                                                             size="sm" disabled={busy}
-                                                            onClick={() => act(core,
-                                                                { id, action: "record_authorisation", approved: true },
-                                                                "scope approved — rebuild resumed")}
+                                                            onClick={() => setAnswering({ core, approved: true })}
                                                         >
-                                                            Approved
+                                                            Approved…
                                                         </Button>
                                                         <Button
                                                             size="sm" variant="outline" disabled={busy}
-                                                            onClick={() => act(core,
-                                                                { id, action: "record_authorisation", approved: false },
-                                                                "scope declined")}
+                                                            onClick={() => setAnswering({ core, approved: false })}
                                                         >
-                                                            Declined
+                                                            Declined…
                                                         </Button>
                                                     </span>
                                                 ) : core.status === "REBUILT" || core.status === "DECLINED" ? (
@@ -321,6 +325,83 @@ export function WorkOrderCoresCard(
                     </div>
                 </CardContent>
             </Card>
+            {answering && (
+                <CustomerAnswerDialog
+                    coreNumber={answering.core.core_number}
+                    approved={answering.approved}
+                    pending={lifecycle.isPending}
+                    onCancel={() => setAnswering(null)}
+                    onConfirm={(fields) => {
+                        act(answering.core,
+                            { id: String(answering.core.id), action: "record_authorisation",
+                              approved: answering.approved, ...fields },
+                            answering.approved ? "approved — rebuild resumed" : "declined");
+                        setAnswering(null);
+                    }}
+                />
+            )}
         </TooltipProvider>
+    );
+}
+
+/** Record what the customer said. The conversation happened elsewhere (phone, email,
+ *  a PO); this is the production record of it — who answered, how, and the reference
+ *  to trace it. Nobody at the customer needs a login for it to be on record. */
+function CustomerAnswerDialog({ coreNumber, approved, pending, onCancel, onConfirm }: {
+    coreNumber: string;
+    approved: boolean;
+    pending: boolean;
+    onCancel: () => void;
+    onConfirm: (f: { contact: string; method: string; reference: string; note: string }) => void;
+}) {
+    const [contact, setContact] = useState("");
+    const [method, setMethod] = useState("");
+    const [reference, setReference] = useState("");
+    const [note, setNote] = useState("");
+    return (
+        <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        {coreNumber} — customer {approved ? "approved" : "declined"}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {approved
+                            ? "The repairs waiting on their answer are approved and the rebuild resumes."
+                            : "The unit goes back to them unrepaired."}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-3">
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="ans-contact">Who answered</Label>
+                        <Input id="ans-contact" value={contact} onChange={(e) => setContact(e.target.value)}
+                            placeholder="e.g. Pat Ruiz, fleet maintenance" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="ans-method">How</Label>
+                            <Input id="ans-method" value={method} onChange={(e) => setMethod(e.target.value)}
+                                placeholder="phone, email, PO" />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="ans-ref">Reference</Label>
+                            <Input id="ans-ref" value={reference} onChange={(e) => setReference(e.target.value)}
+                                placeholder="PO or email ref" />
+                        </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="ans-note">Note (optional)</Label>
+                        <Input id="ans-note" value={note} onChange={(e) => setNote(e.target.value)} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onCancel}>Cancel</Button>
+                    <Button disabled={pending || !contact.trim()}
+                        onClick={() => onConfirm({ contact, method, reference, note })}>
+                        Record {approved ? "approval" : "decline"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

@@ -421,6 +421,7 @@ def _apply_intent_to_process(
             from_step__identity_id=_step_identity_for(edge.get('from_step'), source_draft),
             to_step__identity_id=_step_identity_for(edge.get('to_step'), source_draft),
             edge_type=edge.get('edge_type'),
+            pre_approved=bool(edge.get('pre_approved', False)),
         ).delete()
     for edge in edges_block.get('added', []):
         from_identity = _step_identity_for(edge.get('from_step'), source_draft)
@@ -440,6 +441,7 @@ def _apply_intent_to_process(
                 from_step=from_ps.step,
                 to_step=to_ps.step,
                 edge_type=edge.get('edge_type', 'DEFAULT'),
+                pre_approved=bool(edge.get('pre_approved', False)),
             )
 
 

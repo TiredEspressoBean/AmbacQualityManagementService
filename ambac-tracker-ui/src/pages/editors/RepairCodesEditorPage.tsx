@@ -73,14 +73,16 @@ export function RepairCodesEditorPage() {
                     renderCell: (item) => item.component_type_name || "Any component",
                 }),
                 col({
-                    header: "Operations",
+                    // The Repair nodes carrying this code — where a check sends a unit
+                    // when the code is raised. None is normal for a base or level code.
+                    header: "Where it's done",
                     priority: 2,
                     renderCell: (item) => {
-                        const names = item.step_names ?? [];
+                        const names = item.repair_step_names ?? [];
                         if (names.length === 0) {
                             return (
-                                <span className="text-destructive text-sm">
-                                    none — adds no work
+                                <span className="text-muted-foreground text-sm">
+                                    No repair step
                                 </span>
                             );
                         }

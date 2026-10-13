@@ -270,6 +270,7 @@ def create_new_process_version(
                 from_step=edge.from_step,
                 to_step=edge.to_step,
                 edge_type=edge.edge_type,
+                pre_approved=edge.pre_approved,
                 tech_continuity=edge.tech_continuity,
                 max_minutes=edge.max_minutes,
                 condition_measurement=edge.condition_measurement,
@@ -327,6 +328,7 @@ def duplicate_process(
             from_step=step_remap.get(edge.from_step_id, edge.from_step),
             to_step=step_remap.get(edge.to_step_id, edge.to_step),
             edge_type=edge.edge_type,
+            pre_approved=edge.pre_approved,
             tech_continuity=edge.tech_continuity,
             max_minutes=edge.max_minutes,
             condition_measurement=edge.condition_measurement,
@@ -388,6 +390,11 @@ def _build_edges(
                 from_step_id=real_from_id,
                 to_step_id=real_to_id,
                 edge_type=edge_type,
+                # A repair's pre-approval at a check: what the editor sends, else what
+                # the edge had, else not pre-approved — a save that omits it must not
+                # silently pre-approve or un-approve a repair.
+                pre_approved=bool(edge.get(
+                    "pre_approved", prior.get("pre_approved", False))),
                 tech_continuity=edge.get(
                     "tech_continuity", prior.get("tech_continuity", "ANY")),
                 max_minutes=(
@@ -629,6 +636,7 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
         preserved[(from_id, to_id, e.edge_type)] = {
             'tech_continuity': e.tech_continuity,
             'max_minutes': e.max_minutes,
+            'pre_approved': e.pre_approved,
         }
 
     instance.step_edges.all().delete()

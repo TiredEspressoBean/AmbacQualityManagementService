@@ -58,6 +58,11 @@ export interface StepData {
   outside_supplier?: string | null;
   outside_supplier_name?: string | null;
   outside_process_lead_days?: number | null;
+  // Repair node (reman, 2026-10-12): the repair code this step carries out. A check
+  // sends a unit here only when that code is raised for it (services/reman/repair_routing).
+  repair_code?: string | null;
+  repair_code_code?: string | null;
+  repair_code_name?: string | null;
   // Routing/surface discriminator (Documents/WORK_CENTER_DESIGN.md). Determines
   // which operator/QA/receiving/OSP surface this step lands on.
   work_center?: string | null;
@@ -78,6 +83,8 @@ export interface StepEdgeInput {
   from_step: string;
   to_step: string;
   edge_type: EdgeTypeEnum;
+  /** On a branch to a Repair node: pre-approved at this check. */
+  pre_approved?: boolean;
 }
 
 export interface UseStepsToFlowOptions {
@@ -182,6 +189,9 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         outsideSupplier: step.outside_supplier,
         outsideSupplierName: step.outside_supplier_name,
         outsideProcessLeadDays: step.outside_process_lead_days,
+        // Repair node
+        repairCode: step.repair_code_code ?? null,
+        repairCodeName: step.repair_code_name ?? null,
         // 4c — live overlay (always-on when present; not demo-gated).
         liveMetrics: step.liveMetrics,
       },
@@ -197,8 +207,26 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
       // This must match the logic in getNodeType() to ensure consistency
       const sourceNodeType = sourceStep ? getNodeType(sourceStep, sourceStep.is_entry_point || false) : undefined;
       const isDecisionNode = sourceNodeType === 'DECISION';
+      const targetStep = sortedSteps.find(s => s.id === edge.to_step);
 
-      if (edge.edge_type === 'DEFAULT') {
+      if (targetStep?.step_type === 'REPAIR') {
+        // An offshoot to a Repair node, whatever its stored type: taken only when the
+        // unit's repair code is raised. Labelled with whether it's pre-approved here.
+        const pre = !!edge.pre_approved;
+        edges.push({
+          id: `e${edge.from_step}-${edge.to_step}-repair`,
+          data: { edge_type: 'ALTERNATE', pre_approved: pre },
+          source: String(edge.from_step),
+          target: String(edge.to_step),
+          sourceHandle: isDecisionNode ? 'fail' : undefined,
+          label: pre ? 'Repair · pre-approved' : 'Repair · needs approval',
+          type: 'smoothstep',
+          style: { stroke: '#8b5cf6', strokeDasharray: pre ? undefined : '6,4' },
+          animated: true,
+          labelStyle: { fill: '#8b5cf6', fontWeight: 600, fontSize: 11 },
+          labelBgStyle: { fill: 'transparent' },
+        });
+      } else if (edge.edge_type === 'DEFAULT') {
         edges.push({
           id: `e${edge.from_step}-${edge.to_step}`,
           data: { edge_type: 'DEFAULT' },

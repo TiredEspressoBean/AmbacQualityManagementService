@@ -267,53 +267,34 @@ class RepairCodeImportExportTests(ImportExportTestCase):
     def build_fixtures(cls):
         from Tracker.models import PartTypes, RepairCode
         cls.nozzle = PartTypes.objects.create(tenant=cls.tenant, name="Nozzle")
-        # "Hone" is in both processes: only `Process > Step` says which.
-        cls.steps = _process_steps(cls.tenant, cls.nozzle,
-                                   ("Injector Rebuild", "Pump Rebuild"), ("Clean", "Hone"))
         cls.recon = RepairCode.objects.create(
             tenant=cls.tenant, code="NZL-RECON", name="Recondition nozzle",
             component_type=cls.nozzle, trigger="RECONDITION", notes="Per SOP 12")
-        cls.recon.steps.set([cls.steps[("Injector Rebuild", "Hone")],
-                             cls.steps[("Pump Rebuild", "Clean")]])
         RepairCode.objects.create(tenant=cls.tenant, code="FINAL", name="Final test",
                                   trigger="ALWAYS")
 
     def test_a_typed_csv_creates_repair_codes(self):
         from Tracker.models import RepairCode
         body = self.import_csv(
-            'code,name,component_type,trigger,steps\n'
-            'NZL-RPL,Replace nozzle,Nozzle,REPLACE_BUY,"Injector Rebuild > Clean; Pump Rebuild > Hone"\n',
+            'code,name,component_type,trigger\n'
+            'NZL-RPL,Replace nozzle,Nozzle,REPLACE_BUY\n',
             mode="create")
         self.assertEqual(body["summary"]["created"], 1, body)
         rc = RepairCode.objects.get(code="NZL-RPL")
-        self.assertEqual(rc.component_type_id, self.nozzle.id)
-        self.assertEqual(set(rc.steps.values_list("id", flat=True)),
-                         {self.steps[("Injector Rebuild", "Clean")].id,
-                          self.steps[("Pump Rebuild", "Hone")].id})
+        self.assertEqual((rc.component_type_id, rc.trigger), (self.nozzle.id, "REPLACE_BUY"))
 
-    def test_an_edit_matched_on_its_code_versions_and_keeps_its_steps(self):
+    def test_an_edit_matched_on_its_code_versions(self):
         from Tracker.models import RepairCode
         body = self.import_csv("code,name\nNZL-RECON,Recondition nozzle tip\n", mode="update")
         self.assertEqual(body["summary"]["updated"], 1, body)
         current = RepairCode.objects.get(code="NZL-RECON", is_current_version=True)
         self.assertEqual(current.name, "Recondition nozzle tip")
         self.assertEqual(current.version, 2)
-        # create_new_version copies scalar fields only; the import carries the set over.
-        self.assertEqual(set(current.steps.values_list("id", flat=True)),
-                         set(self.recon.steps.values_list("id", flat=True)))
-
-    def test_a_bare_step_name_in_two_processes_is_refused(self):
-        body = self.import_csv("code,name,steps\nHONE,Hone only,Hone\n", mode="create")
-        self.assert_row_errors(body, mentions="Name it with its process")
 
     def test_a_component_type_that_names_nothing_is_refused(self):
         body = self.import_csv("code,name,component_type\nX-1,Mystery,Nobody Part\n",
                                mode="create")
         self.assert_row_errors(body, mentions="Nobody Part")
-
-    def test_the_export_writes_the_steps_as_it_reads_them(self):
-        csv_text = self.export("csv").decode("utf-8-sig")
-        self.assertIn("Injector Rebuild > Hone; Pump Rebuild > Clean", csv_text)
 
     def test_an_export_imports_back_unchanged(self):
         from Tracker.models import RepairCode

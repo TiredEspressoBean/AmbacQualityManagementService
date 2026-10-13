@@ -458,10 +458,12 @@ class Processes(SecureModel):
         return self.step_edges.filter(from_step=step)
 
     def get_next_step(self, current_step, edge_type='DEFAULT'):
-        """Get the next step for a given edge type."""
+        """Get the next step for a given edge type (never a Repair node: those are
+        reached only by repair routing)."""
         edge = self.step_edges.filter(
             from_step=current_step,
-            edge_type=edge_type
+            edge_type=edge_type,
+            to_step__repair_code__isnull=True,
         ).first()
         return edge.to_step if edge else None
 
@@ -856,12 +858,27 @@ class Steps(SecureModel):
         ('TIMER', 'Timer/Wait'),
         ('TERMINAL', 'Terminal'),
         ('RECEIVING', 'Receiving Inspection'),
+        ('REPAIR', 'Repair'),
     ]
     step_type = models.CharField(
         max_length=20,
         choices=STEP_TYPE_CHOICES,
         default='TASK',
         help_text="Visual type for flow editor."
+    )
+
+    # ===== REPAIR NODE (reman, 2026-10-12) =====
+    # A Repair node is the work a repair code calls for, hanging off a check. A unit
+    # reaches it only when that code is raised for it (services/reman/repair_routing),
+    # and leaves by its own edges back into the flow. Nothing on the main line is
+    # skipped; a repair that isn't needed is a branch not taken.
+    repair_code = models.ForeignKey(
+        'Tracker.RepairCode',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='repair_steps',
+        help_text="The repair code this step carries out. Set on a Repair node; a check "
+                  "sends a unit here when this code is raised for it.",
     )
 
     # ===== DECISION BEHAVIOR =====
@@ -1614,6 +1631,19 @@ class StepEdge(models.Model):
         max_length=20,
         choices=EdgeType.choices,
         default=EdgeType.DEFAULT
+    )
+
+    # On an edge from a check to a Repair node: whether that repair is pre-approved AT
+    # this check. Shown on the check in the editor, stored here because edges belong to
+    # one process version (Steps are shared across versions) — so changing what is
+    # pre-approved is a process change, under change control. A repair that isn't
+    # pre-approved holds the unit at the check for a lead (and, on a customer's own unit,
+    # the customer's answer). The same repair can be routine at teardown and not at
+    # final test.
+    pre_approved = models.BooleanField(
+        default=False,
+        help_text="On a branch to a Repair node: the repair goes ahead on the inspector's "
+                  "finding without anyone approving it.",
     )
 
     tech_continuity = models.CharField(
@@ -3056,6 +3086,14 @@ class WorkOrder(SecureModel):
             models.Index(fields=['process', 'workorder_status'], name='workorder_process_status_idx'),
             models.Index(fields=['priority', 'workorder_status'], name='workorder_priority_status_idx'),
         ]
+        permissions = [
+            # Cancelling abandons a commitment to a customer and strands whatever is
+            # already on the job. Without this, `cancel` fell through to the generic
+            # POST default (`add_workorder`), which every staff role holds — so an
+            # operator could cancel a work order. Manager-tier only, matching the
+            # intent the role guides already described.
+            ('cancel_workorder', 'Can cancel a work order'),
+        ]
 
     @property
     def cores(self):
@@ -3568,10 +3606,14 @@ class Parts(SecureModel):
         process = self.work_order.process if self.work_order else None
         if not process:
             return None
+        # Edges to Repair nodes are taken only by repair routing (repair_route), never
+        # as a check's ordinary pass/fail branch — with both on a check, `.first()`
+        # could otherwise send a failed inspection down a repair instead of to rework.
         edge = StepEdge.objects.filter(
             process=process,
             from_step=from_step,
-            edge_type=edge_type
+            edge_type=edge_type,
+            to_step__repair_code__isnull=True,
         ).first()
         return edge.to_step if edge else None
 
@@ -3595,6 +3637,14 @@ class Parts(SecureModel):
         # Terminal step - no next
         if current.is_terminal:
             return None
+
+        # A check with Repair nodes sends a reman unit down the repair its raised codes
+        # call for, or holds it for a decision (services/reman/repair_routing). Nothing
+        # called for → the step's own routing below, as for any step.
+        from Tracker.services.reman.repair_routing import repair_route
+        repair_step = repair_route(self, current)
+        if repair_step is not None:
+            return self._check_cycle_limit(repair_step)
 
         # Decision point - route based on result
         if current.is_decision_point:

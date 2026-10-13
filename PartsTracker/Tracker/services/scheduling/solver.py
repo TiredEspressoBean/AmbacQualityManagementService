@@ -472,24 +472,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     # elapsed = the longest-running part (earliest start → most elapsed), so
                     # the solver schedules only the remaining duration of the running lot.
                     ip_parts = [pdata[pid] for pid in pids if pdata[pid].in_progress]
-                    # A resolved rebuild scope belongs to one unit, and an individual
-                    # core is alone in its lot by construction (_group_key → ('u', id)),
-                    # so taking the first part's scope cannot mix two units' scopes.
-                    scope = pdata[pids[0]].scoped_step_ids if len(pids) == 1 else None
                     lots.append({'label': f"b{wo.wo_id}:{step}:{gk[0]}", 'step': step,
                                  'part_ids': tuple(pids), 'count': len(pids),
-                                 'in_progress': bool(ip_parts), 'scope': scope,
+                                 'in_progress': bool(ip_parts),
                                  'elapsed': max((p.elapsed_minutes for p in ip_parts), default=0.0)})
                 for lot in lots:
                     count = lot['count']
                     # The lot's remaining NOMINAL route from its current step (DEFAULT
                     # edges; rework/scrap branches excluded), with merge-capable DAG
                     # precedence so convergence/divergence nodes schedule correctly.
-                    # A core under rebuild narrows that to its resolved scope: booking
-                    # the nominal route reserved capacity for operations the unit's own
-                    # plan says it will skip, which inflated reman load and makespan.
-                    route_ids, prec = resolve_route(lot['step'], wo.steps, wo.edges,
-                                                    keep_step_ids=lot['scope'])
+                    # A core under rebuild books the main line like any part: nothing on
+                    # it is skipped (services/reman/repair_routing).
+                    route_ids, prec = resolve_route(lot['step'], wo.steps, wo.edges)
                     node_start: dict = {}
                     node_end: dict = {}
                     node_task: dict = {}   # step_id -> task dict (to flag cure-window violations)

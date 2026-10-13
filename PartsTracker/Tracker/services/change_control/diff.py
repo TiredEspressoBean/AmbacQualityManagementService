@@ -79,10 +79,14 @@ _STEP_DIFF_FIELDS = (
     "min_sampling_rate",
     "block_on_quarantine",
     "sequencing_mode",
+    # A Repair node's code: which repair a check can send a unit to.
+    "repair_code_id",
 )
 
-# Edge-level fields used for the edge identity key.
-_EDGE_KEY_FIELDS = ("from_step_id", "to_step_id", "edge_type")
+# Edge-level fields used for the edge identity key. `pre_approved` is part of it so
+# that making a repair pre-approved at a check — or taking that away — shows in the
+# change request as a changed branch, rather than as no change at all.
+_EDGE_KEY_FIELDS = ("from_step_id", "to_step_id", "edge_type", "pre_approved")
 
 
 def compute_process_diff(from_process: "Processes", to_process: "Processes") -> Dict[str, Any]:
@@ -280,6 +284,7 @@ def _edge_summary(edge) -> Dict[str, Any]:
         "from_step": str(edge.from_step_id),
         "to_step": str(edge.to_step_id),
         "edge_type": edge.edge_type,
+        "pre_approved": edge.pre_approved,
     }
 
 
