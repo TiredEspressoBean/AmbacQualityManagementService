@@ -1761,6 +1761,23 @@ export interface paths {
         patch: operations["api_Cores_partial_update"];
         trace?: never;
     };
+    "/api/Cores/{id}/approve_repair/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A lead approves a repair this exchange unit's process doesn't pre-approve, so the unit can go down it at the check. A customer's own unit needs the customer's answer instead (request_authorisation). */
+        post: operations["api_Cores_approve_repair_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/{id}/complete_disassembly/": {
         parameters: {
             query?: never;
@@ -1895,7 +1912,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Pause a rebuild for customer authorisation of work beyond the rebuild level that was sold. */
+        /** @description Pause a customer's unit for their authorisation of repairs its process doesn't pre-approve and that weren't sold with its rebuild level. */
         post: operations["api_Cores_request_authorisation_create"];
         delete?: never;
         options?: never;
@@ -12473,6 +12490,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/{id}/save-draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Save one substep's work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit. */
+        post: operations["api_StepExecutions_save_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/duration_stats/": {
         parameters: {
             query?: never;
@@ -20698,6 +20732,11 @@ export interface components {
             changes?: unknown;
             readonly changes_display: components["schemas"]["AuditChange"][];
         };
+        AuthUserCompany: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         /** @description Brief TenantGroup shape embedded in the auth-user payload. */
         AuthUserTenantGroup: {
             /** Format: uuid */
@@ -21634,6 +21673,19 @@ export interface components {
             critical_only: boolean;
             materials: components["schemas"]["MaterialLoad"][];
         };
+        CaptureDraftError: {
+            detail: string;
+        };
+        CaptureDraftRequestRequest: {
+            /** Format: uuid */
+            substep: string;
+            responses: {
+                [key: string]: unknown;
+            };
+        };
+        CaptureDraftResponse: {
+            saved_substeps: string[];
+        };
         /**
          * @description * `ISO9001` - ISO 9001
          *     * `IATF16949` - IATF 16949
@@ -21948,11 +22000,19 @@ export interface components {
             readonly part: string;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
+            readonly approved_repair_codes: string[];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             archived?: boolean;
+        };
+        CoreApproveRepairError: {
+            detail: string;
+        };
+        CoreApproveRepairInputRequest: {
+            code: string;
+            note?: string;
         };
         /**
          * @description Give one unit of a bulk lot its identity. The unit is graded by whoever is
@@ -21972,6 +22032,9 @@ export interface components {
         CoreAuthorisationInputRequest: {
             approved: boolean;
             note?: string;
+            contact?: string;
+            method?: string;
+            reference?: string;
         };
         CoreBulkCreateError: {
             detail?: string;
@@ -22102,7 +22165,7 @@ export interface components {
         CoreReleaseRebuild: {
             core: components["schemas"]["Core"];
             first_step: string | null;
-            operation_count: number;
+            expected_repair_count: number;
         };
         CoreReleaseRebuildError: {
             detail: string;
@@ -22620,16 +22683,25 @@ export interface components {
          * @enum {string}
          */
         DataOriginEnum: "NATIVE" | "IMPORTED";
+        DecisionAlternateBranch: {
+            step_id: string;
+            step_name: string;
+        };
+        DecisionBranch: {
+            step_id: string;
+            step_name: string;
+        };
         DecisionOptionsResponse: {
             is_decision_point: boolean;
             decision_type?: string;
-            default_branch?: {
-                [key: string]: unknown;
-            } | null;
-            alternate_branch?: {
-                [key: string]: unknown;
-            } | null;
+            default_branch?: components["schemas"]["DecisionBranch"] | null;
+            alternate_branch?: components["schemas"]["DecisionAlternateBranch"] | null;
             qa_suggested?: string | null;
+            repair_branches?: components["schemas"]["RepairBranch"][];
+            repair_hold?: string | null;
+            /** Format: uuid */
+            repair_core_id?: string | null;
+            repair_customer_unit?: boolean;
         };
         /**
          * @description * `QA_RESULT` - Based on QA Pass/Fail
@@ -23518,6 +23590,23 @@ export interface components {
              * @default
              */
             lot_number: string;
+        };
+        /**
+         * @description One repair the rebuild is expected to take, and what put it there.
+         *
+         *     `because` is the point: a planner who cannot see why a repair is on the job
+         *     cannot challenge it, and the over-and-above quote has to show a customer which
+         *     finding drove which cost. `needs_approval` flags a repair the check doesn't
+         *     pre-approve, so its answer can be sought before the unit arrives.
+         */
+        ExpectedRepair: {
+            step_id: string;
+            step_name: string;
+            code: string;
+            code_name: string;
+            because: string[];
+            check_name: string;
+            needs_approval: boolean;
         };
         /** @description (Re)explode an existing work order's BOM. `create=false` previews without writing. */
         ExplodeWorkOrderInputRequest: {
@@ -30360,7 +30449,7 @@ export interface components {
             reason?: string;
             archived?: boolean;
         };
-        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        /** @description A repair raised by a slot resolution, done at the Repair nodes carrying it. */
         PatchedRepairCodeRequest: {
             /** @description Short identifier the shop uses, e.g. NZL-RECON. */
             code?: string;
@@ -30382,8 +30471,6 @@ export interface components {
              *     * `PRESET` - Only when a rebuild level includes it
              */
             trigger?: components["schemas"]["TriggerEnum"];
-            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
-            steps?: string[];
             notes?: string;
             archived?: boolean;
         };
@@ -30718,8 +30805,14 @@ export interface components {
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
              *     * `RECEIVING` - Receiving Inspection
+             *     * `REPAIR` - Repair
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /**
+             * Format: uuid
+             * @description The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+             */
+            repair_code?: string | null;
             /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
             is_outside_process?: boolean;
             /**
@@ -30804,7 +30897,7 @@ export interface components {
             completed_by?: number;
             /** @description Set when the operator marks an optional substep N/A instead of completing it. */
             marked_not_applicable?: boolean;
-            /** @description Operator notes captured at completion; required when marking N/A. */
+            /** @description Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note. */
             notes?: string;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
@@ -32999,7 +33092,7 @@ export interface components {
             bom_revision: string | null;
             entry_scope: string | null;
             slots: components["schemas"]["RebuildSlot"][];
-            operations: components["schemas"]["ScopedOperation"][];
+            expected_repairs: components["schemas"]["ExpectedRepair"][];
             warnings: string[];
         };
         /** @description A named rebuild level — the entry scope, before any finding. */
@@ -33447,7 +33540,16 @@ export interface components {
         RemoveMemberResponse: {
             status: string;
         };
-        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        RepairBranch: {
+            step_id: string;
+            step_name: string;
+            code: string;
+            code_name: string;
+            pre_approved: boolean;
+            needed: boolean;
+            approved: boolean;
+        };
+        /** @description A repair raised by a slot resolution, done at the Repair nodes carrying it. */
         RepairCode: {
             /** Format: uuid */
             readonly id: string;
@@ -33472,9 +33574,7 @@ export interface components {
              *     * `PRESET` - Only when a rebuild level includes it
              */
             trigger?: components["schemas"]["TriggerEnum"];
-            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
-            steps?: string[];
-            readonly step_names: string[];
+            readonly repair_step_names: string[];
             notes?: string;
             /** Format: date-time */
             readonly created_at: string;
@@ -33483,7 +33583,7 @@ export interface components {
             archived?: boolean;
             readonly version: number;
         };
-        /** @description A slot resolution that emits operations — see the design's §6.4. */
+        /** @description A repair raised by a slot resolution, done at the Repair nodes carrying it. */
         RepairCodeRequest: {
             /** @description Short identifier the shop uses, e.g. NZL-RECON. */
             code: string;
@@ -33505,8 +33605,6 @@ export interface components {
              *     * `PRESET` - Only when a rebuild level includes it
              */
             trigger?: components["schemas"]["TriggerEnum"];
-            /** @description Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry. */
-            steps?: string[];
             notes?: string;
             archived?: boolean;
         };
@@ -34397,20 +34495,6 @@ export interface components {
          * @enum {string}
          */
         ScopeTypeEnum: "PART_TYPE" | "COMMODITY" | "SPECIAL_PROCESS";
-        /**
-         * @description One operation the rebuild needs, and what put it there.
-         *
-         *     `because` is the point: a planner who cannot see why an operation is on the job
-         *     cannot challenge it, and the over-and-above quote has to show a customer which
-         *     finding drove which cost.
-         */
-        ScopedOperation: {
-            step_id: string;
-            step_name: string;
-            code: string;
-            code_name: string;
-            because: string[];
-        };
         SendInvitationInputRequest: {
             user_id: number;
         };
@@ -34788,10 +34872,18 @@ export interface components {
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
              *     * `RECEIVING` - Receiving Inspection
+             *     * `REPAIR` - Repair
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: uuid
+             * @description The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+             */
+            repair_code?: string | null;
+            readonly repair_code_code: string | null;
+            readonly repair_code_name: string | null;
             /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
             is_outside_process?: boolean;
             /**
@@ -34857,6 +34949,8 @@ export interface components {
              *     * `DIFFERENT` - Different operator
              */
             tech_continuity?: components["schemas"]["TechContinuityEnum"];
+            /** @description On a branch to a Repair node: the repair goes ahead on the inspector's finding without anyone approving it. */
+            pre_approved?: boolean;
         };
         /** @description StepEdge serializer - DAG edges between steps */
         StepEdgeRequest: {
@@ -34886,6 +34980,8 @@ export interface components {
              *     * `DIFFERENT` - Different operator
              */
             tech_continuity?: components["schemas"]["TechContinuityEnum"];
+            /** @description On a branch to a Repair node: the repair goes ahead on the inspector's finding without anyone approving it. */
+            pre_approved?: boolean;
         };
         /** @description A machine that can run a step, how well, and optionally its own cycle time. */
         StepEquipmentAffinity: {
@@ -35366,10 +35462,16 @@ export interface components {
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
              *     * `RECEIVING` - Receiving Inspection
+             *     * `REPAIR` - Repair
              */
             step_type?: components["schemas"]["StepTypeEnum"];
             is_decision_point?: boolean;
             decision_type?: components["schemas"]["DecisionTypeEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * Format: uuid
+             * @description The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+             */
+            repair_code?: string | null;
             /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
             is_outside_process?: boolean;
             /**
@@ -35598,9 +35700,10 @@ export interface components {
          *     * `TIMER` - Timer/Wait
          *     * `TERMINAL` - Terminal
          *     * `RECEIVING` - Receiving Inspection
+         *     * `REPAIR` - Repair
          * @enum {string}
          */
-        StepTypeEnum: "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL" | "RECEIVING";
+        StepTypeEnum: "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL" | "RECEIVING" | "REPAIR";
         /** @description Step with resolved sampling rules (for flow editor) */
         StepWithResolvedRules: {
             /** Format: uuid */
@@ -35734,8 +35837,14 @@ export interface components {
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
              *     * `RECEIVING` - Receiving Inspection
+             *     * `REPAIR` - Repair
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /**
+             * Format: uuid
+             * @description The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+             */
+            repair_code?: string | null;
             /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
             is_outside_process?: boolean;
             /**
@@ -35827,8 +35936,14 @@ export interface components {
              *     * `TIMER` - Timer/Wait
              *     * `TERMINAL` - Terminal
              *     * `RECEIVING` - Receiving Inspection
+             *     * `REPAIR` - Repair
              */
             step_type?: components["schemas"]["StepTypeEnum"];
+            /**
+             * Format: uuid
+             * @description The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+             */
+            repair_code?: string | null;
             /** @description If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py. */
             is_outside_process?: boolean;
             /**
@@ -36059,7 +36174,7 @@ export interface components {
             readonly completed_at: string;
             /** @description Set when the operator marks an optional substep N/A instead of completing it. */
             marked_not_applicable?: boolean;
-            /** @description Operator notes captured at completion; required when marking N/A. */
+            /** @description Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note. */
             notes?: string;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
@@ -36118,7 +36233,7 @@ export interface components {
             completed_by: number;
             /** @description Set when the operator marks an optional substep N/A instead of completing it. */
             marked_not_applicable?: boolean;
-            /** @description Operator notes captured at completion; required when marking N/A. */
+            /** @description Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note. */
             notes?: string;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
@@ -36785,6 +36900,10 @@ export interface components {
             readonly work_center_memberships: components["schemas"]["AuthUserWorkCenterMembership"][];
             /** Format: uuid */
             readonly default_shift: string | null;
+            readonly full_name: string;
+            /** Format: date-time */
+            readonly date_joined: string;
+            readonly parent_company: components["schemas"]["AuthUserCompany"] | null;
         };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.
@@ -43055,6 +43174,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Core"];
+                };
+            };
+        };
+    };
+    api_Cores_approve_repair_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreApproveRepairInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreApproveRepairInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreApproveRepairInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreApproveRepairError"];
                 };
             };
         };
@@ -61364,6 +61519,42 @@ export interface operations {
             };
         };
     };
+    api_StepExecutions_save_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaptureDraftRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CaptureDraftRequestRequest"];
+                "multipart/form-data": components["schemas"]["CaptureDraftRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureDraftResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureDraftError"];
+                };
+            };
+        };
+    };
     api_StepExecutions_duration_stats_retrieve: {
         parameters: {
             query?: never;
@@ -62242,8 +62433,9 @@ export interface operations {
                  *     * `TIMER` - Timer/Wait
                  *     * `TERMINAL` - Terminal
                  *     * `RECEIVING` - Receiving Inspection
+                 *     * `REPAIR` - Repair
                  */
-                step_type?: "DECISION" | "RECEIVING" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
+                step_type?: "DECISION" | "RECEIVING" | "REPAIR" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
                 work_center?: string;
                 work_center__isnull?: boolean;
             };
@@ -62531,8 +62723,9 @@ export interface operations {
                  *     * `TIMER` - Timer/Wait
                  *     * `TERMINAL` - Terminal
                  *     * `RECEIVING` - Receiving Inspection
+                 *     * `REPAIR` - Repair
                  */
-                step_type?: "DECISION" | "RECEIVING" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
+                step_type?: "DECISION" | "RECEIVING" | "REPAIR" | "REWORK" | "START" | "TASK" | "TERMINAL" | "TIMER";
                 work_center?: string;
                 work_center__isnull?: boolean;
             };

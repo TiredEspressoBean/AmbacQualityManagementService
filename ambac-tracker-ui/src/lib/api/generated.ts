@@ -1873,6 +1873,7 @@ export type Core = {
   part: string;
   harvested_component_count: number;
   usable_component_count: number;
+  approved_repair_codes: Array<string>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -1984,7 +1985,7 @@ export type CoreReleaseInventory = {
 export type CoreReleaseRebuild = {
   core: Core;
   first_step: string | null;
-  operation_count: number;
+  expected_repair_count: number;
 };
 export type CoreRequest = {
   core_number?: /**
@@ -2609,6 +2610,34 @@ export type CycleCountVarianceEnum =
    * @enum SHORT, OVER, MISSING, FOUND_HERE
    */
   "SHORT" | "OVER" | "MISSING" | "FOUND_HERE";
+export type DecisionOptionsResponse = {
+  is_decision_point: boolean;
+  decision_type?: string | undefined;
+  default_branch?: DecisionBranch | undefined;
+  alternate_branch?: DecisionAlternateBranch | undefined;
+  qa_suggested?: (string | null) | undefined;
+  repair_branches?: Array<RepairBranch> | undefined;
+  repair_hold?: (string | null) | undefined;
+  repair_core_id?: (string | null) | undefined;
+  repair_customer_unit?: boolean | undefined;
+};
+export type DecisionBranch = {
+  step_id: string;
+  step_name: string;
+};
+export type DecisionAlternateBranch = {
+  step_id: string;
+  step_name: string;
+};
+export type RepairBranch = {
+  step_id: string;
+  step_name: string;
+  code: string;
+  code_name: string;
+  pre_approved: boolean;
+  needed: boolean;
+  approved: boolean;
+};
 export type DemoResetRequestRequest = Partial<{
   /**
    * @default "small"
@@ -7626,10 +7655,19 @@ export type Step = {
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
     * `RECEIVING` - Receiving Inspection
+    * `REPAIR` - Repair
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
+  repair_code?:
+    | /**
+     * The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+     */
+    (string | null)
+    | undefined;
+  repair_code_code: string | null;
+  repair_code_name: string | null;
   is_outside_process?: /**
    * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
    */
@@ -7682,10 +7720,18 @@ export type StepTypeEnum =
    * `TIMER` - Timer/Wait
    * `TERMINAL` - Terminal
    * `RECEIVING` - Receiving Inspection
+   * `REPAIR` - Repair
    *
-   * @enum TASK, START, DECISION, REWORK, TIMER, TERMINAL, RECEIVING
+   * @enum TASK, START, DECISION, REWORK, TIMER, TERMINAL, RECEIVING, REPAIR
    */
-  "TASK" | "START" | "DECISION" | "REWORK" | "TIMER" | "TERMINAL" | "RECEIVING";
+  | "TASK"
+  | "START"
+  | "DECISION"
+  | "REWORK"
+  | "TIMER"
+  | "TERMINAL"
+  | "RECEIVING"
+  | "REPAIR";
 export type DecisionTypeEnum =
   /**
    * * `QA_RESULT` - Based on QA Pass/Fail
@@ -7766,6 +7812,10 @@ export type StepEdge = {
     * `DIFFERENT` - Different operator
      */
   TechContinuityEnum | undefined;
+  pre_approved?: /**
+   * On a branch to a Repair node: the repair goes ahead on the inspector's finding without anyone approving it.
+   */
+  boolean | undefined;
 };
 export type EdgeTypeEnum =
   /**
@@ -8511,11 +8561,7 @@ export type RepairCode = {
     * `PRESET` - Only when a rebuild level includes it
      */
   TriggerEnum | undefined;
-  steps?: /**
-   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
-   */
-  Array<string> | undefined;
-  step_names: Array<string>;
+  repair_step_names: Array<string>;
   notes?: string | undefined;
   created_at: string;
   updated_at: string;
@@ -9802,8 +9848,15 @@ export type Steps = {
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
     * `RECEIVING` - Receiving Inspection
+    * `REPAIR` - Repair
      */
   StepTypeEnum | undefined;
+  repair_code?:
+    | /**
+     * The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+     */
+    (string | null)
+    | undefined;
   is_outside_process?: /**
    * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
    */
@@ -10025,7 +10078,7 @@ export type SubstepCompletion = {
    */
   boolean | undefined;
   notes?: /**
-   * Operator notes captured at completion; required when marking N/A.
+   * Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note.
    */
   string | undefined;
   signature_data?:
@@ -13851,10 +13904,6 @@ export type PatchedRepairCodeRequest = Partial<{
     * `PRESET` - Only when a rebuild level includes it
      */
   trigger: TriggerEnum;
-  /**
-   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
-   */
-  steps: Array<string>;
   notes: string;
   archived: boolean;
 }>;
@@ -14157,8 +14206,13 @@ export type PatchedStepsRequest = Partial<{
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
     * `RECEIVING` - Receiving Inspection
+    * `REPAIR` - Repair
      */
   step_type: StepTypeEnum;
+  /**
+   * The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+   */
+  repair_code: string | null;
   /**
    * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
    */
@@ -14306,7 +14360,7 @@ export type PatchedSubstepCompletionRequest = Partial<{
    */
   marked_not_applicable: boolean;
   /**
-   * Operator notes captured at completion; required when marking N/A.
+   * Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note.
    */
   notes: string;
   /**
@@ -15503,7 +15557,7 @@ export type RebuildPlan = {
   bom_revision: string | null;
   entry_scope: string | null;
   slots: Array<RebuildSlot>;
-  operations: Array<ScopedOperation>;
+  expected_repairs: Array<ExpectedRepair>;
   warnings: Array<string>;
 };
 export type RebuildSlot = {
@@ -15527,12 +15581,14 @@ export type RebuildCandidate = {
   grade: string | null;
   detail: string;
 };
-export type ScopedOperation = {
+export type ExpectedRepair = {
   step_id: string;
   step_name: string;
   code: string;
   code_name: string;
   because: Array<string>;
+  check_name: string;
+  needs_approval: boolean;
 };
 export type RebuildSlotOverrideRequest = {
   /**
@@ -15836,10 +15892,6 @@ export type RepairCodeRequest = {
     * `PRESET` - Only when a rebuild level includes it
      */
   TriggerEnum | undefined;
-  steps?: /**
-   * Operations this code adds to the rebuild. The unit's scope is the union of the operations its raised codes carry.
-   */
-  Array<string> | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
 };
@@ -16549,6 +16601,10 @@ export type StepEdgeRequest = {
     * `DIFFERENT` - Different operator
      */
   TechContinuityEnum | undefined;
+  pre_approved?: /**
+   * On a branch to a Repair node: the repair goes ahead on the inspector's finding without anyone approving it.
+   */
+  boolean | undefined;
 };
 export type StepEquipmentAffinityRequest = {
   step: string;
@@ -16741,10 +16797,17 @@ export type StepRequest = {
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
     * `RECEIVING` - Receiving Inspection
+    * `REPAIR` - Repair
      */
   StepTypeEnum | undefined;
   is_decision_point?: boolean | undefined;
   decision_type?: (DecisionTypeEnum | BlankEnum) | undefined;
+  repair_code?:
+    | /**
+     * The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+     */
+    (string | null)
+    | undefined;
   is_outside_process?: /**
    * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
    */
@@ -16919,8 +16982,15 @@ export type StepsRequest = {
     * `TIMER` - Timer/Wait
     * `TERMINAL` - Terminal
     * `RECEIVING` - Receiving Inspection
+    * `REPAIR` - Repair
      */
   StepTypeEnum | undefined;
+  repair_code?:
+    | /**
+     * The repair code this step carries out. Set on a Repair node; a check sends a unit here when this code is raised for it.
+     */
+    (string | null)
+    | undefined;
   is_outside_process?: /**
    * If True, this step is performed by an outside vendor: parts are sent out (StepExecution send stamps / OutsideProcessShipment) and run a receiving-style return inspection when they come back. See services/mes/outside_process.py.
    */
@@ -17057,7 +17127,7 @@ export type SubstepCompletionRequest = {
    */
   boolean | undefined;
   notes?: /**
-   * Operator notes captured at completion; required when marking N/A.
+   * Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note.
    */
   string | undefined;
   signature_data?:
@@ -17304,6 +17374,9 @@ export type TenantAwareUserDetails = {
   groups: Array<AuthUserTenantGroup>;
   work_center_memberships: Array<AuthUserWorkCenterMembership>;
   default_shift: string | null;
+  full_name: string;
+  date_joined: string;
+  parent_company: AuthUserCompany;
 };
 export type AuthUserTenantGroup = {
   id: string;
@@ -17316,6 +17389,10 @@ export type AuthUserWorkCenterMembership = {
   work_center_code: string;
   work_center_kind: string;
   is_primary: boolean;
+};
+export type AuthUserCompany = {
+  id: string;
+  name: string;
 };
 export type TenantCreate = {
   /**
@@ -19329,6 +19406,7 @@ const Core = z.object({
   part: z.string().uuid(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
+  approved_repair_codes: z.array(z.string()),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19355,6 +19433,11 @@ const PatchedCoreRequest = z
     archived: z.boolean(),
   })
   .partial();
+const CoreApproveRepairInputRequest = z.object({
+  code: z.string().min(1),
+  note: z.string().optional(),
+});
+const CoreApproveRepairError = z.object({ detail: z.string() });
 const HarvestedComponent = z.object({
   id: z.string().uuid(),
   core: z.string().uuid(),
@@ -19410,12 +19493,14 @@ const RebuildSlot = z.object({
   needs_decision: z.boolean(),
   candidates: z.array(RebuildCandidate),
 });
-const ScopedOperation = z.object({
+const ExpectedRepair = z.object({
   step_id: z.string(),
   step_name: z.string(),
   code: z.string(),
   code_name: z.string(),
   because: z.array(z.string()),
+  check_name: z.string(),
+  needs_approval: z.boolean(),
 });
 const RebuildPlan = z.object({
   core_id: z.string(),
@@ -19424,12 +19509,15 @@ const RebuildPlan = z.object({
   bom_revision: z.string().nullable(),
   entry_scope: z.string().nullable(),
   slots: z.array(RebuildSlot),
-  operations: z.array(ScopedOperation),
+  expected_repairs: z.array(ExpectedRepair),
   warnings: z.array(z.string()),
 });
 const CoreAuthorisationInputRequest = z.object({
   approved: z.boolean(),
   note: z.string().optional(),
+  contact: z.string().optional(),
+  method: z.string().optional(),
+  reference: z.string().optional(),
 });
 const CoreAuthorisationError = z.object({ detail: z.string() });
 const CoreReleaseInventory = z.object({
@@ -19441,7 +19529,7 @@ const CoreReleaseInventoryError = z.object({ detail: z.string() });
 const CoreReleaseRebuild = z.object({
   core: Core,
   first_step: z.string().nullable(),
-  operation_count: z.number().int(),
+  expected_repair_count: z.number().int(),
 });
 const CoreReleaseRebuildError = z.object({ detail: z.string() });
 const CoreRequestAuthorisation = z.object({
@@ -22447,12 +22535,30 @@ const CompleteStepResponse = z.object({
   split_parts_advanced: z.array(z.string()),
   split_parts_blocked: z.object({}).partial().passthrough(),
 });
+const DecisionBranch = z.object({ step_id: z.string(), step_name: z.string() });
+const DecisionAlternateBranch = z.object({
+  step_id: z.string(),
+  step_name: z.string(),
+});
+const RepairBranch = z.object({
+  step_id: z.string(),
+  step_name: z.string(),
+  code: z.string(),
+  code_name: z.string(),
+  pre_approved: z.boolean(),
+  needed: z.boolean(),
+  approved: z.boolean(),
+});
 const DecisionOptionsResponse = z.object({
   is_decision_point: z.boolean(),
   decision_type: z.string().optional(),
-  default_branch: z.object({}).partial().passthrough().nullish(),
-  alternate_branch: z.object({}).partial().passthrough().nullish(),
+  default_branch: DecisionBranch.nullish(),
+  alternate_branch: DecisionAlternateBranch.nullish(),
   qa_suggested: z.string().nullish(),
+  repair_branches: z.array(RepairBranch).optional(),
+  repair_hold: z.string().nullish(),
+  repair_core_id: z.string().uuid().nullish(),
+  repair_customer_unit: z.boolean().optional(),
 });
 const PartHistoryChange = z.object({
   field: z.string(),
@@ -22744,6 +22850,7 @@ const StepTypeEnum = z.enum([
   "TIMER",
   "TERMINAL",
   "RECEIVING",
+  "REPAIR",
 ]);
 const DecisionTypeEnum = z.enum([
   "QA_RESULT",
@@ -22781,6 +22888,9 @@ const Step = z.object({
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  repair_code: z.string().uuid().nullish(),
+  repair_code_code: z.string().nullable(),
+  repair_code_name: z.string().nullable(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_supplier_name: z.string().nullable(),
@@ -22816,6 +22926,7 @@ const StepEdge = z.object({
     .nullish(),
   max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
   tech_continuity: TechContinuityEnum.optional(),
+  pre_approved: z.boolean().optional(),
 });
 const Processes = z.object({
   id: z.string().uuid(),
@@ -23344,8 +23455,7 @@ const RepairCode = z.object({
   component_type: z.string().uuid().nullish(),
   component_type_name: z.string().nullable(),
   trigger: TriggerEnum.optional(),
-  steps: z.array(z.string().uuid()).optional(),
-  step_names: z.array(z.string()),
+  repair_step_names: z.array(z.string()),
   notes: z.string().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
@@ -23363,7 +23473,6 @@ const RepairCodeRequest = z.object({
   name: z.string().min(1).max(200),
   component_type: z.string().uuid().nullish(),
   trigger: TriggerEnum.optional(),
-  steps: z.array(z.string().uuid()).optional(),
   notes: z.string().optional(),
   archived: z.boolean().optional(),
 });
@@ -23373,7 +23482,6 @@ const PatchedRepairCodeRequest = z
     name: z.string().min(1).max(200),
     component_type: z.string().uuid().nullable(),
     trigger: TriggerEnum,
-    steps: z.array(z.string().uuid()),
     notes: z.string(),
     archived: z.boolean(),
   })
@@ -24399,6 +24507,12 @@ const ClaimStepInputRequest = z
     override_reason: z.string().min(1),
   })
   .partial();
+const CaptureDraftRequestRequest = z.object({
+  substep: z.string().uuid(),
+  responses: z.object({}).partial().passthrough(),
+});
+const CaptureDraftResponse = z.object({ saved_substeps: z.array(z.string()) });
+const CaptureDraftError = z.object({ detail: z.string() });
 const StepDurationStats = z.object({
   step_id: z.string().uuid(),
   step_name: z.string(),
@@ -24570,6 +24684,7 @@ const Steps = z.object({
   work_center: z.string().uuid().nullish(),
   work_center_name: z.string().nullable(),
   step_type: StepTypeEnum.optional(),
+  repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -24623,6 +24738,7 @@ const StepsRequest = z.object({
   part_type: z.string().uuid().nullish(),
   work_center: z.string().uuid().nullish(),
   step_type: StepTypeEnum.optional(),
+  repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -24658,6 +24774,7 @@ const PatchedStepsRequest = z
     part_type: z.string().uuid().nullable(),
     work_center: z.string().uuid().nullable(),
     step_type: StepTypeEnum,
+    repair_code: z.string().uuid().nullable(),
     is_outside_process: z.boolean(),
     outside_supplier: z.string().uuid().nullable(),
     outside_process_lead_days: z
@@ -28118,6 +28235,7 @@ const AuthUserWorkCenterMembership = z.object({
   work_center_kind: z.string(),
   is_primary: z.boolean(),
 });
+const AuthUserCompany = z.object({ id: z.string().uuid(), name: z.string() });
 const TenantAwareUserDetails = z.object({
   pk: z.number().int(),
   username: z
@@ -28133,6 +28251,9 @@ const TenantAwareUserDetails = z.object({
   groups: z.array(AuthUserTenantGroup),
   work_center_memberships: z.array(AuthUserWorkCenterMembership),
   default_shift: z.string().uuid().nullable(),
+  full_name: z.string(),
+  date_joined: z.string().datetime({ offset: true }),
+  parent_company: AuthUserCompany.nullable(),
 });
 const TenantAwareUserDetailsRequest = z.object({
   username: z
@@ -28242,6 +28363,7 @@ const StepEdgeRequest = z.object({
     .nullish(),
   max_minutes: z.number().int().gte(0).lte(2147483647).nullish(),
   tech_continuity: TechContinuityEnum.optional(),
+  pre_approved: z.boolean().optional(),
 });
 const StepRequest = z.object({
   name: z.string().min(1).max(50),
@@ -28260,6 +28382,7 @@ const StepRequest = z.object({
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
+  repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
@@ -28390,11 +28513,13 @@ export const schemas = {
   CoreRequest,
   Core,
   PatchedCoreRequest,
+  CoreApproveRepairInputRequest,
+  CoreApproveRepairError,
   HarvestedComponent,
   PaginatedHarvestedComponentList,
   RebuildCandidate,
   RebuildSlot,
-  ScopedOperation,
+  ExpectedRepair,
   RebuildPlan,
   CoreAuthorisationInputRequest,
   CoreAuthorisationError,
@@ -28715,6 +28840,9 @@ export const schemas = {
   PartsRequest,
   PatchedPartsRequest,
   CompleteStepResponse,
+  DecisionBranch,
+  DecisionAlternateBranch,
+  RepairBranch,
   DecisionOptionsResponse,
   PartHistoryChange,
   PartHistoryEntry,
@@ -28931,6 +29059,9 @@ export const schemas = {
   StepExecutionRequest,
   PatchedStepExecutionRequest,
   ClaimStepInputRequest,
+  CaptureDraftRequestRequest,
+  CaptureDraftResponse,
+  CaptureDraftError,
   StepDurationStats,
   PaginatedStepExecutionList,
   WIPSummary,
@@ -29349,6 +29480,7 @@ export const schemas = {
   VerifyEmailRequest,
   AuthUserTenantGroup,
   AuthUserWorkCenterMembership,
+  AuthUserCompany,
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,
@@ -33238,6 +33370,32 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
   },
   {
     method: "post",
+    path: "/api/Cores/:id/approve_repair/",
+    alias: "api_Cores_approve_repair_create",
+    description: `A lead approves a repair this exchange unit&#x27;s process doesn&#x27;t pre-approve, so the unit can go down it at the check. A customer&#x27;s own unit needs the customer&#x27;s answer instead (request_authorisation).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreApproveRepairInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Core,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/Cores/:id/complete_disassembly/",
     alias: "api_Cores_complete_disassembly_create",
     description: `Complete disassembly of a core`,
@@ -33434,7 +33592,7 @@ committed to rebuilding — which is also what lets the same call answer
     method: "post",
     path: "/api/Cores/:id/request_authorisation/",
     alias: "api_Cores_request_authorisation_create",
-    description: `Pause a rebuild for customer authorisation of work beyond the rebuild level that was sold.`,
+    description: `Pause a customer&#x27;s unit for their authorisation of repairs its process doesn&#x27;t pre-approve and that weren&#x27;t sold with its rebuild level.`,
     requestFormat: "json",
     parameters: [
       {
@@ -34093,7 +34251,10 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/CycleCounts/:id/apply/",
@@ -34108,10 +34269,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CycleCounts/:id/differences-xlsx/",
@@ -39227,7 +39385,10 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: PaginatedLaborCalendarBlockList,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/LaborCalendarBlocks/",
@@ -39244,10 +39405,7 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: LaborCalendarBlock,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/:id/",
@@ -43638,7 +43796,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedPartsList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -43668,10 +43829,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Orders/import-preview/",
@@ -49243,7 +49401,10 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: RebuildScopePreset,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/RebuildScopePresets/:id/",
@@ -49258,10 +49419,7 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/RebuildScopePresets/:id/version-history/",
@@ -53172,6 +53330,32 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
     response: StepExecution,
   },
   {
+    method: "post",
+    path: "/api/StepExecutions/:id/save-draft/",
+    alias: "api_StepExecutions_save_draft_create",
+    description: `Save one substep&#x27;s work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CaptureDraftRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CaptureDraftResponse,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/StepExecutions/duration_stats/",
     alias: "api_StepExecutions_duration_stats_retrieve",
@@ -53923,6 +54107,7 @@ Usage:
           .enum([
             "DECISION",
             "RECEIVING",
+            "REPAIR",
             "REWORK",
             "START",
             "TASK",
@@ -54344,6 +54529,7 @@ Returns the active + fallback rulesets for a given step`,
           .enum([
             "DECISION",
             "RECEIVING",
+            "REPAIR",
             "REWORK",
             "START",
             "TASK",
@@ -54690,7 +54876,10 @@ from. One row per step (the step is the key).`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StorageLocations/",
@@ -54776,10 +54965,7 @@ record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is
       },
     ],
     response: StorageLocation,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StorageLocations/:id/",
@@ -59439,7 +59625,10 @@ Provides endpoints for:
       },
     ],
     response: ValidateTokenResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/users/:user_id/effective-permissions/",
@@ -59466,10 +59655,7 @@ Admins can check any user; regular users can only check themselves.`,
 Admins can check any user; regular users can only check themselves.`,
     requestFormat: "json",
     response: EffectivePermissionsResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/UserWorkCenterMemberships/",

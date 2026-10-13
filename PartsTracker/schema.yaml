@@ -5557,6 +5557,50 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Cores/{id}/approve_repair/:
+    post:
+      operationId: api_Cores_approve_repair_create
+      description: A lead approves a repair this exchange unit's process doesn't pre-approve,
+        so the unit can go down it at the check. A customer's own unit needs the customer's
+        answer instead (request_authorisation).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreApproveRepairInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreApproveRepairInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreApproveRepairInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreApproveRepairError'
+          description: ''
   /api/Cores/{id}/complete_disassembly/:
     post:
       operationId: api_Cores_complete_disassembly_create
@@ -5861,8 +5905,8 @@ paths:
   /api/Cores/{id}/request_authorisation/:
     post:
       operationId: api_Cores_request_authorisation_create
-      description: Pause a rebuild for customer authorisation of work beyond the rebuild
-        level that was sold.
+      description: Pause a customer's unit for their authorisation of repairs its
+        process doesn't pre-approve and that weren't sold with its rebuild level.
       parameters:
       - in: path
         name: id
@@ -30328,6 +30372,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/StepExecution'
           description: ''
+  /api/StepExecutions/{id}/save-draft/:
+    post:
+      operationId: api_StepExecutions_save_draft_create
+      description: Save one substep's work in progress, so the step resumes where
+        the operator left off. Records nothing official — that happens at Complete
+        step, through substep submit.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureDraftRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CaptureDraftRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CaptureDraftRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureDraftResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureDraftError'
+          description: ''
   /api/StepExecutions/duration_stats/:
     get:
       operationId: api_StepExecutions_duration_stats_retrieve
@@ -31723,6 +31811,7 @@ paths:
           enum:
           - DECISION
           - RECEIVING
+          - REPAIR
           - REWORK
           - START
           - TASK
@@ -31738,6 +31827,7 @@ paths:
           * `TIMER` - Timer/Wait
           * `TERMINAL` - Terminal
           * `RECEIVING` - Receiving Inspection
+          * `REPAIR` - Repair
       - in: query
         name: work_center
         schema:
@@ -32271,6 +32361,7 @@ paths:
           enum:
           - DECISION
           - RECEIVING
+          - REPAIR
           - REWORK
           - START
           - TASK
@@ -32286,6 +32377,7 @@ paths:
           * `TIMER` - Timer/Wait
           * `TERMINAL` - Terminal
           * `RECEIVING` - Receiving Inspection
+          * `REPAIR` - Repair
       - in: query
         name: work_center
         schema:
@@ -49067,6 +49159,17 @@ components:
       - object_pk
       - object_repr
       - timestamp
+    AuthUserCompany:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+      - id
+      - name
     AuthUserTenantGroup:
       type: object
       description: Brief TenantGroup shape embedded in the auth-user payload.
@@ -51011,6 +51114,34 @@ components:
       - untimed_orders
       - work_center_total
       - work_centers
+    CaptureDraftError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CaptureDraftRequestRequest:
+      type: object
+      properties:
+        substep:
+          type: string
+          format: uuid
+        responses:
+          type: object
+          additionalProperties: {}
+      required:
+      - responses
+      - substep
+    CaptureDraftResponse:
+      type: object
+      properties:
+        saved_substeps:
+          type: array
+          items:
+            type: string
+      required:
+      - saved_substeps
     CertificationTypeEnum:
       enum:
       - ISO9001
@@ -51605,6 +51736,11 @@ components:
         usable_component_count:
           type: integer
           readOnly: true
+        approved_repair_codes:
+          type: array
+          items:
+            type: string
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -51616,6 +51752,7 @@ components:
         archived:
           type: boolean
       required:
+      - approved_repair_codes
       - condition_grade
       - core_credit_issued_at
       - core_type
@@ -51640,6 +51777,23 @@ components:
       - work_order
       - work_order_erp_id
       - work_order_status
+    CoreApproveRepairError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreApproveRepairInputRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        note:
+          type: string
+      required:
+      - code
     CoreAssignIdentityRequest:
       type: object
       description: |-
@@ -51673,6 +51827,12 @@ components:
         approved:
           type: boolean
         note:
+          type: string
+        contact:
+          type: string
+        method:
+          type: string
+        reference:
           type: string
       required:
       - approved
@@ -51956,12 +52116,12 @@ components:
         first_step:
           type: string
           nullable: true
-        operation_count:
+        expected_repair_count:
           type: integer
       required:
       - core
+      - expected_repair_count
       - first_step
-      - operation_count
     CoreReleaseRebuildError:
       type: object
       properties:
@@ -53125,6 +53285,26 @@ components:
       description: |-
         * `NATIVE` - Native
         * `IMPORTED` - Imported
+    DecisionAlternateBranch:
+      type: object
+      properties:
+        step_id:
+          type: string
+        step_name:
+          type: string
+      required:
+      - step_id
+      - step_name
+    DecisionBranch:
+      type: object
+      properties:
+        step_id:
+          type: string
+        step_name:
+          type: string
+      required:
+      - step_id
+      - step_name
     DecisionOptionsResponse:
       type: object
       properties:
@@ -53133,16 +53313,29 @@ components:
         decision_type:
           type: string
         default_branch:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/DecisionBranch'
           nullable: true
         alternate_branch:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/DecisionAlternateBranch'
           nullable: true
         qa_suggested:
           type: string
           nullable: true
+        repair_branches:
+          type: array
+          items:
+            $ref: '#/components/schemas/RepairBranch'
+        repair_hold:
+          type: string
+          nullable: true
+        repair_core_id:
+          type: string
+          format: uuid
+          nullable: true
+        repair_customer_unit:
+          type: boolean
       required:
       - is_decision_point
     DecisionTypeEnum:
@@ -54874,6 +55067,40 @@ components:
       required:
       - promised_date
       - quantity
+    ExpectedRepair:
+      type: object
+      description: |-
+        One repair the rebuild is expected to take, and what put it there.
+
+        `because` is the point: a planner who cannot see why a repair is on the job
+        cannot challenge it, and the over-and-above quote has to show a customer which
+        finding drove which cost. `needs_approval` flags a repair the check doesn't
+        pre-approve, so its answer can be sought before the unit arrives.
+      properties:
+        step_id:
+          type: string
+        step_name:
+          type: string
+        code:
+          type: string
+        code_name:
+          type: string
+        because:
+          type: array
+          items:
+            type: string
+        check_name:
+          type: string
+        needs_approval:
+          type: boolean
+      required:
+      - because
+      - check_name
+      - code
+      - code_name
+      - needs_approval
+      - step_id
+      - step_name
     ExplodeWorkOrderInputRequest:
       type: object
       description: (Re)explode an existing work order's BOM. `create=false` previews
@@ -67746,7 +67973,8 @@ components:
           type: boolean
     PatchedRepairCodeRequest:
       type: object
-      description: A slot resolution that emits operations — see the design's §6.4.
+      description: A repair raised by a slot resolution, done at the Repair nodes
+        carrying it.
       properties:
         code:
           type: string
@@ -67776,13 +68004,6 @@ components:
             * `REUSE` - When the recovered component goes back as-is
             * `ALWAYS` - Always — part of the base scope, whatever the finding
             * `PRESET` - Only when a rebuild level includes it
-        steps:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Operations this code adds to the rebuild. The unit's scope
-            is the union of the operations its raised codes carry.
         notes:
           type: string
         archived:
@@ -68291,6 +68512,13 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+            * `REPAIR` - Repair
+        repair_code:
+          type: string
+          format: uuid
+          nullable: true
+          description: The repair code this step carries out. Set on a Repair node;
+            a check sends a unit here when this code is raised for it.
         is_outside_process:
           type: boolean
           description: 'If True, this step is performed by an outside vendor: parts
@@ -68444,8 +68672,8 @@ components:
             of completing it.
         notes:
           type: string
-          description: Operator notes captured at completion; required when marking
-            N/A.
+          description: Operator notes captured at completion. Optional — an N/A is
+            justified by its reason code, not a note.
         signature_data:
           type: string
           nullable: true
@@ -72696,10 +72924,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RebuildSlot'
-        operations:
+        expected_repairs:
           type: array
           items:
-            $ref: '#/components/schemas/ScopedOperation'
+            $ref: '#/components/schemas/ExpectedRepair'
         warnings:
           type: array
           items:
@@ -72709,8 +72937,8 @@ components:
       - core_id
       - core_number
       - entry_scope
+      - expected_repairs
       - fulfilment_mode
-      - operations
       - slots
       - warnings
     RebuildScopePreset:
@@ -73653,9 +73881,35 @@ components:
           type: string
       required:
       - status
+    RepairBranch:
+      type: object
+      properties:
+        step_id:
+          type: string
+        step_name:
+          type: string
+        code:
+          type: string
+        code_name:
+          type: string
+        pre_approved:
+          type: boolean
+        needed:
+          type: boolean
+        approved:
+          type: boolean
+      required:
+      - approved
+      - code
+      - code_name
+      - needed
+      - pre_approved
+      - step_id
+      - step_name
     RepairCode:
       type: object
-      description: A slot resolution that emits operations — see the design's §6.4.
+      description: A repair raised by a slot resolution, done at the Repair nodes
+        carrying it.
       properties:
         id:
           type: string
@@ -73691,14 +73945,7 @@ components:
             * `REUSE` - When the recovered component goes back as-is
             * `ALWAYS` - Always — part of the base scope, whatever the finding
             * `PRESET` - Only when a rebuild level includes it
-        steps:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Operations this code adds to the rebuild. The unit's scope
-            is the union of the operations its raised codes carry.
-        step_names:
+        repair_step_names:
           type: array
           items:
             type: string
@@ -73724,12 +73971,13 @@ components:
       - created_at
       - id
       - name
-      - step_names
+      - repair_step_names
       - updated_at
       - version
     RepairCodeRequest:
       type: object
-      description: A slot resolution that emits operations — see the design's §6.4.
+      description: A repair raised by a slot resolution, done at the Repair nodes
+        carrying it.
       properties:
         code:
           type: string
@@ -73759,13 +74007,6 @@ components:
             * `REUSE` - When the recovered component goes back as-is
             * `ALWAYS` - Always — part of the base scope, whatever the finding
             * `PRESET` - Only when a rebuild level includes it
-        steps:
-          type: array
-          items:
-            type: string
-            format: uuid
-          description: Operations this code adds to the rebuild. The unit's scope
-            is the union of the operations its raised codes carry.
         notes:
           type: string
         archived:
@@ -75580,33 +75821,6 @@ components:
         * `PART_TYPE` - Part Type
         * `COMMODITY` - Commodity
         * `SPECIAL_PROCESS` - Special Process
-    ScopedOperation:
-      type: object
-      description: |-
-        One operation the rebuild needs, and what put it there.
-
-        `because` is the point: a planner who cannot see why an operation is on the job
-        cannot challenge it, and the over-and-above quote has to show a customer which
-        finding drove which cost.
-      properties:
-        step_id:
-          type: string
-        step_name:
-          type: string
-        code:
-          type: string
-        code_name:
-          type: string
-        because:
-          type: array
-          items:
-            type: string
-      required:
-      - because
-      - code
-      - code_name
-      - step_id
-      - step_name
     SendInvitationInputRequest:
       type: object
       properties:
@@ -76361,12 +76575,27 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+            * `REPAIR` - Repair
         is_decision_point:
           type: boolean
         decision_type:
           oneOf:
           - $ref: '#/components/schemas/DecisionTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        repair_code:
+          type: string
+          format: uuid
+          nullable: true
+          description: The repair code this step carries out. Set on a Repair node;
+            a check sends a unit here when this code is raised for it.
+        repair_code_code:
+          type: string
+          readOnly: true
+          nullable: true
+        repair_code_name:
+          type: string
+          readOnly: true
+          nullable: true
         is_outside_process:
           type: boolean
           description: 'If True, this step is performed by an outside vendor: parts
@@ -76412,6 +76641,8 @@ components:
       - name
       - outside_supplier_name
       - part_type_name
+      - repair_code_code
+      - repair_code_name
     StepDistributionResponse:
       type: object
       properties:
@@ -76508,6 +76739,10 @@ components:
             * `ANY` - Any operator
             * `SAME` - Same operator
             * `DIFFERENT` - Different operator
+        pre_approved:
+          type: boolean
+          description: 'On a branch to a Repair node: the repair goes ahead on the
+            inspector''s finding without anyone approving it.'
       required:
       - from_step
       - from_step_name
@@ -76561,6 +76796,10 @@ components:
             * `ANY` - Any operator
             * `SAME` - Same operator
             * `DIFFERENT` - Different operator
+        pre_approved:
+          type: boolean
+          description: 'On a branch to a Repair node: the repair goes ahead on the
+            inspector''s finding without anyone approving it.'
       required:
       - from_step
       - to_step
@@ -77384,12 +77623,19 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+            * `REPAIR` - Repair
         is_decision_point:
           type: boolean
         decision_type:
           oneOf:
           - $ref: '#/components/schemas/DecisionTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        repair_code:
+          type: string
+          format: uuid
+          nullable: true
+          description: The repair code this step carries out. Set on a Repair node;
+            a check sends a unit here when this code is raised for it.
         is_outside_process:
           type: boolean
           description: 'If True, this step is performed by an outside vendor: parts
@@ -77746,6 +77992,7 @@ components:
       - TIMER
       - TERMINAL
       - RECEIVING
+      - REPAIR
       type: string
       description: |-
         * `TASK` - Task
@@ -77755,6 +78002,7 @@ components:
         * `TIMER` - Timer/Wait
         * `TERMINAL` - Terminal
         * `RECEIVING` - Receiving Inspection
+        * `REPAIR` - Repair
     StepWithResolvedRules:
       type: object
       description: Step with resolved sampling rules (for flow editor)
@@ -78026,6 +78274,13 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+            * `REPAIR` - Repair
+        repair_code:
+          type: string
+          format: uuid
+          nullable: true
+          description: The repair code this step carries out. Set on a Repair node;
+            a check sends a unit here when this code is raised for it.
         is_outside_process:
           type: boolean
           description: 'If True, this step is performed by an outside vendor: parts
@@ -78208,6 +78463,13 @@ components:
             * `TIMER` - Timer/Wait
             * `TERMINAL` - Terminal
             * `RECEIVING` - Receiving Inspection
+            * `REPAIR` - Repair
+        repair_code:
+          type: string
+          format: uuid
+          nullable: true
+          description: The repair code this step carries out. Set on a Repair node;
+            a check sends a unit here when this code is raised for it.
         is_outside_process:
           type: boolean
           description: 'If True, this step is performed by an outside vendor: parts
@@ -78653,8 +78915,8 @@ components:
             of completing it.
         notes:
           type: string
-          description: Operator notes captured at completion; required when marking
-            N/A.
+          description: Operator notes captured at completion. Optional — an N/A is
+            justified by its reason code, not a note.
         signature_data:
           type: string
           nullable: true
@@ -78758,8 +79020,8 @@ components:
             of completing it.
         notes:
           type: string
-          description: Operator notes captured at completion; required when marking
-            N/A.
+          description: Operator notes captured at completion. Optional — an N/A is
+            justified by its reason code, not a note.
         signature_data:
           type: string
           nullable: true
@@ -79955,13 +80217,28 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        full_name:
+          type: string
+          readOnly: true
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+        parent_company:
+          allOf:
+          - $ref: '#/components/schemas/AuthUserCompany'
+          nullable: true
+          readOnly: true
       required:
+      - date_joined
       - default_shift
       - email
+      - full_name
       - groups
       - is_active
       - is_staff
       - is_superuser
+      - parent_company
       - pk
       - username
       - work_center_memberships
