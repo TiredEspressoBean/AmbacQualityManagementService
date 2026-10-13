@@ -228,7 +228,13 @@ class DemoDarkExhibitSeeder(BaseSeeder):
 
         drawn = 0
         cache = {}
-        for part in Parts.objects.filter(part_type__isnull=False)[:40]:
+        # Parts that reached a consuming step, in a stable order. An unordered `[:40]`
+        # took whatever rows Postgres returned first, and only a quarter of those had
+        # reached Assembly — so the exhibit came and went as other seeding updated rows.
+        reached = (Parts.objects
+                   .filter(part_type__isnull=False, step_executions__step_id__in=consuming)
+                   .distinct().order_by('id'))
+        for part in reached[:40]:
             for step in Steps.objects.filter(id__in=consuming):
                 # Only for work the part has actually reached or passed.
                 if not part.step_executions.filter(step=step).exists():

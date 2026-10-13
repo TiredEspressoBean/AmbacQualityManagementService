@@ -175,13 +175,19 @@ class DemoSchedulingSeeder(BaseSeeder):
             eq = Equipments.objects.filter(tenant=self.tenant, name=eq_name).first()
             if eq is None:
                 continue
-            defaults = {"type": mtype, "default_equipment": eq}
+            # The placeholder spec is for a measurement nobody has authored yet. It used
+            # to sit in `defaults`, so it OVERWROTE an existing one: Spray Angle's
+            # 15 ±3 degrees became 10 ±0.05 mm after the DWI node had copied the real
+            # spec, and an operator shown "In spec" at 15 was judged out of spec.
+            create_defaults = {"type": mtype, "default_equipment": eq}
             if mtype == "NUMERIC":
-                defaults.update({"unit": "mm", "nominal": Decimal("10.000000"),
-                                 "upper_tol": Decimal("0.050000"), "lower_tol": Decimal("0.050000")})
+                create_defaults.update({"unit": "mm", "nominal": Decimal("10.000000"),
+                                        "upper_tol": Decimal("0.050000"),
+                                        "lower_tol": Decimal("0.050000")})
             for step in self._steps(step_name):
                 MeasurementDefinition.objects.update_or_create(
-                    tenant=self.tenant, step=step, label=label, defaults=defaults)
+                    tenant=self.tenant, step=step, label=label,
+                    defaults={"default_equipment": eq}, create_defaults=create_defaults)
                 if eq.is_schedulable:
                     sec_n += 1
 
