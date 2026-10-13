@@ -113,10 +113,13 @@ function View(props: NodeViewProps) {
         const next: Response = {
             ...current,
             [which]: {
-                // `id` from AuthUser may be a string/number depending on backend
-                // serializer; cast through Number for the captured payload.
-                user_id: Number((me as { id: number | string }).id),
-                username: (me as { username?: string }).username ?? `user-${(me as { id: number | string }).id}`,
+                // `auth/user/` returns the user as `pk`, NOT `id`. Reading
+                // `.id` yields undefined -> Number(undefined) is NaN ->
+                // serialized as null, so every signature taken through the
+                // player recorded an unidentified signer while still showing
+                // the right name on screen.
+                user_id: me.pk,
+                username: me.username ?? `user-${me.pk}`,
                 signed_at: new Date().toISOString(),
             },
         };

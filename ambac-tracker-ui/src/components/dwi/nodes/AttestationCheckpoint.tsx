@@ -90,10 +90,11 @@ function View(props: NodeViewProps) {
     const sign = () => {
         if (!isOperator || !me) return;
         const payload: SignaturePayload = {
-            user_id: Number((me as { id: number | string }).id),
-            username:
-                (me as { username?: string }).username ??
-                `user-${(me as { id: number | string }).id}`,
+            // `auth/user/` returns the user as `pk`, NOT `id`. See the same
+            // note in InspectionSignatures — reading `.id` recorded every
+            // player-captured signature with a null signer.
+            user_id: me.pk,
+            username: me.username ?? `user-${me.pk}`,
             signed_at: new Date().toISOString(),
             // data_uri reserved for SignatureCanvas integration.
         };
