@@ -1,3 +1,4 @@
+import type { AdvanceResultLike } from "@/lib/advanceOutcome";
 /**
  * Parts API — consolidated hooks file.
  *
@@ -390,14 +391,8 @@ export const useAdvanceLot = () => {
     return useMutation(advanceLotMutationOptions(queryClient));
 };
 
-type AdvanceLotResult = {
-    status: string;
-    reason?: string;
-    parts_advanced?: string[];
-    blockers_by_part?: Record<string, string[]>;
-    split_parts_advanced?: string[];
-    split_parts_blocked?: Record<string, string[]>;
-};
+// 200 whether or not anything moved — read it with advanceOutcome().
+type AdvanceLotResult = AdvanceResultLike;
 
 /**
  * Operator "Complete step" — the canonical advancement trigger.
@@ -417,9 +412,9 @@ export const completeStepMutationOptions = (queryClient: QueryClient) =>
         onSuccess: () => invalidateAllParts(queryClient),
         meta: {
             errorMessage: "Couldn't complete step",
-            // Per-call onSuccess handler surfaces the structured result;
-            // the global meta toast just confirms the request landed.
-            successMessage: "Step submitted",
+            // No successMessage: this answers 200 whether or not the part moved, so a
+            // global "Step submitted" toast fired beside "Part didn't move". The caller
+            // reports the real outcome — see lib/advanceOutcome.ts.
         },
     });
 

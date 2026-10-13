@@ -107,6 +107,20 @@ class FpiFirstPieceTests(TenantTestCase):
         self.assertEqual(r.data["designated_part"], str(self.p1.id))
         self.assertEqual(FPIRecord.objects.get(id=fpi_id).status, FPIStatus.PASSED)
 
+    def test_a_blocked_sign_off_names_the_real_cause(self):
+        """The refusal's headline names no cause; the blockers do. It used to say
+        "finish the step's captures first" whatever blocked — here the captures are
+        done and the first piece is quarantined."""
+        Steps.objects.filter(pk=self.step.pk).update(block_on_quarantine=True)
+        resp = self._get_or_create()
+        fpi_id = resp.data["fpi"]["id"]
+        self._start(self.p1)
+        Parts.objects.filter(pk=self.p1.pk).update(part_status="QUARANTINED")
+        r = self.client.post(f"/api/FPIRecords/{fpi_id}/pass/", {}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertNotIn("captures", r.data["detail"])
+        self.assertTrue(any("quarantine" in b.lower() for b in r.data["blockers"]), r.data)
+
     def test_operator_cannot_sign_off(self):
         # Operator initiates + runs the first piece, but lacks sign_off_fpi.
         resp = self._get_or_create()

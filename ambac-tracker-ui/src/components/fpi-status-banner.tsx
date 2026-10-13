@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, AlertTriangle, Lock, CheckCircle, Clock, PenLine } from "lucide-react";
 import { useFpiCheckStatus, useFpiGetOrCreate, useFpiPass, useFpiFail, useFpiWaive } from "@/hooks/useFpiRecords";
@@ -106,7 +107,7 @@ export function FpiStatusBanner({
             setNotes("");
             afterChange();
         } catch (e: unknown) {
-            toast.error(extractDetail(e) ?? "Failed to sign off FPI");
+            toast.error(apiErrorMessage(e) ?? "Failed to sign off FPI");
         }
     };
 
@@ -119,7 +120,7 @@ export function FpiStatusBanner({
             setNotes("");
             afterChange();
         } catch (e: unknown) {
-            toast.error(extractDetail(e) ?? "Failed to record FPI failure");
+            toast.error(apiErrorMessage(e) ?? "Failed to record FPI failure");
         }
     };
 
@@ -132,7 +133,7 @@ export function FpiStatusBanner({
             setWaiveReason("");
             afterChange();
         } catch (e: unknown) {
-            toast.error(extractDetail(e) ?? "Failed to waive FPI");
+            toast.error(apiErrorMessage(e) ?? "Failed to waive FPI");
         }
     };
 
@@ -303,10 +304,3 @@ export function FpiStatusBanner({
     );
 }
 
-/** Pull a human message out of a zodios/axios error if present. */
-function extractDetail(e: unknown): string | undefined {
-    const data = (e as { response?: { data?: { detail?: string; blockers?: string[] } } })?.response?.data;
-    if (!data) return undefined;
-    if (data.blockers?.length) return `${data.detail ?? "Incomplete"} — ${data.blockers.join("; ")}`;
-    return data.detail;
-}

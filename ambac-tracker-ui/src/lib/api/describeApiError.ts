@@ -123,10 +123,39 @@ export function apiErrorMessage(error: unknown): string | undefined {
         return undefined;
     };
     const top = text(body.detail) ?? text(body.non_field_errors);
+    // A refusal with `blockers` names its causes there; `detail` is only the headline.
+    // Returning `detail` alone used to drop the reasons — the FPI sign-off showed a
+    // headline and discarded the quarantine and the out-of-spec reading behind it.
+    // Reasons the headline already states aren't repeated.
+    const reasons = apiErrorBlockers(error).filter((b) => !top?.includes(b));
+    if (top && reasons.length) return `${top.replace(/[.:]\s*$/, "")}: ${reasons.join("; ")}`;
     if (top) return top;
+    if (reasons.length) return reasons.join("; ");
     for (const [field, value] of Object.entries(body)) {
+        if (field === "blockers") continue;
         const msg = text(value);
         if (msg) return field === "detail" ? msg : `${field.replace(/_/g, " ")}: ${msg}`;
     }
     return undefined;
+}
+
+/**
+ * The reasons a refusal gives, for a screen that lists them. The server sends them as
+ * `blockers`: plain strings (FPI sign-off, advancement) or `{code, detail}` objects
+ * (work-order release). Empty when there are none.
+ */
+export function apiErrorBlockers(error: unknown): string[] {
+    const raw = apiErrorBody(error)?.blockers;
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .map((b): string | undefined => {
+            if (typeof b === "string") return b;
+            if (b && typeof b === "object") {
+                const o = b as { detail?: unknown; message?: unknown };
+                if (typeof o.detail === "string") return o.detail;
+                if (typeof o.message === "string") return o.message;
+            }
+            return undefined;
+        })
+        .filter((x): x is string => !!x);
 }

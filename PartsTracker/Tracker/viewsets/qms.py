@@ -2015,7 +2015,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         ]
         if remaining:
             return Response(
-                {"detail": "First piece inspection incomplete - finish the step's captures first.",
+                # The headline names no cause: the blockers ARE the causes. It used to
+                # say "finish the step's captures first" whatever blocked — false when
+                # the captures were done and the part was quarantined.
+                {"detail": "The first piece can't be signed off yet.",
                  "blockers": remaining},
                 status=status.HTTP_400_BAD_REQUEST
             )
