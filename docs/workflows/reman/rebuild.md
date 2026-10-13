@@ -110,8 +110,9 @@ You can override any proposal with **Change**. Two things to know:
   told from a misclick later."* The dialog's button is **Record decision**,
   which is what it is.
 - **It moves the work, not just the row.** Overrides are applied *before* scope
-  is derived, so changing a slot from replace to recondition changes what
-  operations the unit needs. Expect the Operations table above to change too.
+  is derived, so changing a slot from replace to recondition changes which
+  repair codes are raised. Expect the **Expected repairs** panel below to
+  change too — and with it, which branches the route's checks will take.
 
 The plan keeps what it would have done alongside what you chose: "the planner
 disagreed" only means something next to what they disagreed with. **Back to the
@@ -130,26 +131,45 @@ A unit ships having had a set of operations no tier name describes. That gap is
 the over-and-above story, and it is what
 [authorisation](disassembly.md#waiting-on-the-customer) exists to decide.
 
-### Every operation says why it is there
+### Every repair says why it is there
 
-The Operations table's third column is **Because**, and it is the point of the
-whole arrangement:
+The **Expected repairs** panel is the point of the whole arrangement. Its
+columns are **Repair**, **Code**, **At check**, **Approval** and **Because**:
 
-| Operation | Code | Because |
-|-----------|------|---------|
-| Flow Testing | FLOW-VERIFY | Standard rebuild |
-| Nitride Coating | NZL-RECON | Injector Nozzle Assembly: Grade C, from this unit |
-| Assembly | BASE-REBUILD | always |
+| Repair | Code | At check | Approval | Because |
+|--------|------|----------|----------|---------|
+| Nozzle Recondition | NZL-RECON | Nozzle Inspection | Pre-approved | Injector Nozzle Assembly: Grade C, from this unit |
+| Nozzle Replacement | NZL-REPLACE | Nozzle Inspection | Needs approval | Injector Nozzle Assembly: Grade D, from this unit |
 
-Three different provenances, which are the three ways work gets onto a unit:
+!!! important "These are branches, not the route"
+    **Every operation on the route runs.** The rebuild route is one approved
+    process and the unit walks all of it. What this panel lists is the
+    *repairs* that route's checks will send this unit to — each one because a
+    finding or the rebuild level raised its code.
+
+    A repair that isn't raised is a branch not taken, and that is what the
+    traveler shows. Nothing is skipped and nothing is omitted.
+
+The **Because** column carries the provenance, which is the whole reason the
+panel is worth reading. Three ways a repair gets raised:
 
 - **the entry scope** — *"Standard rebuild"*, sold up front
-- **a finding** — *"{position}: {what was found}"*, raised by a slot
+- **a finding** — *"{position}: {what was found}"*, raised by a slot resolution
 - **always** — see below
 
-Without this you would see a list of operations with no way to challenge any of
+Without it you would see a list of repairs with no way to challenge any of
 them. With it, a customer asking "why am I being charged for nitride coating"
-has an answer attached to the operation.
+has an answer attached to the repair.
+
+!!! warning "Read the Approval column before the unit gets there"
+    A repair marked **Needs approval** holds the unit at its check until
+    somebody answers — a lead on an exchange unit, or the customer on their
+    own unit. The panel shows you that in advance, so the answer can be sought
+    before the unit is standing still waiting for it.
+
+    **Pre-approved** means the repair goes ahead on the inspector's finding.
+    That is set per edge on the approved process, so the same repair can be
+    routine at teardown and need an answer at final test.
 
 !!! note "A third source: ALWAYS codes"
     Some repair codes are marked to be raised on **every** unit of that type,
@@ -164,9 +184,13 @@ whole-unit work like a final test, raised by any slot taking that resolution.
 
 !!! info "Where the master data lives"
     **Repair Codes** and **Rebuild Levels** are authored under the
-    Remanufacturing section. They are what scope resolves against — a core type
-    with neither cannot be released to rebuild, because there would be nothing
-    for the work order to do.
+    Remanufacturing section. They are what scope resolves against.
+
+    A core type with neither is still released to rebuild perfectly well — the
+    unit walks its main line and no repair branch is ever offered. What release
+    actually requires is that **the route continues past teardown**: *"… has no
+    next step on its route after teardown — check the work order's process
+    continues past teardown."*
 
 !!! warning "A released assembly BOM is the hard prerequisite"
     Repair codes decide the *work*; the assembly BOM decides the *positions*.
@@ -180,23 +204,38 @@ whole-unit work like a final test, raised by any slot taking that resolution.
 
 ## Why the kit is shorter than the BOM
 
-Once the operations resolve, slots whose BOM line is consumed at an operation
-*outside* this rebuild's scope are **dropped from the kit**. That is what makes
-it this unit's kit rather than a parts list for the whole assembly. The plan
-tells you how many went:
+Every operation on the main line runs, so a BOM line consumed at one is
+**always in the kit**. What gets dropped is narrower: a line consumed at a
+**Repair node** is in the kit only when that repair is expected — when a
+finding or the rebuild level raised its code. A branch this unit won't take
+takes its parts with it.
 
-> N BOM line(s) are consumed at operations outside this rebuild's scope and are
-> not in the kit.
+A line with no consuming step at all stays, because there is nowhere to place
+it and dropping it would hide it. The plan tells you how many went:
 
-!!! warning "With no operations, the kit is the whole BOM"
-    The filter only runs when scope resolved something. If it resolved nothing —
-    no repair codes authored for the type — there is nothing to filter against,
-    so you get every line on the released BOM:
+> N BOM line(s) are consumed at repairs this unit isn't expected to need and
+> are not in the kit.
 
-    > No operations were resolved, so the kit below is the whole released BOM
-    > rather than what this unit needs. Expect it to over-state.
+!!! note "No repairs expected is normal, not a warning about the kit"
+    When nothing raised a code you'll see:
 
-    Read that warning as *this page is not yet telling you what to pick*.
+    > No repair codes matched this unit's findings, so no repairs are expected.
+    > Every operation on its route still runs.
+
+    That second sentence is the part to read. The unit is not under-scoped and
+    the kit is not over-stated — it simply needs no repair branches, and the
+    main line covers it.
+
+!!! warning "A kit priced before teardown is a worst case, not a kit"
+    Open the plan on a unit that hasn't finished teardown and every slot reads
+    as a purchase, because nothing has been recovered from it yet:
+
+    > This core has not finished teardown, so nothing has been recovered from
+    > it yet and every slot reads as a purchase. Useful as a worst-case
+    > estimate of what a rebuild would cost — not as a kit.
+
+    Read it as the ceiling on the job, and expect it to come down once the
+    findings land.
 
 !!! note "Raw material never becomes a slot"
     A BOM line with no component type — bulk material, consumables — has no
@@ -266,15 +305,21 @@ consume a part the customer is owed.
 As with teardown, there is no *Finish rebuild* button: the unit reaches the end
 of its route in the operator runtime and the stage moves on its own.
 
-!!! note "Out-of-scope steps are skipped, and the skip is recorded"
-    A rebuild route carries every operation the type might need. Operations this
-    unit's scope doesn't include are **walked past automatically**, each one
-    recorded as **Skipped** on the traveler rather than silently omitted.
+!!! note "Nothing is skipped"
+    Every unit walks the whole main line of its rebuild route. Scope decides
+    which **repair branches** the route's checks send it down, not which
+    operations it performs — so there is no such thing as a skipped operation
+    on a rebuild, and nothing is recorded as Skipped.
 
-    That distinction is the point: *we chose not to* and *we forgot* have to look
-    different on a customer's own unit. If a step you expected shows as Skipped,
-    the answer is in the [Operations table](#every-operation-says-why-it-is-there)
-    — it wasn't in scope.
+    If a repair you expected didn't happen, the answer is in the
+    [Expected repairs panel](#every-repair-says-why-it-is-there): no finding and
+    no rebuild level raised that code, so the branch was never offered.
+
+    This replaced an earlier arrangement where a unit's route was built from the
+    operations its codes named. It is worth knowing why, because the failure was
+    quiet: an operation nothing happened to name was walked past — a nozzle
+    inspection could vanish because no code mentioned it — and a decision point
+    walked past with no result left the unit deadlocked.
 
 Where a rebuilt unit goes depends on how it was being fulfilled:
 

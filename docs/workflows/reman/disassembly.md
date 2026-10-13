@@ -109,13 +109,27 @@ and it appears once the unit is **in rebuild** — after release, when the findi
 have shown what the job actually needs.
 
 !!! important "There has to be something to authorise"
-    The request is refused when nothing on the unit goes beyond the rebuild level
-    that was sold: *"Nothing on … goes beyond the rebuild level that was sold, so
-    there is nothing to authorise."*
+    The request is refused when every repair raised on the unit is already
+    settled: *"Every repair raised on … is pre-approved or was sold with its
+    rebuild level, so there is nothing to authorise."*
+
+    Two ways a repair is already settled, and both are ordinary:
+
+    - it is **pre-approved at the check it hangs off**, so it goes ahead on the
+      inspector's finding;
+    - its code was **in the rebuild level the customer bought**, so they have
+      already paid for it.
 
     That is the whole idea rather than an obstacle — authorisation exists for
-    **over-and-above** work. If the rebuild is within scope, there is no decision
-    for the customer to make and the unit should simply proceed.
+    **over-and-above** work. If everything the unit needs is pre-approved or
+    sold, there is no decision for the customer to make and the unit should
+    simply proceed.
+
+!!! warning "An exchange unit has no customer to ask"
+    Sending one for authorisation is refused: *"… is an exchange unit — it has
+    no customer to ask. A lead approves its repairs on the core."* The unit is
+    the shop's own, so the decision is the shop's. Use the lead approval on the
+    core instead.
 
 ### Recording the answer
 
