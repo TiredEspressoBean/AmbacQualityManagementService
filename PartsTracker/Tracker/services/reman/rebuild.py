@@ -317,11 +317,10 @@ def _repair_step_ids(core) -> set:
 def resolve_rebuild_plan(core) -> RebuildPlan:
     """Propose what goes back into `core`, slot by slot. Writes nothing.
 
-    Scope is NOT route-filtered yet: the released assembly BOM is taken whole,
-    because resolving which operations a unit needs is the step before this one and
-    is not built. That is recorded as a warning rather than hidden, since an
-    unfiltered BOM over-states the kit on a branched process — the same defect
-    `pick_list.py` has today.
+    The kit is the released assembly BOM filtered to this unit's route: a line
+    consumed on the main line is always in it, and a line consumed at a Repair node
+    drops only when that repair isn't expected (`_repair_step_ids` against the
+    scope's expected repairs) — reported as a warning, not dropped silently.
     """
     from Tracker.services.mes.bom_explosion import _released_bom
 

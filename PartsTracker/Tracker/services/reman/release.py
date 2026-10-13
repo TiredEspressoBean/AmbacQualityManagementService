@@ -26,10 +26,9 @@ def _first_rebuild_step(core):
     """Where the rebuild picks up: the next step on the main line after where teardown
     left the unit. Returns `(step, plan)`; step is None when there's nowhere to go.
 
-    Every unit walks the whole main line (services/reman/repair_routing) — the rebuild
-    no longer enters at "its first in-scope operation", because scope no longer routes.
-    A unit that has physically been torn down stands on its last teardown step, so the
-    rebuild starts at the step after it.
+    Every unit walks the whole main line (services/reman/repair_routing). A unit that
+    has physically been torn down stands on its last teardown step, so the rebuild
+    starts at the step after it.
     """
     from Tracker.models.mes_lite import EdgeType
     from Tracker.services.reman.rebuild import resolve_rebuild_plan
@@ -69,7 +68,8 @@ def release_core_to_rebuild(core, user=None):
 
     core.status = 'IN_REBUILD'
     core.save(update_fields=['status', 'updated_at'])
-    # The unit enters rebuild at its first in-scope operation. Position is the part's.
+    # The unit enters rebuild at the next step on its route after teardown.
+    # Position is the part's.
     move_core(core, step=step)
     return core, plan
 
