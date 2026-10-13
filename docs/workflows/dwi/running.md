@@ -86,6 +86,25 @@ Your entry is saved when you move off it, and the player advances.
     It also means an unfinished step records nothing. If you want the work on the
     record, finish the step.
 
+!!! warning "You can only sign as yourself"
+    A signature substep records **you**, taken from your session rather than
+    from anything the tablet sends. The time is the server's at the moment the
+    signature is written, not the tablet's clock.
+
+    Trying to sign in someone else's name is refused outright: *"You can only
+    sign as yourself."* So a signature cannot be collected on a colleague's
+    behalf — if a step needs a QA buy-off, that person signs it on the device.
+
+    Two consequences worth knowing at the bench:
+
+    - **Re-saving a step does not re-stamp your signature.** Sign, go back,
+      change something else, complete the step: your signature keeps the time
+      you actually signed.
+    - **Somebody else's signature survives your edit.** A QA sign-off already
+      in the step is carried through unchanged when you save, so an operator
+      re-saving a step cannot wipe the inspector's slot — or quietly take it
+      over.
+
 ## Marking a substep N/A
 
 If a substep genuinely does not apply to the part in front of you:
