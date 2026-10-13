@@ -1382,8 +1382,12 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
         self.assertEqual(float(node_map[self.m_node]["value"]), 0.5)
         # Status → the bare status string.
         self.assertEqual(node_map[self.s_node], "PASS")
-        # Signature attestation → the payload object (checkSatisfied wants object).
-        self.assertEqual(node_map[self.a_node], {"signature": {"signer_name": "Op A", "confirmed": True}})
+        # Signature attestation → the payload object (checkSatisfied wants object),
+        # with the signer and time stamped by the server, not taken from the client.
+        sig = node_map[self.a_node]["signature"]
+        self.assertEqual((sig["signer_name"], sig["confirmed"]), ("Op A", True))
+        self.assertEqual(sig["user_id"], self.user.pk)
+        self.assertTrue(sig["signed_at"])
 
     def test_empty_execution_returns_empty(self):
         from Tracker.services.dwi.operator_capture import build_capture_state

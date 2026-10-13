@@ -305,6 +305,9 @@ def submit_substep(
                     response_count += 1
                 continue
 
+            if kind in ("attestation", "signatures"):
+                cap = _stamp_signers(cap, user=user, substep=substep, step_execution=step_execution,
+                                     batch_execution=batch_execution)
             sr = _write_substep_response(
                 substep=substep,
                 step_execution=step_execution,
@@ -851,6 +854,45 @@ def _apply_personnel_roles(report: QualityReports, cap) -> None:
                 "notes": row.get("notes") or "",
             },
         )
+
+
+def _stamp_signers(cap, *, user, substep, step_execution, batch_execution):
+    """Record each signature in an attestation / inspection-signatures capture as the
+    person submitting it, at the server's clock.
+
+    The client used to supply `user_id` and `signed_at`, and they were stored as sent
+    — into the response and into the QR personnel roster (DETECTED_BY / VERIFIED_BY /
+    WITNESS). Any operator could record anyone as an inspection's verifier, and the
+    time was the browser's. A signature naming someone else is accepted only as the
+    unchanged carry-over of what is already stored (re-saving a substep QA has
+    already verified); anything else is refused.
+    """
+    from django.core.exceptions import ValidationError
+    slots = ("signature",) if cap.get("kind") == "attestation" else ("detected", "verified")
+    stored = (SubstepResponse.objects  # tenant-safe: keyed to a tenant-scoped execution
+              .filter(step_execution=step_execution, batch_execution=batch_execution,
+                      substep=substep, node_id=cap.get("node_id"))
+              .values_list("value_json", flat=True).first()) or {}
+    now = timezone.now().isoformat()
+    out = dict(cap)
+    for slot in slots:
+        sig = cap.get(slot)
+        if not isinstance(sig, dict):
+            continue
+        claimed = sig.get("user_id")
+        if claimed in (None, "") or str(claimed) == str(user.pk):
+            prior = stored.get(slot) if isinstance(stored.get(slot), dict) else {}
+            if str(prior.get("user_id")) == str(user.pk):
+                out[slot] = prior  # already signed by this person: keep the original time
+            else:
+                out[slot] = {**sig, "user_id": user.pk, "username": user.get_username(), "signed_at": now}
+            continue
+        prior = stored.get(slot)
+        if isinstance(prior, dict) and str(prior.get("user_id")) == str(claimed):
+            out[slot] = prior
+            continue
+        raise ValidationError("You can only sign as yourself.")
+    return out
 
 
 def _apply_inspection_signatures(report: QualityReports, cap) -> None:
