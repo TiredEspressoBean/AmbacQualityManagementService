@@ -234,6 +234,43 @@ not close it.
 
 ---
 
+## 11. The batch signature path has no data that reaches it
+
+**Walked 2026-10-13.** Verified sign-off (`Substep.requires_signature`) asks the
+operator for a drawn signature plus their own password at *Complete step*. On a
+**batch** substep it is meant to be signed **once for the whole load** rather than
+once per part — `BatchPanel.tsx:339` says so explicitly, and that is the behaviour
+most worth demonstrating: one prompt for a twenty-part load, not twenty.
+
+**That code path has never run in a browser, and cannot on current seed data.**
+
+| | |
+|---|---|
+| Substeps with `requires_signature=True` | 3 — *Final leak / pressure test*, *Return inspection (post-coating)*, *Measure spray angle*. **All `scope=sampled`**, i.e. per-part. |
+| Substeps with `scope=batch` | **1** in the whole tenant — *Run ultrasonic wash cycle* at Cleaning — with `requires_signature=False`. |
+
+So no batch substep requires a signature, and the only candidate sits on **Injector
+Build, status APPROVED**. The substep editor is correctly read-only there — *"This
+process is approved or deprecated; substeps are locked. Submit a Process Change
+Request to edit."* — so the flag cannot be set by hand without a full PCR → PCO → PCN
+cycle.
+
+The draft route dead-ends too: the one DRAFT process (*Injector Reman - Authoring
+Draft (SHOWCASE)*) does have a batch substep, but all 18 work orders run APPROVED
+processes, so nothing executes it and no batch Confirm ever happens.
+
+**What the seed should do:** set `requires_signature=True` on *Run ultrasonic wash
+cycle*. One flag. It makes the batch path reachable permanently, and it gives the demo
+two visibly different signature levels on steps people actually open — a per-part
+verified sign-off at Final Test and a once-per-load one at Cleaning.
+
+**The general lesson, which is the reason this is here rather than in a ticket:** a
+feature whose *authoring* is gated behind change control can only be demonstrated if
+the seed authors it up front. Anything that must be switched on inside an approved
+process is unreachable to a walker, because the approval lock is doing its job. When
+a new flag lands on a versioned, approval-locked model, the seed has to carry an
+example or the feature is undemonstrable — and in this case untestable.
+
 ## Standing rules for the rewrite
 
 **Seed through services, never raw writes.** Phase 9 (`dark_exhibits.py`) set the
