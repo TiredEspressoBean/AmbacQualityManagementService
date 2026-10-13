@@ -92,3 +92,18 @@ class CapaDecisionTests(TenantContextMixin, VectorTestCase):
         self.assertIn(resp.json()["capa_number"], self.failed.capa_decision_note)
         # Once a CAPA covers it, it can't be talked back down to "not needed".
         self.assertEqual(self._decide(self.failed).status_code, 400)
+
+    def test_a_deferred_decision_can_be_revisited_on_a_frozen_report(self):
+        """The finding is frozen once recorded (the approval lock); the judgement
+        about it is not. Deferred means "decide later" — later has to work."""
+        self._grant('initiate_capa')
+        self.assertEqual(self._decide(self.failed, decision="DEFERRED", note="Watching for a third.")
+                         .status_code, 200)
+        edit = self._client().patch(f"/api/QualityReports/{self.failed.id}/", {"description": "x"},
+                                    format="json")
+        self.assertIn(edit.status_code, (400, 403))  # the report itself stays as recorded
+        self.assertEqual(self._decide(self.failed, decision="NOT_REQUIRED", note="Third never came.")
+                         .status_code, 200)
+        self.failed.refresh_from_db()
+        self.assertEqual(self.failed.capa_decision, "NOT_REQUIRED")
+

@@ -182,9 +182,10 @@ APPROVAL_TEMPLATES = [
         "escalation_days": 2,
         "default_groups_names": ["QA Manager", "Production Manager"],
     },
-    # No ECO template: approving an engineering change is a PLM act, out of scope
-    # per CHANGE_CONTROL_PLAN.md Non-Goals. Nothing requests this type. Process
-    # change is PCR_APPROVAL -> PCO_APPROVAL -> PCN_RELEASE.
+    # No ECO template: approving an engineering change is a PLM act, and UQMES
+    # does no PLM (user, 2026-10-12; CLAUDE.md's product boundary). Nothing in the
+    # codebase requests this type — only the enum member references it, and that
+    # stays. Process change is PCR_APPROVAL -> PCO_APPROVAL -> PCN_RELEASE.
     {
         # Certifying someone on UQMES itself: a trainee finishes a role track, a
         # supervisor writes the TrainingRecord, and the `training_record` report
@@ -252,9 +253,16 @@ APPROVAL_TEMPLATES = [
         "description": "Approval for process change orders before implementation",
     },
     {
-        # The third leg of change control. PCR and PCO were defined here but
-        # PCN_RELEASE was not, so a tenant could approve a change and then stall
-        # at the notice — the point where the floor is actually told about it.
+        # The third leg of change control, seeded for completeness — NOT because
+        # anything requires it. Corrected 2026-10-13: an earlier version of this
+        # comment claimed a tenant without it "could approve a change and then
+        # stall at the notice". That stall does not exist. `release_pcn`
+        # (services/change_control/process_change.py:781-810) checks only DRAFT
+        # status and the segregation-of-duties rule against the PCO approver; it
+        # never looks up an approval template. PCR_APPROVAL and PCO_APPROVAL ARE
+        # looked up and do refuse without a template — PCN_RELEASE is not.
+        # process_change.py:23 calls it a "future PCN_RELEASE workflow"; the seed
+        # is here so the template exists if that workflow lands.
         "template_name": "PCN Release",
         "approval_type": "PCN_RELEASE",
         "auto_assign_by_role": "Document Controller",

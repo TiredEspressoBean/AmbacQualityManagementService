@@ -49,6 +49,24 @@ from Tracker.models import (
 # ApprovalRequest — approver assignment
 # =========================================================================
 
+def cancel_approval_request(request: ApprovalRequest) -> ApprovalRequest:
+    """Withdraw a request still waiting on its approvers.
+
+    A decided request is a record of who signed what — cancelling it would erase
+    that the decision happened, so only PENDING ones can be withdrawn.
+
+    Raises:
+        ValueError: the request is no longer pending.
+    """
+    if request.status != Approval_Status_Type.PENDING:
+        raise ValueError(
+            f"{request.approval_number} is {request.get_status_display().lower()}; only a "
+            "pending approval can be cancelled.")
+    request.status = Approval_Status_Type.CANCELLED
+    request.save(update_fields=['status'])
+    return request
+
+
 def add_approver(
     request: ApprovalRequest,
     user,

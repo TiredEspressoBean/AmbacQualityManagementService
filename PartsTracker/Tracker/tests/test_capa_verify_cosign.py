@@ -174,7 +174,8 @@ class CapaVerifyCosignTests(TenantContextMixin, TestCase):
     def test_effectiveness_result_cannot_be_set_via_patch(self):
         url = reverse("CapaVerifications-detail", kwargs={"pk": str(self.verification.id)})
         resp = self._client(self.qa).patch(url, {"effectiveness_result": "CONFIRMED"}, format="json")
-        self.assertEqual(resp.status_code, 200, resp.content)
+        # Refused by the approval lock (it used to be silently dropped).
+        self.assertEqual(resp.status_code, 400, resp.content)
         self.verification.refresh_from_db()
         self.capa.refresh_from_db()
         self.assertEqual(self.verification.effectiveness_result, EffectivenessResult.INCONCLUSIVE)

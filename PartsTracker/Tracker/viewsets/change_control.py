@@ -135,6 +135,15 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # it genuinely creates a PCR, so add_processchangerequest is the right gate.
     crud_exempt_actions = {'submit', 'approve', 'reject', 'cancel'}
 
+    def update(self, request, *args, **kwargs):
+        # PATCH comes through here too (partial_update -> update).
+        from Tracker.services.change_control.process_change import assert_pcr_editable
+        try:
+            assert_pcr_editable(self.get_object(), request.data.keys())
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return super().update(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         """Auto-generate artifact_number on create."""
         tenant = self.tenant

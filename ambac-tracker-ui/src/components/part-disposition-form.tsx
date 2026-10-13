@@ -162,10 +162,26 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
 
         try {
             if (disposition?.id) {
-                await api.api_QuarantineDispositions_partial_update(values, {
-                    params: { id: disposition.id },
-                    headers: {"X-CSRFToken": getCookie("csrftoken") ?? ""},
+                // The decision and the close move through their actions — the approval
+                // lock refuses them on a plain edit. Decide first (the server checks
+                // the authority), then save the rest, then close.
+                const headers = {"X-CSRFToken": getCookie("csrftoken") ?? ""};
+                const { disposition_type, current_state, ...rest } = values;
+                if (disposition_type && disposition_type !== disposition.disposition_type) {
+                    await api.api_QuarantineDispositions_decide_create({
+                        disposition_type,
+                        customer_approval_reference: values.customer_approval_reference || undefined,
+                        customer_approval_date: values.customer_approval_date || undefined,
+                    }, { params: { id: disposition.id }, headers });
+                }
+                await api.api_QuarantineDispositions_partial_update(rest, {
+                    params: { id: disposition.id }, headers,
                 });
+                if (current_state === "CLOSED" && disposition.current_state !== "CLOSED") {
+                    await api.api_QuarantineDispositions_close_create(undefined, {
+                        params: { id: disposition.id }, headers,
+                    });
+                }
                 toast.success("Disposition Updated");
             } else {
                 await api.api_QuarantineDispositions_create(values, {

@@ -283,12 +283,22 @@ export default function EditDispositionFormPage() {
         apiErrorMessage(err) || err?.response?.data?.message || err?.message
         || (m === "edit" ? "Failed to update disposition" : "Failed to create disposition")
 
-    // Everything except the decision — disposition_type is read-only on update.
-    const savePatch = (values: FormValues) =>
-        api.api_QuarantineDispositions_partial_update(values, {
+    // Everything except the decision and the state: those move only through
+    // `decide` and `close` (the approval lock refuses them on a plain edit). After
+    // a decide, the form's current_state is stale, so it is never echoed back.
+    const savePatch = async (values: FormValues) => {
+        const { disposition_type: _type, current_state, ...rest } = values
+        await api.api_QuarantineDispositions_partial_update(rest, {
             params: { id: dispositionId! },
             headers: csrf(),
         })
+        if (current_state === "CLOSED" && disposition?.current_state !== "CLOSED") {
+            await api.api_QuarantineDispositions_close_create(undefined, {
+                params: { id: dispositionId! },
+                headers: csrf(),
+            })
+        }
+    }
 
     // Authorize the disposition_type decision via the co-signable `decide` action.
     const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }) => {

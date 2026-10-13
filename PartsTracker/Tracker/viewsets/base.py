@@ -39,6 +39,13 @@ from rest_framework.permissions import IsAuthenticated
 
 from Tracker.permissions import TenantModelPermissions, TenantAccessPermission
 from Tracker.viewsets.mixins import CSVImportMixin, DataExportMixin
+from rest_framework.exceptions import APIException
+
+
+class ApprovalLocked(APIException):
+    """A client edit refused by the approval lock — 400 with the reason as detail."""
+    status_code = 400
+    default_code = 'approval_locked'
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +218,23 @@ class TenantScopedMixin(TenantAwareMixin):
         """Check if client requested to include archived records."""
         param = self.request.query_params.get('include_archived', '').lower()
         return param in ('true', '1', 'yes')
+
+    # The approval lock (services/core/approval_lock.py), for every tenant model:
+    # a record under approval, approved or signed off isn't edited or deleted by
+    # a client, and a decision field moves only through its action. Checked in
+    # `initial` rather than by defining update()/destroy() here: methods on this
+    # mixin would make the router expose PUT/DELETE on read-only viewsets.
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        action = getattr(self, 'action', None)
+        if action not in ('update', 'partial_update', 'destroy') or not self.kwargs:
+            return
+        from Tracker.services.core.approval_lock import delete_refusal, edit_refusal
+        instance = self.get_object()
+        reason = (delete_refusal(instance) if action == 'destroy'
+                  else edit_refusal(instance, request.data))
+        if reason:
+            raise ApprovalLocked(reason)
 
 
 class TenantScopedModelViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):

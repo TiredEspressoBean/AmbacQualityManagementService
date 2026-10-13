@@ -217,11 +217,12 @@ class DispositionDecideCosignTests(TenantContextMixin, TestCase):
 
     def test_disposition_type_cannot_be_set_via_patch(self):
         """The whole point: the decision must go through `decide`. A plain PATCH
-        of `disposition_type` is silently dropped (read-only on update), so the
-        gate can't be bypassed."""
+        of `disposition_type` is refused by the approval lock (it used to be
+        silently dropped), so the gate can't be bypassed."""
         url = reverse("QuarantineDispositions-detail", kwargs={"pk": str(self.disp.id)})
         resp = self._client(self.qa).patch(url, {"disposition_type": "SCRAP"}, format="json")
-        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("decided through", resp.json()["detail"])
         self.disp.refresh_from_db()
         self.assertEqual(self.disp.disposition_type, "")  # untouched
         self.assertEqual(self.disp.current_state, "OPEN")

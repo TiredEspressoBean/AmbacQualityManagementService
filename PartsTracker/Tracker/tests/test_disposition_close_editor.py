@@ -1,25 +1,16 @@
-"""Closing a disposition through the editor's plain PATCH is a GUARDED close.
+"""Closing a disposition happens through the `close` action, never a PATCH.
 
-The disposition editor is a generic form: it PATCHes `current_state` like any
-other field. Before the fix, setting it to CLOSED reached a terminal state
-through a bare `save()` whose only guard is pending 3D annotations — so it
-skipped the containment / decision completion blockers that the dedicated
-`close` action enforces, and never set `resolution_completed` /
-`resolution_completed_by`. Driving it live produced `CLOSED` with
-`resolution_completed=False`.
-
-The fix converges both doors on one service: the serializer's `update()`
-detects a transition to CLOSED and routes it through
-`complete_disposition_resolution` (the same service the close action uses), so
-the blockers are enforced and the completion fields recorded regardless of
-which door you came through.
+The editor used to PATCH `current_state` to CLOSED, and a later fix routed that
+PATCH through `complete_disposition_resolution` so the blockers held. Since the
+approval lock (2026-10-12) a decision field moves only through its action: the
+PATCH is refused, and the editor saves its fields, then calls `close`.
 
 What these tests pin:
-* a MAJOR disposition with no containment CANNOT be closed via the editor —
-  the blocker surfaces as a 400 and the row stays active (the bypass is gone);
-* a valid close records `resolution_completed=True` + `resolution_completed_by`;
-* containment typed in the SAME submit as the close is honoured (the other
-  field edits save before the blocker check — order matters);
+* closing by PATCH is refused and the row stays active;
+* a MAJOR disposition with no containment can't be closed by the action either;
+* a valid close records `resolution_completed` + `resolution_completed_by`;
+* containment saved by the editor's PATCH, then `close`, counts — the editor's
+  own order;
 * a non-close field edit is unaffected.
 """
 from Tracker.models import (
@@ -69,26 +60,31 @@ class DispositionEditorCloseTests(TenantTestCase):
     def _patch(self, d, **body):
         return self.client.patch(self._url(d), body, format="json")
 
+    def _close(self, d):
+        return self.client.post(f"{self._url(d)}close/", {}, format="json")
+
     # -- the bypass is gone -------------------------------------------------
 
-    def test_major_without_containment_cannot_be_closed_via_editor(self):
-        """The core fix: a MAJOR with no containment is refused (400), and the
-        row stays active — not a silent CLOSED that skipped the blocker."""
-        d = self._disposition(containment_action="")
+    def test_closing_by_patch_is_refused(self):
+        d = self._disposition(containment_action="Segregated pending rework at Inspect.")
         resp = self._patch(d, current_state="CLOSED")
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.assertIn("decided through", resp.json()["detail"])
+        d.refresh_from_db()
+        self.assertEqual(d.current_state, "IN_PROGRESS")
+
+    def test_major_without_containment_cannot_be_closed(self):
+        d = self._disposition(containment_action="")
+        resp = self._close(d)
         self.assertEqual(resp.status_code, 400, resp.content)
         self.assertIn("Containment action required", str(resp.content))
         d.refresh_from_db()
-        self.assertNotEqual(d.current_state, "CLOSED",
-                            "a blocked close must not reach the terminal state")
+        self.assertNotEqual(d.current_state, "CLOSED")
         self.assertFalse(d.resolution_completed)
 
     def test_valid_close_records_completion_and_attribution(self):
-        """A close that clears the blockers goes through the service, so
-        resolution_completed / _by / _at are set — not left half-written."""
-        d = self._disposition(
-            containment_action="Segregated pending rework at Inspect.")
-        resp = self._patch(d, current_state="CLOSED")
+        d = self._disposition(containment_action="Segregated pending rework at Inspect.")
+        resp = self._close(d)
         self.assertEqual(resp.status_code, 200, resp.content)
         d.refresh_from_db()
         self.assertEqual(d.current_state, "CLOSED")
@@ -96,15 +92,12 @@ class DispositionEditorCloseTests(TenantTestCase):
         self.assertEqual(d.resolution_completed_by_id, self.user.id)
         self.assertIsNotNone(d.resolution_completed_at)
 
-    def test_containment_in_same_submit_as_close_is_honoured(self):
-        """Order matters: the other field edits save before the blocker check,
-        so containment typed in the same PATCH as the close counts."""
+    def test_containment_saved_then_close_counts(self):
+        """The editor's order: save the fields, then close."""
         d = self._disposition(containment_action="")
-        resp = self._patch(
-            d,
-            containment_action="Segregated at Inspect; awaiting rework.",
-            current_state="CLOSED",
-        )
+        self.assertEqual(self._patch(d, containment_action="Segregated at Inspect; awaiting rework.")
+                         .status_code, 200)
+        resp = self._close(d)
         self.assertEqual(resp.status_code, 200, resp.content)
         d.refresh_from_db()
         self.assertEqual(d.current_state, "CLOSED")

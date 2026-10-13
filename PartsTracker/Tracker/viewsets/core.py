@@ -2110,18 +2110,35 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
         return queryset
 
     def perform_create(self, serializer):
-        """Auto-generate approval number and set requested_by"""
+        """Auto-generate approval number and set requested_by. A new request is
+        always PENDING — its outcome comes only from approvers' responses."""
+        from Tracker.models import Approval_Status_Type
         tenant = self.tenant
         serializer.save(
             tenant=tenant,
             requested_by=self.request.user,
+            status=Approval_Status_Type.PENDING,
             approval_number=ApprovalRequest.generate_approval_number(tenant=tenant)
         )
 
-    def perform_destroy(self, instance):
-        """Cancel the approval instead of hard deleting"""
-        instance.status = 'CANCELLED'
-        instance.save(update_fields=['status'])
+    def update(self, request, *args, **kwargs):
+        # PATCH comes through here too. A request's status, subject and requester
+        # were all writable, so any staff role could mark a pending approval
+        # APPROVED with no signature. It changes only through submit-response,
+        # claim, and cancel (DELETE).
+        return Response(
+            {"detail": "Approval requests can't be edited — they change only when approvers "
+                       "respond, claim, or the request is cancelled."},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Cancel the approval instead of hard deleting — only while it is pending."""
+        from Tracker.services.core.approval import cancel_approval_request
+        try:
+            cancel_approval_request(self.get_object())
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     # Returns a list of users, not the ApprovalRequest the undeclared
     # fallback assumed — the client rejected every response with

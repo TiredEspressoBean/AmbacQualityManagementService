@@ -63,6 +63,29 @@ class ChangeControlMode:
     REGULATED = 'REGULATED'
 
 
+# What a person may edit on a PCR, and only while it is DRAFT. The target and the
+# draft process are fixed when the change is proposed, and the diff is computed at
+# submit — editing any of them afterwards would change what an approver signed.
+PCR_EDITABLE_FIELDS = frozenset({
+    'title', 'proposed_change', 'justification', 'risk_analysis', 'priority',
+    'customer_notification_required',
+})
+
+
+def assert_pcr_editable(pcr: ProcessChangeRequest, fields) -> None:
+    """Refuse an edit to a field nobody edits on a PCR. (That it is locked once it
+    leaves DRAFT is the shared approval lock — services/core/approval_lock.py.)
+
+    Raises:
+        ValueError: ``fields`` names a field outside PCR_EDITABLE_FIELDS.
+    """
+    locked = set(fields) - PCR_EDITABLE_FIELDS
+    if locked:
+        raise ValueError(
+            f"{', '.join(sorted(locked))} can't be edited: the target and draft process are "
+            "set when the change is proposed, and the diff is computed at submit.")
+
+
 def resolve_change_control_mode(tenant) -> str:
     """Resolve the change-control mode for a tenant.
 
