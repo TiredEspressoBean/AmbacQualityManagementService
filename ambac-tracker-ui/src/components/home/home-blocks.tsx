@@ -35,6 +35,8 @@ import {
     AlertTriangle, ArrowRight, Building2, CalendarClock, CheckSquare, ClipboardCheck,
     Clock, FileCheck, FileText, FileWarning, Gauge, GitBranch, GraduationCap, Hourglass,
     Inbox, PackageSearch, PauseCircle, ScanLine, Siren, TimerReset, Truck, Wrench,
+    Boxes, CalendarRange, History, LayoutGrid, ListChecks, MapPin, PackageCheck,
+    PackagePlus, ShieldCheck, ShoppingCart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { AuthUser } from "@/hooks/useAuthUser";
@@ -1336,6 +1338,95 @@ function TrainingStripBlock() {
 }
 
 // ---------------------------------------------------------------------------
+// Role launchpads (2026-10-08) — Planner, Receiving, Shipping, Purchasing and
+// Auditor had no persona: a user in only one of those groups landed on an empty
+// Home, since every data block hides itself when there's nothing to show. A
+// launchpad always renders — the role's daily screens, one tap away — and the
+// role's data blocks stack under it.
+// ---------------------------------------------------------------------------
+
+type LaunchLink = { to: string; label: string; hint: string; icon: LucideIcon };
+
+const LAUNCHPADS: Record<string, { title: string; links: LaunchLink[] }> = {
+    Planner: {
+        title: "Planning",
+        links: [
+            { to: "/production/schedule", label: "Schedule board", hint: "Solve, dispatch, move by hand", icon: LayoutGrid },
+            { to: "/production/requirements", label: "Requirements", hint: "Shortages against the plan", icon: ListChecks },
+            { to: "/production/capacity", label: "Capacity", hint: "Load against what the shop has", icon: Gauge },
+            { to: "/production/calendar", label: "Calendar", hint: "Shifts, overtime, plant days", icon: CalendarRange },
+            { to: "/production/staging", label: "Staging", hint: "Kits ready for released work", icon: Boxes },
+        ],
+    },
+    Receiving: {
+        title: "Receiving dock",
+        links: [
+            { to: "/production/material-lots/receive", label: "Receive a delivery", hint: "Book in what arrived", icon: PackagePlus },
+            { to: "/production/incoming", label: "Incoming", hint: "What is expected and what has arrived", icon: Truck },
+            { to: "/production/receiving-inspection", label: "Receiving inspection", hint: "Lots waiting to be checked", icon: ClipboardCheck },
+            { to: "/production/material-lots", label: "Material lots", hint: "Stock, holds and returns", icon: Boxes },
+            { to: "/production/cycle-counts", label: "Cycle counts", hint: "Count a location", icon: ListChecks },
+        ],
+    },
+    Shipping: {
+        title: "Shipping dock",
+        links: [
+            { to: "/production/shipments", label: "Shipments", hint: "Ship units, packing lists, CoCs", icon: PackageCheck },
+            { to: "/production/outside-processing", label: "Outside processing", hint: "Send out and receive back", icon: Truck },
+            { to: "/production/locations", label: "Locations", hint: "Where finished units are", icon: MapPin },
+            { to: "/production/material-lots", label: "Material lots", hint: "Customer property and returns", icon: Boxes },
+        ],
+    },
+    Purchasing: {
+        title: "Purchasing",
+        links: [
+            { to: "/production/requirements", label: "Shortages", hint: "What to buy, and for which work", icon: ShoppingCart },
+            { to: "/production/material-lots", label: "Expected receipts", hint: "Open PO lines and chases", icon: Truck },
+            { to: "/production/supplier-quality", label: "Supplier quality", hint: "Scorecards and standing", icon: Building2 },
+            { to: "/production/supplier-qualifications", label: "Supplier qualifications", hint: "Approvals and expiries", icon: ShieldCheck },
+        ],
+    },
+    Auditor: {
+        title: "Audit",
+        links: [
+            { to: "/admin/audit-log", label: "Audit log", hint: "Every change, who and when", icon: History },
+            { to: "/quality/capas", label: "CAPAs", hint: "Corrective actions and verification", icon: FileWarning },
+            { to: "/quality/calibrations/records", label: "Calibration records", hint: "Gauges and their results", icon: Gauge },
+            { to: "/quality/training/records", label: "Training records", hint: "Who is qualified for what", icon: GraduationCap },
+            { to: "/documents", label: "Documents", hint: "Controlled documents and revisions", icon: FileText },
+            { to: "/approvals/history", label: "Approvals", hint: "Signed decisions", icon: FileCheck },
+        ],
+    },
+};
+
+function LaunchpadBlock({ role }: { role: string }) {
+    const pad = LAUNCHPADS[role];
+    if (!pad) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="text-base">{pad.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {pad.links.map((l) => (
+                    <Link
+                        key={l.to + l.label}
+                        to={l.to as never}
+                        className="flex items-start gap-3 rounded-md border p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <l.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0">
+                            <span className="block text-sm font-medium">{l.label}</span>
+                            <span className="block text-xs text-muted-foreground">{l.hint}</span>
+                        </span>
+                    </Link>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Registry + persona resolution
 // ---------------------------------------------------------------------------
 
@@ -1360,9 +1451,16 @@ const EVERYONE = [
 ];
 
 const BLOCKS: BlockDef[] = [
+    // One launchpad per role that has one; the persona order puts it first.
+    ...Object.keys(LAUNCHPADS).map((role): BlockDef => ({
+        id: `launchpad-${role.toLowerCase()}`,
+        size: "full",
+        groups: [role],
+        Component: () => <LaunchpadBlock role={role} />,
+    })),
     {
         id: "scan",
-        groups: EVERYONE,
+        groups: [...EVERYONE, "Receiving", "Shipping"],
         // Doers (Operator/Shift Lead) scan to run work → land on the WO detail
         // (Start Work + traveler). Everyone else scans to look up → land on
         // /control (per-part detail, traveler view, no run action).
@@ -1391,13 +1489,13 @@ const BLOCKS: BlockDef[] = [
         },
     },
     { id: "inspection", size: "full", groups: ["QA Inspector", "Shift Lead", "QA Manager", "Tenant Admin"], Component: () => <InspectionQueueBlock /> },
-    { id: "production-osp", size: "half", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
+    { id: "production-osp", size: "half", groups: ["Production Manager", "Shift Lead", "Shipping", "Tenant Admin"], Component: () => <OutsideProcessingBlock /> },
     // Worklists with 5+ rows — full width for readability.
-    { id: "wos-going-late", size: "full", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
-    { id: "wos-on-hold", size: "full", groups: ["Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
-    { id: "ncr-aging", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
-    { id: "capa-status", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
-    { id: "late-deliveries", size: "half", groups: ["Purchasing", "Production Manager", "Tenant Admin"], Component: () => <LateDeliveriesBlock /> },
+    { id: "wos-going-late", size: "full", groups: ["Production Manager", "Shift Lead", "Planner", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
+    { id: "wos-on-hold", size: "full", groups: ["Production Manager", "Shift Lead", "Planner", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
+    { id: "ncr-aging", size: "half", groups: ["QA Manager", "Auditor", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
+    { id: "capa-status", size: "half", groups: ["QA Manager", "Auditor", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
+    { id: "late-deliveries", size: "half", groups: ["Purchasing", "Production Manager", "Planner", "Receiving", "Tenant Admin"], Component: () => <LateDeliveriesBlock /> },
     { id: "supplier-quals-expiring", size: "half", groups: ["QA Manager", "Production Manager", "Purchasing", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
     { id: "training-strip", size: "half", groups: ["QA Manager", "Shift Lead", "Document Controller", "Tenant Admin"], Component: () => <TrainingStripBlock /> },
     { id: "approvals-in-flight", size: "half", groups: ["Document Controller", "QA Manager", "Engineering", "Tenant Admin"], Component: () => <ApprovalsInFlightBlock /> },
@@ -1422,6 +1520,11 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "Shift Lead", order: ["shift-lead-hero", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
     { group: "Document Controller", order: ["doc-review-due", "approvals-in-flight", "documents", "training-strip", "scan"] },
+    { group: "Planner", order: ["launchpad-planner", "wos-going-late", "wos-on-hold", "late-deliveries"] },
+    { group: "Purchasing", order: ["launchpad-purchasing", "late-deliveries", "supplier-quals-expiring"] },
+    { group: "Receiving", order: ["launchpad-receiving", "scan", "late-deliveries"] },
+    { group: "Shipping", order: ["launchpad-shipping", "scan", "production-osp"] },
+    { group: "Auditor", order: ["launchpad-auditor", "capa-status", "ncr-aging"] },
     { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
