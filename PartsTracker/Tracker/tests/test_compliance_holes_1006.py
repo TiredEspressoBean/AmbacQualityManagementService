@@ -89,9 +89,10 @@ class DispositionTests(_Fixture):
         resp = self.client.post("/api/QuarantineDispositions/", {
             "part": str(self.part.id), "quality_reports": [str(report.id)],
             "disposition_type": "USE_AS_IS", "description": "burr"}, format="json")
+        before = self.part.part_status
         self.assertEqual(resp.status_code, 400, resp.content)
         self.part.refresh_from_db()
-        self.assertNotEqual(self.part.part_status, "READY_FOR_NEXT_STEP")
+        self.assertEqual(self.part.part_status, before)  # the refused decision changed nothing
 
         self.as_user(self.boss)
         resp = self.client.post("/api/QuarantineDispositions/", {

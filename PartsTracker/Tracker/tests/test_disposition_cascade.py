@@ -75,12 +75,13 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(part.part_status, PartsStatus.SCRAPPED)
         self.assertEqual(part.total_rework_count, 0)
 
-    def test_use_as_is_moves_part_to_ready(self):
+    def test_use_as_is_puts_the_part_back_to_work(self):
+        # Not READY_FOR_NEXT_STEP: that means "staged for its batch".
         part = self._make_part("P-UAI")
         self._disposition(part, "USE_AS_IS")
 
         part.refresh_from_db()
-        self.assertEqual(part.part_status, PartsStatus.READY_FOR_NEXT_STEP)
+        self.assertEqual(part.part_status, PartsStatus.IN_PROGRESS)
 
     def test_return_to_supplier_cancels_part(self):
         part = self._make_part("P-RTS")
@@ -252,11 +253,11 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(part.total_rework_count, 0)  # never entered rework
 
     def test_scrap_dominates_a_use_as_is_part(self):
-        """2a: SCRAP (terminal) applies over a part a USE_AS_IS disposition set READY."""
+        """2a: SCRAP (terminal) applies over a part a USE_AS_IS disposition put back to work."""
         part = self._make_part("P-SCRAP-WINS")
         self._disposition(part, "USE_AS_IS")
         part.refresh_from_db()
-        self.assertEqual(part.part_status, PartsStatus.READY_FOR_NEXT_STEP)
+        self.assertEqual(part.part_status, PartsStatus.IN_PROGRESS)
 
         self._disposition(part, "SCRAP")
         part.refresh_from_db()

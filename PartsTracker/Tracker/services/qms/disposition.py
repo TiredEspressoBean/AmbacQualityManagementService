@@ -48,7 +48,12 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         'REWORK': PartsStatus.REWORK_NEEDED,
         'REPAIR': PartsStatus.REWORK_NEEDED,  # AS9100: may not fully conform
         'SCRAP': PartsStatus.SCRAPPED,
-        'USE_AS_IS': PartsStatus.READY_FOR_NEXT_STEP,
+        # Accepted as it is: back at work on its step. Not READY_FOR_NEXT_STEP —
+        # that is the batch-staging status (advance_part_step sets it while a unit
+        # waits for its batch), so a use-as-is part read as batch-staged on every
+        # queue and dispatch list until someone completed the step. The disposition
+        # is a decision, not routing; the operator completes the step as usual.
+        'USE_AS_IS': PartsStatus.IN_PROGRESS,
         'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
     }
 
