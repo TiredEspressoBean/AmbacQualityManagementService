@@ -31,16 +31,18 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
         source='target_process.name',
         read_only=True,
     )
+    # The *_by_username fields carry no `default=`: with one, DRF raises SkipField
+    # on a partial (PATCH) serialisation and the key vanishes from the response,
+    # which the generated client rejects as `undefined`. Without it, a null FK
+    # serialises as None via `allow_null` on every write.
     created_by_username = serializers.CharField(
         source='created_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     submitted_by_username = serializers.CharField(
         source='submitted_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)
@@ -136,13 +138,11 @@ class ProcessChangeOrderSerializer(SecureModelMixin):
     approved_by_username = serializers.CharField(
         source='approved_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     implemented_by_username = serializers.CharField(
         source='implemented_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)
@@ -222,13 +222,11 @@ class ProcessChangeNoticeSerializer(SecureModelMixin):
     released_by_username = serializers.CharField(
         source='released_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     closed_by_username = serializers.CharField(
         source='closed_by.username',
         read_only=True,
-        default=None,
         allow_null=True,
     )
     is_open = serializers.BooleanField(read_only=True)

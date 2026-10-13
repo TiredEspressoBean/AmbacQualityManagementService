@@ -1093,3 +1093,42 @@ class RegulatedModeEndToEndTestCase(TenantTestCase):
             'stops haunting approver inboxes.',
         )
         self.assertIsNotNone(ar.completed_at)
+
+
+class ChangeControlPartialSerializationTestCase(TenantTestCase):
+    """A PATCH response keeps the unset *_by_username keys (2026-10-12).
+
+    They were declared with `default=None`. DRF skips a defaulted field on a partial
+    serialisation, so a PATCH of a DRAFT PCR answered without `submitted_by_username`.
+    The generated client requires the key (string | null), so it rejected the 200 and
+    "Submit failed". The PCR never left DRAFT, and nothing after it was reachable.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.part_type = PartTypes.objects.create(name='PT', ID_prefix='PT-')
+        self.process, _ = _make_approved_process(self.tenant_a, self.user_a, self.part_type)
+        self.pcr = _make_pcr(self.tenant_a, self.user_a, self.process)
+
+    def test_a_patch_response_carries_the_unset_user_fields_as_null(self):
+        from rest_framework.test import APIRequestFactory
+        from Tracker.serializers.change_control import ProcessChangeRequestSerializer
+        request = APIRequestFactory().patch('/')
+        request.user = self.user_a
+        ser = ProcessChangeRequestSerializer(self.pcr, data={'title': 'Retitled'}, partial=True,
+                                             context={'request': request})
+        self.assertTrue(ser.is_valid(), ser.errors)
+        ser.save()
+        self.assertIn('submitted_by_username', ser.data)
+        self.assertIsNone(ser.data['submitted_by_username'])
+
+    def test_no_change_control_field_defaults_through_a_relation(self):
+        # The general form of the trap, for the PCO and PCN serializers too.
+        from rest_framework.fields import empty
+        from Tracker.serializers import change_control as cc
+        for ser_cls in (cc.ProcessChangeRequestSerializer, cc.ProcessChangeOrderSerializer,
+                        cc.ProcessChangeNoticeSerializer):
+            for name, field in ser_cls().fields.items():
+                if '.' in (field.source or '') and field.default is not empty:
+                    self.fail(f"{ser_cls.__name__}.{name} defaults through {field.source}; "
+                              "it disappears from PATCH responses")
