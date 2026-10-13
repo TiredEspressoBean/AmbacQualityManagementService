@@ -18,6 +18,7 @@
  */
 import { useState, type FC } from "react";
 import { toast } from "sonner";
+import { advanceOutcome } from "@/lib/advanceOutcome";
 import { useQueryClient } from "@tanstack/react-query";
 import type { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -202,6 +203,17 @@ export async function advanceToNextQueuedPart({
 // PART — default completion: advancement gate + serial-queue advance
 // ---------------------------------------------------------------------------
 
+/** A heading for a hold that names what the unit is waiting on, or null when the
+ *  blockers aren't one of these (services/reman/repair_routing, the decision engine). */
+function holdHeading(reasons: string[]): string | null {
+    const has = (re: RegExp) => reasons.some((r) => re.test(r));
+    if (has(/no planned repair/i)) return "Held at this check — no planned repair: raise an NCR";
+    if (has(/waiting on a lead's decision/i)) return "Held at this check — a finding is waiting on a lead";
+    if (has(/isn't pre-approved/i)) return "Held at this check — this repair needs approval";
+    if (has(/QualityReport required/i)) return "Held — record the inspection result first";
+    return null;
+}
+
 async function completePart(ctx: CompletionContext): Promise<void> {
     const { substeps, responsesBySubstepId, stepExecutionId, partId, workOrderId,
         materialLotId, queue, navigate, submit, completeStep } = ctx;
@@ -260,28 +272,17 @@ async function completePart(ctx: CompletionContext): Promise<void> {
     }
     try {
         const result = await completeStep.mutateAsync(partId);
+        // This unit's own blockers, not another cohort member's — an operator looking at
+        // one unit was once shown another's as if it were theirs (lib/advanceOutcome).
+        const { advancedCount, mine, othersWaiting, reason } = advanceOutcome(result, partId);
         if (result.status === "advanced") {
-            const advanced = [
-                ...(result.parts_advanced ?? []),
-                ...(result.split_parts_advanced ?? []),
-            ];
-            toast.success(`Step complete — lot advanced (${advanced.length} part${advanced.length === 1 ? "" : "s"} moved).`);
+            toast.success(`Step complete — lot advanced (${advancedCount} part${advancedCount === 1 ? "" : "s"} moved).`);
         } else if (result.status === "blocked") {
-            // This unit's own blockers. The result lists every cohort part's, and an
-            // operator looking at one unit was shown another's ("No active
-            // StepExecution" for a core nobody has started yet) as if it were theirs.
-            const byPart: Record<string, string[]> = {
-                ...(result.blockers_by_part ?? {}),
-                ...(result.split_parts_blocked ?? {}),
-            };
-            const mine = byPart[partId] ?? [];
-            const othersWaiting = Object.keys(byPart).filter((id) => id !== partId).length;
-            const reasons = new Set<string>(mine);
             // Classify the blocker set: a hard per-part failure (quarantine,
             // out-of-spec, sampling fail, unauthorized operator) is not the
             // same UX as "the other cohort parts haven't finished yet." Use
             // the primary event to pick the toast heading.
-            const reasonList = [...reasons];
+            const reasonList = mine;
             const hasHardFail = reasonList.some((r) =>
                 /quarantined|out of specification|Sampling inspection failed|not qualified|Manual decision required/i.test(r),
             );
@@ -291,20 +292,33 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             const description = reasonList.length > 0
                 ? reasonList.slice(0, 3).join("; ")
                 : `Waiting on ${othersWaiting} other unit${othersWaiting === 1 ? "" : "s"} in the lot.`;
-            if (hasHardFail) {
-                toast.error("FAIL recorded — part held for disposition", { description });
+            // A hold on THIS unit is named for what it waits on and stays up long enough
+            // to read; the operator stays on the step (below) so they can act on it.
+            const hold = { description, duration: 12000 };
+            const heading = holdHeading(reasonList);
+            if (heading) {
+                toast.warning(heading, hold);
+            } else if (hasHardFail) {
+                toast.error("FAIL recorded — part held for disposition", hold);
             } else if (hasSignoffPending) {
-                toast.warning("Step submitted — awaiting QA sign-off", { description });
+                toast.warning("Step submitted — awaiting QA sign-off", hold);
+            } else if (reasonList.length > 0) {
+                toast.warning("Part didn't move — see why", hold);
             } else {
                 toast.warning("Step submitted — lot waiting on cohort", { description });
             }
+            // Only this unit's own blockers keep the operator here. Waiting on the rest
+            // of the lot means this unit's work is done, so the queue moves on.
+            if (mine.length > 0) return;
         } else if (result.status === "halted") {
-            toast.error("Lot halted", { description: result.reason ?? "" });
+            toast.error("Lot halted", { description: reason, duration: 12000 });
+            return;
         } else {
             toast.success("Step submitted");
         }
 
-        // Serial queue: jump to the next checked part, if any.
+        // Serial queue: jump to the next checked part, if any — only once this unit has
+        // moved (or is just waiting on its lot). Leaving a held unit looked like success.
         await advanceToNextQueuedPart({ queue, workOrderId, navigate });
     } catch {
         toast.error("Couldn't run advancement", {

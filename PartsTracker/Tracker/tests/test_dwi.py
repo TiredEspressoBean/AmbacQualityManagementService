@@ -1390,6 +1390,120 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
         self.assertEqual(build_capture_state(self.step_execution), {})
 
 
+class CaptureDraftTests(DwiPhase1BaseTestCase):
+    """Work in progress saved between substeps (`StepExecution.capture_draft`): the
+    step resumes where the operator left off, and nothing official happens until
+    Complete step commits through `submit_substep`."""
+
+    def setUp(self):
+        from Tracker.models import MeasurementDefinition
+        set_current_tenant_id(self.tenant.id)
+        self.md = MeasurementDefinition.objects.create(
+            tenant=self.tenant, label="OD", type="NUMERIC", unit="in",
+            nominal=0.5, upper_tol=0.01, lower_tol=0.01, step=self.step,
+        )
+        self.m_node = "44444444-4444-4444-4444-444444444444"
+        self.s_node = "55555555-5555-5555-5555-555555555555"
+        # "Result" first: the step runs sequentially, and the commit tests submit it
+        # while "Measure OD" is still only a draft.
+        self.substep = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=1, title="Measure OD",
+            is_inspection_point=True,
+            body_blocks={"type": "doc", "content": [
+                {"type": "measurementInput", "attrs": {
+                    "node_id": self.m_node, "required": True,
+                    "measurement_definition_id": str(self.md.id)}},
+            ]},
+        )
+        self.other = Substep.objects.create(
+            tenant=self.tenant, step=self.step, order=0, title="Result",
+            body_blocks={"type": "doc", "content": [
+                {"type": "qualityStatusField", "attrs": {"node_id": self.s_node, "required": True}},
+            ]},
+        )
+
+    def _draft(self, substep, responses):
+        from Tracker.services.dwi.operator_capture import save_capture_draft
+        draft = save_capture_draft(self.step_execution, substep, responses)
+        self.step_execution.refresh_from_db()  # saved through a locked re-read
+        return draft
+
+    def test_a_draft_resumes_and_records_nothing_official(self):
+        """A typo'd out-of-spec value in a draft raises no report: only a commit does."""
+        from Tracker.models import QualityReports, StepExecutionMeasurement, SubstepCompletion
+        from Tracker.services.dwi.operator_capture import build_capture_state
+        self._draft(self.substep, {self.m_node: {"value": "001"}})
+
+        self.assertEqual(build_capture_state(self.step_execution),
+                         {str(self.substep.id): {self.m_node: {"value": "001"}}})
+        self.assertFalse(SubstepCompletion.objects.filter(step_execution=self.step_execution).exists())
+        self.assertFalse(StepExecutionMeasurement.objects.filter(step_execution=self.step_execution).exists())
+        self.assertFalse(QualityReports.objects.filter(part=self.part).exists())
+
+    def test_a_draft_shows_over_what_was_committed(self):
+        from Tracker.services.dwi.operator_capture import build_capture_state, submit_substep
+        submit_substep(substep=self.other, step_execution=self.step_execution, user=self.user,
+                       captures=[{"node_id": self.s_node, "kind": "status", "status": "PASS"}])
+        self.step_execution.refresh_from_db()
+        self._draft(self.other, {self.s_node: "FAIL"})
+        self.assertEqual(build_capture_state(self.step_execution)[str(self.other.id)],
+                         {self.s_node: "FAIL"})
+
+    def test_committing_a_substep_takes_only_it_out_of_the_draft(self):
+        from Tracker.services.dwi.operator_capture import submit_substep
+        self._draft(self.substep, {self.m_node: {"value": "0.5"}})
+        self._draft(self.other, {self.s_node: "PASS"})
+        submit_substep(substep=self.other, step_execution=self.step_execution, user=self.user,
+                       captures=[{"node_id": self.s_node, "kind": "status", "status": "PASS"}])
+        self.step_execution.refresh_from_db()
+        self.assertEqual(set(self.step_execution.capture_draft), {str(self.substep.id)})
+
+    def test_saving_an_empty_substep_clears_it(self):
+        self._draft(self.substep, {self.m_node: {"value": "0.5"}})
+        self.assertEqual(self._draft(self.substep, {}), {})
+
+    def test_a_batch_substep_or_another_steps_substep_is_refused(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import SubstepScope
+        batch = Substep.objects.create(tenant=self.tenant, step=self.step, order=2,
+                                       title="Load", scope=SubstepScope.BATCH, body_blocks={})
+        elsewhere = Substep.objects.create(
+            tenant=self.tenant, order=0, title="Elsewhere", body_blocks={},
+            step=Steps.objects.create(name="Other op", part_type=self.part_type, tenant=self.tenant))
+        for substep in (batch, elsewhere):
+            with self.assertRaises(ValidationError):
+                self._draft(substep, {"x": 1})
+
+    def test_the_api_saves_for_whoever_may_record_substeps(self):
+        from django.contrib.auth.models import Permission
+        from rest_framework.test import APIClient
+        from Tracker.models import TenantGroup, UserRole
+
+        def client(user, *codenames):
+            grp = TenantGroup.objects.create(tenant=self.tenant, name=user.username, is_custom=True)
+            grp.permissions.add(*Permission.objects.filter(codename__in=codenames))
+            UserRole.objects.create(user=user, group=grp)
+            user.clear_permission_cache(self.tenant)
+            c = APIClient()
+            c.force_authenticate(user=user)
+            c.credentials(HTTP_X_TENANT_ID=str(self.tenant.id))
+            return c
+
+        url = f"/api/StepExecutions/{self.step_execution.id}/save-draft/"
+        body = {"substep": str(self.substep.id), "responses": {self.m_node: {"value": "0.5"}}}
+        recorder = User.objects.create_user(username="drafter", email="d@x.test",
+                                            password="x", tenant=self.tenant)
+        resp = client(recorder, "add_substepcompletion", "view_stepexecution",
+                      "full_tenant_access").post(url, body, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.data["saved_substeps"], [str(self.substep.id)])
+
+        viewer = User.objects.create_user(username="viewer", email="v@x.test",
+                                          password="x", tenant=self.tenant)
+        resp = client(viewer, "view_stepexecution", "full_tenant_access").post(url, body, format="json")
+        self.assertEqual(resp.status_code, 403, resp.content)
+
+
 class SequencingEnforcementTests(DwiPhase1BaseTestCase):
     """Server-side enforcement of `Steps.sequencing_mode='sequential'`:
     an earlier required substep must be complete before a later one submits."""

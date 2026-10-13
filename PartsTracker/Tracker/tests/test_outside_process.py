@@ -34,6 +34,13 @@ class _OSPFixtureMixin:
             tenant=self.tenant_a, part_type=self.part_type, name="Heat Treat",
             step_type="TASK", is_outside_process=True, outside_supplier=self.supplier)
         ProcessStep.objects.create(process=self.process, step=self.osp_step, order=1)
+        # Somewhere for an accepted return to go.
+        from Tracker.models import StepEdge
+        self.next_step = Steps.objects.create(
+            tenant=self.tenant_a, part_type=self.part_type, name="Grind", step_type="TASK")
+        ProcessStep.objects.create(process=self.process, step=self.next_step, order=2)
+        StepEdge.objects.create(process=self.process, from_step=self.osp_step,
+                                to_step=self.next_step, edge_type="DEFAULT")
         self.char = MeasurementDefinition.objects.create(
             tenant=self.tenant_a, step=self.osp_step, label="Hardness OK", type="PASS_FAIL")
         StepMeasurementRequirement.objects.get_or_create(step=self.osp_step, measurement=self.char)
@@ -138,6 +145,13 @@ class OutsideProcessInspectionTests(_OSPFixtureMixin, TenantTestCase):
     def _return_execution(self):
         return osp._return_execution(self.shipment)
 
+    def _inspect_return(self):
+        """Complete the return inspection on the shipment's own execution, as the
+        inspector does before accepting it."""
+        from Tracker.services.dwi.operator_capture import submit_substep
+        submit_substep(substep=self.inspection_substep, step_execution=self._return_execution(),
+                       user=self.user_a, captures=[])
+
     def test_ensure_quality_report_converges_on_shipment_report(self):
         # Regression: the eager QR pre-bind (POST ensure_inspection_qr) 400'd for
         # OSP-shipment subjects — ensure_quality_report only handled part and
@@ -166,13 +180,61 @@ class OutsideProcessInspectionTests(_OSPFixtureMixin, TenantTestCase):
         self.assertTrue(self.report.measurements.filter(definition=self.char).exists())
 
     def test_accept_return_advances_parts(self):
-        report = osp.accept_return(self.report, self.user_a)
+        """Accepting moves the parts on. It used to mark them READY_FOR_NEXT_STEP and
+        close their executions with no advance, stranding them at the OSP step."""
+        from Tracker.models import StepExecution
+        self._inspect_return()
+        # No part held back at the step (a refusal is logged, so it would show here).
+        with self.assertNoLogs("Tracker.services.mes.outside_process", "WARNING"):
+            report = osp.accept_return(self.report, self.user_a)
         self.assertEqual(report.status, "PASS")
         for p in self.parts:
             p.refresh_from_db()
-            self.assertEqual(p.part_status, PartsStatus.READY_FOR_NEXT_STEP)
+            self.assertEqual(p.step_id, self.next_step.id)
+            self.assertNotEqual(p.part_status, PartsStatus.READY_FOR_NEXT_STEP)
+            # The OSP visit is closed and the next one open.
+            self.assertFalse(StepExecution.objects.filter(
+                part=p, step=self.osp_step, exited_at__isnull=True).exists())
         # The batch inspection execution is closed.
         self.assertIsNone(self._return_execution())
+        self.shipment.refresh_from_db()
+        self.assertEqual(self.shipment.status, "CLOSED")
+
+    def test_a_batch_step_stages_the_returned_parts_for_their_cohort(self):
+        """READY_FOR_NEXT_STEP keeps its batch meaning: set by the engine while the
+        rest of the lot is still out, not by the return."""
+        Steps.objects.filter(pk=self.osp_step.pk).update(requires_batch_completion=True)
+        straggler = Parts.objects.create(
+            tenant=self.tenant_a, ERP_id="P-OSP-LATE", part_type=self.part_type,
+            work_order=self.wo, step=self.osp_step, part_status=PartsStatus.IN_PROGRESS)
+        self._inspect_return()
+        osp.accept_return(self.report, self.user_a)
+        for p in self.parts:
+            p.refresh_from_db()
+            self.assertEqual((p.step_id, p.part_status),
+                             (self.osp_step.id, PartsStatus.READY_FOR_NEXT_STEP))
+        straggler.refresh_from_db()
+        self.assertEqual(straggler.step_id, self.osp_step.id)
+
+    def test_accepting_an_uninspected_return_leaves_the_parts_workable(self):
+        """The shipment's inspection is what stands in for each part's; without it the
+        gate holds them — at work on the step, not stranded."""
+        osp.accept_return(self.report, self.user_a)
+        for p in self.parts:
+            p.refresh_from_db()
+            self.assertEqual((p.step_id, p.part_status), (self.osp_step.id, PartsStatus.IN_PROGRESS))
+
+    def test_a_part_the_step_still_gates_is_left_workable_not_stranded(self):
+        from Tracker.models import StepExecution
+        Steps.objects.filter(pk=self.osp_step.pk).update(requires_qa_signoff=True)
+        self._inspect_return()
+        osp.accept_return(self.report, self.user_a)
+        for p in self.parts:
+            p.refresh_from_db()
+            self.assertEqual((p.step_id, p.part_status), (self.osp_step.id, PartsStatus.IN_PROGRESS))
+            # Its visit is still open, so the step's own Complete step can finish it.
+            self.assertTrue(StepExecution.objects.filter(
+                part=p, step=self.osp_step, exited_at__isnull=True).exists())
 
     def test_reject_return_quarantines_parts(self):
         report = osp.reject_return(self.report, self.user_a)

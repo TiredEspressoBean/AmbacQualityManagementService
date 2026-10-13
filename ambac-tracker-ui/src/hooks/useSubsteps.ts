@@ -139,6 +139,27 @@ export function useSubmitSubstep() {
     });
 }
 
+/** Save one substep's work in progress on its step execution, so the step resumes
+ *  where the operator left off (closed tablet, shift handover). Records nothing
+ *  official — that's `useSubmitSubstep`, at "Complete step". No cache to invalidate:
+ *  the player already holds these values; the draft is only read on the next open. */
+export function useSaveCaptureDraft() {
+    return useMutation<
+        unknown,
+        unknown,
+        { executionId: string; substepId: string; responses: Record<string, unknown> }
+    >({
+        mutationFn: ({ executionId, substepId, responses }) =>
+            api.api_StepExecutions_save_draft_create(
+                { substep: substepId, responses },
+                {
+                    params: { id: executionId },
+                    headers: { "X-CSRFToken": getCookie("csrftoken") },
+                },
+            ),
+    });
+}
+
 export function useDeleteSubstep() {
     const qc = useQueryClient();
     return useMutation<void, unknown, string>({

@@ -20,18 +20,8 @@ not interchangeable, and the standard treats them very differently.
 | **Rework** | The part can be brought back to **full** conformance | `REWORK_NEEDED` |
 | **Repair** | The part can be made acceptable but will **still deviate** from spec | `REWORK_NEEDED` |
 | **Scrap** | The part cannot be used or economically corrected | `SCRAPPED` |
-| **Use As Is** | The nonconformance is real but the part is acceptable **as it stands** | `IN_PROGRESS` — back at work on its step |
+| **Use As Is** | The nonconformance is real but the part is acceptable **as it stands** | `READY_FOR_NEXT_STEP` |
 | **Return to Supplier** | The supplier is responsible; return for credit or replacement | `CANCELLED` |
-
-!!! info "Use As Is returns the part to work, not to the next step"
-    A use-as-is part goes back to **In progress** — it is at the step it was
-    always at, and the operator completes that step as usual. The disposition
-    is a documented decision, not a routing action.
-
-    It does **not** become Ready for next step. That status means something
-    specific and different: a unit waiting for the rest of its batch. A
-    use-as-is part carrying it read as batch-staged on every queue and
-    dispatch list until somebody completed the step.
 
 !!! info "Rework vs Repair is the distinction auditors check"
     **Rework** restores full conformance — afterwards the part meets the

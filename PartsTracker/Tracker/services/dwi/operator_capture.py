@@ -372,6 +372,11 @@ def submit_substep(
             ip_address=ip_address,
         )
 
+        # Committed now, so it's no longer work in progress: drop it from the draft
+        # (same transaction, so a failed commit keeps the draft to resume from).
+        if step_execution is not None:
+            _drop_from_draft(step_execution, substep.id)
+
         # NOTE: substep submit does NOT trigger advancement. Per the
         # MES behavior spec (Flow #1 + #12), captures are recorded and
         # this call returns. The operator's deliberate "Complete step"
@@ -1106,4 +1111,55 @@ def build_capture_state(step_execution) -> dict:
                 node_map[node_id] = _response_from_stored(node_type, attrs, sr)
         if node_map:
             out[str(substep.id)] = node_map
+
+    # Work in progress overlays what's committed: a substep the operator re-entered
+    # after an earlier commit shows what they last typed, not the stale record.
+    for substep_id, responses in (step_execution.capture_draft or {}).items():
+        if isinstance(responses, dict):
+            out[str(substep_id)] = responses
     return out
+
+
+# -------------------------------------------------------------------------
+# Drafts — work in progress between substeps
+# -------------------------------------------------------------------------
+
+def save_capture_draft(step_execution, substep, responses: dict) -> dict:
+    """Save one substep's in-progress responses on its step execution.
+
+    Nothing official happens: no completion, measurement or report. Those are
+    `submit_substep`'s, at "Complete step". This is only so the work survives a
+    closed tablet or a handover — the player hydrates it via `build_capture_state`.
+
+    Raises:
+        ValidationError: the substep isn't on this execution's step, or is
+            batch-scope (those are recorded once per load, not drafted per part).
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.models import SubstepScope
+
+    if substep.step_id != step_execution.step_id:
+        raise ValidationError("That substep isn't part of this step.")
+    if substep.scope == SubstepScope.BATCH:
+        raise ValidationError("Batch substeps are recorded for the load, not drafted per part.")
+    if not isinstance(responses, dict):
+        raise ValidationError("`responses` must be an object of {node_id: response}.")
+
+    with transaction.atomic():
+        locked = StepExecution.objects.select_for_update().get(pk=step_execution.pk)  # tenant-safe: by pk of an already-scoped row
+        draft = dict(locked.capture_draft or {})
+        if responses:
+            draft[str(substep.id)] = responses
+        else:
+            draft.pop(str(substep.id), None)
+        locked.capture_draft = draft
+        locked.save(update_fields=['capture_draft'])
+    return draft
+
+
+def _drop_from_draft(step_execution, substep_id) -> None:
+    locked = StepExecution.objects.select_for_update().get(pk=step_execution.pk)  # tenant-safe: by pk of an already-scoped row
+    draft = dict(locked.capture_draft or {})
+    if draft.pop(str(substep_id), None) is not None:
+        locked.capture_draft = draft
+        locked.save(update_fields=['capture_draft'])

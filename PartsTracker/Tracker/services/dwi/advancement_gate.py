@@ -38,6 +38,33 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _accepted_return_completions(step_execution, substep_ids) -> dict:
+    """{substep_id: completion} from the return inspection of the OSP shipment this
+    part's visit went out on — only once that return has been accepted (its report
+    PASS). Empty for any visit that isn't on an accepted shipment."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import QualityReports, SubstepCompletion
+
+    shipment = getattr(step_execution, 'outside_process_shipment', None)
+    if shipment is None:
+        return {}
+    accepted = QualityReports.objects.filter(  # tenant-safe: scoped by the shipment FK
+        osp_shipment=shipment, step=step_execution.step, archived=False, status='PASS',
+    ).exists()
+    if not accepted:
+        return {}
+    ct = ContentType.objects.get_for_model(shipment.__class__)
+    return {
+        c.substep_id: c
+        for c in SubstepCompletion.objects.filter(  # tenant-safe: scoped by the shipment's execution
+            step_execution__subject_content_type=ct,
+            step_execution__subject_id=shipment.id,
+            substep_id__in=substep_ids,
+            is_voided=False,
+        )
+    }
+
+
 def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
                                 work_order: "WorkOrder") -> list[str]:
     """Return blocker strings for any required-and-unsatisfied substep.
@@ -76,6 +103,14 @@ def substep_completion_blockers(step: "Steps", step_execution: "StepExecution",
             is_voided=False,
         )
     }
+
+    # An outside-process return is inspected once for the shipment, on the shipment's
+    # own execution — sampled, like a receiving lot. Once that return is ACCEPTED, its
+    # completions stand for every part it carried (as a sealed batch's do for its
+    # cohort). Without this an accepted return could never advance its parts: the
+    # per-part completion the gate looks for is never written.
+    for substep_id, completion in _accepted_return_completions(step_execution, substep_ids).items():
+        completions_by_substep.setdefault(substep_id, completion)
 
     # Pre-fetch live SamplingDecisions.
     decisions_by_substep: dict[int, SamplingDecision] = {

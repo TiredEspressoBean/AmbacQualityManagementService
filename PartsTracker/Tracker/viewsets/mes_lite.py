@@ -3187,6 +3187,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     """
     queryset = StepExecution.unscoped.all()
     serializer_class = StepExecutionSerializer
+    # Saving work in progress is gated like committing it (substep submit), not as
+    # creating an execution — POST would otherwise demand add_stepexecution.
+    crud_exempt_actions = {'save_draft'}
+    action_permissions = {'save_draft': ['add_substepcompletion']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'part': ['exact', 'isnull'],
@@ -3617,6 +3621,39 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     def capture_state(self, request, pk=None):
         from Tracker.services.dwi.operator_capture import build_capture_state
         return Response(build_capture_state(self.get_object()))
+
+    @extend_schema(
+        request=inline_serializer(name='CaptureDraftRequest', fields={
+            'substep': serializers.UUIDField(),
+            'responses': serializers.DictField(),
+        }),
+        responses={
+            200: inline_serializer(name='CaptureDraftResponse', fields={
+                'saved_substeps': serializers.ListField(child=serializers.CharField()),
+            }),
+            400: inline_serializer(name='CaptureDraftError', fields={
+                'detail': serializers.CharField(),
+            }),
+        },
+        description="Save one substep's work in progress, so the step resumes where the "
+                    "operator left off. Records nothing official — that happens at "
+                    "Complete step, through substep submit.",
+    )
+    @action(detail=True, methods=['post'], url_path='save-draft')
+    def save_draft(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.models import Substep
+        from rest_framework.generics import get_object_or_404
+        from Tracker.services.dwi.operator_capture import save_capture_draft
+
+        execution = self.get_object()
+        substep = get_object_or_404(Substep, pk=request.data.get('substep'))
+        try:
+            draft = save_capture_draft(execution, substep, request.data.get('responses') or {})
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({'saved_substeps': sorted(draft)})
 
     @extend_schema(
         parameters=[OpenApiParameter(

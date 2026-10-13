@@ -1794,6 +1794,16 @@ class StepExecution(SecureModel):
         ),
     )
 
+    # The operator's work in progress on this step, {substep_id: {node_id: response}},
+    # saved as they move between substeps so a closed tablet or a shift handover resumes
+    # where they left off. A draft carries no quality consequences — completions,
+    # measurements and reports are written by submit_substep at "Complete step", which
+    # removes each substep from the draft as it commits it.
+    capture_draft = models.JSONField(
+        default=dict, blank=True,
+        help_text="Uncommitted substep captures, saved between substeps for resume.",
+    )
+
     # FPI tracking
     is_fpi = models.BooleanField(
         default=False,

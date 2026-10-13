@@ -69,7 +69,7 @@ def sample_plan_for_shipment(shipment):
 #   AT_OUTSIDE_PROCESS  → already out at the vendor
 #   AWAITING_QA         → already came BACK; awaiting the *return* inspection
 #                         (set by receive_parts_back) — the opposite of pre-send
-#   READY_FOR_NEXT_STEP → completed the OSP step (accepted on return), awaiting advance
+#   READY_FOR_NEXT_STEP → accepted on return and staged for its batch to advance
 #   QUARANTINED/REWORK  → needs disposition, not shipping
 #   (terminals)         → done
 _READY_TO_SHIP_STATUSES = {"IN_PROGRESS"}
@@ -264,31 +264,54 @@ def _finalize_return_execution(shipment, user):
 
 
 def accept_return(report, user=None):
-    """Accept a return inspection: advance the shipped parts past the OSP step
-    (READY_FOR_NEXT_STEP) and finalize both the part executions and the batch
-    inspection execution."""
+    """Accept a return inspection: advance the shipped parts past the OSP step and
+    finalize the batch inspection execution.
+
+    Each part goes through the advancement engine like any other completion, so its
+    route, batch completion and gates all apply. This used to mark the parts
+    READY_FOR_NEXT_STEP and close their executions by hand, with no advance — and a
+    part with no open execution can't be advanced by anything, so every accepted
+    return stranded its parts at the OSP step. READY_FOR_NEXT_STEP stays what the batch
+    path means by it (staged for the cohort), set by the engine, not here.
+
+    A part the engine refuses (a gate on the OSP step itself) is left IN_PROGRESS with
+    its execution open, so the step's normal Complete step can finish it. Returns the
+    report; the refusals are logged.
+    """
+    from django.core.exceptions import ValidationError as DjangoValidationError
     from Tracker.models import PartsStatus
+    from Tracker.services.mes.parts import advance_part_step
 
     shipment = report.osp_shipment
     if shipment is None:
         raise ValueError("Report is not an outside-process return inspection.")
 
+    held = []
     with transaction.atomic():
-        for ex in shipment.step_executions.select_related("part"):
-            if ex.part_id:
-                ex.part.part_status = PartsStatus.READY_FOR_NEXT_STEP
-                ex.part.save(update_fields=["part_status"])
-            if ex.status not in ("COMPLETED", "SKIPPED", "CANCELLED"):
-                ex.status = "COMPLETED"
-                ex.exited_at = timezone.now()
-                ex.save(update_fields=["status", "exited_at", "updated_at"])
-        _finalize_return_execution(shipment, user)
+        # The verdict first: the step's own gate reads the inspection.
         if report.status == "PENDING":
             report.status = "PASS"
             report.save(update_fields=["status"])
+        _finalize_return_execution(shipment, user)
+        for ex in shipment.step_executions.select_related("part"):
+            part = ex.part
+            if part is None or ex.exited_at is not None:
+                continue
+            # Back from the vendor and accepted: at work on the step again, which is
+            # what the engine advances from.
+            part.part_status = PartsStatus.IN_PROGRESS
+            part.save(update_fields=["part_status"])
+            try:
+                with transaction.atomic():
+                    advance_part_step(part, operator=user)
+            except (ValueError, DjangoValidationError) as e:
+                held.append(f"{part.ERP_id}: {e}")
         shipment.status = "CLOSED"
         shipment.save(update_fields=["status", "updated_at"])
 
+    if held:
+        logger.warning("OSP return %s accepted; parts held at the step: %s",
+                       shipment.pk, "; ".join(held))
     return report
 
 

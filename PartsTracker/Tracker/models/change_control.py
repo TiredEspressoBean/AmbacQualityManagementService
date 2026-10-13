@@ -327,9 +327,9 @@ class ProcessChangeRequest(BaseChangeRequest):
     (future-proofing for Phase 5 parallel mode where rebasing requires
     the original baseline).
 
-    Serial constraint: at most one open PCR (status DRAFT / SUBMITTED /
-    UNDER_REVIEW / APPROVED, not voided) per target_process. Phase 5
-    parallel-mode support drops this constraint without schema migration.
+    Several open PCRs may target the same process at once: each forks its own
+    draft (`propose`, allow_multiple_drafts), and conflicts between them are
+    detected when one is approved, not prevented at creation (see Meta).
     """
 
     class Status(models.TextChoices):

@@ -511,7 +511,8 @@ class SubstepCompletion(SecureModel, VoidableModel):
 
     notes = models.TextField(
         blank=True,
-        help_text="Operator notes captured at completion; required when marking N/A.",
+        help_text="Operator notes captured at completion. Optional — an N/A is justified "
+                  "by its reason code, not a note.",
     )
 
     # Signature capture (reuses the ApprovalResponse / CapaTasks pattern; only

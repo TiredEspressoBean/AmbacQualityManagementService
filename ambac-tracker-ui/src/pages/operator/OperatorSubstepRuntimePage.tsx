@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSubsteps, useSubmitSubstep } from "@/hooks/useSubsteps";
+import { useSubsteps, useSubmitSubstep, useSaveCaptureDraft } from "@/hooks/useSubsteps";
 import type { Substep } from "@/hooks/useSubsteps";
 import { getCookie } from "@/lib/utils";
 
@@ -291,6 +291,9 @@ export function OperatorSubstepRuntimePage() {
     }, [activeSubstepId, activeIsInspectionPoint, search.execution, qrIdBySubstepId]);
 
     const submit = useSubmitSubstep();
+    const saveDraft = useSaveCaptureDraft();
+    // One "couldn't save" warning per visit, not one per substep.
+    const draftWarned = useRef(false);
     const completeStep = useCompleteStep();
 
     // FPI hold state for the review stage. `can_advance_from_step` blocks EVERY
@@ -406,7 +409,33 @@ export function OperatorSubstepRuntimePage() {
     const isReview = at >= sortedSubsteps.length;
     const current = isReview ? null : sortedSubsteps[at];
 
+    // Leaving a substep — forward, back, or a jump from the rail or the review — saves
+    // what's on it as a draft, so the step resumes here after a closed tablet or a
+    // handover. Nothing official: Complete step commits. Batch substeps are recorded
+    // for the load, and receiving's unit-by-unit passes start fresh by design.
+    const saveDraftOfCurrent = () => {
+        if (!current || !search.execution || isUnitMode || current.scope === "batch") return;
+        saveDraft.mutate(
+            {
+                executionId: search.execution,
+                substepId: current.id,
+                responses: responsesBySubstepId[current.id] ?? {},
+            },
+            {
+                onError: () => {
+                    if (draftWarned.current) return;
+                    draftWarned.current = true;
+                    toast.warning("Couldn't save your progress", {
+                        description: "It's still on this screen, and Complete step records it. " +
+                            "Closing this step now would lose it.",
+                    });
+                },
+            },
+        );
+    };
+
     const goTo = (idx: number) => {
+        if (idx !== at) saveDraftOfCurrent();
         navigate({
             to: "/operator/steps/$stepId/substeps",
             params: { stepId },
@@ -512,7 +541,12 @@ export function OperatorSubstepRuntimePage() {
                                 responsesBySubstepId={responsesBySubstepId}
                                 outcomeBySubstepId={outcomeBySubstepId}
                                 onEdit={(idx) => goTo(idx)}
-                                onCompleteStep={() => { completion.onComplete?.(completionCtx); }}
+                                onCompleteStep={async () => {
+                                    await completion.onComplete?.(completionCtx);
+                                    // Committing the first piece's captures is what makes it
+                                    // ready for buy-off — re-read so sign-off appears now.
+                                    if (fpiHold) void fpiStatusQuery.refetch();
+                                }}
                                 completing={submit.isPending || completeStep.isPending}
                                 stepExecutionAvailable={Boolean(search.execution)}
                                 fpiHold={fpiHold}
@@ -1199,39 +1233,45 @@ function ReviewStage({
                 </div>
             )}
 
-            {completionFooter && !fpiHold ? (
+            {/* "Complete step" never gives way to the FPI buy-off: it is what commits the
+                captures, and the buy-off is refused until they're in — so replacing it
+                left a unit with no way forward. Sign-off joins it once the first piece
+                is ready; advancement then waits on the buy-off by itself. */}
+            {fpiHold?.firstPieceReady && (
+                <div className="flex items-center justify-end border-t pt-4">
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="h-14 min-w-56 text-base font-semibold"
+                        onClick={() => setSignOffOpen(true)}
+                    >
+                        <ShieldAlert className="mr-2 h-5 w-5" />
+                        {fpiHold.canSignOff ? "Sign off first piece" : "Get QA sign-off"}
+                    </Button>
+                </div>
+            )}
+            {completionFooter ? (
                 completionFooter
             ) : (
                 <div className="flex items-center justify-end gap-3 border-t pt-4">
-                    {!stepExecutionAvailable && !fpiHold && (
+                    {!stepExecutionAvailable && (
                         <span className="text-xs text-amber-600">
                             {"Add `?execution=<id>` to the URL to enable submit."}
                         </span>
                     )}
-                    {fpiHold ? (
-                        <Button
-                            size="lg"
-                            className="h-14 min-w-56 text-base font-semibold"
-                            onClick={() => setSignOffOpen(true)}
-                        >
-                            <ShieldAlert className="mr-2 h-5 w-5" />
-                            {fpiHold.canSignOff ? "Sign off first piece" : "Get QA sign-off"}
-                        </Button>
-                    ) : (
-                        <Button
-                            size="lg"
-                            className="h-14 min-w-56 text-base font-semibold"
-                            disabled={!stepExecutionAvailable || completing}
-                            onClick={onCompleteStep}
-                        >
-                            {completing ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Check className="mr-2 h-5 w-5" />
-                            )}
-                            Complete step
-                        </Button>
-                    )}
+                    <Button
+                        size="lg"
+                        className="h-14 min-w-56 text-base font-semibold"
+                        disabled={!stepExecutionAvailable || completing}
+                        onClick={onCompleteStep}
+                    >
+                        {completing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Check className="mr-2 h-5 w-5" />
+                        )}
+                        Complete step
+                    </Button>
                 </div>
             )}
 
