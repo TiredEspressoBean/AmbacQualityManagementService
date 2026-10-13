@@ -1,7 +1,24 @@
 # Compliance Overview
 
-Technical compliance analysis of uqmes against the regulatory frameworks it is
-built for: defense, aerospace, automotive, and general manufacturing.
+How uqmes supports the standards **your organisation** is assessed against:
+defense, aerospace, automotive and general manufacturing.
+
+!!! important "Software is never the certified party"
+    There is no such thing as ISO 9001 certified software, and uqmes does not
+    hold — and cannot hold — an ISO 9001, AS9100D or IATF 16949 certificate.
+    Those standards certify a **quality management system run by an
+    organisation**, assessed by an accredited certification body that audits
+    your people, your processes and your records. The same is true of CMMC: a
+    defense contractor is assessed, not a vendor's application.
+
+    A vendor claiming its product is “ISO 9001 certified” is either describing
+    *its own company's* certificate — which says nothing about the software —
+    or misrepresenting the standard.
+
+    So these pages do not describe a status uqmes holds. They answer the two
+    questions that are actually useful when you are the one being audited:
+    **which clauses can I point at this software for, and what must I satisfy
+    myself?**
 
 ## Standards in scope
 
@@ -67,17 +84,28 @@ The following depend on deployment configuration and are **not application featu
 
 ## Compliance Readiness Matrix
 
-| Framework | Target Industry | App-Level Readiness | Key Gaps |
-|-----------|-----------------|---------------------|----------|
-| [NIST 800-171](nist-800-171.md) | Defense (CUI) | **100%** | None (organizational processes are customer responsibility) |
-| [CMMC Level 2](cmmc.md) | DoD Contractors | **100%** | None (organizational processes are customer responsibility) |
-| [ISO 9001:2015](iso9001.md) | General | **92%** | Customer property tracking, supplier scorecards |
-| [AS9100D](as9100.md) | Aerospace | **80%** | AS9102 FAI PDF templates, counterfeit parts workflow |
-| [IATF 16949](iatf-16949.md) | Automotive | **70%** | MSA/Gage R&R, PPAP module, FMEA data model |
-| [ITAR](export-controls.md) | Defense/Export | **89%** | License tracking model |
-| SOC 2 Type II | SaaS/Cloud | **80%** | Anomaly detection (infrastructure) |
+!!! warning "These are not readiness scores"
+    A percentage is the wrong shape for this question, because **you** are the
+    assessed party. A control satisfied by your facility, identity provider or
+    host is still satisfied — just not by this software, and no vendor can
+    score your compliance on your behalf.
 
-> **Note**: Percentages reflect application-level controls only. Full compliance requires proper infrastructure configuration and organizational processes.
+    The table below says what the application is the *mechanism* for, which is
+    the input to your own assessment, not a substitute for it.
+
+| Framework | Target Industry | What the application covers | What it is not the mechanism for |
+|-----------|-----------------|------------------------------|-----------------------------------|
+| [NIST 800-171](nist-800-171.md) | Defense (CUI) | 41 of 110 controls implemented, 8 partial | 61 controls live in your facility, IdP, host or process |
+| [CMMC Level 2](cmmc.md) | DoD Contractors | Same 110 controls, mapped by domain | Whole domains — training, maintenance, physical, risk assessment |
+| [ISO 9001:2015](iso9001.md) | General | Clauses 7–10 are covered in depth: documented information, production control, traceability, nonconformity, CAPA | **Clauses 5 (Leadership) and 6 (Planning) are not addressed by this page at all**, and clause 4 only at 4.4 |
+| [AS9100D](as9100.md) | Aerospace | ISO 9001 plus configuration management, FAI, part traceability | AS9102 FAI form output; authentication of independent-distributor material |
+| [IATF 16949](iatf-16949.md) | Automotive | ISO 9001 plus SPC, control plans, layered audits | MSA / Gage R&R, PPAP, FMEA — none are modelled |
+| [ITAR](export-controls.md) | Defense/Export | Classification, access gating on `us_person` / `itar_authorized` | License tracking; the export decision itself |
+
+> **Note**: These counts are application-level only. Full compliance requires
+> infrastructure configuration and organizational processes that no application
+> supplies. SOC 2 is not covered on this page: there is no control mapping
+> behind it yet.
 
 ## Key Compliance Strengths
 
@@ -93,7 +121,7 @@ The following depend on deployment configuration and are **not application featu
 ### 2. Multi-Layer Tenant Isolation
 
 - **Application layer**: `TenantMiddleware` sets RLS context
-- **Database layer**: Row-Level Security policies on 97 tables
+- **Database layer**: Row-Level Security policies on 129 listed tenant-scoped tables
 - **API layer**: `TenantScopedMixin` filters all querysets
 
 **Key files**: `Tracker/middleware.py`, `Tracker/management/commands/setup_rls.py`, `Tracker/viewsets/base.py`

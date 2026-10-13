@@ -39,8 +39,8 @@ contractors handling CUI.
 
 CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 
-| Domain | Practices | Implemented | N/A |
-|--------|-----------|-------------|-----|
+| Domain | Practices | Provides | Yours |
+|--------|-----------|----------|-------|
 | Access Control (AC) | 22 | 15 | 7 |
 | Awareness & Training (AT) | 3 | 0 | 3 |
 | Audit & Accountability (AU) | 9 | 6 | 3 |
@@ -56,26 +56,27 @@ CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
 | System & Comms Protection (SC) | 16 | 3 | 13 |
 | System & Info Integrity (SI) | 7 | 0 | 7 |
 
-The **Implemented** column counts practices where uqmes is the mechanism —
-where you can point an assessor at the software. It is not a readiness score,
-and a low number is not a criticism of the product: most of CMMC is about
-facilities, people and networks.
+The **Provides** column counts practices where uqmes is the mechanism — where
+you can point an assessor at the software. **Yours** counts the rest, and a
+large number there is the expected shape rather than a criticism of the
+product: most of CMMC is about facilities, people and networks, and no
+application reaches them.
 
-!!! warning "Don't read these as satisfied controls"
-    An earlier revision showed **100% (48/48)**, on the reasoning that
-    partial controls were now counted as implemented. That inflates exactly
-    the number a customer would most want to trust.
-
-    Each domain below uses three markers:
+!!! info "How to read the markers"
+    A control is only ✅ where you can point an assessor at the software
+    itself:
 
     | | Meaning |
     |---|---------|
     | ✅ **Provides** | uqmes is the mechanism; cite it directly |
-    | ⚠️ **Supports** | uqmes supplies part of it — evidence, or a setting you must configure. Say what you did, not just that the feature exists |
-    | ➖ **Not the application's layer** | Satisfy this in your facility, IdP, host or process |
+    | 📋 **Evidences** | **You** run the practice — uqmes holds the records that show you ran it |
+    | ⚠️ **Partial** | uqmes supplies some of it, or a setting you must configure. Say what you did, not just that the feature exists |
+    | ➖ **Yours** | A facility, identity-provider, host or process control. Listed so you can see it is accounted for, not because it is missing |
 
-    Where a practice is a genuine shortcoming in the software rather than a
-    scope boundary, the row says **gap**. There are currently none.
+    A ➖ is not a shortcoming in the software, and an assessor does not read
+    it as one. CMMC assesses an organisation, and most of an organisation is
+    not software. Where a practice *is* a genuine shortcoming here the row
+    says **gap** — one does, 3.3.4 below.
 
 ## What CMMC Level 2 Requires
 
@@ -107,7 +108,7 @@ can satisfy on its own — see [Shared Responsibility](#shared-responsibility-mo
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
 | AC.L2-3.1.1 | User authentication required | ✅ | `TenantMiddleware` + `IsAuthenticated` on every endpoint |
-| AC.L2-3.1.2 | Function-level authorization | ✅ | 12 role presets (`GROUP_PRESETS`) over Django model permissions, plus per-action gates |
+| AC.L2-3.1.2 | Function-level authorization | ✅ | 15 role presets (`GROUP_PRESETS`) over Django model permissions, plus per-action gates |
 | AC.L2-3.1.3 | CUI flow control | ✅ | Five classification levels — Public, Internal, Confidential, Restricted, Secret — filtered in `SecureManager.for_user()` |
 | AC.L2-3.1.4 | Separation of duties | ✅ | Distinct roles, plus `self_verified` flags that record when a CAPA or RCA was verified by its own conductor |
 | AC.L2-3.1.5 | Least privilege | ✅ | Presets grant the minimum per role; the Customer role is read-only and scoped to its own company |
@@ -124,20 +125,34 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 |----------|------------|--------|----------|
 | AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on all models; pgAudit at the database |
 | AU.L2-3.3.2 | User attribution | ✅ | Actor, timestamp and IP on every record |
-| AU.L2-3.3.3 | Review and update logged events | ⚠️ | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
-| AU.L2-3.3.4 | Alert on audit logging failure | ⚠️ | uqmes emits the signal; you route it. A failed access-log write logs at **ERROR** to the `compliance.access_control` logger with `audit_write_failed` in the record, carrying a traceback. Point your log pipeline at that marker to make it an alert — the application does not page anyone itself. Writes stay non-fatal by design: the read has already happened, so failing the request afterwards records nothing extra |
+| AU.L2-3.3.3 | Review and update logged events | 📋 | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
+| AU.L2-3.3.4 | Alert on audit logging failure | ⚠️ **gap** | uqmes emits the signal; you route it. A failed access-log write logs at **ERROR** to the `compliance.access_control` logger with `audit_write_failed` in the record, carrying a traceback. Point your log pipeline at that marker to make it an alert — the application does not page anyone itself. Writes stay non-fatal by design: the read has already happened, so failing the request afterwards records nothing extra |
 | AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
 | AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
 | AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
 | AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on seven audit tables, superusers included (`setup_audit_triggers`, run by `setup_database` from the app container, so present on every deployment). pgAudit adds statement-level logging on the self-hosted Compose stack only — a managed Postgres does not have it |
 | AU.L2-3.3.9 | Audit access restriction | ✅ | `view_auditlog` / `view_logentry` for reading, `export_auditlog` for extraction; the log viewset is read-only and tenant-scoped |
 
-!!! warning "3.3.4 is the one to fix before an assessment"
-    An assessor will ask what happens when audit logging itself fails. The
-    current answer is that the request proceeds and a warning goes to the
-    application log — which means the system can be losing audit records
-    while appearing healthy. Availability over alerting is a defensible
-    engineering choice; it is not a defensible answer to 3.3.4.
+!!! warning "3.3.4 is a deployment step, not a code gap — but it is still yours to close"
+    An assessor will ask what happens when audit logging itself fails. Two
+    different things can fail, and only one of them is at risk:
+
+    - **Change records** (django-auditlog) are written inside the request
+      transaction. If that write fails the whole transaction rolls back, so a
+      change is never recorded as having happened when it did not. Nothing to
+      do here.
+    - **Access records** — who *read* a document, an export, a controlled
+      drawing — are written after the read has already occurred. A failure
+      there is deliberately non-fatal: refusing the request afterwards would
+      block a shop-floor operator from opening a drawing without recording
+      anything extra.
+
+    uqmes does its half: that failure logs at **ERROR** to the
+    `compliance.access_control` logger with `audit_write_failed` in the record
+    and a traceback, exactly so it can be alerted on. **Nothing pages anyone
+    until you point a log pipeline at that marker.** An unrouted deployment
+    fails 3.3.4; a routed one satisfies it. Do that before an assessment, and
+    say in your SSP where the alert goes.
 
 ### Identification & Authentication (IA)
 
@@ -199,7 +214,7 @@ application component.
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
 | MP.L2-3.8.2 | Limit access to CUI | ✅ | Classification filtering in `SecureManager.for_user()` |
-| MP.L2-3.8.3 | Sanitize media before disposal | ➖ | Yours. **Do not cite soft delete for this** — an earlier revision did, and it is backwards: soft delete *retains* the record, deliberately, so traceability survives. Sanitization applies to the storage when you dispose of it |
+| MP.L2-3.8.3 | Sanitize media before disposal | ➖ | Yours. **Do not cite soft delete for this** — it is backwards: soft delete *retains* the record, deliberately, so traceability survives. Sanitization applies to the storage when you dispose of it |
 | MP.L2-3.8.4 | Mark media with CUI markings | ✅ | Five `ClassificationLevel` values carried on documents and shown in the UI |
 | MP.L2-3.8.5 | Control access to media | ✅ | Classification-based permissions (`view_confidential_documents`, `view_restricted_documents`) |
 
@@ -269,7 +284,7 @@ The application provides evidence for these assessment objectives:
 
 **Access Control Evidence:**
 - User permission reports (who has access to what)
-- Role group definitions (`Tracker/permissions.py`)
+- Role group definitions (`Tracker/presets.py`, `GROUP_PRESETS`); the DRF enforcement classes that read them are in `Tracker/permissions.py`
 - Tenant isolation proof (RLS policies)
 
 **Audit Evidence:**
@@ -290,60 +305,41 @@ The application provides evidence for these assessment objectives:
 
 **Available management commands:**
 ```bash
-# Check permission structure
+# Check permission structure (read-only)
 python manage.py check_permissions
 
-# Setup/update permissions
-python manage.py setup_permissions
-
-# View audit trigger status
-python manage.py setup_audit_triggers
+# Re-apply the role presets to a tenant's groups
+python manage.py sync_tenant_permissions
 ```
+
+!!! warning "`setup_audit_triggers` is not a status command"
+    It **drops and recreates** the immutability triggers on the audit tables.
+    It is idempotent and safe to re-run, but it is a DDL command, not a
+    read-only check — don't reach for it to show an assessor that the
+    triggers are in place. To *inspect* them, query `pg_trigger` directly, or
+    show that `setup_database` runs the command on every deployment.
 
 ### Key Files for Assessors
 
 | Domain | Files |
 |--------|-------|
-| Access Control | `Tracker/permissions.py`, `Tracker/middleware.py` |
+| Access Control | `Tracker/presets.py` (role definitions), `Tracker/permissions.py` (enforcement), `Tracker/middleware.py` (tenant binding) |
 | Audit | `PartsTrackerApp/settings.py` (AUDITLOG), `Tracker/models/core.py` |
 | Configuration | `Tracker/models/core.py` (SecureModel) |
 | Media Protection | `Tracker/models/core.py` (ClassificationLevel) |
 | System Protection | `Tracker/management/commands/setup_rls.py`, `Tracker/middleware.py` |
 
-## Shared Responsibility Model
-
-### Application Provides
-- User authentication enforcement
-- Role-based access control
-- Audit logging (immutable)
-- Document classification
-- Tenant isolation
-- Session management
-- Approval workflows
-
-### Customer Must Provide
-- MFA enforcement (via IdP)
-- Encryption at rest (database)
-- Encryption in transit (TLS)
-- Network security
-- Physical security
-- Backup encryption
-- Vulnerability scanning
-- Security awareness training
-- Incident response procedures
-
 ## SPRS Score Calculation
 
-For your Supplier Performance Risk System (SPRS) score:
+There is no application-level SPRS subtotal to quote here.
+SPRS scores the 110 NIST 800-171 practices as the *assessed organization*
+implements them — the deduction for a practice depends on how you satisfy
+it across software, infrastructure and process, so no vendor can score a
+slice of it on your behalf.
 
-| Category | Max Points | Estimated Score |
-|----------|------------|-----------------|
-| Application controls | 48 | 42 |
-| Infrastructure controls | 62 | Customer-dependent |
-
-Application-level contribution: **42/48 points** (partial controls counted as 0.5)
-
-> **Note**: Final SPRS score depends on infrastructure configuration and organizational policies.
+Use the [Level 2 Domain Summary](#level-2-domain-summary) instead: it tells
+you which practices you can cite this application for, which is the input
+to your own scoring, not a score itself.
 
 ## Scoping Guidance
 
@@ -363,57 +359,7 @@ Application-level contribution: **42/48 points** (partial controls counted as 0.
 - Endpoint devices
 - Network infrastructure
 
-## Application Requirements for CUI Environments
-
-When software is used in a CMMC-certified facility to process CUI, it must support the organization's security controls. These are the application-level expectations:
-
-### Access Control (AC)
-
-| Requirement | Purpose | This Application |
-|-------------|---------|------------------|
-| User authentication | Verify identity before access | ✅ Required login, session management |
-| Role-based permissions | Limit access to need-to-know | ✅ 9 role groups, model-level permissions |
-| Least privilege | Minimal default access | ✅ Customer role is view-only |
-| Separation of duties | Prevent single-person control | ✅ Distinct roles, self-approval detection |
-| Session timeout | Prevent unattended access | ✅ Configurable SESSION_COOKIE_AGE |
-
-### Audit & Accountability (AU)
-
-| Requirement | Purpose | This Application |
-|-------------|---------|------------------|
-| Action logging | Record who did what, when | ✅ django-auditlog on all models |
-| User attribution | Trace actions to individuals | ✅ User ID, timestamp, IP on records |
-| Log protection | Prevent tampering | ✅ PostgreSQL triggers block modification, superusers included |
-| Log retention | Preserve for audit period | ✅ Logs retained indefinitely |
-
-This summary covers the practices that are met. For the full nine, including
-the **3.3.4 gap** on alerting when audit logging itself fails, see [Audit &
-Accountability](#audit-accountability-au) above.
-
-### Media Protection (MP)
-
-| Requirement | Purpose | This Application |
-|-------------|---------|------------------|
-| CUI marking | Identify sensitive data | ✅ ClassificationLevel (5 levels) |
-| Access restriction | Limit CUI to authorized users | ✅ Classification-based permissions |
-| Controlled disposal | Audit trail on deletion | ✅ Soft delete with ArchiveReason |
-
-### Configuration Management (CM)
-
-| Requirement | Purpose | This Application |
-|-------------|---------|------------------|
-| Change control | Approve before implementing | ✅ ApprovalRequest workflow |
-| Version history | Track what changed | ✅ SecureModel versioning |
-| Baseline management | Freeze known-good configs | ✅ SPCBaseline, Process approval |
-
-### System Protection (SC)
-
-| Requirement | Purpose | This Application |
-|-------------|---------|------------------|
-| Boundary protection | Isolate tenant data | ✅ Row-Level Security (97 tables) |
-| Unauthorized transfer prevention | Block cross-tenant access | ✅ TenantScopedMixin on all views |
-
-### What the Application Does NOT Provide
+## What the Application Does NOT Provide
 
 These are infrastructure/organizational responsibilities:
 
