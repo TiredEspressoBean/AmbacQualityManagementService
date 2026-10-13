@@ -34,8 +34,13 @@ A **definition** describes what you're tracking:
 Links definitions to part types. When a part type has life limits:
 
 - Parts of that type can have life tracking records
-- If marked "required", tracking must be created
 - Multiple definitions can apply to one part type
+
+!!! note "Planned Feature"
+    The **required** flag is recorded but nothing reads it. Marking a definition
+    required does not cause a tracking record to be created for a new part, and
+    nothing refuses a part that is missing one. Until it is wired up, create the
+    tracking record yourself for any part you need tracked.
 
 ### Life Tracking Records
 
@@ -75,13 +80,18 @@ Track where life data originated:
 
 ### For New Parts
 
-When creating parts with life-limited types:
+Nothing creates a life tracking record when a part is made — not even for a
+definition marked required. Create the record against the part yourself, and
+when you do:
 
-1. Part type determines applicable definitions
-2. For required definitions, tracking is created automatically
-3. Enter initial accumulated value
-4. Set reference date for calendar-based items
-5. Select data source
+1. Pick the definition that applies to the part type
+2. Enter the initial accumulated value
+3. Set the reference date for calendar-based items
+4. Select the data source
+
+There are two places tracking *is* created for you, and only two: shelf life on
+a material lot, and the transfer from a core to a component harvested from it
+during reman.
 
 ### From Harvested Components
 
@@ -105,48 +115,29 @@ For calendar-based items, no incrementing is needed - elapsed time is calculated
 
 ## Viewing Life Status
 
-### On Part Details
-
-Each part displays its life tracking:
-
-- Current value vs limits
-- Percentage used
-- Status indicator
-- Remaining until limit
-
-### Warning and Expired Lists
-
 !!! note "Planned Feature"
-    A dedicated life tracking reports page is planned. Currently, life status is visible on individual part detail pages.
-
-View parts approaching or exceeding limits:
-
-1. Open part details to see life tracking status
-2. Check for WARNING or EXPIRED indicators
-3. Review parts needing attention
+    There is no life tracking screen anywhere in the application yet — not on
+    part details, and not as a list of parts approaching or past their limits.
+    The records, the status calculation and the warning and expired states all
+    exist on the server; nothing surfaces them. Until a screen is built, read
+    life status through the API.
 
 ## Limit Overrides
 
-For specific parts that receive engineering approval for extended limits:
-
-1. Open the life tracking record
-2. Click **Apply Override**
-3. Enter new limit values
-4. Provide justification reason
-5. Record approving user
-
-Overrides apply only to that specific part, not the definition.
+!!! note "API only"
+    An override extends the limits for one specific part — engineering approval
+    to run past the definition's figure — and leaves the definition itself
+    untouched. There is no button for it. It is an API action on the life
+    tracking record, taking the new limit values, a justification reason and the
+    approving user.
 
 ## Resetting Life
 
-After rebuild/overhaul, reset accumulated value:
-
-1. Open the life tracking record
-2. Click **Reset**
-3. Enter reason for reset
-4. Accumulated resets to zero
-5. Source changes to `RESET`
-6. Previous value saved in reset history
+!!! note "API only"
+    A reset is what you do after a rebuild or overhaul: accumulated value back
+    to zero, source set to `RESET`, previous value kept in the reset history,
+    reason recorded. Like an override, it exists only as an API action on the
+    life tracking record — there is no control for it in the interface.
 
 ## Calendar-Based Tracking
 

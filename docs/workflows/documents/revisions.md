@@ -99,21 +99,26 @@ Only one revision is "Current" at a time.
 
 ## Making a Revision Current
 
-For controlled documents, approval makes a revision current:
+Creating the revision is what makes it current — not approving it:
 
-1. Create new revision (Draft)
-2. Submit for approval
-3. Approver approves
-4. New revision becomes Current
-5. Previous revision becomes Previous
+1. Create new revision — it is current immediately, while still Draft
+2. The revision it came from stops being current at the same moment
+3. Submit for approval
+4. Approver approves — this changes the status only
+
+!!! warning "A draft can be the current revision"
+    Because the swap happens at creation, the current revision of a controlled
+    document may be an unapproved draft for as long as approval takes. Approval
+    records who signed off and when; it does not promote anything.
 
 ## Uncontrolled Documents
 
-For documents without approval requirements:
+For documents without approval requirements the same thing happens, with no
+approval step in between:
 
 1. Create new revision
 2. Immediately becomes current
-3. Previous revision archived
+3. The previous revision stays in the history, still visible and not archived
 
 ## Draft Revisions
 
@@ -153,13 +158,14 @@ All revisions are retained for:
 - Historical reference
 - Legal protection
 
-Revisions are never deleted (may be archived).
+Revisions are never deleted. Superseding a revision does not archive it either —
+it simply stops being the current one. Archiving is a separate, deliberate act.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `change_documents` | Create revisions |
+| `add_documents` | Create revisions |
 | `view_documents` | View revision history |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 

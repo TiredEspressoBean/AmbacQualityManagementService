@@ -63,13 +63,17 @@ Fail: Measured Value < Lower Limit OR Measured Value > Upper Limit
 |--------|-----------|
 | **Pass** | Green checkmark |
 | **Fail** | Red X |
-| **Warning** | Yellow (near limits) |
 
-### Warning Zones
-
-Some measurements define warning zones (e.g., within 20% of limits). Values in warning zones pass but flag potential drift.
+!!! note "There is no warning zone"
+    Evaluation is binary. A measurement definition carries a nominal, an upper
+    tolerance and a lower tolerance and nothing else, so a value is either in
+    spec or out of it — a reading sitting just inside a limit is not flagged.
+    Use [SPC Charts](../../analysis/spc.md) to spot drift before it goes out.
 
 ## Measurement Types
+
+There are two, and only two. A definition set to anything else evaluates as
+permanently out of spec, so stick to these.
 
 ### Numeric Measurements
 Standard measured values with tolerances:
@@ -85,13 +89,6 @@ Pass/fail only, no numeric value:
 - Visual inspection (acceptable/defect)
 - Go/No-Go gauge
 - Functional test
-
-### Text Observations
-Free-text notes:
-
-- Surface condition description
-- Serial number verification
-- Lot number confirmation
 
 ## Equipment Calibration
 
@@ -194,7 +191,6 @@ See [SPC Charts](../../analysis/spc.md) for details.
 |------------|--------|
 | `view_measurementresult` | View measurement history |
 | `add_measurementresult` | Record new measurements |
-| `change_measurementresult` | Edit measurements |
 | `delete_measurementresult` | Remove measurements |
 
 ## Next Steps

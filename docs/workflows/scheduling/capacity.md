@@ -25,7 +25,8 @@ so treat it as a planning aid, not a commitment.
 | **What to release** | Work that should be released now to hit its dates |
 | **Could we take this order?** | Whether a prospective order fits |
 
-The horizon is **12 months**. Export to **CSV** for planning offline.
+The horizon is a selector — **6, 12, 24 or 36 months**, defaulting to 12. Export
+to **CSV** for planning offline.
 
 ## Missing cycle times undermine it
 
@@ -33,7 +34,7 @@ The page warns when orders have operations with no cycle time recorded — for
 example:
 
 > *11 orders have operations with no cycle time recorded, so their load and
-> release dates below are undercounted.*
+> release dates below are understated.*
 
 Take that warning seriously. An operation with no cycle time contributes **no
 load**, so the heatmap shows more free capacity than exists and release dates

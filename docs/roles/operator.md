@@ -110,8 +110,9 @@ forward on their own.
 
 !!! note "First Piece Inspection can hold the step"
     If the step has a pending First Piece Inspection, advancing is blocked for
-    every part at that step until the FPI is signed off. **Complete step** then
-    becomes the buy-off action for whoever is authorised to sign it.
+    every part at that step until the FPI is signed off. **Complete step** stays
+    put — it commits your captures. A separate sign-off button appears next to it
+    for whoever is authorised to buy the first piece off.
 
 ### Quick Tips
 
@@ -252,15 +253,37 @@ If FPI is required at your step:
 
 ## What You CAN'T Do
 
-As an operator, you typically cannot:
+These are withheld from the Operator role and enforced on the server:
 
-- Create or edit orders
-- Approve dispositions
-- Close CAPAs
-- Upload documents
-- Manage users
+| Not yours | Who holds it |
+|-----------|--------------|
+| **Approve a disposition** | QA Manager |
+| **Sign off a first piece** | Shift Lead, QA Inspector, QA Manager, Production Manager |
+| **Resolve a manual decision point** | Shift Lead, QA, Production Manager |
+| **Initiate a CAPA** | Shift Lead, QA, Production Manager, the dock |
+| **Close a CAPA** | QA Manager |
+| **Void a substep completion** | QA Inspector, QA Manager, Tenant Admin |
+| **Write a training record** | Shift Lead, QA Manager, Production Manager, Engineering, Document Controller |
+| **Manage users** | Tenant Admin |
 
-Contact your supervisor for these actions.
+!!! note "You can do more than you might expect"
+    The shared staff base is broad: an Operator **can** create orders and work
+    orders, upload documents, and raise a quality report. Whether you *should*
+    is your shop's procedure, not a permission.
+
+### If you recorded something wrong
+
+**You cannot undo your own completion, and that is deliberate** — performing the
+work and adjudicating the record are different jobs.
+
+- **Before you finish the step**, the review list is the last easy place to fix
+  a mistyped measurement. Read down it.
+- **After it is recorded**, ask a **QA Inspector** or **QA Manager** to void the
+  completion. They record why, the advancement gate ignores the voided row, and
+  the part waits until the work is redone.
+
+Nothing is deleted — the original record and the void both stay. See [Voiding a
+completion](../workflows/dwi/running.md#voiding-a-completion).
 
 ## Troubleshooting
 

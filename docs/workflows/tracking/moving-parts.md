@@ -68,12 +68,14 @@ Some steps have requirements that must be met before passing:
 
 ### Measurement Requirements
 
-If a step requires measurements:
+If a step requires measurements, you record them as you run the step:
 
-1. Use the **Quality Report** form
-2. Enter required measurement values
-3. Submit the quality report
-4. Parts can then be passed
+1. Open the step in the step player
+2. Work through the substeps, entering each measurement where it is asked for
+3. Complete the step — the values are saved with the completion record
+
+You do not fill in a Quality Report to enter measurements. The quality report
+is produced *by* an inspection-point substep when you record its result.
 
 ### Decision Points
 
@@ -138,7 +140,6 @@ When a step is configured for batch processing:
 | Permission | Allows |
 |------------|--------|
 | `change_parts` | Basic part movement |
-| `can_quarantine_parts` | Flag issues and quarantine |
 
 ## Troubleshooting
 

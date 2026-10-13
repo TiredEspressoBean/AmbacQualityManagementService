@@ -142,9 +142,11 @@ record by hand:
 3. Enter the lot number, supplier, and quantity for each
 4. Submit with **Receive N Lot(s)**
 
-The lots land in **Awaiting inspection**. They become **On hand** once
-[incoming inspection](../supply/overview.md#incoming-inspection) passes, or go
-to **Held** if it doesn't.
+Where the lots land depends on the material's process. If it has a RECEIVING
+step, they go to **Awaiting inspection**, and become **On hand** once
+[incoming inspection](../supply/overview.md#incoming-inspection) passes, or
+**Held** if it doesn't. With no RECEIVING step they are dock-to-stocked — on
+hand straight away, with no inspection to wait for.
 
 !!! tip "Expecting material"
     **Expect** records a lot you know is coming before it arrives, so it shows
@@ -152,12 +154,32 @@ to **Held** if it doesn't.
 
 ### Using Material
 
-During production:
+**An operator does not choose a lot.** Consumption happens automatically when a
+unit leaves a step that the released BOM says consumes something. The quantity
+comes from the BOM line, and the usage is linked to the part, work order and
+step without anyone entering it.
 
-1. Select material lot to use
-2. Record quantity consumed
-3. Link to part/work order
-4. Remaining quantity updates automatically
+The lot is chosen in this order:
+
+1. **What the picker actually staged** for that step — if someone recorded a
+   lot at staging (including via **Took another**), that is what gets drawn.
+   The sheet named what the plan *would* take; the picker took what was really
+   on the shelf, and the record has to say what happened.
+2. Otherwise **the customer's own property**, if this is their work — a
+   free-issue kit is meant for their job, so it goes first.
+3. Otherwise **own stock, oldest-expiry first (FEFO)**, then oldest receipt.
+   Lots with no expiry sort last: dated stock is the stock that can spoil.
+
+!!! note "Lots that can't be used are skipped, not consumed"
+    A shelf-life-expired lot is passed over rather than drawn. Another
+    customer's property is never drawn into your job at all.
+
+!!! tip "This is what makes the traveller's \"lots drawn\" line real"
+    Because the draw is automatic and recorded against the step, a unit's
+    traveller can say which lots went into it without anyone having kept notes.
+    See [Part History](part-history.md).
+
+**Remaining quantity updates automatically** as lots are drawn.
 
 ### Splitting Lots
 
@@ -175,7 +197,14 @@ When issues are suspected:
 1. Change lot status to QUARANTINE
 2. Document reason
 3. Investigate affected parts
-4. Either release (back to IN_USE) or scrap
+4. Either release the hold or scrap
+
+!!! warning "Releasing a hold is a quality decision"
+    Releasing takes the `approve_disposition` permission, not edit rights on the
+    lot — accepting stock that was held is a disposition. The released lot does
+    not simply go back to in use: it routes on through receiving as if it had
+    just arrived, so it lands in inspection, or on hand if the material has no
+    RECEIVING step.
 
 ## Traceability
 

@@ -61,7 +61,14 @@ After submission:
 1. Document status changes to **Under Review**
 2. Approvers are notified
 3. Document appears in approvers' queues
-4. Editing is locked during approval
+4. The document stays editable — both metadata and the file
+
+!!! warning "Review does not lock the document"
+    Nothing is locked while a document is under review. The file can only be
+    swapped once the document is **Approved** or **Released**; until then an
+    editor can replace the very file the approvers are reading. If that matters
+    for your process, it is a convention to hold to, not a rule the system
+    enforces.
 
 ### Viewing Pending Documents
 
@@ -128,14 +135,14 @@ assigned when a request is raised:
 | **Default groups** | Every member of those groups assigned |
 | **Auto-assign by role** | Assigns the named group, e.g. `QA Manager` |
 
-The starter **Document Release** template has no default approvers and no
-default groups — it auto-assigns by role to **QA Manager** only. So a Document
-Controller cannot approve a document release out of the box, even though
-document control is their job.
+The starter **Document Release Approval** template names no individual default
+approvers, but it does seed two default groups: **QA Manager** and **Document
+Controller**. Every member of either group is assigned when a request is raised,
+so a Document Controller *can* approve a document release out of the box.
 
 !!! tip "To let another role approve"
     Change the template, not the permissions — add the group to **Default
-    groups**, or change **Auto-assign by role**. See
+    groups**. See
     [Approval Templates](../../admin/setup/approval-templates.md).
 
 Templates also control the flow: how many approvals are required, whether they
@@ -219,39 +226,44 @@ All approvals are permanently recorded:
 When fully approved:
 
 1. Document status becomes **Approved**
-2. Revision becomes **Current**
-3. Previous revision marked **Previous**
-4. Document available for use
-5. Owner and stakeholders notified
+2. Document available for use
+3. Owner and stakeholders notified
+
+!!! note "Approval does not make a revision current"
+    A new revision becomes the current one the moment it is **created**, while
+    it is still a draft — the revision it came from stops being current at the
+    same instant. Approval writes only the status and who approved it when.
+    See [Document Revisions](revisions.md).
 
 ## Document Expiration
 
 If documents have expiration dates:
 
-1. Approaching expiration triggers notification
-2. Document must be reviewed/renewed
-3. May require new approval
-4. Expired documents flagged
+1. Document must be reviewed/renewed
+2. May require new approval
+3. Expired documents flagged
+
+Nothing tells you a review is coming due. Check the **due for review** list on
+the Documents page — it is pull-only, and no message is sent.
 
 ## Approval Notifications
 
-Notifications are **rule-driven and configurable** — who gets told what is
-decided by this tenant's notification rules, not by the event itself. Any rule
-can be edited, disabled or deleted, so treat routing as something to check
-rather than something to rely on. See [Notification
-Rules](../../admin/setup/notification-rules.md).
+When a document approval request is raised, each assigned approver is queued a
+notification directly. This does **not** go through the notification rules, so
+there is no rule to configure, disable or get wrong — approvers are told either
+way. Approvers also see the request in their **Inbox** and on the Documents
+dashboard; see [Approvals](../approvals/overview.md).
 
-No document-approval routing is seeded by default. An approver who needs to
-be told will see the request in their **Inbox** and on the Documents dashboard
-regardless — see [Approvals](../approvals/overview.md) — but no message is
-sent unless a rule exists.
+Other document events — as opposed to approval requests — are rule-driven, and
+no document routing is seeded by default. See [Notification
+Rules](../../admin/setup/notification-rules.md).
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `view_documents` | View documents |
-| `change_documents` | Submit for approval |
+| `add_documents` | Submit for approval |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 
 ## Next Steps

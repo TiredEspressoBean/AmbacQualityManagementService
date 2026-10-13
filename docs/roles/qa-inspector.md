@@ -339,10 +339,16 @@ Typically you cannot:
 
 - Approve dispositions (QA Manager)
 - Close CAPAs (QA Manager)
-- Create orders
-- Manage users
+- Manage users (Tenant Admin)
+- Classify documents, or read the Secret tier (QA Manager classifies; Document
+  Controller and Tenant Admin read Secret)
 
 Escalate to QA Manager as needed.
+
+!!! note "You can do more than you might expect"
+    The shared staff base is broad: a QA Inspector **can** create orders and work
+    orders, upload documents, and move parts. Whether you *should* is your shop's
+    procedure, not a permission.
 
 ## Troubleshooting
 

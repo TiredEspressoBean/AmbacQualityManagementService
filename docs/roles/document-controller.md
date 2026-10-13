@@ -84,19 +84,21 @@ Organize by:
 
 | Field | Description |
 |-------|-------------|
-| **Title** | Descriptive name |
-| **Document Type** | Category |
-| **Document Number** | Per your scheme |
-| **Revision** | Version identifier |
-| **Description** | Summary |
+| **Document Type** | Category — also decides whether approval is required |
+| **Link To** | Records to attach the document to |
 
-5. Set visibility (Public, Internal, Confidential)
+5. Set **Classification Level** — Public, Internal, Confidential, Restricted or
+   Secret. You hold both `classify_documents` and `view_secret_documents`, so
+   all five are genuinely yours to use and to read back.
 6. Upload
+
+The document's name comes from the file you upload; there is no title,
+description or document-number field to fill in. See [Uploading
+Documents](../workflows/documents/uploading.md).
 
 ### Metadata Best Practices
 
-- Clear, searchable titles
-- Consistent numbering scheme
+- Clear, searchable file names
 - Accurate document type
 - Complete descriptions
 - Proper visibility setting
@@ -192,7 +194,6 @@ For customer documents:
 Each type has:
 - Approval requirements
 - Retention settings
-- Default visibility
 - Numbering scheme
 
 ### Common Document Types
@@ -210,17 +211,24 @@ Each type has:
 
 ### Making Documents Obsolete
 
-When superseded:
-1. New revision approved
-2. Previous automatically marked obsolete
-3. Or manually obsolete if no replacement
+Marking a document obsolete is always a deliberate act — use **Mark Obsolete**
+on the document. Creating or approving a new revision does **not** do it for
+you; the superseded revision simply stops being the current one and keeps
+whatever status it had.
+
+!!! warning "Obsoleting is yours to remember"
+    Nothing retires the old revision automatically. If your process says
+    superseded documents must read Obsolete, that is a step on your checklist.
 
 ### Handling Obsolete Docs
 
 - Clearly marked in system
-- Hidden from active views
 - Retained for historical reference
 - Accessible for audit purposes
+
+Obsolete documents are **not** hidden. They stay in the library alongside
+everything else, and status is a filter you choose — so anyone browsing can
+still find and open them.
 
 ## Periodic Review
 
@@ -228,7 +236,10 @@ When superseded:
 
 1. Configure review interval per type
 2. System tracks next review date
-3. Notifications sent when due
+
+Nothing notifies you when a review falls due. Check the **due for review** list
+on the Documents page — it is the only thing that will tell you, and you have to
+go and look.
 
 ### Conducting Review
 

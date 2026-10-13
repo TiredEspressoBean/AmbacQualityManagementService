@@ -28,11 +28,9 @@ Parts enter quarantine when:
 
 ### Automatic Quarantine
 
-Some events automatically quarantine parts:
-
-- Failed measurement (if configured)
-- Quality report creation
-- Incoming inspection failure
+A quality report quarantines its part **only when the report's result is FAIL**.
+A PASS report, or one still PENDING, leaves the part where it is — creating the
+report is not what quarantines, failing is.
 
 ### Manual Quarantine
 
@@ -60,8 +58,8 @@ rather than to particular parts:
 4. Add the reason and notes
 5. Submit
 
-A quality report against a part also puts it into quarantine — see
-[Quality Reports](quality-reports.md).
+A **failed** quality report against a part also puts it into quarantine; a
+passing or pending one does not — see [Quality Reports](quality-reports.md).
 
 Parts immediately show quarantine status.
 
@@ -80,11 +78,11 @@ View all quarantined parts:
 
 1. Navigate to **Quality** > **Dispositions** (or Quarantine)
 2. See list of held parts
-3. Filter by:
-   - Error type
-   - Date quarantined
-   - Age in quarantine
-   - Awaiting disposition
+3. Filter by error type, or by whether a disposition is still awaited
+
+Quarantine is a part **status** and nothing more — no timestamp is written when
+a part enters or leaves it. There is therefore nothing to filter or sort by date
+quarantined or age in quarantine.
 
 ## Investigating Quarantine
 
@@ -114,31 +112,6 @@ Part is scrapped, removed from active inventory.
 Part returns to vendor.
 
 See [Dispositions](dispositions.md) for details.
-
-## Quarantine Time Tracking
-
-The system tracks:
-
-- **Date quarantined**
-- **Time in quarantine** (aging)
-- **Date released**
-- **Total quarantine time**
-
-### Quarantine Aging Reports
-
-Identify parts sitting too long:
-
-| Age | Status |
-|-----|--------|
-| 0-3 days | Normal |
-| 4-7 days | Attention needed |
-| 7+ days | Escalation required |
-
-Long quarantine times indicate:
-
-- Investigation delays
-- Decision bottlenecks
-- Resource constraints
 
 ## Quarantine Location
 
@@ -183,23 +156,26 @@ quality report is usually covered while one raised directly is not.
     the work order's exceptions or the Dispositions list rather than assuming
     someone was paged.
 
-## Quarantine Dashboard
+## Where the quarantine count lives
 
-The Quality Dashboard shows:
+The **Home** page carries an *In quarantine* count. The Quality Dashboard does
+not — its tiles are Open CAPAs, Overdue, Pending Verification, Closed, Quick
+Actions and My Tasks. There is no quarantine Pareto, aging breakdown or trend
+chart anywhere.
 
-- **Current quarantine count**
-- **Quarantine by error type** (Pareto)
-- **Aging breakdown**
-- **Trend over time**
+## A whole load quarantined at once
 
-## Bulk Quarantine Actions
+There is no multi-select bulk disposition — you cannot tick several quarantined
+parts and decide them together. Each disposition is decided on its own record.
 
-For efficiency:
+What does happen in bulk is **containment**, and the system starts it, not you: if
+a shared batch cycle fails — one ultrasonic wash, one heat-treat load — every part
+that rode through it is quarantined together and a single disposition is opened
+for the batch. That is one decision covering the load because they genuinely share
+one event, not a convenience for grouping unrelated parts.
 
-1. Select multiple quarantined parts
-2. If same issue, bulk disposition
-3. Apply same disposition to all
-4. Single approval (if required)
+See [Running Work Instructions](../dwi/running.md#per-part-work-and-shared-cycles)
+for how shared cycles differ from per-part work.
 
 ## Permissions
 

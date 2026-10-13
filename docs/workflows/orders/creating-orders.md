@@ -21,7 +21,9 @@ Ensure you have:
 | Field | Description | Tips |
 |-------|-------------|------|
 | **Order Name** | Your reference name/number | Use your PO/SO number format |
-| **Company** | Company placing the order | Select from dropdown |
+
+Order Name is the only required field — everything else, company included, can
+be left blank and filled in later.
 
 !!! info "Order Number"
     The system automatically generates a unique order number (e.g., `ORD-2026-0001`). The **Order Name** field is where you enter your own reference like the customer PO number.
@@ -30,6 +32,7 @@ Ensure you have:
 
 | Field | Description |
 |-------|-------------|
+| **Company** | Company placing the order |
 | **Customer** | The customer contact on the order |
 | **Estimated Completion** | Target completion date |
 | **Order Status** | Current state of the order |
@@ -50,7 +53,12 @@ Use the **Order Name** field to enter your own reference number such as the cust
 
 ## Order Status
 
-New orders start in **Pending** status. Status progresses as work is performed:
+An order created through the form starts in **RFI** — the form always submits
+the first status in the list, whatever the model's own default (**Pending**)
+says. An order created another way, such as by import or through the API
+without a status, starts **Pending**.
+
+Status progresses as work is performed:
 
 | Status | Meaning |
 |--------|---------|
@@ -71,15 +79,6 @@ Orders need work orders to track production:
 4. The work order links parts to the manufacturing workflow
 
 See [Work Order Basics](../work-orders/basics.md) for details.
-
-## Copying Orders
-
-To create a similar order:
-
-1. Open an existing order
-2. Click **Duplicate** (or use the action menu)
-3. Modify the copied order as needed
-4. Save with a new order number
 
 ## Bulk Order Import
 
@@ -102,7 +101,10 @@ The system validates the import and reports any errors.
 | Edit orders | `change_orders` |
 | Delete orders | `delete_orders` |
 
-Customer users can only view orders assigned to their company.
+Customer users see only the orders they are named on — orders where they are
+the customer, or where they have been added as a viewer. Access is granted per
+person, not per company, so adding a colleague to the same company does not
+give them the order.
 
 ## Next Steps
 

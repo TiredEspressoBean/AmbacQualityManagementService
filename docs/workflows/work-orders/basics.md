@@ -36,11 +36,17 @@ An order may have multiple work orders if:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Order** | Select the customer order | Yes |
+| **ERP ID** | The work order's number in the system that owns it | Yes |
+| **Order** | The customer order, if there is one | No |
 | **Process** | Manufacturing workflow to follow | Yes |
 | **Priority** | Urgent, High, Normal, or Low | Yes |
-| **Due Date** | Target completion | No |
+| **Due Date** | Target completion | Yes |
 | **Notes** | Instructions or comments | No |
+
+!!! note "A work order need not be tied to a customer order"
+    **Order** is optional — stock builds, internal work and rework all exist
+    without one. **Due Date** is not: the schedule is built from dates, so a work
+    order with no target completion has nothing to plan against.
 
 !!! note "Equipment Assignment"
     Equipment is assigned at the step execution level, not on the work order itself. This allows different equipment to be used for different steps. See [Assigning Work Orders](assigning.md) for details.
@@ -180,10 +186,26 @@ To cancel:
 
 1. Open the work order
 2. Click **Cancel Work Order**
-3. Enter cancellation reason
-4. Confirm
+3. Confirm
 
-Parts remain in the system but are no longer associated with this work order.
+No reason is asked for, and nothing else changes: the status becomes
+**Cancelled**, so the order drops out of scheduling, and its parts keep their
+link to it. The record of what was planned stays intact.
+
+!!! warning "You cannot cancel once anything has left"
+    The cancel is refused outright if any part on the order has shipped,
+    completed, gone into stock, been banked as a core, or is awaiting pickup —
+    *"Can't cancel — some parts have already shipped or completed."* Delivered
+    work cannot be un-planned.
+
+!!! note "Cancelling is manager-tier"
+    It needs **`cancel_workorder`**, held by **Tenant Admin** and **Production
+    Manager** only, and the button is hidden from anyone else. Abandoning a job
+    breaks a commitment to a customer, so it is not an operator's call.
+
+    This is new as of 2026-10-13. Before that the action fell through to a
+    generic default every staff role held, so any operator could cancel a work
+    order.
 
 ## Work Order Permissions
 
@@ -193,6 +215,7 @@ Parts remain in the system but are no longer associated with this work order.
 | `add_workorder` | Create work orders |
 | `change_workorder` | Edit and status changes |
 | `delete_workorder` | Delete work orders |
+| `cancel_workorder` | Cancel a work order — Tenant Admin and Production Manager |
 
 ## Next Steps
 

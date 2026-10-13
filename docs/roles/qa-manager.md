@@ -144,10 +144,18 @@ Before closure:
 
 ### Closing CAPAs
 
-1. Review verification data
-2. Click **Request Closure**
-3. Approve closure (or route to approver)
-4. CAPA closes with audit trail
+1. Open the CAPA's **Verification** tab
+2. Record the effectiveness check against the verification criteria
+3. Choose **Confirmed effective** — this closes the CAPA in the same action
+
+There is no separate closure request or closure approval. The gate is
+`verify_capa`; if you don't hold it, an authorised colleague can co-sign inline
+with their email and password and the closure is attributed to them.
+
+!!! warning "Closed is the end of the line"
+    A closed CAPA cannot be reopened. If the check shows the action did *not*
+    work, record **Not effective** instead — that returns the CAPA to In Progress
+    rather than closing it.
 
 ## Document Approvals
 
@@ -295,7 +303,7 @@ Configure workflows for:
 |------|----------|
 | Approve disposition | Inbox → Disposition → Approve |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
-| Close CAPA | CAPA detail → Request Closure |
+| Close CAPA | CAPA detail → Verification → Confirmed effective |
 | Approve document | Inbox → Document → Approve |
 | View analytics | Analytics |
 

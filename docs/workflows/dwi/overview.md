@@ -64,8 +64,14 @@ A step's substeps run in one of two modes:
 
 | Mode | Behaviour |
 |------|-----------|
-| **Sequential** | Substep *N* can only be completed once *N-1* is complete (or optional and marked N/A) |
+| **Sequential** | Substep *N* can only be completed once every **required** substep before it is complete |
 | **Free order** | Any substep may be completed in any order; the step's signoff checks that all required substeps are done |
+
+!!! note "An optional substep never holds up the one after it"
+    Sequencing looks only at the required substeps ahead of the one being
+    completed. An **optional** earlier substep is skipped by the check whether or
+    not it was marked N/A — so a free-standing optional step cannot strand an
+    operator.
 
 ### Per part or per batch
 
@@ -96,10 +102,19 @@ each part gets an outcome:
 | **Deselected** | This part is not in the sample; the substep is treated as satisfied |
 | **Pending** | The rule needs more information — cohort size, end of shift, end of work order — and can't decide yet |
 
-**Pending does not block.** The part advances tentatively and the decision is
-re-evaluated when the cohort closes. If it then flips to *selected* on a part
-that has already moved past the step, the system opens a non-blocking
-nonconformance against that part rather than silently dropping the check.
+**Pending does not block at the step itself.** The part advances tentatively and
+the decision is re-evaluated when the cohort closes — the rule that could not
+decide at step entry can decide once it knows the full cohort. The pending row is
+superseded by the resolved one, so the outcome is a record of both.
+
+!!! warning "It does block at the terminal step"
+    Nothing unresolved ships. At a terminal step the gate refuses any part whose
+    work order still has live PENDING decisions — *"Terminal step: N PENDING
+    sampling decision(s) require reconciliation before shipment."*
+
+    Reconcile them and the gate clears. A decision that resolves to *selected* on
+    a part with the substep still uncompleted simply becomes the next blocker the
+    supervisor sees, which is the point: the check is deferred, never dropped.
 
 ## Optional, N/A, and safety-critical
 
@@ -108,7 +123,7 @@ Three authoring settings control whether a substep can be skipped:
 | Setting | Effect |
 |---------|--------|
 | **Optional** | May be skipped without recording anything |
-| **Allow N/A** | May be marked not-applicable, but the operator must pick a reason code and add a note |
+| **Allow N/A** | May be marked not-applicable, but the operator must pick a reason code |
 | **Safety-critical** | Can *never* be marked N/A — the gate rejects any attempt |
 
 Optional and N/A are deliberately different. Optional means nothing needs to be

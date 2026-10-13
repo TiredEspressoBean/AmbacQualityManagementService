@@ -45,11 +45,10 @@ For a new uqmes instance:
 ### Adding Users
 
 1. Navigate to **Admin** > **User Management**
-2. Click **New Users**
+2. Click **Add user**
 3. Fill in:
    - Email (login ID)
    - First/Last name
-   - Role type (Staff, Customer, Auditor)
    - Groups
 4. Save
 
@@ -112,8 +111,10 @@ For each step:
 
 1. Navigate to **Data Management** > **Part Types**
 2. Create part types for your products
-3. Link to default process
-4. Set attributes
+3. Set attributes
+
+A part type carries no process. The link runs the other way: each process names
+the part type it is for, so you attach processes from **Processes**.
 
 ### Equipment
 
@@ -125,9 +126,11 @@ For each step:
 ### Error Types
 
 1. Navigate to **Data Management** > **Error Types**
-2. Define defect categories
-3. Set up hierarchy if needed
-4. Configure default severities
+2. Define defect categories — name, example, the part type it applies to, and
+   whether it requires a 3D annotation
+
+Error types are a flat list. There is no hierarchy, and severity is chosen on
+each recorded defect rather than defaulted from the catalog.
 
 ### Document Types
 
@@ -151,9 +154,11 @@ For each step:
 
 Navigate to **Admin > Settings**:
 - Organization name
-- Timezone
-- Date/number formats
-- Branding (logo, colors)
+- Contact email, phone, website and address
+- Shop floor timezone
+- Change control mode
+- Over-receipt tolerance
+- Logo
 
 ### Integration Settings
 
@@ -177,7 +182,11 @@ Regularly review **Admin** > **Audit Log**:
 - User activity
 - Permission changes
 - Unusual patterns
-- Failed login attempts
+
+!!! note "Failed logins are not recorded"
+    A rejected sign-in leaves no trace in the audit log. If you need to
+    investigate repeated failures, that evidence has to come from your identity
+    provider or the web server, not from uqmes.
 
 ### System Health
 
@@ -255,7 +264,7 @@ Check:
 | Password reset | Use reset function or SSO |
 | Permission change | Modify group membership |
 | New account | Create user, assign groups |
-| Access issue | Check permissions, role type |
+| Access issue | Check permissions and group membership |
 
 ### Escalation
 

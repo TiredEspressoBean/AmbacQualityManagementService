@@ -23,15 +23,24 @@ them.
 
 ## What you are not given
 
-**The classified document tiers.** An auditor is not granted
-`view_secret_documents` or the export-control tier, because an external auditor
-may not be an authorised person for export-controlled technical data.
+**The classified document tiers.** An auditor holds none of the classified
+document permissions, so the documents you can read are the **Public** and
+**Internal** ones. Confidential, Restricted and Secret are all closed to you.
+
+!!! warning "Export control is not a group permission"
+    ITAR and EAR access is decided by two flags on *your own user record* —
+    whether you are a US person and whether you are ITAR-authorised — not by
+    which groups you are in. An auditor flagged as a US person **will** see
+    export-controlled documents, and no change to the Auditor group will alter
+    that either way. If an auditor should not see controlled technical data,
+    the flags on their user are what to check. See [Export
+    Controls](../compliance/export-controls.md).
 
 !!! note "This can look like a gap, and isn't"
     If a document is invisible to you, that is the export-control and
     classification machinery working, not a permissions mistake. Ask your host
     for a reader with the right clearance rather than asking to be given the
-    tier. See [Export Controls](../compliance/export-controls.md).
+    tier.
 
 ## Where the evidence lives
 

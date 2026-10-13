@@ -90,16 +90,24 @@ revives it.
 
 | Not yours | Whose |
 |-----------|-------|
-| **Approve a document** | [Document Controller](document-controller.md), QA Manager |
-| **Classify a document / see the secret tier** | Document Controller |
+| **Classify a document** | Document Controller, [QA Manager](qa-manager.md), Tenant Admin |
+| **See the secret tier** | Document Controller, Tenant Admin |
 | **Approve a disposition or a CAPA** | [QA Manager](qa-manager.md) |
-| **Release work, solve the schedule** | [Planner](planner.md), Production Manager |
+| **Solve the schedule** | [Planner](planner.md), Production Manager |
 | **Delete a work centre** | Manager tier |
 
-!!! note "Authoring a spec is not approving it"
-    You can write a process, a routing and a measurement requirement. Whether the
-    controlled document describing it is *released* runs through document
-    control. Separating those is most of what an auditor is checking.
+!!! note "You can approve documents — if a template names you"
+    There is no separate document-approval permission. You hold the general
+    *respond to approval* right, and whether you are asked is decided by the
+    approval template: if it names Engineering, by group or by name, you are an
+    assigned approver and the **Submit Response** action is yours. If it doesn't,
+    nobody can grant it with a permission. See [Document
+    Approval](../workflows/documents/approval.md).
+
+!!! note "Releasing work *is* yours"
+    Release, unrelease and bulk release run on the same write right as the rest
+    of your work-order editing, so you can release work orders. What you cannot
+    do is **solve the schedule** — that is the Planner's.
 
 ## Next Steps
 

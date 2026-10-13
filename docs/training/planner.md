@@ -140,12 +140,13 @@ counter-offer.
 
 ### 3.3 It measures the window, not the month
 
-Capacity is measured over the window from now to the due date. An earlier version
-measured whole month buckets, which credited a full extra month whenever the
-window crossed a boundary — over-promising 352 hours where 112 existed.
+Capacity-to-promise counts the hours available between **now and the due date
+you asked about** — not the hours in the months that window touches.
 
-**If a promise looks surprisingly generous, check the arithmetic rather than
-trusting it.**
+Two consequences to expect at the desk. The same quantity can be refused for one
+date and promised for a date a week later, because the window grew. And asking
+again tomorrow gives you slightly less capacity than today, because the window
+shrank. Both are the arithmetic working.
 
 ### Knowledge Check: Module 3
 

@@ -40,22 +40,29 @@ This guide covers how to initiate and set up a CAPA investigation.
 
 ### Problem Definition (D2)
 
-| Field | Description |
-|-------|-------------|
-| **Problem Statement** | Clear description of the issue |
-| **Discovery Date** | When problem was found |
-| **Discovery Method** | How it was found (inspection, customer, audit) |
-| **Products Affected** | Part types, orders involved |
-| **Scope** | Quantity, date range, locations |
-| **Impact** | Customer, cost, safety implications |
-
-### Initial Assessment
+The problem is described in two free-text fields, not a structured
+questionnaire. There is no discovery date, discovery method, scope, impact or
+recurrence-likelihood field — if those matter, write them into the problem
+statement.
 
 | Field | Description |
 |-------|-------------|
-| **Severity** | Impact assessment |
-| **Likelihood of Recurrence** | Based on initial review |
-| **Initial Root Cause Hypothesis** | First theory |
+| **Problem Statement** | Clear description of the issue. Say what, where, when and how much here. |
+| **Immediate Action** | Containment already taken, in one field. See [Containment Actions](#containment-actions-d3) below. |
+
+### Context Links
+
+Everything else the CAPA knows about the problem is a link to a record that
+already exists. All of these are optional:
+
+| Field | Description |
+|-------|-------------|
+| **Part** | A representative part, if one part shows the problem |
+| **Step** | The process step where the issue occurred |
+| **Work Order** | The work order involved |
+| **Supplier** | The supplier the CAPA is raised against (a SCAR) |
+| **Quality Reports** | One or more NCRs this CAPA answers |
+| **Dispositions** | Quarantine dispositions this CAPA answers |
 
 ## Linking Records
 
@@ -68,9 +75,9 @@ Connect related items:
 4. Select to link
 
 ### Parts
-1. In the **Affected Parts** section
-2. Link specific parts or part types
-3. Parts show CAPA association
+1. In the **Part** field, pick a single representative part
+2. There is no affected-parts list — if several parts are involved, link their
+   quality reports and name the population in the problem statement
 
 ### Documents
 1. In the **Documents** section
@@ -98,13 +105,6 @@ Primary responsible person:
     To involve other people, create **CAPA tasks** and assign them
     individually — the set of task assignees is what functions as the team.
     See [CAPA Tasks](tasks.md).
-
-### Stakeholders
-Notify stakeholders without assigning work:
-
-- Management
-- Customer contact
-- Affected departments
 
 ## Containment Actions (D3)
 
@@ -143,53 +143,35 @@ Due dates drive:
 
 ## Submitting the CAPA
 
-After completing initial setup:
+There is no draft state and no separate activation step. **A CAPA is Open the
+moment you save it** — `Open` is the default status, and the only statuses are
+Open, In Progress, Pending Verification, Closed and Cancelled. If you are not
+ready to commit to it, do not create it yet; there is nowhere to park a
+half-finished one.
 
-1. Review all sections
-2. Click **Submit** or **Activate**
-3. CAPA moves to Open status
-4. Team is notified
-5. Investigation begins
-
-## Draft CAPAs
-
-Save as draft to:
-
-- Gather more information
-- Consult with team
-- Complete in multiple sessions
-
-Drafts don't trigger notifications or appear on dashboards as active.
-
-## CAPA Templates
-
-For recurring CAPA types, templates pre-fill:
-
-- Standard sections
-- Common containment actions
-- Default assignments
-- Typical timelines
-
-Ask your administrator about available templates.
+A **Critical** or **Major** CAPA additionally raises an approval request on
+creation, if your tenant has a CAPA_APPROVAL template configured. That approval
+does not block the investigation, and it is not the closure gate — see
+[Verification & Closure](verification.md).
 
 ## Notifications
 
-On CAPA creation:
+One notification ships with a new CAPA:
 
 | Recipient | Notification |
 |-----------|--------------|
-| Owner | Assignment notification |
-| Team members | Team assignment |
-| Quality manager | New CAPA alert |
-| Stakeholders | Awareness notification |
+| The assignee | `capa.assigned` — in-app and email, on creation and on reassignment |
+
+There is nothing else. No new-CAPA alert goes to the QA Manager at creation; the
+QA Manager's CAPA rule is `capa.ready_for_verification`, which fires later, when
+the tasks and RCA are complete. Your administrator can add further rules.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `add_capa` | Create CAPAs |
-| `change_capa` | Edit CAPAs |
-| `assign_capa` | Assign team members |
+| `change_capa` | Edit CAPAs, including changing the assignee |
 
 ## Next Steps
 

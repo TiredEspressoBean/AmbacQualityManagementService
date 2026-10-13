@@ -136,14 +136,18 @@ The board splits into two levels of authority, and they are not the same group.
 
 | What | Needs | Held by |
 |------|-------|---------|
-| **Solve**, **What-if**, **Commit draft** | `add_scheduleresult` | Production Manager, Tenant Admin |
-| **Move**, **Pin/Unpin**, **Merge/Break**, **Reassign**, **Dispatch** | `change_scheduledtask` | Production Manager, Tenant Admin, **QA Manager**, **Shift Lead** |
+| **Solve**, **What-if**, **Commit draft** | `add_scheduleresult` | Production Manager, Tenant Admin, **Planner** |
+| **Move**, **Pin/Unpin**, **Reassign**, **Dispatch** | `change_scheduledtask` | Production Manager, Tenant Admin, **QA Manager**, **Shift Lead**, **Planner** |
+| **Merge**, **Break** | `change_parts` | See [Working on several tasks](#working-on-several-tasks) |
 
 !!! note "A shift lead can work the board without being able to re-plan it"
     Direct manipulation is deliberately wider than solving. A shift lead
     covering a shift can pin, reassign and dispatch; committing a new plan for
     the whole shop stays with the planner roles. A QA manager has the same reach,
     for holding work on a quality problem.
+
+    The **Planner** is the role whose whole job this is — owning the plan, and so
+    holding both levels.
 
 ## Moving a task by hand
 
@@ -186,8 +190,9 @@ something else did, not because you decided where they go.
 
 !!! note "A small nudge may shift nothing"
     Only successors that would *otherwise overlap* are pushed. A forward move
-    into slack ahead of it reports **0 downstream operations shifted** — that is
-    the ripple finding nothing to do, not the ripple failing.
+    into slack ahead of it reports no count at all — just *"Task moved &
+    pinned"*, with the *"N downstream operation(s) shifted"* half omitted. That
+    is the ripple finding nothing to do, not the ripple failing.
 
 !!! note "Rippling can create overlaps on purpose"
     Its scope is the **route**, not the resource — so a rippled task can land on
@@ -218,6 +223,29 @@ reassigns it — the machine or the operator — and applies immediately.
 Lane changes do nothing in the **Work orders** view, which groups by order
 rather than by resource.
 
+## Did the floor follow the plan?
+
+Each scheduled task records an **actual start** and **actual end** as a unit
+enters and leaves its step. That is the planned-versus-actual data behind
+variance reporting.
+
+!!! important "Capture records; it does not react"
+    Stamping an actual deliberately **does not** re-time the plan or mark the
+    schedule stale. The solver already pins in-progress operations when it
+    solves, and a drift recorded on every single advance would leave the
+    staleness flag permanently on — and therefore meaningless.
+
+!!! warning "Empty actuals usually mean the sequence, not a fault"
+    Actuals only accrue for work that moves **after** a solve. A schedule solved
+    today, over a shop whose activity happened last week, shows nothing — there
+    was nothing left to capture.
+
+    To see it work: **solve, then advance a unit through a step, then look
+    again.** That order is the whole requirement.
+
+A task still in progress has an actual **start** and no actual end, which is
+correct rather than missing data.
+
 ## Fence zones — how near-term work is protected
 
 The legend carries **Fence: Frozen · Slushy · Liquid**, and every task panel
@@ -226,7 +254,7 @@ measured from the moment of the solve:
 
 | Zone | When it starts | What it means |
 |------|----------------|---------------|
-| **Frozen** | Within the frozen window — **2 days** by default | Committed. The solver pins these, so a re-solve leaves them where they are |
+| **Frozen** | Within the frozen window — **2 days** by default | Committed. The solver strongly prefers to leave these where they are on a re-solve |
 | **Slushy** | After that, within the slushy window — **7 further days** by default | Moves are discouraged. The solver may still move one, but it is the next thing to resist |
 | **Liquid** | Everything later | Freely re-planned on every solve |
 
@@ -244,9 +272,19 @@ widens the frozen zone.
     before committing."* That count is the real cost of the change; read it
     beside the lateness figure, not after it.
 
-A **planner pin** (📌) is different: it is a manual lock you place, and it
-survives re-solves regardless of zone. See [Moving a task by
+A **planner pin** (📌) is different: it is a manual lock you place, and it is
+respected on re-solves regardless of zone. See [Moving a task by
 hand](#moving-a-task-by-hand).
+
+!!! important "Pins are strong preferences, not hard constraints"
+    Both the frozen zone and your own planner pins are weighted in the solver's
+    objective rather than enforced absolutely — a pin the hard constraints make
+    impossible would otherwise leave the whole solve with no answer at all. So
+    the solver will pay a large cost to honour a pin, and move it when it must.
+
+    When it has to, it says so: the solve reports **how many pins it relaxed**,
+    alongside the frozen-task warning above. A relaxed pin is the plan telling
+    you the pin no longer fits, not the pin being ignored.
 
 ## Why the schedule goes stale
 
@@ -267,8 +305,14 @@ stale solve.
 ## Working on several tasks
 
 Selecting tasks reveals a toolbar — *"N selected"* — with the actions that only
-make sense in bulk. It needs `change_scheduledtask`; see [Who can touch the
-board](#who-can-touch-the-board).
+make sense in bulk. The toolbar appears for anyone with `change_scheduledtask`;
+see [Who can touch the board](#who-can-touch-the-board).
+
+!!! note "Merge and Break are gated on parts, not on the board"
+    The button follows your board rights, but the server checks
+    **`change_parts`** for these two — merging and breaking changes how the parts
+    themselves are lotted, not just where a bar sits. Someone with board rights
+    but no parts rights sees the buttons and is refused on use.
 
 | Action | What it does |
 |--------|--------------|

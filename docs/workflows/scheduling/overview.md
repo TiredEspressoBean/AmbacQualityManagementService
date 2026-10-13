@@ -24,8 +24,8 @@ requirements are its reports.
 
 ## Calendar
 
-**Plant closures and who's out — the non-working time the scheduler plans
-around.**
+**Plant closures, who's out, and overtime — the working time the scheduler plans
+against.**
 
 Click one or more days, then add:
 
@@ -36,8 +36,10 @@ Click one or more days, then add:
 
 Filter by **Company** / **My crew** / **Me**, and by shift or work center.
 
-Everything recorded here is time the scheduler will not plan into. Keeping it
-current is what makes the Gantt's dates believable.
+Closures and absences are time the scheduler will **not** plan into; overtime
+works the other way, adding working time it **will** plan into. Either way the
+calendar is what the solver treats as available hours, and keeping it current is
+what makes the Gantt's dates believable.
 
 ## Staging List
 

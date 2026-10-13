@@ -92,26 +92,22 @@ Supervisors can also preview the floor landings of the people they oversee:
 This is why instructions in one role guide may not match what you see — check
 which landing you are on before assuming a page is missing.
 
-### Not every role has a Home surface yet
+### Every role has a Home surface
 
-Home landings exist for **Operator**, **QA Inspector**, **QA Manager**,
-**Production Manager**, **Shift Lead**, **Engineering**, **Document Controller**
-and **Tenant Admin**. **Purchasing** has cards but no landing of its own.
+All 13 staff groups have their own Home arrangement, each led by a launchpad for
+the role: **Operator**, **QA Inspector**, **QA Manager**, **Production Manager**,
+**Shift Lead**, **Engineering**, **Document Controller**, **Purchasing**,
+**Planner**, **Receiving**, **Shipping**, **Auditor** and **Tenant Admin**.
 
-!!! warning "Planner, Receiving, Shipping and Auditor have no Home blocks"
-    If one of those is your *only* group, Home will be empty. The role works —
-    its permissions and its pages are all live — but nothing has been built for
-    it on Home yet.
-
-    Use the sidebar to reach your work: **Scheduling** for Planner, **Supply**
-    for Receiving and Shipping, and the analysis and compliance pages for
-    Auditor. Most people holding these also hold a role that does have a
-    landing, which is why this is easy to miss.
+What you see on Home is the set of cards defined for *your* role, in that role's
+order — which is why two people with different groups see different Homes.
 
 ### Late deliveries
 
-**Purchasing**, **Production Manager** and **Tenant Admin** get a **Late
-deliveries** card. Each row names the item, quantity, supplier and PO/line, with
+**Purchasing**, **Planner**, **Receiving** and **Tenant Admin** get a **Late
+deliveries** card. A plain Production Manager does not — the card is allowed to
+their permission set but is not part of the Production Manager Home order, and
+Home only shows what your role's order lists. Each row names the item, quantity, supplier and PO/line, with
 a **Nd late** / **due today** / **due in Nd** badge — and, more usefully, which
 work orders it is *holding up*.
 
@@ -127,8 +123,8 @@ Each row also names the supplier's **deliveries contact** and their email, so
 chasing it doesn't start with looking someone up. See [Outside
 contacts](../admin/setup/companies.md#outside-contacts).
 
-**Purchasing** also gets **Supplier qualifications expiring**. Before this,
-Purchasing had no Home blocks of its own.
+**Purchasing** also gets **Supplier qualifications expiring**, alongside its
+launchpad and the late-deliveries card.
 
 ---
 

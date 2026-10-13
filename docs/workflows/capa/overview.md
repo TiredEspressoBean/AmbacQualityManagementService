@@ -23,7 +23,9 @@ Create a CAPA for:
 | **Trend analysis** | Data shows concerning patterns |
 
 !!! example "Demo: CAPA-2024-003"
-    When 5 of 12 injectors (42%) from order ORD-2024-0038 required rework due to nozzle defects, this triggered a CAPA investigation. The 5-Whys analysis traced the root cause to a supplier batch issue with nozzle tips. Corrective actions included updating incoming inspection procedures and tightening sampling rules.
+    When 5 of 12 injectors (42%) from order ORD-2024-0038 required rework due to nozzle defects, this triggered a CAPA investigation. The root cause was worked as a **fishbone**, across all six categories — man, machine, material, method, measurement, environment — and landed on a supplier heat-treatment change that was never communicated, with the supplier audit six months overdue so it went undetected. Corrective actions included updating incoming inspection procedures and tightening sampling rules.
+
+    The seeded **5-Whys** example is on a different CAPA, CAPA-2024-002, about receiving documentation.
 
 ## CAPA Process (8D Methodology)
 

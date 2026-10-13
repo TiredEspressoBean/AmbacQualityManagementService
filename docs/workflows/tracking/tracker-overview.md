@@ -16,8 +16,8 @@ Help & Docs, and is available to every signed-in user.
 ## Tracker Interface
 
 The Tracker displays orders as cards showing current status. Figures are
-polled rather than pushed, so a change made elsewhere appears within a couple
-of minutes rather than instantly.
+fetched when the page loads and are then cached, so a change made elsewhere
+appears the next time you open or reload the page — not while you sit on it.
 
 ## Order Cards
 
@@ -26,9 +26,9 @@ Each card shows:
 | Element | Description |
 |---------|-------------|
 | **Order name** | The order's name, e.g. "Great Lakes Diesel Order - 12 Injectors" |
-| **Company** and **customer** | Who the order is for |
-| **Delivery** | The delivery date, with a badge for how far away it is — "Today", "6d", or "Not started" |
-| **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" |
+| **Company** | Who the order is for. The Tracker does not pass a customer name, so no individual contact appears here |
+| **Delivery** | The delivery date, with a badge for how far away it is — "Today" or "6d". The badge is dropped once the date is past, leaving the date alone |
+| **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" — or "Not started" when no stage is current |
 | **Progress** | A progress bar with stages completed out of total, e.g. 3/11 stages |
 | **Latest note** | The most recent note on the order, with who left it |
 
@@ -41,21 +41,12 @@ Each card shows:
 Cards are collapsible. Click one to expand it and see the order's detail
 in place.
 
-## Searching
+## Finding an order
 
-!!! note "Filtering"
-    Advanced filtering and filter presets are planned for the Tracker page. Currently, use the search functionality or access filtered views through the **Work Orders** page (Production > Work Orders) which has more filtering options.
-
-## Search Bar
-
-The search bar finds orders by:
-
-- Order number (partial match)
-- Customer name
-- Part serial number
-- Lot number
-
-Type and press Enter to search.
+!!! note "No search or filters here"
+    The Tracker has no search box and no filter controls — it is one list of
+    cards you scroll. To search or filter, use the **Work Orders** page
+    (Production > Work Orders), which has both.
 
 ## Card View
 
@@ -68,17 +59,11 @@ The Tracker displays orders as visual cards with progress indicators. This view 
 !!! note "Additional Views"
     Table View and Kanban View are planned for future releases. Currently, the Tracker uses the card view with infinite scroll.
 
-## Real-Time Updates
+## Keeping the page current
 
-The Tracker updates automatically:
-
-- Part movements appear without refresh
-- Progress bars update
-- Status badges change
-- Counts refresh
-
-!!! info "Refresh"
-    If you suspect stale data, pull down (mobile) or click the refresh icon.
+The Tracker does not refresh itself. Cards are rendered from cached data and
+stay as they were until you reload the page — there is no refresh button, and
+nothing updates while you watch it.
 
 ## Infinite Scroll
 
@@ -86,39 +71,11 @@ Orders load as you scroll:
 
 - Initial load: Most recent/relevant orders
 - Scroll down: Older orders load
-- Total count shown in header
-
-## Big Screen Mode
-
-For shop floor displays:
-
-1. Click **Big Screen** in the header (or navigate to `/big-screen`)
-2. Full-screen display optimized for monitors
-3. Auto-cycles through orders
-4. Large, readable text
-
-Configure display options:
-
-- Cycle interval
-- Orders to show
-- Display elements
 
 ## Mobile Usage
 
-The Tracker is fully responsive:
-
-- Cards stack vertically
-- Swipe to reveal actions
-- Pull to refresh
-- Touch-friendly buttons
-
-## Performance Tips
-
-For large order volumes:
-
-1. **Use filters** - Narrow to relevant orders
-2. **Archive completed** - Keep active list manageable
-3. **Search specifically** - Direct lookup is faster than scrolling
+The Tracker is fully responsive — cards stack vertically and the controls are
+touch-sized. There are no swipe or pull-to-refresh gestures.
 
 ## Next Steps
 

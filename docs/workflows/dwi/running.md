@@ -67,12 +67,24 @@ For each substep:
    signature
 3. Tap **Confirm & next**
 
-Your entry is sealed when you confirm it, and the player advances.
+Your entry is saved when you move off it, and the player advances.
 
 !!! tip "Your work is saved as you go"
-    Each substep is sealed on confirm rather than at the end. If the tablet is
-    closed, the battery dies, or the job is handed to the next shift, reopening
-    the step resumes where you left off — the URL carries your position.
+    Moving between substeps saves what you have entered as a **draft** — on
+    *Confirm & next*, *Back*, the progress rail, or *Edit* from the review screen.
+    So if the tablet is closed, the battery dies, or the job is handed to the next
+    shift, reopening the step brings your entries back.
+
+    Note it saves when you **leave a substep**, not on every keystroke.
+
+!!! warning "A draft is not a record — Complete step is"
+    Nothing is official until you tap **Complete step**. That is what writes the
+    captures, and only then can a failed measurement raise a report or hold the
+    unit. A value you fix before completing the step never becomes a
+    nonconformance.
+
+    It also means an unfinished step records nothing. If you want the work on the
+    record, finish the step.
 
 ## Marking a substep N/A
 
@@ -80,9 +92,14 @@ If a substep genuinely does not apply to the part in front of you:
 
 1. Tap **Mark N/A**
 2. Choose a reason code
-3. Add a note explaining why
 
-Both the reason and the note are required, and both stay in the part's record.
+The reason code is required — the dialog will not submit without one — and it stays
+in the part's record.
+
+!!! tip "Add a note if the reason code doesn't tell the whole story"
+    Notes are optional and the N/A dialog does not ask for one, so if the *why*
+    matters beyond the code, put it in the step's notes or a shift note. Nothing
+    will prompt you for it.
 
 !!! warning "Some substeps can never be N/A"
     Safety-critical substeps — torque on safety-critical fasteners, witnessed
@@ -176,9 +193,11 @@ retracts the wrong attempt.
     The operator-facing symptom is "my lot has stopped moving". If a lot stalls
     with no obvious blocker, check the traveler for a voided check.
 
-On a step running in **sequential** mode, voiding an earlier substep also
-re-blocks the substeps after it — the work downstream of the retracted record
-has to be redone too, in order.
+On a step running in **sequential** mode, voiding an earlier substep blocks that
+substep only. Sequencing is checked when a capture is *written*, so it stops you
+recording substep 3 before substep 2 — it does not retract substep 3 once it
+exists. Completions already made further down the step stay valid, and only the
+voided one has to be redone.
 
 !!! note "Voiding retracts and annotates; it never removes"
     A voided completion stays in the list, struck through, showing **who voided
@@ -286,8 +305,55 @@ If the part doesn't move, it's for one of these reasons:
 
 !!! warning "First Piece Inspection holds the whole step"
     If the step's FPI hasn't been signed off, no part at that step advances.
-    **Complete step** becomes the buy-off action for whoever is authorised to
-    sign it.
+    **Complete step** stays where it is — it is what commits your captures, and the
+    buy-off is refused until they are in. A separate **Sign off first piece** /
+    **Get QA sign-off** button appears beside it once the first piece is ready, for
+    whoever is authorised to sign.
+
+## When the terminal or scanner is down
+
+**There is no offline mode.** The player needs the server, so if the tablet,
+network or scanner is out, work does not stop — the **paper traveller** does.
+
+Print the traveller for the work order before you need it. It carries, per
+operation, **Operator / Date**, **Inspector / Date**, **Acc**, **Rej** and
+**Remarks** write-in columns, a **Sign-off Key** for initials, and the header
+barcode.
+
+!!! important "Paper is a fallback, not a second record"
+    The traveller says so itself: *"The digital work order is the system of
+    record"*, and *"paper sign-offs are a fallback; the authoritative sign-off is
+    the digital one."*
+
+    So the paper does not replace the record — it **holds** it until someone can
+    enter it.
+
+### Catching up afterwards
+
+1. Scan the header barcode, or type the work order, to get back to the job
+2. Work each substep as normal, entering the values from the sheet
+3. Note on the sheet who signed each operation — the Sign-off Key initials are
+   the record of that, and the paper stays in the binder
+
+!!! warning "A catch-up is stamped with YOU and with NOW — it cannot be backdated"
+    Every entry records **the person typing it** and **the moment it is typed**.
+    You cannot enter a substep under a colleague's name, and you cannot record
+    Tuesday's date for work done on Tuesday: `completed_by` is always the signed-in
+    user and `completed_at` is set by the server as the row is written.
+
+    So a catch-up traveller will legitimately disagree with the binder on both
+    names and times, and an auditor will see both. **That is why the paper is the
+    record of who did the work and when** — keep the sheet, reference it in the
+    notes, and do not expect the digital entry to reproduce it.
+
+    If attribution matters for a particular operation — a witnessed sign-off, a
+    QA buy-off — have **that person** enter it themselves rather than catching it
+    up on their behalf.
+
+!!! tip "Scanning still works on paper"
+    The header carries the work-order barcode precisely so the sheet can take
+    you back to the right job without typing. See
+    [Scanning](../supply/locations.md#scanning).
 
 ## Next Steps
 

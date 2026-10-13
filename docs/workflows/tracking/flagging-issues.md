@@ -122,30 +122,12 @@ The quality report tracks containment activities.
 
 Connect related issues:
 
-### Link to Previous Reports
-If this is a recurring issue:
-
-1. Open the quality report
-2. Click **Link Related**
-3. Search for previous reports
-4. Select related items
-
 ### Link to CAPA
 If a CAPA is created:
 
 1. The quality report links to the CAPA
 2. Track investigation through CAPA
 3. Closure requires CAPA completion
-
-## Customer-Reported Issues
-
-When a customer reports a problem:
-
-1. Create a quality report
-2. Select **Source: Customer**
-3. Enter customer complaint reference
-4. Link to affected shipped parts
-5. Initiate RMA process if needed
 
 ## Operator Notifications
 

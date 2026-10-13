@@ -31,7 +31,7 @@ As a Customer user, you can:
 - Access shared documents
 - View part information
 
-You have read-only access limited to your company's data.
+Your access is limited to orders you own or were invited onto. It is read-only for order and production data; you can respond to approvals sent to you and invite other viewers onto your own orders.
 
 ## Getting Started
 
@@ -200,9 +200,20 @@ No, the portal is read-only. Contact your supplier to request changes.
 As a customer portal user:
 
 - You cannot edit orders or parts
-- You cannot see internal quality issues
-- You cannot access other customers' data
-- You cannot create documents or records
+- You cannot see CAPAs, NCR analysis or other internal quality investigations
+- You cannot access another customer's data — every list is filtered to orders you
+  own or were invited onto
+
+!!! note "You can see quality reports on your own parts"
+    Inspection records and their defects are visible to you where they sit on a part
+    belonging to one of your orders. What stays internal is the investigation around
+    them — CAPAs, corrective actions and NCR analysis.
+
+!!! note "A few things you can write"
+    The portal is read-only for *order data*, but not for everything. You can
+    **respond to an approval** sent to you — which records an electronic signature
+    against your name — and you can **invite another viewer** onto an order you
+    own, so a colleague can follow it without an account of their own.
 
 ## Getting Help
 

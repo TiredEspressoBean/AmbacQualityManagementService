@@ -62,8 +62,11 @@ the better pairing when it has a choice.
     two into a figure neither machine achieves.
 
 !!! warning "Eligibility is also a constraint"
-    A step with no eligible machine cannot be scheduled on one. If work is
-    landing in **Not scheduled**, check here before assuming a capacity problem.
+    A step with no eligible machine cannot be scheduled on one. It is placed
+    anyway, as an interval with no machine behind it — so a missing pairing does
+    not refuse the work, it quietly plans it against nothing. Nothing in **Not
+    scheduled** will point at it, which is exactly why it is worth checking these
+    rows directly.
 
 ## Changeovers
 

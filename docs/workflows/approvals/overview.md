@@ -50,12 +50,15 @@ Due Date, and Status.
 
 ## Who can approve
 
-Approval is authorized **per request**, not by holding a permission. You can
-respond only if you are an assigned approver on that request — by name or
-through a group — and have not already responded.
+Approving takes **both** a permission and an assignment, and the permission is
+checked first. You need `respond_to_approval` to respond, claim or delegate at
+all; then, on that request, you must be an assigned approver — by name or
+through a group — and not have already responded.
 
-An administrator who was not assigned sees no action. Granting a permission
-will not change that; the assignment is what matters.
+So an assigned approver whose role lacks `respond_to_approval` is refused, and
+an administrator who holds the permission but was not assigned sees no action.
+Granting the permission alone will not put someone on a request, and being on a
+request will not substitute for the permission.
 
 ### How approvers get assigned
 

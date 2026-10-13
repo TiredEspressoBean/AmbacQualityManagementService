@@ -482,8 +482,10 @@ carries **RTV sheet (PDF)** for lots waiting to go back or already returned.
 
 !!! note "Rework and repair are not offered on a material lot"
     You cannot rework bought stock into conformance — it either serves, goes
-    back, or is scrapped. Completing a return-to-supplier disposition ships the
-    lot back.
+    back, or is scrapped. Note that a return-to-supplier disposition does not
+    ship anything by itself: the lot stays **Rejected** until someone uses **Ship
+    back** on the dock, which is what both moves it to Returned and closes the
+    disposition.
 
 ### The inspection record
 

@@ -69,8 +69,8 @@ that much off and the rest stays"* — so a partial return works.
 
 !!! note "Customer property is identified and protected throughout (ISO 9001 §8.5.3)"
     Consumption draws it only for that customer's work, requirements never cover
-    anyone else's demand with it, dock metrics exclude it from receipts, and the
-    lot label prints the owner *"so nobody draws it into someone else's job"*.
+    anyone else's demand with it, dock metrics leave it out of the rejected-PPM
+    figure, and the lot label prints the owner *"so nobody draws it into someone else's job"*.
 
 ## Seeing whether you are on time
 

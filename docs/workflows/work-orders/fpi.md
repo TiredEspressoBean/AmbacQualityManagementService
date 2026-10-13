@@ -36,19 +36,23 @@ See [Step Configuration](../../admin/processes/steps.md).
 
 When enabled, the first part at that step triggers FPI workflow.
 
-### FPI Scope Options
+### Scope is per work order
 
-| Scope | FPI Required | Use Case |
-|-------|--------------|----------|
-| **Per Work Order** | Once per work order | Default - validates setup for each job |
-| **Per Shift** | Each shift change | High-volume continuous production |
-| **Per Equipment** | Each machine change | Multi-machine environments |
-| **Per Operator** | Each operator change | Operator-specific quality verification |
+**One buy-off releases the step for the whole work order.** Once a first piece is
+signed off at a step, every part at that step may proceed — regardless of shift
+change, machine change or who is running it.
 
-Choose scope based on what changes could affect quality. For example:
-- **Per Shift**: If setup drifts overnight, verify at shift start
-- **Per Equipment**: If different machines have different characteristics
-- **Per Operator**: If operator technique significantly affects quality
+!!! warning "The per-shift and per-equipment settings do not hold work"
+    A step carries an FPI *scope* setting offering Per Shift and Per Equipment, and
+    it does change which inspection **records** get created — a new shift or a
+    different machine mints its own. But the gate that actually holds parts ignores
+    it: one PASSED or WAIVED inspection satisfies the step for the entire work
+    order either way.
+
+    So the extra records read as per-shift control that is not enforced. **Do not
+    rely on it.** If a shift or machine change genuinely needs re-verification,
+    make it a separate step or a check in the work instruction, where it will
+    actually hold.
 
 ## FPI Workflow
 
@@ -100,6 +104,12 @@ If rejected:
 5. FPI repeats
 
 ### Conditional Pass
+
+!!! note "Planned Feature"
+    Conditional Pass exists as a recordable result, but nothing writes it yet:
+    the pass and fail actions each set their own result outright, and the only
+    outcomes you can record today are pass, fail, waive and acknowledge. There is
+    no path to a conditional pass in the product.
 
 An inspection can also be recorded as a **Conditional Pass** — accepted with a
 qualification rather than a clean pass or an outright fail. The record keeps
@@ -208,14 +218,14 @@ When FPI fails:
 4. **New first piece** produced after adjustment
 5. **Repeat FPI** on new first piece
 
-Multiple failures may trigger:
+!!! note "Nothing counts the failures for you"
+    Each failure is recorded and emits an `fpi.decided` event, but no escalation
+    is built in — nothing notifies on the second failure or places a hold on the
+    third. Repeated failures are a judgement someone makes from the record.
 
-- Supervisor notification
-- Quality hold
-- Root cause investigation
-
-!!! tip "Demo: Multiple FPI Failures"
-    If INJ-0042-025's FPI fails twice, Production Manager Jennifer Walsh receives an escalation notification. After 3 failures, a quality hold is automatically placed and investigation is required before production continues.
+    If you want to be told, that is a [notification
+    rule](../../admin/setup/notification-rules.md) on `fpi.decided`. The hold, if one
+    is warranted, is still placed by hand.
 
 ## FPI Metrics
 
@@ -238,7 +248,7 @@ FPI is routine; FAI is comprehensive qualification.
 
 | Permission | Allows |
 |------------|--------|
-| `submit_fpi` | Submit first piece for review |
+| `view_fpirecord` / `add_fpirecord` | See and start a first-piece inspection |
 | `sign_off_fpi` | Approve/reject FPI |
 | `view_fpirecord` | View FPI status and records |
 

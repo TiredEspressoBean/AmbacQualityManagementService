@@ -25,14 +25,22 @@ happened to the jobs already running under the old version.
     request raised.
 
 !!! warning "A tenant needs its change-control approval templates"
-    Submitting a PCR looks up the tenant's **`PCR_APPROVAL`** template, and the
-    later stages need **`PCO_APPROVAL`** and **`PCN_RELEASE`**. Without them the
-    submit refuses with *"PCR_APPROVAL approval template not found. Please
-    configure approval templates."*
+    Submitting a PCR looks up the tenant's **`PCR_APPROVAL`** template, and
+    approving the PCO needs **`PCO_APPROVAL`**. Without them the step refuses
+    with *"PCR_APPROVAL approval template not found. Please configure approval
+    templates."*
 
-    New tenants get all three from the defaults. An older tenant may only have
+    New tenants get these from the defaults. An older tenant may only have
     the retired **`ECO`** template, which nothing looks up — see
     [Approval Templates](../../admin/setup/approval-templates.md).
+
+!!! note "Planned Feature"
+    A **`PCN_RELEASE`** template is seeded and appears in the template list, but
+    no stage looks it up — releasing a PCN today checks only that the PCN is in
+    Draft and that the person releasing it is not the one who approved the PCO.
+    An approval workflow on PCN release is planned. Until then, treat the
+    segregation-of-duties check as the whole of the gate, and do not expect the
+    template's approvers to be consulted.
 
 ## The three artifacts
 
@@ -59,10 +67,12 @@ A proposal to change a specific approved process.
 | **Rejected** | Declined |
 | **Cancelled** | Withdrawn |
 
-!!! note "One open change per process"
-    A process can have at most **one** open PCR at a time (Draft, Submitted,
-    Under Review, or Approved). If you can't open a change, check whether one is
-    already in flight against that process.
+!!! note "Several open changes against one process are allowed"
+    Nothing stops a second PCR being raised against a process that already has
+    one in flight, and proposing a change deliberately permits multiple drafts.
+    Conflicts between them are detected at **PCR approval** time, not prevented
+    at creation — so two people can draft competing changes, and the second one
+    approved is where the clash surfaces.
 
 Submitting a PCR snapshots the in-flight work orders it would affect and records
 the baseline process version, so the impact is captured at proposal time rather

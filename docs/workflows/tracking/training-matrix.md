@@ -24,11 +24,13 @@ The footer shows **how many people can cover each skill**.
 |--------|----------------|
 | **Operators** | How many people are in scope |
 | **People with role gaps** | Someone is assigned a role they aren't fully qualified for |
-| **Skills at coverage risk** | Only one person can do it |
+| **Skills at coverage risk** | One person can do it — or nobody can |
 | **Expiring soon** | Qualifications about to lapse |
 
-!!! warning "Single coverage is a staffing risk"
-    A skill only one person holds means that person's absence stops that work.
+!!! warning "Thin coverage is a staffing risk"
+    The tile counts every skill with one qualified person or none, so a skill
+    nobody holds is in the same number as a skill one person holds. Either way
+    that work stops — read the matrix itself to see which case each skill is.
     The matrix surfaces this deliberately — it's the number worth acting on
     before it becomes urgent.
 

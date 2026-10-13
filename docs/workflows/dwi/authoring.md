@@ -104,7 +104,7 @@ sampling rule to check only the parts that rule selects. See
 | Setting | Effect | Use when |
 |---------|--------|----------|
 | **Optional** | Skippable, nothing recorded | The substep genuinely may not be needed and you don't need to know |
-| **Allow N/A** | Skippable with a reason code and a note | You need a recorded reason why it didn't apply |
+| **Allow N/A** | Skippable with a reason code | You need a recorded reason why it didn't apply |
 | **Safety-critical** | Can never be marked N/A | "Didn't apply" is never acceptable |
 
 Mark a substep **safety-critical** for torque on safety-critical fasteners,

@@ -82,14 +82,6 @@ The history tracks all part-related events:
 | Document Attached | File linked to part |
 | Certificate Generated | CoC or similar created |
 
-## Filtering History
-
-For parts with extensive history:
-
-- **By Event Type**: Show only transitions, only measurements
-- **By Date Range**: Focus on specific period
-- **By User**: See actions by specific person
-
 ## Exporting History
 
 !!! note "No export from the history view"
@@ -166,10 +158,11 @@ See your administrator for specific policies.
 For integrations, part history is available via API:
 
 ```
-GET /api/parts/{part_id}/history/
+GET /api/Parts/{part_id}/history/
 ```
 
-Returns JSON with all events, filterable by type and date.
+Note the capital **P**. The endpoint returns JSON with all events in order and
+takes no filters — only `limit` and `offset` for paging. Filter on your side.
 
 ## Related History
 

@@ -41,6 +41,39 @@ Due Date, Customer, Order, and a Details link.
     notes. The audit trail will not carry it for you, and six months later
     "someone made this urgent" is all that remains.
 
+## When scrap outruns the gross-up
+
+Planning a work order grosses the started quantity up for **expected** scrap. When
+**actual** scrap runs past that, the units still alive fall below the ordered good
+count and the job will finish short.
+
+**Make-up planning tops it back up.** It reports the gap, and creating the
+replacements is an explicit action:
+
+| Figure | Means |
+|--------|-------|
+| **Target good** | What the order owes |
+| **Alive** | Units not scrapped or cancelled |
+| **Shortfall** | What make-up would create |
+
+Replacements are created at the route's **first step**, flagged as make-up, and
+the schedule is marked stale so the next solve picks them up.
+
+!!! important "It is planner-confirmed, never automatic"
+    The system reports the shortfall; a person creates the replacements. That is
+    deliberate for AS9100 and ITAR work — spawning units onto a job is a decision
+    with a paper trail, not a side effect of scrapping something.
+
+!!! note "Top-up is iterative, so there is no gross-up on the gross-up"
+    The rule is simply *keep alive equal to target*. A replacement that later
+    scraps is covered by the next top-up, so nothing needs padding twice.
+
+!!! warning "A reman order owes no make-up"
+    Its units are **cores** — someone's actual units, received rather than made.
+    A scrapped core cannot be made up by spawning another, so the shortfall is
+    always zero there. What a scrapped core needs is a conversation with its
+    owner, not a replacement unit.
+
 ### Work Order Detail
 
 Detailed progress view includes:

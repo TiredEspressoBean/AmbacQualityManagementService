@@ -9,7 +9,14 @@ Sampling allows inspecting a subset of parts rather than 100%, based on statisti
     - QA Inspector Sarah Chen sees which parts require inspection
     - Parts INJ-0042-018 and INJ-0042-021 are currently awaiting sample inspection
 
-    **Delphi Fuel Systems** is in **tightened** state (Every 3rd Part = 33% sampling) after 2 consecutive lot failures. This demonstrates automatic switching rules.
+    Flow Testing's quality gate tightens after **3 consecutive fails**, swapping in
+    the *Enhanced Inspection* fallback: First 5 Parts **and then** Every 3rd Part.
+    It takes 10 good parts to revert. Nozzle Inspection tightens sooner — after
+    **2 consecutive fails** — and its fallback is 100% inspection, reverting after
+    15 good parts.
+
+    Note that rule sets are scoped by **step and part type**, not by supplier:
+    tightening follows the operation, and applies to everything running through it.
 
 ## What is Sampling?
 
@@ -48,11 +55,33 @@ Sample based on lot size:
 - Example: 10% of lot size
 
 ### Pure Random
-Hash-based random selection:
+Random selection — but **whether it can be re-derived depends on where the rule
+sits**, so read the warning below before relying on either property:
 
 - Unbiased sample
-- Audit-compliant algorithm
-- SHA-256 hash modulo arithmetic
+- Nobody can work out in advance which unit will be picked
+- **Cannot be reconstructed after the fact** — the choice is not derived from the
+  part, so re-running it will not produce the same answer
+
+!!! warning "Random behaves differently at step level and substep level"
+    The same **Random** rule is evaluated by two different engines:
+
+    - **On a substep** (inside a work instruction) the draw is a true random
+      number. It **cannot be reconstructed** afterwards — deliberately, so the
+      selection cannot be anticipated or replayed.
+    - **On a step** (the fallback applier) the draw is seeded from the part's
+      creation timestamp, so it **is** reproducible — asking twice gives the same
+      answer.
+
+    If reproducibility matters to you either way, do not rely on **Random**
+    guessing right. Use **Percentage**, which hashes the part's identity and is
+    reproducible wherever it runs.
+
+!!! note "If you need a sample an auditor can reproduce, use Percentage"
+    **Percentage** hashes the part's identity (SHA-256) to decide, so the same part
+    always gets the same answer and the selection can be re-derived from the record.
+    **Pure Random** does the opposite on purpose — it is the stronger choice against
+    gaming, and the weaker one for reconstruction. Pick the property you need.
 
 ## How Sampling Works
 
@@ -102,7 +131,7 @@ Sampling rules are configured by administrators:
 |------|-------------|
 | **Every Nth Part** | Inspect at regular intervals (e.g., every 5th part) |
 | **Percentage** | Inspect a percentage of the lot |
-| **Pure Random** | SHA-256 hash-based random selection for unbiased sampling |
+| **Pure Random** | Unbiased random selection; deliberately not reproducible (use Percentage if you need to re-derive it) |
 | **First N Parts** | Inspect first N parts (setup verification) |
 | **Last N Parts** | Inspect last N parts (end-of-run check) |
 | **Exact Count** | Always inspect exactly N parts (no variance) |
@@ -206,18 +235,14 @@ When parts arrive at an inspection step:
 ## Sample Selection
 
 ### Random Selection
-System randomly selects parts from the lot:
+A **Random** rule decides each part independently, at the rule's percentage.
+Whether that draw can be re-derived later depends on which engine evaluated it —
+see *Pure Random* above. A substep-level draw cannot be reconstructed; a
+step-level one is seeded from the part's creation timestamp and can.
 
-- Ensures unbiased sample
-- Parts are flagged for inspection
-- Remaining parts are not inspected
-
-### Stratified Sampling
-Sample from different production periods:
-
-- First, middle, last of run
-- Different cavities/machines
-- Different operators
+Selection is not a flag written onto the part. The system records a
+**sampling decision** for the part and the rule that decided it; what you see on
+the step is that decision, not a marker on the part itself.
 
 ## Accept/Reject Decisions
 
@@ -255,16 +280,27 @@ Combine multiple rules for complex sampling strategies:
 ```
 Rule Set: Production Inspection
 ├── First 3 Parts (setup verification)
-├── Every 10th Part (ongoing monitoring)
-└── Last 2 Parts (end-of-run check)
+└── Every 10th Part (ongoing monitoring)
 ```
 
 ### Rule Set Evaluation
 
-1. Rules are evaluated in order
-2. Part is sampled if ANY rule matches
-3. Sampling status recorded in audit log
-4. Non-sampled parts may still require QA
+Rules are evaluated in **order**, and the first rule to decide ends the
+evaluation:
+
+1. If a rule matches, the part is sampled and no later rule runs
+2. If a **First N Parts** or **Last N Parts** rule does *not* match, the part is
+   **not sampled** and no later rule runs
+3. Any other rule that does not match simply falls through to the next one
+4. Every decision, sampled or not, is written to the sampling audit log
+
+!!! warning "A First-N or Last-N rule is a gate, not an alternative"
+    Those two rule types short-circuit the whole set. In the example above, part
+    7 is **not** sampled: the First-3 rule does not match it, so evaluation stops
+    there and the Every-10th rule never runs. Put a First-N or Last-N rule in a
+    set only when you mean "sample inside this window and nowhere else" — to
+    combine a setup check with ongoing monitoring, order the ongoing rule
+    first, or use separate rule sets.
 
 See [Sampling Rules Configuration](../../admin/setup/sampling-rules.md) for setup.
 
@@ -309,7 +345,9 @@ All sampling decisions are logged:
 |------------|--------|
 | `view_samplingrule` | View sampling configuration |
 | `change_samplingrule` | Modify sampling rules |
-| `add_samplingdecision` | Record a sampling decision |
+
+Sampling decisions are written by the engine, not by people — recording one is
+part of running the step, and is covered by `change_stepexecution`.
 
 ## Next Steps
 

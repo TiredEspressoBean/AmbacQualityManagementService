@@ -31,8 +31,9 @@ who has actually read it.
 
 Default is **everyone on the floor**. You can narrow it to specific roles:
 
-Auditor · Customer · Document Controller · Engineering · Operator ·
-Production Manager · Purchasing · QA Inspector · QA Manager · Shift Lead ·
+The list is every role in your tenant: Auditor · Customer · Document
+Controller · Engineering · Operator · Planner · Production Manager ·
+Purchasing · QA Inspector · QA Manager · Receiving · Shift Lead · Shipping ·
 Tenant Admin
 
 Narrow the audience when a note is only relevant to one group — a note everyone

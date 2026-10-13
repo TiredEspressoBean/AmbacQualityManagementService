@@ -191,15 +191,16 @@ Click a document to view:
 - Linked records
 
 ### Viewing Files
-- Click **Download** to view documents
-- Files open in a new browser tab
-- Supported formats display in browser (PDF, images)
+- Click **Download** to get the file
+- A browser tab opens briefly, downloads the file and closes itself
+- Nothing displays in the browser — open the downloaded file to read it
 
 ### Actions Available
+The detail page header offers:
+
 - Download
-- View history
-- Create revision
-- Link to records
+- Create Revision
+- Edit — where linking and the rest of the metadata live
 
 ## Downloading Documents
 
@@ -228,9 +229,12 @@ Documents can be linked to:
 
 From document:
 1. Open document
-2. Click **Link to...**
-3. Select record type
-4. Search and select record
+2. Click **Edit**
+3. Find the **Link To (Optional)** field
+4. Search and select the record, then save
+
+There is no **Link to...** button on the document itself — linking is part of
+the edit form.
 
 From record:
 1. Open order, part, etc.

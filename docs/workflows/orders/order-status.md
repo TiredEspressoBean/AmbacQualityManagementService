@@ -8,10 +8,14 @@ Monitor order progress and understand status indicators throughout uqmes.
 
 The main **Tracker** page shows all orders as cards:
 
-- **Progress bar** - Visual completion percentage
-- **Part counts** - How many parts at each step
-- **Status badge** - Current order status
-- **Due date** - With overdue highlighting
+- **Order name** and the **company** it is for
+- **Delivery date**, with a days-remaining badge ("Today", "6d") that disappears
+  once the date is past
+- **Current stage** - the stage the order is at, or "Not started"
+- **Progress bar** - stages completed out of total
+
+The card carries no part counts, no order-status badge and no overdue
+highlighting — for those, open the order.
 
 ### Order Detail Page
 
@@ -32,17 +36,20 @@ The **Analytics** dashboard shows aggregate metrics:
 
 ## Progress Calculation
 
-Order progress is calculated as:
+Order progress is counted in **stages, not parts**:
 
 ```
-Progress = (Parts at final step + Completed parts) / Total parts × 100%
+Progress = Completed stages / Total stages × 100%
 ```
+
+The stages are the steps of the work order's process, in order. A stage counts
+as complete when no active part is sitting on it and at least one part has
+reached a later step.
 
 For example:
-- 10 total parts
-- 3 completed
-- 2 at final step
-- Progress = (3 + 2) / 10 = 50%
+- 11 stages on the order
+- 3 complete
+- Progress = 3 / 11 = 27%
 
 ## Status Indicators
 
@@ -103,11 +110,6 @@ Use filters to find specific orders:
 - Due this month
 - Overdue only
 
-### By Priority
-- Urgent-priority orders
-- High priority
-- Normal
-
 ## Searching Orders
 
 The search bar finds orders by:
@@ -116,19 +118,6 @@ The search bar finds orders by:
 - Customer name
 - Part serial numbers
 - Notes content
-
-## Order Timeline
-
-View the history of an order:
-
-1. Open the order
-2. Click the **History** or **Activity** tab
-3. See chronological events:
-   - Order created
-   - Parts added
-   - Status changes
-   - Step transitions
-   - Quality reports
 
 ## Notifications
 

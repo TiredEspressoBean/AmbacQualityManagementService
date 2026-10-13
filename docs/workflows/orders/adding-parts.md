@@ -4,42 +4,46 @@ Parts are the individual items tracked through production. This guide covers add
 
 ## Adding Parts Manually
 
-### From the Order Detail Page
+!!! warning "Not from the order page"
+    The order detail page is read-only — it is the customer-facing view of an
+    order and has no **Add Parts** control. Parts are added against the *work
+    order* that carries the production.
 
-1. Open the order
-2. Scroll to the **Parts** section
+### From the Work Orders Control Center
+
+1. Go to **Production** > **Work Orders**
+2. Tick exactly one work order — the bulk bar appears at the bottom
 3. Click **Add Parts**
-4. Fill in the form:
+4. Fill in the dialog:
 
 | Field | Description |
 |-------|-------------|
-| **Part Type** | Type of part to create |
-| **Quantity** | Number of parts to add |
-| **Lot Number** | Optional batch identifier |
-| **Serial Prefix** | Prefix for auto-generated serial numbers |
+| **Part Type** | Shown, not chosen — it comes from the work order's process |
+| **Start Step** | Which step of the process the new parts begin at |
+| **Quantity** | Number of parts to create |
+| **ERP ID Start** | The number the ERP IDs count up from |
 
-5. Click **Add Parts**
+5. Click to confirm, and the parts are created attached to that work order
 
-### Example
+!!! note "The work order needs a process"
+    If the work order has no process assigned, the dialog refuses with "This
+    work order has no process — assign a process first." There are no steps to
+    start the parts at until one is.
 
-Adding 10 widgets with serial numbers:
+## ERP ID Generation
 
-- Part Type: `Widget Assembly`
-- Quantity: `10`
-- Serial Prefix: `WA-`
+Each part gets an ERP ID built from the part type's own prefix and a counter:
 
-Creates: `WA-001`, `WA-002`, ... `WA-010`
+```
+ERP ID = <part type's ID prefix><counter padded to 4 digits>
+```
 
-## Serial Number Generation
+The counter starts at the **ERP ID Start** you entered and increments by one per
+part. A part type with prefix `WA` and an ERP ID Start of 1 gives `WA0001`,
+`WA0002`, ... `WA0010` for ten parts. A part type with no prefix configured
+falls back to `P`.
 
-Serial numbers are generated automatically based on configuration:
-
-### Sequential (Default)
-Parts get incrementing numbers: `001`, `002`, `003`
-
-### With Prefix
-Add a prefix for clarity: `WA-001`, `WA-002`
-
+You do not type the prefix — set it on the part type.
 
 ## Lot Numbers
 
@@ -105,22 +109,10 @@ To remove parts from an order:
 2. Click **Remove** or use the action menu
 3. Confirm the removal
 
-!!! note "Audit Trail"
-    Removed parts are soft-deleted. The audit trail retains the history for compliance.
-
-## Splitting Parts
-
-To move parts to a different order:
-
-1. Select the parts
-2. Click **Move to Order**
-3. Select the destination order
-4. Confirm
-
-This is useful when:
-- Customer splits a PO
-- Parts need separate tracking
-- Orders are combined
+!!! note "The parts are not deleted"
+    Removing a part from an order only clears its order link — the part record
+    survives, unattached to any order, and nothing is archived. If you remove a
+    part by mistake you will need to set its order again rather than restore it.
 
 ## Next Steps
 

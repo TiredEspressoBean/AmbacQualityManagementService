@@ -31,7 +31,8 @@ perform.
 
 On the [Schedule board](gantt.md), **Scheduling settings** (the gear) → *What
 the scheduler may plan* → **Release gate**, as *Date-driven (schedule everything
-open)* or *Planner-released*. It is a tenant setting and applies on the next
+open)* or *Planner releases work (schedule released only)*. It is a tenant
+setting and applies on the next
 Solve, What-if or Dispatch.
 
 !!! warning "The pacing controls are hidden until the gate is planner-released"

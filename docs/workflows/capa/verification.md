@@ -41,10 +41,16 @@ Common verification tasks:
 
 4. Decide the effectiveness result
 
-!!! warning "Self-verification is recorded"
-    If the person verifying is the CAPA's own initiator or assignee, the record
-    is flagged **self-verified**. It is allowed, but it is visible — an auditor
-    can see which CAPAs were closed on their owner's own word.
+!!! warning "Self-verification is refused unless the CAPA allows it"
+    If the person verifying is the CAPA's own initiator or assignee, the system
+    **refuses** — *"Self-verification is not permitted for this CAPA"*. Independence
+    is the default, not a preference.
+
+    It can be allowed per CAPA, and only deliberately: the CAPA must carry
+    `allow_self_verification`, which is **off** unless someone turns it on, and the
+    verification then also requires a written justification of at least ten
+    characters. The record is flagged **self-verified** so an auditor can see which
+    CAPAs were closed on their owner's own word.
 
     The same flag exists on the root cause analysis, for a conductor who
     verifies their own RCA.
@@ -53,23 +59,19 @@ Common verification tasks:
 
 | Outcome | Meaning | Next step |
 |---------|---------|-----------|
-| **Confirmed Effective** | The action worked | The CAPA can close |
+| **Confirmed Effective** | The action worked | The CAPA closes, there and then |
 | **Not Effective** | It did not work | Revisit the root cause and raise further action |
 | **Inconclusive** | Not yet decidable — the default | Keep monitoring and gather more data |
 
 Inconclusive is the starting state, so a verification that was opened but never
 concluded reads as inconclusive rather than as a pass.
 
-## Effectiveness Review
+## Effectiveness Criteria
 
-Schedule a follow-up effectiveness review:
-
-1. Set review date (e.g., 30/60/90 days post-closure)
-2. Monitor for recurrence
-3. Review related metrics
-4. Document continued effectiveness
-
-### Effectiveness Criteria
+The verification record stores the criteria you judged against, in
+**Verification criteria**. Write them so someone else can tell whether they were
+met — there is no scheduled follow-up review and no review date to set, so the
+criteria you record here are the whole of the evidence an auditor will see.
 
 Define measurable criteria:
 
@@ -107,53 +109,27 @@ Document lessons learned:
 - How it was fixed
 - How to prevent in future
 
-## Closure Approval
-
-CAPAs require approval to close. The closure process uses the system's approval workflow.
-
-### Submitting for Closure
-
-1. Ensure all tasks complete
-2. Verification documented
-3. Request approval via the **Approval** tab
-4. Add closure summary/justification
-5. Submit for approval
-
-### Approval Workflow
-
-1. Request goes to approver(s)
-2. Approver reviews:
-   - Problem resolved
-   - Root cause addressed
-   - Actions verified effective
-   - Documentation complete
-3. Approver approves or returns
-
-### Approver Actions
-
-| Action | Effect |
-|--------|--------|
-| **Approve** | CAPA closes |
-| **Reject** | Returns to owner with comments |
-| **Request Info** | Needs more detail |
-
-### Approval Signature
-
-Closure requires electronic signature:
-
-1. Enter password to verify identity
-2. Signature recorded with timestamp
-3. Audit trail created
-
 ## Closing the CAPA
 
-On approval:
+There is no separate closure step and no closure approval. **Recording a
+*Confirmed Effective* verification closes the CAPA**, in the same action:
 
 1. Status changes to **Closed**
-2. Closure date recorded
-3. Team notified
-4. CAPA archived
-5. Metrics updated
+2. The completion date is set to today
+3. A status transition is written with your verification notes
+
+Closing is therefore the verification decision, and it is gated by
+`verify_capa`. If you do not hold that permission the system does not refuse
+outright — a colleague who does hold it can co-sign in place, by supplying their
+email and password on the verification. The verification, and the closure, are
+then attributed to **them**, not to you.
+
+!!! note "The Approval tab is not the closure gate"
+    A CAPA of **Critical** or **Major** severity does raise a `CAPA_APPROVAL`
+    request — but at **creation**, not at closure, and only when your tenant has a
+    CAPA_APPROVAL template configured. That is the request you see on the Approval
+    tab. Approving it does not close the CAPA, and a CAPA can close whether or not
+    it was ever approved.
 
 ## Closure Summary
 
@@ -166,31 +142,26 @@ The closure record includes:
 | **Corrective Actions** | What was done |
 | **Verification** | Proof of effectiveness |
 | **Preventive Actions** | Systemic changes |
-| **Lessons Learned** | Key takeaways |
-| **Approval** | Who approved, when |
+| **Verification** | Who verified, when, and whether it was self-verified |
 
-## Reopening CAPAs
+## Closed is the end of the line
 
-If the problem recurs:
+**A closed CAPA cannot be reopened.** `Closed` is a terminal status — there is no
+Reopen action and no transition out of it. If the problem recurs, raise a new
+CAPA and reference the old one.
 
-1. Go to closed CAPA
-2. Click **Reopen**
-3. Enter reason
-4. CAPA returns to Open status
-5. Continue investigation
-
-Reopened CAPAs are tracked as:
-
-- Indicator of ineffective closure
-- Metric for CAPA quality
+The one route back is *before* closure: a **Not Effective** verification returns
+the CAPA from Pending Verification to **In Progress**, marks the root cause
+analysis for review, and raises a follow-up corrective task due in 30 days. That
+is the only reopening the system does, and it happens because the CAPA never
+closed.
 
 ## Post-Closure Monitoring
 
 After closure:
 
-1. **Effectiveness Review**: Scheduled check
-2. **Metrics Monitoring**: Watch for recurrence
-3. **Audit Inclusion**: Include in quality audits
+1. **Metrics Monitoring**: Watch for recurrence
+2. **Audit Inclusion**: Include in quality audits
 
 ## CAPA Metrics
 
@@ -200,7 +171,7 @@ Closure-related metrics:
 |--------|-------------|
 | **On-time closure** | % closed by due date |
 | **Average days to close** | Cycle time |
-| **First-time effectiveness** | % not reopened |
+| **First-time effectiveness** | % confirmed on the first verification |
 | **Verification compliance** | % with proper verification |
 
 ## Regulatory Considerations
@@ -218,10 +189,14 @@ Ensure documentation meets requirements.
 
 | Permission | Allows |
 |------------|--------|
-| `verify_capa` | Verify CAPA effectiveness |
-| `close_capa` | Submit for closure |
-| `approve_capa` | Approve closure |
-| `change_capa` | Reopen closed CAPAs |
+| `verify_capa` | Record the effectiveness outcome — which is what closes the CAPA. Co-signable by a holder when the caller lacks it. |
+
+`close_capa` and `approve_capa` exist as permissions, but **nothing checks them**.
+They are segregation-of-duties markers: they are granted alongside `verify_capa`
+to QA Manager and Tenant Admin so that the people who may sign off are an
+identifiable set, separate from the people doing the work. There is no
+submit-for-closure action, no closure approval, and no reopen, so there is
+nothing for them to gate.
 
 ## Next Steps
 

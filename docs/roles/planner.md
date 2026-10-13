@@ -19,8 +19,12 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
     [Who can touch the board](../workflows/scheduling/gantt.md#who-can-touch-the-board).
 
     Two things stay with the manager even though they look adjacent: **work
-    centres and equipment** (Engineering defines the plant; the planner uses it)
-    and **cancelling a work order** — breaking a commitment to a customer.
+    centres** (Engineering defines the plant; the planner uses it) and
+    **cancelling a work order** — breaking a commitment to a customer, which
+    needs `cancel_workorder`.
+
+    **Equipment is yours**, despite sitting next to work centres: you can add and
+    change equipment, and only *deleting* it is manager-tier.
 
 !!! info "How to use this guide"
     It maps the decisions you own to the surface each is made on, and links to
@@ -166,15 +170,13 @@ back empty, nothing in the planning horizon fits.
     of trained people, not equipment — that is the training matrix's problem,
     not the shop floor's.
 
-!!! warning "It measures the window, not the month"
-    Capacity is measured over the window from now to the due date. This matters
-    because an earlier version measured whole month buckets, which credited a
-    full extra month whenever the window crossed a boundary — over-promising
-    352 hours where 112 existed, and only for roughly the first third of each
-    month.
+!!! info "It measures the window, not the month"
+    Capacity-to-promise counts the hours available between **now and the due
+    date you asked about** — not the hours in the months that window touches.
 
-    If a promise looks surprisingly generous, check the arithmetic rather than
-    trusting it.
+    So the same quantity can be refused for one date and promised for a date a
+    week later, and asking again tomorrow gives you slightly less capacity than
+    today. That is the arithmetic working, not drifting.
 
 !!! danger "Missing cycle times make every capacity answer optimistic"
     An operation with no cycle time contributes **no load**. The capacity

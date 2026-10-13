@@ -38,7 +38,7 @@ Instructions](../dwi/authoring.md).
 | **Description** | No | Explanation of the issue |
 | **Detected By** | No | Who found it |
 | **Verified By** | No | Who verified it |
-| **First Piece Inspection** | No | Links the report to an FPI record |
+| **First Piece Inspection** | No | A flag marking *this* report as the first-piece inspection. It does not link to a separate FPI record. |
 | **Archived** | No | Archive the report |
 
 !!! note "Defects are added separately"
@@ -87,12 +87,13 @@ Your administrator configures available error types.
 | **Major** | Out of spec, may affect function | Dimensional error, material deviation |
 | **Critical** | Safety risk or regulatory violation | Cracked safety component, wrong material in medical device |
 
-Severity affects:
+Severity is a judgement you record for the reader — nothing in the system reads
+it. It does not change notification urgency, demand an extra approval, or trip a
+CAPA threshold on its own.
 
-- Notification urgency
-- Required approvals
-- CAPA trigger threshold
-- Containment requirements
+The one place severity does bind is on the **disposition**, not the defect: a
+disposition of Critical or Major severity cannot be closed until a containment
+action is recorded on it. See [Dispositions](dispositions.md).
 
 ## Quality Report Status
 
@@ -130,6 +131,36 @@ Major or recurring issues may require CAPA:
 4. Quality report links to CAPA record
 
 See [CAPA Overview](../capa/overview.md) for details.
+
+### Deciding a failed report does *not* need a CAPA
+
+**Most failed reports don't become CAPAs** — the disposition handles that part,
+or it was a one-off with no systemic cause. ISO 9001 §10.2.1(b) asks that the
+need for action be **evaluated**, not only that action be taken. So the decision
+is recorded rather than left implied.
+
+Every failed report carries a CAPA decision:
+
+| Decision | Means | Recorded by |
+|----------|-------|-------------|
+| **CAPA raised** | A CAPA covers it | Set automatically when a CAPA links the report |
+| **No CAPA needed** | Evaluated, no systemic action required | A person, **with a reason** |
+| **Deferred** | The call is being put off | A person, **with a reason** |
+| *(undecided)* | Nobody has looked yet | — the default |
+
+!!! important "The reason is required, and it is what an auditor reads"
+    You cannot decline a CAPA silently. *"Say why"* is enforced — a decision
+    without a reason is refused.
+
+!!! note "Undecided is visible, not invisible"
+    Before this existed, a failed report nobody promoted looked exactly like one
+    nobody had **looked at**. The NCR page lists failed reports still undecided,
+    so the backlog of unevaluated nonconformities is a number you can see.
+
+!!! tip "You can change a decision"
+    A decision can be revised, and the audit log keeps the earlier one. What you
+    cannot do is set **CAPA raised** by hand — that follows from actually
+    raising the CAPA, so the two can never disagree.
 
 ## Searching Quality Reports
 

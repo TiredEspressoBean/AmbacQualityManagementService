@@ -4,22 +4,27 @@ Add new documents to the uqmes document library.
 
 ## Supported File Types
 
-Common supported formats:
+The file extension must be on this list. Anything else is refused on upload.
 
 | Category | Extensions |
 |----------|------------|
-| **Documents** | PDF, DOC, DOCX, TXT, RTF |
+| **Documents** | PDF, DOC, DOCX, TXT |
 | **Spreadsheets** | XLS, XLSX, CSV |
-| **Images** | PNG, JPG, JPEG, GIF, BMP, TIFF |
-| **Drawings** | DWG, DXF, STEP, IGES |
 | **Presentations** | PPT, PPTX |
-| **Archives** | ZIP |
+| **Images** | PNG, JPG, JPEG, GIF, WEBP, SVG |
+| **3D / CAD** | GLB, GLTF, STEP, STP, STL |
+| **Data** | JSON, XML |
 
 PDF is recommended for controlled documents (non-editable, consistent display).
 
+!!! warning "Common formats that are not accepted"
+    RTF, BMP, TIFF, DWG, DXF, IGES and ZIP are **refused**. Native CAD drawings
+    need exporting — STEP is accepted, IGES is not. Convert anything else to PDF
+    before uploading.
+
 ## File Size Limits
 
-- **Maximum file size**: Configured by your administrator (typically 10-50 MB)
+- **Maximum file size**: 100 MB
 - **Recommended**: Under 5 MB for best performance
 
 For large files, consider:
@@ -27,8 +32,9 @@ For large files, consider:
 - Splitting into multiple documents
 - Using external links
 
-!!! note "Check with your administrator"
-    File size limits depend on server configuration. Contact your administrator for the specific limit in your deployment.
+!!! note "The limit is fixed"
+    100 MB is built into the application. It is not a setting, and your
+    administrator cannot raise or lower it.
 
 ## Uploading a New Document
 
@@ -53,30 +59,40 @@ For large files, consider:
 
 | Field | Description |
 |-------|-------------|
-| **Title** | Display name |
-| **Document Type** | Category |
+| **File** | The file itself |
+| **Classification Level** | Who may see the document |
+
+There is no title field. The document's name is taken from the file you upload,
+so name the file the way you want it to read in the library.
 
 ### Optional Fields
 
 | Field | Description |
 |-------|-------------|
-| **Revision** | Version identifier |
-| **Description** | Summary of contents |
-| **Effective Date** | When document becomes active |
-| **Expiration Date** | When document expires |
-| **Keywords** | Search terms |
+| **Document Type** | Category — also decides whether approval is required |
+| **Link To** | Records to attach the document to |
+| **AI Readable** | Whether the document may be used by AI features |
 
-!!! note "Document Numbering"
-    Document numbers may be auto-generated based on document type settings. Check with your administrator for your organization's numbering scheme.
+!!! note "Dates are not yours to set"
+    Effective date, review date, obsolete date and retention date are all
+    read-only. They are calculated when the document is released, from the
+    document type's review and retention periods.
 
-### Visibility Settings
+### Classification Levels
 
-| Setting | Who Can See |
-|---------|-------------|
-| **Public** | All users, including customers |
-| **Internal** | Staff only |
-| **Confidential** | Users with confidential permission |
-| **Restricted** | Specific users/groups only |
+| Level | Who can see it |
+|-------|----------------|
+| **Public** | Everyone, including customers |
+| **Internal** | All staff |
+| **Confidential** | All staff |
+| **Restricted** | All staff |
+| **Secret** | Tenant Admin and Document Controller only |
+
+Classification is a tier, not a per-document access list — you cannot name
+individual users or groups on a document. Confidential and Restricted separate
+staff from customers and auditors; every internal role holds both. **Secret** is
+the only tier that keeps a document from most of the shop. See [Document
+Library](library.md) for the detail.
 
 ## Uploading Revisions
 
@@ -106,17 +122,14 @@ After upload, you can:
 
 - **Submit for Approval** - Start approval workflow
 - **Link to Records** - Connect to orders, parts
-- **Share** - Notify specific users
 - **Edit Metadata** - Update fields
 
 ## Upload Validation
 
 The system validates:
 
-- File type allowed
-- File size within limits
-- Required metadata provided
-- Document number unique
+- The file extension is on the allowed list
+- The file is 100 MB or smaller
 
 Validation errors show before upload completes.
 

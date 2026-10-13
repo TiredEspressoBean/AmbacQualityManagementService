@@ -102,18 +102,6 @@ well. See [Signed completion](#signed-completion).
     or only records your part of it depends on its completion mode. See
     [Completion Mode](#completion-mode).
 
-## Task Dependencies
-
-Tasks can depend on other tasks:
-
-1. Edit the task
-2. In **Blocked By** section
-3. Select prerequisite tasks
-4. Task cannot start until dependencies complete
-
-Example:
-- "Implement corrective action" blocked by "Get approval for fix"
-
 ## Task Evidence
 
 Attach evidence of completion:
@@ -127,16 +115,6 @@ Attach evidence of completion:
 2. Go to **Attachments**
 3. Upload files
 4. Files are linked to CAPA record
-
-## Task Verification
-
-For critical tasks, verification may be required:
-
-1. Assignee completes task
-2. Task goes to **Pending Verification**
-3. Verifier reviews completion
-4. Verifier approves or returns
-5. Task marked **Verified** or back to **In Progress**
 
 ## Task Notifications
 
@@ -174,23 +152,15 @@ tasks inside them are.
 
 ## Reassigning Tasks
 
-If someone can't complete a task:
+There is no Reassign action. Reassignment is a plain edit of the task:
 
 1. Open the task
-2. Click **Reassign**
-3. Select new assignee
-4. Add reassignment reason
-5. Original assignee notified
+2. Change **Assigned To**
+3. Save
 
-## Task Comments
-
-Collaborate on tasks:
-
-1. Open the task
-2. Scroll to **Comments**
-3. Add comment
-4. Tag users with @mention
-5. Comments visible to team
+Nothing else happens — there is no reassignment reason to record, and neither
+the old nor the new assignee is notified, since no per-task notification rule
+ships. The change is in the audit trail.
 
 ## Task Metrics
 
@@ -211,16 +181,6 @@ The **Personal > Inbox** page shows:
 - Grouped by CAPA
 - Sorted by due date
 - Quick actions (start, complete)
-
-## Bulk Task Actions
-
-For multiple tasks:
-
-1. Select tasks (checkboxes)
-2. Choose bulk action:
-   - Mark complete
-   - Reassign
-   - Change due date
 
 ## Permissions
 
