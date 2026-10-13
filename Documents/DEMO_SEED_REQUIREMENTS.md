@@ -259,6 +259,15 @@ The draft route dead-ends too: the one DRAFT process (*Injector Reman - Authorin
 Draft (SHOWCASE)*) does have a batch substep, but all 18 work orders run APPROVED
 processes, so nothing executes it and no batch Confirm ever happens.
 
+**ADDRESSED 2026-10-13** in `seed/demo/dwi.py`, which now sets this flag at creation.
+Walked after the change: Confirm for batch raises exactly one *"Sign: Run ultrasonic
+wash cycle"* dialog and writes one completion against the `BatchExecution`
+(`step_execution` null), so it is one signature per load by construction.
+
+**Still open on the same row:** the open Cleaning load carries **one part**, so a
+single prompt does not by itself disprove per-part prompting. The structural
+linkage is the proof today; a load of several parts would make it behavioural.
+
 **What the seed should do:** set `requires_signature=True` on *Run ultrasonic wash
 cycle*. One flag. It makes the batch path reachable permanently, and it gives the demo
 two visibly different signature levels on steps people actually open — a per-part
@@ -270,6 +279,33 @@ the seed authors it up front. Anything that must be switched on inside an approv
 process is unreachable to a walker, because the approval lock is doing its job. When
 a new flag lands on a versioned, approval-locked model, the seed has to carry an
 example or the feature is undemonstrable — and in this case untestable.
+
+## 12. The authoring showcase cannot author anything
+
+**Walked 2026-10-13.** *Injector Reman - Authoring Draft (SHOWCASE)* exists so someone
+can see the substep editor in its editable state. It cannot: every one of its
+substep-bearing steps is shared with the **approved** *Injector Reman*, and
+draft-exclusive steps with substeps number **zero**.
+
+The editor is right to refuse. `SubstepEditorPage.tsx:304` derives `is_editable` from
+the parent Step's consuming Processes and requires **all** of them to be DRAFT, because
+steps are structurally shared across process versions rather than copied — see
+`Documents` on versioning, and the architecture note that steps are deliberately shared
+so date snapshots hold. Editing a shared step through a draft would silently change the
+approved process. So the page shows *"Read-only · Process not in DRAFT"* on a process
+whose own status is DRAFT, which reads like a bug and is not one.
+
+The cost is that **no authoring control in the substep editor can be demonstrated or
+walked** — including the "Verified sign-off" toggle, whose label and tooltip are correct
+in source but never render in any reachable state.
+
+**What the seed should do:** give the showcase draft at least one step of its own,
+not shared with any approved process, carrying a couple of substeps. One step is enough
+to make every authoring control reachable.
+
+**The general rule:** a "draft" that reuses an approved process's steps is not an
+authoring sandbox, it is a read-only copy. If the seed wants to show authoring, it has
+to create steps that nothing approved consumes.
 
 ## Standing rules for the rewrite
 
