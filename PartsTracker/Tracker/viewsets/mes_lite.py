@@ -1405,7 +1405,12 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             # Build materials list
             materials_used = []
             for mu in step_materials:
-                material_name = mu.lot.material_type if mu.lot and hasattr(mu.lot, 'material_type') else 'Unknown'
+                # item_name covers both kinds of lot (bulk Material, or a part type).
+                # This read `material_type`, which is NULL on every bulk-material lot;
+                # `hasattr` is always true, so the 'Unknown' fallback never fired, the
+                # field went out as null, and the generated client rejected the whole
+                # traveler — taking the step history and its void action with it.
+                material_name = (mu.lot.item_name if mu.lot else '') or 'Unknown'
                 lot_number = mu.lot.lot_number if mu.lot else None
                 materials_used.append({
                     'material_name': material_name,

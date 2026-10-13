@@ -1965,6 +1965,8 @@ export function WorkOrderControlPage() {
                                                     size="icon"
                                                     variant="ghost"
                                                     className="h-7 w-7"
+                                                    aria-label={`${isExpanded ? "Hide" : "Show"} history for ${p.serial}`}
+                                                    aria-expanded={isExpanded}
                                                     onClick={() => toggleExpanded(p.id)}
                                                 >
                                                     {isExpanded ? (

@@ -405,6 +405,25 @@ class BatchQueryableApiTests(TenantTestCase):
         self.assertGreaterEqual(len(rows), 1)
         self.assertTrue(all(row["batch_execution"] == str(self.batch.id) for row in rows))
 
+    def test_traveler_names_a_bulk_material_lot(self):
+        """A bulk-Material lot has no material_type. The traveler read that field, sent
+        material_name: null, and the generated client rejected the whole traveler —
+        hiding a part's step history and its void action (2026-10-13)."""
+        from datetime import date
+        from decimal import Decimal
+        from Tracker.models import Material, MaterialLot, MaterialUsage
+        bar = Material.objects.create(tenant=self.tenant_a, name="Bar stock", unit_of_measure="KG")
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant_a, lot_number="BAR-1", material=bar, quantity=Decimal(10),
+            quantity_remaining=Decimal(9), unit_of_measure="KG", status="ACCEPTED",
+            received_date=date.today())
+        MaterialUsage.objects.create(tenant=self.tenant_a, lot=lot, part=self.parts[0], work_order=self.wo,
+                                     step=self.step, qty_consumed=Decimal(1), consumed_by=self.user_a)
+        resp = self.client.get(f"/api/Parts/{self.parts[0].id}/traveler/")
+        self.assertEqual(resp.status_code, 200)
+        entry = next(e for e in resp.json()["traveler"] if e["step_id"] == str(self.step.id))
+        self.assertEqual(entry["materials_used"][0]["material_name"], "Bar stock")
+
     def test_traveler_surfaces_batch_cycle_on_member_part(self):
         """The read-side payoff: a member part's traveler shows the shared cycle
         at its step — verdict, member count, and the cycle reading — without
