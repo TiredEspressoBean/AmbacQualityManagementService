@@ -642,6 +642,7 @@ GROUP_PRESETS = {
         'description': 'Tenant administrator - full access within their organization',
         'permissions': [
             'apply_cyclecount',
+            'cancel_workorder',
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -765,6 +766,7 @@ GROUP_PRESETS = {
         'description': 'Manage production operations, work orders, scheduling',
         'permissions': [
             'apply_cyclecount',
+            'cancel_workorder',
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -940,10 +942,17 @@ GROUP_PRESETS = {
     # sequencing on the board is part of planning, not a separate trade.
     #
     # Deliberately NOT included, though the PM has them and they look adjacent:
-    # work centres and equipment (that is Engineering defining the plant, not the
-    # planner using it), notification schedules, shift notes (the lead's voice to
-    # the floor), and `delete_workorder` — cancelling a job is a commitment to a
-    # customer being broken, which stays with the manager.
+    # work centres (that is Engineering defining the plant, not the planner using
+    # it), notification schedules, shift notes (the lead's voice to the floor),
+    # `delete_workorder`, and `cancel_workorder` — abandoning a job breaks a
+    # commitment to a customer, so it stays with the manager.
+    #
+    # NOTE: `cancel_workorder` is a real permission as of 2026-10-13. Before that
+    # this comment claimed `delete_workorder` covered cancelling; it never did —
+    # the cancel action fell through to the generic POST default `add_workorder`,
+    # which every staff role holds, so any operator could cancel a work order.
+    # Equipment is NOT withheld either: add/change_equipments are in
+    # STAFF_OPERATIONAL_WRITE, so the planner has them; only delete is manager-tier.
     'planner': {
         'name': 'Planner',
         'description': 'Owns the plan: releasing work, promising dates, running and '
@@ -1044,9 +1053,18 @@ GROUP_PRESETS = {
     # -------------------------------------------------------------------------
     # AUDITOR - Read-only, audit independence
     # -------------------------------------------------------------------------
-    # View base only: auditors must not mutate what they audit, and don't get
-    # the classified document tiers (external auditors may not be authorized
-    # persons for export-controlled technical data).
+    # View base only: auditors must not mutate what they audit, and don't get the
+    # classified document tiers (CLASSIFIED_DOCUMENT_VIEW), so an auditor sees
+    # PUBLIC and INTERNAL documents only.
+    #
+    # CAUTION, corrected 2026-10-13: the parenthetical used to imply this group
+    # also controls export-controlled access. It does NOT. ITAR/EAR is not a
+    # permission and cannot be granted or withheld here — `can_access_itar_data`
+    # (services/export_control.py:70-97) reads the USER's own `us_person` /
+    # `itar_authorized` flags. An auditor flagged `us_person=True` sees
+    # ITAR-controlled data regardless of being in this group. If an external
+    # auditor must not see it, that is set on their user record, not by their
+    # role. (`docs/roles/auditor.md` repeated this conflation from here.)
     'auditor': {
         'name': 'Auditor',
         'description': 'Read-only access for audits: sees the whole tenant, changes '

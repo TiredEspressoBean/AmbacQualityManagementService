@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -127,6 +128,8 @@ export function WorkOrderStatusActions({
         updateStatus("IN_PROGRESS", "RESUMED");
     };
 
+    const { has: hasPerm } = usePermissionSet();
+
     const handleCancel = () => {
         updateStatus("CANCELLED", "CANCELLED");
         setCancelDialogOpen(false);
@@ -136,7 +139,13 @@ export function WorkOrderStatusActions({
     const canRelease = currentStatus === "PENDING";
     const canHold = currentStatus === "IN_PROGRESS";
     const canResume = currentStatus === "ON_HOLD";
-    const canCancel = currentStatus !== "COMPLETED" && currentStatus !== "CANCELLED";
+    // Status alone isn't enough: cancelling abandons a commitment to a customer,
+    // so the server gates it on `cancel_workorder` (manager tier). Mirror that here
+    // rather than offering a button the API will refuse.
+    const canCancel =
+        currentStatus !== "COMPLETED" &&
+        currentStatus !== "CANCELLED" &&
+        hasPerm("cancel_workorder");
     const isReadOnly = currentStatus === "COMPLETED" || currentStatus === "CANCELLED";
 
     if (isReadOnly) {
