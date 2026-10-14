@@ -212,12 +212,23 @@ By the end of this module, you will:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Title** | Brief description of issue | Yes |
-| **Error Type** | Category of defect | Yes |
-| **Severity** | Minor, Major, Critical | Yes |
-| **Description** | Detailed explanation | Yes |
-| **Parts Affected** | Link to specific parts | Yes |
-| **Evidence** | Photos, measurements | Recommended |
+| **Status** | Where the report stands, e.g. Pending Review | **Yes — the only one** |
+| **Part** | The affected part | No |
+| **Process Step** | Where it was found | No |
+| **Machine/Equipment** | Equipment involved | No |
+| **Description** | Explanation of the issue | No |
+| **Detected By** / **Verified By** | Who found and who verified it | No |
+
+!!! warning "Error type and severity are not fields on the report"
+    Each **defect** is added separately, and carries its own error type, count,
+    location, severity and notes. One report can hold several defects at
+    different severities — which is why severity sits on the defect, not the
+    report.
+
+!!! note "Not on the form"
+    There is no title, quantity-affected, customer-reference, immediate-action
+    or root-cause field. Containment and root cause belong to the CAPA raised
+    from the report.
 
 ---
 
@@ -227,12 +238,10 @@ By the end of this module, you will:
 
 1. Navigate to **Quality** > **Quality Reports**
 2. Click **New Quality Reports**
-3. Fill in required fields:
-   - Title: Clear, specific description
-   - Error Type: Select from list
-   - Severity: Based on impact
-   - Description: What, where, when, how found
-4. Link affected parts
+3. Set the **Status**, and fill in whatever else applies — Part, Process Step,
+   Description
+4. **Add each defect** separately, with its error type, count, location and
+   severity
 5. Attach evidence (photos, data)
 6. Save
 
@@ -240,12 +249,12 @@ By the end of this module, you will:
 
 1. Go to **Quality > Quality Reports**
 2. Click **New Quality Reports**
-3. Create report for:
-   - Title: "Surface scratch on housing - TRAIN-101"
-   - Error Type: Visual Defect
-   - Severity: Minor
+3. Create the report:
+   - Status: Pending Review
+   - Part: "TRAIN-101-003"
    - Description: "Visible scratch approximately 2cm on outer surface of housing. Found during final inspection."
-4. Link to part "TRAIN-101-003"
+4. Add a defect: Error Type **Visual Defect**, Severity **Minor**, count 1,
+   location "outer surface of housing"
 5. Save the report
 
 ---

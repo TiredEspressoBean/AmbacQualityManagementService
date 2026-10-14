@@ -39,12 +39,17 @@ system here, not a promise.**
 ### 1.3 One thing you are not given
 
 **The classified document tiers.** An auditor is not granted
-`view_secret_documents` or the export-control tier, because an external auditor
-may not be an authorised person for export-controlled technical data.
+`view_secret_documents`, so the classified tiers stay invisible.
+
+!!! note "Export control is not part of the role"
+    If your deployment uses the ITAR/EAR filtering at all, it keys off two
+    flags on the **user record** — *US person* and *ITAR authorized* — not off
+    group membership. So the Auditor group is not what decides it either way.
+    See [Export Controls](../compliance/export-controls.md).
 
 !!! note "An invisible document is the control working"
     Ask your host for a reader with the right clearance rather than asking to be
-    given the tier. See [Export Controls](../compliance/export-controls.md).
+    given the tier.
 
 ---
 

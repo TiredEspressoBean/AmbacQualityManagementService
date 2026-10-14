@@ -176,16 +176,21 @@ Based on lot size and AQL level:
 2. Click **Create Quality Report**
 3. Fill in required fields:
 
-| Field | What to Enter |
-|-------|---------------|
-| **Title** | Brief description of issue |
-| **Error Type** | Category (Dimensional, Visual, etc.) |
-| **Severity** | Minor, Major, Critical |
-| **Description** | Detailed explanation |
-| **Immediate Action** | What you did immediately |
+| Field | What to Enter | Required |
+|-------|---------------|----------|
+| **Status** | Where the report stands | **Yes — the only one** |
+| **Part** | The affected part | No |
+| **Process Step** | Where it was found | No |
+| **Description** | Detailed explanation | No |
 
-4. Attach evidence (photos, data)
-5. Submit
+4. **Add each defect separately** — error type, count, location and severity
+   belong to the defect, not to the report
+5. Attach evidence (photos, data)
+6. Submit
+
+!!! note "There is no Immediate Action field"
+    Containment and root cause belong to the CAPA raised from the report, not
+    to the report itself.
 
 ### Severity Guidelines
 

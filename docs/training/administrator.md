@@ -566,8 +566,12 @@ By the end of this module, you will:
 
 - Permission changes
 - Unusual patterns
-- Failed login attempts
 - Configuration changes
+
+!!! note "Failed logins are not recorded"
+    A rejected sign-in leaves no trace in the audit log, so do not go looking
+    for one. The audit log records what happened to data, not what was tried
+    against the door.
 
 **Exercise 7.1:** Review Audit Log
 

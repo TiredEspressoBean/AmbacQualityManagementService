@@ -186,9 +186,11 @@ The player shows **one substep at a time**, with a progress rail along the top.
 
 **Expected result:** The step completes and the player moves to your next part.
 
-!!! tip "Your work is saved as you go"
-    Each substep is sealed when you confirm it. If the tablet is closed or
-    handed over, reopening the step resumes where you left off.
+!!! tip "Your work is saved as you go, as a draft"
+    Confirming a substep saves it as a **draft**, so if the tablet is closed or
+    handed over, reopening the step resumes where you left off. Nothing is
+    official until you tap **Complete step** — until then you can go back and
+    fix anything you entered.
 
 ---
 
@@ -277,9 +279,11 @@ step, not by opening a form against a part.
 4. The system evaluates it against the spec immediately and shows pass or fail
 5. Tap **Confirm & next**
 
-The value is sealed when you confirm it. Your name, the timestamp, and the
-equipment in play are recorded with it — that is what makes it usable as
-evidence later.
+Confirming saves the value as a draft, not yet a record. The step's review
+screen is your chance to correct it — **a value you fix before tapping Complete
+step never becomes a nonconformance.** Once you complete the step, your name,
+the timestamp and the equipment in play are recorded with it, and that is what
+makes it evidence.
 
 **Exercise 3.1:** Recording a Measurement
 

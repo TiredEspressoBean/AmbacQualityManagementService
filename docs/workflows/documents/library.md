@@ -174,11 +174,14 @@ tiers. Operators, inspectors, the dock and auditors cannot.
     So a QA Manager can mark a document Secret and then not be able to open it.
     Worth knowing before you use that tier.
 
-!!! note "An auditor holds none of them"
-    The Auditor role is given neither the classified tiers nor export-control
-    access — an external auditor may not be an authorised person for
-    export-controlled technical data. A document invisible to an auditor is the
-    control working.
+!!! note "An auditor holds none of the classified tiers"
+    The Auditor role is not given the classified tiers. A document invisible to
+    an auditor is the control working.
+
+!!! note "Export control is a separate filter, keyed to the user"
+    Where a deployment uses ITAR/EAR filtering, it reads the *US person* and
+    *ITAR authorized* flags on the **user record**, independently of the
+    classification tiers and of group membership.
 
 ## Opening Documents
 
