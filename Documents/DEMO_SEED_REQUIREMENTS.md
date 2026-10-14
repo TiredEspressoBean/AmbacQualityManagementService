@@ -280,32 +280,44 @@ process is unreachable to a walker, because the approval lock is doing its job. 
 a new flag lands on a versioned, approval-locked model, the seed has to carry an
 example or the feature is undemonstrable — and in this case untestable.
 
-## 12. The authoring showcase cannot author anything
+## 12. ~~The authoring showcase cannot author anything~~ — WRONG, withdrawn
 
-**Walked 2026-10-13.** *Injector Reman - Authoring Draft (SHOWCASE)* exists so someone
-can see the substep editor in its editable state. It cannot: every one of its
-substep-bearing steps is shared with the **approved** *Injector Reman*, and
-draft-exclusive steps with substeps number **zero**.
+**This entry was mistaken and is kept only so the wrong conclusion is not reached
+again.** Corrected 2026-10-14 after the user asked the right question: *"isn't the
+step supposed to still be able to be changed, but with a copy?"* It is.
 
-The editor is right to refuse. `SubstepEditorPage.tsx:304` derives `is_editable` from
-the parent Step's consuming Processes and requires **all** of them to be DRAFT, because
-steps are structurally shared across process versions rather than copied — see
-`Documents` on versioning, and the architecture note that steps are deliberately shared
-so date snapshots hold. Editing a shared step through a draft would silently change the
-approved process. So the page shows *"Read-only · Process not in DRAFT"* on a process
-whose own status is DRAFT, which reads like a bug and is not one.
+What I originally wrote: that *Injector Reman - Authoring Draft (SHOWCASE)* shares every
+substep-bearing step with the approved *Injector Reman*, so the substep editor is
+read-only throughout and no authoring control — including the "Verified sign-off"
+toggle — can ever be demonstrated. I prescribed a seed change giving the draft its own
+steps.
 
-The cost is that **no authoring control in the substep editor can be demonstrated or
-walked** — including the "Verified sign-off" toggle, whose label and tooltip are correct
-in source but never render in any reachable state.
+**The copy-on-write already exists and works.** `services.mes.steps.step_for_draft`
+makes the draft its own copy of a shared step the first time the draft touches it, and
+returns that copy thereafter — carrying measurements, sampling rules, training,
+machines, documents **and substeps** with it. It is exposed as
+`POST /api/Processes_with_steps/{id}/draft-step/`, covered by
+`Tracker/tests/test_draft_step_copy.py`, and the UI calls it: `ProcessFlowPage`'s
+`ensureOwnStep`, wired into `StepEditorPanel.withOwnStep`, forks the step **before**
+navigating to the substep editor, passing the draft's own step id.
 
-**What the seed should do:** give the showcase draft at least one step of its own,
-not shared with any approved process, carrying a couple of substeps. One step is enough
-to make every authoring control reachable.
+**What actually happened:** I reached the substep editor by typing its URL with the
+*shared* step's id, which skips the fork. Arriving that way on a shared step correctly
+shows read-only, because at that moment an approved process still uses that exact row.
 
-**The general rule:** a "draft" that reuses an approved process's steps is not an
-authoring sandbox, it is a read-only copy. If the seed wants to show authoring, it has
-to create steps that nothing approved consumes.
+**Walked 2026-10-14 the right way.** Called `draft-step` for the draft + Core Receiving
+→ `{"copied": true}` with a new step id → opened the substep editor on it → *"Authoring
+view. Edits stay local until you click Save Draft"*, Add substep / Save draft / Discard
+all present, and the **Verified sign-off** switch rendered, enabled, with its full
+tooltip. No seed change is needed for any of it.
+
+**The lesson, which is the reason this stays here:** the read-only banner says *"Process
+not in DRAFT"* on a process whose own status **is** DRAFT. That wording describes the
+step's other consumer, not the process named in the URL, and it sent me to a wrong
+conclusion I then wrote down and told two people. A message naming the real cause —
+that another process version still uses this step, and that opening it from the process
+flow will fork it — would have prevented the whole detour. That is a worthwhile UI fix;
+it is not a seed gap.
 
 ## Standing rules for the rewrite
 
