@@ -65,6 +65,7 @@ import {
     ArrowLeft,
     ClipboardCheck,
 } from "lucide-react";
+import { useRetrieveProcess } from "@/hooks/useRetrieveProcess";
 import { QUALITY_REPORT_BUNDLE } from "@/lib/dwi/samples";
 import { withFreshNodeId } from "@/lib/dwi/node-id";
 import { SubstepAuthoringProvider } from "@/components/dwi/shared/SubstepAuthoringContext";
@@ -308,6 +309,20 @@ export function SubstepEditorPage() {
     const isEditable = substeps.length === 0
         ? true
         : Boolean((substeps[0] as Substep & { is_editable?: boolean }).is_editable);
+
+    // Two different locks wear one flag. `is_editable` is false when ANY process
+    // consuming this Step is out of DRAFT — which includes the case where the
+    // process in the URL IS a draft and the step is merely shared with an
+    // approved version. Saying "Process not in DRAFT" there names a cause that
+    // isn't true and sends the author to raise a PCR they don't need; the real
+    // remedy is to open the step from the process flow, which forks the draft
+    // its own copy (`step_for_draft`). Reading the process tells the two apart.
+    const processQuery = useRetrieveProcess(
+        { params: { id: processId ?? "" } },
+        { enabled: !isEditable && !!processId },
+    );
+    const sharedWithApproved =
+        !isEditable && processQuery.data?.status === "DRAFT";
 
     const sortedSubsteps = useMemo(() => {
         const byOrder = [...substeps].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -573,14 +588,18 @@ export function SubstepEditorPage() {
                             <h1 className="text-xl font-semibold tracking-tight">Substep Editor</h1>
                             {!isEditable && (
                                 <Badge variant="outline" className="border-muted-foreground/40 text-[10px] text-muted-foreground">
-                                    Read-only · Process not in DRAFT
+                                    {sharedWithApproved
+                                        ? "Read-only · step shared with an approved version"
+                                        : "Read-only · Process not in DRAFT"}
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                             {isEditable
                                 ? <>Authoring view. Edits stay local until you click <b>Save Draft</b>; the page warns if you close with unsaved changes.</>
-                                : "This process is approved or deprecated; substeps are locked. Submit a Process Change Request to edit."}
+                                : sharedWithApproved
+                                    ? "This draft still shares the step with an approved version, so its substeps are that version's record. Open the step from the process flow — the draft takes its own copy on the first edit, and this editor unlocks."
+                                    : "This process is approved or deprecated; substeps are locked. Submit a Process Change Request to edit."}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1140,7 +1159,7 @@ function SubstepExpandedBody({
                             ? isPendingDelete
                                 ? "Undo delete (still pending save)"
                                 : "Mark for deletion (commits on Save draft)"
-                            : "Locked — Process not in DRAFT"
+                            : "Locked — this step's substeps can't be edited here; see the note at the top of the page"
                     }
                 >
                     <Trash2 className="h-4 w-4" />
