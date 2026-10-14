@@ -166,6 +166,7 @@ export default function ProcessFlowPage() {
         max_visits: step.max_visits as number | null,
         expected_duration: step.expected_duration as string | null,
         requires_qa_signoff: step.requires_qa_signoff as boolean | undefined,
+        qa_signoff_assurance: step.qa_signoff_assurance as string | undefined,
         sampling_required: step.sampling_required as boolean | undefined,
         min_sampling_rate: step.min_sampling_rate as number | undefined,
         requires_batch_completion: step.requires_batch_completion as boolean | undefined,
@@ -460,6 +461,9 @@ export default function ProcessFlowPage() {
         expected_duration: step.expected_duration,
         scrap_rate: step.scrap_rate,
         requires_qa_signoff: step.requires_qa_signoff || false,
+        // Without this the editor's three-way control wrote to local state and the
+        // save dropped it: the gate would turn on, but always as a check-off.
+        qa_signoff_assurance: step.qa_signoff_assurance || 'NONE',
         sampling_required: step.sampling_required || false,
         min_sampling_rate: step.min_sampling_rate,
         requires_batch_completion: step.requires_batch_completion || false,
