@@ -86,6 +86,49 @@ which block it belongs to.
     **not** evidence that anyone re-authenticated. Read the verification method,
     not the picture.
 
+## Releasing a lot: QA sign-off at a step
+
+A step can be gated so no part advances off it until QA releases the lot. That is a
+different act from signing a substep — it covers the whole work order at that step,
+and it is made by **someone other than whoever did the work**, which the server
+enforces.
+
+The author chooses how firmly it is signed, the same way they choose for a block:
+
+| Level | What the signer does | What is recorded |
+|-------|----------------------|------------------|
+| **Check off** | Confirms the release | The signer, the server's time, the IP, meaning, method *None* |
+| **Signature + password** | Re-enters **their own** password | The same, with method *Password* |
+
+The meaning is server-derived — *"QA release of {step} for {work order}"* — and is
+never supplied by a client.
+
+!!! important "Independence and assurance are different controls"
+    A QA release is always made by a second person: whoever signed the step's own
+    substeps is refused. That is **segregation of duties**, and it is enforced
+    whatever the assurance level — including *check off*.
+
+    The password, where the author requires one, proves the signer is who they say.
+    It does not make them independent, and independence does not re-authenticate
+    them. The segregation check runs **first**, so a release cannot be bought by
+    someone who was never entitled to make it.
+
+    The password is the inspector's **own**, not a second person's, because the
+    inspector is the one signed in at the terminal — unlike an inspection block's
+    verifier, who is not.
+
+!!! note "First-piece buy-off meets the same bar"
+    A step can also be released through its first piece inspection. Both a **pass**
+    and a **waive** release it, and both are held to the step's authored assurance —
+    otherwise the gate could be walked around by releasing the other way. Where the
+    buy-off is already co-signed with an email and password, it is not asked again:
+    that is stronger than re-entering your own.
+
+!!! warning "Older releases read as what they were"
+    A `QaApproval` made before this existed carries method *None* and no verified
+    time. That is the honest record: it was made under the signer's session alone.
+    Do not read an old release as a verified one.
+
 **Which level a standard asks for:**
 
 - **ISO 9001** asks that records identify who performed or authorized the work.
@@ -105,7 +148,7 @@ question can be answered instead of dodged.
 | §11.50 — a signature shows the signer, the date and time, and its **meaning** | All three: the signer from the session (or the verified second person), the server's time, and the meaning stored from the block's label, falling back to the substep title when a block is unlabelled |
 | §11.70 — the signature is **linked to its record** so it can't be moved or copied | Each signature is its own row keyed to the substep, the block within it, and the execution or batch it was taken against — not a free-standing artifact that could be re-pointed |
 | §11.100 — **unique to one individual**, never reused | The signer is a user id from the account itself; accounts are suspended rather than deleted, so an id is never reassigned to a different person |
-| §11.200 — **two identification components**, and re-authentication at signing | Depends which signature. Signing **your own** work: the session established identity and the password re-confirms it — one identification component, re-entered. An inspection **verifier** supplies email **and** password, not being signed in at that terminal — two. In neither case does the drawing count: it is evidence of intent, not identification. Whether the own-signature case satisfies §11.200(a)(1) also depends on how your session is established — SSO with MFA is a different answer from a password login |
+| §11.200 — **two identification components**, and re-authentication at signing | Three situations, two answers. Signing **your own** work, and a **QA release** of a lot: the signer is the person at the terminal, so the session established identity and the password re-confirms it — one identification component, re-entered. An inspection **verifier** is not signed in, so they supply email **and** password — two. Note that a QA release being made by a *different person* is segregation of duties, not a second identification component; it answers a different question. The drawing never counts in any case — it is evidence of intent, not identification. Whether the one-component cases satisfy §11.200(a)(1) also depends on how your session is established — SSO with MFA is a different answer from a password login |
 | §11.300 — controls over identification codes and passwords | Django's validators and the per-person signing throttle; password policy itself is your IdP's |
 
 **What is not here, and is the larger half of Part 11:** computer-system validation
