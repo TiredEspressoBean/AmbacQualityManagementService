@@ -2985,7 +2985,18 @@ class ApprovalTemplate(SecureModel):
     default_approvers = models.ManyToManyField(User, related_name='default_approval_templates', blank=True)
     default_groups = models.ManyToManyField('TenantGroup', related_name='default_approval_templates', blank=True)
     default_threshold = models.IntegerField(null=True, blank=True)
-    auto_assign_by_role = models.CharField(max_length=50, null=True, blank=True, help_text="Group name to auto-assign (e.g., 'QA_Manager')")
+    # Matched against `TenantGroup.name` character for character by
+    # `services.core.approval.py` (`user_roles__group__name=...`). A name that
+    # matches nothing assigns NOBODY and raises nothing, because a filter
+    # returning no rows is not an error - so the example here has to be a real
+    # group name. Real names carry spaces; the underscored form in
+    # `groups.LEGACY_NAME_MAP` is a migration aid for old tenants and matches
+    # no live group. Guarded by `tests/test_default_approval_templates.py`.
+    auto_assign_by_role = models.CharField(
+        max_length=50, null=True, blank=True,
+        help_text="Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). "
+                  "A name that matches no group assigns nobody, silently.",
+    )
 
     # Rules
     approval_flow_type = models.CharField(max_length=20, choices=ApprovalFlows.choices, default=ApprovalFlows.ALL_REQUIRED)

@@ -48702,7 +48702,8 @@ components:
         auto_assign_by_role:
           type: string
           nullable: true
-          description: Group name to auto-assign (e.g., 'QA_Manager')
+          description: Exact group name to auto-assign, spaces included (e.g. 'QA
+            Manager'). A name that matches no group assigns nobody, silently.
           maxLength: 50
         approval_flow_type:
           $ref: '#/components/schemas/ApprovalFlowTypeEnum'
@@ -48820,7 +48821,8 @@ components:
         auto_assign_by_role:
           type: string
           nullable: true
-          description: Group name to auto-assign (e.g., 'QA_Manager')
+          description: Exact group name to auto-assign, spaces included (e.g. 'QA
+            Manager'). A name that matches no group assigns nobody, silently.
           maxLength: 50
         approval_flow_type:
           $ref: '#/components/schemas/ApprovalFlowTypeEnum'
@@ -65043,7 +65045,8 @@ components:
         auto_assign_by_role:
           type: string
           nullable: true
-          description: Group name to auto-assign (e.g., 'QA_Manager')
+          description: Exact group name to auto-assign, spaces included (e.g. 'QA
+            Manager'). A name that matches no group assigns nobody, silently.
           maxLength: 50
         approval_flow_type:
           $ref: '#/components/schemas/ApprovalFlowTypeEnum'
