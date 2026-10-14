@@ -189,47 +189,40 @@ Require QA approval to advance:
 2. QA inspector must approve via QaApproval
 3. Parts wait for approval before advancing
 
-### Batch Completion
+### Moving a lot as a unit
 
-Synchronize parts in batch:
+Tick **Move lot as a unit** in the step's Advanced settings. Parts then advance
+as a cohort rather than individually: the lot moves once enough of it is ready,
+which is what **Pass threshold** sets — the fraction of the cohort that must be
+READY before the batch goes.
 
-1. Toggle **Requires Batch Completion**
-2. All parts in work order must reach "Ready" status
-3. Parts advance together when batch is complete
+!!! note "The field is named differently underneath"
+    The stored field is `requires_batch_completion`. If you meet that name in
+    the API or an export, it is this setting.
 
-### Hold Point
+### Settings that are enforced but have no control
 
-Create a mandatory stop:
+These are real properties of a step, and the advancement gate honours them — but
+**the step editor has no control for them**, so you cannot see or change them
+from the product. They are set through the Django admin.
 
-1. Mark step as **Hold Point**
-2. Parts cannot auto-advance
-3. Explicit release required
+| Setting | Effect | Default |
+|---------|--------|---------|
+| **Block on measurement failure** | Parts cannot advance if any measurement is out of spec | Off |
+| **Block on SPC violation** | Parts cannot advance if an SPC-enabled measurement is out of control | Off |
+| **Override expiry hours** | How long an override stays good before it must be re-approved | 24 |
+| **Undo window minutes** | How long after completing a step it can still be undone | 15 |
+| **Rollback requires approval** | Whether rolling a part back needs supervisor approval | On |
 
-### Auto-Advance
+!!! warning "You can be held by a setting you cannot see"
+    If parts are blocked at a step and nothing in the editor explains why, one
+    of these may be on. The undo window and rollback rule in particular are
+    enforced at runtime and produce refusals — *"Undo window expired (15
+    minutes)"* — that read as bugs when you don't know the setting exists.
 
-Enable automatic advancement:
-
-1. Toggle **Auto-Advance**
-2. Parts move forward when requirements met
-3. No manual action needed
-
-### Measurement Failure Blocking
-
-Block parts when measurements fail:
-
-1. Toggle **Block on Measurement Failure**
-2. Parts cannot advance if any measurement is out of spec
-3. Requires override approval to proceed
-
-### Override Settings
-
-Configure override behavior:
-
-| Setting | Description |
-|---------|-------------|
-| **Override Expiry Hours** | Hours until override expires (default: 24) |
-| **Undo Window Minutes** | Minutes during which completion can be undone (default: 15) |
-| **Rollback Requires Approval** | Whether rolling back requires supervisor approval |
+**Auto-advance** is different again: it lives on the step's place *in a
+particular process*, not on the step, and defaults to **on**. It is settable
+through the API but has no control in the editor either.
 
 ## Sampling Configuration
 

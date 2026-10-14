@@ -25,33 +25,24 @@ Properly offboard users when they leave the organization or no longer need acces
     So the choice is not *delete or deactivate* — both lead to the same safe
     place, which is why the compliance argument above holds either way.
 
-## Deactivating a User
-
-### Quick Deactivation
+## Removing someone's access
 
 1. Navigate to **Admin** > **User Management**
 2. Find the user
-3. Click the action menu (...)
-4. Select **Deactivate**
-5. Confirm
+3. Use **Delete** on the user list
+4. Confirm
 
-### From User Detail
+There is no *Deactivate* action and no **Active** checkbox. **Delete** is what
+removes access, and despite the name it destroys nothing.
 
-1. Open the user record
-2. Uncheck **Active** checkbox
-3. Save
-
-## What Happens on Deactivation
-
-When a user is deactivated:
+## What happens
 
 | Effect | Description |
 |--------|-------------|
-| **Cannot log in** | Immediate access removal |
-| **Sessions ended** | Active sessions terminated |
-| **Assigned items remain** | Parts, NCRs, etc. keep assignment |
-| **History preserved** | Audit trail shows user's name |
-| **Hidden from lists** | Doesn't appear in user selection |
+| **Cannot log in** | Their membership of this organisation is suspended |
+| **Assigned items remain** | Parts, NCRs and the rest keep their assignment |
+| **History preserved** | The audit trail still shows their name |
+| **Still listed** | They remain in the Data Management Users list, badged **Access removed** — they are not hidden |
 
 ## SSO Considerations
 
@@ -93,11 +84,15 @@ Before deactivating, consider reassigning:
 
 For urgent access removal:
 
-1. **Deactivate immediately** - No waiting
-2. **Change password** (if not SSO) - Prevent stored credentials
-3. **End sessions** - Force logout
-4. **Notify IT** - Coordinate with other systems
-5. **Review recent actions** - Check audit trail
+1. **Delete them on the user list** — this takes effect immediately
+2. **Notify IT** — coordinate with other systems, and with your IdP if they
+   sign in through SSO
+3. **Review recent actions** — check the audit trail
+
+!!! note "There is no force-logout or password-reset control"
+    uqmes has no administrative "end sessions" or "change this user's password"
+    action. Removing their access is the control you have; anything beyond it
+    belongs to your identity provider.
 
 ## Bulk Deactivation
 
@@ -118,22 +113,18 @@ Use for:
 If user needs access again:
 
 1. Navigate to **Admin** > **User Management**
-2. Show inactive users (filter toggle)
-3. Find the user
-4. Open user record
-5. Check **Active** checkbox
-6. Review/update groups
-7. Save
+2. Find the user — they are still listed, badged **Access removed**
+3. Reactivate them
+4. Review and update their groups
 
-User can log in immediately.
+They can log in immediately.
 
 ## Account vs Access
 
 | Action | Effect | Use When |
 |--------|--------|----------|
-| **Deactivate** | Can't log in, history preserved | Standard offboarding |
-| **Remove from groups** | Logged in but no access | Temporary restriction |
-| **Change role type** | Different access level | Role change |
+| **Delete** on the user list | Can't log in; history preserved; row stays, badged *Access removed* | Standard offboarding |
+| **Remove from groups** | Still logged in, but nothing they can do | Temporary restriction |
 
 ## Compliance Considerations
 

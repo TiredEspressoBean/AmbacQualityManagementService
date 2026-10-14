@@ -2,13 +2,20 @@
 
 Create and manage user accounts for your organization.
 
-## User Types
+## User types
 
-| Type | Description | Access |
-|------|-------------|--------|
-| **Staff** | Internal employees | Full system based on permissions |
-| **Customer** | External customer contacts | Portal access to their orders |
-| **Auditor** | External auditors | Read-only access |
+There are exactly **two**, set by the **User type** field on the user:
+
+| Type | Who it is for |
+|------|---------------|
+| **Internal** | Everyone who works here. What they can do comes from their groups. |
+| **Portal** | External people — a customer contact reaching their own orders. |
+
+!!! warning "There is no Admin / Staff / Customer / Auditor role type"
+    *Auditor* and *Customer* are **groups**, not account types, and *Admin* is
+    neither. If a procedure tells you to set a "Role Type", it is out of date —
+    set the **User type** and then assign groups. See [Roles &
+    Groups](roles.md).
 
 ## Creating a User
 
@@ -109,41 +116,27 @@ invite** and **Expired invite** filters.
 
 A workbook upload accepts the same columns as the manual rows:
 ```csv
-email,first_name,last_name,role_type,groups
-john@company.com,John,Smith,staff,"QA Inspector"
-jane@company.com,Jane,Doe,staff,"Operator"
+username,email,first_name,last_name,groups
+jsmith,john@company.com,John,Smith,"QA Inspector"
+jdoe,jane@company.com,Jane,Doe,"Operator"
 ```
-4. Upload CSV
-5. Review and confirm
-6. Invitations sent to all
 
-## User Fields
+!!! warning "There is no role_type column"
+    Older examples showed one. It is not a field — assign **groups** instead.
 
-### Basic Information
+## Export control fields on a user
 
-| Field | Description |
-|-------|-------------|
-| **Email** | Unique identifier, used for login |
-| **First/Last Name** | Display name |
-| **Phone** | Contact number (optional) |
-| **Title** | Job title (optional) |
-
-### Account Settings
+Three fields on the user record decide export-control access. They are
+**not** permissions and no group grants them:
 
 | Field | Description |
 |-------|-------------|
-| **Role Type** | Admin, Staff, Customer, Auditor |
-| **Active** | Whether account is enabled |
-| **Groups** | Permission group membership |
-| **Last Login** | Most recent login (read-only) |
-
-### Compliance Fields (if required)
-
-| Field | Description |
-|-------|-------------|
-| **Citizenship** | Country code for export control |
+| **Citizenship** | Country code |
 | **US Person** | ITAR qualification |
 | **Export Control Verified** | Verification status |
+
+Whether a deployment uses this filtering at all is its own decision; where it is
+used, these flags — not the user's role — are what decides access.
 
 ## Assigning Groups
 
@@ -162,7 +155,7 @@ Common group assignments:
 | Production Operator | Operator |
 | QA Manager | QA Manager |
 | Document Controller | Document Controller |
-| Administrator | Administrator |
+| Administrator | Tenant Admin |
 
 See [Roles & Groups](roles.md) for details.
 
@@ -170,29 +163,21 @@ See [Roles & Groups](roles.md) for details.
 
 If your organization uses Single Sign-On:
 
-### Automatic Provisioning
-- User logs in via SSO
-- Account created automatically
-- Assigned to default group
+Create the user and assign their groups as normal; they sign in through the
+identity provider instead of setting a password. Password policy and MFA are the
+IdP's (Microsoft Entra ID, Okta, and so on), not uqmes's.
 
-### Manual Pre-Creation
-- Create user with matching email
-- Assign groups
-- User links when they SSO login
-
-### SSO vs Password
-- SSO users authenticate via identity provider
-- Password managed by IdP (Microsoft Entra ID, Okta, etc.)
-- MFA handled by IdP
+Whether SSO is available depends on how your deployment is configured — see
+[SSO](../../integrations/sso.md).
 
 ## Customer Users
 
 Create portal access for customers:
 
-1. Create user with **Role Type: Customer**
-2. Associate with Company record
-3. User sees only their company's orders
-4. Limited permissions (view orders, documents)
+1. Create the user with **User type: Portal**
+2. Associate them with a Company record
+3. Add them to the **Customer** group
+4. They see only their own company's orders
 
 ### Customer Permissions
 - View own orders and parts
@@ -203,21 +188,9 @@ Create portal access for customers:
 
 Create temporary access for auditors:
 
-1. Create user with **Role Type: Auditor**
-2. Built-in read-only permissions
-3. Set account expiration if needed
-4. Access to compliance records only
-
-## Password Policies
-
-For non-SSO users:
-
-- Minimum length (configured by admin)
-- Complexity requirements
-- Expiration period
-- Lockout after failed attempts
-
-SSO users follow IdP password policies.
+1. Create the user as **Internal**
+2. Add them to the **Auditor** group, which is read-only
+3. Assign nothing else — the group is the whole of their access
 
 ## Permissions
 

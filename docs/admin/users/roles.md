@@ -149,108 +149,21 @@ Permissions are organized by model:
 - `delete_documents` - Remove documents
 - `approve_capa` - Approve CAPA closure
 
-## Viewing Effective Permissions
+## Seeing what a user can actually do
 
-### For a User
+There is **no aggregate "effective permissions" view** on a user, and nothing
+tells you which group a given permission came from. Work it out group by group:
 
-1. Open user record
-2. View **Permissions** tab
-3. See all effective permissions (from all groups)
-4. Identify source group for each
+1. Open the user record and note their assigned **Groups**
+2. Go to **Data Management** > **User Groups**
+3. Open each group and read its **Permissions** tab
+4. The user holds the union of all of them
 
-### For a Group
+!!! note "Groups do not nest"
+    There is no parent group and no inheritance. A user's permissions are the
+    union of the groups they are in, full stop — so making someone "a Manager"
+    does not confer what Supervisor or Operator hold.
 
-1. Open group record
-2. View **Permissions** tab
-3. See all permissions assigned to group
-
-## Group Hierarchy
-
-Groups can be nested:
-
-```
-Manager
-  └── Supervisor
-        └── Operator
-```
-
-Child groups inherit parent permissions.
-
-## Multi-Tenant Groups
-
-In multi-tenant deployments:
-
-- Each tenant has own groups
-- Groups are independent per tenant
-- User can have different groups per tenant
-- Switching tenants switches effective permissions
-
-## Permission Best Practices
-
-### Start Restrictive
-- Begin with minimal permissions
-- Add as needs are identified
-- Easier than removing excess
-
-### Use Groups
-- Assign groups, not individual permissions
-- Easier to audit
-- Simpler to change
-
-### Role-Based
-- Create groups matching job roles
-- Consistency across similar users
-- Clear documentation
-
-### Regular Review
-- Quarterly permission audits
-- Remove unnecessary access
-- Update for role changes
-
-## Common Permission Sets
-
-### View Only
-- `view_*` permissions only
-- No create, edit, delete
-- For read-only users
-
-### Create and View
-- `view_*` and `add_*`
-- Cannot edit or delete
-- For data entry roles
-
-### Full Access
-- All permissions for a model
-- `view_`, `add_`, `change_`, `delete_`
-- For model administrators
-
-## Permissions Reference
-
-Key permissions by function:
-
-### Production
-- `view_orders`, `add_orders`, `change_orders`
-- `view_parts`, `change_parts`
-- `view_workorder`, `change_workorder`
-- `can_move_parts`
-
-### Quality
-- `add_qualityreports`, `change_qualityreports`
-- `add_quarantinedisposition`, `approve_disposition`
-- `add_capa`, `change_capa`, `close_capa`
-- `view_quarantinedisposition`
-
-### Documents
-- `view_documents`, `add_documents`
-- `view_confidential_documents`
-- `respond_to_approval`
-- `change_documents`
-
-### Admin
-- `view_user`, `add_user`, `change_user`
-- `change_group`, `change_permission`
-- `view_auditlog`
-- `change_tenant`
 ## Next Steps
 
 - [Assigning Permissions](permissions.md) - Detailed permission setup

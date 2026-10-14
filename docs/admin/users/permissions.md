@@ -215,30 +215,6 @@ Permission changes are logged:
 
 View in Admin > Audit Log, filter by permission changes.
 
-## Role Type Restrictions
-
-Role types impose hard limits:
-
-### Customer Role Type
-- Can only view own company's data
-- Cannot see internal records
-- Limited to portal features
-
-### Auditor Role Type
-- Read-only access
-- Cannot create, edit, delete
-- All view permissions granted
-
-### Staff Role Type
-- Permissions determine access
-- Can have any permission set
-- Default for internal users
-
-### Admin Role Type
-- Has all permissions
-- Cannot be restricted
-- Use sparingly
-
 ## Multi-Tenant Permissions
 
 For users in multiple tenants:
@@ -246,29 +222,6 @@ For users in multiple tenants:
 - Permissions are per-tenant
 - User may have different groups per tenant
 - Switching tenants changes effective permissions
-
-## Permission Templates
-
-Create group templates for common roles:
-
-### Read-Only Template
-```
-view_orders, view_parts, view_workorder
-view_qualityreport, view_capa, view_document
-view_measurement, view_equipment
-```
-
-### Data Entry Template
-```
-view_*, add_orders, add_parts, add_measurement
-add_qualityreport, change_parts
-```
-
-### Quality Full Access
-```
-view_*, add_*, change_* for quality records
-approve_disposition, approve_capa
-```
 
 ## Existing tenants and new permissions
 
