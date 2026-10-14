@@ -38,16 +38,31 @@ QA Manager, Shift Lead, Tenant Admin.
     filters (Active, Pending invite, Expired invite, Inactive), group
     filtering, and bulk actions.
 
-### Invitation email
+### Getting someone in
 
-There is no "welcome email" on account creation. The email that gets someone
-in is the **invitation**, and it is sent when you invite them — see
-[Inviting Users](#inviting-users) below.
+There is no "welcome email" on account creation. What gets someone in is the
+**invitation**, and what the invitation really is, is a **signup link carrying a
+token** — see [Inviting Users](#inviting-users) below.
 
-1. The invitation email carries a signup link with a token
+1. The invitation produces a signup link with a token
 2. The token is what places them in the right tenant when they sign up
 3. They set a password, unless they sign in through SSO
 4. They can log in
+
+!!! danger "Do not assume the link was emailed — check, or hand it over yourself"
+    Whether an invitation is *delivered* depends on how this deployment is
+    configured. The mail backend is set per environment and can be switched to
+    discard mail entirely when there is no mail path available, which has been the
+    case while email is unavailable.
+
+    **The link does not depend on email.** Every invited user's row carries their
+    signup link with a **Copy** button — open it, copy the link, and send it to
+    them however you normally reach them. That path always works.
+
+    So if you are covering for someone and onboarding a person today: copy the link
+    and hand it over. Telling them to watch their inbox is the failure that costs a
+    day, because nothing errors — the invitation is created either way, and the only
+    symptom is a person who never arrives.
 
 !!! note "Email verification is optional"
     Address verification is configured as *optional*, so a new user can sign
@@ -61,10 +76,23 @@ in is the **invitation**, and it is sent when you invite them — see
 
 ## Inviting Users
 
+### Inviting one person
+
+Open the person's row in **User Management** and use the invite link dialog: it
+shows their signup link with a **Copy** button. This is the surface to use when
+someone needs re-inviting, or when their link expired, or when you simply need to
+hand the link over directly.
+
+### Inviting everyone who was never invited
+
+Where staff were loaded in bulk (a migration workbook, say) without invitations,
+**User Management** offers a one-click action that invites everyone never invited
+and never signed in. It is hidden when there is nobody in that state, so if you
+cannot see it, there is nobody to invite.
+
 ### Bulk invite
 
-Invitations are issued from the bulk surface rather than a per-user invite
-dialog:
+To add and invite several people at once:
 
 1. In **User Management**, click **Bulk Actions**
 2. Add a row per person with **Manual entry**, or **Upload workbook** for a
