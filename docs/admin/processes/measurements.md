@@ -39,16 +39,28 @@ Measurement definitions specify:
 |-------|-------------|---------|
 | **Name** | What's being measured | "Outer Diameter" |
 | **Nominal** | Target value | 25.000 |
-| **Upper Tolerance** | Max acceptable deviation | +0.010 |
-| **Lower Tolerance** | Min acceptable deviation | -0.010 |
+| **Upper Tolerance** | How far **above** nominal is acceptable | 0.010 |
+| **Lower Tolerance** | How far **below** nominal is acceptable | 0.010 |
 | **Unit** | Unit of measure | mm |
+
+!!! danger "Enter both tolerances as positive numbers"
+    Both are **distances from nominal**, not signed offsets. The limits are worked
+    out as `nominal + upper` and `nominal − lower`, so the minus is already applied
+    for you.
+
+    Typing `-0.010` into Lower Tolerance gives `25.000 − (−0.010) = 25.010` — the
+    lower limit lands **above** nominal, on top of the upper limit, and the
+    acceptable range collapses to a single value. Every real part then fails, and
+    the spec looks reasonable on screen.
+
+    A tolerance of zero on one side is written as `0`, not as a sign.
 
 ### Optional Fields
 
 | Field | Description |
 |-------|-------------|
 | **Description** | Additional context |
-| **Measurement Type** | Numeric, Attribute, Text |
+| **Measurement Type** | **Numeric** or **Pass/Fail** — those are the only two. A Pass/Fail definition takes no nominal or tolerances. |
 | **Equipment Required** | Specific instrument |
 | **Procedure Reference** | Document link |
 | **Drawing Reference** | Where on drawing |
@@ -58,22 +70,22 @@ Measurement definitions specify:
 ### Bilateral Tolerance
 Equal deviation both directions:
 - Nominal: 25.000
-- Upper: +0.010
-- Lower: -0.010
+- Upper: 0.010
+- Lower: 0.010
 - Range: 24.990 to 25.010
 
 ### Unilateral Tolerance
 Deviation in one direction:
 - Nominal: 25.000
-- Upper: +0.000
-- Lower: -0.010
+- Upper: 0.000
+- Lower: 0.010
 - Range: 24.990 to 25.000
 
 ### Asymmetric Tolerance
 Different each direction:
 - Nominal: 25.000
-- Upper: +0.015
-- Lower: -0.005
+- Upper: 0.015
+- Lower: 0.005
 - Range: 24.995 to 25.015
 
 ## Measurement Types
