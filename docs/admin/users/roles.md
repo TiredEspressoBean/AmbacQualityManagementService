@@ -18,39 +18,49 @@ User
 
 ## Role Types
 
-Role types control the broadest level of access:
+Three separate things decide what a person can do, and they are often confused:
 
-| Role Type | Purpose | Data Access |
-|-----------|---------|-------------|
-| **Admin** | Full system access | All data |
-| **Staff** | Internal operations | Per permissions |
-| **Auditor** | Read-only compliance | All data (read) |
-| **Customer** | External portal | Own orders only |
+| What | Where it lives | What it decides |
+|------|----------------|-----------------|
+| **User type** | On the user — `INTERNAL` or `PORTAL`, and only those two | Whether they are one of your people or a customer using the portal |
+| **Groups** | Membership in one or more of the 15 built-in groups below | Everything they can actually *do* |
+| **Superuser** | A Django flag, off for nearly everyone | Bypasses permission checks entirely |
 
-Role type is set per user and determines baseline behavior.
+**There is no "role type" field offering Admin / Staff / Auditor / Customer.**
+*Auditor* and *Customer* are **groups** in the list below; *Admin* is not a group at
+all — the two real ones are **System Admin** and **Tenant Admin**, and they are very
+different. If you are looking for a single dropdown that sets someone's access, there
+isn't one: set the user type when you create them, then put them in groups.
 
 ## Built-in Groups
 
 There are **15** built-in group presets. Each one's name below is exactly what
-appears in the Groups editor.
+appears in the Groups editor — **with the spaces**, which matters (see the warning
+at the end of this section).
 
-| Group | Perms | What it is for |
-|-------|------:|----------------|
-| **System Admin** | 3 | Platform administrator — manages all tenants and system settings |
-| **Tenant Admin** | 506 | Full access within one organization |
-| **QA Manager** | 463 | Quality management, approvals, CAPA control |
-| **QA Inspector** | 290 | Perform inspections, create quality reports, initiate CAPAs |
-| **Production Manager** | 466 | Production operations, work orders, scheduling |
-| **Operator** | 270 | Production floor work, inspections, data entry |
-| **Shift Lead** | 287 | Floor supervisor: operator work plus team visibility and quality oversight |
-| **Planner** | 293 | Releasing work, promising dates, running the schedule and its calendars |
-| **Engineering** | 363 | Engineering changes, drawing control, design work |
-| **Purchasing** | 275 | Supplier qualification, part approvals, expected receipts |
-| **Receiving** | 272 | The inbound dock: receipt, incoming inspection, holds, put-away |
-| **Shipping** | 270 | The outbound dock: shipments, packing lists and CoCs, subcontract send-out |
-| **Document Controller** | 412 | Controlled documents, revisions and approvals |
-| **Auditor** | 138 | Read-only for audits: sees everything, changes nothing |
-| **Customer** | 17 | External portal — their own orders only |
+!!! note "Permission counts are not listed here on purpose"
+    A group's permission count changes whenever anyone adds a permission anywhere in
+    the product, so a number written on this page is wrong within weeks and nobody
+    notices. To see what a group holds **today**, open it in the **Groups editor**,
+    or run `python manage.py check_permissions`.
+
+| Group | What it is for |
+|-------|----------------|
+| **System Admin** | Platform administrator — manages all tenants and system settings |
+| **Tenant Admin** | Full access within one organization |
+| **QA Manager** | Quality management, approvals, CAPA control |
+| **QA Inspector** | Perform inspections, create quality reports, initiate CAPAs |
+| **Production Manager** | Production operations, work orders, scheduling |
+| **Operator** | Production floor work, inspections, data entry |
+| **Shift Lead** | Floor supervisor: operator work plus team visibility and quality oversight |
+| **Planner** | Releasing work, promising dates, running the schedule and its calendars |
+| **Engineering** | Engineering changes, drawing control, design work |
+| **Purchasing** | Supplier qualification, part approvals, expected receipts |
+| **Receiving** | The inbound dock: receipt, incoming inspection, holds, put-away |
+| **Shipping** | The outbound dock: shipments, packing lists and CoCs, subcontract send-out |
+| **Document Controller** | Controlled documents, revisions and approvals |
+| **Auditor** | Read-only for audits: sees everything, changes nothing |
+| **Customer** | External portal — their own orders only |
 
 !!! warning "Group names have no underscores"
     Older documentation used underscored names — "Production_Operator",
@@ -69,6 +79,25 @@ appears in the Groups editor.
     Comparison](../../roles/index.md#what-tells-the-roles-apart).
 
 For what each group can actually *do*, see the [Role Guides](../../roles/index.md).
+
+!!! danger "Group names are matched exactly, spaces and all"
+    Anywhere a group is referred to **by name** rather than picked from a list, the
+    match is exact. The real names have spaces — `QA Manager`, `Production Manager`,
+    `Document Controller`. An older convention used underscores (`QA_Manager`), it
+    still appears in places, and it **does not match anything**.
+
+    This matters most on **approval templates**. A template's *auto-assign by role*
+    and *default groups* are matched against the group name character for character,
+    and a name that matches nothing assigns **nobody** — without an error, because a
+    filter returning no rows is not a failure. The approval simply sits there with no
+    one to action it, and the first you hear of it is someone asking why their
+    approval never arrived.
+
+    So: copy the name from the Groups editor rather than typing it, and after saving
+    a template, check it actually resolves to people.
+
+    (The field's own help text currently suggests `'QA_Manager'`. Ignore it — that
+    is the old form and it is being corrected.)
 
 ## Creating Custom Groups
 
