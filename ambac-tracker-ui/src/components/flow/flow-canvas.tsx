@@ -93,7 +93,7 @@ function validateEdges(edges: Edge[], nodes: Node[]): Edge[] {
 export interface FlowCanvasProps {
   steps: StepData[];
   /** Step edges from API - if provided, used for routing instead of auto-connect by order */
-  stepEdges?: Array<{ from_step: string; to_step: string; edge_type: string }>;
+  stepEdges?: Array<{ from_step: string; to_step: string; edge_type: string; pre_approved?: boolean }>;
   selectedNode?: Node | null;
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   onPaneClick?: () => void;
@@ -135,6 +135,9 @@ export function FlowCanvas({
       // Backend EdgeTypeEnum is uppercase ("DEFAULT" | "ALTERNATE" | "ESCALATION").
       // Normalize incoming values so legacy lowercase strings still match.
       edge_type: (e.edge_type ?? "DEFAULT").toUpperCase() as StepEdgeInput["edge_type"],
+      // Carried through so a branch to a Repair node is labelled by its real
+      // pre-approval; dropping it labelled every repair "needs approval".
+      pre_approved: e.pre_approved,
     })),
     [stepEdges]
   );
@@ -175,15 +178,29 @@ export function FlowCanvas({
     const editableChanged = lastSyncedEditableRef.current !== editable;
 
     if (stepsChanged || edgesChanged || editableChanged) {
-      setNodes(computedNodes);
+      if (stepsChanged || edgesChanged) {
+        setNodes(computedNodes);
+        resetLayout();
+      } else {
+        // Only the mode changed. `computedNodes` carries the PRE-layout fallback
+        // position (x = index * 250, y = 0), so applying it wholesale replaced the
+        // laid-out graph with a single straight line — and the guard below skipped
+        // the re-layout that would have fixed it, so entering edit mode left the
+        // flow unreadable. Toggling the mode is not a reason to re-arrange the
+        // canvas, so keep every node where it already sits: that preserves both the
+        // computed layout and any node the engineer dragged by hand.
+        setNodes((prev) => {
+          const placed = new Map(prev.map((n) => [n.id, n.position]));
+          return computedNodes.map((n) => {
+            const position = placed.get(n.id);
+            return position ? { ...n, position } : n;
+          });
+        });
+      }
       setEdges(computedEdges);
       lastSyncedStepsRef.current = steps;
       lastSyncedEdgeInputsRef.current = edgeInputs;
       lastSyncedEditableRef.current = editable;
-      // Only reset layout when steps/edges change, not when just editable changes
-      if (stepsChanged || edgesChanged) {
-        resetLayout();
-      }
     }
   }, [steps, edgeInputs, editable, computedNodes, computedEdges, setNodes, setEdges, resetLayout]);
 
