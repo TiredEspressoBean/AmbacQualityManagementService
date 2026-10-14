@@ -203,10 +203,20 @@ Import measurements from spreadsheet:
 
 ```csv
 name,nominal,upper_tol,lower_tol,unit,required
-Outer Diameter,25.000,0.010,-0.010,mm,true
-Length,100.000,0.050,-0.050,mm,true
+Outer Diameter,25.000,0.010,0.010,mm,true
+Length,100.000,0.050,0.050,mm,true
 Surface Finish,32,,, Ra µin,false
 ```
+
+!!! danger "Both tolerance columns are positive — check before you upload"
+    `lower_tol` is a **distance below nominal**, exactly as in the form. A negative
+    value in that column inverts the limit, and an import applies it to every row
+    at once. The result looks like a complete, tidy spec list in which nothing can
+    pass.
+
+    If you are adapting a spreadsheet from a drawing that writes tolerances as
+    ± or as signed offsets, **strip the signs from the lower column first**. See
+    the warning under [Tolerance Specification](#tolerance-specification).
 
 1. Prepare CSV with measurement data
 2. Click **Import**
