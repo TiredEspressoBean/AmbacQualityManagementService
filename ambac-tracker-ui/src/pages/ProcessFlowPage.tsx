@@ -432,11 +432,20 @@ export default function ProcessFlowPage() {
     try {
       // Build nodes array from local steps (new graph-based format)
       const nodesPayload = localSteps.map((step, index) => {
-        const numericId = Number(step.id);
-        const isExisting = Number.isFinite(numericId) && numericId > 0;
+        // A node added in the editor carries the negative counter from `nextStepId`;
+        // a persisted step carries a UUID. The test used to be "is this a positive
+        // number?", which was written when step ids were integers and has been false
+        // for every real step since they became UUIDs — `Number("01a1...")` is NaN.
+        // So EVERY saved step was sent as a brand-new node with no id, the server
+        // created fresh Steps for all of them and unlinked the originals. On a process
+        // whose steps have run that surfaced as "Cannot remove steps with execution
+        // history"; on one that hadn't, it would have silently forked every step,
+        // leaving the substeps, measurements and documents behind on the old rows.
+        const asNumber = Number(step.id);
+        const isNew = Number.isFinite(asNumber) && asNumber < 0;
         return ({
-        id: isExisting ? step.id : undefined, // Only include ID for existing steps
-        _temp_id: !isExisting ? step.id : undefined, // Temp ID for new steps
+        id: isNew ? undefined : step.id, // Persisted step: let the server match it
+        _temp_id: isNew ? step.id : undefined, // Editor-local id, for mapping edges
         name: step.name,
         operation_number: step.operation_number || '',
         order: index + 1,
