@@ -3,6 +3,7 @@ Comprehensive sampling and step completion tests for PartsTracker
 Verifies all rule types, FPI workflows, measurements, and step advancement gating
 """
 
+from unittest import mock
 from django.test import TestCase
 from Tracker.tests.base import TenantTestCase
 from django.contrib.auth import get_user_model
@@ -178,8 +179,32 @@ class SamplingSystemTestCase(TenantTestCase):
         parts = self.create_test_parts(100)
         selected = self.evaluate_parts_sampling(parts)
 
-        # Because we use created_at as the seed, the result is deterministic
+        # Each part is considered once, so nothing is selected twice.
         self.assertEqual(len(selected), len(set(p['erp_id'] for p in selected)))
+
+    def test_random_sampling_does_not_seed_the_global_rng(self):
+        """RANDOM must stay unreproducible, and must not reseed the process RNG.
+
+        It once called `random.seed(part.created_at.timestamp())`, which made the
+        same part always get the same answer - a slower PERCENTAGE - and reseeded
+        the PROCESS-WIDE generator as a side effect, so every later use of
+        `random` in that worker inherited a seed taken from a part's creation
+        time. `services/dwi/sampling_decisions.py` draws unseeded for the same
+        rule; the two paths have to agree or one rule means two things.
+
+        The reproducible option is PERCENTAGE, which is tested separately.
+        """
+        SamplingRule.objects.create(
+            ruleset=self.ruleset, rule_type='RANDOM', value=50, order=1)
+        parts = self.create_test_parts(5)
+
+        with mock.patch('random.seed') as seeded:
+            self.evaluate_parts_sampling(parts)
+
+        self.assertFalse(
+            seeded.called,
+            "RANDOM sampling reseeded the global RNG. Use PERCENTAGE when a "
+            "selection has to be reproducible.")
 
     def test_exact_count_sampling(self):
         SamplingRule.objects.create(

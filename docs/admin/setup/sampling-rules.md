@@ -132,14 +132,12 @@ Fixed sample size regardless of lot size.
 
 !!! danger "Do not choose Pure Random for auditability"
     It is the one rule type deliberately built so a selection **cannot** be
-    reconstructed afterwards. On the substep path the draw is unseeded, by design —
-    the intent is a genuinely unpredictable spot check, not a reproducible one.
-
-    The per-part path happens to seed from the part's creation time, so the two
-    behave differently for the same rule. Do not rely on either being repeatable.
+    reconstructed afterwards. The draw is unseeded wherever it is evaluated — the
+    intent is a genuinely unpredictable spot check, not a repeatable one.
 
     **If you need a selection an auditor can reproduce, use Percentage of Parts.**
-    That is what it is for.
+    That is what it is for: it walks the parts in order and takes the first slice,
+    so the same lot always yields the same sample.
 
 ## Lot-Acceptance Rule Types
 

@@ -5,6 +5,8 @@ Re-evaluation of remaining parts in a work order also lives here.
 """
 from __future__ import annotations
 
+import random
+
 
 class SamplingFallbackApplier:
     """
@@ -107,9 +109,21 @@ class SamplingFallbackApplier:
             return self.part in parts[:threshold]
 
         elif rule.rule_type == "RANDOM":
-            import random
-            random.seed(self.part.created_at.timestamp())  # use timestamp as deterministic seed
-            return random.random() < (rule.value / 100.0)
+            # Deliberately NOT reproducible — an unpredictable spot check. The
+            # reproducible option is PERCENTAGE, just above, which walks the
+            # ordered list and takes the first slice; `services/dwi/
+            # sampling_decisions.py` says the same ("deterministic random should
+            # be PERCENTAGE") and the two paths must agree or the same rule means
+            # two different things depending on who evaluates it.
+            #
+            # This used to call `random.seed(part.created_at.timestamp())`, which
+            # was wrong twice over. It made RANDOM a slower, lumpier PERCENTAGE —
+            # the same part always got the same answer. And `random.seed()` reseeds
+            # the PROCESS-WIDE RNG, so every later use of `random` in that worker
+            # inherited a seed taken from a part's creation time.
+            #
+            # `value` is a percentage, 1-100, as it is on the other path.
+            return random.random() * 100 < rule.value
 
         elif rule.rule_type == "FIRST_N_PARTS":
             return qs.filter(created_at__lte=self.part.created_at).count() <= rule.value
