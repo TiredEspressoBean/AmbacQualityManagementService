@@ -162,8 +162,10 @@ def submit_substep(
 
     # Verified signature — an authored, opt-in level above the one-click
     # attestation. A substep with `requires_signature` is signed by drawing a
-    # signature AND re-entering the signer's own password (the Part 11 shape:
-    # two components at signing, the meaning, server time). The method is
+    # signature AND re-entering the signer's own password, so the record carries
+    # two components at signing, the meaning, and the server's time. (That shape
+    # is what AS9100 acceptance-authority media wants; it is NOT a claim of
+    # 21 CFR Part 11 compliance — see docs/compliance/signatures.md.) The method is
     # derived here, never taken from the client — a request could otherwise
     # claim PASSWORD without one. `preverified` is for server-side callers that
     # record history (the demo seed); it records the method as NONE, honestly.

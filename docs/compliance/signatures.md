@@ -72,6 +72,7 @@ sign in someone else's name — and the time is the server's.
   and their electronic equivalents. A signature that accepts an inspection or
   releases product is one, so it should be unique to the person and impossible to
   use on their behalf. Use **verified sign-off** for those steps.
+
 **If someone from an FDA-regulated space asks "could you do Part 11?"** — this is
 what to tell them. It is not a conformance claim and uqmes is not built for Part 11,
 as the note above says. It is an honest account of what the mechanism does, so the
@@ -81,7 +82,7 @@ question can be answered instead of dodged.
 |-------------------|--------------------------------------|
 | §11.50 — a signature shows the signer, the date and time, and its **meaning** | All three: the signer from the session, the server's time, and the meaning stored as the substep's title |
 | §11.70 — the signature is **linked to its record** so it can't be moved or copied | The signature is a field on the completion row itself, not a separate artifact |
-| §11.100 — **unique to one individual**, never reused | A UUID user id; accounts are suspended rather than deleted, so ids are never reassigned |
+| §11.100 — **unique to one individual**, never reused | The signer is a user id from the account itself; accounts are suspended rather than deleted, so an id is never reassigned to a different person |
 | §11.200 — **two identification components**, and re-authentication at signing | One: the password, on top of an authenticated session. Whether that satisfies §11.200(a)(1) depends on how your session is established — SSO with MFA is a different answer from a password login |
 | §11.300 — controls over identification codes and passwords | Django's validators and the per-person signing throttle; password policy itself is your IdP's |
 

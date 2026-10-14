@@ -80,6 +80,39 @@ class VerifiedSignatureTests(TenantTestCase):
         with self.assertRaisesRegex(ValidationError, "Too many"):
             self._submit(signature_data=SIG, password="right-pw")
 
+    def test_a_batch_substep_is_signed_once_for_the_whole_load(self):
+        """The claim the browser walk could only show on a one-part load: a BATCH
+        substep takes ONE signature for the load, recorded against the
+        BatchExecution rather than per part."""
+        from Tracker.models import BatchExecution, Substep, SubstepScope
+        batch_substep = Substep.objects.create(
+            tenant=self.tenant_a, step=self.se.step, order=5, title="Run the wash cycle",
+            scope=SubstepScope.BATCH, requires_signature=True)
+        parts = [self.se.part] + [
+            type(self.se.part).objects.create(
+                tenant=self.tenant_a, ERP_id=f"VS-BATCH-{i}", part_type=self.se.part.part_type,
+                work_order=self.se.part.work_order, step=self.se.step)
+            for i in range(2)
+        ]
+        batch = BatchExecution.objects.create(
+            tenant=self.tenant_a, work_order=self.se.part.work_order, step=self.se.step,
+            started_by=self.user_a)
+        batch.parts.set(parts)
+
+        with self.assertRaisesRegex(ValidationError, "needs your signature"):
+            submit_substep(substep=batch_substep, batch_execution=batch, user=self.user_a,
+                           captures=[])
+        submit_substep(substep=batch_substep, batch_execution=batch, user=self.user_a,
+                       captures=[], signature_data=SIG, password="right-pw")
+
+        rows = SubstepCompletion.objects.filter(substep=batch_substep, deleted_at__isnull=True)
+        self.assertEqual(rows.count(), 1, "one signature covers the load, not one per part")
+        row = rows.get()
+        self.assertEqual(row.verification_method, "PASSWORD")
+        self.assertEqual(row.batch_execution_id, batch.id)
+        self.assertIsNone(row.step_execution_id)
+        self.assertEqual(len(parts), 3)  # the load really had more than one part
+
     def test_a_voided_completion_is_captured_again_as_a_new_live_one(self):
         self._submit(signature_data=SIG, password="right-pw")
         first = self._completion()
