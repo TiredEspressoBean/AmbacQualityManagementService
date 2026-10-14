@@ -789,7 +789,17 @@ export default function ProcessFlowPage() {
     // Get current edges
     const currentEdges = localEdges || [];
 
-    // Convert steps to Node format for validation
+    // Convert steps to Node format for validation.
+    //
+    // Every field a rule in `process-validation` reads has to be here: this is a
+    // projection built for the validator, not the node the canvas renders, so a
+    // field left out doesn't read as "unknown" — it reads as absent. Two rules
+    // were wrong for exactly that reason until 2026-10-14. `repairCode` was
+    // missing, so EVERY Repair step reported "has no repair code" however it was
+    // configured, and since validation errors block Save, no process containing a
+    // repair step could be saved or approved. `decision_type` was missing, so the
+    // AGGREGATE rule silently never fired at all — the quieter half of the same
+    // bug, and the reason to add fields here rather than only the one that shouted.
     const nodes: Node[] = currentSteps.map(step => ({
       id: String(step.id),
       type: step.step_type || 'TASK',
@@ -799,8 +809,10 @@ export default function ProcessFlowPage() {
         name: step.name,
         step_type: step.step_type,
         is_decision_point: step.is_decision_point,
+        decision_type: step.decision_type,
         is_terminal: step.is_terminal,
         max_visits: step.max_visits,
+        repairCode: step.repair_code_code ?? null,
       },
     }));
 

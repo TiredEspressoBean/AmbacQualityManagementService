@@ -205,6 +205,9 @@ export interface StepData {
   block_on_quarantine?: boolean;
   pass_threshold?: number;
   revisit_assignment?: 'any' | 'same' | 'different' | 'role';
+  /** Reman: the repair code this step carries, as the shop writes it (e.g. NZL-RECON).
+   *  Flow validation needs it to tell a configured Repair node from an unroutable one. */
+  repair_code_code?: string | null;
 }
 
 /**
