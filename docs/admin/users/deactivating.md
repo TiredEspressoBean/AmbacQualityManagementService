@@ -165,9 +165,15 @@ View in Admin > Audit Log.
 
 | Permission | Allows |
 |------------|--------|
-| `change_user` | Deactivate/reactivate users |
+| `change_user` | Deactivate and reactivate users |
 | `view_user` | See inactive users |
-| `delete_user` | Permanent deletion (rarely used) |
+| `delete_user` | Use **Delete** on the user list, which suspends their membership of this organisation. It does **not** destroy the account — see the note at the top of this page. |
+
+!!! note "You cannot remove your own access"
+    Removing yourself is refused: *"You can't remove your own access."* Worth
+    knowing if you are the only administrator — you cannot lock yourself out this
+    way, and you cannot hand over by removing yourself. Add the other person and
+    give them what they need first.
 
 ## Checklist: User Offboarding
 
