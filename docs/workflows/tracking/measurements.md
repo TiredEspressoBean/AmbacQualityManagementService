@@ -160,19 +160,26 @@ When a measurement fails:
 If configured, parts with failed measurements automatically enter quarantine.
 
 ### Manual Review
-The operator must decide:
+The operator decides between:
 
-1. Re-measure (possible measurement error)
-2. Flag for quality review
-3. Create a quality report
+1. **Re-measure**, if the reading itself is suspect — and before the step is
+   completed, a corrected value simply replaces the draft
+2. **Create a quality report**, which is the route that raises the issue
+   formally
 
-### Rework Loop
-If the part can be reworked:
+!!! note "There is no Flag button on a part"
+    Raising an issue means creating a quality report. There is no separate
+    flag-for-review action.
 
-1. Record the failed measurement
-2. Move part to rework step
-3. Perform corrective action
-4. Re-measure
+### Rework
+Rework is a **disposition decision**, not a move the operator makes. Record the
+failed measurement, raise a quality report, and let the disposition decide
+between Rework, Repair, Use As Is, Scrap or Return to Supplier.
+
+!!! note "There is no 'move to rework step' button"
+    Parts do not get pushed to a step by hand. A *Rework* disposition sets the
+    part to `REWORK_NEEDED`; the routing follows from that. See
+    [Dispositions](../quality/dispositions.md).
 
 ## SPC Integration
 
@@ -191,7 +198,7 @@ See [SPC Charts](../../analysis/spc.md) for details.
 |------------|--------|
 | `view_measurementresult` | View measurement history |
 | `add_measurementresult` | Record new measurements |
-| `delete_measurementresult` | Remove measurements |
+| `delete_measurementresult` | Remove a measurement result entirely. Held by Tenant Admin, QA Manager, Production Manager and Document Controller. |
 
 ## Next Steps
 

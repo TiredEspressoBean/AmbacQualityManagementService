@@ -85,6 +85,15 @@ Some steps have branching based on results:
 - **Fail** → Part may route to rework or quarantine
 - **Measurement-based** → Routing determined by value
 
+!!! warning "A MANUAL decision point waits for a person"
+    Not every decision point branches on its own. A decision point set to
+    **manual** holds the part until someone chooses the branch — a Shift Lead,
+    QA Inspector, QA Manager, Production Manager or Tenant Admin.
+
+    This is the usual reason a part appears stuck at a step with nothing
+    obviously wrong with it: nothing failed, the step is simply waiting on a
+    decision nobody has made yet.
+
 ## Step Transition Details
 
 Each transition records:
@@ -102,10 +111,11 @@ Each transition records:
 
 If an issue is found:
 
-1. Create a Quality Report against the part with a fail status
-2. Select the error type
-3. Enter description
-4. Part enters quarantine status
+1. Create a Quality Report against the part, recorded as **FAIL** — a PASS or
+   still-PENDING report does not quarantine anything
+2. Add each defect to the report, with its own error type, count, location and
+   severity. Error type is **not** a field on the report itself
+3. The part enters quarantine
 
 Quarantined parts cannot progress until disposition is determined. See [Quarantine](../quality/quarantine.md).
 

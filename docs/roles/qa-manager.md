@@ -155,6 +155,15 @@ There is no separate closure request or closure approval. The gate is
 `verify_capa`; if you don't hold it, an authorised colleague can co-sign inline
 with their email and password and the closure is attributed to them.
 
+!!! warning "You cannot verify a CAPA you initiated or were assigned"
+    The server refuses it outright. Effectiveness is judged by someone other
+    than the person who did the work — so if you assigned a CAPA to yourself,
+    which is routine, **you are not the one who can close it.** A colleague
+    holding `verify_capa` co-signs, and the closure is theirs.
+
+    This is the commonest way the step fails, and it fails at the end, after
+    the evidence is assembled.
+
 !!! warning "Closed is the end of the line"
     A closed CAPA cannot be reopened. If the check shows the action did *not*
     work, record **Not effective** instead — that returns the CAPA to In Progress

@@ -19,7 +19,7 @@ Parts enter quarantine when:
 |---------|-------------|
 | **Failed inspection** | Measurement out of tolerance |
 | **Visual defect** | Operator flags issue |
-| **Quality report** | NCR created for part |
+| **Quality report** | NCR recorded as **FAIL** for the part — see below; creating one is not enough |
 | **Customer complaint** | Return or field issue |
 | **Suspect material** | Material lot under investigation |
 | **Process deviation** | Unauthorized change occurred |

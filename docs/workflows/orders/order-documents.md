@@ -34,9 +34,12 @@ See [Uploading Documents](../documents/uploading.md).
 From the document's own page:
 
 1. Open the document
-2. Click **Attach**
-3. Choose the entity type, then search for the record
-4. The document is now linked to it
+2. **Edit** it
+3. Use **Link To (Optional)** — choose the entity type, then search for the record
+4. Save
+
+!!! note "There is no Attach button on a document"
+    Linking is part of the edit form, not a separate action.
 
 A document can be attached to several records — its detail page lists what it
 is **Linked To** and what it is **Also Linked To**.
@@ -82,13 +85,25 @@ Control what customers can see:
 
 ### Document Visibility Settings
 
-| Setting | Customer Can See |
-|---------|------------------|
-| **Public** | Visible to customer |
-| **Internal** | Hidden from customer |
-| **Confidential** | Hidden, restricted internally |
+Visibility is the document's **classification level**, set on upload or edit.
+There are five, not three:
 
-Set visibility when uploading or editing documents.
+| Level | Who can see it |
+|-------|----------------|
+| **Public** | Everyone, including customers |
+| **Internal** | All staff |
+| **Confidential** | All staff |
+| **Restricted** | All staff |
+| **Secret** | Tenant Admin and Document Controller only |
+
+!!! warning "Confidential does not restrict a document internally"
+    Every internal role — Operator and the dock included — can read
+    **Confidential** and **Restricted**. Those tiers separate staff from
+    **customers and auditors**, not managers from the floor.
+
+    If you need a document kept from most of the shop, **Secret** is the only
+    tier that does it. See
+    [Classification Levels](../documents/library.md#classification-levels).
 
 ### Common Customer Documents
 
@@ -126,9 +141,14 @@ Find documents across orders:
 1. Go to **Documents** in the sidebar
 2. Use filters:
    - Document type
-   - Date range
-   - Associated order
    - Approval status
+   - Is-image
+   - Needs my approval
+
+!!! note "No date or author filter"
+    There is no date-range or created-by filter on the document list. To find
+    documents for one order, open the order and read its linked documents
+    rather than filtering the library.
 3. Click a result to open the document
 
 ## Version History

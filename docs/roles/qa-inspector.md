@@ -99,10 +99,10 @@ When problems are found:
 ### At Inspection Steps
 
 1. Open the work order from **Production** > **Work Orders**
-2. See parts waiting at the inspection step
-3. Determine sample size (per sampling rules)
-4. Inspect selected parts
-5. Record results
+2. See parts waiting at the inspection step — the rule has already decided
+   which ones those are
+3. Inspect the parts presented to you
+4. Record results
 
 ### Recording Measurements
 
@@ -135,11 +135,15 @@ the receiving inspection queue and use **Record Measurements** there.
 
 ### When Sampling Applies
 
-1. System shows required sample size
-2. Select or identify sample parts
-3. Inspect sample
-4. Record results
-5. System determines lot accept/reject
+1. The sampling rule selects the parts; they are the ones waiting at the step
+2. Inspect them
+3. Record results
+4. The rule's accept/reject criteria decide the lot outcome
+
+!!! note "You do not choose the sample"
+    Sampling is decided for you by the rule attached to the step. Your job is
+    to answer *"why this part?"* from the record — not to size or pick the
+    sample.
 
 ### AQL Sampling
 

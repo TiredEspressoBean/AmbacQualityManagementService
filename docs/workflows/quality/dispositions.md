@@ -181,6 +181,13 @@ outstanding against it. If blockers remain (for example pending part
 annotations), the close is rejected and names what is in the way. Clear those
 first.
 
+!!! warning "Critical and Major need containment recorded first"
+    A disposition of **Critical** or **Major** severity cannot be closed until a
+    **containment action** is recorded on it. That is the commonest blocker and
+    the one most often missed, because containment is captured in a different
+    place from the decision — see [Containment comes first](#containment-comes-first)
+    above.
+
 ## Permissions
 
 | Permission | Allows |
