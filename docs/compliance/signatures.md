@@ -72,11 +72,27 @@ sign in someone else's name — and the time is the server's.
   and their electronic equivalents. A signature that accepts an inspection or
   releases product is one, so it should be unique to the person and impossible to
   use on their behalf. Use **verified sign-off** for those steps.
-Nothing here is a claim about **21 CFR Part 11**. That regulation does require
-re-authentication at signing, and verified sign-off happens to capture the signer,
-the time and the meaning — but a signature mechanism is a fraction of what Part 11
-asks for, and uqmes is not built for it, as the note above says. If you are
-FDA-regulated, treat this as one input to your own validation, not as evidence.
+**If someone from an FDA-regulated space asks "could you do Part 11?"** — this is
+what to tell them. It is not a conformance claim and uqmes is not built for Part 11,
+as the note above says. It is an honest account of what the mechanism does, so the
+question can be answered instead of dodged.
+
+| What Part 11 asks | What verified sign-off actually does |
+|-------------------|--------------------------------------|
+| §11.50 — a signature shows the signer, the date and time, and its **meaning** | All three: the signer from the session, the server's time, and the meaning stored as the substep's title |
+| §11.70 — the signature is **linked to its record** so it can't be moved or copied | The signature is a field on the completion row itself, not a separate artifact |
+| §11.100 — **unique to one individual**, never reused | A UUID user id; accounts are suspended rather than deleted, so ids are never reassigned |
+| §11.200 — **two identification components**, and re-authentication at signing | One: the password, on top of an authenticated session. Whether that satisfies §11.200(a)(1) depends on how your session is established — SSO with MFA is a different answer from a password login |
+| §11.300 — controls over identification codes and passwords | Django's validators and the per-person signing throttle; password policy itself is your IdP's |
+
+**What is not here, and is the larger half of Part 11:** computer-system validation
+and its documentation, the SOPs and training that sit around the system, record
+retention and the ability to produce accurate copies for inspection, and open-system
+controls under §11.30. Those are programme questions, not features, and no vendor
+answers them for you.
+
+So the fair answer to "could you?" is: **the signing mechanism has the shape Part 11
+describes, and the surrounding programme would be yours to build and validate.**
 
 Wrong passwords are rate-limited, so a terminal left signed in can't be used to
 guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#verified-sign-off)
