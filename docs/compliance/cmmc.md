@@ -203,7 +203,7 @@ organizational controls.
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
 | CM.L2-3.4.1 | Baseline configurations | ✅ | Versioned records via `create_new_version()`; `SPCBaseline` freezes a control-chart baseline |
-| CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control; every revision carries a required `change_justification` |
+| CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control. A **document** revision is refused without a reason — `Documents.revise` returns 400 *"change_justification is required when creating a revision"*. A **process** change carries its own `proposed_change`, `justification` and `risk_analysis` on the change request, and cannot reach production except through it. |
 | CM.L2-3.4.5 | Access restrictions on change | ✅ | Row-level security (see SC below) and per-action permissions |
 | CM.L2-3.4.6 | Least functionality | ➖ | Yours, at the host — disabled services and ports. Role permissions narrow what users can do but are not what this practice asks about |
 
