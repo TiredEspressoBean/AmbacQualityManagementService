@@ -195,9 +195,10 @@ only if the IdP is in scope and configured.
 
 ### Configuration Management (CM)
 
-Four of nine practices have an application component. The rest — host
-baseline inventory, software allow-listing, user-installed software — are
-platform and organizational controls.
+Three of the nine CM practices are ones the application provides; a fourth is
+listed below so you can see where it sits. The rest — host baseline inventory,
+software allow-listing, user-installed software — are platform and
+organizational controls.
 
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
@@ -208,8 +209,9 @@ platform and organizational controls.
 
 ### Media Protection (MP)
 
-Media protection is mostly physical. Four of nine practices have an
-application component.
+Media protection is mostly physical. Three of the nine practices are ones the
+application provides; a fourth is listed because it is the one people most often
+try to cite it for, wrongly.
 
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
@@ -220,8 +222,9 @@ application component.
 
 ### System & Communications Protection (SC)
 
-Sixteen practices, most of them network and boundary controls. Five have an
-application or deployment component.
+Sixteen practices, most of them network and boundary controls. Three are ones
+the application provides, and two more are listed because the answer depends on
+how you deploy it.
 
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
