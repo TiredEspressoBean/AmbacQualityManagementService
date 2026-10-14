@@ -353,17 +353,20 @@ you are offered depends on how it is being fulfilled:
     explicitly not counted as output. Choose it when the body has failed or cores
     of that type are in surplus, never when you are unsure.
 
-!!! warning "Release to rebuild is refused with no rebuild scope"
-    If no scope resolves for that core type, releasing would put the unit on a
-    work order with **no operations**. That is a master-data gap — a rebuild
-    level or repair codes — not a decision you can force.
+!!! warning "Release to rebuild is refused when the route stops at teardown"
+    The refusal reads *"… has no next step on its route after teardown — check
+    the work order's process continues past teardown."* Fix the **process**, not
+    the master data: repair codes and rebuild levels have nothing to do with it,
+    and a core type with neither releases perfectly well.
 
 See [Remanufacturing Overview](../workflows/reman/overview.md).
 
 ### Knowledge Check: Module 8
 
 1. A customer's own core comes back under repair-and-return. Can you harvest it?
-2. *Release to rebuild* is greyed out. What do you fix?
+2. *Release to rebuild* is refused, saying the unit has no next step after
+   teardown. What do you fix — the core type's rebuild levels, or the work
+   order's process?
 
 ---
 

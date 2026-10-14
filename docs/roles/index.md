@@ -167,7 +167,7 @@ their own orders.
 | **Approve** a CAPA | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
 | Classify documents | – | – | – | Yes | – | – | – | – | – | – | Yes | – | Yes |
 | Author processes & routings | – | – | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
-| Cancel a work order | – | – | – | Yes | Yes | – | – | – | – | – | Yes | – | Yes |
+| Cancel a work order | – | – | – | – | Yes | – | – | – | – | – | – | – | Yes |
 | Run / commit a solve | – | – | – | – | Yes | Yes | – | – | – | – | – | – | Yes |
 | Work the board by hand | – | Yes | – | Yes | Yes | Yes | – | – | – | – | – | – | Yes |
 | **Approve** a supplier qualification | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |

@@ -109,14 +109,27 @@ The SPC view shows:
 
 Points are flagged for:
 
-| Rule | Description |
-|------|-------------|
-| **Rule 1** | Point beyond 3σ (outside control limits) |
-| **Rule 2** | 9 points in a row on same side of center |
-| **Rule 3** | 6 points trending in same direction |
-| **Rule 4** | 14 points alternating up and down |
-| **Rule 5** | 2 of 3 points beyond 2σ |
-| **Rule 6** | 4 of 5 points beyond 1σ |
+uqmes applies the **Western Electric** rules. The numbering matters: the
+practitioner guide escalates by rule number, so Rule 2 has to mean the same
+thing in both places.
+
+| Rule | Description | Pattern it suggests |
+|------|-------------|---------------------|
+| **Rule 1** | One point beyond 3σ | A shock — something changed outright |
+| **Rule 2** | 2 of 3 consecutive points beyond 2σ, same side | A shift beginning |
+| **Rule 3** | 4 of 5 consecutive points beyond 1σ, same side | A smaller sustained shift |
+| **Rule 4** | 8 consecutive points on one side of centre | The process has moved |
+| **Rule 5** | 6 consecutive points steadily rising or falling | A trend — tool wear, drift |
+| **Rule 6** | 14 consecutive points alternating up and down | Cycling, often two alternating sources |
+| **Rule 7** | 15 consecutive points within 1σ | Stratification — limits too wide, or over-smoothed data |
+| **Rule 8** | 8 consecutive points beyond 1σ, either side | A mixture of two populations |
+
+!!! warning "Do not renumber these against another reference"
+    Nelson's rules describe the same signals in a **different order** — its Rule
+    2 is an 8-point run, not 2 of 3 beyond 2σ. Escalation in the
+    [practitioner guide](spc-practitioner-guide.md) is keyed to the numbers
+    above, so mixing the two schemes sends the wrong response to the wrong
+    signal.
 
 ## Capability Indices
 

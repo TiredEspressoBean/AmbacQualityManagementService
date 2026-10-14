@@ -436,12 +436,25 @@ authorisation*.
 
 ### 7.3 A core's exit
 
-A **DISASSEMBLED** core waits on hold until you choose its exit, each option with
-a tooltip explaining the consequence:
+A **DISASSEMBLED** core waits on hold until you choose its exit. What you are
+offered depends on how the unit is being fulfilled:
+
+**Repair and return** — one button, **Release to rebuild**. It is the customer's
+own unit, so rebuilding is the only exit. The server refuses a harvest: you
+cannot give away a unit that belongs to somebody else.
+
+**Exchange** — two exits, because the unit belongs to the shop:
 
 - **Rebuild to stock** — identity kept, stocked as reman finished goods
-- **Release to inventory** — components accepted, the core consumed
-- **Return** — only for a customer's own unit under repair-and-return
+- **Harvest for parts** — components accepted as stock, the core consumed
+
+!!! warning "The same harvest exit is labelled two different ways"
+    On the unit's own work screen the button reads **Harvest for parts**; on the
+    work order's cores card it reads **Release to inventory**. They are the same
+    operation with the same result. Do not go looking for a third exit.
+
+**Return** is *not* an exit from Disassembled. It dispatches an already-rebuilt
+or scope-declined unit back to its customer.
 
 !!! danger "Harvest ends the unit"
     It becomes *Dismantled* — terminal, and explicitly not counted as output.
@@ -492,8 +505,8 @@ board will not re-optimise on its own.
 | **Approve a disposition** | QA Manager |
 | **Reject a whole lot (VDMR)** | QA |
 | **Solve / commit a schedule** | Planner, Production Manager, Tenant Admin |
-| **Author processes or routings** | Engineering |
-| **Cancel a work order** | Production Manager |
+| **Author processes or routings** | Engineering, QA Manager, Production Manager, Document Controller, Tenant Admin |
+| **Cancel a work order** | Production Manager, Tenant Admin |
 
 !!! note "Voiding a sign-off is a quality judgement, not a production override"
     It is withheld from Shift Lead *and* Production Manager on purpose. You can

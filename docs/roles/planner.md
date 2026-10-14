@@ -207,10 +207,15 @@ you're offered depends on how it is being fulfilled:
 - **Exchange** — *Rebuild to stock* or *Harvest for parts*. The unit is the
   shop's, so both are legitimate.
 
-Releasing to rebuild is refused if **no rebuild scope resolves** for that core
-type — releasing with nothing to do would put the unit on a work order with no
-operations. That is a master-data gap (a rebuild level or repair codes), not a
-decision you can force.
+Releasing to rebuild is refused when the unit's **route does not continue past
+teardown** — there is nowhere for the rebuild to pick up:
+
+> *… has no next step on its route after teardown — check the work order's
+> process continues past teardown.*
+
+That is a **process** gap, not a master-data one. A core type with no repair
+codes and no rebuild levels releases to rebuild perfectly well — the unit simply
+walks its main line and no repair branch is offered.
 
 See [Remanufacturing Overview](../workflows/reman/overview.md).
 

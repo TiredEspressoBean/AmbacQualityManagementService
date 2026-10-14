@@ -83,8 +83,8 @@ not owning it; see [CAPA Overview](../workflows/capa/overview.md).
 | **Reject a whole lot (VDMR)** | QA |
 | **Approve a disposition** | QA Manager |
 | **Solve / commit a schedule** | Planner, Production Manager, Tenant Admin |
-| **Author processes, BOMs, specs** | Engineering, Document Controller |
-| **Cancel a work order** | Production Manager |
+| **Author processes, BOMs, specs** | Engineering, QA Manager, Production Manager, Document Controller, Tenant Admin |
+| **Cancel a work order** | Production Manager, Tenant Admin |
 
 !!! note "Voiding a sign-off is a quality judgement, not a production override"
     Retracting a record of work someone else signed is withheld from Shift Lead
