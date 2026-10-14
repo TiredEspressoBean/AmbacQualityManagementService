@@ -44,7 +44,7 @@ different start command, so there is nothing named `railway.celery.toml` to look
 
 | Variable | Description |
 |----------|-------------|
-| `SERVICE_TYPE` | `web` (default), `worker`, or `beat` |
+| `SERVICE_TYPE` | `web` (default), `worker`, or `beat`. Dispatched in `PartsTracker/Dockerfile`'s `CMD` — `worker` and `beat` start Celery, anything else migrates and starts Gunicorn. If a Celery service comes up serving HTTP, this is the variable to check. |
 | `PORT` | HTTP port (set to `8000` for healthchecks) |
 | `ALLOWED_HOSTS` | `.railway.app` |
 
