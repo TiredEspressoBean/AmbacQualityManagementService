@@ -35,21 +35,45 @@ void_substepcompletion - Can void a recorded substep completion
 
 ## Assigning via Groups
 
-The recommended approach:
+**Start by assigning an existing group, not by building one.** All fifteen built-in
+groups are seeded into every organisation already — QA Inspector, Operator, Planner
+and the rest. They are not examples to copy; they are the groups people should be in.
 
-1. **Create a Group** matching the role
-2. **Add Permissions** to the group
-3. **Assign Users** to the group
+1. Open the person in **User Management**
+2. Put them in the group that matches their job
+3. Only if no group fits, create a custom one — see
+   [Roles and Groups](roles.md#creating-custom-groups)
 
-### Example: QA Inspector Role
+!!! danger "Do not hand-build a group that already exists"
+    Creating your own "QA Inspector" does not replace the built-in one — it adds a
+    second group with the same job and whatever permissions you happened to pick.
+    The real preset carries a few hundred permissions; a hand-assembled version will
+    carry a handful, and the person will hit refusals you then have to debug one at
+    a time.
 
-1. Create group "QA Inspector"
-2. Add permissions:
-   - `view_orders`, `view_parts`
-   - `add_qualityreports`, `view_qualityreports`
-   - `add_measurementresult`, `view_measurementresult`
-   - `view_documents`
-3. Assign QA inspector users to this group
+    If someone cannot do something they should be able to, check **which group they
+    are in** before adding permissions to fix it.
+
+## When a permission looks granted but nothing changes
+
+Permissions are only one of the ways access is decided, which is why granting one
+sometimes appears to do nothing. Three different mechanisms are at work:
+
+| Mechanism | What it controls | Symptom when it is the cause |
+|-----------|------------------|------------------------------|
+| **The permission itself** | Whether the action is allowed at all | A clear refusal, usually a 403 |
+| **Row filtering** | *Which records* they can see — document classification, and export-control status | They can open the page but a record is missing from the list entirely |
+| **Per-record eligibility** | Whether this particular record is theirs to action | The page loads, the record is visible, the button is absent or refuses |
+
+So a person with `view_documents` may still not see a given document, because
+classification filtering removes it from their queryset before permissions are
+consulted. Adding more permissions will not fix that — their classification access
+or export-control status is what needs looking at.
+
+!!! note "Export control is not a permission"
+    Access to export-controlled data is decided by flags on the **person**, not by
+    any group. You cannot grant it here, and putting someone in a different group
+    will not change it.
 
 ## Permission Categories
 
