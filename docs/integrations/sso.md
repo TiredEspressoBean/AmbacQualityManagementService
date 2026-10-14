@@ -2,8 +2,14 @@
 
 Single Sign-On integration with Microsoft Entra ID and other identity providers.
 
-!!! note "Administrator Configuration"
-    SSO is configured by system administrators via backend settings. Contact your administrator or uqmes support for SSO setup.
+!!! warning "You configure this yourself — there is nobody to send it to"
+    SSO is set up by whoever administers this deployment, through environment
+    variables on the backend — see
+    [Backend configuration](#backend-configuration-environment-variables) below.
+
+    **There is no uqmes support desk**, so there is no vendor to send credentials
+    to. Your client secret goes into your own environment configuration and
+    nowhere else. See [Getting Help](../troubleshooting/help.md).
 
 ## Overview
 
@@ -46,10 +52,14 @@ SSO allows users to:
      - Microsoft Graph: profile
 
 3. **Configure uqmes**
-   - Contact uqmes support with:
-     - Client ID
-     - Client Secret
-     - Tenant ID
+   - Set the values from the app registration as environment variables on the
+     backend and redeploy — `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`,
+     `AZURE_TENANT_ID`, with `SSO_ENABLED=true`. The full list, including the
+     host and CSRF settings that must match, is under
+     [Backend configuration](#backend-configuration-environment-variables).
+   - **Do not email the client secret to anyone.** It is a credential for your
+     directory; it belongs in your deployment's secret configuration and nowhere
+     else. Nobody outside your organisation needs it or can act on it.
 
 4. **Test SSO**
    - Log out of uqmes
