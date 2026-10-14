@@ -51,18 +51,40 @@ Common signature meanings:
 
 Meanings are configured per approval template.
 
-## Two levels: attestation and verified sign-off
+## How a signature in a work instruction is taken
 
-A signature taken in a work instruction is one of two levels, chosen per substep
-by whoever authors it:
+A signature is a **block in the substep's body**, and whoever authors the
+instruction chooses how strongly it is signed. There is no substep-wide setting:
+a substep asks for a signature exactly when its body contains a block that does.
 
 | Level | What the signer does | What is recorded |
 |-------|----------------------|------------------|
 | **Check off** | Ticks the block | The signed-in user, the server's time |
-| **Signature + password** | Draws a signature and re-enters their own password | The signer, what the signature was for (the block's label), the server's time, verification method *Password*, and the IP address |
+| **Signature + password** | Draws a signature and re-enters **their own** password | The signer, what the signature was for, the server's time, verification method *Password*, and the IP address |
 
-In both, the signer is the signed-in user — the server stamps it, so nobody can
-sign in someone else's name — and the time is the server's.
+An inspection block is different in one way that matters: its **verifier signs as
+a second person**, with their own email and password, because a shop terminal
+carries one login and the verifier is not the person signed in at it.
+
+**What the server guarantees in every case:** who signed, when, how identity was
+proven, the originating IP, and what the signature was for are all set by the
+server. No endpoint accepts any of them from a client. A *Password* verification
+can only be produced after a real password check — the signer's own, or a second
+person's email and password. What a client supplies is the drawing itself and
+which block it belongs to.
+
+!!! note "What the signature was for"
+    The recorded meaning is the **block's label** — so label it with the act
+    ("Release sign-off") rather than leaving it blank. An unlabelled block falls
+    back to the substep's title, which is usually less precise about what was
+    accepted.
+
+!!! warning "A drawing is not proof of verification"
+    A check-off block also stores a drawing, recorded with verification method
+    *None*. That is honest rather than forged — it says "signed under a session,
+    not re-authenticated" — but it means the presence of a signature image is
+    **not** evidence that anyone re-authenticated. Read the verification method,
+    not the picture.
 
 **Which level a standard asks for:**
 
@@ -71,7 +93,7 @@ sign in someone else's name — and the time is the server's.
 - **AS9100** requires control of *acceptance authority media* — inspection stamps
   and their electronic equivalents. A signature that accepts an inspection or
   releases product is one, so it should be unique to the person and impossible to
-  use on their behalf. Use **verified sign-off** for those steps.
+  use on their behalf. Author those blocks as **signature + password**.
 
 **If someone from an FDA-regulated space asks "could you do Part 11?"** — this is
 what to tell them. It is not a conformance claim and uqmes is not built for Part 11,
@@ -80,10 +102,10 @@ question can be answered instead of dodged.
 
 | What Part 11 asks | What verified sign-off actually does |
 |-------------------|--------------------------------------|
-| §11.50 — a signature shows the signer, the date and time, and its **meaning** | All three: the signer from the session, the server's time, and the meaning stored as the substep's title |
-| §11.70 — the signature is **linked to its record** so it can't be moved or copied | The signature is a field on the completion row itself, not a separate artifact |
+| §11.50 — a signature shows the signer, the date and time, and its **meaning** | All three: the signer from the session (or the verified second person), the server's time, and the meaning stored from the block's label, falling back to the substep title when a block is unlabelled |
+| §11.70 — the signature is **linked to its record** so it can't be moved or copied | Each signature is its own row keyed to the substep, the block within it, and the execution or batch it was taken against — not a free-standing artifact that could be re-pointed |
 | §11.100 — **unique to one individual**, never reused | The signer is a user id from the account itself; accounts are suspended rather than deleted, so an id is never reassigned to a different person |
-| §11.200 — **two identification components**, and re-authentication at signing | One: the password, on top of an authenticated session. Whether that satisfies §11.200(a)(1) depends on how your session is established — SSO with MFA is a different answer from a password login |
+| §11.200 — **two identification components**, and re-authentication at signing | Depends which signature. Signing **your own** work: the session established identity and the password re-confirms it — one identification component, re-entered. An inspection **verifier** supplies email **and** password, not being signed in at that terminal — two. In neither case does the drawing count: it is evidence of intent, not identification. Whether the own-signature case satisfies §11.200(a)(1) also depends on how your session is established — SSO with MFA is a different answer from a password login |
 | §11.300 — controls over identification codes and passwords | Django's validators and the per-person signing throttle; password policy itself is your IdP's |
 
 **What is not here, and is the larger half of Part 11:** computer-system validation
