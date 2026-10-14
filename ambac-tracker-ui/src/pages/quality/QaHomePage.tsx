@@ -189,7 +189,8 @@ function InboxList() {
         if (row.type === "qa_signoff") {
             const [workOrderId, stepId] = row.id.split(":");
             setSignOff({ workOrderId, stepId, step: row.title.replace(/^QA sign-off · /, ""),
-                         workOrder: row.wo ?? "", units: row.quantity ?? 1 });
+                         workOrder: row.wo ?? "", units: row.quantity ?? 1,
+                         assurance: row.assurance ?? undefined });
             return;
         }
         if (row.subject_kind === "material_lot") {

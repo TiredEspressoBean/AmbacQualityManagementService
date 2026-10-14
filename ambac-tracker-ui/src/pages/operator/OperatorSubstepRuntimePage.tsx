@@ -313,6 +313,7 @@ export function OperatorSubstepRuntimePage() {
         return {
             fpiId: s.pending_fpi_id,
             canSignOff: Boolean(s.can_sign_off),
+            assurance: s.assurance,
             partLabel: s.designated_part_label ?? null,
             firstPieceReady: Boolean(s.first_piece_ready),
         };
@@ -1096,6 +1097,8 @@ function ReviewStage({
     fpiHold?: {
         fpiId: string;
         canSignOff: boolean;
+        /** The step's authored QA assurance; "PASSWORD" asks the signer for theirs. */
+        assurance?: string;
         partLabel: string | null;
         firstPieceReady: boolean;
     } | null;
@@ -1290,6 +1293,7 @@ function ReviewStage({
                     onOpenChange={setSignOffOpen}
                     fpiId={fpiHold.fpiId}
                     canSignOff={fpiHold.canSignOff}
+                    assurance={fpiHold.assurance}
                     partLabel={fpiHold.partLabel}
                 />
             )}

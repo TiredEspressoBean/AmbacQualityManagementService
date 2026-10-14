@@ -134,6 +134,7 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                     onOpenChange={(v) => !v && setSigning(null)}
                     fpiId={signing.id}
                     canSignOff={canSignOff}
+                    assurance={signing.step_info?.qa_signoff_assurance}
                     partLabel={signing.designated_part_info?.erp_id ?? null}
                     onSigned={() => setSigning(null)}
                 />

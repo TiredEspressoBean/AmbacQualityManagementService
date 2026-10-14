@@ -3212,6 +3212,7 @@ export type FPIRecordWorkOrderInfo = {
 export type FPIRecordStepInfo = {
   id: string;
   name: string | null;
+  qa_signoff_assurance: string;
 };
 export type FPIRecordPartTypeInfo = {
   id: string;
@@ -3511,6 +3512,10 @@ export type InspectionInboxRow = {
   severity: InspectionInboxSeverity;
   resume: string | null;
   blocked_reason: string | null;
+  /**
+   * QA sign-off rows only: how the step's author asked it to be signed (NONE / PASSWORD), so the surface can ask for a password up front rather than discovering it by refusal. Null elsewhere.
+   */
+  assurance: string | null;
 };
 export type InspectionInboxTypeEnum =
   /**
@@ -7621,6 +7626,7 @@ export type Step = {
   part_type_name: string | null;
   expected_duration?: (string | null) | undefined;
   requires_qa_signoff?: boolean | undefined;
+  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
@@ -7701,6 +7707,14 @@ export type Step = {
     | undefined;
   revisit_assignment?: RevisitAssignmentEnum | undefined;
 };
+export type QaSignoffAssuranceEnum =
+  /**
+   * * `NONE` - Check off - recorded under their login
+   * `PASSWORD` - Signature + password - they re-enter their own password
+   *
+   * @enum NONE, PASSWORD
+   */
+  "NONE" | "PASSWORD";
 export type FpiScopeEnum =
   /**
    * * `PER_WORKORDER` - Per Work Order
@@ -9808,6 +9822,7 @@ export type Steps = {
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
   requires_qa_signoff?: boolean | undefined;
+  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
@@ -14181,6 +14196,7 @@ export type PatchedStepsRequest = Partial<{
   description: string | null;
   block_on_quarantine: boolean;
   requires_qa_signoff: boolean;
+  qa_signoff_assurance: QaSignoffAssuranceEnum;
   sampling_required: boolean;
   /**
    * Minimum % of parts that must be sampled at this step
@@ -16709,6 +16725,7 @@ export type StepRequest = {
   part_type?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
   requires_qa_signoff?: boolean | undefined;
+  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
@@ -16901,6 +16918,7 @@ export type StepsRequest = {
   description?: (string | null) | undefined;
   block_on_quarantine?: boolean | undefined;
   requires_qa_signoff?: boolean | undefined;
+  qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
   min_sampling_rate?: /**
    * Minimum % of parts that must be sampled at this step
@@ -20199,6 +20217,7 @@ const FPIRecordWorkOrderInfo = z.object({
 const FPIRecordStepInfo = z.object({
   id: z.string(),
   name: z.string().nullable(),
+  qa_signoff_assurance: z.string(),
 });
 const FPIRecordPartTypeInfo = z.object({
   id: z.string(),
@@ -20287,9 +20306,18 @@ const api_FPIRecords_fail_create_Body = z
     cosign_password: z.string(),
   })
   .partial();
+const api_FPIRecords_pass_create_Body = z
+  .object({
+    notes: z.string(),
+    password: z.string(),
+    cosign_email: z.string(),
+    cosign_password: z.string(),
+  })
+  .partial();
 const api_FPIRecords_waive_create_Body = z
   .object({
     reason: z.string(),
+    password: z.string(),
     cosign_email: z.string(),
     cosign_password: z.string(),
   })
@@ -20584,6 +20612,7 @@ const InspectionInboxRow = z.object({
   severity: InspectionInboxSeverity.nullable(),
   resume: z.string().nullable(),
   blocked_reason: z.string().nullable(),
+  assurance: z.string().nullable(),
 });
 const PendingQaSignoff = z.object({
   work_order_id: z.string().uuid(),
@@ -20592,10 +20621,12 @@ const PendingQaSignoff = z.object({
   step: z.string(),
   units: z.number().int(),
   oldest_entered_at: z.string().datetime({ offset: true }).nullable(),
+  assurance: z.string(),
 });
 const SignOffStepRequestRequest = z.object({
   work_order: z.string().uuid(),
   step: z.string().uuid(),
+  password: z.string().optional(),
 });
 const SignOffStepResult = z.object({
   status: z.string(),
@@ -22716,6 +22747,7 @@ const ProcessesCategoryEnum = z.enum([
   "NPI",
   "DOCUMENT",
 ]);
+const QaSignoffAssuranceEnum = z.enum(["NONE", "PASSWORD"]);
 const FpiScopeEnum = z.enum([
   "PER_WORKORDER",
   "PER_SHIFT",
@@ -22758,6 +22790,7 @@ const Step = z.object({
   part_type_name: z.string().nullable(),
   expected_duration: z.string().nullish(),
   requires_qa_signoff: z.boolean().optional(),
+  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
@@ -24545,6 +24578,7 @@ const Steps = z.object({
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
   requires_qa_signoff: z.boolean().optional(),
+  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
@@ -24611,6 +24645,7 @@ const StepsRequest = z.object({
   description: z.string().nullish(),
   block_on_quarantine: z.boolean().optional(),
   requires_qa_signoff: z.boolean().optional(),
+  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   pass_threshold: z.number().optional(),
@@ -24647,6 +24682,7 @@ const PatchedStepsRequest = z
     description: z.string().nullable(),
     block_on_quarantine: z.boolean(),
     requires_qa_signoff: z.boolean(),
+    qa_signoff_assurance: QaSignoffAssuranceEnum,
     sampling_required: z.boolean(),
     min_sampling_rate: z.number(),
     pass_threshold: z.number(),
@@ -28225,6 +28261,7 @@ const StepRequest = z.object({
   part_type: z.string().uuid().nullish(),
   expected_duration: z.string().nullish(),
   requires_qa_signoff: z.boolean().optional(),
+  qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
   min_sampling_rate: z.number().optional(),
   block_on_quarantine: z.boolean().optional(),
@@ -28478,6 +28515,7 @@ export const schemas = {
   FPIRecordRequest,
   PatchedFPIRecordRequest,
   api_FPIRecords_fail_create_Body,
+  api_FPIRecords_pass_create_Body,
   api_FPIRecords_waive_create_Body,
   api_FPIRecords_get_or_create_create_Body,
   FPIGetOrCreateExisting,
@@ -28744,6 +28782,7 @@ export const schemas = {
   PatchedPlantCalendarExceptionRequest,
   ProcessStatusEnum,
   ProcessesCategoryEnum,
+  QaSignoffAssuranceEnum,
   FpiScopeEnum,
   StepTypeEnum,
   DecisionTypeEnum,
@@ -38007,7 +38046,7 @@ before batch production proceeds. Configurable per step via fpi_scope:
       {
         name: "body",
         type: "Body",
-        schema: api_FPIRecords_fail_create_Body,
+        schema: api_FPIRecords_pass_create_Body,
       },
       {
         name: "id",
@@ -38698,7 +38737,7 @@ Accepts the same filter parameters as the list endpoint for efficient filtering.
     method: "post",
     path: "/api/InspectionInbox/sign-off-step/",
     alias: "api_InspectionInbox_sign_off_step_create",
-    description: `Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step&#x27;s substeps.`,
+    description: `Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step&#x27;s substeps. A step whose author set its assurance to signature + password also needs the signer&#x27;s own password.`,
     requestFormat: "json",
     parameters: [
       {

@@ -697,6 +697,19 @@ class Steps(SecureModel):
     requires_qa_signoff = models.BooleanField(default=False)
     """If True, QA approval is required to advance from this step."""
 
+    QA_SIGNOFF_ASSURANCE = [
+        ('NONE', 'Check off - recorded under their login'),
+        ('PASSWORD', 'Signature + password - they re-enter their own password'),
+    ]
+    qa_signoff_assurance = models.CharField(max_length=16, choices=QA_SIGNOFF_ASSURANCE, default='NONE')
+    """How sure we need to be that the inspector who signed this step is who they say.
+
+    `requires_qa_signoff` says whether there is a gate; this says how identity is
+    proven at it. The choice belongs to whoever authors the process - it is a
+    quality-system policy decision, not ours - exactly as the assurance of a
+    substep's sign-off block does. Meaningless when the gate is off.
+    """
+
     notification_users = models.ManyToManyField(User, related_name='notification_users', blank=True)
     """Users to notify when parts reach this step."""
 

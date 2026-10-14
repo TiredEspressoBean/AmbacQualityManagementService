@@ -13,6 +13,13 @@ sign-off" while no inspector had anything to sign: the unit parked, invisibly.
 - ``sign_off_step`` — the inspector's act. Same authority as FPI buy-off
   (`sign_off_fpi`), refused to whoever signed the step's own substeps, then the lot
   is re-evaluated for advancement at once.
+
+**How sure we are of who signed is the author's choice.** `Steps.qa_signoff_assurance`
+says whether the inspector signs under their session alone or re-enters their own
+password, the same two levels a substep's sign-off block offers. It is their own
+password rather than a second person's, because the inspector is the one signed in:
+independence here is not assurance's job but segregation's, and that is enforced
+separately — whoever did the work cannot sign it off.
 """
 from __future__ import annotations
 
@@ -39,20 +46,32 @@ def pending_signoffs(work_order=None) -> list[dict]:
           .exclude(_has_substeps=True, _submitted=False))
     if work_order is not None:
         qs = qs.filter(part__work_order=work_order)
-    groups = (qs.values("part__work_order", "part__work_order__ERP_id", "step", "step__name")
+    groups = (qs.values("part__work_order", "part__work_order__ERP_id", "step", "step__name",
+                        "step__qa_signoff_assurance")
               .annotate(units=Count("id"), oldest=Min("entered_at"))
               .order_by("oldest"))
     return [{"work_order_id": str(g["part__work_order"]), "work_order": g["part__work_order__ERP_id"],
              "step_id": str(g["step"]), "step": g["step__name"], "units": g["units"],
+             # So the sign-off surface can ask for a password where the author asked
+             # for one, rather than discovering the requirement by being refused.
+             "assurance": g["step__qa_signoff_assurance"],
              "oldest_entered_at": g["oldest"]} for g in groups]
 
 
-def sign_off_step(work_order, step, user):
+def signoff_meaning(work_order, step) -> str:
+    """What a sign-off of this step means, in words. Server-derived on every path, so
+    no client can describe a signature as something other than what it released."""
+    return f"QA release of {step.name} for {work_order.ERP_id}"
+
+
+def sign_off_step(work_order, step, user, *, password: str = '', ip_address=None):
     """Record the QA sign-off of ``step`` for ``work_order`` and re-run advancement.
-    Returns the advancement result. Raises ValueError when there is nothing to sign
-    or the signer did the work."""
+    Returns the advancement result. Raises ValueError when there is nothing to sign,
+    the signer did the work, or the step asks for a password and it isn't theirs."""
     from django.db import transaction
+    from django.utils import timezone
     from Tracker.models import QaApproval, SubstepCompletion
+    from Tracker.services.core.second_person import verify_own_password
     from Tracker.services.mes.advancement import try_advance_lot
 
     if not step.requires_qa_signoff:
@@ -68,7 +87,22 @@ def sign_off_step(work_order, step, user):
             step_execution__exited_at__isnull=True, completed_by=user, is_voided=False).exists():
         raise ValueError("Segregation of duties: you completed work on this step — a different "
                          "qualified inspector has to sign it off.")
+    # The author's choice, read from the step rather than from the request: a client
+    # cannot decline the password by omitting it, only fail to supply one.
+    verified_at = None
+    if step.qa_signoff_assurance == 'PASSWORD':
+        refusal = verify_own_password(tenant=work_order.tenant, user=user, password=password or '',
+                                      throttle_prefix='qa_signoff_reauth')
+        if refusal:
+            raise ValueError(refusal)
+        verified_at = timezone.now()
     with transaction.atomic():
-        QaApproval.objects.create(tenant=work_order.tenant, step=step, work_order=work_order, qa_staff=user)
+        QaApproval.objects.create(
+            tenant=work_order.tenant, step=step, work_order=work_order, qa_staff=user,
+            # What actually happened, not what was asked for: the field is evidence,
+            # so it reads PASSWORD only where a password was really accepted.
+            verification_method='PASSWORD' if verified_at else 'NONE',
+            signature_meaning=signoff_meaning(work_order, step),
+            verified_at=verified_at, ip_address=ip_address or None)
     return try_advance_lot(work_order_id=str(work_order.id), step_id=str(step.id),
                            tenant_id=str(work_order.tenant_id), operator=user)

@@ -55,24 +55,62 @@ def _reject_self_signoff(fpi: FPIRecord, user) -> None:
         )
 
 
-def _ensure_qa_approval(fpi: FPIRecord, user) -> None:
+def _assure_identity(fpi: FPIRecord, user, password: str, identity_verified: bool) -> bool:
+    """Meet the step's authored assurance before the buy-off is recorded.
+
+    A step whose author asked for a signature and a password must not be releasable
+    without one just because the release came through first-piece buy-off instead of
+    the step sign-off surface — that would make the author's choice a suggestion.
+
+    `identity_verified` is True when the caller already proved identity by another
+    password: the co-sign path, where a second person supplied email AND password, is
+    strictly stronger than re-entering your own, so it is not asked for twice.
+
+    Returns whether a password actually stands behind this buy-off.
+    """
+    from Tracker.services.core.second_person import verify_own_password
+    if identity_verified:
+        return True
+    if fpi.step is None or fpi.step.qa_signoff_assurance != 'PASSWORD':
+        return False
+    refusal = verify_own_password(tenant=fpi.tenant, user=user, password=password or '',
+                                  throttle_prefix='qa_signoff_reauth')
+    if refusal:
+        raise ValueError(refusal)
+    return True
+
+
+def _ensure_qa_approval(fpi: FPIRecord, user, *, password_proven: bool = False,
+                        ip_address=None) -> None:
     """FPI Pass / Waive IS the QA signoff for the first piece. Record it as a
     QaApproval so `Steps.can_advance_from_step` sees the step-level signoff as
     satisfied — otherwise the FPI is passed but the WO stays stuck on the
     "QA signoff required but not received" blocker, since no other runtime
     path creates QaApproval records.
+
+    The evidence fields match what `step_signoff.sign_off_step` records, so the same
+    gate reads the same way whichever path signed it: a buy-off and a direct sign-off
+    are not different kinds of release.
     """
     if fpi.step_id is None or fpi.work_order_id is None or user is None:
         return
+    from Tracker.services.qms.step_signoff import signoff_meaning
     QaApproval.objects.update_or_create(
         tenant=fpi.tenant,
         step=fpi.step,
         work_order=fpi.work_order,
-        defaults={'qa_staff': user},
+        defaults={
+            'qa_staff': user,
+            'verification_method': 'PASSWORD' if password_proven else 'NONE',
+            'signature_meaning': signoff_meaning(fpi.work_order, fpi.step),
+            'verified_at': timezone.now() if password_proven else None,
+            'ip_address': ip_address or None,
+        },
     )
 
 
-def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRecord:
+def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
+             password: str = '', ip_address=None, identity_verified: bool = False) -> FPIRecord:
     """Mark FPI as passed.
 
     Also creates the step-level QaApproval that `can_advance_from_step`
@@ -88,6 +126,7 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRec
         ValueError: user already signed the first piece's substeps.
     """
     _reject_self_signoff(fpi, user)
+    proven = _assure_identity(fpi, user, password, identity_verified)
     fpi.status = FPIStatus.PASSED
     fpi.result = FPIResult.PASS
     fpi.inspected_by = user
@@ -96,7 +135,7 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRec
     if notes:
         fpi.notes = notes
     fpi.save()
-    _ensure_qa_approval(fpi, user)
+    _ensure_qa_approval(fpi, user, password_proven=proven, ip_address=ip_address)
     notify_fpi_decided(fpi)
     return fpi
 
@@ -125,7 +164,8 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRec
     return fpi
 
 
-def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None) -> FPIRecord:
+def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
+              password: str = '', ip_address=None, identity_verified: bool = False) -> FPIRecord:
     """Waive the FPI requirement.
 
     Creates the step-level QaApproval — a documented waive with reason IS
@@ -140,13 +180,16 @@ def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None) -> FPIRecord
     if not reason or len(reason.strip()) < 10:
         raise ValueError("Waive reason must be at least 10 characters")
     _reject_self_signoff(fpi, user)
+    # A waive releases the step as surely as a pass does, so it meets the same
+    # authored assurance — a gate you can walk around is not a gate.
+    proven = _assure_identity(fpi, user, password, identity_verified)
     fpi.status = FPIStatus.WAIVED
     fpi.waived = True
     fpi.waived_by = user
     fpi.waive_reason = reason
     fpi.performed_by = performed_by
     fpi.save()
-    _ensure_qa_approval(fpi, user)
+    _ensure_qa_approval(fpi, user, password_proven=proven, ip_address=ip_address)
     notify_fpi_decided(fpi)
     return fpi
 

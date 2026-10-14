@@ -1413,7 +1413,8 @@ class InspectionInboxViewSet(viewsets.ViewSet):
         description="Sign off a QA-gated step for a work order (the step-level "
                     "requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — "
                     "the same authority as first-piece buy-off; refused to whoever "
-                    "completed the step's substeps.",
+                    "completed the step's substeps. A step whose author set its assurance "
+                    "to signature + password also needs the signer's own password.",
     )
     @action(detail=False, methods=['post'], url_path='sign-off-step', parser_classes=[parsers.JSONParser])
     def sign_off_step(self, request):
@@ -1428,8 +1429,11 @@ class InspectionInboxViewSet(viewsets.ViewSet):
         step = Steps.objects.filter(pk=req.validated_data['step']).first()  # tenant-safe: .objects auto-scopes
         if wo is None or step is None:
             return Response({'detail': "No such work order or step."}, status=status.HTTP_404_NOT_FOUND)
+        from Tracker.throttling import get_client_ip
         try:
-            result = sign_off_step(wo, step, request.user)
+            result = sign_off_step(wo, step, request.user,
+                                   password=req.validated_data.get('password') or '',
+                                   ip_address=get_client_ip(request) or None)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'status': result.status, 'parts_advanced': len(result.parts_advanced)})

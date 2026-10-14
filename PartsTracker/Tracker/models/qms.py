@@ -748,10 +748,33 @@ class QaApproval(SecureModel):
     Records QA staff approval for a work order at a specific step.
 
     Ensures proper authorization and audit trail for quality signoff requirements.
+
+    The evidence fields below mirror `SubstepGateCompletion`: this row is what says a
+    step released product, so it should say how sure we were of who released it. How
+    much is asked of the inspector is the process author's choice
+    (`Steps.qa_signoff_assurance`), not a fixed rule - the same two levels a substep's
+    sign-off block offers. Rows written before 2026-10-14, and rows for a step whose
+    author asked only for a check-off, are `NONE`: recorded under the signer's login
+    and honest about it.
     """
+    VERIFICATION_METHODS = [('NONE', 'Session only'), ('PASSWORD', 'Password re-entered')]
+
     step = models.ForeignKey("Steps", related_name='qa_approvals', on_delete=models.PROTECT)
     work_order = models.ForeignKey("WorkOrder", related_name='qa_approvals', on_delete=models.PROTECT)
     qa_staff = models.ForeignKey(User, related_name='qa_approvals', on_delete=models.PROTECT)
+
+    verification_method = models.CharField(max_length=16, choices=VERIFICATION_METHODS, default='NONE')
+    """How the signer's identity was proven: the session alone, or a re-entered password."""
+
+    signature_meaning = models.CharField(max_length=255, blank=True)
+    """What was accepted, in words - server-derived from the step and work order, so
+    the record says what the signature was for without reading the schema."""
+
+    verified_at = models.DateTimeField(null=True, blank=True)
+    """Server time at which the password was accepted. Null when none was asked for."""
+
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    """Where the signature came from."""
 
 
 class QuarantineDisposition(SecureModel):
@@ -3040,20 +3063,24 @@ class FPIRecord(SecureModel):
     def __str__(self):
         return f"FPI for WO-{self.work_order.ERP_id} @ {self.step.name}"
 
-    def pass_inspection(self, user, notes='', performed_by=None):
-        """Thin wrapper — delegates to `services.qms.fpi.pass_fpi`."""
+    def pass_inspection(self, user, notes='', performed_by=None, **assurance):
+        """Thin wrapper — delegates to `services.qms.fpi.pass_fpi`.
+
+        `**assurance` carries `password` / `ip_address` / `identity_verified` through
+        to the service when the step's author asked for a verified signature."""
         from Tracker.services.qms.fpi import pass_fpi
-        return pass_fpi(self, user, notes=notes, performed_by=performed_by)
+        return pass_fpi(self, user, notes=notes, performed_by=performed_by, **assurance)
 
     def fail_inspection(self, user, notes='', performed_by=None):
         """Thin wrapper — delegates to `services.qms.fpi.fail_fpi`."""
         from Tracker.services.qms.fpi import fail_fpi
         return fail_fpi(self, user, notes=notes, performed_by=performed_by)
 
-    def waive(self, user, reason, performed_by=None):
-        """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`."""
+    def waive(self, user, reason, performed_by=None, **assurance):
+        """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`. See
+        `pass_inspection` for `**assurance`."""
         from Tracker.services.qms.fpi import waive_fpi
-        return waive_fpi(self, user, reason, performed_by=performed_by)
+        return waive_fpi(self, user, reason, performed_by=performed_by, **assurance)
 
 
 class BlockType(models.TextChoices):

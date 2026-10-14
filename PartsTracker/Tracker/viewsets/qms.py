@@ -1952,10 +1952,25 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             .first()
         )
 
+    def _assurance(self, request, signer):
+        """What the service needs to meet the step's authored assurance.
+
+        `identity_verified` is True on the co-sign path: that person supplied email
+        AND password, which proves identity more strongly than re-entering your own,
+        so they are not asked for a password twice.
+        """
+        from Tracker.throttling import get_client_ip
+        return {
+            'password': request.data.get('password') or '',
+            'ip_address': get_client_ip(request) or None,
+            'identity_verified': signer.id != request.user.id,
+        }
+
     @extend_schema(
         description="Mark FPI as passed",
         request={"application/json": {"type": "object", "properties": {
             "notes": {"type": "string", "description": "Optional inspection notes"},
+            "password": {"type": "string", "description": "The signer's OWN password, when the step's author set its QA assurance to signature + password and they are signing from their own session. The co-sign path proves identity below instead and is not asked twice."},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
             "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
         }}},
@@ -2049,7 +2064,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # `_reject_self_signoff` — someone trying to buy off first-piece
         # substeps they signed themselves. It used to escape as a 500.
         try:
-            fpi.pass_inspection(signer, notes, performed_by=self._performed_by(signer, request))
+            fpi.pass_inspection(signer, notes, performed_by=self._performed_by(signer, request),
+                                **self._assurance(request, signer))
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -2104,6 +2120,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         description="Waive FPI requirement",
         request={"application/json": {"type": "object", "properties": {
             "reason": {"type": "string", "description": "Required waive reason (min 10 chars)"},
+            "password": {"type": "string", "description": "The signer's OWN password, when the step's author set its QA assurance to signature + password. A waive releases the step as surely as a pass does, so it meets the same bar."},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
             "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
         }}},
@@ -2127,7 +2144,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
 
         reason = request.data.get('reason', '')
         try:
-            fpi.waive(signer, reason, performed_by=self._performed_by(signer, request))
+            fpi.waive(signer, reason, performed_by=self._performed_by(signer, request),
+                      **self._assurance(request, signer))
             if signer.id != request.user.id:
                 # waive() doesn't take notes, so record the station separately.
                 fpi.notes = self._cosign_note(signer, request, fpi.notes or '')
@@ -2392,6 +2410,11 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             # Whether THIS user may buy off (drives showing the sign-off action
             # vs an "awaiting buy-off" message to the operator).
             "can_sign_off": bool(request.user.has_tenant_perm('sign_off_fpi')),
+            # How the step's author asked a release to be signed. The buy-off is
+            # this step's QA release, so it meets the same bar — and the dialog
+            # needs to know up front, or an inspector signing from their own
+            # session is refused with no field to comply in.
+            "assurance": step.qa_signoff_assurance,
             "message": "FPI passed" if passed_fpi else "FPI required",
         })
 

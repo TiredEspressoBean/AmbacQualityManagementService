@@ -15,6 +15,10 @@ export type FpiCheckStatusResponse = {
     first_piece_ready: boolean;
     /** Whether the current user holds sign_off_fpi (may pass/fail/waive). */
     can_sign_off: boolean;
+    /** How the step's author asked a QA release to be signed: "NONE" (under the
+     *  signer's login) or "PASSWORD" (they re-enter their own). The buy-off IS
+     *  this step's QA release, so it meets the same bar. */
+    assurance?: string;
     message: string;
 };
 
@@ -117,13 +121,17 @@ export function useFpiPass() {
         /** `cosign_*` are for the second-person path: when the caller lacks
          *  `sign_off_fpi`, an authorized QA person authenticates inline and the
          *  verdict is attributed to *them*. Omit both for a normal sign-off. */
-        mutationFn: ({ id, notes, cosign_email, cosign_password }: {
+        mutationFn: ({ id, notes, password, cosign_email, cosign_password }: {
             id: string;
             notes?: string;
+            /** The signer's OWN password, when the step is authored to need one and
+             *  they are signing from their own session. The co-sign path proves
+             *  identity with `cosign_password` instead and isn't asked twice. */
+            password?: string;
             cosign_email?: string;
             cosign_password?: string;
         }) =>
-            api.api_FPIRecords_pass_create({ notes, cosign_email, cosign_password }, {
+            api.api_FPIRecords_pass_create({ notes, password, cosign_email, cosign_password }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",

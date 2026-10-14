@@ -390,6 +390,7 @@ export default function ProcessFlowPage() {
           expectedDuration: updatedStep.expected_duration,
           scrapRate: updatedStep.scrap_rate != null ? Number(updatedStep.scrap_rate) : null,
           requiresQaSignoff: updatedStep.requires_qa_signoff,
+          qaSignoffAssurance: updatedStep.qa_signoff_assurance,
           samplingRequired: updatedStep.sampling_required,
           minSamplingRate: updatedStep.min_sampling_rate,
           requiresBatchCompletion: updatedStep.requires_batch_completion,

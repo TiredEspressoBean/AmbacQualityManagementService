@@ -4859,7 +4859,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step's substeps. */
+        /** @description Sign off a QA-gated step for a work order (the step-level requires_qa_signoff gate), then re-run advancement. Needs sign_off_fpi — the same authority as first-piece buy-off; refused to whoever completed the step's substeps. A step whose author set its assurance to signature + password also needs the signer's own password. */
         post: operations["api_InspectionInbox_sign_off_step_create"];
         delete?: never;
         options?: never;
@@ -23831,6 +23831,7 @@ export interface components {
         FPIRecordStepInfo: {
             id: string;
             name: string | null;
+            qa_signoff_assurance: string;
         };
         FPIRecordWorkOrderInfo: {
             id: string;
@@ -24424,6 +24425,8 @@ export interface components {
             severity: components["schemas"]["InspectionInboxSeverity"] | null;
             resume: string | null;
             blocked_reason: string | null;
+            /** @description QA sign-off rows only: how the step's author asked it to be signed (NONE / PASSWORD), so the surface can ask for a password up front rather than discovering it by refusal. Null elsewhere. */
+            assurance: string | null;
         };
         /**
          * @description The severity badge on a receiving inbox row (see SamplingSeverityStateSerializer
@@ -30777,6 +30780,7 @@ export interface components {
             description?: string | null;
             block_on_quarantine?: boolean;
             requires_qa_signoff?: boolean;
+            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -31566,6 +31570,8 @@ export interface components {
             units: number;
             /** Format: date-time */
             oldest_entered_at: string | null;
+            /** @description How the author asked this step to be signed: NONE (under the signer's login) or PASSWORD (they re-enter their own). The sign-off surface asks for a password only when it is PASSWORD. */
+            assurance: string;
         };
         PermissionListResponse: {
             permissions: {
@@ -32350,6 +32356,12 @@ export interface components {
             current_step_id: string | null;
             parts_in_qa: number;
         };
+        /**
+         * @description * `NONE` - Check off - recorded under their login
+         *     * `PASSWORD` - Signature + password - they re-enter their own password
+         * @enum {string}
+         */
+        QaSignoffAssuranceEnum: "NONE" | "PASSWORD";
         /** @description Resolved supplier standing for a scope (the `status` action response). */
         QualificationStatus: {
             qualified: boolean;
@@ -34696,6 +34708,8 @@ export interface components {
             work_order: string;
             /** Format: uuid */
             step: string;
+            /** @description The signer's own password. Required when the step's author set its assurance to signature + password; ignored otherwise. */
+            password?: string;
         };
         SignOffStepResult: {
             /** @description Advancement after the sign-off: advanced / blocked / ... */
@@ -34796,6 +34810,7 @@ export interface components {
             readonly part_type_name: string | null;
             expected_duration?: string | null;
             requires_qa_signoff?: boolean;
+            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -35386,6 +35401,7 @@ export interface components {
             part_type?: string | null;
             expected_duration?: string | null;
             requires_qa_signoff?: boolean;
+            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -35751,6 +35767,7 @@ export interface components {
             description?: string | null;
             block_on_quarantine?: boolean;
             requires_qa_signoff?: boolean;
+            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -35865,6 +35882,7 @@ export interface components {
             description?: string | null;
             block_on_quarantine?: boolean;
             requires_qa_signoff?: boolean;
+            qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
             /**
              * Format: double
@@ -47018,6 +47036,8 @@ export interface operations {
                 "application/json": {
                     /** @description Optional inspection notes */
                     notes?: string;
+                    /** @description The signer's OWN password, when the step's author set its QA assurance to signature + password and they are signing from their own session. The co-sign path proves identity below instead and is not asked twice. */
+                    password?: string;
                     /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
@@ -47053,6 +47073,8 @@ export interface operations {
                 "application/json": {
                     /** @description Required waive reason (min 10 chars) */
                     reason?: string;
+                    /** @description The signer's OWN password, when the step's author set its QA assurance to signature + password. A waive releases the step as surely as a pass does, so it meets the same bar. */
+                    password?: string;
                     /** @description Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi) */
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */

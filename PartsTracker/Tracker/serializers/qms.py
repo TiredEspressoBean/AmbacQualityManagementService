@@ -1859,6 +1859,7 @@ class FPIRecordSerializer(SecureModelMixin):
             fields={
                 'id': serializers.CharField(),
                 'name': serializers.CharField(allow_null=True),
+                'qa_signoff_assurance': serializers.CharField(),
             },
             allow_null=True,
         )
@@ -1868,6 +1869,9 @@ class FPIRecordSerializer(SecureModelMixin):
             return {
                 'id': str(obj.step.id),
                 'name': obj.step.name,
+                # The buy-off is this step's QA release, so the dialog needs the
+                # author's assurance to ask for a password where one is required.
+                'qa_signoff_assurance': obj.step.qa_signoff_assurance,
             }
         return None
 
@@ -2169,6 +2173,11 @@ class InspectionInboxRowSerializer(serializers.Serializer):
     severity = InspectionInboxSeveritySerializer(allow_null=True)
     resume = serializers.CharField(allow_null=True)
     blocked_reason = serializers.CharField(allow_null=True)
+    assurance = serializers.CharField(
+        allow_null=True,
+        help_text="QA sign-off rows only: how the step's author asked it to be "
+                  "signed (NONE / PASSWORD), so the surface can ask for a password "
+                  "up front rather than discovering it by refusal. Null elsewhere.")
 
 
 class PendingQaSignoffSerializer(serializers.Serializer):
@@ -2179,11 +2188,19 @@ class PendingQaSignoffSerializer(serializers.Serializer):
     step = serializers.CharField()
     units = serializers.IntegerField()
     oldest_entered_at = serializers.DateTimeField(allow_null=True)
+    assurance = serializers.CharField(
+        help_text="How the author asked this step to be signed: NONE (under the "
+                  "signer's login) or PASSWORD (they re-enter their own). The "
+                  "sign-off surface asks for a password only when it is PASSWORD.")
 
 
 class SignOffStepRequestSerializer(serializers.Serializer):
     work_order = serializers.UUIDField()
     step = serializers.UUIDField()
+    password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, style={'input_type': 'password'},
+        help_text="The signer's own password. Required when the step's author set its "
+                  "assurance to signature + password; ignored otherwise.")
 
 
 class SignOffStepResultSerializer(serializers.Serializer):

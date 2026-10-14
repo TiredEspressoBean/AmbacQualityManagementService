@@ -198,6 +198,8 @@ export interface StepData {
   part_type_name?: string;
   // QA fields
   requires_qa_signoff?: boolean;
+  /** NONE = signed under their login, PASSWORD = they re-enter their own. */
+  qa_signoff_assurance?: string;
   sampling_required?: boolean;
   min_sampling_rate?: number;
   block_on_quarantine?: boolean;

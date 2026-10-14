@@ -10946,6 +10946,12 @@ paths:
                 notes:
                   type: string
                   description: Optional inspection notes
+                password:
+                  type: string
+                  description: The signer's OWN password, when the step's author set
+                    its QA assurance to signature + password and they are signing
+                    from their own session. The co-sign path proves identity below
+                    instead and is not asked twice.
                 cosign_email:
                   type: string
                   description: Email of an authorized QA person co-signing at this
@@ -10988,6 +10994,11 @@ paths:
                 reason:
                   type: string
                   description: Required waive reason (min 10 chars)
+                password:
+                  type: string
+                  description: The signer's OWN password, when the step's author set
+                    its QA assurance to signature + password. A waive releases the
+                    step as surely as a pass does, so it meets the same bar.
                 cosign_email:
                   type: string
                   description: Email of an authorized QA person co-signing at this
@@ -12832,7 +12843,9 @@ paths:
       operationId: api_InspectionInbox_sign_off_step_create
       description: Sign off a QA-gated step for a work order (the step-level requires_qa_signoff
         gate), then re-run advancement. Needs sign_off_fpi — the same authority as
-        first-piece buy-off; refused to whoever completed the step's substeps.
+        first-piece buy-off; refused to whoever completed the step's substeps. A step
+        whose author set its assurance to signature + password also needs the signer's
+        own password.
       tags:
       - api
       requestBody:
@@ -55477,9 +55490,12 @@ components:
         name:
           type: string
           nullable: true
+        qa_signoff_assurance:
+          type: string
       required:
       - id
       - name
+      - qa_signoff_assurance
     FPIRecordWorkOrderInfo:
       type: object
       properties:
@@ -56775,8 +56791,15 @@ components:
         blocked_reason:
           type: string
           nullable: true
+        assurance:
+          type: string
+          nullable: true
+          description: 'QA sign-off rows only: how the step''s author asked it to
+            be signed (NONE / PASSWORD), so the surface can ask for a password up
+            front rather than discovering it by refusal. Null elsewhere.'
       required:
       - age_hours
+      - assurance
       - blocked_reason
       - detail
       - due_label
@@ -68395,6 +68418,8 @@ components:
           type: boolean
         requires_qa_signoff:
           type: boolean
+        qa_signoff_assurance:
+          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -69723,7 +69748,13 @@ components:
           type: string
           format: date-time
           nullable: true
+        assurance:
+          type: string
+          description: 'How the author asked this step to be signed: NONE (under the
+            signer''s login) or PASSWORD (they re-enter their own). The sign-off surface
+            asks for a password only when it is PASSWORD.'
       required:
+      - assurance
       - oldest_entered_at
       - step
       - step_id
@@ -71296,6 +71327,14 @@ components:
       - part_type_documents
       - parts_in_qa
       - work_order_documents
+    QaSignoffAssuranceEnum:
+      enum:
+      - NONE
+      - PASSWORD
+      type: string
+      description: |-
+        * `NONE` - Check off - recorded under their login
+        * `PASSWORD` - Signature + password - they re-enter their own password
     QualificationStatus:
       type: object
       description: Resolved supplier standing for a scope (the `status` action response).
@@ -76160,6 +76199,11 @@ components:
         step:
           type: string
           format: uuid
+        password:
+          type: string
+          writeOnly: true
+          description: The signer's own password. Required when the step's author
+            set its assurance to signature + password; ignored otherwise.
       required:
       - step
       - work_order
@@ -76398,6 +76442,8 @@ components:
           nullable: true
         requires_qa_signoff:
           type: boolean
+        qa_signoff_assurance:
+          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -77446,6 +77492,8 @@ components:
           nullable: true
         requires_qa_signoff:
           type: boolean
+        qa_signoff_assurance:
+          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -78061,6 +78109,8 @@ components:
           type: boolean
         requires_qa_signoff:
           type: boolean
+        qa_signoff_assurance:
+          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:
@@ -78289,6 +78339,8 @@ components:
           type: boolean
         requires_qa_signoff:
           type: boolean
+        qa_signoff_assurance:
+          $ref: '#/components/schemas/QaSignoffAssuranceEnum'
         sampling_required:
           type: boolean
         min_sampling_rate:

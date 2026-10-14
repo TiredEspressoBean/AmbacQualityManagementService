@@ -40,7 +40,7 @@ export function useQaSignoffs(workOrderId?: string) {
 export function useSignOffStep() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (vars: { work_order: string; step: string }) =>
+        mutationFn: (vars: { work_order: string; step: string; password?: string }) =>
             api.api_InspectionInbox_sign_off_step_create(vars),
         // The dialog shows the server's reason (e.g. segregation of duties) itself.
         meta: { suppressGlobalError: true },

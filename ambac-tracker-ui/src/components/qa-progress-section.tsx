@@ -186,7 +186,8 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                     disabled={!canSignOff}
                                     title={canSignOff ? "Sign off this step" : "Waiting for a QA inspector to sign off"}
                                     onClick={() => setSignOff({ workOrderId: g.work_order_id, stepId: g.step_id, step: g.step,
-                                                               workOrder: g.work_order, units: g.units })}
+                                                               workOrder: g.work_order, units: g.units,
+                                                               assurance: g.assurance })}
                                     className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                                 >
                                     <Badge className={`bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-sm ${canSignOff ? "cursor-pointer hover:opacity-90" : ""}`}>

@@ -44,6 +44,8 @@ export interface StepData {
   } | null;
   // QA settings
   requires_qa_signoff?: boolean;
+  /** NONE = signed under their login, PASSWORD = they re-enter their own. */
+  qa_signoff_assurance?: string;
   sampling_required?: boolean;
   min_sampling_rate?: number;
   // Batch completion — lot moves as a unit; pass_threshold = fraction READY to advance
@@ -178,6 +180,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         isStart: isEntryPoint,
         // QA settings
         requiresQaSignoff: step.requires_qa_signoff,
+        qaSignoffAssurance: step.qa_signoff_assurance,
         samplingRequired: step.sampling_required,
         minSamplingRate: step.min_sampling_rate,
         requiresBatchCompletion: step.requires_batch_completion,

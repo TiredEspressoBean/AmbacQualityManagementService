@@ -124,6 +124,10 @@ type StepNodeData = {
   maxVisits?: number | string;
   // Quality gates
   requiresQaSignoff?: boolean;
+  /** How sure we need to be that the inspector who signed is who they say:
+   *  NONE = under their login, PASSWORD = they re-enter their own password.
+   *  Only meaningful while `requiresQaSignoff` is on. */
+  qaSignoffAssurance?: string;
   requiresFirstPieceInspection?: boolean;
   requiresBatchCompletion?: boolean;
   fpiScope?: string;
@@ -1089,17 +1093,37 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
             )}
 
             {/* QA flags */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="requires-qa" className="text-sm font-normal">Requires QA signoff</Label>
+            {/* One three-way control over two fields: the boolean still means "is
+                there a gate", the assurance means "how is identity proven at it".
+                How much ceremony a release deserves is a quality-system decision,
+                so it belongs to whoever authors the process — the same choice a
+                substep's sign-off block offers. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="requires-qa" className="text-sm font-normal">QA signoff</Label>
               {editable ? (
-                <Switch
-                  id="requires-qa"
-                  checked={data.requiresQaSignoff || false}
-                  onCheckedChange={(checked) => onUpdate(node.id, { requires_qa_signoff: checked })}
-                />
+                <Select
+                  value={!data.requiresQaSignoff ? 'OFF' : (data.qaSignoffAssurance || 'NONE')}
+                  onValueChange={(v) =>
+                    onUpdate(node.id, v === 'OFF'
+                      ? { requires_qa_signoff: false }
+                      : { requires_qa_signoff: true, qa_signoff_assurance: v })}
+                >
+                  <SelectTrigger id="requires-qa">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OFF">Not required</SelectItem>
+                    <SelectItem value="NONE">Check off — recorded under their login</SelectItem>
+                    <SelectItem value="PASSWORD">Signature + password — they re-enter their own password</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <Badge variant={data.requiresQaSignoff ? 'default' : 'secondary'}>
-                  {data.requiresQaSignoff ? 'Yes' : 'No'}
+                  {!data.requiresQaSignoff
+                    ? 'Not required'
+                    : data.qaSignoffAssurance === 'PASSWORD'
+                      ? 'Signature + password'
+                      : 'Check off'}
                 </Badge>
               )}
             </div>

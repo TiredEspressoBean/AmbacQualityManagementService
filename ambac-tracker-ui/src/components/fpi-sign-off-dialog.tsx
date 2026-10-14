@@ -2,9 +2,11 @@
  *
  *  Mode depends on who is at the keyboard:
  *
- *  - **QA's own session** (`canSignOff`) — notes only. This is the pre-existing
- *    behaviour, used from the banner and from the pending-FPI panel on WO
- *    Control.
+ *  - **QA's own session** (`canSignOff`) — notes only, plus their own password
+ *    when the step's author set its QA assurance to signature + password. The
+ *    buy-off IS this step's QA release, so it meets the bar the author set; a
+ *    gate you can walk around by releasing through FPI is not a gate. Used from
+ *    the banner and from the pending-FPI panel on WO Control.
  *  - **The operator's station** (`!canSignOff`) — additionally collects a QA
  *    email plus signature/password, verified inline server-side. The QA person
  *    is never logged in on that terminal, and the verdict is attributed to
@@ -45,6 +47,12 @@ type FpiSignOffDialogProps = {
     /** Whether the logged-in user holds `sign_off_fpi`. False switches the
      *  dialog into co-signature mode. */
     canSignOff: boolean;
+    /** The step's authored QA assurance ("NONE" / "PASSWORD"). The buy-off IS
+     *  this step's QA release, so a step authored to need a password needs one
+     *  here too — otherwise an inspector signing from their own session is
+     *  refused by the server with no field to comply in. The co-sign path
+     *  already supplies a password and is unaffected. */
+    assurance?: string;
     /** Designated part label, shown in the attestation so the signer knows
      *  exactly what they are attesting to. */
     partLabel?: string | null;
@@ -56,10 +64,13 @@ export function FpiSignOffDialog({
     onOpenChange,
     fpiId,
     canSignOff,
+    assurance,
     partLabel,
     onSigned,
 }: FpiSignOffDialogProps) {
+    const needsOwnPassword = canSignOff && assurance === "PASSWORD";
     const [notes, setNotes] = useState("");
+    const [ownPassword, setOwnPassword] = useState("");
     const [cosignEmail, setCosignEmail] = useState("");
     const [signature, setSignature] = useState<SignatureVerificationData>({
         signature_data: "",
@@ -78,6 +89,7 @@ export function FpiSignOffDialog({
 
     const reset = () => {
         setNotes("");
+        setOwnPassword("");
         setCosignEmail("");
         setSignature({ signature_data: "", password: "", confirmed: false });
         setError(null);
@@ -91,6 +103,10 @@ export function FpiSignOffDialog({
     const handleConfirm = () => {
         setError(null);
 
+        if (needsOwnPassword && !ownPassword) {
+            setError("This step is authored to need your password as well.");
+            return;
+        }
         if (!canSignOff) {
             if (!cosignEmail.trim()) {
                 setError("Enter the QA inspector's email.");
@@ -112,7 +128,7 @@ export function FpiSignOffDialog({
                 id: fpiId,
                 notes,
                 ...(canSignOff
-                    ? {}
+                    ? (needsOwnPassword ? { password: ownPassword } : {})
                     : {
                         cosign_email: cosignEmail.trim(),
                         cosign_password: signature.password,
@@ -166,6 +182,24 @@ export function FpiSignOffDialog({
                             rows={3}
                         />
                     </div>
+
+                    {needsOwnPassword && (
+                        <div className="space-y-2 border-t pt-4">
+                            <Label htmlFor="fpi-own-password">Your password</Label>
+                            <Input
+                                id="fpi-own-password"
+                                type="password"
+                                autoComplete="current-password"
+                                value={ownPassword}
+                                onChange={(e) => setOwnPassword(e.target.value)}
+                                placeholder="Re-enter your password to sign"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                This step is authored to need a verified signature, so the
+                                record says it was you and nobody else.
+                            </p>
+                        </div>
+                    )}
 
                     {!canSignOff && (
                         <div className="space-y-4 border-t pt-4">

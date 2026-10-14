@@ -151,6 +151,7 @@ def _receiving_rows():
             "severity": _severity_summary(lot),
             "resume": None if blocked else _resume_progress(lot),
             "blocked_reason": blocked,
+            "assurance": None,
         }
 
 
@@ -176,6 +177,7 @@ def _outside_process_rows():
             "severity": None,
             "resume": None,
             "blocked_reason": None,
+            "assurance": None,
         }
 
 
@@ -213,6 +215,7 @@ def _in_process_rows():
             "severity": None,
             "resume": None,
             "blocked_reason": None,
+            "assurance": None,
         }
 
 
@@ -243,6 +246,7 @@ def _fpi_rows():
             "severity": None,
             "resume": None,
             "blocked_reason": None,
+            "assurance": None,
         }
 
 
@@ -267,6 +271,9 @@ def _qa_signoff_rows():
             "severity": None,
             "resume": None,
             "blocked_reason": None,
+            # So the sign-off dialog can ask for a password where the step's author
+            # asked for one, instead of the inspector learning by being refused.
+            "assurance": g["assurance"],
         }
 
 
