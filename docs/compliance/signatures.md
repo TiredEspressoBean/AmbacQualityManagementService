@@ -72,9 +72,11 @@ sign in someone else's name — and the time is the server's.
   and their electronic equivalents. A signature that accepts an inspection or
   releases product is one, so it should be unique to the person and impossible to
   use on their behalf. Use **verified sign-off** for those steps.
-- **21 CFR Part 11** (FDA-regulated customers) requires re-authentication at
-  signing, and that each signature show the signer, the time and its meaning.
-  Verified sign-off records exactly that.
+Nothing here is a claim about **21 CFR Part 11**. That regulation does require
+re-authentication at signing, and verified sign-off happens to capture the signer,
+the time and the meaning — but a signature mechanism is a fraction of what Part 11
+asks for, and uqmes is not built for it, as the note above says. If you are
+FDA-regulated, treat this as one input to your own validation, not as evidence.
 
 Wrong passwords are rate-limited, so a terminal left signed in can't be used to
 guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#verified-sign-off)

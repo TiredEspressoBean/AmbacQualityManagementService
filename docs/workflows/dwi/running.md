@@ -114,8 +114,10 @@ password**.
 
 - **Wrong password** — the dialog opens again with your drawing kept; only the
   password is cleared. Enter it again.
-- **Too many wrong passwords** — signing is locked for a few minutes. Wait, or
-  ask a lead.
+- **Too many wrong passwords** — after five, signing is locked for **15 minutes**.
+  It is not a few minutes, so don't sit and retry: get a lead to complete the step,
+  or come back to it. The lock is per person, so it does not stop anyone else
+  signing.
 - **Cancel** — the step is not completed and that substep records nothing.
 - **Voided** — if QA voids a signed substep, it has to be signed again the next
   time the step is completed.
