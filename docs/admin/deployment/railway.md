@@ -4,19 +4,30 @@ This guide covers deploying and managing the application on Railway.
 
 ## Architecture
 
-The application runs as five services on Railway:
+The project is **enthusiastic-reverence**, with a single **production** environment
+running **eight services**. Names below are exactly as the Railway CLI expects them
+after `--service`, **case included**.
 
-| Service | Purpose | Config File |
-|---------|---------|-------------|
-| Backend | Django API + Gunicorn | `railway.toml` |
-| celery-worker | Background task processing | `railway.celery.toml` |
-| celery-beat | Scheduled task scheduler | `railway.celery.toml` |
-| Frontend | React/Vite UI | `railway.toml` |
-| Docs | MkDocs documentation | `docs-service/railway.toml` |
+| Service | Purpose |
+|---------|---------|
+| `Backend` | Django API + Gunicorn |
+| `Frontend` | React/Vite UI |
+| `proxy-caddy` | Reverse proxy and TLS termination in front of the app |
+| `celery-worker` | Background task processing |
+| `celery-beat` | Scheduled task scheduler |
+| `docs` | MkDocs documentation — lowercase |
+| `pgvector` | PostgreSQL with the vector extension |
+| `Redis` | Message broker and cache |
 
-Plus two databases:
-- **pgvector** - PostgreSQL with vector extension
-- **Redis** - Message broker and cache
+!!! warning "Confirm the service list before trusting any page about deployment"
+    Services get added, and a page like this one goes stale quietly. Run
+    `railway status` or open the project to see what is actually deployed before
+    following instructions that name a service.
+
+**Config files in the repo:** `PartsTracker/railway.toml`,
+`docs-service/railway.toml` and `proxy-service/railway.toml`. The Celery services do
+not have a config file of their own — they run from the backend image with a
+different start command, so there is nothing named `railway.celery.toml` to look for.
 
 ## Environment Variables
 
