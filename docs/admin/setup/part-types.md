@@ -102,16 +102,29 @@ See [Export Controls](../../compliance/export-controls.md).
 !!! note "Not part-type fields"
     Cycle time is set per **step** in the process, not on the part type — see
     [Step Configuration](../processes/steps.md). There is no customer part
-    number, revision, unit of measure, inspection level, or critical-dimension
-    field on a part type.
+    number, revision, inspection level, or critical-dimension field on a part
+    type, and no country of origin.
 
-### Export Control
+    There *is* a **purchase unit**, but it describes how the part is bought and
+    counted at receiving rather than acting as a general unit of measure — see
+    [Receiving and recovery](#receiving-and-recovery) below.
+
+### Receiving and recovery
 
 | Field | Description |
 |-------|-------------|
-| **ITAR Controlled** | Defense article flag |
-| **ECCN** | Export classification |
-| **Country of Origin** | Manufacturing location |
+| **Can be recovered** | A used one of these can be recovered from a torn-down core and put back into service. This is the MRO classification — rotable and repairable items can, expendables cannot. Leave it off and the type will not appear as something a teardown can yield. |
+| **Default disassembly process** | Preselected in the operator's bulk-teardown dialog. Optional; without it the picker simply starts with nothing chosen. |
+| **Purchase unit** | How the part is **bought and counted at receiving** — stock unit, box, or pound. |
+| **Units per purchase unit** | Stock units in one purchase unit, so pieces per box or pieces per pound. Not used when the purchase unit is already the stock unit. |
+| **Requires CoC** | Hold each received lot until its certificate of conformance is uploaded. |
+| **Requires heat number** | Hold each received lot until its heat / melt number is entered. |
+
+!!! note "The four 'requires' flags are holds, not warnings"
+    Requires CoC, requires heat number, requires supplier qualification and
+    requires part approval each **hold a received lot** until the condition is met.
+    If someone asks why received stock cannot be used yet, these are the first
+    things to check — the lot is not lost, it is held.
 
 ## Linking to Process
 
