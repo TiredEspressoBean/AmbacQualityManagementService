@@ -28,7 +28,7 @@ As a QA Inspector, you:
 - Perform quality inspections
 - Record inspection results
 - Create quality reports (NCRs)
-- Recommend dispositions
+- Decide and record dispositions
 - Ensure product conformance
 
 Your work directly impacts product quality and customer satisfaction.
@@ -59,7 +59,7 @@ Your work directly impacts product quality and customer satisfaction.
 ```
 Part flagged/sampled → Inspector reviews →
 Pass: Release part
-Fail: Create NCR → Recommend disposition → QA Manager approves → Execute disposition
+Fail: Create NCR → Record disposition (co-signed if you lack approve_disposition) → Execute disposition
 ```
 
 ---
@@ -277,7 +277,7 @@ By the end of this module, you will:
 
 - [ ] Understand quarantine status
 - [ ] Know the disposition options
-- [ ] Recommend appropriate dispositions
+- [ ] Decide and record appropriate dispositions
 
 ### 4.1 Quarantine
 
@@ -300,13 +300,25 @@ By the end of this module, you will:
 
 ### 4.2 Disposition Options
 
-| Disposition | When to Use | Requires Approval |
-|-------------|-------------|-------------------|
-| **Use As-Is** | Defect acceptable, no impact | Sometimes |
-| **Rework** | Can be fixed and re-inspected | Sometimes |
-| **Scrap** | Cannot be salvaged | Yes (if value threshold) |
-| **Return to Supplier** | Incoming material issue | Yes |
-| **Deviation** | Customer accepts non-conformance | Yes + Customer |
+There are **five** decisions, and the approval rule is about accepting
+nonconforming product — not about value.
+
+| Disposition | When to Use | Approval reference required |
+|-------------|-------------|------------------|
+| **Use As Is** | The nonconformance is real but the part is acceptable as it stands | **Yes — hard stop** |
+| **Repair** | Can be made acceptable but will still deviate from spec | **Yes — hard stop** |
+| **Rework** | Can be brought back to *full* conformance | No |
+| **Scrap** | Cannot be used or economically corrected | No |
+| **Return to Supplier** | Supplier is responsible; return for credit or replacement | No |
+
+!!! warning "Rework and Repair are not the same record"
+    Rework restores full conformance. Repair leaves a known, accepted deviation
+    — a concession against the design. Auditors check this distinction.
+
+!!! note "There is no scrap value threshold"
+    Scrap does not trigger an approval step based on part value. If your
+    procedure requires one, it is a procedural control and you have to run it
+    yourself.
 
 ---
 
@@ -614,10 +626,10 @@ Complete these tasks to demonstrate competency:
 3. Include all required fields
 4. Attach evidence (use training image)
 
-### Task 4: Disposition Recommendation
+### Task 4: Disposition Decision
 
 1. For the quality report created
-2. Recommend appropriate disposition
+2. Record the appropriate disposition
 3. Provide justification
 
 ---
@@ -682,7 +694,7 @@ To close it out, create a **Training Record** for the trainee under **Quality**
 1. Quality > Quality Reports → **New Quality Reports** → Fill details → Link parts → Attach evidence → Save
 
 ### Disposition
-1. Open report → **Recommend Disposition** → Select type → Justify → Submit
+1. Open report → **Update Disposition** → Select type → Justify → Submit
 
 ### Quarantine Check
 1. View quarantined parts in Quality > Dispositions

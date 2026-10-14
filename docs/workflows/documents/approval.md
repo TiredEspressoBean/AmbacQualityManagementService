@@ -243,8 +243,8 @@ If documents have expiration dates:
 2. May require new approval
 3. Expired documents flagged
 
-Nothing tells you a review is coming due. Check the **due for review** list on
-the Documents page — it is pull-only, and no message is sent.
+Nothing tells you a review is coming due. Check the **Due for review** tile and
+list on **Home** — it is pull-only, and no message is sent.
 
 ## Approval Notifications
 

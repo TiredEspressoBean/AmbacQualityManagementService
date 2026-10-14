@@ -67,18 +67,21 @@ Start with the Quality Dashboard:
 3. Follow up on overdue items
 4. Verify effectiveness for closure
 
-## Approving Dispositions
+## Dispositions
 
-### Reviewing Disposition Requests
+There is no queue of disposition *requests* waiting on you. Whoever is
+authorized records the decision directly, and recording it **is** the
+authorized act. Your involvement takes one of two forms:
 
-1. Navigate to **Personal > Inbox** or **Quality > Dispositions**
-2. Open disposition request
-3. Review:
-   - Original NCR and issue
-   - Proposed disposition
-   - Justification
-   - Affected parts
-4. Make decision
+- **You record it yourself** — **Quality** > **Dispositions**, or the
+  *Exceptions on this WO* list on the work order's control page.
+- **You co-sign someone else's.** An inspector without `approve_disposition`
+  presses *Update Disposition* and the editor opens **Authorize disposition
+  decision**. You supply your email, signature and password on their screen.
+  The record carries **your** name as the authority, with them as the caller.
+
+Before either, review the originating NCR, the justification, and the affected
+parts.
 
 ### Approval Decision
 

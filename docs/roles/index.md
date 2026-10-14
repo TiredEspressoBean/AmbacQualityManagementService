@@ -26,7 +26,7 @@ Operator plus supervisor authority: FPI sign-off, manual decision points, traini
 ## Quality
 
 ### [QA Inspector](qa-inspector.md)
-Quality inspection, measurements, and NCR creation. Learn to perform inspections, create quality reports, and recommend dispositions.
+Quality inspection, measurements, and NCR creation. Learn to perform inspections, create quality reports, and record dispositions.
 
 ### [QA Manager](qa-manager.md)
 Quality oversight, CAPA management, approvals, and analytics. Learn to approve dispositions, manage CAPAs, and analyze quality trends.

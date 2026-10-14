@@ -65,7 +65,7 @@ You have authority to make disposition decisions that affect product, cost, and 
 
 | Item | Threshold |
 |------|-----------|
-| Dispositions | All (especially scrap over $X) |
+| Dispositions | All — there is no value threshold; the system gates Use As Is and Repair, which need a recorded approval reference |
 | Customer deviations | All |
 | Document revisions | Per template |
 | CAPA closures | All |
@@ -166,7 +166,8 @@ By the end of this module, you will:
 
 **Extra scrutiny for:**
 
-- Scrap value over threshold
+- High-value scrap (your judgement — the system has no value threshold and
+  will not stop a scrap decision for you)
 - Customer deviation requests
 - Safety-related issues
 - Recurring problems
@@ -327,23 +328,33 @@ Add these tasks to your training CAPA:
 
 ### 3.6 Closing a CAPA
 
+There is no separate closure step and no closure approval. **Recording a
+*Confirmed Effective* verification closes the CAPA**, in the same action — the
+status goes to Closed, the completion date is set, and your verification notes
+are written into the transition.
+
 **Steps:**
 
 1. Open CAPA
-2. Verify all tasks complete
-3. Review verification evidence
-4. Click **Request Closure**
-5. Add closure summary
-6. Approve closure (signature)
+2. Review the completed tasks and the verification evidence
+3. Go to the **Verification** tab
+4. Record the outcome as **Confirmed Effective**, with your notes
+5. Submit — the CAPA is now closed
+
+!!! warning "You cannot verify a CAPA you initiated or were assigned"
+    The system refuses it. Effectiveness is judged by someone other than the
+    person who did the work, so if you assigned the CAPA to yourself, closing it
+    needs a colleague who holds `verify_capa`. They can co-sign in place with
+    their email and password, and the closure is attributed to them.
 
 **Exercise 3.4:** Close a CAPA
 
-1. Open CAPA "CAPA-TRAIN-COMPLETE"
+1. Open CAPA "CAPA-TRAIN-COMPLETE" — check you are not its initiator or assignee
 2. Review all completed tasks
 3. Review verification evidence
-4. Click **Request Closure**
-5. Add summary: "Root cause identified as worn tooling. Tools replaced and inspection frequency increased. No recurrence in 30 days."
-6. Approve closure
+4. Open the **Verification** tab
+5. Record **Confirmed Effective** with notes: "Root cause identified as worn tooling. Tools replaced and inspection frequency increased. No recurrence in 30 days."
+6. Confirm the CAPA status is now **Closed**
 
 ---
 
@@ -701,7 +712,7 @@ Inbox → Review request → Verify evidence → **Approve/Reject** → Sign
 CAPAs → **New CAPAs** → Fill details → Add tasks → Assign team → Save
 
 ### CAPA Closure
-Open CAPA → Verify complete → **Request Closure** → Add summary → Sign
+Open CAPA → Verify tasks complete → **Verification** tab → **Confirmed Effective** + notes → closes the CAPA
 
 ### Document Approval
 Inbox → Review document → Check changes → **Approve/Reject** → Sign

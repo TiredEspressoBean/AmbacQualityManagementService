@@ -119,20 +119,18 @@ By the end of this module, you will:
 
 | Field | Description |
 |-------|-------------|
-| **Title** | Clear, searchable name |
-| **Document Type** | Category (WI, Spec, Drawing) |
-| **Revision** | Version identifier |
+| **File** | The document itself |
+| **Classification Level** | Who may see it |
 
 **Optional fields:**
 
-- Document Number (auto-generated if not provided)
-- Description
-- Keywords
-- Related documents
-- Expiration date
+- Document Type (WI, Spec, Drawing)
+- Link To — the record this document belongs to
 
-!!! note "Document Numbering"
-    Document numbers may be auto-generated based on your organization's settings. Check with your administrator for your specific numbering scheme.
+!!! warning "There is no title field"
+    The document's name is taken from **the file you upload**, so name the file
+    properly before you upload it. There is no title, description or
+    document-number field to fill in.
 
 ---
 
@@ -142,28 +140,20 @@ By the end of this module, you will:
 
 1. Navigate to **Documents**
 2. Click **Upload Document**
-3. Select file from your computer
-4. Fill in metadata:
-   - Title: Descriptive name
-   - Document Number: Per scheme
-   - Document Type: Select category
-   - Revision: Initial revision (A or 1)
-   - Description: Summary of content
-5. Set visibility (Internal, Confidential)
+3. Select file from your computer — **its filename becomes the document's name**
+4. Set the **Classification Level**
+5. Pick a **Document Type** if one applies
 6. Click **Upload**
 
 **Exercise 2.1:** Upload a Document
 
 1. Go to **Documents**
 2. Click **Upload Document**
-3. Select training file provided
-4. Fill in:
-   - Title: "Training Work Instruction - Widget Assembly"
-   - Document Number: "WI-TRAIN-001"
-   - Type: Work Instruction
-   - Revision: A
-   - Description: "Step-by-step assembly instructions for training widgets"
-5. Upload
+3. Rename the training file to `WI-TRAIN-001 Widget Assembly` before selecting
+   it — the filename is the only name the document gets
+4. Select it
+5. Set Classification Level: Internal, Type: Work Instruction
+6. Upload
 
 ---
 
@@ -273,22 +263,17 @@ By the end of this module, you will:
 
 1. Open existing document
 2. Click **Create Revision**
-3. Upload new file
-4. Fill in revision details:
-   - New Revision: Next in sequence (B, C or 2, 3)
-   - Change Summary: What changed
-   - Reason: Why the change
+3. Upload a new file **if the content changed** — keeping the existing file is
+   allowed, for a revision that only changes metadata or approval
+4. Enter the **reason for the revision** — the one required field
 5. Submit for approval
 
 **Exercise 3.1:** Create a Revision
 
 1. Open document "WI-TRAIN-001"
 2. Click **Create Revision**
-3. Upload revised file
-4. Fill in:
-   - New Revision: B
-   - Change Summary: "Added safety note to step 3"
-   - Reason: "Safety review recommendation"
+3. Upload the revised file
+4. Reason: "Added safety note to step 3, per safety review recommendation"
 5. Submit
 
 ---
@@ -365,9 +350,9 @@ Walked 2026-10-12 — of five approvals in flight, **four were CAPA Approvals**
 1. Open document (Draft or new revision)
 2. Verify content is complete
 3. Click **Submit for Approval**
-4. Select approval template (if options)
-5. Add submission notes (optional)
-6. Submit
+
+That is the whole action. You do not pick the approval template — it is chosen
+by approval *type*, not by the submitter.
 
 **What happens:**
 
@@ -477,17 +462,21 @@ Use consistent naming and metadata for easy finding.
 
 ### 5.3 Obsolete Documents
 
-**When documents become obsolete:**
-
-- New revision approved (automatic)
-- Document retired (manual)
+**Marking a document obsolete is always a deliberate act.** Creating or
+approving a new revision does **not** do it for you — if the superseded document
+should be withdrawn, you have to withdraw it.
 
 **Handling obsolete:**
 
-- Not visible in normal views
+- Still visible in the library alongside everything else — obsolete documents
+  are **not** hidden
 - Marked clearly as obsolete
 - Kept for historical reference
 - Available for audits
+
+!!! warning "Obsoleting is yours to remember"
+    Nothing prompts you. A superseded revision stays live and findable until
+    somebody marks it obsolete.
 
 ---
 
@@ -496,14 +485,15 @@ Use consistent naming and metadata for easy finding.
 **Many standards require periodic review:**
 
 1. Set review intervals per document type
-2. System notifies when due
+2. **Nothing notifies you** — the review queue is pull-only, so you have to go
+   and look
 3. Review and either:
    - Confirm current (re-approve)
    - Update (new revision)
 4. Document the review
 
-Home carries a **Due for review** tile so the backlog is visible without going
-looking for it.
+Home carries a **Due for review** tile, and a list of the documents themselves,
+so the backlog is visible in one place — but only when you open Home.
 
 !!! note "Dark on demo data"
     *Due for review* reads **0** in the demo, because no document has a review
@@ -767,7 +757,7 @@ Documents → **Upload Document** → Select file → Fill metadata → **Upload
 Open document → **Create Revision** → Upload new file → Fill change notes → **Submit**
 
 ### Submit for Approval
-Open document → **Submit for Approval** → Select template → **Submit**
+Open document (in Draft) → **Approval** tab → **Submit for Approval**
 
 ### Check Status
 Open document → **Approvals** section → View status

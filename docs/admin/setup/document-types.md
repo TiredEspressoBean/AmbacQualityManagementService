@@ -60,8 +60,8 @@ A few of the most-used, to show the shape:
 Submit with **Create Document Type**.
 
 !!! tip "Review period drives the review queue"
-    **Review Period** is what populates **Due for review** on the Documents
-    dashboard. A type with no review period never prompts a review.
+    **Review Period** is what populates **Due for review** on **Home**. A type
+    with no review period never prompts a review.
 
 4. Save
 

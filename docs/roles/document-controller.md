@@ -109,16 +109,14 @@ Documents](../workflows/documents/uploading.md).
 
 1. Open existing document
 2. Click **Create Revision**
-3. Upload new file
-4. Fill in revision details:
-
-| Field | Description |
-|-------|-------------|
-| **Create Revision** | Next version (auto-suggested) |
-| **Change Summary** | What changed |
-| **Reason** | Why the change |
-
+3. Upload a new file **if the content changed** — keeping the existing file is
+   allowed, for a revision that only changes metadata or re-approves
+4. Enter the **reason for the revision** — this is the one required field
 5. Submit for approval
+
+!!! note "One field, not two"
+    There is no separate Change Summary. The reason for the revision is the
+    whole of the written record, so say what changed *and* why in it.
 
 ### Revision Best Practices
 
@@ -131,11 +129,12 @@ Documents](../workflows/documents/uploading.md).
 
 ### Submitting for Approval
 
-1. Open document (Draft or new revision)
-2. Click **Submit for Approval**
-3. Select approval template (if multiple)
-4. Add submission notes
-5. Submit
+1. Open the document (in Draft)
+2. Go to the **Approval** tab
+3. Click **Submit for Approval**
+
+There is no template to choose and no submission notes field. The approval
+template is selected by approval *type*, not by you.
 
 ### Tracking Approval
 
@@ -237,9 +236,9 @@ still find and open them.
 1. Configure review interval per type
 2. System tracks next review date
 
-Nothing notifies you when a review falls due. Check the **due for review** list
-on the Documents page — it is the only thing that will tell you, and you have to
-go and look.
+Nothing notifies you when a review falls due. **Home** carries it: a *Due for
+review* tile under the Documents block, and a list of the documents themselves.
+That is the only thing that will tell you, and you have to go and look.
 
 ### Conducting Review
 
@@ -290,8 +289,8 @@ When documents update:
 | Task | Steps |
 |------|-------|
 | Upload document | Documents → **Upload Document** → Fill form → Save |
-| Create revision | Open doc → **Create Revision** → Upload → Submit |
-| Submit for approval | Open doc → Submit for Approval → Select template |
+| Create revision | Open doc → **Create Revision** → file (optional) → reason → Submit |
+| Submit for approval | Open doc (Draft) → **Approval** tab → **Submit for Approval** |
 | Check approval status | Open doc → View Approvals section |
 
 ## Related Documentation

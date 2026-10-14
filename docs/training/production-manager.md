@@ -86,20 +86,19 @@ By the end of this module, you will:
 
 ### 2.1 Order Information
 
-**Required fields:**
+**Order Name is the only required field.** Everything else — the company
+included — can be left blank and filled in later.
 
-| Field | Description |
-|-------|-------------|
-| **Order Number** | Your PO/SO reference |
-| **Customer** | Select from company list |
-| **Due Date** | Target completion date |
-| **Priority** | Urgent, High, Normal, Low |
+| Field | Description | Required |
+|-------|-------------|----------|
+| **Order Name** | Your PO/SO reference | **Yes** |
+| **Customer** | Select from company list | No |
+| **Estimated completion** | Target date | No |
+| **Notes** | Special instructions | No |
 
-**Optional fields:**
-
-- Customer PO reference
-- Notes/special instructions
-- Project reference
+!!! note "Priority is set on the work order, not the order"
+    Orders have no priority field. Priority belongs to the work order, which is
+    what actually gets scheduled.
 
 ---
 
@@ -117,36 +116,39 @@ By the end of this module, you will:
 
 1. Go to Orders
 2. Create new order:
-   - Order Number: "TRAIN-PM-001"
+   - Order Name: "TRAIN-PM-001"
    - Customer: Select training customer
-   - Due Date: 2 weeks from today
-   - Priority: Normal
+   - Estimated completion: 2 weeks from today
 3. Save
 
 ---
 
 ### 2.3 Adding Parts
 
-**After creating order:**
+!!! warning "Not from the order page"
+    The order detail page is read-only and has **no Add Parts control**. Parts
+    are added against the **work order**, so create one first.
 
-1. Open the order
-2. Go to **Parts** section
+1. Go to **Production** > **Work Orders**
+2. Tick exactly one work order — the bulk bar appears at the bottom
 3. Click **Add Parts**
 4. Configure:
-   - Part Type: Select product
-   - Quantity: Number of parts
-   - Serial Prefix: (optional) for serial numbers
-   - Lot Number: (optional) for lot tracking
-5. Add
+   - **Part Type** — shown, not chosen; it comes from the work order's process
+   - **Start Step** — which step the new parts begin at
+   - **Quantity** — number of parts to create
+   - **ERP ID Start** — the number the ERP IDs count up from
+5. Confirm
+
+ERP IDs are built as `<part type's prefix><counter padded to 4 digits>`. You do
+not type the prefix — it is set on the part type.
 
 **Exercise 2.2:** Add Parts
 
-1. Open order "TRAIN-PM-001"
-2. Add parts:
-   - Part Type: Select training part type
-   - Quantity: 10
-   - Serial Prefix: "PM-001"
-3. Verify parts created with serial numbers PM-001-001 through PM-001-010
+1. Create a work order against "TRAIN-PM-001" with a process assigned
+2. Select it in **Production** > **Work Orders** and click **Add Parts**
+3. Set Quantity: 10, ERP ID Start: 1
+4. Verify ten parts were created, numbered from the part type's prefix — a
+   prefix of `WA` gives `WA0001` through `WA0010`
 
 ---
 
@@ -625,10 +627,13 @@ To close it out, create a **Training Record** for the trainee under **Quality**
 ## Quick Reference
 
 ### Create Order
-Orders → **New Orders** → Fill details → Save → Add Parts
+Data Management → Orders → **New Orders** → Order Name → Save
 
 ### Create Work Order
-Work Orders → **New Orders** → Select order, process → Save
+Production → Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save
+
+### Add Parts
+Production → Work Orders → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start
 
 ### Check Status
 Tracker → Find order → Review progress, holds

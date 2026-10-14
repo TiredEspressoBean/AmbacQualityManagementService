@@ -76,27 +76,35 @@ As a Production Manager, you:
 2. Click **New Orders**
 3. Fill in order details:
 
-| Field | Description |
-|-------|-------------|
-| **Order Number** | Your PO/SO number |
-| **Customer** | Select customer |
-| **Due Date** | Target completion |
-| **Priority** | Urgent, High, Normal, Low |
-| **Notes** | Special instructions |
+| Field | Description | Required |
+|-------|-------------|----------|
+| **Order Name** | Your PO/SO number | **Yes — the only one** |
+| **Company** / **Customer** | Who placed it | No |
+| **Estimated Completion** | Target completion | No |
+| **Notes** | Special instructions | No |
 
-4. Save order
+4. Click **Create Order**
 
-### Adding Parts to Order
+The order *number* (`ORD-YYYY-NNNN`) is generated for you. Orders have **no
+priority field** — priority lives on the work order.
 
-1. Open the order
-2. Go to **Parts** section
-3. Click **Add Parts**
+### Adding Parts
+
+!!! warning "Not from the order page"
+    The order detail page is read-only and has no **Add Parts** control. Parts
+    are added against the **work order**.
+
+1. Go to **Production** > **Work Orders**
+2. Tick exactly one work order
+3. Click **Add Parts** in the bulk bar
 4. Specify:
-   - Part type
-   - Quantity
-   - Serial prefix (optional)
-   - Lot number (optional)
-5. Add parts
+   - **Start Step** — where the parts begin
+   - **Quantity**
+   - **ERP ID Start** — the counter ERP IDs start from
+5. Confirm
+
+Part Type is shown, not chosen: it comes from the work order's process. ERP IDs
+are `<part type prefix><counter padded to 4 digits>`.
 
 ### Bulk Order Import
 
@@ -112,13 +120,17 @@ For multiple orders:
 
 1. Navigate to **Production** > **Work Orders**
 2. Click **New Work Orders**
-3. Select:
-   - Order
-   - Process
-   - Priority
-   - Due date
-4. Assign resources (optional)
-5. Save
+3. Fill in:
+   - **ERP ID** — the work order's number in the system that owns it (required)
+   - **Process** (required)
+   - **Priority** (required)
+   - **Due date** (required)
+   - **Order** — the customer order, if there is one (optional)
+4. Save
+
+!!! note "ERP ID is required and easy to miss"
+    The save fails without it. It is the work order's identifier in whatever
+    system owns the number.
 
 ### Work Order Settings
 
@@ -281,9 +293,9 @@ Generate for management:
 
 | Task | Steps |
 |------|-------|
-| Create order | Data Management > Orders → **New Orders** → Fill form → **Create Order** |
-| Add parts | Open order → Parts → **Add Parts** → Configure → **Add Parts** |
-| Create work order | Data Management > Work Orders → **New Work Orders** → Configure → Save |
+| Create order | Data Management > Orders → **New Orders** → Order Name → **Create Order** |
+| Add parts | Production > Work Orders → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start |
+| Create work order | Production > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
 | Change priority | Open work order → Change priority → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
 
