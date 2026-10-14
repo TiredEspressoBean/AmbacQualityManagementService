@@ -266,7 +266,9 @@ than the control itself. Claiming them as implemented overstates it.
 
 ## Shared Responsibility Model
 
-No application-level POA&M items are required. The following are organizational responsibilities:
+**One application-level item belongs on your POA&M: 3.3.4.** Nothing pages anyone when an access-log write fails — see [Audit & Accountability](#audit-accountability-au). Closing it is a deployment step, routing a log pipeline at the `audit_write_failed` marker, but until that is done it is open and an assessor will ask.
+
+Everything below is an organizational responsibility rather than a POA&M item:
 
 | Practice | Application Provides | Organization Provides |
 |----------|---------------------|----------------------|

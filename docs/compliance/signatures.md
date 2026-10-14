@@ -161,7 +161,7 @@ So the fair answer to "could you?" is: **the signing mechanism has the shape Par
 describes, and the surrounding programme would be yours to build and validate.**
 
 Wrong passwords are rate-limited, so a terminal left signed in can't be used to
-guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#verified-sign-off)
+guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#sign-off-blocks)
 for turning it on.
 
 ## Signing Process
