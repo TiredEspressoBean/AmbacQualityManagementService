@@ -97,7 +97,7 @@ The following depend on deployment configuration and are **not application featu
 |-----------|-----------------|------------------------------|-----------------------------------|
 | [NIST 800-171](nist-800-171.md) | Defense (CUI) | 41 of 110 controls implemented, 8 partial | 61 controls live in your facility, IdP, host or process |
 | [CMMC Level 2](cmmc.md) | DoD Contractors | Same 110 controls, mapped by domain | Whole domains — training, maintenance, physical, risk assessment |
-| [ISO 9001:2015](iso9001.md) | General | Clauses 7–10 are covered in depth: documented information, production control, traceability, nonconformity, CAPA | **Clauses 5 (Leadership) and 6 (Planning) are not addressed by this page at all**, and clause 4 only at 4.4 |
+| [ISO 9001:2026](iso9001.md) | General | Clauses 7–10 are covered in depth: documented information, production control, traceability, nonconformity, CAPA | **Clauses 5 (Leadership) and 6 (Planning) are not addressed by this page at all**, and clause 4 only at 4.4 |
 | [AS9100D](as9100.md) | Aerospace | ISO 9001 plus configuration management, FAI, part traceability | AS9102 FAI form output; authentication of independent-distributor material |
 | [IATF 16949](iatf-16949.md) | Automotive | ISO 9001 plus SPC, control plans, layered audits | MSA / Gage R&R, PPAP, FMEA — none are modelled |
 | [ITAR](export-controls.md) | Defense/Export | Classification, access gating on `us_person` / `itar_authorized` | License tracking; the export decision itself |
@@ -259,7 +259,7 @@ The following depend on deployment configuration and are **not application featu
 
 - [NIST 800-171](nist-800-171.md) - CUI protection requirements
 - [CMMC Level 2](cmmc.md) - DoD certification requirements
-- [ISO 9001:2015](iso9001.md) - General QMS requirements
+- [ISO 9001:2026](iso9001.md) - General QMS requirements
 - [AS9100D](as9100.md) - Aerospace requirements
 - [IATF 16949](iatf-16949.md) - Automotive requirements
 - [Export Controls (ITAR/EAR)](export-controls.md) - Defense article controls
