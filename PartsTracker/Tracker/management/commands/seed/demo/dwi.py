@@ -357,10 +357,6 @@ class DemoDwiSeeder(BaseSeeder):
                     # cycle-level QA measurement, so this substep promotes to a
                     # batch-scoped QualityReport (PASS/FAIL on the whole load).
                     "is_inspection_point": True,
-                    # Verified sign-off: releasing the cycle signs for the whole
-                    # load with a password, once — the batch half of the feature,
-                    # and a visibly different level from the one-click attestations.
-                    "requires_signature": True,
                     "body": _doc(
                         _heading("Ultrasonic clean - whole load"),
                         _callout("note", "One cycle cleans the entire basket; the result applies to every part in the load."),
@@ -369,6 +365,11 @@ class DemoDwiSeeder(BaseSeeder):
                         # + a batch QualityReport), not to any one part.
                         *maybe_measure("Cleaning", "bath-temp", "Bath Temperature"),
                         _attest_confirm("Cleaning", "cycle-done", "Cycle complete", "Confirm the wash and rinse cycle finished and the basket was inspected."),
+                        # Releasing the cycle signs for the whole load, once:
+                        # a signature block in a BATCH substep is signed against
+                        # the load, not once per part in it.
+                        _attest_signature("Cleaning", "cycle-release",
+                                          "Cycle release"),
                     ),
                 },
             ],
@@ -397,7 +398,6 @@ class DemoDwiSeeder(BaseSeeder):
                     "title": "Measure spray angle",
                     "order": 1,
                     "is_inspection_point": True,
-                    "requires_signature": True,
                     "body": _doc(
                         _para("Mount the nozzle on the spray rig and record the measured spray angle."),
                         *maybe_measure("Nozzle Inspection", "spray-angle", "Spray Angle", characteristic="N-12"),
@@ -470,7 +470,6 @@ class DemoDwiSeeder(BaseSeeder):
                     "title": "Final leak / pressure test",
                     "order": 0,
                     "is_inspection_point": True,
-                    "requires_signature": True,
                     "body": _doc(
                         _para("Pressurize and hold; record the leak-test pressure and the pass/fail result."),
                         *maybe_measure("Final Test", "leak-pressure", "Leak Test Pressure", characteristic="FT-07"),
@@ -579,7 +578,6 @@ class DemoDwiSeeder(BaseSeeder):
                     "title": "Return inspection (post-coating)",
                     "order": 0,
                     "is_inspection_point": True,
-                    "requires_signature": True,
                     "body": _doc(
                         _heading("Inspect returned subcontract work"),
                         _para("Verify the coating on the returned parts and record the measured thickness."),

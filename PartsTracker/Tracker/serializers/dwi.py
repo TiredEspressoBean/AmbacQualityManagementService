@@ -309,11 +309,15 @@ class SubstepCompletionSerializer(SecureModelMixin):
             'is_voided', 'voided_at', 'voided_by', 'voided_by_name', 'void_reason',
             'created_at', 'updated_at',
         )
-        # Voiding goes through the `void` action, which is gated on
-        # `void_substepcompletion`. Leaving these writable would let anyone
-        # with `change_` PATCH around that gate.
+        # The viewset is read-only + `void`, so nothing here is client-written
+        # today; these stay declared for the same reason as on
+        # SubstepGateCompletionSerializer. Who signed, when, from where, and
+        # whether identity was verified are the server's to record
+        # (`submit_substep`), never the client's. Voiding goes through the
+        # `void` action, gated on `void_substepcompletion`.
         read_only_fields = (
-            'completed_at', 'created_at', 'updated_at',
+            'completed_by', 'completed_at', 'verified_at', 'verification_method',
+            'ip_address', 'created_at', 'updated_at',
             'is_voided', 'voided_at', 'voided_by', 'void_reason',
         )
 
@@ -335,21 +339,30 @@ class SubstepGateCompletionSerializer(SecureModelMixin):
 
     completed_by_name = serializers.SerializerMethodField()
 
+    # The signer's own password, checked at signing for a `signature` block and
+    # never stored. `services.dwi.gate_signature.sign_gate` verifies it and derives
+    # the verification method; a `confirm` block needs none.
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = SubstepGateCompletion
         fields = (
             'id',
-            'step_execution', 'substep', 'node_id',
+            # Exactly one: a per-part substep signs against its execution, a
+            # BATCH-scope one against the load, so a signature block inside a
+            # batch substep is signed once for every part in it.
+            'step_execution', 'batch_execution', 'substep', 'node_id',
             'completed_by', 'completed_by_name', 'completed_at',
             'signature_data', 'signature_meaning',
             'verified_at', 'verification_method', 'ip_address',
+            'password',
             'created_at', 'updated_at',
         )
         # Who signed, from where, and whether identity was verified are the server's
         # to record (SubstepGateCompletionViewSet.perform_create), never the client's:
         # writable, an operator could sign as someone else, backdated, "verified".
         read_only_fields = ('completed_by', 'completed_at', 'verified_at', 'verification_method',
-                            'ip_address', 'created_at', 'updated_at')
+                            'ip_address', 'signature_meaning', 'created_at', 'updated_at')
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_completed_by_name(self, obj) -> str | None:

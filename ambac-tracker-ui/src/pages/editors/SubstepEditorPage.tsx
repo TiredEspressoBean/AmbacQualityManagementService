@@ -115,6 +115,25 @@ function bodyHasAnnotator(body: object | undefined): boolean {
     return bodyNodeTypes(body).has(ANNOTATOR_NODE_TYPE);
 }
 
+/** Does this body ask for a signature? True when a Sign-off block is set to
+ *  "Signature + password". The server derives `requires_signature` the same way
+ *  on save; reading it from the working body means the badge follows the block
+ *  as you change it, rather than lagging a save behind and looking stuck. */
+function bodyRequiresSignature(body: object | undefined): boolean {
+    let found = false;
+    const walk = (n: unknown) => {
+        if (found || !n || typeof n !== "object") return;
+        const node = n as { type?: unknown; attrs?: { kind?: unknown }; content?: unknown };
+        if (node.type === "attestationCheckpoint" && node.attrs?.kind === "signature") {
+            found = true;
+            return;
+        }
+        if (Array.isArray(node.content)) node.content.forEach(walk);
+    };
+    walk(body);
+    return found;
+}
+
 /** Patch to merge alongside a body edit: a substep whose body contains the
  *  defect annotator is forced to be an inspection point — otherwise its
  *  Pass/Fail result, defect findings, and annotations never reach a
@@ -800,10 +819,13 @@ function SubstepRow({
     // Display values: show pending edits when present, fall back to backend.
     const displayTitle = pending?.title ?? substep.title;
     const displayOptional = pending?.is_optional ?? substep.is_optional;
-    const displaySignature = pending?.requires_signature ?? substep.requires_signature;
     const displayBody =
         (pending?.body_blocks as object | undefined) ??
         substep.body_blocks;
+    // Derived from the body, the same rule the server applies on save, so the
+    // badge tracks the block as the author changes it instead of lagging a save
+    // behind. Read-only: the block is where the choice is made.
+    const displaySignature = bodyRequiresSignature(displayBody);
     // Annotator in the body forces inspection-point, so reflect it in the badge
     // even when the stored flag is stale (legacy substeps authored before the
     // coupling existed).
@@ -934,7 +956,6 @@ function SubstepExpandedBody({
     // Working copies (show backend value when no pending edit is present).
     const workingTitle = pending?.title ?? substep.title;
     const workingOptional = pending?.is_optional ?? substep.is_optional;
-    const workingSignature = pending?.requires_signature ?? substep.requires_signature;
     const workingInspection =
         pending?.is_inspection_point ?? (substep.is_inspection_point ?? false);
     const workingCritical =
@@ -1025,22 +1046,6 @@ function SubstepExpandedBody({
                     />
                     <Label htmlFor={`optional-${substep.id}`} className="text-xs">
                         Optional
-                    </Label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <Switch
-                        id={`signature-${substep.id}`}
-                        checked={workingSignature}
-                        disabled={!editable}
-                        onCheckedChange={(v) => mergePending({ requires_signature: v })}
-                    />
-                    <Label
-                        htmlFor={`signature-${substep.id}`}
-                        className="text-xs"
-                        title="Verified sign-off: to complete this substep the operator draws a signature and re-enters their own password. The record carries who signed, what the signature means (the substep title), and the server's time. Use it for release and acceptance steps — final test release, inspection acceptance. Without it, signature nodes are one-click attestations under the signed-in user."
-                    >
-                        Verified sign-off
                     </Label>
                 </div>
 
@@ -1304,17 +1309,6 @@ function PendingCreateRow({
                             />
                             <Label htmlFor={`optional-${draft.tempId}`} className="text-xs">
                                 Optional
-                            </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                id={`signature-${draft.tempId}`}
-                                checked={draft.requires_signature}
-                                disabled={!editable}
-                                onCheckedChange={(v) => onChange({ requires_signature: v })}
-                            />
-                            <Label htmlFor={`signature-${draft.tempId}`} className="text-xs">
-                                Sign-off
                             </Label>
                         </div>
                         <div className="flex items-center gap-2">

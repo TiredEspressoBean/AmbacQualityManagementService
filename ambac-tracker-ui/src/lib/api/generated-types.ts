@@ -13408,18 +13408,22 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Per-execution substep completions.
+         * @description Per-execution substep completions — read, plus `void`.
          *
          *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         *
+         *     Read-only on purpose. A completion is the record that a named person did a
+         *     piece of work, and `submit_substep` is the only thing that writes one: it
+         *     stamps the signer, the server's time, the verification method and the IP,
+         *     and enforces the password when the substep requires a verified signature.
+         *     As a full ModelViewSet this endpoint let anyone holding `change_substepcompletion`
+         *     — every staff role — PATCH those same fields directly, naming someone else as
+         *     signer with `verification_method='PASSWORD'` at a time of their choosing. Nothing
+         *     in the app ever wrote a completion this way; only `void` mutates one.
          */
         get: operations["api_SubstepCompletions_list"];
         put?: never;
-        /**
-         * @description Per-execution substep completions.
-         *
-         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-         */
-        post: operations["api_SubstepCompletions_create"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13434,32 +13438,26 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Per-execution substep completions.
+         * @description Per-execution substep completions — read, plus `void`.
          *
          *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+         *
+         *     Read-only on purpose. A completion is the record that a named person did a
+         *     piece of work, and `submit_substep` is the only thing that writes one: it
+         *     stamps the signer, the server's time, the verification method and the IP,
+         *     and enforces the password when the substep requires a verified signature.
+         *     As a full ModelViewSet this endpoint let anyone holding `change_substepcompletion`
+         *     — every staff role — PATCH those same fields directly, naming someone else as
+         *     signer with `verification_method='PASSWORD'` at a time of their choosing. Nothing
+         *     in the app ever wrote a completion this way; only `void` mutates one.
          */
         get: operations["api_SubstepCompletions_retrieve"];
-        /**
-         * @description Per-execution substep completions.
-         *
-         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-         */
-        put: operations["api_SubstepCompletions_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description Per-execution substep completions.
-         *
-         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-         */
-        delete: operations["api_SubstepCompletions_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Per-execution substep completions.
-         *
-         *     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-         */
-        patch: operations["api_SubstepCompletions_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/SubstepCompletions/{id}/void/": {
@@ -13542,7 +13540,8 @@ export interface paths {
         get: operations["api_SubstepGateCompletions_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Undo a signature that hasn't been submitted yet. Your own needs nothing. Someone else's needs a supervisor's own email and password, checked against `clear_gate_signature` — the case where the signer has gone off shift. Once the substep is submitted its signatures stand; QA voids the completion instead. */
+        delete: operations["api_SubstepGateCompletions_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -30876,49 +30875,6 @@ export interface components {
             is_active?: boolean;
             archived?: boolean;
         };
-        /** @description Per-execution completion record. */
-        PatchedSubstepCompletionRequest: {
-            /**
-             * Format: uuid
-             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
-             */
-            step_execution?: string | null;
-            /**
-             * Format: uuid
-             * @description Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
-             */
-            batch_execution?: string | null;
-            /**
-             * Format: uuid
-             * @description The substep that was completed (or marked N/A).
-             */
-            substep?: string;
-            /** @description Operator who completed the substep. */
-            completed_by?: number;
-            /** @description Set when the operator marks an optional substep N/A instead of completing it. */
-            marked_not_applicable?: boolean;
-            /** @description Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note. */
-            notes?: string;
-            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
-            signature_data?: string | null;
-            /** @description Short human-readable description of what the signature attests to. */
-            signature_meaning?: string | null;
-            /**
-             * Format: date-time
-             * @description When identity verification (password / SSO) succeeded.
-             */
-            verified_at?: string | null;
-            /**
-             * @description How the signing operator's identity was verified.
-             *
-             *     * `PASSWORD` - Password
-             *     * `SSO` - SSO
-             *     * `NONE` - None
-             */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
-            /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
-        };
         /**
          * @description Substep — the unit of work instruction within a Step.
          *
@@ -30950,7 +30906,7 @@ export interface components {
             is_critical?: boolean;
             /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
             allow_not_applicable?: boolean;
-            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
@@ -36113,7 +36069,7 @@ export interface components {
             is_critical?: boolean;
             /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
             allow_not_applicable?: boolean;
-            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
@@ -36165,7 +36121,7 @@ export interface components {
             substep: string;
             readonly substep_title: string | null;
             /** @description Operator who completed the substep. */
-            completed_by: number;
+            readonly completed_by: number;
             readonly completed_by_name: string | null;
             /**
              * Format: date-time
@@ -36184,7 +36140,7 @@ export interface components {
              * Format: date-time
              * @description When identity verification (password / SSO) succeeded.
              */
-            verified_at?: string | null;
+            readonly verified_at: string | null;
             /**
              * @description How the signing operator's identity was verified.
              *
@@ -36192,9 +36148,9 @@ export interface components {
              *     * `SSO` - SSO
              *     * `NONE` - None
              */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
+            readonly verification_method: components["schemas"]["VerificationMethodEnum"];
             /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
+            readonly ip_address: string | null;
             /** @description Whether this record has been voided */
             readonly is_voided: boolean;
             /**
@@ -36212,49 +36168,6 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /** @description Per-execution completion record. */
-        SubstepCompletionRequest: {
-            /**
-             * Format: uuid
-             * @description Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
-             */
-            step_execution?: string | null;
-            /**
-             * Format: uuid
-             * @description Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
-             */
-            batch_execution?: string | null;
-            /**
-             * Format: uuid
-             * @description The substep that was completed (or marked N/A).
-             */
-            substep: string;
-            /** @description Operator who completed the substep. */
-            completed_by: number;
-            /** @description Set when the operator marks an optional substep N/A instead of completing it. */
-            marked_not_applicable?: boolean;
-            /** @description Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note. */
-            notes?: string;
-            /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
-            signature_data?: string | null;
-            /** @description Short human-readable description of what the signature attests to. */
-            signature_meaning?: string | null;
-            /**
-             * Format: date-time
-             * @description When identity verification (password / SSO) succeeded.
-             */
-            verified_at?: string | null;
-            /**
-             * @description How the signing operator's identity was verified.
-             *
-             *     * `PASSWORD` - Password
-             *     * `SSO` - SSO
-             *     * `NONE` - None
-             */
-            verification_method?: components["schemas"]["VerificationMethodEnum"];
-            /** @description Client IP at signing time; captured for audit defense. */
-            ip_address?: string | null;
-        };
         SubstepCompletionVoidRequestRequest: {
             reason: string;
         };
@@ -36270,9 +36183,14 @@ export interface components {
             readonly id: string;
             /**
              * Format: uuid
-             * @description The execution record where this gate was completed.
+             * @description The per-part execution this gate was signed on. Exactly one of step_execution / batch_execution is set.
              */
-            step_execution: string;
+            step_execution?: string | null;
+            /**
+             * Format: uuid
+             * @description The load this gate was signed for, when the substep is BATCH scope — one signature covers every part in it, the same shape as SubstepCompletion.
+             */
+            batch_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep the gate node lives in.
@@ -36291,7 +36209,7 @@ export interface components {
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
             /** @description Short human-readable description of what the signature attests to. */
-            signature_meaning?: string | null;
+            readonly signature_meaning: string | null;
             /**
              * Format: date-time
              * @description When identity verification (password / SSO) succeeded.
@@ -36316,9 +36234,14 @@ export interface components {
         SubstepGateCompletionRequest: {
             /**
              * Format: uuid
-             * @description The execution record where this gate was completed.
+             * @description The per-part execution this gate was signed on. Exactly one of step_execution / batch_execution is set.
              */
-            step_execution: string;
+            step_execution?: string | null;
+            /**
+             * Format: uuid
+             * @description The load this gate was signed for, when the substep is BATCH scope — one signature covers every part in it, the same shape as SubstepCompletion.
+             */
+            batch_execution?: string | null;
             /**
              * Format: uuid
              * @description The substep the gate node lives in.
@@ -36328,8 +36251,7 @@ export interface components {
             node_id: string;
             /** @description Base64 PNG signature blob, matching the ApprovalResponse format. */
             signature_data?: string | null;
-            /** @description Short human-readable description of what the signature attests to. */
-            signature_meaning?: string | null;
+            password?: string;
         };
         SubstepReorderRequestRequest: {
             /** Format: uuid */
@@ -36368,7 +36290,7 @@ export interface components {
             is_critical?: boolean;
             /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
             allow_not_applicable?: boolean;
-            /** @description Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow. */
+            /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
             is_inspection_point?: boolean;
@@ -36596,7 +36518,6 @@ export interface components {
             notes?: string;
             signature_data?: string;
             signature_meaning?: string;
-            password?: string;
             marked_not_applicable?: boolean;
             na_reason_code?: string;
         };
@@ -63260,31 +63181,6 @@ export interface operations {
             };
         };
     };
-    api_SubstepCompletions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubstepCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
-                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubstepCompletion"];
-                };
-            };
-        };
-    };
     api_SubstepCompletions_retrieve: {
         parameters: {
             query?: never;
@@ -63296,83 +63192,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubstepCompletion"];
-                };
-            };
-        };
-    };
-    api_SubstepCompletions_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubstepCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["SubstepCompletionRequest"];
-                "multipart/form-data": components["schemas"]["SubstepCompletionRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubstepCompletion"];
-                };
-            };
-        };
-    };
-    api_SubstepCompletions_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_SubstepCompletions_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this substep completion. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedSubstepCompletionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedSubstepCompletionRequest"];
-                "multipart/form-data": components["schemas"]["PatchedSubstepCompletionRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {
@@ -63495,6 +63314,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubstepGateCompletion"];
+                };
+            };
+        };
+    };
+    api_SubstepGateCompletions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this substep gate completion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

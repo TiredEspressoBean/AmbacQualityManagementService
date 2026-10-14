@@ -12,7 +12,6 @@ import {
     Bug,
     Calculator,
     Camera,
-    CheckSquare,
     ClipboardCheck,
     FileText,
     Gauge,
@@ -37,7 +36,6 @@ import type { Editor } from "@tiptap/react";
 
 import {
     SAMPLE_ATTESTATION_CONFIRM,
-    SAMPLE_ATTESTATION_SIGNATURE,
     SAMPLE_CALLOUT_CAUTION,
     SAMPLE_CHOICE_RADIO,
     SAMPLE_COMPUTED_TRUE_POSITION,
@@ -108,8 +106,7 @@ export const NODE_CATALOG: CatalogCategory[] = [
             { id: "qualityStatus", label: "Quality status", description: "PASS / FAIL / PENDING", keywords: "pass fail accept reject", icon: <ShieldCheck className="h-4 w-4" />, content: SAMPLE_QUALITY_STATUS },
             { id: "defects", label: "Defect findings", description: "Pick error types", keywords: "error nonconformance reject", icon: <Bug className="h-4 w-4" />, content: SAMPLE_ERROR_TYPES },
             { id: "inspectionSign", label: "Inspection signatures", description: "Detected / verified", keywords: "signoff approve verify", icon: <PenLine className="h-4 w-4" />, content: SAMPLE_INSPECTION_SIGNATURES },
-            { id: "attestation", label: "Attestation", description: "Confirm checkpoint", keywords: "confirm acknowledge checkbox", icon: <CheckSquare className="h-4 w-4" />, content: SAMPLE_ATTESTATION_CONFIRM },
-            { id: "signatureGate", label: "Sign-off", description: "Require a signature", keywords: "signature approve gate", icon: <PenLine className="h-4 w-4" />, content: SAMPLE_ATTESTATION_SIGNATURE },
+            { id: "attestation", label: "Sign-off", description: "Check off, or sign with a password", keywords: "confirm acknowledge checkbox signature sign approve gate", icon: <PenLine className="h-4 w-4" />, content: SAMPLE_ATTESTATION_CONFIRM },
         ],
     },
     {

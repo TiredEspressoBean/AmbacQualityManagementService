@@ -49,6 +49,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSubsteps, useSubmitSubstep, useSaveCaptureDraft } from "@/hooks/useSubsteps";
+import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
 import type { Substep } from "@/hooks/useSubsteps";
 import { getCookie } from "@/lib/utils";
 
@@ -292,6 +293,8 @@ export function OperatorSubstepRuntimePage() {
 
     const submit = useSubmitSubstep();
     const saveDraft = useSaveCaptureDraft();
+    // Verified signatures for `requires_signature` substeps, asked for at Complete step.
+    const signaturePrompt = useSignaturePrompt();
     // One "couldn't save" warning per visit, not one per substep.
     const draftWarned = useRef(false);
     const completeStep = useCompleteStep();
@@ -462,6 +465,9 @@ export function OperatorSubstepRuntimePage() {
         part_id: search.part ?? null,
         work_order_id: search.workOrder ?? null,
         step_execution_id: search.execution ?? null,
+        // BATCH-scope substeps are captured in BatchPanel, which provides its own
+        // context carrying the load — a step can have several open at once.
+        substep_id: current?.id ?? null,
         quality_report_id: current ? (qrIdBySubstepId[current.id] ?? null) : null,
     };
 
@@ -486,6 +492,7 @@ export function OperatorSubstepRuntimePage() {
         navigate,
         submit,
         completeStep,
+        requestSignature: signaturePrompt.request,
     };
     const completion = resolveCompletion(completionCtx);
 
@@ -588,6 +595,8 @@ export function OperatorSubstepRuntimePage() {
                         totalCaptures={totalCaptures}
                     />
                 )}
+
+                {signaturePrompt.dialog}
 
                 <NotApplicableDialog
                     open={naDialogSubstepId !== null}

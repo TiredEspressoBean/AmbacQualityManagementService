@@ -1363,7 +1363,15 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
         )
 
     def test_reconstructs_captured_responses(self):
+        from Tracker.services.dwi.gate_signature import sign_gate
         from Tracker.services.dwi.operator_capture import submit_substep, build_capture_state
+        # The body carries a signature block, so it is signed where it sits before
+        # the substep can be submitted (services.dwi.gate_signature).
+        self.user.set_password("pw")
+        self.user.save()
+        sign_gate(substep=self.substep, step_execution=self.step_execution, node_id=self.a_node,
+                  user=self.user, signature_data="data:image/png;base64,iVBORw0KGgo=",
+                  password="pw")
         submit_substep(
             substep=self.substep, step_execution=self.step_execution, user=self.user,
             captures=[

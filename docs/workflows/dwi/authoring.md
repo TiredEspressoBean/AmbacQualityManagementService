@@ -114,27 +114,27 @@ witnessed signoffs, and final dimensional verification.
     A safety-critical substep cannot be marked N/A by anyone. The advancement
     gate rejects the attempt.
 
-### Verified sign-off
+### Sign-off blocks
 
-Turn on **Verified sign-off** for a substep whose completion is an acceptance or
-release decision — a final test release, an inspection acceptance, a return
-inspection. To complete it the operator draws a signature **and re-enters their
-own password**. The record carries who signed, what the signature means (the
-substep's title), and the server's time.
+A **Sign-off** block is how a substep asks someone to put their name to something.
+Each one picks its own assurance:
 
-Leave it off everywhere else. Without it, a signature in a substep is a one-click
-attestation recorded under the signed-in user — enough for most work, and much
-quicker at the bench.
+| How it's signed | The operator | Use it for |
+|---|---|---|
+| **Check off** | Ticks it. Recorded under their login. | Everyday confirmations — "new seals fitted" |
+| **Signature + password** | Draws a signature and re-enters **their own** password | Acceptance and release — a final test release, an inspection acceptance |
 
-| Level | The operator | Use it for |
-|-------|--------------|------------|
-| **Attestation** (default) | Clicks to sign, as the signed-in user | Everyday confirmations |
-| **Verified sign-off** | Draws a signature and re-enters their password | Acceptance and release steps |
+The block's **label is what the record says was signed for**, so label it with the
+act rather than the step: "Release sign-off" reads better in an audit than the
+substep's title.
 
-It works on per-batch substeps too: one signature covers the load. A substep the
-operator marks N/A needs no signature. See
-[Electronic Signatures](../../compliance/signatures.md) for how the two levels
-map to the standards.
+There is no separate substep setting. A substep needs a signature exactly when its
+body contains a signature block, which is why you can't accidentally ask for one
+twice — the old toggle sat beside these blocks and a substep carrying both made the
+operator sign, then sign again.
+
+A signature block works the same way in a **batch** substep, except one signature
+covers the whole load rather than each part in it.
 
 ### Inspection points
 

@@ -23,7 +23,13 @@ import { Switch } from "@/components/ui/switch";
 import { NodeCard } from "../shared/NodeCard";
 import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
 import { TextAttrRow } from "../shared/AttrInputs";
+import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
+import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import type { SignaturePayload } from "../shared/signature";
@@ -33,6 +39,9 @@ type Attrs = {
     label: string;
     require_detected: boolean;
     require_verified: boolean;
+    /** How the finder signs: a click under their login, or their own drawn
+     *  signature and password. The verifier is always a second person. */
+    detected_assurance: "confirm" | "signature";
 };
 
 type Response = {
@@ -53,6 +62,21 @@ export function InspectionSignaturesEditForm({ node, updateAttributes }: NodeVie
                     onCheckedChange={(v) => updateAttributes({ require_detected: v })}
                 />
             </div>
+            <div className="space-y-1 pl-2">
+                <Label className="text-xs">How &quot;Detected by&quot; signs</Label>
+                <Select
+                    value={a.detected_assurance ?? "confirm"}
+                    onValueChange={(v) => updateAttributes({ detected_assurance: v })}
+                >
+                    <SelectTrigger className="h-8 text-sm">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="confirm">Check off — a click, under their login</SelectItem>
+                        <SelectItem value="signature">Signature + password — they draw and re-enter their own password</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
             <div className="flex items-center justify-between">
                 <Label className="text-xs">Require &quot;Verified by&quot;</Label>
                 <Switch
@@ -60,6 +84,11 @@ export function InspectionSignaturesEditForm({ node, updateAttributes }: NodeVie
                     onCheckedChange={(v) => updateAttributes({ require_verified: v })}
                 />
             </div>
+            <p className="text-[10px] text-muted-foreground">
+                The verifier is always a second person: they enter their own email and
+                password at the operator&apos;s terminal. It can never be whoever did the
+                work.
+            </p>
         </div>
     );
 }
@@ -69,11 +98,15 @@ function SignatureSlot({
     sig,
     onSign,
     disabled,
+    preview = false,
+    onClear,
 }: {
     label: string;
     sig: SignaturePayload | undefined;
     onSign: () => void;
     disabled: boolean;
+    preview?: boolean;
+    onClear?: () => void;
 }) {
     if (sig) {
         return (
@@ -83,8 +116,18 @@ function SignatureSlot({
                     <span className="font-medium">{label}: {sig.username}</span>
                     <span className="text-[10px] text-muted-foreground">
                         Signed {new Date(sig.signed_at).toLocaleString()}
+                        {preview ? " · preview, nothing recorded" : null}
                     </span>
                 </div>
+                {onClear && (
+                    <button
+                        type="button"
+                        onClick={onClear}
+                        className="ml-auto text-[10px] underline text-muted-foreground hover:text-foreground"
+                    >
+                        {preview ? "Clear" : "Undo"}
+                    </button>
+                )}
             </div>
         );
     }
@@ -95,7 +138,7 @@ function SignatureSlot({
             disabled={disabled}
             className="w-full rounded border border-dashed py-3 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
         >
-            {disabled ? `${label} signature shown to operator` : `Sign as ${label.toLowerCase()}`}
+            {`Sign as ${label.toLowerCase()}`}{preview ? " (preview)" : ""}
         </button>
     );
 }
@@ -108,22 +151,82 @@ function View(props: NodeViewProps) {
     const current = (value as Response | undefined) ?? {};
 
     const { data: me } = useAuthUser();
-    const sign = (which: "detected" | "verified") => {
-        if (!isOperator || !me) return;
-        const next: Response = {
-            ...current,
-            [which]: {
-                // `auth/user/` returns the user as `pk`, NOT `id`. Reading
-                // `.id` yields undefined -> Number(undefined) is NaN ->
-                // serialized as null, so every signature taken through the
-                // player recorded an unidentified signer while still showing
-                // the right name on screen.
-                user_id: me.pk,
-                username: me.username ?? `user-${me.pk}`,
-                signed_at: new Date().toISOString(),
-            },
+    const { request, dialog } = useSignaturePrompt();
+    const [cosignOpen, setCosignOpen] = useState(false);
+    const [cosignError, setCosignError] = useState<string | null>(null);
+    // In the editor there is no inspection to sign, so both slots run locally: the
+    // author sees what the finder and the verifier each face, and can clear it
+    // again. Nothing is recorded.
+    const [preview, setPreview] = useState<Response>({});
+    const shown: Response = isOperator ? current : preview;
+
+    const detectedNeedsSignature = (a.detected_assurance ?? "confirm") === "signature";
+
+    // The finder attests to their own work, so this is their own signature: a click,
+    // or — when the author asked for it — their drawing and their password.
+    // `auth/user/` returns the user as `pk`, NOT `id`; reading `.id` once recorded
+    // every player-captured signature with a null signer.
+    const signDetected = async () => {
+        if (!isOperator) {
+            if (detectedNeedsSignature && !(await request(a.label || "Detected by"))) return;
+            setPreview({
+                ...preview,
+                detected: {
+                    user_id: me?.pk ?? 0,
+                    username: me?.username ?? "you",
+                    signed_at: new Date().toISOString(),
+                } as SignaturePayload,
+            });
+            return;
+        }
+        if (!me) return;
+        const base = {
+            user_id: me.pk,
+            username: me.username ?? `user-${me.pk}`,
+            signed_at: new Date().toISOString(),
         };
-        setValue(next);
+        if (!detectedNeedsSignature) {
+            setValue({ ...current, detected: base as SignaturePayload });
+            return;
+        }
+        const got = await request(a.label || "Detected by");
+        if (!got) return;
+        setValue({
+            ...current,
+            detected: {
+                ...base,
+                data_uri: got.signature_data,
+                password: got.password,
+            } as unknown as SignaturePayload,
+        });
+    };
+
+    // The verifier is a second person standing at the operator's keyboard, so they
+    // identify themselves rather than inheriting the session — one browser, one
+    // login. The server resolves this slot from their credentials and never stamps
+    // it from the session, so the operator cannot fill it.
+    const confirmVerifier = (credentials: { email: string; password: string }) => {
+        setCosignError(null);
+        if (!isOperator) {
+            setPreview({
+                ...preview,
+                verified: {
+                    user_id: 0,
+                    username: credentials.email,
+                    signed_at: new Date().toISOString(),
+                } as SignaturePayload,
+            });
+            setCosignOpen(false);
+            return;
+        }
+        setValue({
+            ...current,
+            verified: {
+                cosign_email: credentials.email,
+                cosign_password: credentials.password,
+            } as unknown as SignaturePayload,
+        });
+        setCosignOpen(false);
     };
 
     const card = (
@@ -143,16 +246,37 @@ function View(props: NodeViewProps) {
             <div className="space-y-2" contentEditable={false}>
                 <SignatureSlot
                     label="Detected by"
-                    sig={current.detected}
-                    onSign={() => sign("detected")}
-                    disabled={!isOperator}
+                    sig={shown.detected}
+                    onSign={signDetected}
+                    disabled={false}
+                    preview={!isOperator}
+                    onClear={() =>
+                        isOperator
+                            ? setValue({ ...current, detected: undefined })
+                            : setPreview({ ...preview, detected: undefined })}
+                />
+                {dialog}
+                <SecondPersonCosignDialog
+                    open={cosignOpen}
+                    onOpenChange={setCosignOpen}
+                    title="Verify this inspection"
+                    description="A verification is a second person's. Sign in here with your own email and password - it cannot be the person who did the work."
+                    emailLabel="Verifier's email"
+                    confirmationText="I confirm this is my signature and that I am verifying work I did not do."
+                    error={cosignError}
+                    onConfirm={confirmVerifier}
                 />
                 {a.require_verified && (
                     <SignatureSlot
                         label="Verified by"
-                        sig={current.verified}
-                        onSign={() => sign("verified")}
-                        disabled={!isOperator}
+                        sig={shown.verified}
+                        onSign={() => { setCosignError(null); setCosignOpen(true); }}
+                        disabled={false}
+                        preview={!isOperator}
+                        onClear={() =>
+                            isOperator
+                                ? setValue({ ...current, verified: undefined })
+                                : setPreview({ ...preview, verified: undefined })}
                     />
                 )}
             </div>
@@ -178,6 +302,12 @@ export const InspectionSignatures = Node.create({
             label: { default: "Inspection signatures" },
             require_detected: { default: true },
             require_verified: { default: false },
+            // How the person who found it signs. "confirm" is a click under their
+            // login; "signature" makes them draw and re-enter their own password,
+            // for a finding whose authorship has to be provable. The verifying
+            // slot is always a second person's email and password — one terminal
+            // has one session, so it could never be the signed-in user.
+            detected_assurance: { default: "confirm" },
         };
     },
     parseHTML() {

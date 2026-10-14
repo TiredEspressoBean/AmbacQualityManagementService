@@ -104,7 +104,10 @@ export type SubmitSubstepRequest = {
     notes?: string;
     signature_data?: string;
     signature_meaning?: string;
-    verification_method?: string;
+    /** The submitter's own password: required, with signature_data, for a substep
+     *  authored `requires_signature` (a verified signature). The server derives
+     *  how the signature was verified — the client no longer says. */
+    password?: string;
     marked_not_applicable?: boolean;
     na_reason_code?: string;
 };

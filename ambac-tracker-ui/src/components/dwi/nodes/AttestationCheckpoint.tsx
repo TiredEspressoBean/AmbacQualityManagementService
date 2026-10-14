@@ -2,6 +2,7 @@
  * AttestationCheckpoint — checkbox confirmation OR inline signature gate.
  * In operator mode the capture is recorded against the substep's response store.
  */
+import { useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -24,10 +25,11 @@ import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
-import {
-    isSignaturePayload,
-    type SignaturePayload,
-} from "../shared/signature";
+import { usePartContext } from "../shared/PartContext";
+import { useSignaturePrompt, type SignatureRetry } from "@/components/dwi/useSignaturePrompt";
+import { useGateSignatures, useSignGate, useClearGateSignature } from "@/hooks/useGateSignature";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { toast } from "sonner";
 import { useAuthUser } from "@/hooks/useAuthUser";
 
 type Kind = "confirm" | "signature";
@@ -45,7 +47,7 @@ export function AttestationCheckpointEditForm({ node, updateAttributes }: NodeVi
     return (
         <div className="space-y-3">
             <div className="space-y-1">
-                <Label className="text-xs">Kind</Label>
+                <Label className="text-xs">How it's signed</Label>
                 <Select
                     value={a.kind}
                     onValueChange={(v) => updateAttributes({ kind: v })}
@@ -54,8 +56,8 @@ export function AttestationCheckpointEditForm({ node, updateAttributes }: NodeVi
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="confirm">Checkbox confirm</SelectItem>
-                        <SelectItem value="signature">Signature</SelectItem>
+                        <SelectItem value="confirm">Check off — a tick, under their login</SelectItem>
+                        <SelectItem value="signature">Signature + password — they draw and re-enter their own password</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -83,22 +85,79 @@ function View(props: NodeViewProps) {
     const isOperator = !editor.isEditable;
     const { value, setValue } = useOperatorResponse(a.node_id);
     const { data: me } = useAuthUser();
+    const ctx = usePartContext();
 
-    const signedPayload: SignaturePayload | null =
-        kind === "signature" && isSignaturePayload(value) ? value : null;
+    // A signature block is signed where it sits, before the substep is submitted:
+    // the operator draws and re-enters their own password, and the server records it
+    // against (execution, substep, node) with this block's label as the meaning. It
+    // used to be one unauthenticated click setting a client-side payload, while the
+    // catalog entry advertised "Require a signature".
+    const scope = {
+        stepExecutionId: ctx.step_execution_id ? String(ctx.step_execution_id) : null,
+        batchExecutionId: ctx.batch_execution_id ? String(ctx.batch_execution_id) : null,
+        substepId: ctx.substep_id ? String(ctx.substep_id) : null,
+    };
+    const canSign = !!scope.substepId && !!(scope.stepExecutionId || scope.batchExecutionId);
+    const { data: gates } = useGateSignatures(scope);
+    const signGate = useSignGate(scope);
+    const clearGate = useClearGateSignature(scope);
+    const signed = (gates ?? []).find((g) => g.node_id === String(a.node_id)) ?? null;
+    const { request, dialog } = useSignaturePrompt();
 
-    const sign = () => {
-        if (!isOperator || !me) return;
-        const payload: SignaturePayload = {
-            // `auth/user/` returns the user as `pk`, NOT `id`. See the same
-            // note in InspectionSignatures — reading `.id` recorded every
-            // player-captured signature with a null signer.
-            user_id: me.pk,
-            username: me.username ?? `user-${me.pk}`,
-            signed_at: new Date().toISOString(),
-            // data_uri reserved for SignatureCanvas integration.
-        };
-        setValue(payload);
+    // In the editor there is no part and no execution, so a signature has nowhere
+    // to go. The controls still work, locally, so the author can see exactly what
+    // the operator will face — including the password dialog — and can clear it
+    // again. Nothing here is written anywhere.
+    const [previewConfirmed, setPreviewConfirmed] = useState(false);
+    const [previewSignedAt, setPreviewSignedAt] = useState<string | null>(null);
+
+    // What the card shows, from whichever source applies: the recorded signature on
+    // the floor, or the author's local preview in the editor.
+    const signedView = isOperator
+        ? (signed && {
+            by: signed.completed_by_name ?? "you",
+            at: signed.completed_at ?? null,
+            verified: signed.verification_method === "PASSWORD",
+        })
+        : (previewSignedAt && {
+            by: me?.username ?? "you",
+            at: previewSignedAt,
+            verified: true,
+        });
+
+    const signPreview = async () => {
+        const got = await request(a.label || "Sign-off");
+        if (!got) return;
+        setPreviewSignedAt(new Date().toISOString());
+    };
+
+    const sign = async () => {
+        if (!isOperator) return signPreview();
+        if (!me || !canSign) return;
+        const meaning = a.label || "Sign-off";
+        let retry: SignatureRetry | undefined;
+        for (;;) {
+            const got = await request(meaning, retry);
+            if (!got) return; // cancelled — nothing is recorded
+            try {
+                await signGate.mutateAsync({
+                    nodeId: String(a.node_id),
+                    signature_data: got.signature_data,
+                    password: got.password,
+                });
+                return;
+            } catch (e) {
+                const msg = apiErrorMessage(e) ?? "";
+                // A wrong password re-opens the prompt with the drawing kept and only
+                // the password cleared. Anything else (already submitted, already
+                // signed) is final — re-asking would just fail again.
+                if (!/password/i.test(msg)) {
+                    toast.error("Could not sign", { description: msg || undefined });
+                    return;
+                }
+                retry = { signature_data: got.signature_data, reason: msg };
+            }
+        }
     };
 
     const card = (
@@ -107,7 +166,9 @@ function View(props: NodeViewProps) {
             label={a.label || "Attestation"}
             badges={
                 <>
-                    <Badge variant="outline" className="text-[10px] capitalize">{kind}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                        {kind === "signature" ? "Signature + password" : "Check off"}
+                    </Badge>
                     {required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
                     {isOperator && value && (
                         <Badge variant="default" className="text-[10px]">Captured ✓</Badge>
@@ -119,42 +180,68 @@ function View(props: NodeViewProps) {
                 <label className="flex items-center gap-2 text-sm" contentEditable={false}>
                     <input
                         type="checkbox"
-                        disabled={!isOperator}
-                        checked={isOperator ? Boolean(value) : false}
-                        onChange={(e) => isOperator && setValue(e.target.checked)}
-                        className={isOperator ? "" : "cursor-not-allowed"}
+                        checked={isOperator ? Boolean(value) : previewConfirmed}
+                        onChange={(e) =>
+                            isOperator ? setValue(e.target.checked)
+                                       : setPreviewConfirmed(e.target.checked)}
                     />
-                    <span className={isOperator ? "" : "text-muted-foreground"}>
-                        {a.prompt || "Operator confirms"}
-                    </span>
+                    <span>{a.prompt || "Operator confirms"}</span>
                 </label>
             ) : (
                 <div contentEditable={false}>
-                    {isOperator ? (
-                        signedPayload ? (
-                            <div className="rounded border border-green-500/40 bg-green-50/40 dark:bg-green-950/20 p-2 text-xs">
-                                <div className="font-medium">
-                                    Signed by {signedPayload.username}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground">
-                                    {new Date(signedPayload.signed_at).toLocaleString()}
-                                </div>
+                    {signedView ? (
+                        <div className="rounded border border-green-500/40 bg-green-50/40 dark:bg-green-950/20 p-2 text-xs">
+                            <div className="font-medium">
+                                Signed by {signedView.by}
                             </div>
-                        ) : (
+                            <div className="text-[10px] text-muted-foreground">
+                                {signedView.at ? new Date(signedView.at).toLocaleString() : null}
+                                {signedView.verified ? " · password verified" : null}
+                                {!isOperator ? " · preview, nothing recorded" : null}
+                            </div>
+                            {/* Provisional until the substep is submitted: the server
+                                refuses afterwards, and refuses someone else's signature
+                                unless you hold the authority to clear it. */}
                             <button
                                 type="button"
-                                onClick={sign}
-                                disabled={!me}
-                                className="w-full rounded border border-dashed py-3 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+                                onClick={() => {
+                                    if (!isOperator) {
+                                        setPreviewSignedAt(null);
+                                        return;
+                                    }
+                                    if (!signed) return;
+                                    clearGate.mutate(signed.id, {
+                                        onError: (e) =>
+                                            toast.error("Could not undo the signature", {
+                                                description: apiErrorMessage(e) ?? undefined,
+                                            }),
+                                    });
+                                }}
+                                disabled={clearGate.isPending}
+                                className="mt-1 text-[10px] underline text-muted-foreground hover:text-foreground disabled:opacity-50"
                             >
-                                {me ? "Click to sign" : "Sign in to enable signature"}
+                                {clearGate.isPending ? "Undoing..." : "Undo signature"}
                             </button>
-                        )
-                    ) : (
-                        <div className="flex h-16 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
-                            Signature shown to operator
                         </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={sign}
+                            disabled={isOperator && (!me || signGate.isPending || !canSign)}
+                            className="w-full rounded border border-dashed py-3 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+                        >
+                            {!isOperator
+                                ? "Sign — draw and enter your password (preview)"
+                                : !me
+                                    ? "Sign in to enable signature"
+                                    : !canSign
+                                        ? "Open this substep on a part to sign"
+                                        : signGate.isPending
+                                            ? "Signing..."
+                                            : "Sign — draw and enter your password"}
+                        </button>
                     )}
+                    {dialog}
                 </div>
             )}
         </NodeCard>

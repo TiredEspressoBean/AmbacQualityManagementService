@@ -105,25 +105,34 @@ Your entry is saved when you move off it, and the player advances.
       re-saving a step cannot wipe the inspector's slot — or quietly take it
       over.
 
-## Verified sign-off
+## Signing a block
 
-Some substeps carry a **Sign-off** badge. Those need a verified signature: when
-you press **Complete step**, a *Sign* dialog opens for each one, titled with the
-substep. Draw your signature, tick the confirmation, and enter **your own
-password**.
+Some blocks ask you to sign rather than tick. You sign them **as you work through
+the substep**, not at the end: draw your signature, then enter **your own**
+password. What you signed for is the block's label, and the time is the server's.
 
-- **Wrong password** — the dialog opens again with your drawing kept; only the
-  password is cleared. Enter it again.
-- **Too many wrong passwords** — after five, signing is locked for **15 minutes**.
-  It is not a few minutes, so don't sit and retry: get a lead to complete the step,
-  or come back to it. The lock is per person, so it does not stop anyone else
-  signing.
-- **Cancel** — the step is not completed and that substep records nothing.
-- **Voided** — if QA voids a signed substep, it has to be signed again the next
-  time the step is completed.
+- **Wrong password** — the prompt comes back with your drawing still there; only
+  the password is cleared.
+- **Too many wrong passwords** — signing locks for 15 minutes. Ask a lead.
+- **Cancel** — nothing is recorded, and the block stays unsigned.
 
-The record shows a **Verified signature** badge, so anyone reviewing the step can
-tell it apart from an ordinary attestation.
+### Undoing a signature
+
+A signature is provisional until you submit the substep, so **Undo signature**
+clears it and you can sign again. That is for the ordinary case of signing the
+wrong block or the wrong unit.
+
+Once the substep is submitted the signature stands. From there only QA can retract
+it, by voiding the completion with a reason — which re-opens the substep and asks
+for a fresh signature.
+
+!!! note "If someone signs and goes off shift"
+    A supervisor can clear another person's signature while the substep is still
+    unsubmitted, so the work isn't stuck waiting for someone who has gone home.
+    They cannot touch a signature once it has been submitted.
+
+You can't complete a substep while one of its signature blocks is unsigned — it
+tells you which one.
 
 ## Marking a substep N/A
 

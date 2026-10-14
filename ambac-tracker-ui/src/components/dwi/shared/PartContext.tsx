@@ -22,6 +22,14 @@ export type PartContextValue = {
      *  with source=measurement_definition) to query existing
      *  `StepExecutionMeasurement` rows and pre-fill themselves. */
     step_execution_id?: string | number | null;
+    /** The load this substep is being captured for, when it is BATCH scope.
+     *  Exactly one of this and `step_execution_id` applies to a given capture —
+     *  a signature block signs once for the load, not once per part. */
+    batch_execution_id?: string | number | null;
+    /** The substep being captured. A signature block is recorded against
+     *  (execution, substep, node), so the node needs to know which substep it
+     *  is sitting in. */
+    substep_id?: string | number | null;
 };
 
 export const PartContext = createContext<PartContextValue | null>(null);

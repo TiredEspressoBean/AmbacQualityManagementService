@@ -10095,26 +10095,22 @@ export type SubstepCompletion = {
      */
     (string | null)
     | undefined;
-  verified_at?:
-    | /**
-     * When identity verification (password / SSO) succeeded.
-     */
-    (string | null)
-    | undefined;
-  verification_method?: /**
+  /**
+   * When identity verification (password / SSO) succeeded.
+   */
+  verified_at: string | null;
+  /**
      * How the signing operator's identity was verified.
     
     * `PASSWORD` - Password
     * `SSO` - SSO
     * `NONE` - None
      */
-  VerificationMethodEnum | undefined;
-  ip_address?:
-    | /**
-     * Client IP at signing time; captured for audit defense.
-     */
-    (string | null)
-    | undefined;
+  verification_method: VerificationMethodEnum;
+  /**
+   * Client IP at signing time; captured for audit defense.
+   */
+  ip_address: string | null;
   /**
    * Whether this record has been voided
    */
@@ -10156,10 +10152,18 @@ export type PaginatedSubstepGateCompletionList = {
 };
 export type SubstepGateCompletion = {
   id: string;
-  /**
-   * The execution record where this gate was completed.
-   */
-  step_execution: string;
+  step_execution?:
+    | /**
+     * The per-part execution this gate was signed on. Exactly one of step_execution / batch_execution is set.
+     */
+    (string | null)
+    | undefined;
+  batch_execution?:
+    | /**
+     * The load this gate was signed for, when the substep is BATCH scope — one signature covers every part in it, the same shape as SubstepCompletion.
+     */
+    (string | null)
+    | undefined;
   /**
    * The substep the gate node lives in.
    */
@@ -10185,14 +10189,10 @@ export type SubstepGateCompletion = {
      */
     (string | null)
     | undefined;
-  signature_meaning?:
-    | /**
-     * Short human-readable description of what the signature attests to.
-     *
-     * @maxLength 200
-     */
-    (string | null)
-    | undefined;
+  /**
+   * Short human-readable description of what the signature attests to.
+   */
+  signature_meaning: string | null;
   /**
    * When identity verification (password / SSO) succeeded.
    */
@@ -10273,7 +10273,7 @@ export type Substep = {
    */
   boolean | undefined;
   requires_signature?: /**
-   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   * Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice.
    */
   boolean | undefined;
   is_inspection_point?: /**
@@ -14338,60 +14338,6 @@ export type PatchedStorageLocationRequest = Partial<{
   is_active: boolean;
   archived: boolean;
 }>;
-export type PatchedSubstepCompletionRequest = Partial<{
-  /**
-   * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
-   */
-  step_execution: string | null;
-  /**
-   * Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
-   */
-  batch_execution: string | null;
-  /**
-   * The substep that was completed (or marked N/A).
-   */
-  substep: string;
-  /**
-   * Operator who completed the substep.
-   */
-  completed_by: number;
-  /**
-   * Set when the operator marks an optional substep N/A instead of completing it.
-   */
-  marked_not_applicable: boolean;
-  /**
-   * Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note.
-   */
-  notes: string;
-  /**
-   * Base64 PNG signature blob, matching the ApprovalResponse format.
-   */
-  signature_data: string | null;
-  /**
-   * Short human-readable description of what the signature attests to.
-   *
-   * @maxLength 200
-   */
-  signature_meaning: string | null;
-  /**
-   * When identity verification (password / SSO) succeeded.
-   */
-  verified_at: string | null;
-  /**
-     * How the signing operator's identity was verified.
-    
-    * `PASSWORD` - Password
-    * `SSO` - SSO
-    * `NONE` - None
-     */
-  verification_method: VerificationMethodEnum;
-  /**
-   * Client IP at signing time; captured for audit defense.
-   *
-   * @minLength 1
-   */
-  ip_address: string | null;
-}>;
 export type PatchedSubstepRequest = Partial<{
   /**
    * The parent Op this substep belongs to.
@@ -14430,7 +14376,7 @@ export type PatchedSubstepRequest = Partial<{
    */
   allow_not_applicable: boolean;
   /**
-   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   * Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice.
    */
   requires_signature: boolean;
   /**
@@ -17101,72 +17047,6 @@ export type SubmitProcessForApprovalResponse = {
   approval_request_id: string;
   approval_number: string;
 };
-export type SubstepCompletionRequest = {
-  step_execution?:
-    | /**
-     * Set when the substep is per-part (scope=SAMPLED). Exactly one of step_execution / batch_execution should be set; check constraint enforces this at the DB level.
-     */
-    (string | null)
-    | undefined;
-  batch_execution?:
-    | /**
-     * Set when the substep is per-batch (scope=BATCH). Exactly one of step_execution / batch_execution should be set.
-     */
-    (string | null)
-    | undefined;
-  /**
-   * The substep that was completed (or marked N/A).
-   */
-  substep: string;
-  /**
-   * Operator who completed the substep.
-   */
-  completed_by: number;
-  marked_not_applicable?: /**
-   * Set when the operator marks an optional substep N/A instead of completing it.
-   */
-  boolean | undefined;
-  notes?: /**
-   * Operator notes captured at completion. Optional — an N/A is justified by its reason code, not a note.
-   */
-  string | undefined;
-  signature_data?:
-    | /**
-     * Base64 PNG signature blob, matching the ApprovalResponse format.
-     */
-    (string | null)
-    | undefined;
-  signature_meaning?:
-    | /**
-     * Short human-readable description of what the signature attests to.
-     *
-     * @maxLength 200
-     */
-    (string | null)
-    | undefined;
-  verified_at?:
-    | /**
-     * When identity verification (password / SSO) succeeded.
-     */
-    (string | null)
-    | undefined;
-  verification_method?: /**
-     * How the signing operator's identity was verified.
-    
-    * `PASSWORD` - Password
-    * `SSO` - SSO
-    * `NONE` - None
-     */
-  VerificationMethodEnum | undefined;
-  ip_address?:
-    | /**
-     * Client IP at signing time; captured for audit defense.
-     *
-     * @minLength 1
-     */
-    (string | null)
-    | undefined;
-};
 export type SubstepRequest = {
   /**
    * The parent Op this substep belongs to.
@@ -17208,7 +17088,7 @@ export type SubstepRequest = {
    */
   boolean | undefined;
   requires_signature?: /**
-   * Operator must sign at substep completion. Distinct from inline AttestationCheckpoint(kind='signature') nodes within the body, which are gates inside the substep flow.
+   * Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice.
    */
   boolean | undefined;
   is_inspection_point?: /**
@@ -25055,9 +24935,9 @@ const SubstepCompletion = z.object({
   notes: z.string().optional(),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
-  verified_at: z.string().datetime({ offset: true }).nullish(),
-  verification_method: VerificationMethodEnum.optional(),
-  ip_address: z.string().nullish(),
+  verified_at: z.string().datetime({ offset: true }).nullable(),
+  verification_method: VerificationMethodEnum,
+  ip_address: z.string().nullable(),
   is_voided: z.boolean(),
   voided_at: z.string().datetime({ offset: true }).nullable(),
   voided_by: z.number().int().nullable(),
@@ -25072,34 +24952,6 @@ const PaginatedSubstepCompletionList = z.object({
   previous: z.string().url().nullish(),
   results: z.array(SubstepCompletion),
 });
-const SubstepCompletionRequest = z.object({
-  step_execution: z.string().uuid().nullish(),
-  batch_execution: z.string().uuid().nullish(),
-  substep: z.string().uuid(),
-  completed_by: z.number().int(),
-  marked_not_applicable: z.boolean().optional(),
-  notes: z.string().optional(),
-  signature_data: z.string().nullish(),
-  signature_meaning: z.string().max(200).nullish(),
-  verified_at: z.string().datetime({ offset: true }).nullish(),
-  verification_method: VerificationMethodEnum.optional(),
-  ip_address: z.string().min(1).nullish(),
-});
-const PatchedSubstepCompletionRequest = z
-  .object({
-    step_execution: z.string().uuid().nullable(),
-    batch_execution: z.string().uuid().nullable(),
-    substep: z.string().uuid(),
-    completed_by: z.number().int(),
-    marked_not_applicable: z.boolean(),
-    notes: z.string(),
-    signature_data: z.string().nullable(),
-    signature_meaning: z.string().max(200).nullable(),
-    verified_at: z.string().datetime({ offset: true }).nullable(),
-    verification_method: VerificationMethodEnum,
-    ip_address: z.string().min(1).nullable(),
-  })
-  .partial();
 const SubstepCompletionVoidRequestRequest = z.object({
   reason: z.string().min(1),
 });
@@ -25111,14 +24963,15 @@ const SubstepCompletionVoidResponse = z.object({
 });
 const SubstepGateCompletion = z.object({
   id: z.string().uuid(),
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().max(64),
   completed_by: z.number().int(),
   completed_by_name: z.string().nullable(),
   completed_at: z.string().datetime({ offset: true }),
   signature_data: z.string().nullish(),
-  signature_meaning: z.string().max(200).nullish(),
+  signature_meaning: z.string().nullable(),
   verified_at: z.string().datetime({ offset: true }).nullable(),
   verification_method: VerificationMethodEnum,
   ip_address: z.string().nullable(),
@@ -25132,11 +24985,12 @@ const PaginatedSubstepGateCompletionList = z.object({
   results: z.array(SubstepGateCompletion),
 });
 const SubstepGateCompletionRequest = z.object({
-  step_execution: z.string().uuid(),
+  step_execution: z.string().uuid().nullish(),
+  batch_execution: z.string().uuid().nullish(),
   substep: z.string().uuid(),
   node_id: z.string().min(1).max(64),
   signature_data: z.string().nullish(),
-  signature_meaning: z.string().max(200).nullish(),
+  password: z.string().optional(),
 });
 const SubstepResource = z.object({
   id: z.string().uuid(),
@@ -25422,7 +25276,6 @@ const SubstepSubmitRequestRequest = z
     notes: z.string(),
     signature_data: z.string(),
     signature_meaning: z.string(),
-    password: z.string(),
     marked_not_applicable: z.boolean(),
     na_reason_code: z.string(),
   })
@@ -29106,8 +28959,6 @@ export const schemas = {
   LocationSummary,
   SubstepCompletion,
   PaginatedSubstepCompletionList,
-  SubstepCompletionRequest,
-  PatchedSubstepCompletionRequest,
   SubstepCompletionVoidRequestRequest,
   SubstepCompletionVoidResponse,
   SubstepGateCompletion,
@@ -55187,9 +55038,18 @@ record, so renaming it renames it everywhere; &#x60;&#x60;summary&#x60;&#x60; is
     method: "get",
     path: "/api/SubstepCompletions/",
     alias: "api_SubstepCompletions_list",
-    description: `Per-execution substep completions.
+    description: `Per-execution substep completions — read, plus &#x60;void&#x60;.
 
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.
+
+Read-only on purpose. A completion is the record that a named person did a
+piece of work, and &#x60;submit_substep&#x60; is the only thing that writes one: it
+stamps the signer, the server&#x27;s time, the verification method and the IP,
+and enforces the password when the substep requires a verified signature.
+As a full ModelViewSet this endpoint let anyone holding &#x60;change_substepcompletion&#x60;
+— every staff role — PATCH those same fields directly, naming someone else as
+signer with &#x60;verification_method&#x3D;&#x27;PASSWORD&#x27;&#x60; at a time of their choosing. Nothing
+in the app ever wrote a completion this way; only &#x60;void&#x60; mutates one.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55246,29 +55106,21 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
     response: PaginatedSubstepCompletionList,
   },
   {
-    method: "post",
-    path: "/api/SubstepCompletions/",
-    alias: "api_SubstepCompletions_create",
-    description: `Per-execution substep completions.
-
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: SubstepCompletionRequest,
-      },
-    ],
-    response: SubstepCompletion,
-  },
-  {
     method: "get",
     path: "/api/SubstepCompletions/:id/",
     alias: "api_SubstepCompletions_retrieve",
-    description: `Per-execution substep completions.
+    description: `Per-execution substep completions — read, plus &#x60;void&#x60;.
 
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
+Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.
+
+Read-only on purpose. A completion is the record that a named person did a
+piece of work, and &#x60;submit_substep&#x60; is the only thing that writes one: it
+stamps the signer, the server&#x27;s time, the verification method and the IP,
+and enforces the password when the substep requires a verified signature.
+As a full ModelViewSet this endpoint let anyone holding &#x60;change_substepcompletion&#x60;
+— every staff role — PATCH those same fields directly, naming someone else as
+signer with &#x60;verification_method&#x3D;&#x27;PASSWORD&#x27;&#x60; at a time of their choosing. Nothing
+in the app ever wrote a completion this way; only &#x60;void&#x60; mutates one.`,
     requestFormat: "json",
     parameters: [
       {
@@ -55278,67 +55130,6 @@ Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt
       },
     ],
     response: SubstepCompletion,
-  },
-  {
-    method: "put",
-    path: "/api/SubstepCompletions/:id/",
-    alias: "api_SubstepCompletions_update",
-    description: `Per-execution substep completions.
-
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: SubstepCompletionRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SubstepCompletion,
-  },
-  {
-    method: "patch",
-    path: "/api/SubstepCompletions/:id/",
-    alias: "api_SubstepCompletions_partial_update",
-    description: `Per-execution substep completions.
-
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedSubstepCompletionRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: SubstepCompletion,
-  },
-  {
-    method: "delete",
-    path: "/api/SubstepCompletions/:id/",
-    alias: "api_SubstepCompletions_destroy",
-    description: `Per-execution substep completions.
-
-Filter by &#x60;?step_execution&#x3D;&lt;id&gt;&#x60; or &#x60;?substep&#x3D;&lt;id&gt;&#x60; to scope queries.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "post",
@@ -55466,6 +55257,27 @@ happens on this endpoint, so verification_method stays NONE.`,
       },
     ],
     response: SubstepGateCompletion,
+  },
+  {
+    method: "delete",
+    path: "/api/SubstepGateCompletions/:id/",
+    alias: "api_SubstepGateCompletions_destroy",
+    description: `Undo a signature that hasn&#x27;t been submitted yet. Your own needs nothing. Someone else&#x27;s needs a supervisor&#x27;s own email and password, checked against &#x60;clear_gate_signature&#x60; — the case where the signer has gone off shift. Once the substep is submitted its signatures stand; QA voids the completion instead.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.void(),
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -59625,10 +59437,7 @@ Provides endpoints for:
       },
     ],
     response: ValidateTokenResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/users/:user_id/effective-permissions/",
@@ -59699,7 +59508,10 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: PaginatedUserWorkCenterMembershipList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/UserWorkCenterMemberships/",

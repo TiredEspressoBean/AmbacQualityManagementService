@@ -147,9 +147,9 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 'notes': drf_serializers.CharField(required=False, allow_blank=True),
                 'signature_data': drf_serializers.CharField(required=False, allow_blank=True),
                 'signature_meaning': drf_serializers.CharField(required=False, allow_blank=True),
-                # Verified signature: the signer's own password, re-checked at
-                # signing. The verification method is derived by the server.
-                'password': drf_serializers.CharField(required=False, allow_blank=True, write_only=True),
+                # No password here: a signature belongs to a block in the body and is
+                # made before submitting (POST /api/SubstepGateCompletions/). Submitting
+                # checks those blocks were signed.
                 'marked_not_applicable': drf_serializers.BooleanField(required=False),
                 'na_reason_code': drf_serializers.CharField(required=False, allow_blank=True),
             },
@@ -235,7 +235,6 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                 notes=request.data.get('notes', '') or '',
                 signature_data=request.data.get('signature_data'),
                 signature_meaning=request.data.get('signature_meaning'),
-                password=request.data.get('password'),
                 marked_not_applicable=bool(request.data.get('marked_not_applicable')),
                 na_reason_code=request.data.get('na_reason_code', '') or '',
                 ip_address=ip_address,
@@ -441,10 +440,19 @@ class SubstepTranslationViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering = ['substep', 'language']
 
 
-class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
-    """Per-execution substep completions.
+class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
+    """Per-execution substep completions — read, plus `void`.
 
     Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+
+    Read-only on purpose. A completion is the record that a named person did a
+    piece of work, and `submit_substep` is the only thing that writes one: it
+    stamps the signer, the server's time, the verification method and the IP,
+    and enforces the password when the substep requires a verified signature.
+    As a full ModelViewSet this endpoint let anyone holding `change_substepcompletion`
+    — every staff role — PATCH those same fields directly, naming someone else as
+    signer with `verification_method='PASSWORD'` at a time of their choosing. Nothing
+    in the app ever wrote a completion this way; only `void` mutates one.
     """
 
     # `void` retracts a record of work someone else signed, so it is gated on
@@ -560,11 +568,81 @@ class SubstepGateCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ['step_execution', 'substep', 'node_id', 'completed_by']
     ordering_fields = ['completed_at']
     ordering = ['-completed_at']
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+    # Clearing is the service's call (own signature always; someone else's needs
+    # `clear_gate_signature`), so the CRUD delete gate must not also apply — it
+    # would be `delete_substepgatecompletion`, which nobody holds.
+    crud_exempt_actions = {'destroy'}
 
     def perform_create(self, serializer):
+        """Sign one block. A `confirm` block is a tick and records no password; a
+        `signature` block draws and re-enters the signer's own password, enforced in
+        `services.dwi.gate_signature.sign_gate`."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from Tracker.services.dwi.gate_signature import sign_gate
         from Tracker.throttling import get_client_ip
+
+        data = serializer.validated_data
+        substep = data.get('substep')
+        node_id = str(data.get('node_id') or '')
+        from Tracker.services.dwi.gate_signature import signature_node_ids
+        if substep is not None and node_id in signature_node_ids(substep):
+            try:
+                gate = sign_gate(
+                    substep=substep,
+                    step_execution=data.get('step_execution'),
+                    node_id=node_id,
+                    user=self.request.user,
+                    signature_data=data.get('signature_data'),
+                    password=self.request.data.get('password'),
+                    ip_address=get_client_ip(self.request) or None,
+                )
+            except DjangoValidationError as exc:
+                raise DRFValidationError({'detail': '; '.join(exc.messages)})
+            serializer.instance = gate
+            return
+        # A check-off block: no password, so the service isn't involved. The signer,
+        # the time and the method are still the server's — none is accepted from the
+        # body (see the serializer's read_only_fields). The node must be a real
+        # attestation block on this substep, so the endpoint can't be used to mint
+        # gate records against ids that aren't in the instructions.
+        from Tracker.services.dwi.gate_signature import attestation_nodes
+        if substep is None or node_id not in attestation_nodes(substep):
+            raise DRFValidationError(
+                {'detail': "That block isn't an attestation on this substep."})
         serializer.save(completed_by=self.request.user, ip_address=get_client_ip(self.request) or None)
+
+    @extend_schema(
+        request=inline_serializer(
+            name='ClearGateSignatureRequest',
+            fields={
+                # A supervisor clearing someone else's signature is a second person at
+                # the operator's terminal, not the session user — one browser, one login.
+                'email': drf_serializers.EmailField(required=False, allow_blank=True),
+                'password': drf_serializers.CharField(required=False, allow_blank=True,
+                                                      write_only=True),
+            },
+        ),
+        responses={204: None, 400: OpenApiTypes.OBJECT},
+        description="Undo a signature that hasn't been submitted yet. Your own needs "
+                    "nothing. Someone else's needs a supervisor's own email and password, "
+                    "checked against `clear_gate_signature` — the case where the signer "
+                    "has gone off shift. Once the substep is submitted its signatures "
+                    "stand; QA voids the completion instead.",
+    )
+    def destroy(self, request, *args, **kwargs):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.dwi.gate_signature import clear_gate_signature
+        try:
+            clear_gate_signature(
+                self.get_object(), request.user,
+                email=request.data.get('email', '') or '',
+                password=request.data.get('password', '') or '',
+            )
+        except DjangoValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SubstepResponseViewSet(TenantScopedMixin, viewsets.ModelViewSet):

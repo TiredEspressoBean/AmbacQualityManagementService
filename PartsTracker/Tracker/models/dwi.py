@@ -188,9 +188,13 @@ class Substep(SecureModel):
     requires_signature = models.BooleanField(
         default=False,
         help_text=(
-            "Operator must sign at substep completion. Distinct from inline "
-            "AttestationCheckpoint(kind='signature') nodes within the body, "
-            "which are gates inside the substep flow."
+            "Derived, not authored: true when the body carries an attestation "
+            "block whose kind is 'signature'. Those blocks are signed one at a "
+            "time, in the body, with a drawing and the signer's own password "
+            "(services.dwi.gate_signature). The column stays because the "
+            "advancement gate, the API filter and the capture service all read "
+            "it. It used to be a separate toggle, so a substep could demand a "
+            "signature inline AND again at completion — the operator signed twice."
         ),
     )
     """If True, the SubstepCompletion row must carry signature_data when the
@@ -303,6 +307,26 @@ class Substep(SecureModel):
 
     def __str__(self) -> str:
         return f"{self.step_id}#{self.order} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        """Keep `requires_signature` true to the body.
+
+        A derived column, not business logic: it reads this row's own
+        `body_blocks` and nothing else. It lives here rather than in the
+        serializer because the substep editor, the step-versioning clone and the
+        seed all write substeps by different routes, and a flag that disagreed
+        with the body is how a substep could demand a signature inline AND again
+        at completion — the operator signed twice, and nobody noticed.
+        """
+        from Tracker.services.dwi.gate_signature import signature_node_ids
+
+        derived = bool(signature_node_ids(self))
+        if self.requires_signature != derived:
+            self.requires_signature = derived
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None and 'requires_signature' not in update_fields:
+                kwargs['update_fields'] = list(update_fields) + ['requires_signature']
+        return super().save(*args, **kwargs)
 
     @property
     def is_editable(self) -> bool:
@@ -818,7 +842,21 @@ class SubstepGateCompletion(SecureModel):
         'Tracker.StepExecution',
         on_delete=models.CASCADE,
         related_name='substep_gate_completions',
-        help_text="The execution record where this gate was completed.",
+        null=True,
+        blank=True,
+        help_text="The per-part execution this gate was signed on. Exactly one of "
+                  "step_execution / batch_execution is set.",
+    )
+
+    batch_execution = models.ForeignKey(
+        'Tracker.BatchExecution',
+        on_delete=models.CASCADE,
+        related_name='substep_gate_completions',
+        null=True,
+        blank=True,
+        help_text="The load this gate was signed for, when the substep is BATCH "
+                  "scope — one signature covers every part in it, the same shape "
+                  "as SubstepCompletion.",
     )
 
     substep = models.ForeignKey(
@@ -885,11 +923,34 @@ class SubstepGateCompletion(SecureModel):
 
     class Meta:
         ordering = ['-completed_at']
+        permissions = [
+            # Clearing an unsubmitted signature someone else made. Before the
+            # substep is submitted a signature is provisional — the signer can
+            # undo their own without a permission at all. This covers the other
+            # case: an operator signs a block and goes off shift, and the work
+            # has to move. Supervisor tier, the same authority as the training
+            # gate override. Once the substep IS submitted nothing here applies:
+            # the signature is part of the record and only `void_substepcompletion`
+            # retracts it, with a reason.
+            ('clear_gate_signature', "Can clear another person's unsubmitted signature"),
+        ]
         constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(step_execution__isnull=False, batch_execution__isnull=True)
+                    | models.Q(step_execution__isnull=True, batch_execution__isnull=False)
+                ),
+                name='dwi_substepgate_exactly_one_exec_fk',
+            ),
             models.UniqueConstraint(
                 fields=['step_execution', 'substep', 'node_id'],
-                condition=models.Q(deleted_at__isnull=True),
+                condition=models.Q(deleted_at__isnull=True, step_execution__isnull=False),
                 name='dwi_substepgate_exec_sub_node_uniq',
+            ),
+            models.UniqueConstraint(
+                fields=['batch_execution', 'substep', 'node_id'],
+                condition=models.Q(deleted_at__isnull=True, batch_execution__isnull=False),
+                name='dwi_substepgate_batch_sub_node_uniq',
             ),
         ]
         indexes = [

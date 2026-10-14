@@ -412,6 +412,17 @@ DECISION_RESOLUTION_PERMISSIONS = [
 # decision resolution / FPI sign-off, deliberately withheld from the line
 # Operator. This is the "override / waive authority" the Shift Lead preset
 # comment anticipated.
+# Clearing an unsubmitted signature somebody else made. A signature inside a
+# substep is provisional until the substep is submitted: the signer can always
+# undo their own, no permission needed. This is the other case — an operator
+# signs a block and goes off shift, and the work has to move. Supervisor tier,
+# including the Shift Lead, who is the person actually on the floor when it
+# happens. Once the substep IS submitted this stops applying: the signature is
+# part of the record, and only `void_substepcompletion` retracts it.
+GATE_SIGNATURE_CLEAR_PERMISSIONS = [
+    'clear_gate_signature',
+]
+
 TRAINING_GATE_OVERRIDE_PERMISSIONS = [
     'override_training_gate',
 ]
@@ -676,6 +687,7 @@ GROUP_PRESETS = {
             *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Author shift notes (floor handoff)
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             # Formally raise a CAPA
@@ -719,6 +731,7 @@ GROUP_PRESETS = {
             *VOID_COMPLETION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
             # Management schedule-touch: pin/move/reassign scheduled tasks (e.g.
@@ -787,6 +800,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Formally raise a CAPA
@@ -823,6 +837,7 @@ GROUP_PRESETS = {
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
             'apply_cyclecount',
+            *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -839,6 +854,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
+            *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             # Formally raise a CAPA
             'initiate_capa',
             # Schedule floor authority: pin/move/reassign/dispatch scheduled

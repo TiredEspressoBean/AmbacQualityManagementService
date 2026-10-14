@@ -33001,9 +33001,18 @@ paths:
     get:
       operationId: api_SubstepCompletions_list
       description: |-
-        Per-execution substep completions.
+        Per-execution substep completions — read, plus `void`.
 
         Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+
+        Read-only on purpose. A completion is the record that a named person did a
+        piece of work, and `submit_substep` is the only thing that writes one: it
+        stamps the signer, the server's time, the verification method and the IP,
+        and enforces the password when the substep requires a verified signature.
+        As a full ModelViewSet this endpoint let anyone holding `change_substepcompletion`
+        — every staff role — PATCH those same fields directly, naming someone else as
+        signer with `verification_method='PASSWORD'` at a time of their choosing. Nothing
+        in the app ever wrote a completion this way; only `void` mutates one.
       parameters:
       - in: query
         name: batch_execution
@@ -33078,43 +33087,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedSubstepCompletionList'
           description: ''
-    post:
-      operationId: api_SubstepCompletions_create
-      description: |-
-        Per-execution substep completions.
-
-        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubstepCompletion'
-          description: ''
   /api/SubstepCompletions/{id}/:
     get:
       operationId: api_SubstepCompletions_retrieve
       description: |-
-        Per-execution substep completions.
+        Per-execution substep completions — read, plus `void`.
 
         Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
+
+        Read-only on purpose. A completion is the record that a named person did a
+        piece of work, and `submit_substep` is the only thing that writes one: it
+        stamps the signer, the server's time, the verification method and the IP,
+        and enforces the password when the substep requires a verified signature.
+        As a full ModelViewSet this endpoint let anyone holding `change_substepcompletion`
+        — every staff role — PATCH those same fields directly, naming someone else as
+        signer with `verification_method='PASSWORD'` at a time of their choosing. Nothing
+        in the app ever wrote a completion this way; only `void` mutates one.
       parameters:
       - in: path
         name: id
@@ -33135,103 +33123,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SubstepCompletion'
           description: ''
-    put:
-      operationId: api_SubstepCompletions_update
-      description: |-
-        Per-execution substep completions.
-
-        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep completion.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/SubstepCompletionRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubstepCompletion'
-          description: ''
-    patch:
-      operationId: api_SubstepCompletions_partial_update
-      description: |-
-        Per-execution substep completions.
-
-        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep completion.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSubstepCompletionRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubstepCompletion'
-          description: ''
-    delete:
-      operationId: api_SubstepCompletions_destroy
-      description: |-
-        Per-execution substep completions.
-
-        Filter by `?step_execution=<id>` or `?substep=<id>` to scope queries.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this substep completion.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/SubstepCompletions/{id}/void/:
     post:
       operationId: api_SubstepCompletions_void_create
@@ -33408,6 +33299,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubstepGateCompletion'
+          description: ''
+    delete:
+      operationId: api_SubstepGateCompletions_destroy
+      description: Undo a signature that hasn't been submitted yet. Your own needs
+        nothing. Someone else's needs a supervisor's own email and password, checked
+        against `clear_gate_signature` — the case where the signer has gone off shift.
+        Once the substep is submitted its signatures stand; QA voids the completion
+        instead.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this substep gate completion.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/SubstepResources/:
     get:
@@ -68642,67 +68563,6 @@ components:
           type: boolean
         archived:
           type: boolean
-    PatchedSubstepCompletionRequest:
-      type: object
-      description: Per-execution completion record.
-      properties:
-        step_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
-            of step_execution / batch_execution should be set; check constraint enforces
-            this at the DB level.
-        batch_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when the substep is per-batch (scope=BATCH). Exactly one
-            of step_execution / batch_execution should be set.
-        substep:
-          type: string
-          format: uuid
-          description: The substep that was completed (or marked N/A).
-        completed_by:
-          type: integer
-          description: Operator who completed the substep.
-        marked_not_applicable:
-          type: boolean
-          description: Set when the operator marks an optional substep N/A instead
-            of completing it.
-        notes:
-          type: string
-          description: Operator notes captured at completion. Optional — an N/A is
-            justified by its reason code, not a note.
-        signature_data:
-          type: string
-          nullable: true
-          description: Base64 PNG signature blob, matching the ApprovalResponse format.
-        signature_meaning:
-          type: string
-          nullable: true
-          description: Short human-readable description of what the signature attests
-            to.
-          maxLength: 200
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When identity verification (password / SSO) succeeded.
-        verification_method:
-          allOf:
-          - $ref: '#/components/schemas/VerificationMethodEnum'
-          description: |-
-            How the signing operator's identity was verified.
-
-            * `PASSWORD` - Password
-            * `SSO` - SSO
-            * `NONE` - None
-        ip_address:
-          type: string
-          nullable: true
-          minLength: 1
-          description: Client IP at signing time; captured for audit defense.
     PatchedSubstepRequest:
       type: object
       description: |-
@@ -68756,9 +68616,13 @@ components:
             row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
-          description: Operator must sign at substep completion. Distinct from inline
-            AttestationCheckpoint(kind='signature') nodes within the body, which are
-            gates inside the substep flow.
+          description: 'Derived, not authored: true when the body carries an attestation
+            block whose kind is ''signature''. Those blocks are signed one at a time,
+            in the body, with a drawing and the signer''s own password (services.dwi.gate_signature).
+            The column stays because the advancement gate, the API filter and the
+            capture service all read it. It used to be a separate toggle, so a substep
+            could demand a signature inline AND again at completion — the operator
+            signed twice.'
         is_inspection_point:
           type: boolean
           description: 'When True, MeasurementInput captures within this substep additionally
@@ -78796,9 +78660,13 @@ components:
             row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
-          description: Operator must sign at substep completion. Distinct from inline
-            AttestationCheckpoint(kind='signature') nodes within the body, which are
-            gates inside the substep flow.
+          description: 'Derived, not authored: true when the body carries an attestation
+            block whose kind is ''signature''. Those blocks are signed one at a time,
+            in the body, with a drawing and the signer''s own password (services.dwi.gate_signature).
+            The column stays because the advancement gate, the API filter and the
+            capture service all read it. It used to be a separate toggle, so a substep
+            could demand a signature inline AND again at completion — the operator
+            signed twice.'
         is_inspection_point:
           type: boolean
           description: 'When True, MeasurementInput captures within this substep additionally
@@ -78899,6 +78767,7 @@ components:
           nullable: true
         completed_by:
           type: integer
+          readOnly: true
           description: Operator who completed the substep.
         completed_by_name:
           type: string
@@ -78930,11 +78799,13 @@ components:
         verified_at:
           type: string
           format: date-time
+          readOnly: true
           nullable: true
           description: When identity verification (password / SSO) succeeded.
         verification_method:
           allOf:
           - $ref: '#/components/schemas/VerificationMethodEnum'
+          readOnly: true
           description: |-
             How the signing operator's identity was verified.
 
@@ -78943,6 +78814,7 @@ components:
             * `NONE` - None
         ip_address:
           type: string
+          readOnly: true
           nullable: true
           description: Client IP at signing time; captured for audit defense.
         is_voided:
@@ -78982,78 +78854,17 @@ components:
       - completed_by_name
       - created_at
       - id
+      - ip_address
       - is_voided
       - substep
       - substep_title
       - updated_at
+      - verification_method
+      - verified_at
       - void_reason
       - voided_at
       - voided_by
       - voided_by_name
-    SubstepCompletionRequest:
-      type: object
-      description: Per-execution completion record.
-      properties:
-        step_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when the substep is per-part (scope=SAMPLED). Exactly one
-            of step_execution / batch_execution should be set; check constraint enforces
-            this at the DB level.
-        batch_execution:
-          type: string
-          format: uuid
-          nullable: true
-          description: Set when the substep is per-batch (scope=BATCH). Exactly one
-            of step_execution / batch_execution should be set.
-        substep:
-          type: string
-          format: uuid
-          description: The substep that was completed (or marked N/A).
-        completed_by:
-          type: integer
-          description: Operator who completed the substep.
-        marked_not_applicable:
-          type: boolean
-          description: Set when the operator marks an optional substep N/A instead
-            of completing it.
-        notes:
-          type: string
-          description: Operator notes captured at completion. Optional — an N/A is
-            justified by its reason code, not a note.
-        signature_data:
-          type: string
-          nullable: true
-          description: Base64 PNG signature blob, matching the ApprovalResponse format.
-        signature_meaning:
-          type: string
-          nullable: true
-          description: Short human-readable description of what the signature attests
-            to.
-          maxLength: 200
-        verified_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: When identity verification (password / SSO) succeeded.
-        verification_method:
-          allOf:
-          - $ref: '#/components/schemas/VerificationMethodEnum'
-          description: |-
-            How the signing operator's identity was verified.
-
-            * `PASSWORD` - Password
-            * `SSO` - SSO
-            * `NONE` - None
-        ip_address:
-          type: string
-          nullable: true
-          minLength: 1
-          description: Client IP at signing time; captured for audit defense.
-      required:
-      - completed_by
-      - substep
     SubstepCompletionVoidRequestRequest:
       type: object
       properties:
@@ -79090,7 +78901,15 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record where this gate was completed.
+          nullable: true
+          description: The per-part execution this gate was signed on. Exactly one
+            of step_execution / batch_execution is set.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: The load this gate was signed for, when the substep is BATCH
+            scope — one signature covers every part in it, the same shape as SubstepCompletion.
         substep:
           type: string
           format: uuid
@@ -79120,10 +78939,10 @@ components:
           description: Base64 PNG signature blob, matching the ApprovalResponse format.
         signature_meaning:
           type: string
+          readOnly: true
           nullable: true
           description: Short human-readable description of what the signature attests
             to.
-          maxLength: 200
         verified_at:
           type: string
           format: date-time
@@ -79161,7 +78980,7 @@ components:
       - id
       - ip_address
       - node_id
-      - step_execution
+      - signature_meaning
       - substep
       - updated_at
       - verification_method
@@ -79173,7 +78992,15 @@ components:
         step_execution:
           type: string
           format: uuid
-          description: The execution record where this gate was completed.
+          nullable: true
+          description: The per-part execution this gate was signed on. Exactly one
+            of step_execution / batch_execution is set.
+        batch_execution:
+          type: string
+          format: uuid
+          nullable: true
+          description: The load this gate was signed for, when the substep is BATCH
+            scope — one signature covers every part in it, the same shape as SubstepCompletion.
         substep:
           type: string
           format: uuid
@@ -79189,15 +79016,11 @@ components:
           type: string
           nullable: true
           description: Base64 PNG signature blob, matching the ApprovalResponse format.
-        signature_meaning:
+        password:
           type: string
-          nullable: true
-          description: Short human-readable description of what the signature attests
-            to.
-          maxLength: 200
+          writeOnly: true
       required:
       - node_id
-      - step_execution
       - substep
     SubstepReorderRequestRequest:
       type: object
@@ -79267,9 +79090,13 @@ components:
             row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
         requires_signature:
           type: boolean
-          description: Operator must sign at substep completion. Distinct from inline
-            AttestationCheckpoint(kind='signature') nodes within the body, which are
-            gates inside the substep flow.
+          description: 'Derived, not authored: true when the body carries an attestation
+            block whose kind is ''signature''. Those blocks are signed one at a time,
+            in the body, with a drawing and the signer''s own password (services.dwi.gate_signature).
+            The column stays because the advancement gate, the API filter and the
+            capture service all read it. It used to be a separate toggle, so a substep
+            could demand a signature inline AND again at completion — the operator
+            signed twice.'
         is_inspection_point:
           type: boolean
           description: 'When True, MeasurementInput captures within this substep additionally
@@ -79626,9 +79453,6 @@ components:
           type: string
         signature_meaning:
           type: string
-        password:
-          type: string
-          writeOnly: true
         marked_not_applicable:
           type: boolean
         na_reason_code:

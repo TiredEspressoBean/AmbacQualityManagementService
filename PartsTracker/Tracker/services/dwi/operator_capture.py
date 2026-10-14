@@ -30,7 +30,7 @@ Submit shape (frontend → backend):
         "step_execution": "<uuid>",
         "notes": "optional operator notes",
         "signature_data": "base64png",          # if substep.requires_signature
-        "password": "...",                       # if substep.requires_signature (verified)
+        # Signatures live on their own blocks now — see services.dwi.gate_signature.
         "marked_not_applicable": false,
         "captures": [
             {"node_id": "...", "kind": "text", "value_text": "..."},
@@ -128,7 +128,6 @@ def submit_substep(
     na_reason_code: str = "",
     ip_address: Optional[str] = None,
     sample_number: Optional[int] = None,
-    password: Optional[str] = None,
     preverified: bool = False,
 ) -> SubmitResult:
     """Persist an operator's submission for a single substep.
@@ -160,26 +159,27 @@ def submit_substep(
         from Tracker.services.reman.core_steps import assert_workable
         assert_workable(step_execution.part)
 
-    # Verified signature — an authored, opt-in level above the one-click
-    # attestation. A substep with `requires_signature` is signed by drawing a
-    # signature AND re-entering the signer's own password, so the record carries
-    # two components at signing, the meaning, and the server's time. (That shape
-    # is what AS9100 acceptance-authority media wants; it is NOT a claim of
-    # 21 CFR Part 11 compliance — see docs/compliance/signatures.md.) The method is
-    # derived here, never taken from the client — a request could otherwise
-    # claim PASSWORD without one. `preverified` is for server-side callers that
-    # record history (the demo seed); it records the method as NONE, honestly.
+    # Signatures are per BLOCK, not per substep. A substep's body may carry
+    # attestation blocks; one whose kind is 'signature' is signed where it sits,
+    # with a drawing and the signer's own password, before the substep is
+    # submitted (services.dwi.gate_signature). `requires_signature` is derived
+    # from those blocks, so submitting checks they were signed rather than asking
+    # for a signature all over again — which is what made an operator sign twice
+    # on three of the four substeps that had both.
+    #
+    # The method recorded here is the summary the review list reads; the evidence
+    # itself (who, when, meaning, IP, the drawing) is on each block's row.
+    # `preverified` is for server-side callers replaying history (the demo seed).
     verification_method = None
     if substep.requires_signature and not marked_not_applicable and not preverified:
-        if not signature_data:
+        from Tracker.services.dwi.gate_signature import unsigned_signature_blocks
+
+        unsigned = unsigned_signature_blocks(substep, step_execution, batch_execution)
+        if unsigned:
             raise ValidationError(
-                f"'{substep.title}' needs your signature: draw it, then confirm with your password.")
-        from Tracker.services.core.second_person import verify_own_password
-        refusal = verify_own_password(tenant=substep.tenant, user=user, password=password or "")
-        if refusal:
-            raise ValidationError(refusal)
+                "Sign " + ", ".join(f"'{label}'" for label in unsigned)
+                + " before completing this substep.")
         verification_method = "PASSWORD"
-        signature_meaning = signature_meaning or substep.title
     elif signature_data:
         verification_method = "NONE"
 
@@ -862,9 +862,28 @@ def _apply_equipment_roles(report: QualityReports, cap) -> None:
         )
 
 
+# Roles that are an ATTESTATION, not a roster entry: someone vouching for the
+# inspection. They are written only by the signature captures, which stamp the
+# signer server-side (`_stamp_signers`). A personnel-roles capture is a roster —
+# "who was on the job" — and naming a colleague there is legitimate, so it must
+# not be a second door onto these.
+_ATTESTING_ROLES = {PersonnelRole.DETECTED_BY.value, PersonnelRole.VERIFIED_BY.value,
+                    PersonnelRole.WITNESS.value}
+
+
 def _apply_personnel_roles(report: QualityReports, cap) -> None:
+    """The inspection's roster. Unlike the signature captures this one may name
+    OTHER people — that is the point of it — so it takes no signature meaning and
+    cannot write the attesting roles, and the time is the server's.
+
+    `signed_at` came from the request body, so an operator could record a
+    colleague as VERIFIED_BY at a time of their choosing: the hole `_stamp_signers`
+    closed for the attestation and signatures captures, still open on the third
+    path into the same table.
+    """
     rows = cap.get("rows") or []
-    valid_roles = {r.value for r in PersonnelRole}
+    valid_roles = {r.value for r in PersonnelRole} - _ATTESTING_ROLES
+    now = timezone.now()
     for row in rows:
         user_id = row.get("user_id")
         role = row.get("role")
@@ -875,10 +894,102 @@ def _apply_personnel_roles(report: QualityReports, cap) -> None:
             user_id=user_id,
             role=role,
             defaults={
-                "signed_at": row.get("signed_at"),
+                "signed_at": now,
                 "notes": row.get("notes") or "",
             },
         )
+
+
+def _detected_assurance(substep, node_id) -> str:
+    """How this inspection block's author said the finder signs."""
+    found = {"value": "confirm"}
+
+    def walk(node):
+        if isinstance(node, dict):
+            attrs = node.get("attrs") or {}
+            if (node.get("type") == "inspectionSignatures"
+                    and str(attrs.get("node_id")) == str(node_id)):
+                found["value"] = attrs.get("detected_assurance") or "confirm"
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(substep.body_blocks)
+    return found["value"]
+
+
+def _check_detected_assurance(cap, *, user, substep, stored=None):
+    """Make the finder's signature as strong as the author asked for.
+
+    `confirm` is a click under their login — the default, and enough for most
+    findings. `signature` means they draw and re-enter their own password, for a
+    finding whose authorship has to be provable: it is still their own signature,
+    so it is their password, not a second person's.
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.services.core.second_person import verify_own_password
+
+    if _detected_assurance(substep, cap.get("node_id")) != "signature":
+        return cap
+    detected = dict(cap["detected"])
+    password = detected.pop("password", "") or ""
+    # Already signed by this person and unchanged: don't ask again on a re-save.
+    if (isinstance(stored, dict) and str(stored.get("user_id")) == str(user.pk)
+            and not password):
+        return {**cap, "detected": stored}
+    if not detected.get("data_uri"):
+        raise ValidationError(
+            "Draw your signature for the finding, then confirm with your password.")
+    refusal = verify_own_password(tenant=substep.tenant, user=user, password=password)
+    if refusal:
+        raise ValidationError(refusal)
+    return {**cap, "detected": detected}
+
+
+def _resolve_verifier(cap, *, user, substep, stored=None):
+    """Resolve the inspection's verifying signature to a real second person.
+
+    The operator is signed in; the verifier is standing next to them. They supply
+    `cosign_email` / `cosign_password` in the capture, checked and throttled the way
+    every other second-person act here is. A verification already stored is carried
+    over untouched, so re-saving a substep QA has verified doesn't ask again.
+    """
+    from django.core.exceptions import ValidationError
+    from Tracker.services.core.second_person import verify_second_person
+
+    verified = dict(cap["verified"])
+    email = (verified.pop("cosign_email", "") or "").strip()
+    password = verified.pop("cosign_password", "") or ""
+    # Already verified, and this submit isn't changing it: leave the record alone
+    # rather than asking that person to stand at the terminal again.
+    if (isinstance(stored, dict) and stored.get("user_id") is not None
+            and not (email or password)
+            and str(verified.get("user_id") or stored.get("user_id")) == str(stored.get("user_id"))):
+        return {**cap, "verified": stored}
+    if not (email or password):
+        raise ValidationError(
+            "A verifying signature is a second person's: they enter their own email "
+            "and password here. It can't be the person who did the work.")
+    verifier, failure = verify_second_person(
+        tenant=substep.tenant, actor=user, email=email, password=password,
+        permission='sign_off_fpi',
+        throttle_prefix='inspection_verify', code_prefix='verify',
+        messages={
+            'self': "The verifying signature has to be a different person from the "
+                    "one who found it — that is what makes it a second check.",
+            'not_permitted': "That user isn't qualified to verify an inspection.",
+        },
+    )
+    if failure:
+        raise ValidationError(failure[0])
+    return {**cap, "verified": {
+        **verified,
+        "user_id": verifier.pk,
+        "username": verifier.get_username(),
+        "signed_at": timezone.now().isoformat(),
+    }}
 
 
 def _stamp_signers(cap, *, user, substep, step_execution, batch_execution):
@@ -893,11 +1004,25 @@ def _stamp_signers(cap, *, user, substep, step_execution, batch_execution):
     already verified); anything else is refused.
     """
     from django.core.exceptions import ValidationError
-    slots = ("signature",) if cap.get("kind") == "attestation" else ("detected", "verified")
+    # "Verified by" is the model's own words for a *second* signature, and a shop
+    # terminal only ever has one person signed in. So the verifying slot is never
+    # stamped from the session: the verifier identifies themselves at the operator's
+    # keyboard with their own email and password, the same second-person act as an
+    # FPI co-sign or a disposition authorisation. Nothing used to stop the operator
+    # filling both slots and being recorded as the independent check on their own
+    # finding.
     stored = (SubstepResponse.objects  # tenant-safe: keyed to a tenant-scoped execution
               .filter(step_execution=step_execution, batch_execution=batch_execution,
                       substep=substep, node_id=cap.get("node_id"))
               .values_list("value_json", flat=True).first()) or {}
+    if cap.get("kind") != "attestation":
+        if isinstance(cap.get("detected"), dict):
+            cap = _check_detected_assurance(cap, user=user, substep=substep,
+                                            stored=stored.get("detected"))
+        if isinstance(cap.get("verified"), dict):
+            cap = _resolve_verifier(cap, user=user, substep=substep,
+                                    stored=stored.get("verified"))
+    slots = ("signature",) if cap.get("kind") == "attestation" else ("detected",)
     now = timezone.now().isoformat()
     out = dict(cap)
     for slot in slots:
@@ -917,6 +1042,7 @@ def _stamp_signers(cap, *, user, substep, step_execution, batch_execution):
             out[slot] = prior
             continue
         raise ValidationError("You can only sign as yourself.")
+
     return out
 
 
@@ -1013,9 +1139,13 @@ def _record_completion(
     if signature_data:
         defaults["signature_data"] = signature_data
         defaults["signature_meaning"] = signature_meaning or ""
+    # Independent of a drawing: with per-block signing the drawings live on the
+    # block rows, and the completion carries only the summary the review list
+    # reads. Gating this on `signature_data` left a substep whose every block was
+    # password-signed recorded as unverified.
+    if verification_method:
+        defaults["verification_method"] = verification_method
         defaults["verified_at"] = timezone.now()
-        if verification_method:
-            defaults["verification_method"] = verification_method
         if ip_address:
             defaults["ip_address"] = ip_address
 

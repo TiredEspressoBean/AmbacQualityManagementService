@@ -48,7 +48,13 @@ class _Fixture(APITestCase):
                                             work_order=wo, step=cls.step)
             cls.execution = StepExecution.objects.create(tenant=cls.tenant, part=cls.part, step=cls.step,
                                                          visit_number=1)
-            cls.substep = Substep.objects.create(tenant=cls.tenant, step=cls.step, order=0, title="Sign off")
+            cls.substep = Substep.objects.create(
+                tenant=cls.tenant, step=cls.step, order=0, title="Sign off",
+                # A gate completion names a block in the body; the viewset refuses a
+                # node_id that isn't authored on this substep.
+                body_blocks={"type": "doc", "content": [
+                    {"type": "attestationCheckpoint",
+                     "attrs": {"node_id": "n1", "kind": "confirm", "label": "Sign off"}}]})
         finally:
             reset_current_tenant(token)
 

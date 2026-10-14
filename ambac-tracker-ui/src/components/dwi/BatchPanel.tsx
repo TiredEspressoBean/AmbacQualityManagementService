@@ -18,6 +18,7 @@
  */
 
 import { useState } from "react";
+import { PartContext } from "@/components/dwi/shared/PartContext";
 import { Loader2, Package, Lock, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ import {
     useSealBatchExecution,
 } from "@/hooks/useBatchExecutions";
 import { useSubsteps, useSubmitSubstep, type Substep } from "@/hooks/useSubsteps";
+import { useSignaturePrompt, type VerifiedSignature } from "@/components/dwi/useSignaturePrompt";
+import { submitSignedSubstep } from "@/lib/dwi/signed-submit";
 import { SubstepOperatorView } from "@/components/dwi/SubstepOperatorView";
 import {
     OperatorResponseContext,
@@ -334,6 +337,8 @@ function BatchCaptureSection({
 }) {
     const { data: substepsData, isLoading } = useSubsteps(stepId ? { step: stepId } : undefined);
     const submit = useSubmitSubstep();
+    // A `requires_signature` batch substep is signed once, for the whole load.
+    const signaturePrompt = useSignaturePrompt();
     const [responsesBySubstep, setResponsesBySubstep] = useState<
         Record<string, OperatorResponses>
     >({});
@@ -361,17 +366,26 @@ function BatchCaptureSection({
             return;
         }
         const captures = buildCaptures(body, responses);
+        let signature: VerifiedSignature | undefined;
+        if ((substep as { requires_signature?: boolean }).requires_signature) {
+            const sig = await signaturePrompt.request(substep.title ?? "this substep");
+            if (sig === null) return; // cancelled: nothing recorded
+            signature = sig;
+        }
         setSubmittingId(substep.id);
         try {
-            await submit.mutateAsync({
-                id: substep.id,
-                data: { batch_execution: batchId, captures },
-            });
-            setCapturedIds((prev) => new Set(prev).add(substep.id));
-            toast.success(`Captured "${substep.title}" for the batch.`);
-            onCaptured?.();
-        } catch {
-            toast.error("Batch capture failed.");
+            const refused = await submitSignedSubstep(substep, signature, signaturePrompt.request,
+                (fields) => submit.mutateAsync({
+                    id: substep.id,
+                    data: { batch_execution: batchId, captures, ...fields },
+                }));
+            if (refused === null) {
+                setCapturedIds((prev) => new Set(prev).add(substep.id));
+                toast.success(`Captured "${substep.title}" for the batch.`);
+                onCaptured?.();
+            } else {
+                toast.error(`"${substep.title}" not captured: ${refused}`);
+            }
         } finally {
             setSubmittingId(null);
         }
@@ -379,6 +393,7 @@ function BatchCaptureSection({
 
     return (
         <div className="space-y-2 border-t px-3 py-2">
+            {signaturePrompt.dialog}
             <p className="text-xs font-medium text-muted-foreground">
                 Batch substeps — captured once for the whole lot
             </p>
@@ -404,9 +419,15 @@ function BatchCaptureSection({
                                 setResponse: (nodeId, value) => setResponse(s.id, nodeId, value),
                             }}
                         >
-                            <SubstepOperatorView
-                                body={s.body_blocks ?? EMPTY_DOC}
-                            />
+                            {/* A signature block inside a batch substep signs once for
+                                the whole load, so it needs the load — not a part. */}
+                            <PartContext.Provider
+                                value={{ batch_execution_id: batchId, substep_id: s.id }}
+                            >
+                                <SubstepOperatorView
+                                    body={s.body_blocks ?? EMPTY_DOC}
+                                />
+                            </PartContext.Provider>
                         </OperatorResponseContext.Provider>
                         <Button
                             size="sm"

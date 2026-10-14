@@ -58,8 +58,8 @@ by whoever authors it:
 
 | Level | What the signer does | What is recorded |
 |-------|----------------------|------------------|
-| **Attestation** | Clicks to sign | The signed-in user, the server's time |
-| **Verified sign-off** | Draws a signature and re-enters their password | The signer, the signature's meaning (the substep title), the server's time, verification method *Password*, and the IP address |
+| **Check off** | Ticks the block | The signed-in user, the server's time |
+| **Signature + password** | Draws a signature and re-enters their own password | The signer, what the signature was for (the block's label), the server's time, verification method *Password*, and the IP address |
 
 In both, the signer is the signed-in user — the server stamps it, so nobody can
 sign in someone else's name — and the time is the server's.

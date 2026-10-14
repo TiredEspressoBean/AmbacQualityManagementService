@@ -894,10 +894,25 @@ class DemoOrdersSeeder(BaseSeeder):
                         "value_numeric": temp,
                     })
                 elif node_type == 'attestationCheckpoint':
-                    caps.append({
-                        "node_id": attrs['node_id'], "kind": "attestation",
-                        "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
-                    })
+                    if attrs.get('kind') == 'signature':
+                        # A signature block wants a signature, not a tick. Seeded
+                        # history has no password behind it (preverified below), so
+                        # it records as an unverified signature rather than
+                        # pretending someone re-authenticated for it.
+                        caps.append({
+                            "node_id": attrs['node_id'], "kind": "attestation",
+                            "signature": {
+                                "user_id": operator.pk,
+                                "username": operator.get_username(),
+                                "signed_at": (be.sealed_at or be.started_at or timezone.now()).isoformat(),
+                            },
+                            "meaning": attrs.get('label') or 'Signed',
+                        })
+                    else:
+                        caps.append({
+                            "node_id": attrs['node_id'], "kind": "attestation",
+                            "confirm": True, "meaning": attrs.get('label') or 'Confirmed',
+                        })
             # preverified: the seed replays history; nobody can re-enter a password
             # for it, so a verified-signature substep records its method as NONE.
             submit_substep(
