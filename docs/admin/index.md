@@ -36,6 +36,7 @@ Define manufacturing workflows and quality processes.
 Bulk data operations for import and export.
 
 - [Import & Export](data/import-export.md) - Bulk data import/export with CSV and Excel
+- [Data Management](data/data-management.md) - The Data Management page and what belongs on it
 
 ### System Setup
 
@@ -48,6 +49,15 @@ Configure master data and system settings.
 - [Document Types](setup/document-types.md) - Document categories
 - [Approval Templates](setup/approval-templates.md) - Approval workflows
 - [Sampling Rules](setup/sampling-rules.md) - Inspection sampling
+- [Notification Rules](setup/notification-rules.md) - Who gets told when something happens
+
+### Deployment
+
+How the application is hosted and served. Needed when something is down rather
+than misconfigured.
+
+- [Railway Deployment](deployment/railway.md) - Services, environment variables, logs and redeploys
+- [Documentation Site](deployment/documentation-site.md) - How these pages are built and served
 
 ## Accessing Administration
 
