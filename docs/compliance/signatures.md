@@ -21,23 +21,6 @@ The standards uqmes targets require that approvals be **attributable** and
     medical-device compliance, treat these controls as a starting point to be
     independently assessed, not as evidence.
 
-## How Signatures Work
-
-### Password Verification
-When signing:
-1. User enters password
-2. System verifies against stored credentials
-3. Verification logged
-4. Signature recorded
-
-### Signature Components
-Each signature records:
-- **Who**: User identity (unique ID, name, email)
-- **What**: Record being signed
-- **When**: Timestamp (server-generated)
-- **Meaning**: What the signature means
-- **Verification**: Password verified = true
-
 ## Signature Meanings
 
 Common signature meanings:
@@ -178,94 +161,23 @@ for turning it on.
 The response is recorded with your identity, the decision, a timestamp, the
 verification method used, and the originating IP address.
 
-### For Records
+### Viewing signatures
 
-When signature is required:
-1. Complete record entry
-2. System prompts for signature
-3. Enter password
-4. Confirm signature meaning
-5. Submit
+On a signed record, open its **Signatures** or **Approvals** section. Each entry
+shows who signed, when, what the signature meant, and any comments. Signatures
+are part of the audit trail and cannot be modified.
 
-## Signature Records
+!!! note "Signature reporting is not built"
+    There is no signature report — no "all signatures in a period", "by user" or
+    "by record type" view. For an audit, read the signatures on the records
+    themselves. See [Audit Trails](audit-trails.md), which lists signature
+    reporting among the planned exports.
 
-Each signature stores:
+## Digital (PKI) signatures
 
-| Data | Description |
-|------|-------------|
-| **User ID** | Unique user identifier |
-| **User Name** | Display name at time of signing |
-| **Email** | User email |
-| **Timestamp** | Server-generated UTC time |
-| **Meaning** | Signature meaning text |
-| **Password Verified** | Confirmation of verification |
-| **Record Type** | What was signed |
-| **Record ID** | Specific record |
-
-## Signature Audit Trail
-
-Signatures appear in audit trail:
-- All signatures logged
-- Cannot be modified
-- Part of immutable record
-
-### Viewing Signatures
-
-On signed records:
-1. View record detail
-2. See **Signatures** or **Approvals** section
-3. Each signature shows:
-   - Who signed
-   - When
-   - Signature meaning
-   - Comments
-
-## Electronic vs Digital Signatures
-
-| Type | Description | Use |
-|------|-------------|-----|
-| **Electronic** | Password verification + identity | uqmes standard |
-| **Digital** | Cryptographic certificate (PKI) | Not currently implemented |
-
-Electronic signatures with password verification meet most regulatory requirements.
-
-## SSO and Signatures
-
-When using Single Sign-On:
-- User authenticates via IdP
-- Signature still requires password re-entry
-- Confirms user is present at time of signing
-- Not just logged-in session
-
-## Signature Image (Optional)
-
-For visual signature capture:
-1. User draws signature on screen
-2. Image captured as base64
-3. Stored with signature record
-4. Displays on printed documents
-
-Configuration determines if signature image is required.
-
-## Failed Signature Attempts
-
-Failed attempts are logged:
-- Wrong password
-- Account locked
-- Timestamp of attempt
-- IP address
-
-Supports investigation of unauthorized access attempts.
-
-## Signature Reports
-
-Generate signature reports:
-- All signatures in period
-- By user
-- By record type
-- Failed attempts
-
-For audit preparation.
+Cryptographic certificate signing is **not implemented**. uqmes signatures are
+electronic: an identity established by the session or a password check, bound to
+the record by the server.
 
 ## Permissions
 
@@ -273,13 +185,21 @@ For audit preparation.
 |------------|--------|
 | `view_approvalresponse` | View signature/approval records |
 | `respond_to_approval` | Sign approvals when assigned |
-| `approve_*` (e.g., `approve_capa`) | Approve specific record types |
+| `approve_*` (e.g., `approve_capa`) | Mostly **group-eligibility markers**, not direct gates — see below |
+
+!!! warning "Granting an `approve_*` permission may gate nothing"
+    Several of these exist to mark who is *eligible* to sign, and are consumed
+    by template-binding logic rather than checked at the action. `close_capa`
+    and `approve_capa` are the clearest case: nothing checks either one, and
+    closure is gated on `verify_capa` alone.
+
+    Before relying on one as a control, confirm what actually enforces it.
 
 ## What a signature records
 
 | Property | Implementation |
 |----------|----------------|
-| Unique to the individual | UUID user ID, never reused or reassigned |
+| Unique to the individual | The signer's user id, taken from the account itself. Accounts are suspended rather than deleted, so an id is never reassigned to a different person. |
 | Identity verification | `verification_method` — `PASSWORD`, `SSO`, or `NONE` |
 | Signature meaning | `signature_meaning`, e.g. "I approve as QA Manager" |
 | Signature image | `signature_data`, a base64 PNG, when one is captured |

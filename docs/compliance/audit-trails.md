@@ -177,12 +177,16 @@ Audit logs are never auto-deleted.
 
 ## Export for Auditors
 
-Prepare data for external audits:
+There is **no PDF or CSV export button** on the audit log — it is deliberately
+disabled, as noted above. Preparing data for an external audit means:
 
-1. Filter to audit scope
-2. Export to PDF or CSV
-3. Include all relevant records
-4. Provide in auditor-requested format
+1. Filter to the audit scope in **Admin** > **Audit Log** to confirm what you
+   need, then
+2. Pull the same range from `GET /api/AuditLog/`, using the same filter
+   parameters
+3. Format it as the auditor asked for it
+
+This needs `export_auditlog`, held by Admin.
 
 ## Permissions
 

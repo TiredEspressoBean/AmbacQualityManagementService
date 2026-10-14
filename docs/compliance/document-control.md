@@ -64,13 +64,16 @@ Released (previous) → Obsolete
 
 ## Creating Controlled Documents
 
-1. Upload document
-2. Set document type (determines controls)
-3. Complete metadata
-4. Save as draft
-5. Submit for approval
-6. Approval workflow proceeds
-7. On approval: Released status
+1. Upload the document — **its filename becomes the document's name**; there is
+   no title field
+2. Set the classification level, and the document type if one applies
+3. Save as draft
+4. Submit for approval from the document's **Approval** tab
+5. The approval workflow proceeds
+
+**Approval does not release the document.** It reaches **Approved**, and
+putting it into force is a separate, deliberate act — see *Approved and Released
+are separate* above.
 
 ## Revision Process
 
@@ -99,20 +102,27 @@ For each revision, document:
 Track document distribution:
 
 ### For Internal Documents
-- Available to permitted users
+- Available to permitted users, by classification level
 - Access logged
-- View tracking (optional)
 
 ### For External Distribution
-- Controlled copies
-- Watermarking (optional)
-- Distribution records
+
+!!! warning "Controlled-copy features are not built"
+    There is **no watermarking, no controlled-copy numbering and no distribution
+    register** in uqmes. A document handed to an outside party leaves the
+    system's control at that point.
+
+    If your procedure requires controlled copies, that control lives outside
+    this system and you own it.
 
 ## Obsolete Document Handling
 
+Obsoleting is **always a deliberate act** — approving a new revision does not
+do it for you.
+
 When documents become obsolete:
 - Clearly marked as obsolete
-- Removed from active views
+- **Still visible in the library**; they are not hidden or removed from views
 - Retained for historical reference
 - Accessible for audit purposes
 
