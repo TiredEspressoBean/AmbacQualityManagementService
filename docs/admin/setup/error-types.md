@@ -11,9 +11,15 @@ Error Types categorize defects for:
 - **Routing** - Different handling by type
 - **Reporting** - Consistent categorization
 
-## Default Error Types
+## Suggested starting categories
 
-Common categories:
+**A new organisation has no error types — you create all of them.** Nothing is
+seeded, so an empty list is the expected state rather than a sign something went
+wrong. (A demo tenant is the exception: it carries defect types for its own
+example parts.)
+
+There is no category field on an error type, so the list below is a prompt for
+what to create and what to call it, not a set of options to pick from:
 
 | Type | Description |
 |------|-------------|
