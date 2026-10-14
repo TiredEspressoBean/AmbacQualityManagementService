@@ -82,7 +82,7 @@ The properties panel covers:
 | **Terminal step** | The routing ends here |
 | **Expected duration** | Planned duration |
 | **Max visits (rework limit)** | How many times a part may revisit the step |
-| **Requires QA signoff** | QA must sign the step off |
+| **QA sign-off** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). Whoever did the step's own work is always refused, at every level. |
 | **Sampling required** | Sampling applies at this step |
 | **Requires first-piece inspection** | FPI gates the step |
 | **Move lot as a unit** | Parts advance as a cohort rather than individually |
@@ -185,7 +185,7 @@ See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 
 Require QA approval to advance:
 
-1. Toggle **Requires QA Sign-off**
+1. Set **QA sign-off** to *Check off* or *Signature + password* (it is a three-way choice, not a toggle)
 2. QA inspector must approve via QaApproval
 3. Parts wait for approval before advancing
 
