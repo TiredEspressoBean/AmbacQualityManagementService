@@ -37,7 +37,17 @@ Equipment records represent:
 | **Location** | Where it is — a location record, from the picker | No |
 | **Status** | Operational status | No |
 | **Schedulable resource** | Whether the scheduler may plan work onto it | No |
+| **Batch capacity** | How many jobs or parts it handles at once. `1` — the default — is an ordinary one-at-a-time machine. Above 1 makes it a batch resource, and then **batch mode** decides how it behaves. | No |
+| **Batch mode** | Only meaningful above a capacity of 1. **Concurrent** — that many independent jobs run side by side, like a bank of wash tanks. **Cycle** — one load at a time of up to that many parts, like a furnace or oven. | No |
+| **Runs unattended** | Whether it runs lights-out between staffed shifts. Left unset it inherits the facility default; set explicitly it overrides that for this machine. | No |
 | **Notes** | Free text | No |
+
+!!! note "Batch capacity above 1 changes how work is planned onto it"
+    Concurrent and cycle are not interchangeable. A bank of stations running four
+    separate jobs at once is concurrent; an oven taking one load of up to forty
+    parts is cycle. Getting it the wrong way round gives a schedule that cannot be
+    worked — either four ovens that do not exist, or one wash tank where there are
+    four.
 
 Submit with **Create Equipment**.
 
