@@ -108,30 +108,31 @@ By the end of this module, you will:
 
 **Concept:** FPI verifies the first part of a batch before production continues. It catches setup issues early.
 
-**When FPI is required:**
-
-- First part of a new work order
-- After setup changes
-- After process adjustments
-- When specified by process
+**When FPI is required:** a step either requires it or it doesn't — it is a
+setting on the step, not something a setup change raises on its own.
 
 **Steps:**
 
-1. Open work order with FPI required
-2. Find the first piece part
-3. Click **Perform FPI**
-4. Complete all required measurements
-5. Record pass or fail
-6. If pass: Production can continue
-7. If fail: Stop production, investigate
+1. A pending FPI appears on your **Home** page as a red banner, with the step,
+   work order, part and how long it has been waiting
+2. **I'm on it** acknowledges it so the floor can see it's been picked up — it
+   is not a verdict and releases nothing
+3. **Start check** takes you to the first piece
+4. Review its captures — the step's own work instruction *is* the inspection;
+   there is no separate FPI measurement form
+5. **Sign off & pass** to release the run, or **Fail**, or **Waive**
+
+!!! warning "You cannot buy off work you signed yourself"
+    The server refuses it. The buy-off is a second person's judgement, so if you
+    ran the first piece, someone else signs it.
 
 **Exercise 2.2:** Complete an FPI
 
-1. Find work order "TRAIN-FPI-001" in **Production** > **Work Orders**
-2. Locate the first piece
-3. Click **Perform FPI**
-4. Enter the measurement values provided
-5. Submit the FPI result
+1. Find the pending FPI for "TRAIN-FPI-001" on your **Home** page
+2. Click **I'm on it**, then **Start check**
+3. Review the first piece's captures against the spec
+4. **Sign off & pass** — add a note naming the gauge you checked with
+5. Confirm the run is released: the banner turns green
 
 ---
 
@@ -655,7 +656,7 @@ Complete these tasks to demonstrate competency:
 
 ### Competencies Verified
 
-- [ ] Can perform FPI correctly
+- [ ] Can buy off a first piece correctly
 - [ ] Can complete sampling inspections
 - [ ] Creates thorough quality reports
 - [ ] Recommends appropriate dispositions
@@ -697,7 +698,7 @@ To close it out, create a **Training Record** for the trainee under **Quality**
 ## Quick Reference Card
 
 ### FPI Process
-1. Production > Work Orders → Find work order → **Perform FPI** → Enter measurements → Submit
+1. Home → pending FPI banner → **Start check** → review captures → **Sign off & pass** (or Fail / Waive)
 
 ### Quality Report
 1. Quality > Quality Reports → **New Quality Reports** → Fill details → Link parts → Attach evidence → Save

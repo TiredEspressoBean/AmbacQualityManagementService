@@ -664,7 +664,7 @@ By the end of this module, you will:
 
 ### Competencies Verified
 
-- [ ] Can approve/reject dispositions appropriately
+- [ ] Can record and co-sign dispositions appropriately
 - [ ] Can create and manage CAPAs
 - [ ] Can approve documents
 - [ ] Understands quality metrics

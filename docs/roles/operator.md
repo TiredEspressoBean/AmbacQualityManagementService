@@ -214,11 +214,19 @@ If FPI is required at your step:
 
 ### The Process
 
-1. Complete first part
-2. Record all measurements
-3. Submit for FPI review
-4. Wait for approval
-5. Once passed, continue with batch
+1. **Start FPI** from the banner — this designates the first piece and holds
+   the run
+2. Run that part's work instruction as normal and **Complete step** — its own
+   captures *are* the inspection
+3. QA buys it off. There is nothing to submit and nothing queues for review:
+   finishing the captures is what makes it ready
+4. Once it passes, the whole step is released and the batch continues
+
+!!! tip "You don't have to go and find QA"
+    Once the first piece is ready, a **Get QA sign-off** button appears beside
+    **Complete step**. An authorized inspector signs **at your station** with
+    their email and password — you stay logged in, and the buy-off is recorded
+    against them.
 
 ### While Waiting
 

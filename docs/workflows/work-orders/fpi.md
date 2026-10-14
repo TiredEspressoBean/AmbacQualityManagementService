@@ -2,26 +2,17 @@
 
 First Piece Inspection ensures production setup is correct before running full batches. This guide covers FPI workflow in uqmes.
 
-!!! example "Demo: FPI Failure Scenario"
-    In demo mode, work order WO-2024-0042-A demonstrates FPI workflow:
-
-    - **INJ-0042-025** failed FPI at Assembly step (torque spec exceeded)
-    - Operator Mike Rodriguez sees batch is held pending FPI resolution
-    - Inspector Sarah Chen can approve or reject the FPI submission
-    - Remaining 23 parts are blocked until FPI passes
-    - After adjustment, a new first piece must pass before batch releases
-
 ## What is First Piece Inspection?
 
-FPI (also called First Article Inspection at setup level) is a quality check on the **first part** produced after:
+FPI (also called First Article Inspection at setup level) is a quality check on
+the **first part** produced at a step, bought off by QA before the rest of the
+run may proceed. It is what catches a bad setup on part one instead of part
+two hundred.
 
-- New job setup
-- Tool change
-- Machine adjustment
-- Shift change
-- Material lot change
-
-The first piece must pass inspection before remaining parts can proceed.
+A step either requires it or it doesn't — the requirement is a setting on the
+step, not something a tool change or a shift handover raises on its own. See
+[Scope is per work order](#scope-is-per-work-order) for what the scope setting
+does and does not do.
 
 ## Enabling FPI
 
@@ -56,68 +47,56 @@ change, machine change or who is running it.
 
 ## FPI Workflow
 
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│  Setup   │────▶│ First    │────▶│   FPI    │────▶│ Release  │
-│          │     │  Part    │     │  Review  │     │  Batch   │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-                      │                 │
-                      │                 ▼
-                      │          ┌──────────┐
-                      │          │   Fail   │
-                      │          │  Adjust  │
-                      │          └──────────┘
-                      │                │
-                      └────────────────┘
-```
+There is **one** FPI control — a banner — and it changes shape with the state of
+the inspection. You meet it on the work order **control** page, in the QA home
+**pending FPI** panel, and inside the operator's step runtime. It is the same
+banner and the same four states everywhere.
 
-### Step 1: First Part Produced
+!!! warning "There is no 'submit for FPI review' step"
+    Nothing is submitted and nothing queues for review. The first piece becomes
+    ready for buy-off by **finishing its own captures** — the same Complete step
+    the operator would do anyway. QA then signs it off.
 
-1. Operator completes setup
-2. Produces first part
-3. Records measurements on first part
-4. Submits for FPI review
+| State | What it says | What you can do |
+|-------|--------------|-----------------|
+| **Required** — no record yet | *First Piece Inspection Required* | **Start FPI** — designates the first piece and holds the run |
+| **In progress** — first piece not finished | *First Piece Inspection in progress* | Nothing yet. Complete the first piece's captures; no buy-off is possible until they are in |
+| **Ready for buy-off** | *First piece complete — ready for buy-off* | **Sign off & pass**, **Fail**, or **Waive** — if you hold `sign_off_fpi`. Everyone else sees *awaiting buy-off* and a **Get QA sign-off** button |
+| **Satisfied** | Green — run released | Nothing; parts move |
 
-### Step 2: FPI Review
+### Signing off
 
-1. Inspector reviews first part
-2. Checks all required measurements
-3. Compares to specifications
-4. Approves or rejects
+**Sign off & pass** opens a dialog that states what you are attesting to: the
+setup is correct, the first piece conforms, and this releases the run.
 
-### Step 3: Approval
+- **Notes** are optional — gauges used, observations.
+- If the step is authored to need a **verified** signature, you re-enter **your
+  own** password.
+- You cannot buy off a first piece whose work you signed yourself. The server
+  refuses it: the buy-off is a second person's judgement.
 
-If approved:
+!!! tip "An operator does not have to go and find QA"
+    If you lack `sign_off_fpi`, the button reads **Get QA sign-off** and opens
+    the same dialog with a co-sign section. An authorized inspector enters their
+    **email and password at your station** — you stay logged in, and the record
+    carries **their** name as the authority, not yours.
 
-1. First part moves to next step
-2. Remaining parts are released for production
-3. FPI status shows "Passed"
+**Fail** holds the run, and the first piece goes into the quality workflow.
+Adjust the setup, produce a new first piece, and the inspection repeats.
 
-### Step 4: Rejection
-
-If rejected:
-
-1. First part is flagged
-2. Remaining parts are held
-3. Operator adjusts setup
-4. New first piece is produced
-5. FPI repeats
+**Waive** releases the run without a first-piece verification. It needs a reason
+of at least 10 characters, and the waiver records who, when and why.
 
 ### Conditional Pass
 
-!!! note "Planned Feature"
-    Conditional Pass exists as a recordable result, but nothing writes it yet:
-    the pass and fail actions each set their own result outright, and the only
-    outcomes you can record today are pass, fail, waive and acknowledge. There is
-    no path to a conditional pass in the product.
+!!! note "Planned Feature — do not look for it"
+    Conditional Pass exists as a value the record *could* hold, but **nothing
+    writes it**. Pass and fail each set their own result outright, and the only
+    outcomes you can record today are **pass**, **fail**, **waive** and
+    **acknowledge**.
 
-An inspection can also be recorded as a **Conditional Pass** — accepted with a
-qualification rather than a clean pass or an outright fail. The record keeps
-the outcome separately from the status, so a conditionally-passed FPI reads as
-**Passed** on the step while the result itself shows the condition.
-
-Use it when the setup is acceptable to run but something was noted that the
-next inspection should re-check.
+    If a setup is acceptable to run but something should be re-checked, pass it
+    and say so in the notes.
 
 ## FPI Status Indicators
 
@@ -128,6 +107,13 @@ next inspection should re-check.
 | **Passed** | FPI approved, batch released | Green |
 | **Failed** | FPI rejected, setup adjustment needed | Red |
 | **Waived** | FPI requirement bypassed (with approval) | Gray |
+
+### Acknowledging
+
+A QA inspector can **acknowledge** a pending FPI — an "I'm on it" against the
+record, so the floor can see the call has been picked up. It is not a verdict
+and it does not release anything; the buy-off still has to be made. It needs
+`sign_off_fpi`.
 
 ### Waiving FPI
 
@@ -160,25 +146,16 @@ Parts released: 10/10
 ### On Tracker
 Orders with pending FPI show a badge or indicator.
 
-## Performing FPI Inspection
+## What the first piece is inspected against
 
-1. First part completes the step
-2. System prompts for FPI measurements
-3. Enter all required measurements
-4. Submit the FPI record
-5. Inspector reviews (if separate approval needed)
-6. Approve or reject
+There is no separate FPI measurement form. The first piece is inspected by
+**running the step's own work instruction** — its measurement captures, checks
+and sign-off blocks are the inspection. That is why the buy-off is refused until
+the captures are in: there would be nothing to review.
 
-### FPI Checklist
-
-Some processes use an FPI checklist:
-
-- Visual inspection points
-- Dimensional checks
-- Functional tests
-- Setup verification
-
-Check off each item before approval.
+If a step needs inspection points beyond what the operator records, author them
+into the step's substeps. See
+[Authoring Work Instructions](../dwi/authoring.md).
 
 ## FPI Documentation
 
@@ -248,9 +225,14 @@ FPI is routine; FAI is comprehensive qualification.
 
 | Permission | Allows |
 |------------|--------|
-| `view_fpirecord` / `add_fpirecord` | See and start a first-piece inspection |
-| `sign_off_fpi` | Approve/reject FPI |
-| `view_fpirecord` | View FPI status and records |
+| `view_fpirecord` | See FPI status and records |
+| `add_fpirecord` | Start an FPI — designate the first piece |
+| `sign_off_fpi` | Pass, fail, waive or acknowledge. Co-signable at another user's station. |
+
+!!! note "Recording the verdict is not `add_fpirecord`"
+    The record already exists by the time anyone signs — **Start FPI** created
+    it. The buy-off is gated on `sign_off_fpi` alone, which is what makes it an
+    independent authority rather than a continuation of the operator's work.
 
 ## Next Steps
 

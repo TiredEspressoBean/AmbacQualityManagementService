@@ -335,7 +335,7 @@ You may be assigned CAPA tasks:
 | Record measurement | On a part: step player → inspection substep → enter value → **Confirm & next** · On an incoming lot: receiving inspection → **Record Measurements** |
 | Create NCR | Select part → Create Quality Report → Fill form → Submit |
 | Add annotation | Heat Map → Click location → Enter details → Save |
-| Approve FPI | View FPI → Review data → Approve/Reject |
+| Buy off a first piece | Home red banner → **Start check** → review captures → **Sign off & pass** (or Fail / Waive) |
 | Accept lot | Complete sampling → Record results → System calculates |
 
 ## What You CAN'T Do
