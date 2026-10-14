@@ -99,11 +99,32 @@ For customer companies:
 
 | Field | Description |
 |-------|-------------|
-| **Customer Portal Access** | Enable portal login |
-| **Default Contact** | Primary contact user |
-| **Billing Address** | Invoice address |
-| **Shipping Address** | Delivery address |
-| **Terms** | Payment terms |
+| **Default core fulfilment mode** | **Exchange** or **Repair &amp; return** — the customer's standing arrangement for cores they send in. See the warning below. |
+| **Requires CoC on shipment** | Print a Certificate of Conformance with every shipment to this customer. |
+
+!!! warning "Core fulfilment is a contract, not a per-unit decision"
+    This decides whether a customer gets **their own unit back** (repair &amp; return)
+    or **one from stock** (exchange). Receiving inherits it rather than asking
+    whoever is on the dock to guess, so setting it wrong sends the wrong physical
+    unit to a customer — and nothing about that looks like an error at the time.
+
+    Leaving it **blank** is meaningful too: it records that nobody has established
+    an arrangement, which is different from choosing one. Set it when the contract
+    is agreed, not when the first core arrives.
+
+!!! note "There is no billing, terms or payment information here"
+    A company has one **address**, used on SCARs and return-to-vendor sheets. There
+    are no billing or shipping addresses, no payment terms and no credit fields,
+    because uqmes is not an accounting system — that information lives wherever you
+    run finance. Portal access is granted per **person**, not per company: see
+    [Portal Access](#portal-access) below. Contacts are their own records — see
+    [Company Contacts](#company-contacts).
+
+### When the company is also a supplier
+
+| Field | Description |
+|-------|-------------|
+| **Default outside-process turnaround (days)** | Calendar days the scheduler reserves for subcontract work when this company is a step's outside-process vendor and the step sets no lead time of its own. |
 
 ## Supplier Information
 
