@@ -12,6 +12,24 @@ Document Types define:
 
 ## Default Document Types
 
+**About forty document types are seeded into every organisation**, covering far more
+than the handful below: procedures and work instructions, drawings and CAD, material
+and test certificates (MTR, CoC, CoA, SDS), inspection and nonconformance records
+(IR, NCR, 8D, CAR, SCAR, FAI), automotive submissions (PPAP, PSW, FMEA, MSA, AAR),
+engineering change records (ECR, ECO), commercial documents (PO, NDA, Quality
+Agreement) and training records.
+
+!!! warning "Look at the list before creating a type"
+    The most common mistake here is creating a type that already exists under a
+    different name — a "Certificate of Conformance" when **COC** is already there,
+    or an "Inspection Report" alongside **IR**. Duplicates split the document library
+    in two, and nothing warns you.
+
+    Open **Document Types** and read the list first. Create one only when nothing
+    fits, which is rarer than it looks.
+
+A few of the most-used, to show the shape:
+
 | Type | Purpose | Approval |
 |------|---------|----------|
 | **Work Instruction** | Step-by-step procedures | Required |
