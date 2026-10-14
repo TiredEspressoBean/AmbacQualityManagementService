@@ -122,9 +122,24 @@ Fixed sample size regardless of lot size.
 
 | Parameter | Description |
 |-----------|-------------|
-| **Value (N)** | Randomly select N parts |
+| **Value** | A **percentage**, 1–100 — each part has that chance of being selected |
 
-SHA-256 hash-based random selection for audit compliance.
+!!! warning "The value is a percentage, not a count of parts"
+    Setting it to `5` does **not** sample five parts. It gives every part a 5%
+    chance, so a lot of 20 may yield one part and a lot of 1000 about fifty. If you
+    want a fixed number of parts, use **Exact Count**; for a fixed proportion with
+    predictable behaviour, use **Percentage of Parts**.
+
+!!! danger "Do not choose Pure Random for auditability"
+    It is the one rule type deliberately built so a selection **cannot** be
+    reconstructed afterwards. On the substep path the draw is unseeded, by design —
+    the intent is a genuinely unpredictable spot check, not a reproducible one.
+
+    The per-part path happens to seed from the part's creation time, so the two
+    behave differently for the same rule. Do not rely on either being repeatable.
+
+    **If you need a selection an auditor can reproduce, use Percentage of Parts.**
+    That is what it is for.
 
 ## Lot-Acceptance Rule Types
 
