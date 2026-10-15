@@ -80,11 +80,18 @@ those customers, so you know before you pack.
 **Shipping card** shows shipped against ordered per line, the shipments
 themselves, and flags late lines.
 
-!!! note "On-time reads — until orders carry due dates on their lines"
-    The figure is measured against each **order line's due date**. Work orders
-    raised without an order line have nothing to measure, so a shop that creates
-    work orders directly will see **—** however much it ships. That is the
-    measure having no input, not a fault.
+!!! warning "The percentage describes only part of what you shipped"
+    On-time is measured against each **order line's due date**. A work order
+    raised directly, with no order line, has no date to measure — and it is
+    **silently left out of the calculation** rather than counted late.
+
+    So the figure is a percentage of the shipments that happen to carry order
+    lines, not of everything that went out. A shop whose work orders mostly
+    bypass order lines can read a confident **100%** off a handful of
+    deliveries while most of its shipping is invisible to the measure.
+
+    Before quoting the number to anyone, check how many of your shipped work
+    orders actually carry an order line.
 
 ## Next Steps
 
