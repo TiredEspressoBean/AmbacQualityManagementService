@@ -112,22 +112,12 @@ Access is not configured per document type. It is governed by:
   `view_confidential_documents` and `view_restricted_documents`
 
 See [Permissions](../users/permissions.md).
-   - Approve
 
-Example:
-- **Work Instructions**: QA can approve, Operators can view
-- **Contracts**: Admin only
-
-## Usage Guidelines
-
-Add guidance for each type:
-
-```markdown
-## Work Instruction (WI)
-Used for: Step-by-step procedures for manufacturing operations
-Approval: Engineering review, QA approval
-Examples: WI-001 Assembly Process, WI-002 Packaging
-```
+!!! warning "There is no per-type access matrix"
+    Older instructions gave examples like *"Work Instructions: QA can approve,
+    Operators can view"*. Approval rights come from the type's **approval
+    template**, and read access from the document's **classification** — never
+    from the type itself.
 
 ## Permissions
 

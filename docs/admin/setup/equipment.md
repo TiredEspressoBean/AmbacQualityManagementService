@@ -188,52 +188,24 @@ When parts move through steps:
 - Utilization percentage
 - Downtime tracking
 
-## Equipment Capabilities
-
-Define what equipment can do:
-
-### Linked Processes
-- Which process steps use this equipment
-- Routing decisions
-- Capacity planning
-
-### Specifications
-- Accuracy/precision
-- Capacity (size, weight)
-- Capabilities
-
 ## Equipment Documents
 
-Attach related documents:
+Attach related documents — manuals, maintenance procedures, calibration
+certificates:
 
-- Manuals
-- Maintenance procedures
-- Calibration certificates
-- Specifications
-
-1. Go to **Documents** tab
+1. Go to the **Documents** tab
 2. Upload or link documents
 
-## Equipment Maintenance
+## Calibration
 
-Track maintenance (basic tracking):
+Equipment due and overdue for calibration is listed under
+**Quality** > **Calibrations**.
 
-- Scheduled maintenance dates
-- Maintenance history
-- Downtime records
-
-For full maintenance management, consider specialized CMMS integration.
-
-## Equipment Dashboard
-
-If calibration dashboard is configured:
-
-- Equipment due for calibration
-- Overdue equipment
-- Calibration schedule
-- Status overview
-
-Navigate to **Quality** > **Calibrations**.
+!!! note "No maintenance or utilisation tracking"
+    uqmes records **calibration**, not maintenance. There are no scheduled
+    maintenance dates, downtime records or utilisation reports, and no
+    specification fields for accuracy or capacity. What equipment was actually
+    used is captured per substep by the operator.
 
 ## Permissions
 
@@ -247,6 +219,5 @@ Navigate to **Quality** > **Calibrations**.
 
 ## Next Steps
 
-- [Equipment Types](equipment.md) - Configure categories
 - [Measurement Definitions](../processes/measurements.md) - Link to measurements
 - [Calibration Dashboard](../../workflows/tracking/measurements.md) - View status

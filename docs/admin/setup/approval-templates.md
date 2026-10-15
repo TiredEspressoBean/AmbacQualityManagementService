@@ -36,12 +36,8 @@ Approval Templates define:
 Add approvers with **Add Person** and **Add Role**, then click **Create
 Template**.
 
-## Approval Steps
+## Who approves
 
-Each step defines required approvals:
-
-| Field | Description |
-|-------|-------------|
 !!! note "Templates have no named steps"
     A template does not contain a list of steps with their own names and
     approver sets. It has **one** set of approvers, plus a flow and a sequence
@@ -58,21 +54,10 @@ Each step defines required approvals:
 | **Add Role** | Anyone holding that role |
 | **Auto-assign to Group** | Every member of the group, assigned automatically |
 
-## Approval Flow Types
+## Sequence
 
-### Sequential
-Approvals happen in order:
-```
-Step 1: Engineering → Step 2: QA → Step 3: Management
-```
-Each must complete before next starts.
-
-### Parallel
-All approve simultaneously:
-```
-Step 1: Engineering + QA + Management (all at once)
-```
-Complete when all approve.
+**Sequential** asks the approvers one at a time, in order — each is approached
+only once the one before has responded. **Parallel** asks all of them at once.
 
 !!! note "No mixed flow"
     A template is either Parallel or Sequential — the two cannot be combined
@@ -91,25 +76,16 @@ how many responses close the request:
 
 These are independent: a Threshold flow can run Sequential or Parallel.
 
-## Approval Rules
+!!! warning "Some older field names were never real"
+    An earlier version of this page described a **Required Count** field, a
+    **Backup Approvers** list, and an **Auto-Approval** setting. None of them
+    exists. The nearest real fields are:
 
-### Threshold Approvals
-"2 of 3 must approve":
-1. Set **Required Count** to 2
-2. Add 3 possible approvers
-3. Any 2 approving completes step
-
-### Backup Approvers
-If primary unavailable:
-1. Add backup approvers to step
-2. Escalation after X days
-3. Backup can approve
-
-### Auto-Approval
-For specific conditions:
-- Low-risk changes
-- Same approver as previous
-- Within thresholds
+    - **Threshold** — the count for a Threshold flow (not "Required Count")
+    - **Escalation Target** — who it goes to after **Escalation Days** (not a
+      backup approver list)
+    - **Allow Self-Approval** — whether a requester may approve their own
+      request, which is not auto-approval
 
 ## The types the system looks up by name
 
@@ -149,29 +125,29 @@ the action fails with a message naming the type:
 
 ## Template Examples
 
-These are illustrative shapes, not shipped templates.
+These are illustrative shapes, not shipped templates. Each is **one** template
+with one set of approvers — there are no named steps to list.
 
-### Document Approval
-```
-Template: Engineering Document
-Step 1: Author Review (1 of 1) - Document owner
-Step 2: Technical Review (1 of 2) - Engineering group
-Step 3: QA Approval (1 of 1) - QA Manager
-```
+### Document approval
 
-### CAPA Closure
-```
-Template: CAPA Closure
-Step 1: Verification Complete (1 of 1) - QA Inspector
-Step 2: Effectiveness Confirmed (1 of 1) - QA Manager
-```
+Sequence **Sequential**, flow **All Required**, approvers in order: the document
+owner, the Engineering role, then QA Manager. Each is asked once the one before
+has responded.
 
-### Process Change
-```
-Template: PCR Approval
-Step 1: Quality (1 of 1)      - QA Manager
-Step 2: Production (1 of 1)   - Production Manager
-```
+### CAPA closure
+
+Sequence **Sequential**, flow **All Required**, approvers QA Inspector then QA
+Manager.
+
+### Process change
+
+Sequence **Parallel**, flow **All Required**, approvers QA Manager and
+Production Manager — both asked at once, and the request closes when both have
+approved.
+
+!!! tip "Use Threshold when any two of several will do"
+    For "any 2 of 3 engineers", set flow **Threshold** with Threshold 2 and add
+    all three as approvers.
 
 ## Applying Templates
 

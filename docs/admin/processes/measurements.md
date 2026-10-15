@@ -90,30 +90,18 @@ Different each direction:
 
 ## Measurement Types
 
-### Numeric
-Standard measured values:
-- Dimensions (length, diameter)
-- Weight
-- Temperature
-- Force
+There are **two**, and no others:
 
-Includes tolerances, calculates pass/fail.
+| Type | What it captures |
+|------|------------------|
+| **Numeric** | A measured value, checked against nominal and tolerances |
+| **Pass/Fail** | A go/no-go result. Takes no nominal and no tolerances. |
 
-### Attribute
-Go/No-Go checks:
-- Visual acceptable/reject
-- Functional pass/fail
-- Thread gauge go/no-go
-
-Boolean result only.
-
-### Text
-Free-form observations:
-- Surface condition notes
-- Serial number verification
-- General observations
-
-No pass/fail calculation.
+!!! warning "There is no Attribute or Text type"
+    Older versions of this page listed three types including a free-text one.
+    Free-form observations are captured with a **text input** in the work
+    instruction, not as a measurement — only measurements are evaluated against
+    a specification and feed SPC.
 
 ## Units
 
@@ -143,59 +131,37 @@ Custom units can be added.
 - Doesn't block advancement
 - Use for reference data
 
-## Measurement Groups
+## Control plan and drawing reference
 
-Organize related measurements:
+**Characteristic number** is the balloon number on the drawing — the AS9102 and
+control-plan reference. It is the field that ties a measurement here to the
+characteristic on the print.
 
-```
-Measurement Group: Bore Dimensions
-├── Bore Diameter
-├── Bore Depth
-├── Bore Roundness
-└── Bore Surface Finish
-```
+!!! note "Control method, reaction plan and sample frequency are not fields"
+    A measurement definition carries the characteristic number and nothing else
+    of the control plan. How the characteristic is controlled and what to do
+    when it goes out of spec live in your control plan document; how often it is
+    measured is a [sampling rule](../setup/sampling-rules.md).
 
-Groups help organize complex parts.
+## SPC
 
-## Control Plan Integration
+Tick **SPC enabled** on the definition to feed its results into the control
+charts. See [SPC Charts](../../analysis/spc.md).
 
-Link measurements to control plan:
+!!! note "No subgroup size on the definition"
+    Subgrouping is a property of the chart, not of the measurement.
+
+## Gauges
+
+Two optional fields name the instrument:
 
 | Field | Description |
 |-------|-------------|
-| **Characteristic Number** | Control plan reference |
-| **Control Method** | How controlled |
-| **Reaction Plan** | What to do if out of spec |
-| **Sample Frequency** | How often to measure |
+| **Default equipment** | The preferred gauge — what the operator gets by default |
+| **Backup equipment** | The fallback when the default is unavailable |
 
-## SPC Configuration
-
-Enable SPC tracking:
-
-1. Toggle **Track for SPC**
-2. Set **Subgroup Size** (if applicable)
-3. Measurements feed SPC charts
-
-See [SPC Charts](../../analysis/spc.md).
-
-## Equipment Association
-
-Link to measurement equipment:
-
-1. In **Equipment** field
-2. Select equipment type or specific instrument
-3. System checks calibration status
-4. Records which equipment used
-
-## Copying Measurements
-
-Copy between steps or processes:
-
-1. Open source measurement
-2. Click **Copy**
-3. Select destination step
-4. Adjust as needed
-5. Save
+Which gauge was *actually* used is recorded by the operator at capture time, so
+these are defaults rather than a restriction.
 
 ## Bulk Import
 
