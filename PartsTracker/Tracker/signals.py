@@ -109,7 +109,7 @@ def queue_3d_model_processing(sender, instance, created, **kwargs):
     Queue uploaded 3D model for async processing.
 
     Supports multiple formats:
-    - CAD: STEP (.step, .stp) - converted via cascadio
+    - CAD: STEP (.step, .stp), IGES (.iges, .igs) - converted via cascadio
     - Mesh: STL, OBJ, PLY - optimized via trimesh
     - glTF: GLB, glTF - optimized if needed
 

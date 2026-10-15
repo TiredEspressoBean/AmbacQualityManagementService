@@ -240,10 +240,17 @@ export default function ThreeDModelFormPage() {
                                         dropzoneOptions={{
                                             maxFiles: 1,
                                             maxSize: 1024 * 1024 * 50,
+                                            // What services/model_processor.py converts to GLB.
+                                            // Matched by extension as well as type: browsers often
+                                            // report no MIME type for CAD and mesh files.
                                             accept: {
-                                                'model/gltf-binary': ['.glb'],
                                                 'application/step': ['.step', '.stp'],
-                                                'application/x-step': ['.step', '.stp']
+                                                'model/iges': ['.iges', '.igs'],
+                                                'model/stl': ['.stl'],
+                                                'model/obj': ['.obj'],
+                                                'model/ply': ['.ply'],
+                                                'model/gltf-binary': ['.glb'],
+                                                'model/gltf+json': ['.gltf'],
                                             }
                                         }}
                                         className="relative bg-background rounded-lg p-2"
@@ -258,7 +265,7 @@ export default function ThreeDModelFormPage() {
                                                     <span className="font-semibold">Click to upload</span> or drag and drop
                                                 </p>
                                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                    GLB, STEP up to 50MB
+                                                    STEP, IGES, STL, OBJ, PLY, GLB or glTF, up to 50MB
                                                 </p>
                                             </div>
                                         </FileInput>
@@ -274,8 +281,14 @@ export default function ThreeDModelFormPage() {
                                 </FormControl>
                                 <FormDescription>
                                     {mode === "edit"
-                                        ? "Upload a new file to replace the current model (optional)"
-                                        : "Attach your 3D model file."}
+                                        ? "Upload a new file to replace the current model (optional). "
+                                        : "Attach your 3D model file. "}
+                                    It's converted to GLB for the viewer. CAD files (STEP, IGES)
+                                    are meshed; an IGES file without closed solids can show gaps.
+                                    A glTF must be self-contained (use GLB if it has separate
+                                    texture or .bin files), and an OBJ's materials aren't kept.
+                                    The model is used exactly as exported — orientation and
+                                    scale can't be adjusted here, so export it the right way up.
                                 </FormDescription>
                                 {mode === "edit" && model?.file && (
                                     <p className="text-sm text-muted-foreground">

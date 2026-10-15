@@ -4,7 +4,7 @@
 Converts supported 3D formats to optimized GLB for web viewing.
 
 Supported formats:
-    - CAD: STEP (.step, .stp) - tessellated via cascadio/OpenCASCADE
+    - CAD: STEP (.step, .stp), IGES (.iges, .igs) - tessellated via cascadio/OpenCASCADE
     - Mesh: STL, OBJ, PLY - loaded via trimesh
     - glTF: GLB, glTF - already in target format
 
@@ -65,9 +65,11 @@ FORMAT_REGISTRY = {
     # CAD formats (need tessellation)
     '.step': FormatType.CAD,
     '.stp': FormatType.CAD,
-    # Note: IGES support requires pythonocc-core, not currently included
-    # '.iges': FormatType.CAD,
-    # '.igs': FormatType.CAD,
+    # IGES: cascadio >= 0.1 reads it through the same OpenCASCADE path. It often
+    # carries open surfaces rather than closed solids, which mesh fine but can show
+    # gaps a STEP export of the same part wouldn't.
+    '.iges': FormatType.CAD,
+    '.igs': FormatType.CAD,
 
     # Mesh formats (already triangulated)
     '.stl': FormatType.MESH,
@@ -289,10 +291,10 @@ class ModelProcessor:
 
     def _convert_cad_to_mesh(self, file_path: str):
         """
-        Convert CAD file (STEP) to triangulated mesh using cascadio.
+        Convert a CAD file (STEP or IGES) to a triangulated mesh using cascadio.
 
         Args:
-            file_path: Path to STEP file.
+            file_path: Path to the STEP or IGES file.
 
         Returns:
             trimesh.Trimesh or trimesh.Scene object.
@@ -303,8 +305,19 @@ class ModelProcessor:
         """
         ext = Path(file_path).suffix.lower()
 
+        if ext in ('.iges', '.igs'):
+            # cascadio's bytes interface is the one that takes IGES.
+            import io
+            with open(file_path, 'rb') as fh:
+                glb = cascadio.load(
+                    fh.read(), file_type='iges',
+                    tol_linear=self.config.linear_deflection,
+                    tol_angular=self.config.angular_deflection,
+                )
+            return trimesh.load(io.BytesIO(glb), file_type='glb')
+
         if ext not in ['.step', '.stp']:
-            raise ValueError(f"cascadio only supports STEP files, got {ext}")
+            raise ValueError(f"cascadio only supports STEP and IGES files, got {ext}")
 
         # Create temporary file for GLB output
         with tempfile.NamedTemporaryFile(suffix='.glb', delete=False) as tmp:

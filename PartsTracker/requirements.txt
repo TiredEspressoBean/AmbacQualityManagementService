@@ -23,7 +23,7 @@ azure-core==1.38.0
 azure-storage-blob==12.28.0
 billiard==4.2.4
 bleach==6.4.0
-cascadio==0.0.14
+cascadio==0.1.1
 celery==5.6.2
 # 3D model processing (mesh optimization)
 fast-simplification>=0.1.7

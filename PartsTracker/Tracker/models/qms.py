@@ -2076,7 +2076,7 @@ class ThreeDModel(SecureModel):
     and measurements spatially during inspection processes.
 
     Supported upload formats:
-        - CAD: STEP (.step, .stp) - converted to GLB via cascadio
+        - CAD: STEP (.step, .stp), IGES (.iges, .igs) - converted to GLB via cascadio
         - Mesh: STL, OBJ, PLY - optimized and converted to GLB
         - glTF: GLB, glTF - optimized if needed
 
