@@ -178,13 +178,20 @@ no emailed link, so the request stays open until the file is built.
 ## Integration Issues
 
 ### HubSpot sync not working
-**Causes**: Configuration, credentials, mapping
+**Causes**: scopes, credentials, or company-name mismatches
+
+Only applies if your deployment uses the optional HubSpot integration.
 
 **Solutions**:
-1. Check integration status in Settings
-2. Verify API credentials
-3. Review error log
-4. Re-authorize connection
+1. Open **Admin** > **Settings** > **Integrations** > HubSpot and read the
+   **Sync Activity** feed — failures are recorded there
+2. Check the private app's **scopes**. A missing read scope on contacts,
+   companies or deals is the usual cause, and it fails quietly
+3. If companies are duplicating rather than matching, the cause is naming:
+   matching is by company **name**, exactly
+4. To replace the token, remove the integration and connect it again
+
+See [HubSpot](../integrations/hubspot.md).
 
 ### SSO not connecting
 **Causes**: Configuration, IdP issue

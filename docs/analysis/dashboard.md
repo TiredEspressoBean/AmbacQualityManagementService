@@ -179,7 +179,8 @@ For current data exports, see [Exporting Data](exporting.md).
 
 For shop floor displays:
 
-1. Navigate to **Big Screen** (`/big-screen`)
+1. Go to **`/big-screen`** directly — it is a real page but has **no sidebar
+   entry**, so you have to type the URL
 2. Full-screen optimized display (press F11)
 3. Large, readable fonts
 4. Shows KPIs, FPY trend, defects by type, and recent activity

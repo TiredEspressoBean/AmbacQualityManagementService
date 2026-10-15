@@ -100,7 +100,7 @@ For each change:
 | **Object ID** | Record identifier |
 | **Before State** | Previous values |
 | **After State** | New values |
-| **IP Address** | (if enabled) Request source |
+| **IP Address** | Request source, where the entry records one |
 | **Session** | Session identifier |
 
 ### Immutability
@@ -219,10 +219,9 @@ Audit logs are retained per policy:
 
 ### Archival
 
-Old audit logs may be archived:
-- Moved to cold storage
-- Still accessible on request
-- Meets retention requirements
+Audit logs are **never auto-deleted** and there is no archival tier — no cold
+storage, and no request process to retrieve anything, because nothing is moved
+out of reach in the first place.
 
 ## Permissions
 

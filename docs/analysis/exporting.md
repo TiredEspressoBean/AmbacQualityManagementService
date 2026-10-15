@@ -12,21 +12,17 @@ Comma-separated values for spreadsheet analysis:
 - Filterable and sortable
 - Supports large datasets
 
-### PDF Export
-Formatted reports for sharing:
+### Excel Export
+The same data as a workbook, with reference sheets for lookups.
 
-- Print-ready format
-- Includes charts and formatting
-- Professional appearance
-- Suitable for audits
+!!! note "PDF and image export are not general export formats"
+    You cannot export a list, a chart or a dashboard as PDF or PNG. Two
+    specific **report** buttons produce a PDF, and they are the only ones:
 
-### Image Export
-Charts and visualizations:
+    - **Traveler** on a work order — the Work Order Traveler
+    - **SPC Report** on the SPC page
 
-- PNG format
-- High resolution
-- For presentations
-- Include in reports
+    Everything else exports as CSV or Excel.
 
 ## Exporting from Tables
 

@@ -9,8 +9,14 @@
 | **glTF** | .gltf, .glb | Recommended format, web-optimized |
 | **OBJ** | .obj | Common 3D format |
 | **STL** | .stl | CAD/3D printing format |
-| **FBX** | .fbx | Autodesk format |
-| **STEP** | .step, .stp | CAD exchange format |
+| **STEP** | .step, .stp | CAD exchange format — converted for you |
+| **PLY** | .ply | Mesh format |
+
+Everything is converted to **GLB** after upload, whatever you send.
+
+!!! warning "FBX and IGES are not supported"
+    Earlier versions of this page listed them. Convert to STEP, STL, OBJ or
+    glTF first.
 
 ### Recommended: glTF
 
@@ -67,13 +73,14 @@ For best performance, optimize models before uploading:
 
 ## Converting Models
 
-### From STEP/IGES
+### From STEP
 
-Use CAD software to convert:
-1. Open in CAD (Fusion 360, FreeCAD, etc.)
-2. Export as glTF or OBJ
-3. Verify visual quality
-4. Upload converted file
+**You do not need to convert a STEP file.** Upload it as-is — the server
+converts it to GLB for you. Converting it yourself in CAD first is wasted work
+and usually loses fidelity.
+
+Convert by hand only for a format not in the table above, such as FBX or
+IGES.
 
 ### From STL
 
@@ -84,19 +91,14 @@ STL files usually work directly, but consider:
 
 ## Model Positioning
 
-After upload, position the model:
+!!! warning "There are no orientation, scale or units controls"
+    The upload form has four fields — Name, Part Type, Description, Version —
+    and nothing to rotate, centre, set an "up" direction, choose units or apply
+    a scale factor.
 
-### Default Orientation
-Model imports at original orientation. Adjust if needed:
-- Rotate to standard viewing angle
-- Set "up" direction
-- Center the model
-
-### Scale
-Verify scale matches real part:
-- Set units (mm, inches)
-- Verify dimensions
-- Adjust scale factor if needed
+    The model is used as it was exported, so **get the orientation and scale
+    right in your CAD package before uploading**. A model that imports sideways
+    is re-exported and uploaded again.
 
 ## Linking to Part Types
 
@@ -108,14 +110,10 @@ Each model is linked to a Part Type:
 
 When creating defect annotations on parts of that type, this model is used.
 
-## Multiple Views
-
-Upload multiple models for different views:
-
-- **Full Assembly**: Complete view
-- **Exploded View**: Component relationships
-- **Cross Section**: Internal features
-- **Simplified**: Lower detail for overview
+!!! note "One model per part type"
+    A model is linked to a part type and that is the model used for annotation
+    on parts of that type. There is no concept of alternative views — assembly,
+    exploded, cross-section — attached to one part type.
 
 ## Model Versioning
 
@@ -129,11 +127,9 @@ Previous versions are retained for historical parts.
 
 ## Thumbnail Generation
 
-Thumbnails are auto-generated:
-
-- Used in lists and previews
-- Captured from default view
-- Regenerate by adjusting view and saving
+Thumbnails are generated automatically and used in lists and previews. There
+is no way to regenerate or re-frame one — the viewer has no camera control to
+set a view from.
 
 ## Permissions
 
