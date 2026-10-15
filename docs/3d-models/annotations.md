@@ -74,10 +74,13 @@ The point is captured from where you click on the model. Rotate and zoom to get
 the angle you want before clicking — the viewer's orbit, pan and zoom all work
 in annotate mode.
 
-!!! warning "An annotation cannot be edited, moved or deleted"
-    There is no Edit, Move, Delete, Multi-Add or Area control, and no way to
-    type coordinates by hand. A misplaced annotation is corrected the way any
-    other quality record is: it stands, and you add a correct one.
+!!! warning "There is no way to edit, move or delete an annotation"
+    No Edit, Move, Delete, Multi-Add or Area control exists, and no way to type
+    coordinates by hand. A misplaced annotation is corrected the way any other
+    quality record is: it stands, and you add a correct one.
+
+    The API will accept a change to an annotation's position, so an integration
+    could move one. Nothing in the product offers it.
 
     Older instructions on this page described all of those controls. None of
     them exist.

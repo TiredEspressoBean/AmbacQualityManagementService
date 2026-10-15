@@ -297,12 +297,13 @@ By the end of this module, you will:
 
 - Operator flags an issue
 - Inspector fails part
-- A quality report is recorded as **FAIL**
+- A quality report is **created** with result **FAIL**
 
-!!! warning "Creating a report does not quarantine the part"
-    A PASS report, or one still PENDING, leaves the part exactly where it is.
-    **Failing is what quarantines, not reporting.** If you raise a report and
-    expect the part to be held, check its result.
+!!! warning "Set the result when you create the report"
+    Quarantine happens as the report is created. A report created PASS or
+    PENDING leaves the part exactly where it is — and changing it to FAIL later
+    does **not** go back and quarantine it, though it will open a disposition.
+    If you mean to hold the part, say FAIL at the moment you raise it.
 - Out-of-spec measurement recorded
 
 **Quarantined parts cannot:**

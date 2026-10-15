@@ -111,8 +111,8 @@ Each transition records:
 
 If an issue is found:
 
-1. Create a Quality Report against the part, recorded as **FAIL** — a PASS or
-   still-PENDING report does not quarantine anything
+1. Create a Quality Report against the part with its result set to **FAIL** —
+   it has to be FAIL *at creation*; failing it afterwards does not quarantine
 2. Add each defect to the report, with its own error type, count, location and
    severity. Error type is **not** a field on the report itself
 3. The part enters quarantine

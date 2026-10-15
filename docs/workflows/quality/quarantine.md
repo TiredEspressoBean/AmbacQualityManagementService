@@ -19,7 +19,7 @@ Parts enter quarantine when:
 |---------|-------------|
 | **Failed inspection** | Measurement out of tolerance |
 | **Visual defect** | Operator flags issue |
-| **Quality report** | NCR recorded as **FAIL** for the part — see below; creating one is not enough |
+| **Quality report** | NCR **created** with result FAIL — see below; failing it later does not |
 | **Customer complaint** | Return or field issue |
 | **Suspect material** | Material lot under investigation |
 | **Process deviation** | Unauthorized change occurred |
@@ -28,9 +28,18 @@ Parts enter quarantine when:
 
 ### Automatic Quarantine
 
-A quality report quarantines its part **only when the report's result is FAIL**.
-A PASS report, or one still PENDING, leaves the part where it is — creating the
-report is not what quarantines, failing is.
+A part is quarantined when a quality report is **created** with its result already
+**FAIL**. A report created as PASS or PENDING leaves the part where it is.
+
+!!! warning "Setting an existing report to FAIL does not quarantine the part"
+    The quarantine runs once, as the report is created. Editing a PENDING report
+    to FAIL afterwards does **not** move the part — but it *does* open a
+    disposition, because that runs from a different trigger that fires on every
+    save.
+
+    So a report failed after the fact leaves you with a disposition against a
+    part still sitting in progress. If you mean to quarantine, set the result
+    when you create the report.
 
 ### Manual Quarantine
 

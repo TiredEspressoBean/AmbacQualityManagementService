@@ -48,8 +48,10 @@ than one role, which is normal and is why the tracks compose.
 | Iris Vogel | Document Controller | Controlled documents and their revisions |
 | Karim Haddad | Tenant Admin | Users, groups, notification rules |
 
-Plus two who only read: an **Auditor** doing a surveillance visit, and a
-**customer contact** at Harborline Marine, watching their own repair.
+Plus an **Auditor** doing a surveillance visit, who only reads, and a
+**customer contact** at Harborline Marine watching their own repair — who does
+not only read: a customer can respond to an approval request raised to them, and
+can invite another viewer onto their own order.
 
 ## The day
 
@@ -82,7 +84,13 @@ solver does not.
 ### 06:30 — Ade takes a delivery
 
 A lorry arrives with three lots against expected receipts Nina raised last week.
-Ade uses **batch receive** rather than taking them one at a time.
+Ade receives all three at once from **Production > Material Lots > Receive**
+rather than taking them one at a time.
+
+!!! note "Not the reman batch receive"
+    `/reman/cores/receive-batch` is a different thing — taking in a lorry-load
+    of **cores** for teardown. Material lots are received at
+    `/production/material-lots/receive`.
 
 Two lots pass incoming inspection. The third — seal kits from Calderon Supply —
 fails: the bore diameter is out on four of the ten sampled. The lot goes to
@@ -166,17 +174,24 @@ person's judgement.
 Tom records an outlet-port diameter above the upper limit. He has already
 completed the step, so this is a record, not a draft.
 
-He raises a **quality report** against the part and adds the defect — error type,
-count, location, severity. He does not pick the disposition; that is not his
-call.
+He raises a **quality report** against the part with its result set to **FAIL**,
+and adds the defect — error type, count, location, severity. The part is
+quarantined as the report is created.
+
+He does not pick the disposition; that is not his call.
+
+!!! note "The result goes in at creation"
+    Raising it as PENDING and failing it later would not quarantine the part —
+    the hold runs once, when the report is made.
 
 > **Exercises** — Operator: raising an issue properly. Note what is *not*
 > available to him, which teaches as much as what is.
 
 ### 10:30 — Jess inspects, and the part is quarantined
 
-Jess records the report's result as **FAIL**, and the part is quarantined.
-Creating the report did not do that — failing did.
+The part is already quarantined — Tom's report did that when he raised it. Jess
+reviews the report, confirms the finding and its severity, and takes it from
+there.
 
 She annotates the defect's location on the part's 3D model, so the next person to
 see this failure sees where it was.
@@ -287,8 +302,18 @@ Harborline confirm the second repair, for the 18th. Marcus creates the order —
 the only required field** — then creates the **work order** that carries the
 production, with its ERP ID, process, priority and due date.
 
-Then he adds parts, against the work order rather than the order, and sets
-priority. Priority lives on the work order; orders have none.
+Then he adds parts from the **WO Control Center**, against the work order, and
+sets priority. Priority lives on the work order; orders have none.
+
+!!! note "The forms ask for more than the server requires"
+    The screens are stricter than the API. Creating an order through the UI
+    needs a name (a status is filled in for you); a work order's form requires a
+    process, priority and due date, where the server requires only the ERP ID.
+    And although the UI only adds parts against a work order, the API will
+    accept them against an order too.
+
+    That matters if you script against the API or read the schema — the form
+    rules are not the contract.
 
 > **Exercises** — Production Manager: orders vs work orders, adding parts,
 > priority. This is the passage that most often exposes a reader's wrong mental
@@ -349,9 +374,14 @@ The **auditor** follows the day backwards from the CAPA: the quality report, the
 defect, the disposition and its containment, who signed what and when, whether
 the person who verified was the person who did the work.
 
-The **customer contact** at Harborline sees their own order and nothing else.
+The **customer contact** at Harborline sees their own order and nothing else —
+but is not merely a spectator. A customer holds `respond_to_approval`, which is
+how a concession reaches the shop: the approval reference the 11:00 Use As Is
+decision demands is exactly the sort of thing a customer answers.
 
-> **Exercises** — Auditor and Customer, both orientation rather than training.
+> **Exercises** — Auditor (orientation). The Customer is listed as orientation
+> too, but note the responding-to-an-approval path above is a real write and is
+> not currently exercised anywhere in the day.
 
 ## Role coverage
 
