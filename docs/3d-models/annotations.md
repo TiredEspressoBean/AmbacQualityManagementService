@@ -56,125 +56,36 @@ model as part of the work instructions. See
 
 ## Annotation Form
 
-### Required Fields
-
 | Field | Description |
 |-------|-------------|
-| **Location** | Auto-captured from click (X, Y, Z) |
+| **Location** | Captured from your click on the model (X, Y, Z) — you do not type it |
 | **Error Type** | Category of defect |
-| **Severity** | Minor, Major, Critical |
+| **Severity Level** | Minor, Major, Critical |
+| **Notes** | Free text |
 
-### Optional Fields
+!!! note "The quality report is not an optional field"
+    An annotation belongs to a report — in standalone QA review you select the
+    report *before* the model accepts a click, and from Method 1 the report is
+    the one you are working in. There is no "Linked NCR" picker on the form.
 
-| Field | Description |
-|-------|-------------|
-| **Description** | Detailed notes |
-| **Linked NCR** | Quality report reference |
-| **Photo** | Image attachment |
+## Where the annotation lands
 
-## Precise Placement
+The point is captured from where you click on the model. Rotate and zoom to get
+the angle you want before clicking — the viewer's orbit, pan and zoom all work
+in annotate mode.
 
-### Clicking on Model
+!!! warning "An annotation cannot be edited, moved or deleted"
+    There is no Edit, Move, Delete, Multi-Add or Area control, and no way to
+    type coordinates by hand. A misplaced annotation is corrected the way any
+    other quality record is: it stands, and you add a correct one.
 
-1. Rotate model to see defect location
-2. Click directly on surface
-3. Marker appears at click point
-4. Adjust if needed by dragging
-
-### Coordinates Display
-
-As you move cursor:
-- X, Y, Z coordinates display
-- Helps with precise placement
-- Matches real part dimensions
-
-### Adjustment
-
-After placing:
-1. Click annotation to select
-2. Drag to adjust position
-3. Or enter coordinates manually
-4. Save changes
-
-## Annotation Types
-
-### Single Point
-Standard annotation at one location:
-- Click to place
-- Best for discrete defects
-
-### Area (if supported)
-Mark a region:
-- Click multiple points to define boundary
-- For larger defect areas
-- Shows as highlighted region
+    Older instructions on this page described all of those controls. None of
+    them exist.
 
 ## Attaching Photos
 
-Add visual evidence:
-
-1. In annotation form, find **Photo** section
-2. Click **Upload** or drag image
-3. Image attaches to annotation
-4. Viewable from annotation details
-
-Photo tips:
-- Clear, focused images
-- Include reference for scale
-- Consistent lighting
-- Capture before any repair
-
-## Linking to Quality Reports
-
-### During NCR Creation
-
-1. Annotation created from NCR automatically links
-2. Appear in NCR's annotation section
-3. NCR shows annotation location
-
-### Manual Linking
-
-1. Open existing annotation
-2. Click **Link to NCR**
-3. Search and select NCR
-4. Save
-
-### Viewing Links
-
-From annotation:
-- See linked NCR
-- Click to open NCR
-
-From NCR:
-- See all linked annotations
-- Click to view on model
-
-## Editing Annotations
-
-### Modifying
-
-1. Click annotation on model
-2. Click **Edit**
-3. Change fields as needed
-4. Save
-
-Changes are logged in audit trail.
-
-### Repositioning
-
-1. Select annotation
-2. Click **Move**
-3. Click new location
-4. Save
-
-### Deleting
-
-1. Select annotation
-2. Click **Delete**
-3. Confirm
-
-!!! note "Audit Trail"
-    Deleted annotations are logged. Consider whether annotation should remain for historical accuracy.
+Photos are attached through the quality report the annotation belongs to, not
+through the annotation itself.
 
 ## Viewing Existing Annotations
 
@@ -195,17 +106,6 @@ Below the viewer, annotation list shows:
 
 Click list item to highlight on model.
 
-## Bulk Annotations
-
-For multiple defects of same type:
-
-1. Click **Multi-Add** mode
-2. Configure error type and severity
-3. Click multiple locations
-4. All share same settings
-5. Exit multi-add mode
-6. Save
-
 ## Annotation Permissions
 
 | Permission | Allows |
@@ -223,14 +123,14 @@ For multiple defects of same type:
 - Try different view angle
 
 ### Annotation Appears Wrong Location
-- Verify model scale is correct
-- Check surface normals
-- Try different click position
+- Rotate the model and check from another angle — a point that looks off from
+  one view is often correct
+- Try a different click position on the next one; an existing annotation
+  cannot be moved
 
 ### Photo Won't Upload
-- Check file size (< 10 MB)
-- Use supported format (PNG, JPG)
-- Verify upload permission
+Photos attach to the **quality report**, not to the annotation. Upload it
+there.
 
 ## Next Steps
 

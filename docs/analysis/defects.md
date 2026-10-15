@@ -154,16 +154,13 @@ Compare:
 
 Supplier quality is **not** analysed on this page. Use **Supply** >
 **Supplier Quality**, which scores each supplier on lots received, accepted and
-rejected, reject rate, CoC compliance, on-time delivery, and open SCARs. See
+rejected, reject rate, certificate-of-conformance (CoC) compliance, on-time
+delivery, and open supplier corrective action requests (SCARs). See
 [Supply](../workflows/supply/overview.md#supplier-quality).
 
 !!! example "Demo: Supplier Quality Issue"
     Analysis of nozzle defects in order ORD-2024-0038 traced the issue to a specific Delphi batch. This data supported CAPA-2024-003's root cause finding.
 
-Use for:
-- Supplier quality ratings
-- Incoming inspection decisions
-- Sourcing decisions
 
 ## Repeat Defects
 
@@ -178,7 +175,7 @@ Same error type + same part type occurring multiple times.
 - Root cause addressed?
 
 ### Actions
-- Create CAPA for systemtic issues
+- Create CAPA for systematic issues
 - Review existing CAPAs effectiveness
 - Escalate if not improving
 
@@ -191,10 +188,6 @@ Same error type + same part type occurring multiple times.
     The scrap **rate** is reported on the [Quality
     Dashboard](dashboard.md) as a percentage of parts, not a monetary value.
 
-Use for:
-- Prioritizing improvements
-- ROI of quality projects
-- Management reporting
 
 ## Drill-Down Capability
 

@@ -89,11 +89,14 @@ Filter heat map data:
 
 ### During Inspection
 
-1. Flag a part with defect
-2. Select **Annotate on Model**
-3. Click location on 3D model
-4. Enter defect details
-5. Save annotation
+1. Open the quality report the defect belongs to — an annotation has to belong
+   to one
+2. Open the part annotator
+3. Click the defect location on the 3D model
+4. Enter the defect details
+5. Save
+
+See [Annotations](../3d-models/annotations.md) for the full procedure.
 
 ### From Work Order
 

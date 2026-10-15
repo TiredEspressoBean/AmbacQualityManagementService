@@ -55,6 +55,14 @@ An external company or organization that places orders. Customers can have porta
 
 ## D
 
+### Demo mode
+A system seeded with a **demonstration dataset** — sample orders, parts, work
+orders, quality records and user accounts — so the product can be explored and
+training exercises performed against realistic data. Record numbers quoted in
+the documentation (`ORD-2024-0042`, `INJ-0042-017`, `CAPA-2024-003`) come from
+it, and exist only where it has been loaded. See
+[Training Data Setup](../training/training-data-setup.md).
+
 ### Digital Work Instructions (DWI)
 The substep layer beneath a step, providing rich work instructions and
 structured data capture. See [Digital Work
@@ -292,6 +300,8 @@ A production order linking a customer order to a process. Tracks which step each
 |---------|---------|
 | AQL | Acceptable Quality Level |
 | CAPA | Corrective and Preventive Action |
+| CoC | Certificate of Conformance |
+| CTQ | Critical to Quality |
 | DWI | Digital Work Instructions |
 | ECCN | Export Control Classification Number |
 | FAI | First Article Inspection |
@@ -310,6 +320,8 @@ A production order linking a customer order to a process. Tracks which step each
 | QMS | Quality Management System |
 | RCA | Root Cause Analysis |
 | Reman | Remanufacturing |
+| RBAC | Role-Based Access Control |
 | RTV | Return to Vendor |
+| SCAR | Supplier Corrective Action Request |
 | SPC | Statistical Process Control |
 | SSO | Single Sign-On |

@@ -2,8 +2,15 @@
 
 Solutions for frequently encountered problems.
 
-!!! tip "Demo Mode Examples"
-    In demo mode, you can see these common scenarios:
+!!! tip "Worked examples, on the demo dataset"
+    The record numbers below exist **only if your system was seeded with the
+    demo dataset** — if you search for them and find nothing, that is expected,
+    not a fault. See
+    [Training Data Setup](../training/training-data-setup.md) for how to load it
+    and what the demo logins are.
+
+    The problems themselves are real on any system; only the identifiers are
+    demo-specific.
 
     - **Parts stuck at step**: INJ-0042-025 blocked at Assembly pending FPI approval
     - **Permission restrictions**: Customer Tom Bradley can only see Midwest Fleet orders

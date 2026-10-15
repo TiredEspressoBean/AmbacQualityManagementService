@@ -2,15 +2,21 @@
 
 Common questions about using uqmes.
 
-!!! tip "Try It in Demo Mode"
-    These FAQs reference real demo data you can explore:
+!!! tip "Worked examples, on the demo dataset"
+    These examples use record numbers from the **demo dataset**, which exists
+    only if your system was seeded with it. On your own data the questions still
+    apply; the identifiers will not. See
+    [Training Data Setup](../training/training-data-setup.md) for how to load it.
 
-    - **Find an order**: Search for `ORD-2024-0042` (Midwest Fleet, 24 injectors)
-    - **View part history**: Open INJ-0042-017 to see Flow Testing failure and disposition
-    - **Create a CAPA**: See CAPA-2024-003 for a complete nozzle defect investigation
-    - **Explore permissions**: Log in as different demo users to see RBAC in action
+    - **Find an order**: `ORD-2024-0042` (Midwest Fleet, 24 injectors)
+    - **View part history**: INJ-0042-017 — a Flow Testing failure and its disposition
+    - **Create a CAPA**: CAPA-2024-003, a complete nozzle defect investigation
+    - **Explore permissions**: sign in as different demo users to see how
+      role-based access changes what you can reach
 
-    Demo accounts: mike.ops@demo.ambac.com (Operator), sarah.qa@demo.ambac.com (QA Inspector), jennifer.mgr@demo.ambac.com (Production Manager)
+    Demo accounts — all with the password **`demo123`**:
+    `mike.ops@demo.ambac.com` (Operator), `sarah.qa@demo.ambac.com` (QA
+    Inspector), `jennifer.mgr@demo.ambac.com` (Production Manager).
 
 ## General
 

@@ -93,7 +93,11 @@ Navigate to `/heatMapViewer/partType/{id}` or `/heatMapViewer/part/{id}`
 | **Show All** | Display all annotations |
 | **Filter** | Filter by type/severity |
 | **Hide** | Hide annotations |
-| **Add** | Create new annotation |
+
+!!! note "There is no Add button"
+    Annotations are created by clicking the model itself while in annotate
+    mode, and the annotation has to belong to a quality report. See
+    [Annotations](annotations.md).
 
 ## Annotation Points
 

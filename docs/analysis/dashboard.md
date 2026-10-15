@@ -152,51 +152,16 @@ Track recurring issues:
 !!! note "Planned Feature"
     Dashboard widget customization (add/remove, resize, rearrange) is planned for a future release.
 
-## Date Range Selection
+!!! warning "There are no preset ranges, custom ranges, drill-down or refresh"
+    Older instructions on this page described seven preset ranges, a custom
+    date picker, clicking a chart to open the records behind it, and a Refresh
+    icon. None of them exist.
 
-### Preset Ranges
-
-- Today
-- This Week
-- This Month
-- This Quarter
-- Last 30 Days
-- Last 90 Days
-- Year to Date
-
-### Custom Range
-
-1. Click **Custom**
-2. Select start date
-3. Select end date
-4. Apply
-
-### Comparing Periods
-
-!!! note "Planned Feature"
-    Period comparison (e.g., "Compare to Previous") is planned for a future release.
-
-## Drilling Down
-
-Click on chart elements to drill down:
-
-1. Click a bar in Pareto chart
-2. Opens list of related NCRs
-3. Click NCR to view details
-
-Or:
-
-1. Click data point on trend
-2. Shows records for that period
-3. Navigate to details
-
-## Refreshing Data
-
-Dashboards update automatically, but you can force refresh:
-
-1. Click **Refresh** icon
-2. Data reloads from server
-3. Charts update
+    The period selector described above — 30 / 60 / 90 days — is the whole of
+    the dashboard's interactivity. To see the records behind a number, open the
+    page that owns them: [Defect Analysis](defects.md), [Quality
+    Reports](../workflows/quality/quality-reports.md), or
+    [SPC](spc.md).
 
 ## Exporting Dashboard Data
 

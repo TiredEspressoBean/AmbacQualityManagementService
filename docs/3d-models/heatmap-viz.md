@@ -166,32 +166,10 @@ Document improvement in CAPA verification.
     control in the heat map viewer yet — use your operating system's screen
     capture.
 
-### Report Export
-
-1. Click **Generate Report**
-2. PDF includes:
-   - Heat map image
-   - Top defect locations table
-   - Statistics summary
-
-### Data Export
-
-1. Click **Export Data**
-2. CSV of annotation locations and frequencies
-3. For external analysis
-
-## Heat Map Reports
-
-### Standard Reports
-
-- **Hot Spot Analysis**: Top defect locations
-- **Trend Comparison**: Before/after periods
-- **Part Type Comparison**: Compare across types
-
-### Scheduled Reports
-
-!!! note "Planned Feature"
-    Scheduled heat map reports are planned for a future release. Currently, export reports manually using the Export function.
+!!! warning "There is no Generate Report or Export Data button"
+    Older instructions on this page described both, plus scheduled heat map
+    reports. None of them exist. Annotation data is reachable through the REST
+    API if you need it outside the viewer.
 
 ## Permissions
 
