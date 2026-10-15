@@ -368,22 +368,45 @@ def order_shipping(order) -> dict:
 
 
 def delivery_performance(tenant, days: int = 90) -> dict:
-    """On-time delivery to customers: of the order-line shipments made in the window
-    against a due date, how many went on or before it."""
+    """On-time delivery to customers: of the shipments made in the window against a
+    due date, how many went on or before it.
+
+    The due date is the work order's **order line** where there is one, and the work
+    order's own ``expected_completion`` where there isn't — a shop that raises work
+    orders directly, without order lines, is otherwise invisible to this measure.
+
+    A work order with neither date cannot be judged, so it is excluded — but counted
+    and returned as ``unmeasured``. Dropping it silently is what made this figure
+    untrustworthy: it reported a confident percentage of a subset while the rest of
+    the shipping went unmentioned. A number that says "100% of 2, with 4 I could not
+    measure" is honest; one that just says 100% is not.
+    """
     from Tracker.models import Parts
     since = timezone.now() - timedelta(days=days)
     rows = (Parts.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, part_status="SHIPPED", customer_shipment__isnull=False,
-        customer_shipment__is_voided=False, customer_shipment__shipped_at__gte=since,
-        work_order__order_line__due_date__isnull=False)
+        customer_shipment__is_voided=False, customer_shipment__shipped_at__gte=since)
         .values_list("customer_shipment_id", "customer_shipment__shipped_at",
-                     "work_order__order_line_id", "work_order__order_line__due_date")
+                     "work_order__order_line_id", "work_order__order_line__due_date",
+                     "work_order_id", "work_order__expected_completion")
         .distinct())
-    deliveries = {(s, line): timezone.localdate(at) <= due for s, at, line, due in rows}
+
+    deliveries, unmeasured = {}, set()
+    for shipment, at, line, line_due, wo, wo_due in rows:
+        # One delivery per order line per shipment, as before; a work order with no
+        # line is its own delivery rather than being folded into one.
+        key = (shipment, "line", line) if line else (shipment, "wo", wo)
+        due = line_due or wo_due
+        if due is None:
+            unmeasured.add(key)
+            continue
+        deliveries[key] = timezone.localdate(at) <= due
+
     on_time = sum(1 for ok in deliveries.values() if ok)
     total = len(deliveries)
     return {"days": days, "deliveries": total, "on_time": on_time,
-            "on_time_pct": round(on_time / total * 100, 1) if total else None}
+            "on_time_pct": round(on_time / total * 100, 1) if total else None,
+            "unmeasured": len(unmeasured)}
 
 
 def shipment_units(shipment):

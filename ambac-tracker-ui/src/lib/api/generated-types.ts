@@ -22755,6 +22755,7 @@ export interface components {
             on_time: number;
             /** Format: double */
             on_time_pct: number | null;
+            unmeasured: number;
         };
         /**
          * @description * `OVERDUE` - Overdue

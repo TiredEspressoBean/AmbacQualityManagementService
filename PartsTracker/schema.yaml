@@ -53374,11 +53374,14 @@ components:
           type: number
           format: double
           nullable: true
+        unmeasured:
+          type: integer
       required:
       - days
       - deliveries
       - on_time
       - on_time_pct
+      - unmeasured
     DeliveryStateEnum:
       enum:
       - OVERDUE

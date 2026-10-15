@@ -189,3 +189,75 @@ class DocumentTests(_Fixture):
         p.refresh_from_db()
         row = _part_row(p)
         self.assertEqual((row["shipment"], row["shipment_id"]), (s["shipment_number"], s["id"]))
+
+
+class DeliveryPerformanceTests(_Fixture):
+    """On-time delivery (2026-10-15).
+
+    It used to filter on `work_order__order_line__due_date__isnull=False` inside the
+    query, so a work order raised without an order line never reached the count. The
+    result was a confident percentage of a subset, with the rest of the shipping
+    silently absent — worse than an empty figure, because it reads as complete.
+    """
+
+    def _deliver(self, *specs):
+        """Ship one consignment: (erp, work_order) pairs, all for one customer."""
+        parts = [self._part(erp, wo=wo) for erp, wo in specs]
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self._ship(parts)
+        self.assertEqual(resp.status_code, 201, resp.content)
+        return parts
+
+    def test_an_order_line_due_date_is_still_what_is_measured(self):
+        from Tracker.services.mes.shipping import delivery_performance
+        self._deliver(("D-1", self.wo))
+        perf = delivery_performance(self.tenant)
+        self.assertEqual(perf["deliveries"], 1)
+        self.assertEqual(perf["on_time"], 1)
+        self.assertEqual(perf["unmeasured"], 0)
+
+    def test_a_work_order_with_no_line_falls_back_to_its_expected_completion(self):
+        from Tracker.services.mes.shipping import delivery_performance
+        self.other_wo.expected_completion = self.today + timedelta(days=5)
+        self.other_wo.save(update_fields=["expected_completion"])
+        self._deliver(("D-2", self.other_wo))
+        perf = delivery_performance(self.tenant)
+        self.assertEqual(perf["deliveries"], 1, "the fallback did not measure it")
+        self.assertEqual(perf["on_time"], 1)
+        self.assertEqual(perf["unmeasured"], 0)
+
+    def test_a_late_fallback_counts_late_rather_than_being_dropped(self):
+        from Tracker.services.mes.shipping import delivery_performance
+        self.other_wo.expected_completion = self.today - timedelta(days=5)
+        self.other_wo.save(update_fields=["expected_completion"])
+        self._deliver(("D-3", self.other_wo))
+        perf = delivery_performance(self.tenant)
+        self.assertEqual(perf["deliveries"], 1)
+        self.assertEqual(perf["on_time"], 0)
+        self.assertEqual(perf["on_time_pct"], 0.0)
+
+    def test_a_work_order_with_no_date_at_all_is_reported_not_hidden(self):
+        from Tracker.services.mes.shipping import delivery_performance
+        self.other_wo.expected_completion = None
+        self.other_wo.save(update_fields=["expected_completion"])
+        self._deliver(("D-4", self.other_wo))
+        perf = delivery_performance(self.tenant)
+        self.assertEqual(perf["deliveries"], 0, "it cannot be judged, so it is not scored")
+        self.assertEqual(perf["unmeasured"], 1, "but it must not vanish")
+        self.assertIsNone(perf["on_time_pct"])
+
+    def test_two_undated_work_orders_on_one_shipment_are_two_deliveries(self):
+        """The dict keyed on (shipment, order_line); with no line both rows would
+        collapse to one key and a shipment covering two work orders would score once."""
+        from Tracker.models import Orders, WorkOrder, WorkOrderStatus
+        from Tracker.services.mes.shipping import delivery_performance
+        self.other_wo.expected_completion = self.today + timedelta(days=5)
+        self.other_wo.save(update_fields=["expected_completion"])
+        third_order = Orders.objects.create(tenant=self.tenant, name="Third", company=self.other)
+        third = WorkOrder.objects.create(
+            tenant=self.tenant, ERP_id="WO-S3", quantity=1, process=self.wo.process,
+            related_order=third_order, workorder_status=WorkOrderStatus.IN_PROGRESS,
+            expected_completion=self.today + timedelta(days=5))
+        self._deliver(("D-5", self.other_wo), ("D-6", third))
+        perf = delivery_performance(self.tenant)
+        self.assertEqual(perf["deliveries"], 2, "two work orders collapsed into one delivery")

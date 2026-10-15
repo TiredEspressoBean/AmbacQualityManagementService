@@ -173,3 +173,8 @@ class DeliveryPerformanceSerializer(serializers.Serializer):
     deliveries = serializers.IntegerField()
     on_time = serializers.IntegerField()
     on_time_pct = serializers.FloatField(allow_null=True)
+    # Shipments in the window that carry no due date at all — neither an order line
+    # nor the work order's own expected completion. Excluded from the percentage
+    # because they cannot be judged, surfaced so the percentage is not read as
+    # covering everything shipped.
+    unmeasured = serializers.IntegerField()

@@ -67,6 +67,15 @@ export function ShippingPage() {
                         {perf.data && perf.data.deliveries > 0 && (
                             <span className="text-muted-foreground"> ({perf.data.on_time} of {perf.data.deliveries})</span>
                         )}
+                        {/* Shipments with no due date at all can't be judged, so they're out of
+                            the percentage. Saying so is the point: the figure used to cover a
+                            subset silently, which reads as covering everything. */}
+                        {perf.data && perf.data.unmeasured > 0 && (
+                            <span
+                                className="text-amber-600"
+                                title="Shipped work orders with no order-line due date and no expected completion. They can't be scored on time, so they're excluded from the percentage."
+                            > · {perf.data.unmeasured} not measurable</span>
+                        )}
                     </div>
                 </div>
             </div>

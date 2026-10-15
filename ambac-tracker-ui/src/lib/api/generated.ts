@@ -19576,6 +19576,7 @@ const DeliveryPerformance = z.object({
   deliveries: z.number().int(),
   on_time: z.number().int(),
   on_time_pct: z.number().nullable(),
+  unmeasured: z.number().int(),
 });
 const OrderLineShippingStateEnum = z.enum(["OPEN", "PART_SHIPPED", "SHIPPED"]);
 const LineShipment = z.object({
