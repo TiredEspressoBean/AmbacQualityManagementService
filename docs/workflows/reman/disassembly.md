@@ -138,6 +138,16 @@ The same card carries **Approved** and **Declined** once the unit is waiting.
 - **Approved** — work resumes.
 - **Declined** — the unit moves to *Scope declined*, and goes back unrepaired.
 
+!!! warning "Return does not create a shipment, so there is no paperwork"
+    **Return** stamps the unit as returned and stops. It does **not** create a
+    shipment record — and the packing list and certificate of conformance are
+    both built from a shipment, so a returned repair can have neither.
+
+    The unit's as-built record does exist: rebuilding it against its own
+    components writes those down. Nothing joins that record to a certificate.
+    If the customer needs a document saying what was replaced, produce it
+    outside the system.
+
 A **Return** button then dispatches the unit back to its customer, from either
 *Rebuilt* or *Scope declined*. That is what moves a unit to *Returned to
 customer* or *Returned unrepaired*.

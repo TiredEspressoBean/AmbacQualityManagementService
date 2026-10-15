@@ -30,8 +30,17 @@ right paperwork, and knowing afterwards whether it went on time.
 You can add **your own stock lots** to a shipment too — surplus bar, a kit —
 whole or in part.
 
-!!! note "Cores go back through Remanufacturing"
-    A reman core returning to its owner is not shipped from here. See
+!!! warning "A returned core gets no shipment, and so no paperwork"
+    A reman core going back to its owner is not shipped from here — **Return**
+    in Remanufacturing sends it, and that does not create a shipment record.
+
+    The consequence is worth knowing before a customer asks: because the packing
+    list and the certificate of conformance are both built from a shipment, a
+    returned repair can have **neither**. The as-built record of what was
+    replaced does exist on the unit, but nothing joins it to a certificate.
+
+    If a customer needs a document describing what was done to their unit,
+    produce it outside the system for now. See
     [Remanufacturing Overview](../workflows/reman/overview.md).
 
 ## Shipping it
@@ -70,6 +79,12 @@ those customers, so you know before you pack.
 **Shipping** shows **on-time %** over the last 90 days, and each order's
 **Shipping card** shows shipped against ordered per line, the shipments
 themselves, and flags late lines.
+
+!!! note "On-time reads — until orders carry due dates on their lines"
+    The figure is measured against each **order line's due date**. Work orders
+    raised without an order line have nothing to measure, so a shop that creates
+    work orders directly will see **—** however much it ships. That is the
+    measure having no input, not a fault.
 
 ## Next Steps
 
