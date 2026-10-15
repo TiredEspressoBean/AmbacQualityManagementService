@@ -55,14 +55,20 @@ Plus two who only read: an **Auditor** doing a surveillance visit, and a
 
 ### 06:00 — Dana reads the board
 
-The overnight solve is stale. Dana checks which kind of stale it is, because the
-two need different answers: the plan **drifted** (work didn't go as scheduled) or
-it **ran out** of the window it was solved for.
+The overnight solve is stale. The board tells her that and nothing more — the
+schedule carries a single *stale* flag with no cause on it, so whether the plan
+drifted or simply ran out of its window is hers to work out from the dates.
 
-She re-solves. One order comes back **infeasible on labour** — no certified,
-rostered operator can run a gated step at all. That is a staffing and training
-problem wearing a scheduling costume, and no amount of re-solving fixes it. She
-flags it for Priya and carries on.
+She re-solves. The solve fails because no certified, rostered operator can run a
+gated step at all. That is a staffing and training problem wearing a scheduling
+costume, and no amount of re-solving fixes it.
+
+!!! note "The labour cause is not on the solve"
+    A solve that fails on labour surfaces as a failed run, not as a labelled
+    reason. Where the cause is readable is the **unscheduled work order**
+    diagnostics, which name the step as unstaffable. Dana goes there to find out
+    what the solve would not tell her, and walks over to Priya — there is no flag
+    or notification that carries it for her.
 
 Then she admits work. Under manual release she opens **Pull in work** and reads
 the recommendation as a proposal, not an instruction: it holds any order that
@@ -108,10 +114,16 @@ Friday and did not. The shop is not short yet, but it will be on Thursday.
 Priya reads her board and finds Dana's labour flag waiting. The gated step needs
 a certification Tom does not hold.
 
-This is the call that is hers. She can **override the training gate** to let the
-work start, which is recorded against her name — or she can move the work and
-leave the gate alone. She overrides it for the first two units, because the
+This is the call that is hers: let the work start on her authority, or move the
+work and leave the gate alone. She decides to let it start, because the
 alternative is an idle cell, and tells Karim the record needs fixing properly.
+
+!!! important "Deciding is not the same as authorising"
+    She cannot clear the gate in advance. The override is a **second-person act
+    at the moment of start**: Tom tries, the gate refuses, and Priya types her
+    own email and password on his terminal, with a reason. So the decision is
+    made here at 07:30 and the authorisation happens at 08:00, standing next to
+    him — once per unit, not once for the shift.
 
 > **Exercises** — Shift Lead: the calls that are yours, the training gate, your
 > shift's board. Closes the interlock Dana opened at 06:00 and opens the one
@@ -174,19 +186,29 @@ see this failure sees where it was.
 
 ### 11:00 — The disposition
 
-Four more units show the same drift. Jess opens the disposition and records
-**containment** first — the remaining units are pulled from the cell before
+Four more units show the same drift. A disposition is per part, so each gets its
+own — Jess works the first and records **containment** on it first — the remaining units are pulled from the cell before
 anything else happens.
 
 The nonconformance is real but the parts are usable, so the decision is **Use As
 Is** — which accepts nonconforming product and will not record without an
 approval reference. Jess does not hold `approve_disposition`. Rather than handing
-the record off, Ruth **co-signs at Jess's terminal**: her email, her signature,
-her password. The record carries Ruth as the authority and Jess as the caller.
+the record off, Ruth **co-signs at Jess's terminal**: her email, a drawn signature, and her
+password. The record stores Ruth as the authorising party.
+
+!!! warning "The drawn signature is discarded"
+    The dialog requires a signature before it will proceed and then does not send
+    it — only the email and password are transmitted. Teach the act, but do not
+    tell anyone the drawing is kept, because it is not. The same is true of the
+    first-piece co-sign dialog.
 
 !!! important "This is where severity bites"
-    The disposition is Major, so it cannot close until containment is recorded on
-    it. Containment first is not a convention here; it is a gate.
+    The disposition is Major, so it cannot close until a containment action is
+    **written on it**. Critical is gated the same way.
+
+    Note what the gate checks: that the containment field is not empty. It does
+    not check that containment *happened*. Typing a sentence satisfies it, so the
+    discipline is yours — the system holds the record, not the act.
 
 > **Exercises** — QA Inspector and QA Manager together. The clearest
 > demonstration of co-signing in the product.
@@ -249,10 +271,10 @@ revision. She reviews both and responds.
 
 ### 14:30 — Dana re-promises
 
-With the routing changed and the seal kits still held, Dana re-solves. A customer
-asks whether a repair can be promised for the 14th; Dana answers from
-**capable-to-promise**, which measures capacity across the window to the due date
-rather than guessing.
+With the routing changed and the seal kits still held, Dana re-solves. Harborline
+asks whether **a second repair**, on top of the one already in the shop, can be
+promised for the 14th. Dana answers from **capable-to-promise**, which measures
+capacity cumulatively across the window to the due date rather than guessing.
 
 The answer is no for the 14th and yes for the 18th. She says so.
 
@@ -261,7 +283,7 @@ The answer is no for the 14th and yes for the 18th. She says so.
 
 ### 15:00 — Marcus takes a new order
 
-A new order comes in from Harborline Marine. Marcus creates it — **Order Name is
+Harborline confirm the second repair, for the 18th. Marcus creates the order — **Order Name is
 the only required field** — then creates the **work order** that carries the
 production, with its ERP ID, process, priority and due date.
 
@@ -278,8 +300,11 @@ Priya's override this morning was the right call and the wrong steady state.
 Karim creates the **training record** that makes Tom's certification real, so the
 gate stops refusing him.
 
-He also checks the notification rule that should have told Priya about the labour
-gap before Dana had to.
+He also looks for a notification rule that would have told Priya about the labour
+gap before Dana had to, and finds there is none to configure: the event catalogue
+covers training **expiring** and **expired**, which are about a lapsing
+certification rather than one never held. Tom's case fires nothing. That is worth
+knowing rather than working around.
 
 > **Exercises** — Administrator: users and groups, training records, the
 > permission and notification machinery. Closes Priya's 07:30 interlock.
@@ -331,22 +356,24 @@ The **customer contact** at Harborline sees their own order and nothing else.
 ## Role coverage
 
 Every role's documented responsibilities, against the passage that exercises
-them. A responsibility with no passage is a gap in this document.
+them. A responsibility with no passage is a gap in this document, and the gaps
+are named rather than left to be discovered — a role whose row carries a long
+"not yet covered" list cannot have a complete track built from this day alone.
 
 | Role | Exercised at | Responsibilities covered |
 |------|-------------|--------------------------|
-| **Planner** | 06:00, 14:30 | Staleness, admitting work, infeasible solves (capacity vs labour), manual moves, CTP |
-| **Receiving** | 06:30, 16:00 | Expected receipts, batch receive, incoming inspection, holds, core receipt |
+| **Planner** | 06:00, 14:30 | Staleness, admitting work, a labour-infeasible solve, CTP. **Not yet covered:** manual moves and pinning, the capacity-infeasible case, dispatch, draft vs live schedules, reman scheduling |
+| **Receiving** | 06:30, 16:00 | Expected receipts, multi-lot receive, incoming inspection, holds, core receipt. **Not yet covered:** returning something to a supplier, putaway and cycle counts, dock metrics |
 | **Purchasing** | 07:00 | Chasing late, supplier sent something wrong, SCAR, sourcing facts |
 | **Shift Lead** | 07:30, 12:00, 17:30 | Training gate, the board, manual decision points, raising a CAPA, shift notes |
-| **Operator** | 08:00, 10:00 | Claiming work, substeps, measurements, draft vs record, raising an issue |
-| **QA Inspector** | 08:30, 10:30, 11:00 | FPI buy-off, segregation, quality reports, quarantine, annotation, dispositions |
-| **QA Manager** | 11:00, 14:00 | Disposition authority, co-signing, approvals, CAPA verification |
-| **Engineering** | 13:00 | Authoring, versioning, copy-on-write, cycle times |
+| **Operator** | 08:00, 10:00 | Claiming work, substeps, measurements, draft vs record, raising an issue. **Not yet covered:** checking equipment calibration, and end-of-shift handoff |
+| **QA Inspector** | 08:30, 10:30, 11:00 | FPI buy-off, segregation, quality reports, quarantine, annotation, dispositions. **Not yet covered:** sampling inspections and AQL, and working the quarantine queue |
+| **QA Manager** | 11:00, 14:00 | Disposition authority, co-signing, approvals. **Not yet covered:** CAPA verification and closure — the day defers it to "tomorrow", which leaves the largest QA Manager responsibility unexercised |
+| **Engineering** | 13:00 | Authoring, versioning, copy-on-write, cycle times. **Not yet covered:** life limits |
 | **Document Controller** | 13:30 | Revisions, approval, approved vs released, obsoleting |
-| **Production Manager** | 15:00 | Orders, work orders, adding parts, priority |
-| **Administrator** | 15:30 | Users, training records, notification rules |
-| **Shipping** | 17:00 | Ready to ship, shipping, on-time |
+| **Production Manager** | 15:00 | Orders, work orders, adding parts, priority. **Not yet covered:** handling quality holds — which the 10:30–11:00 passage is, with him absent from it — capacity planning, and bulk order import |
+| **Administrator** | 15:30 | Users, training records, notification rules. **Not yet covered:** master data setup, approval templates, audit log review, system settings — note the day *consumes* approval templates at 13:30 and 14:00 without ever showing them being made |
+| **Shipping** | 17:00 | Ready to ship, shipping. **Not yet covered:** on-time performance, and what happens after a shipment leaves |
 | **Auditor** | through | Reading the trail (orientation) |
 | **Customer** | through | Portal scope (orientation) |
 
@@ -357,7 +384,7 @@ tracks stop making sense.
 
 | Opened at | Closed at | What connects them |
 |-----------|-----------|--------------------|
-| 06:00 Dana flags a labour gap | 07:30 Priya overrides the gate | The solver's "infeasible" is a person without a certification |
+| 06:00 Dana's solve fails on labour | 07:30 Priya decides, 08:00 she authorises | The solver's failure is a person without a certification. Nothing carries it between them — Dana walks over |
 | 07:30 Priya overrides | 15:30 Karim writes the record | An override is a decision, not a fix |
 | 06:30 Ade holds a lot | 14:30 Dana re-promises short | A dock decision becomes a scheduling constraint |
 | 06:30 Ade holds a lot | 07:00 Nina raises a SCAR | A rejection is a supplier fact, not just a shortage |
@@ -401,10 +428,16 @@ read it.
 
 - **No money.** No prices, quotes, purchase orders or approvals to spend. Where a
   decision would need one, the day produces the scope and records the answer.
-- **No deployment assumptions.** Nothing here requires email to send, SSO to be
-  configured, or a particular integration to be connected.
+- **Two deployment dependencies, named rather than hidden.** The Planner's
+  passages need a **Celery worker and beat scheduler** — a solve is dispatched
+  asynchronously with no synchronous fallback, so with no worker it sits Pending
+  forever, and the "overnight solve" is a beat task. Publishing a shift note
+  emits an event, so a deployment with no mail path records the note and
+  delivers nothing. Nothing here needs SSO or any integration connected.
 - **Nothing real.** No company, person, supplier or part number refers to anyone.
-- **Nothing that does not exist.** Every control named has been verified against
-  the product. Where something is absent and its absence teaches — priority
-  changes taking no reason, an annotation that cannot be moved — the day says so
+- **Nothing that does not exist.** Every control named was checked against the
+  source, and the day was then adversarially re-checked against it — which found
+  real errors in the first draft and is why several passages now say what the
+  product *doesn't* do. Where something is absent and its absence teaches — priority
+  changes taking no reason, a drawn signature that is thrown away — the day says so
   rather than stepping around it.
