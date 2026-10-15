@@ -170,7 +170,7 @@ Audit log data includes:
 - Timestamps
 - Before/after values
 
-**Current access:** Use the REST API endpoint `GET /api/AuditLog/` with filters to retrieve audit data programmatically.
+**Current access:** Use the REST API endpoint `GET /api/auditlog/` with filters to retrieve audit data programmatically.
 
 ## Part Traveler
 

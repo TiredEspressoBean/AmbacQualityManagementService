@@ -30,7 +30,14 @@ An order may have multiple work orders if:
 
 ## Creating a Work Order
 
-1. Navigate to **Production** > **Work Orders**
+!!! info "Three Work Orders pages, and only one of each does the job"
+    | Sidebar entry | What it is for |
+    |---|---|
+    | **Production** > **Work Orders** | A read-only list. No create button, no Add Parts. |
+    | **Production** > **WO Control Center** | Where **Add Parts** lives, in the bulk bar |
+    | **Data Management** > **Work Orders** | Where a work order is **created** |
+
+1. Navigate to **Data Management** > **Work Orders**
 2. Click **New Work Orders**
 3. Fill in the form:
 

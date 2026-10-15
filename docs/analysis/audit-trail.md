@@ -183,7 +183,7 @@ Custom and compliance-focused reports (AS9100D, IATF 16949, ISO 9001) are also p
 !!! note "Planned Feature"
     UI export of audit data is planned for a future release.
 
-**Current access:** Use the REST API endpoint `GET /api/AuditLog/` with filters to retrieve audit data programmatically for external reporting or archival.
+**Current access:** Use the REST API endpoint `GET /api/auditlog/` with filters to retrieve audit data programmatically for external reporting or archival.
 
 When UI export is available:
 

@@ -132,7 +132,7 @@ Log**, and on any record's **History** tab.
     out for an audit or a report, use the API:
 
     ```
-    GET /api/AuditLog/
+    GET /api/auditlog/
     ```
 
     Filter it with the same parameters available in the UI.
@@ -182,7 +182,7 @@ disabled, as noted above. Preparing data for an external audit means:
 
 1. Filter to the audit scope in **Admin** > **Audit Log** to confirm what you
    need, then
-2. Pull the same range from `GET /api/AuditLog/`, using the same filter
+2. Pull the same range from `GET /api/auditlog/`, using the same filter
    parameters
 3. Format it as the auditor asked for it
 

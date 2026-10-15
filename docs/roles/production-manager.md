@@ -94,8 +94,8 @@ priority field** — priority lives on the work order.
     The order detail page is read-only and has no **Add Parts** control. Parts
     are added against the **work order**.
 
-1. Go to **Production** > **Work Orders**
-2. Tick exactly one work order
+1. Go to **Production** > **WO Control Center**
+2. Tick exactly one work order — the bulk bar appears at the bottom
 3. Click **Add Parts** in the bulk bar
 4. Specify:
    - **Start Step** — where the parts begin
@@ -118,7 +118,7 @@ For multiple orders:
 
 ### Linking Order to Process
 
-1. Navigate to **Production** > **Work Orders**
+1. Navigate to **Data Management** > **Work Orders**
 2. Click **New Work Orders**
 3. Fill in:
    - **ERP ID** — the work order's number in the system that owns it (required)
@@ -294,8 +294,8 @@ Generate for management:
 | Task | Steps |
 |------|-------|
 | Create order | Data Management > Orders → **New Orders** → Order Name → **Create Order** |
-| Add parts | Production > Work Orders → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start |
-| Create work order | Production > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
+| Add parts | Production > WO Control Center → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start |
+| Create work order | Data Management > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
 | Change priority | Open work order → Change priority → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
 

@@ -23,61 +23,66 @@ Before starting, ensure you have:
 | **Company** | The company the order belongs to | `Northern Trucking Co` |
 | **Customer** | The customer contact on the order | `Tom Bradley` |
 | **Estimated Completion** | When the order should be complete | `2026-03-15` |
-| **Order Status** | Current state of the order | `Pending` |
 
 4. Click **Create Order**
 
+!!! note "Order Name is the only required field"
+    Everything else, the company included, can be left blank and filled in
+    later. The order *number* (`ORD-YYYY-NNNN`) is generated for you.
+
 Your order is created but has no parts yet.
 
-## Step 2: Add Parts to the Order
+## Step 2: Create a Work Order
 
-Parts are the individual items being tracked. You can add them manually or in bulk.
+An order records what the customer asked for. A **work order** is what carries
+the production — and parts are created against it, so this has to come before
+adding parts.
 
-### Adding Parts Manually
+1. Navigate to **Data Management** > **Work Orders**
+2. Click **New Work Orders**
+3. Fill in:
 
-1. Open your order (click on it in the orders list)
-2. In the **Parts** section, click **Add Parts**
-3. Fill in the part details:
+| Field | Description | Required |
+|-------|-------------|----------|
+| **ERP ID** | The work order's number in the system that owns it | **Yes** |
+| **Process** | The manufacturing workflow to run | **Yes** |
+| **Priority** | Urgent, High, Normal, or Low | **Yes** |
+| **Due Date** | Target completion | **Yes** |
+| **Order** | The order you just made | No |
+
+4. Click **Save**
+
+!!! warning "ERP ID is required and easy to miss"
+    The save fails without it. Priority lives here, not on the order — orders
+    have no priority field.
+
+!!! note "Production > Work Orders is read-only"
+    It is a list, with no create button. Work orders are created from the Data
+    Management editor above.
+
+## Step 3: Add Parts to the Work Order
+
+Parts are the individual items being tracked, and they are added against the
+**work order** — not from the order page, which is read-only and has no
+**Add Parts** control.
+
+1. Go to **Production** > **WO Control Center**
+2. Tick exactly one work order — the bulk bar appears at the bottom
+3. Click **Add Parts**
+4. Fill in:
 
 | Field | Description | Example |
 |-------|-------------|---------|
-| **Part Type** | What kind of part | `Common Rail Injector` |
-| **Process** | The manufacturing workflow to run | `Common Rail Injector Remanufacturing` |
-| **Step** | Which step the parts start at | `1. Teardown` |
+| **Part Type** | Shown, not chosen — it comes from the work order's process | `Common Rail Injector` |
+| **Start Step** | Which step the parts begin at | `Teardown` |
 | **Quantity** | How many to create | `8` |
-| **ERP ID start** | Starting identifier; subsequent parts increment from it | `INJ-0048-001` |
-| **Status** | Initial part status | `In Progress` |
+| **ERP ID Start** | The number the counter starts from | `1` |
 
-4. Click **Add Parts**
+5. Confirm
 
-The system creates individual part records (e.g., `INJ-0048-001`, `INJ-0048-002`, etc.).
-
-### Bulk Import
-
-For large orders, you can import parts from a CSV file:
-
-1. Click **Import** in the Parts section
-2. Download the template
-3. Fill in your part data
-4. Upload the completed CSV
-
-## Step 3: Create a Work Order
-
-A Work Order connects your order to a manufacturing process:
-
-1. Navigate to **Admin** > **Data Management** > **Work Orders**
-2. Click **New Work Orders**
-3. Select:
-   - **Order**: Your order (`ORD-2024-0048`)
-   - **Process**: The manufacturing workflow (`Common Rail Injector Remanufacturing`)
-   - **Priority**: Urgent, High, Normal, or Low
-4. Click **Save**
-
-The work order is now active, and parts can begin moving through steps.
-
-!!! note
-    **Production > Work Orders** is a read-only list — it has no create button.
-    Create work orders from the Data Management editor above.
+Each part's ERP ID is built from the **part type's own prefix** plus a counter
+padded to four digits — a prefix of `INJ` and a start of 1 gives `INJ0001`
+through `INJ0008`. You do not type the prefix; it is set on the part type.
 
 ## Step 4: Track Parts on the Tracker
 

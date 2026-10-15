@@ -129,7 +129,7 @@ included — can be left blank and filled in later.
     The order detail page is read-only and has **no Add Parts control**. Parts
     are added against the **work order**, so create one first.
 
-1. Go to **Production** > **Work Orders**
+1. Go to **Production** > **WO Control Center**
 2. Tick exactly one work order — the bulk bar appears at the bottom
 3. Click **Add Parts**
 4. Configure:
@@ -145,7 +145,7 @@ not type the prefix — it is set on the part type.
 **Exercise 2.2:** Add Parts
 
 1. Create a work order against "TRAIN-PM-001" with a process assigned
-2. Select it in **Production** > **Work Orders** and click **Add Parts**
+2. Select it in **Production** > **WO Control Center** and click **Add Parts**
 3. Set Quantity: 10, ERP ID Start: 1
 4. Verify ten parts were created, numbered from the part type's prefix — a
    prefix of `WA` gives `WA0001` through `WA0010`
@@ -199,7 +199,7 @@ An order can have multiple work orders if needed.
 
 **Steps:**
 
-1. Navigate to **Production** > **Work Orders**
+1. Navigate to **Data Management** > **Work Orders**
 2. Click **New Work Orders**
 3. Select:
    - Order (links to customer order)
@@ -630,10 +630,10 @@ To close it out, create a **Training Record** for the trainee under **Quality**
 Data Management → Orders → **New Orders** → Order Name → Save
 
 ### Create Work Order
-Production → Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save
+Data Management → Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save
 
 ### Add Parts
-Production → Work Orders → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start
+Production → WO Control Center → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start
 
 ### Check Status
 Tracker → Find order → Review progress, holds

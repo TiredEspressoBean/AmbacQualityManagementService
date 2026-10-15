@@ -11,9 +11,13 @@ Parts are the individual items tracked through production. This guide covers add
 
 ### From the Work Orders Control Center
 
-1. Go to **Production** > **Work Orders**
+1. Go to **Production** > **WO Control Center**
 2. Tick exactly one work order — the bulk bar appears at the bottom
-3. Click **Add Parts**
+3. Click **Add Parts** (it stays disabled until exactly one is selected)
+
+!!! note "Not Production > Work Orders"
+    That page is a read-only list with no bulk bar. The Control Center is the
+    one with the actions.
 4. Fill in the dialog:
 
 | Field | Description |

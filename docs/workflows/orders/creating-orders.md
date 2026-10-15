@@ -73,7 +73,7 @@ Status progresses as work is performed:
 
 Orders need work orders to track production:
 
-1. After creating the order, click **New Work Orders** or navigate to Work Orders
+1. Go to **Data Management** > **Work Orders** and click **New Work Orders**
 2. Select your order
 3. Choose the process to apply
 4. The work order links parts to the manufacturing workflow

@@ -2,22 +2,25 @@
 
 REST API for integrating uqmes with other systems.
 
-!!! example "Demo API Responses"
-    In demo mode, try these API endpoints to see real data:
-
+!!! example "Trying it out"
     ```bash
-    # Get Midwest Fleet order
-    GET /api/orders/?order_number=ORD-2024-0042
+    # Orders, filtered by the auto-generated order number
+    GET /api/Orders/?order_number=ORD-2024-0042
 
-    # Get parts with flow test failures
-    GET /api/parts/?status=QUARANTINED
+    # Parts currently quarantined
+    GET /api/Parts/?status=QUARANTINED
 
-    # Get CAPA with full workflow
-    GET /api/capa/3/  # CAPA-2024-003
+    # A CAPA by id
+    GET /api/CAPAs/{id}/
 
-    # Get SPC data for Flow Testing
-    GET /api/spc/measurements/?step=flow-testing
+    # SPC measurement data
+    GET /api/spc/data/
     ```
+
+    The record ids in these examples come from the **demo data set**, which
+    exists only if your deployment was seeded with it — see
+    [Training Data Setup](../training/training-data-setup.md). On a system with
+    your own data, the shapes hold but the identifiers will not.
 
     API tokens are issued by an administrator — there is no self-service
     **API Tokens** page on your Profile.
@@ -55,36 +58,51 @@ Once you have a token, use it in the Authorization header. Tokens inherit user's
 
 ## Core Endpoints
 
+!!! warning "Resource paths are PascalCase"
+    The model collections are named exactly as the model is —
+    `/api/Orders/`, `/api/QualityReports/`, `/api/WorkOrders/`. A lowercase
+    guess like `/api/orders/` or `/api/quality-reports/` is **not** the same
+    URL and will not resolve.
+
+    A handful of non-model endpoints *are* lowercase — `/api/auditlog/`,
+    `/api/spc/`, `/api/dashboard/`, `/api/reports/`, `/api/notifications/`,
+    `/api/integrations/`, `/api/tenant/`. Those are the exception, and they are
+    not model collections.
+
+    The authority is the schema, not this page: fetch `/api/schema/` and search
+    it rather than guessing a casing.
+
 ### Orders
 ```
-GET    /api/orders/           # List orders
-POST   /api/orders/           # Create order
-GET    /api/orders/{id}/      # Get order detail
-PUT    /api/orders/{id}/      # Update order
-DELETE /api/orders/{id}/      # Delete order
+GET    /api/Orders/           # List orders
+POST   /api/Orders/           # Create order
+GET    /api/Orders/{id}/      # Get order detail
+PUT    /api/Orders/{id}/      # Update order
+DELETE /api/Orders/{id}/      # Delete order
 ```
 
 ### Parts
 ```
-GET    /api/parts/            # List parts
-POST   /api/parts/            # Create part
-GET    /api/parts/{id}/       # Get part detail
-PUT    /api/parts/{id}/       # Update part
-GET    /api/parts/{id}/history/  # Part history
+GET    /api/Parts/            # List parts
+POST   /api/Parts/            # Create part
+GET    /api/Parts/{id}/       # Get part detail
+PUT    /api/Parts/{id}/       # Update part
+GET    /api/Parts/{id}/history/   # Part history
+GET    /api/Parts/{id}/traveler/  # Traveler document
 ```
 
 ### Quality Reports
 ```
-GET    /api/quality-reports/  # List NCRs
-POST   /api/quality-reports/  # Create NCR
-GET    /api/quality-reports/{id}/  # Get NCR detail
+GET    /api/QualityReports/        # List NCRs
+POST   /api/QualityReports/        # Create NCR
+GET    /api/QualityReports/{id}/   # Get NCR detail
 ```
 
 ### Work Orders
 ```
-GET    /api/work-orders/      # List work orders
-POST   /api/work-orders/      # Create work order
-GET    /api/work-orders/{id}/ # Get work order detail
+GET    /api/WorkOrders/       # List work orders
+POST   /api/WorkOrders/       # Create work order
+GET    /api/WorkOrders/{id}/  # Get work order detail
 ```
 
 ### Material Lots
@@ -102,16 +120,20 @@ POST   /api/ScheduleSlots/          # Create slot
 GET    /api/ScheduleSlots/{id}/     # Get slot detail
 ```
 
-!!! note "API-Only Endpoints"
-    Material Lots and Schedule Slots are fully functional via API but do not have dedicated UI pages yet. Use these endpoints for programmatic access to lot tracking and scheduling features.
+!!! note "These have UI too"
+    Material Lots and Schedule Slots are **not** API-only. Material lots have a
+    full Materials page (see [Supply overview](../workflows/supply/overview.md))
+    and scheduling has the Gantt board (see
+    [Scheduling](../workflows/scheduling/overview.md)). Use the API for
+    programmatic access, not because there is nowhere else to go.
 
 ## Filtering
 
 Use query parameters:
 ```
-GET /api/orders/?status=in_progress
-GET /api/parts/?order=123
-GET /api/quality-reports/?severity=critical
+GET /api/Orders/?status=in_progress
+GET /api/Parts/?order=123
+GET /api/QualityReports/?severity=critical
 ```
 
 ### Common Filters
@@ -135,24 +157,24 @@ Default page size: 25
 
 Use `page` parameter:
 ```
-GET /api/orders/?page=2
+GET /api/Orders/?page=2
 ```
 
 ## Creating Records
 
 POST with JSON body:
 ```bash
-curl -X POST https://api.example.com/api/orders/ \
+curl -X POST https://api.example.com/api/Orders/ \
   -H "Authorization: Token your-token" \
   -H "Content-Type: application/json" \
-  -d '{"order_number": "PO-001", "customer": 123}'
+  -d '{"name": "PO-001"}'
 ```
 
 ## Updating Records
 
 PUT or PATCH:
 ```bash
-curl -X PATCH https://api.example.com/api/orders/1/ \
+curl -X PATCH https://api.example.com/api/Orders/{id}/ \
   -H "Authorization: Token your-token" \
   -H "Content-Type: application/json" \
   -d '{"status": "complete"}'
@@ -179,23 +201,27 @@ Record doesn't exist.
 
 ## Rate Limiting
 
-- 1000 requests per hour per token
-- 429 Too Many Requests when exceeded
-- `X-RateLimit-Remaining` header shows remaining
+**There is no global API rate limit**, and no `X-RateLimit-*` headers. Normal
+authenticated API traffic is not throttled, so do not design a retry loop around
+a 429 you will not receive.
+
+Throttling is applied only to specific unauthenticated, abuse-prone endpoints —
+login, signup, registration and password reset. Those limits are tunable per
+deployment, so the exact numbers are your administrator's to confirm.
 
 ## Webhooks
 
-Configure webhooks for events:
+!!! warning "Webhooks are not implemented"
+    There is no webhook model, no outbound delivery and no retry — not in the
+    UI and not in backend settings either. The event names an earlier version of
+    this page listed (`order.created`, `part.status_changed` and the rest) do
+    not exist.
 
-| Event | Trigger |
-|-------|---------|
-| `order.created` | New order |
-| `order.updated` | Order changed |
-| `part.status_changed` | Part moved |
-| `quality_report.created` | New NCR |
-
-!!! note "Planned Feature"
-    Webhook configuration UI is planned. Contact your administrator to configure webhooks via backend settings.
+    What *does* exist is **notification rules**: events raised inside the
+    product, routed to people by rule. If you need to react to something
+    happening, that is the mechanism — see
+    [Notification Rules](../admin/setup/notification-rules.md). For pulling
+    changes from outside, poll the relevant collection with a filter.
 
 ## OpenAPI Schema
 
@@ -206,10 +232,9 @@ GET /api/schema/
 
 Returns OpenAPI 3.0 specification.
 
-Interactive documentation:
-```
-GET /api/docs/
-```
+!!! note "No interactive docs endpoint"
+    There is no `/api/docs/` browser. Fetch `/api/schema/` and read it with your
+    own OpenAPI viewer.
 
 ## Example: Create Order with Parts
 
@@ -226,9 +251,10 @@ headers = {
 
 # Create order
 order_data = {
-    "order_number": "PO-2026-001",
-    "customer": 1,
-    "due_date": "2026-04-01"
+    "name": "PO-2026-001",
+    # order_number is read-only — the server generates ORD-YYYY-NNNN
+    "customer": "<customer-uuid>",
+    "estimated_completion": "2026-04-01"
 }
 response = requests.post(f"{BASE_URL}/orders/",
                          json=order_data,
