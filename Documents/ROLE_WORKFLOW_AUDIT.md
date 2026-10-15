@@ -313,10 +313,31 @@ shop does not have.
 | ✅ | Documented and supported |
 | 📄 | Supported, not documented |
 | 🚧 | Partly supported |
+| ⚠️ | Supported with a caveat worth reading before relying on it |
 | ❌ | Not supported |
+| — | Not applicable to this row — out of the product's bounds by design, or deliberately another role's job. **Not a gap.** |
 | ? | Not yet checked |
 
-!!! warning "The Docs column is STALE as of 2026-10-12 — do not use it as a to-do list"
+!!! note "`⚠️` and `—` were in use long before they were in this key"
+    Added 2026-10-15. Both appear throughout the tables; neither was defined,
+    which made the Code column unreadable at a glance — the thing the column
+    exists for. If you add a marker, add it here in the same edit.
+
+!!! note "The Docs column was caught up on 2026-10-12 — and this warning outlived it"
+    **Re-counted 2026-10-15: 130 of 131 rows now read ✅ in the Docs column.**
+    The warning below was accurate when written and has since been overtaken; it
+    is kept because the *lesson* is the point, not the state.
+
+    The lesson: the help docs were written **against this audit**, and then
+    nobody came back to flip the column — so a one-time derivation drifted into
+    a to-do list that lied. The same thing happened again on 2026-10-15, when
+    five rows went stale in a single day of fixing the things they recorded.
+
+    **So: flipping the row is part of finishing the work, not a later pass.**
+    A ledger nobody closes out is worse than no ledger, because it is believed.
+
+    Original warning, which was true until 2026-10-12 —
+
     Many rows carry **Docs ⚠️** with a note ending *"Docs ⚠️: undocumented."*
     Those marks were made **before the help docs were written**. The help docs
     were then written against this audit, and nobody came back to flip the
@@ -545,8 +566,8 @@ The unit of work is the **shift**.
 | R2 | Request customer authorisation for over-and-above | ✅ | ✅ | **Walked 2026-10-07.** From an IN_REBUILD core the card offers **Authorise…** → status becomes *Awaiting customer authorisation*. `send_for_authorisation` refuses when nothing exceeds the sold rebuild level (*"Nothing on … goes beyond the rebuild level that was sold, so there is nothing to authorise"*) — it compares resolved scope against the `RebuildScopePreset`. **Docs ⚠️: undocumented.** |
 | R3 | Decide a torn-down unit's exit: rebuild, harvest, or return | ✅ | ✅ | **Walked 2026-10-07 after fixing the teardown dead-end.** A DISASSEMBLED core offers **Rebuild to stock** / **Release to inventory**, each with a tooltip explaining the consequence (identity kept and stocked as reman FG, vs components accepted and the core consumed). Chose rebuild → **In Rebuild**. The third exit (*return*) is unreachable — no `REPAIR_RETURN` core exists. **Docs ⚠️: undocumented.** |
 
-| C1 | Jump a job to the front, with a reason | ✅ | ⚠️ | **BUILT 2026-10-15 (`5b9b6d0`) — the second half now exists.** A priority change requires a reason and refuses without one (`services/mes/work_order.change_priority` raises *"Say why the priority is changing"*), writing a `RecordEdit` with field/old/new/reason/who/when beside auditlog's who-and-when. The edit form asks *"Why change priority from Normal to Urgent?"* and lists the last five changes with their reasons. **Residual:** a CSV import or the master workbook still changes priority with no reason recorded. Docs updated in `5c006f3`. Original note: Walked 2026-10-07, the first half works, the second doesn't exist. There is no expedite *action*: **Expedited is derived**, `w.priority === 1` (`WorkOrdersControlCenterPage.tsx:280`), i.e. `WorkOrderPriority.URGENT`. Jumping a job = setting priority on the work order. Verified live: PATCH priority 2→1 → the Control Center's **Expedited** tile went **0 → 1**; reverted to 2. `change_workorder` is held by every operational role incl. the Shift Lead (dave.wilson); only the customer lacks it. **“With a reason” is unsupported.** No reason field on the WO edit form, none on the API, and no expedite service. `django-auditlog` records the change — `{'priority': ['2', '1']}`, actor *Maria Santos*, timestamped — so **who, when and what are kept; why is not.** Contrast the rest of the app, where consequential changes carry a reason (hold, scrap, reject, ship-back, rollback). **Decision needed:** either accept priority-with-no-justification, or give expedite the reason the other consequential actions already take. |
-| C2 | Void an operator's bad record | ✅ | ⚠️ | **ROW WAS WRONG, corrected 2026-10-15.** A Shift Lead holds `void_substepcompletion` **not at all** — `VOID_COMPLETION_PERMISSIONS` goes to `tenant_admin`, `qa_manager` and `qa_inspector`. `roles/shift-lead.md` has always listed it correctly under what is not yours, and `workflows/dwi/running.md` says why: performing or supervising the work and adjudicating the record are different jobs. Original note, which was the error: holds `void_substepcompletion` only, narrower than the row implies |
+| C1 | Jump a job to the front, with a reason | ✅ | ✅ | **BUILT 2026-10-15 (`5b9b6d0`) — the second half now exists.** A priority change requires a reason and refuses without one (`services/mes/work_order.change_priority` raises *"Say why the priority is changing"*), writing a `RecordEdit` with field/old/new/reason/who/when beside auditlog's who-and-when. The edit form asks *"Why change priority from Normal to Urgent?"* and lists the last five changes with their reasons. **Residual:** a CSV import or the master workbook still changes priority with no reason recorded. Docs updated in `5c006f3`. Original note: Walked 2026-10-07, the first half works, the second doesn't exist. There is no expedite *action*: **Expedited is derived**, `w.priority === 1` (`WorkOrdersControlCenterPage.tsx:280`), i.e. `WorkOrderPriority.URGENT`. Jumping a job = setting priority on the work order. Verified live: PATCH priority 2→1 → the Control Center's **Expedited** tile went **0 → 1**; reverted to 2. `change_workorder` is held by every operational role incl. the Shift Lead (dave.wilson); only the customer lacks it. **“With a reason” is unsupported.** No reason field on the WO edit form, none on the API, and no expedite service. `django-auditlog` records the change — `{'priority': ['2', '1']}`, actor *Maria Santos*, timestamped — so **who, when and what are kept; why is not.** Contrast the rest of the app, where consequential changes carry a reason (hold, scrap, reject, ship-back, rollback). ~~**Decision needed:** either accept priority-with-no-justification, or give expedite the reason the other consequential actions already take.~~ **Answered 2026-10-15 — the second option was taken; see the top of this row.** |
+| C2 | Void an operator's bad record | ✅ | — | **NOT THIS ROLE, BY DESIGN — and the row was wrong, corrected 2026-10-15.** The *product* supports voiding; the **Shift Lead does not hold it, at all**. `VOID_COMPLETION_PERMISSIONS` goes to `tenant_admin`, `qa_manager` and `qa_inspector`, and it is withheld from Operator, Shift Lead **and** Production Manager on purpose: performing or supervising the work and adjudicating the record are different jobs (`workflows/dwi/running.md`). A lead who needs a record retracted escalates — which is **R10**, not this row. `roles/shift-lead.md` has always listed it correctly under what is not yours, so the docs were right and this row was not. Marked `—` rather than ❌ because the capability exists and is simply somebody else's; ❌ would read as a product gap. Original note, which was the error: *holds `void_substepcompletion` only, narrower than the row implies*. |
 | C3 | Take a machine out of service and re-plan around it | ✅ | ✅ | holds `change_equipments`; the *re-plan* half needs a solved schedule |
 
 ## Shift Lead — first pass (2026-10-07)
