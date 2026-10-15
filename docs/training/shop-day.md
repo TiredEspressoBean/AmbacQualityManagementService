@@ -361,9 +361,12 @@ records the shipment.
 ### 17:30 — Priya hands over
 
 Priya writes a **shift note** for the night shift: the seal kits are held, the
-CAPA is open, Tom's certification is fixed, and the second cell is back. The
-system will not carry this for her — a priority change takes no reason, so the
-audit trail records *what* changed and not *why*.
+CAPA is open, Tom's certification is fixed, and the second cell is back.
+
+None of that is carried anywhere else. Individual acts record their own reasons
+— a priority change, a hold, a scrap each ask why — but nothing assembles them
+into *what the next shift needs to know*, and a note is the only thing that
+does.
 
 > **Exercises** — Shift Lead: speaking to the next shift, and why the note
 > matters more than it looks.

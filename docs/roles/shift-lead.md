@@ -70,14 +70,21 @@ There is **no Expedite action**. Jumping a job to the front means setting the
 work order's **priority** to **Urgent** — *Expedited* on the control centre is
 not a state you set, it is simply what priority Urgent looks like.
 
-!!! warning "A priority change records no reason"
-    The audit trail keeps *what* changed and *who* changed it, and nothing asks
-    *why*. Hold, scrap, reject, ship-back and rollback all take a reason;
-    priority does not.
+!!! important "A priority change asks why, and keeps the answer"
+    Changing priority on **Data Management > Work Orders > edit** requires a
+    reason — *"Why change priority from Normal to Urgent?"* — and will not save
+    without one. The reason is stored with the change, and the edit form lists
+    the last five: *Normal → Urgent · who, when*, with the reason beneath.
 
-    So if you move a job up, put the reason in a **shift note**. Nothing else
-    will carry it, and in three weeks the trail will show the change with no
-    account of it.
+    So the trail answers *what, who, when* **and** *why*, which it did not
+    before. Setting a priority when you first create the work order needs no
+    reason; there is nothing to explain yet.
+
+!!! warning "An import changes priority silently"
+    The reason is asked for on the edit form and the API. A CSV import or the
+    master workbook can change priority **without** recording one, so a bulk
+    re-prioritisation leaves the same gap the edit form now closes. Worth
+    knowing before you reach for an import to move a lot of work at once.
 
 ## Speaking to the next shift
 

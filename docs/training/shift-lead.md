@@ -483,13 +483,14 @@ order's priority is **Urgent**. To jump a job, set its priority on the work
 order; the Control Center's **Expedited** tile counts it.
 
 !!! warning "\"With a reason\" is not supported here"
-    There is no reason field on the work order's priority. `django-auditlog`
-    records **who, when and what** — `priority: 2 → 1`, actor, timestamp — but
-    **not why**.
+    Changing priority requires a reason and will not save without one, the
+    same as hold, scrap, reject, ship-back and rollback. The edit form asks
+    *"Why change priority from Normal to Urgent?"* and lists the last five
+    changes with their reasons.
 
-    That is a real inconsistency: hold, scrap, reject, ship-back and rollback all
-    take a reason. Priority does not. Put your justification in a **shift note**
-    so it survives, and know the audit trail will not carry it for you.
+    One gap remains: a **CSV import or the master workbook** can change
+    priority without recording a reason. If you re-prioritise in bulk, the
+    justification is yours to put somewhere.
 
 ### 8.2 A machine out of service
 

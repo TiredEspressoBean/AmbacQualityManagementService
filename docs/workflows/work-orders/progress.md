@@ -31,15 +31,21 @@ Due Date, Customer, Order, and a Details link.
     A work order counts as **Expedited** when its **priority is Urgent**. To jump
     a job to the front, set its priority; the tile and filter follow from that.
 
-!!! warning "Expediting does not record a reason"
-    Unlike holding, scrapping, rejecting, shipping back or rolling back a
-    version, a priority change takes **no reason**. The audit log keeps *who*,
-    *when* and *what* — `priority: 2 → 1`, with the actor and a timestamp — but
-    not **why**.
+!!! important "A priority change asks why, and keeps the answer"
+    Changing priority on **Data Management > Work Orders > edit** requires a
+    reason — *"Why change priority from Normal to Urgent?"* — and will not save
+    without one. The reason is stored with the change, and the edit form lists
+    the last five: *Normal → Urgent · who, when*, with the reason beneath.
 
-    If the justification matters, put it in a **shift note** or the work order's
-    notes. The audit trail will not carry it for you, and six months later
-    "someone made this urgent" is all that remains.
+    So the trail answers *what, who, when* **and** *why*, which it did not
+    before. Setting a priority when you first create the work order needs no
+    reason; there is nothing to explain yet.
+
+!!! warning "An import changes priority silently"
+    The reason is asked for on the edit form and the API. A CSV import or the
+    master workbook can change priority **without** recording one, so a bulk
+    re-prioritisation leaves the same gap the edit form now closes. Worth
+    knowing before you reach for an import to move a lot of work at once.
 
 ## When scrap outruns the gross-up
 
