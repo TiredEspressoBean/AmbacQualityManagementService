@@ -102,7 +102,12 @@ export function MediaEditForm({ node, updateAttributes }: NodeViewProps) {
                     <SelectContent>
                         <SelectItem value="image">Image</SelectItem>
                         <SelectItem value="video">Video</SelectItem>
-                        <SelectItem value="3d_model">3D model</SelectItem>
+                        {/* No "3D model" here on purpose. Nothing renders a model
+                            through this node - picking it only ever produced the
+                            placeholder below, so an author could ship a work
+                            instruction with an empty grey box where they meant a
+                            model. Part annotation carries the real viewer. The
+                            renderer stays for any body authored before this. */}
                     </SelectContent>
                 </Select>
             </div>
@@ -227,8 +232,10 @@ function MediaPreview({
             />
         );
     }
-    // 3D model — engineers should reach for the PartAnnotation node when
-    // they want the interactive viewer. Here we just show a placeholder.
+    // 3D model — no longer offered in the kind dropdown, because nothing renders a
+    // model here and the placeholder is all an author ever got. Kept so a body
+    // authored before that still renders something rather than breaking, and it
+    // says where to go instead.
     return (
         <div
             className="flex w-full items-center justify-center rounded border bg-muted text-xs text-muted-foreground"

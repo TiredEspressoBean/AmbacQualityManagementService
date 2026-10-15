@@ -40,7 +40,7 @@ These tell the operator what to do. They capture nothing.
 | Node | Use for |
 |------|---------|
 | **Callout** | A warning, caution, or note that must stand out |
-| **Media** | An image or video demonstrating the work |
+| **Media** | An image or video demonstrating the work. For a 3D model, use **Part annotation** — Media does not render one |
 | **Document link** | A link to a controlled document |
 | **Part callout** | Highlighting a feature on the part |
 | **Measurement spec** | Showing the specification an operator is working to |
