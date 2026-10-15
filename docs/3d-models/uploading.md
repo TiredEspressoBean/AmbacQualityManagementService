@@ -4,19 +4,42 @@
 
 ## Supported File Formats
 
-| Format | Extension | Description |
-|--------|-----------|-------------|
-| **glTF** | .gltf, .glb | Recommended format, web-optimized |
-| **OBJ** | .obj | Common 3D format |
-| **STL** | .stl | CAD/3D printing format |
-| **STEP** | .step, .stp | CAD exchange format — converted for you |
-| **PLY** | .ply | Mesh format |
+| Format | Extension | How it is handled |
+|--------|-----------|-------------------|
+| **STEP** | .step, .stp | CAD — meshed for you |
+| **IGES** | .iges, .igs | CAD — meshed for you |
+| **STL** | .stl | Mesh |
+| **OBJ** | .obj | Mesh |
+| **PLY** | .ply | Mesh |
+| **glTF** | .gltf, .glb | Target format, optimised if needed |
 
-Everything is converted to **GLB** after upload, whatever you send.
+Up to **50 MB**. Everything is converted to **GLB**, whatever you send.
 
-!!! warning "FBX and IGES are not supported"
-    Earlier versions of this page listed them. Convert to STEP, STL, OBJ or
-    glTF first.
+!!! warning "FBX is not supported"
+    Convert to one of the formats above first. A file outside that list is
+    rejected with *"Unsupported format: `.fbx`"* and the list of what is
+    accepted.
+
+### Things worth knowing per format
+
+- **IGES** often carries open surfaces rather than closed solids. Those mesh,
+  but can show **gaps** a STEP export of the same part would not. If an IGES
+  model looks holed, re-export it as STEP.
+- **glTF must be self-contained.** Use **GLB** if your export has separate
+  `.bin` or texture files — the loose files are not uploaded with it.
+- **An OBJ's materials are not kept.** Geometry survives; colours and textures
+  do not.
+- **Large meshes are decimated** toward a face target, so the model the viewer
+  shows can be lighter than the file you sent.
+
+!!! important "Conversion is not instant"
+    The upload returns before the model is ready. It is saved as **Pending**,
+    a background job converts it, and it finishes **Completed** or **Failed** —
+    a failure records the reason on the model.
+
+    So a model is **not viewable the moment you upload it**, and a model that
+    never appears in the viewer is worth checking for a failed conversion
+    rather than assumed missing.
 
 ### Recommended: glTF
 
@@ -50,7 +73,7 @@ glTF (GL Transmission Format) is preferred because:
 |------|----------------|
 | < 10 MB | Optimal, fast loading |
 | 10-50 MB | Acceptable, may load slowly |
-| > 50 MB | Consider simplifying |
+| > 50 MB | **Refused** — the form will not take it |
 
 ## Model Optimization
 
@@ -73,14 +96,13 @@ For best performance, optimize models before uploading:
 
 ## Converting Models
 
-### From STEP
+### From CAD
 
-**You do not need to convert a STEP file.** Upload it as-is — the server
-converts it to GLB for you. Converting it yourself in CAD first is wasted work
+**You do not need to convert a STEP or IGES file.** Upload it as-is — the
+server meshes it for you. Converting it yourself in CAD first is wasted work
 and usually loses fidelity.
 
-Convert by hand only for a format not in the table above, such as FBX or
-IGES.
+Convert by hand only for a format outside the table above, such as FBX.
 
 ### From STL
 
