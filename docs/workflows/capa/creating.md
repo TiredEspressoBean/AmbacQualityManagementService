@@ -64,6 +64,25 @@ already exists. All of these are optional:
 | **Quality Reports** | One or more NCRs this CAPA answers |
 | **Dispositions** | Quarantine dispositions this CAPA answers |
 
+## Deciding *not* to raise one
+
+Not every nonconformance becomes a CAPA, and declining is a recorded decision
+rather than silence. From a quality report you can record the outcome as:
+
+| Decision | Means |
+|----------|-------|
+| **Not required** | This does not warrant corrective action |
+| **Deferred** | It might, but not now |
+
+Both demand a **written reason**, and that is the point: ISO 9001 **10.2.1**
+asks you to evaluate whether action is needed, and an evaluation nobody wrote
+down is indistinguishable from never having looked.
+
+!!! tip "The reason is what an auditor reads"
+    A list of reports with no CAPA and no explanation is the finding. A list
+    with *"single occurrence, contained, supplier notified"* against each one is
+    a quality system working.
+
 ## Linking Records
 
 Connect related items:

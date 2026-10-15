@@ -64,6 +64,21 @@ waiting on a planner.
 
     If Solve and Commit aren't there for you, that is the design, not a fault.
 
+## Pushing a job up the queue
+
+There is **no Expedite action**. Jumping a job to the front means setting the
+work order's **priority** to **Urgent** — *Expedited* on the control centre is
+not a state you set, it is simply what priority Urgent looks like.
+
+!!! warning "A priority change records no reason"
+    The audit trail keeps *what* changed and *who* changed it, and nothing asks
+    *why*. Hold, scrap, reject, ship-back and rollback all take a reason;
+    priority does not.
+
+    So if you move a job up, put the reason in a **shift note**. Nothing else
+    will carry it, and in three weeks the trail will show the change with no
+    account of it.
+
 ## Speaking to the next shift
 
 **Shift notes** are yours to write and edit — the handover record for what the

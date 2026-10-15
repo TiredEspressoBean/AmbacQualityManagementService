@@ -223,6 +223,24 @@ reassigns it — the machine or the operator — and applies immediately.
 Lane changes do nothing in the **Work orders** view, which groups by order
 rather than by resource.
 
+## What the solver books, and what it doesn't
+
+The schedule books the **nominal route** — the default path from where each part
+stands now. Branches that may never be taken are **not** booked in advance:
+
+- **Rework and escalation** branches, which exist for parts that fail
+- **Repair branches on a reman unit**, which are reached only when a teardown
+  raises that repair code
+
+A reman core therefore books its whole main line, and the repair work hanging
+off it books nothing until it is actually called for. A re-solve picks up the
+reality once a part fails or a repair is raised.
+
+!!! note "This is deliberate, and it means the board under-states reman"
+    Booking every branch a part might take would reserve capacity for work that
+    mostly will not happen. The cost is that a shop with heavy repair content
+    sees a plan lighter than its real load, and leans on re-solving.
+
 ## Did the floor follow the plan?
 
 Each scheduled task records an **actual start** and **actual end** as a unit
