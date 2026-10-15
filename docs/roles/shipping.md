@@ -80,18 +80,19 @@ those customers, so you know before you pack.
 **Shipping card** shows shipped against ordered per line, the shipments
 themselves, and flags late lines.
 
-!!! warning "The percentage describes only part of what you shipped"
-    On-time is measured against each **order line's due date**. A work order
-    raised directly, with no order line, has no date to measure — and it is
-    **silently left out of the calculation** rather than counted late.
+**What it measures against.** The work order's **order line due date** where
+there is one, and the work order's own **expected completion** where there
+isn't — so a shop that raises work orders directly is still measured.
 
-    So the figure is a percentage of the shipments that happen to carry order
-    lines, not of everything that went out. A shop whose work orders mostly
-    bypass order lines can read a confident **100%** off a handful of
-    deliveries while most of its shipping is invisible to the measure.
+!!! note "Anything with no date at all is reported, not hidden"
+    A shipped work order carrying neither date cannot be judged on time, so it
+    is excluded from the percentage — and the count appears beside it as
+    **"N not measurable"**.
 
-    Before quoting the number to anyone, check how many of your shipped work
-    orders actually carry an order line.
+    Read the two together. *100% (2 of 2) · 4 not measurable* is a very
+    different claim from *100%*, and the second is what this figure used to
+    show. If the not-measurable count is high, the percentage is describing a
+    small corner of your shipping.
 
 ## Next Steps
 
