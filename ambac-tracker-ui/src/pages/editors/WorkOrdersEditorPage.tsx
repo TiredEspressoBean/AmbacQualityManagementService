@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
+import { parseDateOnly } from "@/lib/date-only";
 
 const col = createColumnHelper<Schema<"WorkOrderList">>();
 
@@ -86,7 +87,7 @@ export function WorkOrdersEditorPage() {
                     priority: 4,
                     renderCell: (workOrder) =>
                         workOrder.expected_completion
-                            ? format(new Date(workOrder.expected_completion), "MMM d, yyyy")
+                            ? format(parseDateOnly(workOrder.expected_completion), "MMM d, yyyy")
                             : "—",
                 }),
                 col({

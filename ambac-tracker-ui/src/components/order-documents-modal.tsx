@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScopedDocuments } from "@/hooks/useScopedDocuments";
+import { parseDateOnly } from "@/lib/date-only";
 
 interface Document {
     id: string;
@@ -50,7 +51,7 @@ function DocumentRow({ doc }: { doc: Document }) {
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{doc.file_name}</p>
                 <p className="text-xs text-muted-foreground">
-                    {format(new Date(doc.upload_date), "MMM d, yyyy")}
+                    {format(parseDateOnly(doc.upload_date), "MMM d, yyyy")}
                 </p>
             </div>
             {doc.file_url && (

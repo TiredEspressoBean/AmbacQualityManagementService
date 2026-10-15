@@ -38,6 +38,7 @@ import { apiErrorMessage } from '@/lib/api/describeApiError'
 import type { Schema } from '@/lib/api/types'
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader.tsx";
 import { isFieldRequired } from '@/lib/zod-config'
+import { parseDateOnly } from "@/lib/date-only";
 
 const WORKORDER_STATUS = schemas.WorkOrderStatusEnum.options
 const PRIORITY_OPTIONS = [1, 2, 3, 4] as const
@@ -115,7 +116,7 @@ export default function WorkOrderFormPage() {
                 notes: workOrder.notes ?? "",
                 related_order: workOrder.related_order ?? "",
                 process: workOrder.process ?? undefined,
-                expected_completion: workOrder.expected_completion ? new Date(workOrder.expected_completion) : new Date(),
+                expected_completion: workOrder.expected_completion ? parseDateOnly(workOrder.expected_completion) : new Date(),
             } as unknown as FormValues)
         }
     }, [mode, workOrder, form])

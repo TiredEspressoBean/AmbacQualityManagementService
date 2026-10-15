@@ -30,6 +30,7 @@ import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { ArrowLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { matchKey } from "@/lib/query-filters";
+import { format } from "date-fns";
 
 const formSchema = z.object({
     // Blank: one is assigned (CORE-<year>-####), as the API does for every receipt.
@@ -69,7 +70,9 @@ export function CoreReceiveFormPage() {
             core_number: "",
             serial_number: "",
             core_type: "",
-            received_date: new Date().toISOString().split("T")[0],
+            // Local date, not `toISOString().split("T")[0]` — that is the UTC
+            // date, so after ~8pm ET the form opened pre-filled with tomorrow.
+            received_date: format(new Date(), "yyyy-MM-dd"),
             customer: "__none__",
             source_type: "CUSTOMER_RETURN",
             source_reference: "",

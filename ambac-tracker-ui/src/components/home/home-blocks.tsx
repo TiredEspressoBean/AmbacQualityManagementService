@@ -62,6 +62,7 @@ import {
 } from "@/hooks/useProcessChangeArtifacts";
 import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
+import { parseDateOnly } from "@/lib/date-only";
 
 /** Normalize a list endpoint's envelope (paginated `{count,results}` or a bare
  *  array) to a row count — the change-control hooks return an untyped envelope. */
@@ -368,7 +369,7 @@ function MyQualityActionsBlock({ user }: { user: AuthUser }) {
     const { data: dispResp } = useQuery(myDispositionsOptions(user.pk));
 
     const openTasks = (tasks ?? []).filter((t) => t.status !== "COMPLETED");
-    const overdue = openTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date()).length;
+    const overdue = openTasks.filter((t) => t.due_date && parseDateOnly(t.due_date) < new Date()).length;
     const dispositions = dispResp?.results ?? [];
     const total = approvals.length + openTasks.length + dispositions.length;
 
@@ -1264,7 +1265,7 @@ function SupplierQualsExpiringBlock() {
             ...rowsOf<Row>(expiredResp),
             ...rowsOf<Row>(activeResp).filter((q) => {
                 if (!q.expiry_date) return false;
-                const d = new Date(q.expiry_date);
+                const d = parseDateOnly(q.expiry_date);
                 return d <= horizon;
             }),
         ];

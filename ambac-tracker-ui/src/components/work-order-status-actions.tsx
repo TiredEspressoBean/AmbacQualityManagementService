@@ -33,6 +33,7 @@ import { PlayCircle, PauseCircle, XCircle, RotateCcw } from "lucide-react";
 import { useUpdateWorkOrder } from "@/hooks/useUpdateWorkOrder";
 import { toast } from "sonner";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
+import { format } from "date-fns";
 
 type WorkOrderStatus = WorkOrderStatusEnum;
 
@@ -75,7 +76,9 @@ export function WorkOrderStatusActions({
         newStatus: WorkOrderStatus,
         notePrefix?: string
     ) => {
-        const timestamp = new Date().toISOString().split("T")[0];
+        // The local date — the UTC one stamps tomorrow on a late shift, and this
+        // string is read back by whoever opens the work order.
+        const timestamp = format(new Date(), "yyyy-MM-dd");
         let updatedNotes = currentNotes || "";
 
         if (notePrefix) {

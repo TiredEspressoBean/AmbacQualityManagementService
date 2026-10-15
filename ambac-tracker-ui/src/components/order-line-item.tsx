@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments";
+import { parseDateOnly } from "@/lib/date-only";
 
 interface QualityInfo {
     has_errors?: boolean;
@@ -247,7 +248,7 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-medium truncate">{doc.file_name}</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {doc.upload_date ? format(new Date(doc.upload_date), "MMM d, yyyy") : ""}
+                                                    {doc.upload_date ? format(parseDateOnly(doc.upload_date), "MMM d, yyyy") : ""}
                                                 </p>
                                             </div>
                                             <Download className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -27,6 +27,7 @@ import { OrderDocumentsModal } from "@/components/order-documents-modal";
 import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
 import { OrderShippingCard } from "@/components/orders/OrderShippingCard";
 import { QuickComposer } from "@/components/QuickComposer";
+import { parseDateOnly } from "@/lib/date-only";
 
 function getStatusIcon(stage: any, size: "sm" | "md" = "md") {
     const sizeClass = size === "sm" ? "w-4 h-4" : "w-5 h-5";
@@ -304,12 +305,12 @@ export function OrderDetailsPage() {
 
     // Calculate days until delivery
     const daysUntilDelivery = estimated_completion
-        ? differenceInDays(new Date(estimated_completion), new Date())
+        ? differenceInDays(parseDateOnly(estimated_completion), new Date())
         : null;
 
     // Check if delivery date changed
     const deliveryDateChanged = original_completion_date && estimated_completion &&
-        new Date(original_completion_date).getTime() !== new Date(estimated_completion).getTime();
+        new Date(original_completion_date).getTime() !== parseDateOnly(estimated_completion).getTime();
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -364,10 +365,10 @@ export function OrderDetailsPage() {
                                 {estimated_completion ? (
                                     <>
                                         <p className="text-3xl font-bold tracking-tight">
-                                            {format(new Date(estimated_completion), "MMM d")}
+                                            {format(parseDateOnly(estimated_completion), "MMM d")}
                                         </p>
                                         <p className="text-sm text-muted-foreground">
-                                            {format(new Date(estimated_completion), "yyyy")}
+                                            {format(parseDateOnly(estimated_completion), "yyyy")}
                                         </p>
                                         {daysUntilDelivery !== null && daysUntilDelivery >= 0 && (
                                             <Badge variant="outline" className="mt-2">
@@ -675,7 +676,7 @@ export function OrderDetailsPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-medium truncate">{doc.file_name}</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {doc.upload_date ? format(new Date(doc.upload_date), "MMM d, yyyy") : ""}
+                                                    {doc.upload_date ? format(parseDateOnly(doc.upload_date), "MMM d, yyyy") : ""}
                                                 </p>
                                             </div>
                                             <Download className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FileSignature, X } from "lucide-react";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 
 const col = createColumnHelper<Schema<"Documents">>();
 
@@ -181,7 +182,7 @@ export function DocumentsEditorPage() {
                     renderCell: (doc) => (
                         <span className="text-sm">
                             {doc.upload_date
-                                ? new Date(doc.upload_date).toLocaleDateString()
+                                ? parseDateOnly(doc.upload_date).toLocaleDateString()
                                 : "—"}
                         </span>
                     ),

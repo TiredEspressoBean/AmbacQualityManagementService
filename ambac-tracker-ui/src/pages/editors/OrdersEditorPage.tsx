@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 import type { operations } from "@/lib/api/generated-types";
+import { parseDateOnly } from "@/lib/date-only";
 
 const col = createColumnHelper<Schema<"Orders">>();
 
@@ -91,7 +92,7 @@ export default function OrdersEditorPage() {
                     header: "Est. Completion",
                     renderCell: (order) =>
                         order.estimated_completion
-                            ? format(new Date(order.estimated_completion), "MMM d, yyyy")
+                            ? format(parseDateOnly(order.estimated_completion), "MMM d, yyyy")
                             : "—",
                     priority: 4,
                 }),

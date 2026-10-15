@@ -11,6 +11,7 @@ import { FileSignature } from "lucide-react";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
 import type { CapaListSearchParams } from "@/lib/routes/search-params";
+import { parseDateOnly } from "@/lib/date-only";
 
 const col = createColumnHelper<Schema<"CAPA">>();
 
@@ -118,7 +119,7 @@ export function CapaListPage() {
                         const isOverdue = capa.is_overdue;
                         return (
                             <span className={isOverdue ? "text-destructive font-medium" : ""}>
-                                {new Date(capa.due_date).toLocaleDateString()}
+                                {parseDateOnly(capa.due_date).toLocaleDateString()}
                                 {isOverdue && " (Overdue)"}
                             </span>
                         );

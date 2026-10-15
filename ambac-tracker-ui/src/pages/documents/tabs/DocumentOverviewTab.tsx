@@ -15,6 +15,7 @@ import {
 import { useDetachDocument } from "@/hooks/useDetachDocument"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { AttachDocumentDialog } from "@/components/documents/AttachDocumentDialog"
+import { parseDateOnly } from "@/lib/date-only";
 
 type DocumentOverviewTabProps = {
     document: any
@@ -140,7 +141,7 @@ export function DocumentOverviewTab({ document }: DocumentOverviewTabProps) {
                             </span>
                             <p className="font-medium">
                                 {document.upload_date
-                                    ? new Date(document.upload_date).toLocaleDateString()
+                                    ? parseDateOnly(document.upload_date).toLocaleDateString()
                                     : "Unknown"}
                             </p>
                         </div>

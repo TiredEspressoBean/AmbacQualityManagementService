@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { FileIcon } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 
 type Document = Schema<"Documents">;
 
@@ -90,7 +91,7 @@ const DocumentsSection: React.FC<Props> = ({ documents, isLoading, error, onDocu
                                 <div className="text-muted-foreground text-xs">
                                     Uploaded by {doc.uploaded_by_name || "Unknown"} on{" "}
                                     {doc.upload_date
-                                        ? new Date(doc.upload_date).toLocaleDateString()
+                                        ? parseDateOnly(doc.upload_date).toLocaleDateString()
                                         : "—"}
                                     {doc.version && <> • v{doc.version}</>}
                                     {doc.classification && <> • {doc.classification}</>}

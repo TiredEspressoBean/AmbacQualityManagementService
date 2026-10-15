@@ -7,6 +7,7 @@ import { useMyTraining, myTrainingOptions } from "@/hooks/useMyTraining"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
 import type { QueryClient } from "@tanstack/react-query"
+import { parseDateOnly } from "@/lib/date-only";
 
 // Prefetch function for route loader
 export const prefetchTrainingDashboard = (queryClient: QueryClient) => {
@@ -170,7 +171,7 @@ export function TrainingDashboardPage() {
                                             {record.training_type_info?.name}
                                             {record.expires_date && (
                                                 <span className="ml-2">
-                                                    Expires: {new Date(record.expires_date).toLocaleDateString()}
+                                                    Expires: {parseDateOnly(record.expires_date).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>
@@ -225,10 +226,10 @@ export function TrainingDashboardPage() {
                                             </div>
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">
-                                            Completed: {new Date(record.completed_date).toLocaleDateString()}
+                                            Completed: {parseDateOnly(record.completed_date).toLocaleDateString()}
                                             {record.expires_date && (
                                                 <span className="ml-2">
-                                                    | Expires: {new Date(record.expires_date).toLocaleDateString()}
+                                                    | Expires: {parseDateOnly(record.expires_date).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>

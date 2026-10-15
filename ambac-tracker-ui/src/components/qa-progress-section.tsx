@@ -9,6 +9,7 @@ import { memo, useState } from "react";
 import { useQaSignoffs } from "@/hooks/useInspectionInbox";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { QaSignOffDialog, type SignOffTarget } from "@/components/qa/QaSignOffDialog";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Guard against null / invalid dates so a missing timestamp renders nothing
 // rather than "Invalid Date".
@@ -92,7 +93,7 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                             <p className="text-sm font-medium">Due Date</p>
                             <p className="text-sm text-muted-foreground">
                                 {workOrder.expected_completion 
-                                    ? new Date(workOrder.expected_completion).toLocaleDateString()
+                                    ? parseDateOnly(workOrder.expected_completion).toLocaleDateString()
                                     : "Not set"
                                 }
                             </p>

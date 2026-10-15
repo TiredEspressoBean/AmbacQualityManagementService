@@ -25,6 +25,7 @@ import {
 import { ArrowLeft, Factory, GraduationCap, Pencil, Plus, Star, User as UserIcon, X } from "lucide-react";
 import { ReportButton } from "@/components/reports/ReportButton";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { parseDateOnly } from "@/lib/date-only";
 
 const userMembershipsOptions = (userId: number) =>
     queryOptions({
@@ -437,7 +438,7 @@ export function UserDetailPage() {
                                                     </TableCell>
                                                     <TableCell>
                                                         {record.completed_date
-                                                            ? new Date(record.completed_date).toLocaleDateString()
+                                                            ? parseDateOnly(record.completed_date).toLocaleDateString()
                                                             : "—"}
                                                     </TableCell>
                                                     <TableCell>
@@ -449,7 +450,7 @@ export function UserDetailPage() {
                                                                         : ""
                                                                 }
                                                             >
-                                                                {new Date(record.expires_date).toLocaleDateString()}
+                                                                {parseDateOnly(record.expires_date).toLocaleDateString()}
                                                             </span>
                                                         ) : (
                                                             <span className="text-muted-foreground">Never</span>

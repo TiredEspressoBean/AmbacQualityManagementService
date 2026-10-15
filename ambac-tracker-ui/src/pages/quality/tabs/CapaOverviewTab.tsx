@@ -5,6 +5,7 @@ import { useRetrieveQualityReportsBatch } from "@/hooks/useRetrieveQualityReport
 import { useRetrieveDispositionsBatch } from "@/hooks/useRetrieveDispositionsBatch"
 import { AlertTriangle } from "lucide-react"
 import { asUserInfo } from "@/lib/extended-types"
+import { parseDateOnly } from "@/lib/date-only";
 
 type CapaOverviewTabProps = {
     capa: any
@@ -70,7 +71,7 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                             <span className="text-muted-foreground">Due Date</span>
                             <p className="font-medium">
                                 {capa.due_date
-                                    ? new Date(capa.due_date).toLocaleDateString()
+                                    ? parseDateOnly(capa.due_date).toLocaleDateString()
                                     : "Not set"}
                             </p>
                         </div>
@@ -78,7 +79,7 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                             <div>
                                 <span className="text-muted-foreground">Completed Date</span>
                                 <p className="font-medium">
-                                    {new Date(capa.completed_date).toLocaleDateString()}
+                                    {parseDateOnly(capa.completed_date).toLocaleDateString()}
                                 </p>
                             </div>
                         )}

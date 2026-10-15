@@ -13,6 +13,7 @@ import {
 import { Download, CheckCircle2, History, Loader2, ExternalLink } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { useDocumentVersionHistory } from "@/hooks/useDocumentVersionHistory"
+import { parseDateOnly } from "@/lib/date-only";
 
 type DocumentVersionsTabProps = {
     document: any
@@ -95,7 +96,7 @@ export function DocumentVersionsTab({ document }: DocumentVersionsTabProps) {
                                             </TableCell>
                                             <TableCell>
                                                 {ver.upload_date
-                                                    ? new Date(ver.upload_date).toLocaleDateString()
+                                                    ? parseDateOnly(ver.upload_date).toLocaleDateString()
                                                     : "—"}
                                             </TableCell>
                                             <TableCell>

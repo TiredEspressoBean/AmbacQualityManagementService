@@ -118,6 +118,7 @@ import type {
     StepEdge,
 } from "@/lib/api/generated";
 import type { Schema as ApiSchema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 // `useRetrieveProcessWithSteps` returns the with-steps payload; this is the
 // shape adaptProcessSteps consumes.
 type ProcessRecord = ApiSchema<"ProcessWithSteps">;
@@ -1161,7 +1162,7 @@ export function WorkOrderControlPage() {
 
     const priorityCfg = wo ? WO_PRIORITY_LABELS[wo.priority] : WO_PRIORITY_LABELS[3];
     const isOverdue = wo
-        ? new Date(wo.expected_completion) < new Date() && wo.status !== "COMPLETED" && wo.status !== "CANCELLED"
+        ? parseDateOnly(wo.expected_completion) < new Date() && wo.status !== "COMPLETED" && wo.status !== "CANCELLED"
         : false;
 
     const filtered = useMemo(() => {

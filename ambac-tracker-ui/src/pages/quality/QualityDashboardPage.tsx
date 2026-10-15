@@ -8,6 +8,7 @@ import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { Badge } from "@/components/ui/badge"
 import { StatusBadge } from "@/components/ui/status-badge"
 import type { QueryClient } from "@tanstack/react-query"
+import { parseDateOnly } from "@/lib/date-only";
 
 // Prefetch function for route loader - uses same query keys as hooks
 export const prefetchQualityDashboard = (queryClient: QueryClient) => {
@@ -201,7 +202,7 @@ export function QualityDashboardPage() {
                                         </div>
                                         {task.due_date && (
                                             <div className="text-xs text-muted-foreground mt-1">
-                                                Due: {new Date(task.due_date).toLocaleDateString()}
+                                                Due: {parseDateOnly(task.due_date).toLocaleDateString()}
                                             </div>
                                         )}
                                     </Link>

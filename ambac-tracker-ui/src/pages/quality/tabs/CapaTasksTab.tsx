@@ -25,6 +25,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { matchKey } from "@/lib/query-filters";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { parseDateOnly } from "@/lib/date-only";
 
 type CapaTasksTabProps = {
     capa: any
@@ -256,7 +257,7 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                         {task.due_date && (
                             <div className={`flex items-center gap-1 ${task.is_overdue ? "text-destructive" : ""}`}>
                                 <Calendar className="h-3 w-3" />
-                                {new Date(task.due_date).toLocaleDateString()}
+                                {parseDateOnly(task.due_date).toLocaleDateString()}
                             </div>
                         )}
                         <Badge variant="secondary" className="text-xs">

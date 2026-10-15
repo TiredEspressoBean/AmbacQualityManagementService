@@ -19,6 +19,7 @@ import { ReportButton } from "@/components/reports/ReportButton";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
+import { parseDateOnly } from "@/lib/date-only";
 
 const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
     1: { label: "Critical", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
@@ -63,7 +64,7 @@ export function WorkOrderDetailPage() {
 
     // Check if work order is overdue
     const isOverdue = workOrder?.expected_completion
-        ? new Date(workOrder.expected_completion) < new Date()
+        ? parseDateOnly(workOrder.expected_completion) < new Date()
         : false;
 
     if (isLoadingWorkOrder) {

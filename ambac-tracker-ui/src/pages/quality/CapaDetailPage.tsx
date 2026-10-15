@@ -28,6 +28,7 @@ import { CapaApprovalTab } from "@/pages/quality/tabs/CapaApprovalTab"
 import { CapaDocumentsTab } from "@/pages/quality/tabs/CapaDocumentsTab"
 import { CapaHistoryTab } from "@/pages/quality/tabs/CapaHistoryTab"
 import { ReportButton } from "@/components/reports/ReportButton"
+import { parseDateOnly } from "@/lib/date-only";
 
 // Demo data for ID 0
 const DEMO_CAPA = {
@@ -379,7 +380,7 @@ export function CapaDetailPage() {
                             </div>
                             <p className={`font-medium ${capa?.is_overdue ? "text-destructive" : ""}`}>
                                 {capa?.due_date
-                                    ? new Date(capa.due_date).toLocaleDateString()
+                                    ? parseDateOnly(capa.due_date).toLocaleDateString()
                                     : "Not set"}
                             </p>
                         </div>

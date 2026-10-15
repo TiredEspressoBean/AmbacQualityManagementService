@@ -2,6 +2,7 @@ import React from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { parseDateOnly } from "@/lib/date-only";
 
 /**
  * PDF.js worker
@@ -102,7 +103,7 @@ const DocumentRenderer: React.FC<Props> = ({ modelData, loading = false }) => {
                         {modelData.file_name || fileUrl}
                     </a>
                 </p>
-                {modelData.upload_date && <p>Uploaded: {new Date(modelData.upload_date).toLocaleDateString()}</p>}
+                {modelData.upload_date && <p>Uploaded: {parseDateOnly(modelData.upload_date).toLocaleDateString()}</p>}
             </div>
 
             <div className="border rounded bg-muted/10 p-3 flex-1 min-h-0 overflow-auto">{renderFileContent()}</div>

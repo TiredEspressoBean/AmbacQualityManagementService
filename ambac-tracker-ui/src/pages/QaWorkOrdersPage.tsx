@@ -33,6 +33,7 @@ import { useRetrieveParts } from "@/hooks/parts";
 import { QaPartActionsCell } from "@/components/qa-parts-actions-cell";
 import type { operations } from "@/lib/api/generated-types";
 import type { Schema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 
 type WorkOrderListItem = Schema<"WorkOrderList">;
 type Part = Schema<"Parts">;
@@ -185,7 +186,7 @@ export default function QaWorkOrdersPage() {
                                     <TableCell>{workOrder.quantity}</TableCell>
                                     <TableCell>
                                         {workOrder.expected_completion
-                                            ? new Date(workOrder.expected_completion).toLocaleDateString()
+                                            ? parseDateOnly(workOrder.expected_completion).toLocaleDateString()
                                             : "-"
                                         }
                                     </TableCell>

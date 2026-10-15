@@ -5,6 +5,7 @@ import { EditTrainingRecordActionCell } from "@/components/edit-training-record-
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { Schema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 
 const LEVEL_SHORT: Record<number, string> = {
     1: "Trainee",
@@ -87,7 +88,7 @@ export function TrainingRecordsPage() {
                     header: "Completed",
                     renderCell: (record) =>
                         record.completed_date
-                            ? new Date(record.completed_date).toLocaleDateString()
+                            ? parseDateOnly(record.completed_date).toLocaleDateString()
                             : "—",
                 }),
                 col({
@@ -97,7 +98,7 @@ export function TrainingRecordsPage() {
                         const isExpired = record.status === 'EXPIRED';
                         return (
                             <span className={isExpired ? "text-destructive font-medium" : ""}>
-                                {new Date(record.expires_date).toLocaleDateString()}
+                                {parseDateOnly(record.expires_date).toLocaleDateString()}
                             </span>
                         );
                     },

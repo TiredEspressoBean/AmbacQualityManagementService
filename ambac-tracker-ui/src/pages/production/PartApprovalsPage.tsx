@@ -18,6 +18,7 @@ import {
     useListPartApprovals, useGrantPartApproval, useSuspendPartApproval, useDisqualifyPartApproval,
 } from "@/hooks/usePartApprovals";
 import type { PartApprovalListParams } from "@/hooks/usePartApprovals";
+import { parseDateOnly } from "@/lib/date-only";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     APPROVED: "default", CONDITIONAL: "secondary", PENDING: "outline",
@@ -35,7 +36,7 @@ const TYPE_FILTERS: TypeFilter[] = ["", "PPAP", "FAI"];
 
 function expiryTone(expiry: string | null): string {
     if (!expiry) return "";
-    const days = Math.ceil((new Date(expiry).getTime() - Date.now()) / 86_400_000);
+    const days = Math.ceil((parseDateOnly(expiry).getTime() - Date.now()) / 86_400_000);
     if (days < 0) return "text-destructive font-medium";
     if (days <= 30) return "text-amber-600 font-medium";
     return "";

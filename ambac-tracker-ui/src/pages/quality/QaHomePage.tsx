@@ -37,6 +37,7 @@ import { useMyDispositions } from "@/hooks/useMyDispositions";
 import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { usePendingFpis } from "@/hooks/usePendingFpis";
 import { ScanBox } from "@/components/home/home-blocks";
+import { parseDateOnly } from "@/lib/date-only";
 
 type InboxType = InspectionInboxRow["type"];
 
@@ -306,7 +307,7 @@ function MyActionsPanel({ user }: { user: AuthUser }) {
     const { data: dispositions = [] } = useMyDispositions(user.pk);
 
     const openTasks = tasks.filter((t) => t.status !== "COMPLETED");
-    const overdue = openTasks.filter((t) => t.due_date && new Date(t.due_date) < new Date()).length
+    const overdue = openTasks.filter((t) => t.due_date && parseDateOnly(t.due_date) < new Date()).length
         + approvals.filter((a) => a.is_overdue).length;
 
     return (

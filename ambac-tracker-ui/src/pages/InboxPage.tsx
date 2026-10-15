@@ -58,6 +58,7 @@ import {
     type SignatureVerificationData,
 } from "@/components/approval/SignatureVerification";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { parseDateOnly } from "@/lib/date-only";
 import { matchKey } from "@/lib/query-filters";
 
 // ============================================================================
@@ -102,7 +103,7 @@ function transformCapaTask(task: CapaTask): InboxItem {
         description: task.capa_info?.description,
         reference: task.capa_info?.capa_number || `CAPA #${task.capa}`,
         referenceUrl: `/quality/capas/${task.capa}`,
-        dueDate: task.due_date ? new Date(task.due_date) : undefined,
+        dueDate: task.due_date ? parseDateOnly(task.due_date) : undefined,
         assignedTo: task.assigned_to_info?.full_name || task.assigned_to_info?.username,
         status: task.status,
         statusDisplay: task.status_display,
@@ -137,7 +138,7 @@ function transformApproval(approval: PendingApproval): InboxItem {
 }
 
 function transformDisposition(disp: MyDisposition): InboxItem {
-    const dueDate = disp.due_date ? new Date(disp.due_date) : undefined;
+    const dueDate = disp.due_date ? parseDateOnly(disp.due_date) : undefined;
     const isOverdue = dueDate ? dueDate < new Date() : false;
     return {
         id: `disposition-${disp.id}`,

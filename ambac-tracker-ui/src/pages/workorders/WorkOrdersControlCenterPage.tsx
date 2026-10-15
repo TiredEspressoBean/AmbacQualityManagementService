@@ -73,6 +73,7 @@ import { useBulkTransitionWorkOrders } from "@/hooks/useBulkTransitionWorkOrders
 import { useBulkPlaceOnHoldWorkOrders } from "@/hooks/useBulkPlaceOnHoldWorkOrders";
 import { useBulkClearHoldWorkOrders } from "@/hooks/useBulkClearHoldWorkOrders";
 import { BulkAddPartsDialog } from "./BulkAddPartsDialog";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Nested serializer shapes that the codegen exposes as `{}`. The backend
 // produces these fields on WorkOrderList; we cast through for FK crawl.
@@ -303,7 +304,7 @@ export function WorkOrdersControlCenterPage() {
         return workOrders.map((w) => {
             const overdue =
                 !!w.expected_completion &&
-                new Date(w.expected_completion) < today &&
+                parseDateOnly(w.expected_completion) < today &&
                 w.status !== "COMPLETED";
             const dueToday = w.expected_completion === today.toISOString().slice(0, 10);
             const expedited = w.priority === 1;

@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { ReportButton } from "@/components/reports/ReportButton"
 import type { QueryClient } from "@tanstack/react-query"
+import { parseDateOnly } from "@/lib/date-only";
 
 // Prefetch function for route loader
 export const prefetchCalibrationDashboard = (queryClient: QueryClient) => {
@@ -181,7 +182,7 @@ export function CalibrationDashboardPage() {
                                             {record.equipment_info?.equipment_type}
                                             {record.due_date && (
                                                 <span className="ml-2">
-                                                    Due: {new Date(record.due_date).toLocaleDateString()}
+                                                    Due: {parseDateOnly(record.due_date).toLocaleDateString()}
                                                 </span>
                                             )}
                                         </div>

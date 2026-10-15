@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage.tsx";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Schema } from "@/lib/api/types";
+import { parseDateOnly } from "@/lib/date-only";
 
 // Custom wrapper hook for consistent usage
 function useQaWorkOrdersList({
@@ -98,7 +99,7 @@ export function QaWorkOrdersPage() {
                     header: "Due Date",
                     renderCell: (wo) => {
                         if (!wo.expected_completion) return <span className="text-muted-foreground">—</span>;
-                        return new Date(wo.expected_completion).toLocaleDateString();
+                        return parseDateOnly(wo.expected_completion).toLocaleDateString();
                     }
                 }),
                 col({

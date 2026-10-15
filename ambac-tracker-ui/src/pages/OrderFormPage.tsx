@@ -43,6 +43,7 @@ import { ordersEditFormRoute } from "@/router";
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader";
 import { isFieldRequired } from "@/lib/zod-config";
 import { matchKey } from "@/lib/query-filters";
+import { parseDateOnly } from "@/lib/date-only";
 
 const ORDER_STATUS = schemas.OrdersStatusEnum.options;
 
@@ -148,7 +149,7 @@ export default function OrderFormPage() {
             form.reset({
                 name: order.name || "",
                 customer: order.customer ?? undefined,
-                estimated_completion: order.estimated_completion ? new Date(order.estimated_completion) : undefined,
+                estimated_completion: order.estimated_completion ? parseDateOnly(order.estimated_completion) : undefined,
                 order_status: order.order_status || ORDER_STATUS[0],
                 current_hubspot_gate: order.current_hubspot_gate ?? undefined,
                 current_milestone: order.current_milestone ?? undefined,
