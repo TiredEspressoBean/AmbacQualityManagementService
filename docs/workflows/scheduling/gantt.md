@@ -244,8 +244,20 @@ reality once a part fails or a repair is raised.
 ## Did the floor follow the plan?
 
 Each scheduled task records an **actual start** and **actual end** as a unit
-enters and leaves its step. That is the planned-versus-actual data behind
-variance reporting.
+enters and leaves its step.
+
+**Where to see it:** click a bar. The task detail panel shows the actual start
+and end beside the planned ones, with the variance between them — a task still
+running reads *in progress*.
+
+!!! note "One bar at a time, not across the board"
+    That panel is the only place actuals surface. There is **no adherence view**
+    — nothing aggregates them into how closely the shop followed the schedule,
+    which lines drifted, or how many starts were late.
+
+    So you can answer *"did this task run to plan?"* for any task you click, and
+    you cannot answer *"did the floor follow the plan?"* without clicking
+    through them. The data is all captured; the summary is what is missing.
 
 !!! important "Capture records; it does not react"
     Stamping an actual deliberately **does not** re-time the plan or mark the
