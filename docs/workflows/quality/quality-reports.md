@@ -204,17 +204,19 @@ Severity-based routing, assignment alerts and closure notices are not seeded.
 | `view_qualityreports` | View reports |
 | `add_qualityreports` | Create reports |
 | `change_qualityreports` | Edit reports |
-| `approve_own_qualityreports` | Granted to no role by default — see below |
 
 !!! note "A quality report is not approved"
-    There is no approval step on a report and no approval type for one. The
-    authorized act is the **disposition**, gated by `approve_disposition`, and
-    a Critical or Major disposition cannot close without a recorded containment
-    action. That is where the authority to accept a nonconformance sits.
+    There is no approval step on a report and no approval type for one, so
+    there are no approve permissions either. The authorized act is the
+    **disposition**, gated by `approve_disposition`, and a Critical or Major
+    disposition cannot close without a recorded containment action. That is
+    where the authority to accept a nonconformance sits.
 
-    `approve_own_qualityreports` is granted to **no role** on purpose: it is a
-    licence to self-approve, which is the thing segregation of duties exists to
-    prevent. A tenant can grant it manually, eyes open.
+!!! note "Where self-approval is controlled"
+    Not here. Each approval **template** carries **Allow Self-Approval**, off by
+    default; where a tenant turns it on, the approver must also write a
+    justification. See
+    [Approval Templates](../../admin/setup/approval-templates.md).
 
 ## Next Steps
 

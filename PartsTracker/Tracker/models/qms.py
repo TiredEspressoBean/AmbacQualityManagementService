@@ -506,9 +506,10 @@ class QualityReports(SecureModel):
         # admin, validation messages and audit timelines. Codenames are unchanged.
         verbose_name_plural = 'Quality Reports'
         verbose_name = 'Quality Report'
-        permissions = [
-            ("approve_own_qualityreports", "Can approve own quality reports"),
-        ]
+        # No custom permissions. A quality report is not approved — there is no
+        # QUALITY_REPORT approval type. The authorized act is the disposition
+        # (`approve_disposition`), and self-approval is controlled per approval
+        # template by `ApprovalTemplate.allow_self_approval`, not by a perm.
         indexes = [
             models.Index(fields=['part', 'status'], name='qr_part_status_idx'),
             models.Index(fields=['step', 'created_at'], name='qr_step_created_idx'),

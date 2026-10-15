@@ -365,9 +365,11 @@ AUTHORING_PERMISSIONS = [
 # Segregation of duties: e-signature approve/verify/close verbs + approver
 # routing. QA Manager + Tenant Admin only — the person doing the work must not
 # be the person who can approve it.
-# NOTE: `approve_own_qualityreports` ("Can approve own quality reports") is
-# deliberately granted to NO role — it is a license to self-approve, which is
-# exactly what this set exists to prevent. See test_permission_coverage.py.
+# NOTE: self-approval is NOT governed from here. It is a per-template switch,
+# `ApprovalTemplate.allow_self_approval` (default False), enforced in
+# `services.core.approval` — which also demands a written justification when a
+# tenant does allow it. A permission-shaped version of that control
+# (`approve_own_qualityreports`) existed until 2026-10-15 and gated nothing.
 SOD_APPROVAL_PERMISSIONS = [
     'verify_capa',
     'review_rca',

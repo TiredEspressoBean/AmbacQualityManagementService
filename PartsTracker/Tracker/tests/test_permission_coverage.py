@@ -102,10 +102,6 @@ SYSTEM_WRITTEN_MODELS = {
 # Granted to NO role as deliberate policy (not a gap to burn down). Maps
 # codename -> reason.
 WITHHELD_PERMS = {
-    # A license to self-approve — the exact thing SOD_APPROVAL_PERMISSIONS
-    # exists to prevent. Tenants wanting it can grant it manually, eyes open.
-    'approve_own_qualityreports':
-        'self-approval bypasses segregation of duties',
     # DocumentLink rows are immutable associations: created by attach
     # (add_documentlink) and removed by detach (delete_documentlink), never
     # edited. There is no change endpoint, so the perm is granted to no role.
