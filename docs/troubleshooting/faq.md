@@ -30,7 +30,8 @@ Yes, the interface is responsive and works on tablets and phones. For complex ta
 Open the user menu at the bottom of the sidebar, choose **Profile**, and use the **Change Password** card there. If you sign in with SSO, your password is managed by your identity provider, not here.
 
 ### Can I change my email address?
-Contact your administrator to change your email. It's used as your login identifier.
+Contact your administrator. Your **username** is your login identifier, not
+your email, so changing one does not change the other.
 
 ### How do I switch between organizations?
 Click the organization name at the **top of the sidebar** and select from the
@@ -39,10 +40,15 @@ menu (if you belong to multiple).
 ## Orders & Parts
 
 ### How do I find an order?
-Use the **Search** bar with order number, or browse **Tracker**. Apply filters to narrow results.
+There is **no application-wide search bar**. Open the list page for what you
+want — **Tracker** for orders, or **Data Management** > **Orders** — and use
+that page's own search and filters.
 
 ### How do I add parts to an existing order?
-Open the order, go to **Parts** section, click **Add Parts**.
+Not from the order page, which is read-only. Parts are added against the **work
+order**: **Production** > **WO Control Center**, tick exactly one work order,
+then **Add Parts** in the bulk bar. See
+[Adding Parts](../workflows/orders/adding-parts.md).
 
 ### Why can't I move parts forward?
 You don't move parts — they advance on their own once the step's requirements
@@ -136,7 +142,17 @@ remove a trigger would itself be recorded. See [Audit
 Trails](../compliance/audit-trails.md#immutability).
 
 ### How do I export data for an audit?
-Navigate to relevant section, apply filters, click **Export**. Choose PDF or CSV.
+It depends what you need.
+
+**Audit log data cannot be exported from the UI** — export is deliberately
+disabled on the audit log viewer. Filter it on screen to confirm the scope, then
+pull the same range from `GET /api/auditlog/` with the same filter parameters.
+That needs `export_auditlog`. See
+[Audit Trails](../compliance/audit-trails.md).
+
+**Other data** — wherever a list's toolbar offers **Export**, it exports CSV or
+Excel. If a list has no Export button, that model cannot be exported; it is not
+a permissions problem. PDF is not an export format for list data.
 
 ## Troubleshooting
 

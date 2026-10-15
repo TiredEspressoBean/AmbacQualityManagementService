@@ -1,6 +1,11 @@
 # HubSpot Integration
 
-Connect uqmes with HubSpot CRM for deal and order synchronization.
+Connect uqmes with HubSpot CRM so deals arrive as orders.
+
+!!! info "An optional integration, not part of the core product"
+    Nothing in uqmes depends on HubSpot. This is one adapter among others in
+    the integrations framework — useful if you already run HubSpot, and safely
+    ignored if you don't.
 
 !!! note "Where to configure"
     Connect and configure HubSpot yourself at **Admin > Settings > Integrations**
@@ -38,47 +43,60 @@ Order status reflects in HubSpot:
 ## Configuration
 
 ### Prerequisites
-- HubSpot account with API access
-- uqmes admin access
-- API key or OAuth credentials
+- A HubSpot account you can create a private app in
+- Tenant administrator access to uqmes
 
 ### Setup Steps
 
-1. **Get HubSpot API Credentials**
-   - HubSpot Settings > Integrations > Private Apps
-   - Create a private app with required scopes
-   - Copy the access token
+1. **Create a HubSpot private app**
+   - In HubSpot: **Settings** > **Integrations** > **Private Apps**
+   - Create an app and grant it CRM scopes — contacts, companies, deals
+   - Copy its **Private App Access Token**
 
-2. **Contact Administrator**
-   - Provide HubSpot credentials to your system administrator
-   - Administrator configures integration via backend settings
-   - Configuration includes field mapping and sync settings
+2. **Connect it yourself**
+   - In uqmes: **Admin** > **Settings** > **Integrations**
+   - Open HubSpot and paste the access token
 
-3. **Test Connection**
-   - Create test deal in HubSpot
-   - Verify order creation in uqmes
-   - Check field mapping accuracy
+    !!! danger "Never send the token to anyone"
+        The access token is a credential with access to your CRM. You paste it
+        into the integration yourself — nobody needs it emailed, messaged or
+        read out to them, and anyone asking you to do that is asking you to
+        leak it.
+
+3. **Test the connection**
+   - Create a test deal in HubSpot
+   - Confirm an order appears in uqmes
+   - Watch **Sync Activity** on the integration's page for failures
 
 ## Field Mapping
 
 ### Deal to Order
 
 | HubSpot Field | uqmes Field |
-|---------------|---------------------|
-| Deal name | Order number/name |
-| Associated company | Customer |
-| Close date | Order date |
-| Amount | Order value |
-| Deal stage | Order status |
+|---------------|-------------|
+| Deal name | Order **name** |
+| Associated company | Company |
+| Associated contacts | Customer portal users |
+| Close date | Estimated completion |
+| Deal stage | Order **milestone** |
+
+!!! warning "Deal Amount is not imported, and there is nowhere to put it"
+    An order has **no value, amount or price field**. uqmes records what a
+    customer asked for, not what it is worth — pricing stays in the system that
+    owns it. If an older mapping table showed *Amount → Order value*, that
+    field does not exist.
 
 ### Company Mapping
 
 | HubSpot Field | uqmes Field |
-|---------------|---------------------|
-| Company name | Company name |
-| Domain | Website |
-| Phone | Phone |
+|---------------|-------------|
+| Company name | Company name — also how an existing company is matched |
 | Address | Address |
+
+!!! note "A company record is deliberately minimal"
+    There is no website or phone field on a company to map onto. People at a
+    customer are held separately as external contacts. See
+    [Companies](../admin/setup/companies.md).
 
 ## Workflow
 
@@ -98,32 +116,30 @@ Order status reflects in HubSpot:
 4. Create order
 5. Link established
 
-## Sync Settings
+## How the sync runs
 
-### Direction
-- **HubSpot → uqmes**: Deal creates order
-- **uqmes → HubSpot**: Status updates back
+| | |
+|---|---|
+| **Frequency** | Every hour automatically, or triggered by hand |
+| **Method** | Scheduled bulk sync, plus real-time webhooks for stage changes |
+| **First sync** | Creates orders from your existing HubSpot deals — expect a lot of them |
 
-### Triggers
-- On deal stage change
-- On deal property change
-- Manual trigger
+**Direction.** Almost everything is inbound: deals, contacts, companies and
+pipeline stages all flow HubSpot to uqmes. The one outbound flow is milestone
+changes pushing back to the deal's stage.
 
-### Frequency
-- Real-time (webhook)
-- Scheduled sync (configurable)
+## Known limitations
 
-## Error Handling
+These are properties of the adapter, not faults to report:
 
-### Sync Failures
-- Logged in integration log
-- Retry automatically
-- Alert on persistent failure
+- **Attachments and notes are not synced.**
+- **Companies are matched by name**, so inconsistent naming produces duplicates.
+- **Portal users are created with placeholder passwords.** Configure SSO if
+  customers are to sign in — see [SSO](sso.md).
 
-### Data Conflicts
-- HubSpot data preferred (configurable)
-- Manual resolution option
-- Audit trail of conflicts
+!!! note "Field mapping is fixed"
+    There is no field-mapping editor. What maps to what is the adapter's, as
+    tabled above.
 
 ## Viewing Integration Status
 
@@ -142,14 +158,15 @@ Open the integration from **Admin > Settings > Integrations** to see its status:
 - Confirm network access
 
 ### "Company not found"
-- Company may need creation
-- Check company name matching
-- Verify sync settings
+Companies are matched by **name**. A difference in spelling, punctuation or
+suffix (*Acme Inc* vs *Acme, Inc.*) creates a second company rather than
+matching the first. Align the names in HubSpot, or merge afterwards.
 
 ### "Fields not mapping"
-- Review field mapping configuration
-- Check field types match
-- Verify custom properties exist
+Mapping is fixed by the adapter, so there is nothing to misconfigure. If data
+is missing, check the private app's **scopes** — a missing `read` scope on
+contacts, companies or deals is the usual cause — and the **Sync Activity**
+feed for the failure.
 
 ## Permissions
 
