@@ -31,6 +31,17 @@ As a Document Controller, you:
 | **Approvals** | Approvals > Overview | Pending approval requests |
 | **Approval History** | Approvals > History | Approval records |
 
+!!! important "Your approvals queue is not document-only"
+    The queue routes **every** approval type you are an assigned approver for —
+    CAPA approvals, process changes and training certifications sit in it
+    alongside document releases, and on a working system the non-document ones
+    are often the majority.
+
+    That is deliberate: you are an **approvals operator**, not only a document
+    operator. Do not filter the queue down to documents and assume the rest is
+    somebody else's — if a request is assigned to you, nobody else is coming
+    for it.
+
 ## Daily Workflow
 
 ### 1. Check Pending Items
