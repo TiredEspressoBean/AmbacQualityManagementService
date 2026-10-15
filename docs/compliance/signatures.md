@@ -185,15 +185,17 @@ the record by the server.
 |------------|--------|
 | `view_approvalresponse` | View signature/approval records |
 | `respond_to_approval` | Sign approvals when assigned |
-| `approve_*` (e.g., `approve_capa`) | Mostly **group-eligibility markers**, not direct gates — see below |
+| `approve_disposition`, `verify_capa`, `approve_stepoverride`, … | Gate a specific authorized act |
 
-!!! warning "Granting an `approve_*` permission may gate nothing"
-    Several of these exist to mark who is *eligible* to sign, and are consumed
-    by template-binding logic rather than checked at the action. `close_capa`
-    and `approve_capa` are the clearest case: nothing checks either one, and
-    closure is gated on `verify_capa` alone.
+!!! warning "Approval routing does not come from a permission"
+    For documents, processes, CAPAs and the other approval types, **who may
+    approve is set by the approval template's approver bindings**, not by an
+    `approve_*` permission. Holding `respond_to_approval` lets you answer a
+    request that was routed to you; it does not decide routing.
 
-    Before relying on one as a control, confirm what actually enforces it.
+    Before relying on any permission as a control, confirm what enforces it —
+    three `approve_*` permissions existed for years and were checked by
+    nothing.
 
 ## What a signature records
 

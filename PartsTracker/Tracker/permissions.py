@@ -273,10 +273,10 @@ class RequirePermission(TenantPermission):
     Decorator-style permission that requires specific permission(s).
 
     Usage as class:
-        permission_classes = [RequirePermission('approve_capa')]
+        permission_classes = [RequirePermission('approve_disposition')]
 
     Usage in view for inline check:
-        if not RequirePermission.check(request.user, 'approve_capa'):
+        if not RequirePermission.check(request.user, 'approve_disposition'):
             raise PermissionDenied()
     """
 
@@ -295,8 +295,8 @@ class RequirePermission(TenantPermission):
         Utility method for inline permission checks.
 
         Usage:
-            if not RequirePermission.check(request.user, 'approve_capa'):
-                raise PermissionDenied("You don't have permission to approve CAPAs")
+            if not RequirePermission.check(request.user, 'approve_disposition'):
+                raise PermissionDenied("You don't have permission to approve dispositions")
         """
         if user.is_superuser:
             return True

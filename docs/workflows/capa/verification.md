@@ -191,12 +191,13 @@ Ensure documentation meets requirements.
 |------------|--------|
 | `verify_capa` | Record the effectiveness outcome — which is what closes the CAPA. Co-signable by a holder when the caller lacks it. |
 
-`close_capa` and `approve_capa` exist as permissions, but **nothing checks them**.
-They are segregation-of-duties markers: they are granted alongside `verify_capa`
-to QA Manager and Tenant Admin so that the people who may sign off are an
-identifiable set, separate from the people doing the work. There is no
-submit-for-closure action, no closure approval, and no reopen, so there is
-nothing for them to gate.
+There is no submit-for-closure action, no closure approval and no reopen, so
+`verify_capa` is the only permission in play.
+
+!!! note "`close_capa` and `approve_capa` were removed"
+    Both existed as permissions and neither was ever checked. If you meet them
+    in an old group export or a procedure document, they granted nothing — the
+    control is `verify_capa`.
 
 ## Next Steps
 

@@ -26,10 +26,13 @@ Measurement definitions specify:
     you edit the step's properties and routing, but the definitions themselves
     are edited on the step form reached from the process editor.
 
-!!! note "No standalone measurements editor"
-    Measurement definitions are configured on the step that collects them, using
-    the procedure above. There is no separate **Measurements** entry under Data
-    Management.
+!!! note "There is a list, but no standalone editor"
+    **Quality** > **Measurement Definitions** (`/quality/measurement-definitions`)
+    lists every definition in one place, and carries **Import** and **Export**.
+    It is for finding and bulk-loading them.
+
+    **Editing stays on the step**, using the procedure above — a definition
+    belongs to the step that collects it, and versions with it.
 
 ## Measurement Fields
 

@@ -22,7 +22,7 @@ Special actions beyond CRUD:
 ```
 respond_to_approval  - Eligible to respond to approval requests
 approve_disposition  - Can record (or co-sign) a disposition decision
-close_capa           - Can close CAPAs
+verify_capa          - Can record a CAPA's effectiveness check, which closes it
 override_training_gate - Can authorize a start the training record doesn't cover
 void_substepcompletion - Can void a recorded substep completion
 ```
@@ -132,8 +132,7 @@ or export-control status is what needs looking at.
 |------------|--------|
 | `respond_to_approval` | Respond to any approval request routed to you — documents and processes included |
 | `approve_disposition` | Approve disposition decisions |
-| `approve_capa` | Approve CAPA closure |
-| `approve_qualityreports` | Approve quality reports |
+| `verify_capa` | Record a CAPA's effectiveness check — this is what closes it |
 
 !!! note
     Document and process approvals have no dedicated `approve_*` permission.

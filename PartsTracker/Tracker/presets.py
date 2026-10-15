@@ -369,8 +369,7 @@ AUTHORING_PERMISSIONS = [
 # deliberately granted to NO role — it is a license to self-approve, which is
 # exactly what this set exists to prevent. See test_permission_coverage.py.
 SOD_APPROVAL_PERMISSIONS = [
-    'approve_qualityreports',
-    'approve_capa', 'close_capa', 'verify_capa',
+    'verify_capa',
     'review_rca',
     'approve_disposition', 'close_disposition',
     # Deciding a step override (it lets a part past a blocker) — never self-approved.

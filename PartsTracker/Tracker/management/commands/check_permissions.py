@@ -117,13 +117,10 @@ class Command(BaseCommand):
 
         # Known correct content types for custom permissions
         expected_content_types = {
-            'approve_qualityreports': 'qualityreports',
             'approve_own_qualityreports': 'qualityreports',
             'approve_disposition': 'quarantinedisposition',
             'close_disposition': 'quarantinedisposition',
             'initiate_capa': 'capa',
-            'close_capa': 'capa',
-            'approve_capa': 'capa',
             'verify_capa': 'capa',
             'conduct_rca': 'rcarecord',
             'review_rca': 'rcarecord',
@@ -211,13 +208,10 @@ class Command(BaseCommand):
         """Find custom permissions attached to wrong content types."""
         # Map of custom permission -> expected model
         custom_permission_models = {
-            'approve_qualityreports': 'qualityreports',
             'approve_own_qualityreports': 'qualityreports',
             'approve_disposition': 'quarantinedisposition',
             'close_disposition': 'quarantinedisposition',
             'initiate_capa': 'capa',
-            'close_capa': 'capa',
-            'approve_capa': 'capa',
             'verify_capa': 'capa',
             'conduct_rca': 'rcarecord',
             'review_rca': 'rcarecord',

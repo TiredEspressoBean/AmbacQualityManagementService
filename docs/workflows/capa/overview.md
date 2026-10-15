@@ -163,9 +163,13 @@ Track CAPA performance:
 | `add_capa` | Create CAPAs |
 | `change_capa` | Edit CAPAs |
 | `initiate_capa` | Initiate new CAPAs |
-| `close_capa` | Close CAPAs |
-| `approve_capa` | Approve CAPAs |
-| `verify_capa` | Verify CAPA effectiveness |
+| `verify_capa` | Record the effectiveness outcome — **this is what closes the CAPA** |
+
+!!! note "There is no close or approve permission"
+    Closure is the verification decision, so `verify_capa` is the whole of it.
+    A Critical or Major CAPA also raises a **CAPA_APPROVAL** request at
+    creation; who may answer that is set by the approval **template's**
+    approver bindings, the same as every other approval type.
 
 ## Next Steps
 

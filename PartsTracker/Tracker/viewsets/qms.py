@@ -808,7 +808,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
 
     # Formally raising a CAPA is a governance-heavy commitment (RCA required,
     # effectiveness verification, audit trail) — restrict beyond the raw
-    # add_capa CRUD gate. Sibling to close_capa / approve_capa / verify_capa;
+    # add_capa CRUD gate. Sibling to verify_capa;
     # granted to QA staff and supervisors but not to floor operators. Editing
     # an existing CAPA (change_capa) is still open — anyone can help fill in
     # a draft an authorized initiator opened.

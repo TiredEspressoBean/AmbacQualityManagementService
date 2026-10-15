@@ -507,7 +507,6 @@ class QualityReports(SecureModel):
         verbose_name_plural = 'Quality Reports'
         verbose_name = 'Quality Report'
         permissions = [
-            ("approve_qualityreports", "Can approve quality reports"),
             ("approve_own_qualityreports", "Can approve own quality reports"),
         ]
         indexes = [
@@ -1391,8 +1390,12 @@ class CAPA(SecureModel):
         ]
         permissions = [
             ("initiate_capa", "Can initiate new CAPAs"),
-            ("close_capa", "Can close CAPAs"),
-            ("approve_capa", "Can approve CAPAs"),
+            # Closure is the `verify_capa` effectiveness decision — there is no
+            # separate close action, so there is no `close_capa`. Approval of a
+            # CAPA plan is a CAPA_APPROVAL request, authorized by the template's
+            # approver bindings like every other approval type, so there is no
+            # `approve_capa` either. Both existed and gated nothing (removed
+            # 2026-10-15).
             ("verify_capa", "Can verify CAPA effectiveness"),
         ]
         constraints = [

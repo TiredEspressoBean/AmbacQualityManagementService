@@ -137,7 +137,7 @@ Permissions are organized by model:
 | **Parts** | view_parts, change_parts, delete_parts |
 | **Quality** | add_qualityreport, approve_disposition |
 | **Documents** | view_document, respond_to_approval |
-| **CAPA** | add_capa, close_capa |
+| **CAPA** | add_capa, initiate_capa, verify_capa |
 | **Admin** | view_user, change_settings |
 
 ### Permission Naming Convention
@@ -147,7 +147,7 @@ Permissions are organized by model:
 - `add_parts` - Create parts
 - `change_qualityreports` - Edit quality reports
 - `delete_documents` - Remove documents
-- `approve_capa` - Approve CAPA closure
+- `verify_capa` - Record a CAPA effectiveness check
 
 ## Seeing what a user can actually do
 

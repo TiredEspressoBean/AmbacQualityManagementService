@@ -179,16 +179,13 @@ They then see only their own company's orders.
 
 ## Company Documents
 
-Attach company-related documents:
+!!! note "There is no Documents tab on a company"
+    To associate a document with a company — a contract, quality agreement,
+    certification or NDA — upload it and use the document's own **Link To**
+    field. See [Uploading Documents](../../workflows/documents/uploading.md).
 
-- Contracts
-- Quality agreements
-- Certifications
-- NDAs
-
-1. Go to **Documents** tab
-2. Upload or link documents
-3. Set document visibility
+    Documents linked to a company surface on the **order** detail page, under
+    *Company Documents*.
 
 ## HubSpot Integration
 

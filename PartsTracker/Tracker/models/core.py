@@ -2144,7 +2144,7 @@ class User(AbstractUser):
         Check if user has specific permission in tenant.
 
         Args:
-            perm: Permission codename (e.g., 'add_orders', 'approve_capa')
+            perm: Permission codename (e.g., 'add_orders', 'approve_disposition')
             tenant: Tenant to check. Auto-resolves if not provided:
                     1. Current request's tenant (from middleware)
                     2. User's home tenant
