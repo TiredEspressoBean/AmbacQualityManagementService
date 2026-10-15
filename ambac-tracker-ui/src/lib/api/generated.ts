@@ -416,7 +416,7 @@ export type ApprovalTemplate = {
     | undefined;
   auto_assign_by_role?:
     | /**
-     * Group name to auto-assign (e.g., 'QA_Manager')
+     * Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently.
      *
      * @maxLength 50
      */
@@ -479,7 +479,7 @@ export type ApprovalTemplateRequest = {
     | undefined;
   auto_assign_by_role?:
     | /**
-     * Group name to auto-assign (e.g., 'QA_Manager')
+     * Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently.
      *
      * @maxLength 50
      */
@@ -12210,7 +12210,7 @@ export type PatchedApprovalTemplateRequest = Partial<{
    */
   default_threshold: number | null;
   /**
-   * Group name to auto-assign (e.g., 'QA_Manager')
+   * Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently.
    *
    * @maxLength 50
    */
@@ -14962,6 +14962,10 @@ export type PatchedWorkOrderRequest = Partial<{
   true_completion: string | null;
   true_duration: string | null;
   notes: string | null;
+  /**
+   * Why the priority is changing. Required when an edit changes it.
+   */
+  priority_reason: string;
   archived: boolean;
 }>;
 export type PcoApproveResponse = {
@@ -17936,6 +17940,7 @@ export type WorkOrder = {
   split_at: string | null;
   child_count: number;
   cores: Array<WorkOrderCore>;
+  priority_changes: Array<WorkOrderPriorityChange>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -17953,6 +17958,13 @@ export type WorkOrderCore = {
   usable_component_count: number;
   step_name: string | null;
   part: string;
+};
+export type WorkOrderPriorityChange = {
+  from_priority: string;
+  to_priority: string;
+  reason: string;
+  changed_by: string | null;
+  changed_at: string;
 };
 export type WorkOrderBulkAddPartsInputRequest = {
   part_type: string;
@@ -18052,6 +18064,10 @@ export type WorkOrderRequest = {
   true_completion?: (string | null) | undefined;
   true_duration?: (string | null) | undefined;
   notes?: (string | null) | undefined;
+  priority_reason?: /**
+   * Why the priority is changing. Required when an edit changes it.
+   */
+  string | undefined;
   archived?: boolean | undefined;
 };
 export type WorkOrderStepHistoryResponse = {
@@ -26459,6 +26475,7 @@ const WorkOrderRequest = z.object({
   true_completion: z.string().nullish(),
   true_duration: z.string().nullish(),
   notes: z.string().nullish(),
+  priority_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const WorkOrderCore = z.object({
@@ -26474,6 +26491,13 @@ const WorkOrderCore = z.object({
   usable_component_count: z.number().int(),
   step_name: z.string().nullable(),
   part: z.string().uuid(),
+});
+const WorkOrderPriorityChange = z.object({
+  from_priority: z.string(),
+  to_priority: z.string(),
+  reason: z.string(),
+  changed_by: z.string().nullable(),
+  changed_at: z.string().datetime({ offset: true }),
 });
 const WorkOrder = z.object({
   id: z.string().uuid(),
@@ -26509,6 +26533,7 @@ const WorkOrder = z.object({
   split_at: z.string().datetime({ offset: true }).nullable(),
   child_count: z.number().int(),
   cores: z.array(WorkOrderCore),
+  priority_changes: z.array(WorkOrderPriorityChange),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -26528,6 +26553,7 @@ const PatchedWorkOrderRequest = z
     true_completion: z.string().nullable(),
     true_duration: z.string().nullable(),
     notes: z.string().nullable(),
+    priority_reason: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -29156,6 +29182,7 @@ export const schemas = {
   PaginatedWorkOrderListList,
   WorkOrderRequest,
   WorkOrderCore,
+  WorkOrderPriorityChange,
   WorkOrder,
   PatchedWorkOrderRequest,
   WorkOrderBulkAddPartsInputRequest,

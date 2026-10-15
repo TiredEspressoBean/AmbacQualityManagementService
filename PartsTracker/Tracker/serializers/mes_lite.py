@@ -965,8 +965,23 @@ class WorkOrderListSerializer(SecureModelMixin):
         }
 
 
+class WorkOrderPriorityChangeSerializer(serializers.Serializer):
+    """One priority change and why (services/mes/work_order.priority_changes)."""
+    from_priority = serializers.CharField()
+    to_priority = serializers.CharField()
+    reason = serializers.CharField()
+    changed_by = serializers.CharField(allow_null=True)
+    changed_at = serializers.DateTimeField()
+
+
 class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     """Full work order serializer for detail views"""
+    # Changing priority (expediting is setting it to Urgent) takes a reason, like hold,
+    # scrap and reject do; it's recorded with the change. Not needed on create.
+    priority_reason = serializers.CharField(
+        write_only=True, required=False, allow_blank=True,
+        help_text="Why the priority is changing. Required when an edit changes it.")
+    priority_changes = serializers.SerializerMethodField()
     related_order_info = serializers.SerializerMethodField()
     parts_summary = serializers.SerializerMethodField()
     related_order_detail = serializers.SerializerMethodField()
@@ -988,6 +1003,39 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         qs = obj.cores.filter(archived=False).select_related('customer', 'part__step')
         return WorkOrderCoreSerializer(qs, many=True).data
 
+    @extend_schema_field(WorkOrderPriorityChangeSerializer(many=True))
+    def get_priority_changes(self, obj):
+        from Tracker.services.mes.work_order import priority_changes
+        return WorkOrderPriorityChangeSerializer(priority_changes(obj), many=True).data
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        new = attrs.get('priority')
+        if (self.instance is not None and new is not None and new != self.instance.priority
+                and not (attrs.get('priority_reason') or '').strip()):
+            raise serializers.ValidationError(
+                {'priority_reason': 'Say why the priority is changing.'})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('priority_reason', None)  # a new job's first priority isn't a change
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Priority goes through change_priority, which records the reason; the rest
+        saves as before."""
+        from Tracker.services.mes.work_order import change_priority
+        reason = validated_data.pop('priority_reason', '')
+        new_priority = validated_data.pop('priority', None)
+        if new_priority is not None and new_priority != instance.priority:
+            request = self.context.get('request')
+            try:
+                change_priority(instance, new_priority, reason=reason,
+                                user=getattr(request, 'user', None))
+            except ValueError as e:
+                raise serializers.ValidationError({'priority': str(e)})
+        return super().update(instance, validated_data)
+
     class Meta:
         model = WorkOrder
         fields = (
@@ -996,6 +1044,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'notes', 'parts_summary', 'current_hold',
         'released_at', 'released_by', 'release_override_reason',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count', 'cores',
+        'priority_reason', 'priority_changes',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',

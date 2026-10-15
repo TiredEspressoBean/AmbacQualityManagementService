@@ -34,6 +34,7 @@ import { useCreateWorkOrder } from '@/hooks/useCreateWorkOrder'
 import { useUpdateWorkOrder } from '@/hooks/useUpdateWorkOrder'
 import { useRetrieveWorkOrder } from '@/hooks/useRetrieveWorkOrder'
 import { schemas } from '@/lib/api/generated'
+import { apiErrorMessage } from '@/lib/api/describeApiError'
 import type { Schema } from '@/lib/api/types'
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader.tsx";
 import { isFieldRequired } from '@/lib/zod-config'
@@ -55,12 +56,17 @@ const formSchema = schemas.WorkOrderRequest.pick({
     related_order: z.string().optional(),
     // Handle date separately since form uses Date object
     expected_completion: z.coerce.date(),
+    // Why the priority changed — required by the server when an edit changes it.
+    priority_reason: z.string().optional(),
 })
 
 type FormValues = Omit<Schema<"WorkOrderRequest">, "expected_completion"> & {
     expected_completion: Date
     related_order: string
+    priority_reason?: string
 }
+
+const PRIORITY_LABEL: Record<number, string> = { 1: "Urgent", 2: "High", 3: "Normal", 4: "Low" }
 
 // Pre-compute required fields for labels
 const required = {
@@ -114,6 +120,11 @@ export default function WorkOrderFormPage() {
         }
     }, [mode, workOrder, form])
 
+    // Edit mode: a changed priority needs a reason, shown only when it's changed.
+    const watchedPriority = form.watch("priority")
+    const priorityChanged = mode === "edit" && !!workOrder
+        && watchedPriority != null && watchedPriority !== workOrder.priority
+
     const createWorkOrder = useCreateWorkOrder()
     const updateWorkOrder = useUpdateWorkOrder()
 
@@ -133,15 +144,24 @@ export default function WorkOrderFormPage() {
         } as Schema<"WorkOrderRequest">
 
         if (mode === "edit" && workOrderId) {
+            // A priority change has to say why (expediting is a call someone may be
+            // asked to justify); the server refuses it otherwise.
+            if (priorityChanged && !values.priority_reason?.trim()) {
+                form.setError("priority_reason", { message: "Say why the priority is changing." })
+                return
+            }
             updateWorkOrder.mutate(
-                { id: workOrderId, data: payload },
+                { id: workOrderId, data: priorityChanged ? payload : { ...payload, priority_reason: undefined } },
                 {
-                    onSuccess: () => toast.success("Work order updated successfully!"),
-                    onError: () => toast.error("Failed to update the work order."),
+                    onSuccess: () => {
+                        toast.success("Work order updated successfully!")
+                        form.setValue("priority_reason", "")
+                    },
+                    onError: (err) => toast.error(apiErrorMessage(err) ?? "Failed to update the work order."),
                 }
             )
         } else {
-            createWorkOrder.mutate(payload, {
+            createWorkOrder.mutate({ ...payload, priority_reason: undefined }, {
                 onSuccess: () => {
                     toast.success("Work order created successfully!")
                     form.reset()
@@ -206,12 +226,54 @@ export default function WorkOrderFormPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <FormDescription>Work order scheduling priority</FormDescription>
+                                <FormDescription>
+                                    Work order scheduling priority. Urgent jumps the queue — that's how a job is expedited.
+                                </FormDescription>
                                 <FormMessage/>
                             </FormItem>
                         )}
                     />
                 </div>
+
+                {priorityChanged && (
+                    <FormField
+                        control={form.control}
+                        name="priority_reason"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel required>
+                                    Why change priority from {PRIORITY_LABEL[workOrder?.priority ?? 3]} to {PRIORITY_LABEL[watchedPriority ?? 3]}?
+                                </FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        placeholder="e.g. Customer line down — committed delivery moved up"
+                                        {...field}
+                                        value={field.value ?? ""}
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Recorded with the change, so the reason is on file when someone asks later.
+                                </FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                )}
+
+                {mode === "edit" && (workOrder?.priority_changes?.length ?? 0) > 0 && (
+                    <div className="space-y-1 rounded-md border p-3 text-sm">
+                        <p className="font-medium">Priority changes</p>
+                        <ul className="space-y-1">
+                            {workOrder!.priority_changes!.slice(0, 5).map((c, i) => (
+                                <li key={i} className="text-muted-foreground">
+                                    <span className="text-foreground">{c.from_priority} → {c.to_priority}</span>
+                                    {" · "}{c.changed_by ?? "someone"}, {new Date(c.changed_at).toLocaleString()}
+                                    <span className="block">“{c.reason}”</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 <FormField
                     control={form.control}

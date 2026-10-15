@@ -400,6 +400,66 @@ def apply_calibration_result_to_equipment(calibration_record) -> None:
             )
 
 
+def change_priority(work_order: WorkOrder, new_priority: int, *, reason: str, user) -> bool:
+    """Set a work order's priority, recording why.
+
+    Expediting is a priority change — "Urgent" jumps the queue — and it is often a call
+    someone is asked to justify weeks later, so like hold, scrap and reject it takes a
+    reason. The reason goes on a RecordEdit (field, old, new, why, who, when) beside
+    auditlog's who-and-when. Returns False when the priority is unchanged (nothing
+    recorded); raises ValueError for no reason or an unknown level.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+    from Tracker.models.mes_lite import WorkOrderPriority
+
+    new_priority = int(new_priority)
+    if new_priority not in WorkOrderPriority.values:
+        raise ValueError(f"Unknown priority: {new_priority}")
+    if new_priority == work_order.priority:
+        return False
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the priority is changing")
+    with transaction.atomic():
+        RecordEdit.objects.create(
+            tenant=work_order.tenant,
+            content_type=ContentType.objects.get_for_model(WorkOrder),
+            object_id=work_order.id, field_name="priority",
+            old_value=str(work_order.priority), new_value=str(new_priority),
+            reason=reason, edited_by=user)
+        work_order.priority = new_priority
+        work_order.save(update_fields=["priority", "updated_at"])
+    return True
+
+
+def priority_changes(work_order: WorkOrder) -> list[dict]:
+    """The work order's priority changes with their reasons, newest first."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+    from Tracker.models.mes_lite import WorkOrderPriority
+
+    labels = dict(WorkOrderPriority.choices)
+    edits = (RecordEdit.objects  # tenant-safe: .objects auto-scopes to the request tenant
+             .filter(content_type=ContentType.objects.get_for_model(WorkOrder),
+                     object_id=work_order.id, field_name="priority")
+             .select_related("edited_by").order_by("-edited_at"))
+
+    def label(value):
+        try:
+            return labels.get(int(value), value)
+        except (TypeError, ValueError):
+            return value
+
+    return [{
+        "from_priority": label(e.old_value),
+        "to_priority": label(e.new_value),
+        "reason": e.reason,
+        "changed_by": (e.edited_by.get_full_name() or e.edited_by.get_username()) if e.edited_by else None,
+        "changed_at": e.edited_at,
+    } for e in edits]
+
+
 def place_on_hold(
     work_order: WorkOrder,
     reason: str,

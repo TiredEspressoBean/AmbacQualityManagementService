@@ -20551,7 +20551,7 @@ export interface components {
             default_approvers?: number[];
             readonly default_approvers_info: unknown[];
             default_threshold?: number | null;
-            /** @description Group name to auto-assign (e.g., 'QA_Manager') */
+            /** @description Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently. */
             auto_assign_by_role?: string | null;
             approval_flow_type?: components["schemas"]["ApprovalFlowTypeEnum"];
             readonly approval_flow_type_display: string;
@@ -20601,7 +20601,7 @@ export interface components {
             default_groups?: string[];
             default_approvers?: number[];
             default_threshold?: number | null;
-            /** @description Group name to auto-assign (e.g., 'QA_Manager') */
+            /** @description Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently. */
             auto_assign_by_role?: string | null;
             approval_flow_type?: components["schemas"]["ApprovalFlowTypeEnum"];
             delegation_policy?: components["schemas"]["DelegationPolicyEnum"];
@@ -28734,7 +28734,7 @@ export interface components {
             default_groups?: string[];
             default_approvers?: number[];
             default_threshold?: number | null;
-            /** @description Group name to auto-assign (e.g., 'QA_Manager') */
+            /** @description Exact group name to auto-assign, spaces included (e.g. 'QA Manager'). A name that matches no group assigns nobody, silently. */
             auto_assign_by_role?: string | null;
             approval_flow_type?: components["schemas"]["ApprovalFlowTypeEnum"];
             delegation_policy?: components["schemas"]["DelegationPolicyEnum"];
@@ -31512,6 +31512,8 @@ export interface components {
             true_completion?: string | null;
             true_duration?: string | null;
             notes?: string | null;
+            /** @description Why the priority is changing. Required when an edit changes it. */
+            priority_reason?: string;
             archived?: boolean;
         };
         PcnClosePayloadRequest: {
@@ -38548,6 +38550,7 @@ export interface components {
             readonly split_at: string | null;
             readonly child_count: number;
             readonly cores: components["schemas"]["WorkOrderCore"][];
+            readonly priority_changes: components["schemas"]["WorkOrderPriorityChange"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -38741,6 +38744,15 @@ export interface components {
             /** Format: date-time */
             expected_clear_at?: string | null;
         };
+        /** @description One priority change and why (services/mes/work_order.priority_changes). */
+        WorkOrderPriorityChange: {
+            from_priority: string;
+            to_priority: string;
+            reason: string;
+            changed_by: string | null;
+            /** Format: date-time */
+            changed_at: string;
+        };
         /**
          * @description * `1` - Urgent
          *     * `2` - High
@@ -38788,6 +38800,8 @@ export interface components {
             true_completion?: string | null;
             true_duration?: string | null;
             notes?: string | null;
+            /** @description Why the priority is changing. Required when an edit changes it. */
+            priority_reason?: string;
             archived?: boolean;
         };
         WorkOrderSetQuantityInputRequest: {

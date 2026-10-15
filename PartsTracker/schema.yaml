@@ -69635,6 +69635,11 @@ components:
         notes:
           type: string
           nullable: true
+        priority_reason:
+          type: string
+          writeOnly: true
+          description: Why the priority is changing. Required when an edit changes
+            it.
         archived:
           type: boolean
     PcnClosePayloadRequest:
@@ -83847,6 +83852,11 @@ components:
           items:
             $ref: '#/components/schemas/WorkOrderCore'
           readOnly: true
+        priority_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderPriorityChange'
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -83866,6 +83876,7 @@ components:
       - id
       - parent_workorder_id
       - parts_summary
+      - priority_changes
       - process_info
       - related_order_detail
       - related_order_info
@@ -84335,6 +84346,28 @@ components:
           nullable: true
       required:
       - reason
+    WorkOrderPriorityChange:
+      type: object
+      description: One priority change and why (services/mes/work_order.priority_changes).
+      properties:
+        from_priority:
+          type: string
+        to_priority:
+          type: string
+        reason:
+          type: string
+        changed_by:
+          type: string
+          nullable: true
+        changed_at:
+          type: string
+          format: date-time
+      required:
+      - changed_at
+      - changed_by
+      - from_priority
+      - reason
+      - to_priority
     WorkOrderPriorityEnum:
       enum:
       - 1
@@ -84432,6 +84465,11 @@ components:
         notes:
           type: string
           nullable: true
+        priority_reason:
+          type: string
+          writeOnly: true
+          description: Why the priority is changing. Required when an edit changes
+            it.
         archived:
           type: boolean
       required:
