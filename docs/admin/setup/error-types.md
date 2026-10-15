@@ -107,44 +107,20 @@ Error types drive analysis:
 - Defects by location and type
 - Visual patterns
 
-## Usage Guidelines
+## Bulk import and export
 
-Document when to use each type:
+Error types can be imported and exported. **Do not build the file from a column
+list written here** — start at
+[Data Management](../data/data-management.md), which carries the Import and
+Export links for the defect catalogue, and export first to get the real header.
 
-```markdown
-## Dimensional (DIM)
-Use when measurement is out of specified tolerance.
-Examples:
-- Diameter too large/small
-- Length out of spec
-- Hole position off
+!!! warning "Older examples showed a hierarchy that does not exist"
+    An earlier version of this page demonstrated a CSV with `code`,
+    `description` and `parent_code` columns. None of those are fields. Error
+    types are a flat list with the fields above, and the naming convention in
+    *Grouping without a hierarchy* is how you get the grouping effect.
 
-DO NOT use for:
-- Cosmetic issues (use Visual)
-- Material hardness (use Material)
-```
-
-## Inactive vs Delete
-
-- **Inactive**: Hides from selection, preserves history
-- **Delete**: Not recommended, use inactive
-
-Historical NCRs reference error types—don't break those links.
-
-## Bulk Operations
-
-### Import Error Types
-```csv
-code,name,description,parent_code
-DIM,Dimensional,Measurement out of tolerance,
-DIM-OS,Over Size,Larger than specified,DIM
-DIM-US,Under Size,Smaller than specified,DIM
-```
-
-### Export
-1. Click **Export**
-2. Download CSV
-3. Use for documentation or import
+See [Import & Export](../data/import-export.md).
 
 ## Permissions
 

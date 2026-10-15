@@ -25,9 +25,12 @@ after `--service`, **case included**.
     following instructions that name a service.
 
 **Config files in the repo:** `PartsTracker/railway.toml`,
-`docs-service/railway.toml` and `proxy-service/railway.toml`. The Celery services do
-not have a config file of their own — they run from the backend image with a
-different start command, so there is nothing named `railway.celery.toml` to look for.
+`PartsTracker/railway.celery.toml`, `docs-service/railway.toml` and
+`proxy-service/railway.toml`.
+
+The Celery services build from the **same backend image** with a different start
+command — `railway.celery.toml` differs from the backend's only in dropping the
+HTTP healthcheck, since a worker serves no HTTP.
 
 ## Environment Variables
 
@@ -130,7 +133,7 @@ psql "your-DATABASE_PUBLIC_URL"
 
 ## Config Files
 
-### railway.toml (Backend/Frontend)
+### railway.toml (Backend)
 ```toml
 [build]
 builder = "dockerfile"
@@ -183,28 +186,26 @@ restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 ```
 
-## Cloudflare Worker (Path-Based Routing)
+## Path-based routing
 
-To serve all services under one domain with path-based routing (e.g., `/docs/*`, `/api/*`), use a Cloudflare Worker.
+All services sit behind one domain, routed by **`proxy-service`** — a Caddy
+reverse proxy deployed as its own Railway service. Its `Caddyfile` reads three
+environment variables and routes on path:
 
-### Setup
-
-1. In Cloudflare dashboard, go to **Workers & Pages** → **Create Worker**
-2. Paste the code from `cloudflare/worker.js`
-3. Add environment variables:
-   - `DOCS_ORIGIN`: Railway docs service URL (e.g., `https://docs-xxx.railway.app`)
-   - `API_ORIGIN`: Railway backend URL (e.g., `https://backend-xxx.railway.app`)
-   - `FRONTEND_ORIGIN`: Railway frontend URL (e.g., `https://frontend-xxx.railway.app`)
-4. Go to **Triggers** → **Add Route**
-5. Add route: `yourdomain.com/*` → this worker
-
-### Routing rules
+| Variable | Points at |
+|----------|-----------|
+| `BACKEND_URL` | e.g. `backend.railway.internal:8000` |
+| `FRONTEND_URL` | e.g. `frontend.railway.internal:8080` |
+| `DOCS_URL` | e.g. `docs.railway.internal:80` |
 
 | Path | Destination |
 |------|-------------|
+| `/api/*`, `/auth/*`, `/accounts/*`, `/admin/*`, `/media/*` | Backend |
 | `/docs/*` | Docs service |
-| `/api/*`, `/auth/*`, `/admin/*` | Backend |
 | Everything else | Frontend |
+
+Routing is over Railway **private networking**, so the backend and frontend do
+not need public domains of their own — only the proxy does.
 
 ## Useful Links
 

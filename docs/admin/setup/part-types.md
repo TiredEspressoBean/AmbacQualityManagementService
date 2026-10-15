@@ -146,76 +146,21 @@ Link visual model for annotations:
 
 See [Uploading Models](../../3d-models/uploading.md).
 
-## Drawing Links
+## Creating parts from a type
 
-Attach engineering drawings:
+When parts are created against a type, the type's defaults apply — its process,
+its ERP ID prefix, and the rest of its configuration.
 
-1. In **Drawing** field
-2. Select or upload drawing
-3. Available during production
-4. Revision tracked
+## Bulk import and export
 
-## Custom Attributes
+Part types can be imported and exported. **Export first and fill in the file you
+get back** rather than building one from a column list: the identity fields are
+**Name**, **ERP ID** and **ERP ID Prefix**, and an older version of this page
+showed a `part_number` column that is not a field.
 
-If custom fields are configured:
-
-- Additional part type-specific fields
-- Captured when creating parts
-- Displayed in part detail
-
-## Part Type Categories
-
-Organize part types:
-
-- By product line (Common Rail, HEUI, Unit Injector)
-- By customer (OEM vs Aftermarket)
-- By facility
-- By application (Automotive, Heavy Duty, Marine)
-
-Use categories for filtering and reporting.
-
-!!! example "Injector Product Lines"
-    - **Common Rail Injector** - Bosch, Denso, Delphi common rail systems
-    - **HEUI Injector** - Caterpillar/Navistar hydraulic electronic injectors
-    - **Unit Injector** - Detroit Diesel, Cummins mechanical unit injectors
-
-## Part Type Versioning
-
-Track changes to part type configuration:
-
-- Version history maintained
-- Changes logged
-- Can revert if needed
-
-Important for audit compliance.
-
-## Creating Parts from Type
-
-When parts are created:
-
-1. Select part type
-2. Type defaults apply
-3. Process assigned
-4. Attributes pre-filled
-
-Parts inherit from type configuration.
-
-## Bulk Operations
-
-### Import Part Types
-
-```csv
-part_number,name,description,default_process
-CRI-100,Common Rail Injector,Diesel common rail fuel injector,Common Rail Injector Remanufacturing
-HEUI-200,HEUI Injector,Hydraulic electronic unit injector,HEUI Remanufacturing
-UI-300,Unit Injector,Mechanical unit fuel injector,Unit Injector Remanufacturing
-```
-
-### Export Part Types
-
-1. Click **Export**
-2. Download CSV with all part types
-3. Use for reference or import to other system
+Start at [Data Management](../data/data-management.md) for the Import and Export
+links, and see [Import & Export](../data/import-export.md) for how references to
+other records are written.
 
 ## Active vs Inactive
 

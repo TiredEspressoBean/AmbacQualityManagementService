@@ -196,29 +196,28 @@ on one bad reading.
     tightened inspection switching: quality drops, sampling intensifies, and
     it relaxes again when the process settles.
 
-## Applying Rules
+## Where a rule set applies
 
-### To Part Types
-Default sampling for a product:
-1. Edit part type
-2. Set default sampling rule
-3. Applies to all parts of type
+Scope lives on the **rule set**, not on the things it covers. You do not go to a
+part type, a step or a supplier and attach sampling to it — there is no such
+field on any of them. You create the rule set and tell it what it covers:
 
-### To Process Steps
-Sampling at specific inspection:
-1. Edit process step
-2. Add sampling rule
-3. Applies at that step
+| Scope field | Effect |
+|-------------|--------|
+| **Part type** | The product this set governs |
+| **Process** | Optional context, because a step can appear in several processes |
+| **Step** | The inspection point it applies at |
+| **Supplier** | For receiving acceptance sampling. Blank = all suppliers. |
 
-### To Suppliers
-Incoming inspection sampling:
-1. Edit supplier/company
-2. Set sampling rule
-3. Applies to material from supplier
+Leave a field blank to widen the scope rather than narrow it.
 
-## Rule Sets
+!!! note "What a step itself carries"
+    A step has only **Sampling required** and a **minimum sampling rate** — a
+    floor, not a rule. Which parts get selected is the rule set's business.
 
-Group multiple rules with different triggers:
+## Rule sets
+
+A rule set groups rules that fire on different triggers:
 
 ```
 Rule Set: Production Inspection
@@ -227,20 +226,12 @@ Rule Set: Production Inspection
 └── Rule 3: Last 2 parts (end-of-run verification)
 ```
 
-Rules are evaluated in order based on their `order` field.
+Rules are evaluated in order, by their `order` field.
 
-## Sampling Rule Sets
-
-Group rules for complex scenarios:
-
-```
-Rule Set: Incoming Inspection
-├── New Supplier: 100% inspection
-├── Qualified Supplier: AQL 1.0
-└── Premium Supplier: Skip-lot
-```
-
-Rules applied based on conditions.
+!!! warning "Supplier tiers are separate rule sets, not rules in one"
+    To sample a new supplier at 100% and a qualified one by AQL, build **two
+    rule sets**, each scoped to its supplier. A single set does not switch
+    between its own rules by condition.
 
 ## Recording Sampling Results
 
