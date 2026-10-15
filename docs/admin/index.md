@@ -8,7 +8,7 @@ This guide is for:
 
 - **Tenant Administrators**: Manage users, configure processes, set up system
 - **Quality Managers**: Configure quality workflows, sampling rules
-- **IT Administrators**: System integration, SSO configuration
+- **IT Administrators**: System integration and deployment
 - **Implementation Teams**: Initial setup and configuration
 
 ## Administration Areas
@@ -94,36 +94,21 @@ The **Data Management** page (`/Edit`) provides access to all data editors:
 
 ### Import & Export
 
-Each data editor supports bulk import and export:
+Many data editors support bulk import and export — **but not all of them**.
 
 - **Export**: Download filtered data as CSV or Excel
 - **Import**: Upload CSV or Excel files to create/update records
-- **Templates**: Download pre-formatted templates with validation
+
+!!! note "A missing Import button is the answer, not a fault"
+    The buttons appear only where the model actually supports them. If a list's
+    toolbar has no **Import**, that model cannot be imported — it is not a
+    permissions problem and not a bug to report.
 
 Excel exports include reference sheets for lookups, dropdown validation, and auto-calculated ID fields.
 
 See [Import & Export Guide](data/import-export.md) for detailed instructions.
 
 ## Settings
-
-Organization settings include:
-
-### General
-- Organization name and details
-- Default timezone
-- Date/number formats
-- Logo and branding
-
-### Quality
-- Default severity levels
-- NCR workflows
-- CAPA settings
-- Sampling defaults
-
-### Documents
-- Document numbering
-- Retention policies
-- Approval requirements
 
 ### Integrations
 Self-service integration management lives at **Admin > Settings > Integrations**

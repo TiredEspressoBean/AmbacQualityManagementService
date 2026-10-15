@@ -477,49 +477,21 @@ in force keeps its own until the revision is approved.
 !!! tip "This is why an edit is safe"
     The reason to say so plainly: people avoid editing versioned master data for
     fear of orphaning its history. You don't have to. Edit the record.
-5. **Use reference sheets** - Look up valid IDs or use names
 
-## Field Types
+## Field types
 
-### Foreign Key Fields
+### Choice / enum fields
 
-Fields that reference other records (e.g., `part_type`, `order`):
+Values must match exactly, and they are case-sensitive. Use the dropdown in an
+Excel export to see what is valid for a column.
 
-**Option 1: Use the Name column with dropdown**
-- Select from the dropdown
-- ID auto-populates (Excel only)
+### Boolean fields
 
-**Option 2: Provide the UUID directly**
-- Paste the exact UUID
-- Must match an existing record
+`True` / `False`, and also `true`, `false`, `1`, `0`, `yes`, `no`.
 
-### Choice/Enum Fields
+### Text fields
 
-Fields with predefined values (e.g., `part_status`):
-
-- Use the dropdown to see valid values
-- Must match exactly (case-sensitive)
-- Common values: `PENDING`, `IN_PROGRESS`, `COMPLETE`, `QUARANTINED`
-
-### Boolean Fields
-
-True/false fields (e.g., `requires_sampling`, `itar_controlled`):
-
-- Use dropdown: `True` or `False`
-- Also accepts: `true`, `false`, `1`, `0`, `yes`, `no`
-
-### Date Fields
-
-Dates should be formatted as:
-- `YYYY-MM-DD` (recommended)
-- `MM/DD/YYYY`
-- Excel date values (numeric)
-
-### Text Fields
-
-- Plain text, no special formatting needed
-- Watch for leading/trailing spaces
-- Special characters are allowed
+Plain text. Watch for leading and trailing spaces; special characters are fine.
 
 ## Troubleshooting
 
