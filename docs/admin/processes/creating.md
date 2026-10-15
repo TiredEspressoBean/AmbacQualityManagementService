@@ -56,30 +56,19 @@ together, which is not possible from the legacy step form.
 |-------|-------------|
 | **Name** | Step name (e.g., "Machining") |
 | **Description** | What happens at this step |
-| **Sequence** | Order in process |
-| **Step Type** | Production, Inspection, Rework |
+| **Step Type** | See [Step Types](steps.md#step-types) |
 
 4. Save step
 5. Repeat for each step
 
-### Step Sequence
+### How steps are ordered
 
-Steps are ordered by sequence number:
-- Step 1: sequence = 10
-- Step 2: sequence = 20
-- Step 3: sequence = 30
+Steps are not ordered by a sequence number you type. The process is a **graph**:
+you draw edges between steps in the Process Flow editor, and the edges are the
+routing. That is what lets a flow branch at a decision point and rejoin, which a
+sequence number cannot express.
 
-Using 10s allows inserting steps later.
-
-## Step Types
-
-| Type | Purpose |
-|------|---------|
-| **Production** | Manufacturing operations |
-| **Inspection** | Quality checks |
-| **Rework** | Repair/correction |
-| **Hold** | Waiting point |
-| **Complete** | Final step |
+See [Step Types](steps.md#step-types) for what the type field offers.
 
 ## Configuring Steps
 
@@ -155,36 +144,26 @@ To activate a process:
 4. Approvers review
 5. On approval, status becomes **Current**
 
-### Approval Without Workflow
+!!! warning "Approval cannot be skipped"
+    There is no *Activate* or *Make Current* shortcut for when approval "isn't
+    enforced". Submitting for approval is the only route to Current, and it
+    refuses outright if the tenant has no **PROCESS_APPROVAL** template:
 
-If process approval isn't enforced:
-1. Click **Activate** or **Make Current**
-2. Process becomes active
-3. Previous version becomes Obsolete
+    > *PROCESS_APPROVAL approval template not found. Please configure approval
+    > templates.*
 
-## Duplicating Processes
+    Two other prerequisites refuse in the same way: the process must still be a
+    **draft**, and it must have **at least one step**.
 
-Create a new process from existing:
+## Duplicating a process
 
-1. Open existing process
-2. Click **Duplicate**
-3. New process created as Draft
-4. Modify as needed
-5. Activate when ready
+Use **Duplicate as Template** in the Process Flow editor. It copies the whole
+process as a new draft, which you then modify and submit for approval.
 
-Use for:
-- New versions
-- Similar products
-- Template starting points
-
-## Process Templates
-
-Create reusable templates:
-
-1. Build a generic process
-2. Mark as template
-3. When creating new process, start from template
-4. Customize for specific product
+!!! note "There is no template flag, and no step-level copy"
+    A process is not *marked* as a template — duplicating one is the whole
+    mechanism. And there is no way to copy a single step's configuration into
+    another process.
 
 ## Linking to Part Types
 

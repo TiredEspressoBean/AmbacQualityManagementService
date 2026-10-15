@@ -15,15 +15,22 @@ A step represents a single operation in a process:
 
 ## Step Types
 
-| Type | Use For |
-|------|---------|
-| **Production** | Manufacturing operations |
-| **Inspection** | Quality checks |
+| Type | What it marks |
+|------|---------------|
+| **Task** | Ordinary work. The default. |
+| **Start** | Where the flow begins |
+| **Decision** | A branch point — see *Decision Points* |
 | **Rework** | Repair or correction |
-| **Assembly** | Component assembly |
-| **Packaging** | Final packaging |
-| **Shipping** | Ship preparation |
-| **Hold** | Waiting point |
+| **Timer / Wait** | A wait, e.g. a cure or a soak |
+| **Terminal** | An end of the flow |
+| **Receiving Inspection** | Incoming acceptance |
+| **Repair** | A reman repair node, reached only when its repair code is raised |
+
+!!! note "Step type is a flow marker, not a work category"
+    It sets how the step reads in the flow editor and, for Decision, Terminal
+    and Repair, how it behaves. There is no *Production*, *Assembly*,
+    *Packaging*, *Shipping*, *Hold* or *Complete* type — older lists on this
+    and other pages named categories that do not exist.
 
 ## Where Steps Are Edited
 

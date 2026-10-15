@@ -139,29 +139,43 @@ None of this lives on the company record itself:
 
 ## Company Contacts
 
-Add multiple contacts per company:
+A company can have several **external contacts** — people at the customer who
+receive notifications without being users here. They are their own records, and
+they are **not edited from a tab on the company**: find them under
+**Data Management** > **External Contacts**.
 
-1. Open company record
-2. Go to **Contacts** tab
-3. Click **Add Contact**
-4. Enter contact details:
-   - Name
-   - Email
-   - Phone
-   - Title
-   - Role
-5. Save
+| Field | Description |
+|-------|-------------|
+| **Customer** | The company they belong to |
+| **Name** | |
+| **Email** | Unique per company |
+| **Role** | A free-form label — `primary`, `quality`, `procurement` |
+| **Enabled** | Whether they currently receive anything |
+
+!!! note "No phone or title"
+    These records exist to route notifications — shipped ASN emails, NCRs to
+    the customer, late-risk alerts — so they carry an email and nothing else to
+    reach someone by.
+
+Separately, a **user** can be flagged as an outside contact with the
+**Contact for** field — see [Outside contacts](#outside-contacts) above. That is
+the one SCARs and delivery chasing read.
 
 ## Portal Access
 
-Give customers access to view their orders:
+Portal access is granted per **person**, not per company:
 
-1. Create user for contact
-2. Set user **Role Type** to Customer
-3. Associate user with company
-4. User sees only their company's orders
+1. Create a user for the contact
+2. Set their **User type** to **Portal**
+3. Associate them with the company
+4. Add them to the **Customer** group
 
-See [Adding Users](../users/adding.md).
+They then see only their own company's orders.
+
+!!! warning "There is no 'Role Type' field"
+    Older instructions said to set *Role Type: Customer*. The account type is
+    **User type**, with two values — Internal and Portal — and *Customer* is a
+    group. See [Adding Users](../users/adding.md).
 
 ## Company Documents
 
