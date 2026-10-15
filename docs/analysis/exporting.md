@@ -175,9 +175,10 @@ Returns step-by-step history including timing, operators, equipment, measurement
 A **Traveler** button on the work order detail page generates a Work Order
 Traveler PDF, downloaded or emailed to you.
 
-!!! note "Planned Feature"
-    A UI button for a *per-part* Traveler PDF is still planned. Part-level
-    traveler data is available via the API endpoint above.
+A **per-serial** traveler is on the part itself: open the part and use
+**Traveler** in its header. It renders that serial's as-built record — its work
+order's routing, who did each step, what was measured, and the lots that went
+in.
 
 Use for:
 - Customer documentation
