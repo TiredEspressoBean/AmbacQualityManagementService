@@ -11,6 +11,13 @@ Our training is:
 - **Progressive**: Build skills step by step
 - **Validated**: Confirm understanding with exercises
 
+!!! info "Every track is a slice of one day"
+    [The Shop Day](shop-day.md) is a single working day at a fictional shop,
+    with every role's moments in it and the connections between them written
+    down. A role's track teaches that role's slice. Read it first if you are
+    setting training up, or if you want to see how the roles interlock before
+    picking one.
+
 ## Available Training
 
 | Role | Duration | Prerequisites |

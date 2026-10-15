@@ -57,6 +57,7 @@ nav:
     - Customer Portal: roles/customer.md
   - Training:
     - Training Program: training/index.md
+    - The Shop Day: training/shop-day.md
     - Operator Training: training/operator.md
     - Shift Lead Training: training/shift-lead.md
     - QA Inspector Training: training/qa-inspector.md
