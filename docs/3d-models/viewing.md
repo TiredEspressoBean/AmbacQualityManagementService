@@ -61,38 +61,28 @@ Navigate to `/heatMapViewer/partType/{id}` or `/heatMapViewer/part/{id}`
 
 | Key | Effect |
 |-----|--------|
-| `R` | Reset view |
-| `+` / `-` | Zoom in/out |
-| `Arrow Keys` | Rotate |
-| `Esc` | Deselect annotation |
+| `W` / `S` | Move forward / back |
+| `A` / `D` | Strafe left / right |
+| `Space` / `Ctrl` | Move up / down |
+| `Q` / `E` | Yaw left / right |
+| `R` / `F` | Pitch up / down |
+
+The viewer flies a camera rather than spinning a turntable, so movement is
+WASD as in a game. The mouse still orbits, pans and zooms.
 
 ## Toolbar Controls
 
-### View Controls
+### Lighting
 
-| Button | Function |
-|--------|----------|
-| **Reset** | Return to default view |
-| **Zoom to Fit** | Fit model in view |
-| **Front/Back/Side** | Preset angles |
-| **Perspective/Ortho** | Toggle projection |
+The one settings panel adjusts lighting: **Ambient**, **Main Light** and
+**Fill Light**.
 
-### Display Options
+!!! warning "The rest of the toolbar does not exist"
+    There is no Reset, Zoom to Fit, Front/Back/Side preset, Perspective/Ortho
+    toggle, Wireframe, X-Ray, Points, Show All, Filter or Hide. Older versions
+    of this page tabled all of them.
 
-| Option | Function |
-|--------|----------|
-| **Wireframe** | Show mesh edges |
-| **Solid** | Normal rendering |
-| **X-Ray** | Semi-transparent |
-| **Points** | Show annotation points |
-
-### Annotation Controls
-
-| Option | Function |
-|--------|----------|
-| **Show All** | Display all annotations |
-| **Filter** | Filter by type/severity |
-| **Hide** | Hide annotations |
+    To get back to a view you lost, reload the page.
 
 !!! note "There is no Add button"
     Annotations are created by clicking the model itself while in annotate

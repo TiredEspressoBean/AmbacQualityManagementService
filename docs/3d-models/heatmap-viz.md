@@ -39,59 +39,35 @@ This view identifies:
 2. Heat map shows defects on that specific part
 3. Useful for part-specific investigation
 
-### By Order
+### By work order
 
-Filter heat map to show only parts from a specific order:
-1. Open Heat Map viewer
-2. Apply **Order** filter
-3. View defects for that order's parts
+Use the **Work order** filter to narrow the map to one work order's parts.
 
 ## Heat Map Options
 
-### Data Options
+Two sliders shape how the heat map renders:
 
 | Option | Effect |
 |--------|--------|
-| **Defect Count** | Color by number of defects |
-| **Defect Rate** | Color by defects per production volume |
-| **By Severity** | Separate heat maps per severity level |
+| **Radius** | How far each defect's heat spreads from its point |
+| **Intensity** | How strongly each defect contributes to the colour |
 
-### Display Options
+!!! note "No opacity, interpolation or contour controls"
+    Older instructions listed Point Size, Opacity, Interpolation and Contours,
+    and a choice between Defect Count, Defect Rate and per-severity maps. The
+    two sliders above are the whole of it.
 
-| Option | Effect |
-|--------|--------|
-| **Point Size** | Larger/smaller annotation markers |
-| **Opacity** | Heat map transparency |
-| **Interpolation** | Smooth color transitions |
-| **Contours** | Show frequency lines |
+## Filtering
 
-## Filtering Heat Map Data
+The viewer filters on five things, all of them dropdowns:
 
-### By Date Range
-
-1. Select date range filter
-2. Show only defects from that period
-3. Compare different time periods
-
-### By Error Type
-
-1. Select specific error types
-2. Heat map shows only those defects
-3. Analyze specific defect categories
-
-### By Severity
-
-- Show all severities
-- Critical only
-- Major and above
-- Minor only
-
-### By Source
-
-- All defects
-- Production defects only
-- Customer-reported only
-- Incoming inspection only
+| Filter | Default |
+|--------|---------|
+| **Step** | All Steps |
+| **Defect type** | All Defect Types |
+| **Severity** | All Severities |
+| **Time** | All Time |
+| **Work order** | All Work Orders |
 
 ## Interpreting Heat Maps
 
