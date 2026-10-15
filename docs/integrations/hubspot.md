@@ -170,8 +170,9 @@ feed for the failure.
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `change_integrationconfig` | Configure HubSpot |
-| `view_integrationconfig` | View integration status |
+Integrations are **administrator-only**, and not through a model permission —
+the endpoints require Django staff access, so there is no
+`view_integrationconfig` or `change_integrationconfig` to grant. Viewing an
+integration and configuring it are the same level of access: if you can open
+the page, you can connect and disconnect it.
 

@@ -21,12 +21,15 @@ SSO allows users to:
 
 ## Supported Providers
 
-| Provider | Protocol |
-|----------|----------|
-| **Microsoft Entra ID** | OAuth 2.0 / OIDC |
-| **Microsoft 365** | OAuth 2.0 / OIDC |
-| **Okta** | SAML / OIDC |
-| **Google Workspace** | OAuth 2.0 |
+| Provider | Protocol | Status |
+|----------|----------|--------|
+| **Microsoft Entra ID** / **Microsoft 365** | OAuth 2.0 / OIDC | Supported |
+
+!!! note "Microsoft only, for now"
+    Microsoft is the one provider wired up — it is the only entry in
+    `SOCIALACCOUNT_PROVIDERS`, and the setup below is the whole of it. Okta and
+    Google Workspace have been listed here in the past; there is no
+    configuration path for either, so do not plan around them.
 
 ## Microsoft Entra ID Setup
 
@@ -63,7 +66,7 @@ SSO allows users to:
 
 4. **Test SSO**
    - Log out of uqmes
-   - Click "Sign in with Microsoft"
+   - Click **Login with Microsoft**
    - Authenticate via Microsoft Entra ID
    - Verify successful login
 

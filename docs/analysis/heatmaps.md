@@ -16,7 +16,14 @@ This visual approach helps identify:
 
 ## Accessing Heat Maps
 
-Navigate to **Quality** > **Heat Map** or `/heatmap`
+Navigate to **Quality** > **Heat Map** (`/heatmap`).
+
+!!! note "Two different heat map surfaces"
+    `/heatmap` is the analysis page described here. The **3D model viewer** is
+    separate and opens per part or per part type at
+    `/heatMapViewer/part/{id}` and `/heatMapViewer/partType/{id}` — see
+    [Heat Map Visualization](../3d-models/heatmap-viz.md). Both exist; they are
+    not alternative spellings of one route.
 
 ## Heat Map Views
 

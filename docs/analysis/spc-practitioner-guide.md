@@ -24,7 +24,7 @@ SPC data connects to several pages in uqmes:
 ### Navigation Path
 
 ```
-Tools (sidebar)
+Sidebar (standalone links, no section header)
     ├── Documents (/documents)
     ├── Analytics (/analysis)
     │       └── Links to: SPC, Defects, Process Flow
@@ -203,7 +203,8 @@ Freeze control limits when ALL of these are true:
 2. **Document current state**: Screenshot chart and capability indices
 3. **Get approval**: QA Manager sign-off required
 4. **Freeze in system**: Click **Freeze Limits** on SPC page
-5. **Record justification**: System requires reason for freezing
+5. **Record justification**: the **notes** field is optional — the system will
+   freeze without one, so write it anyway if your procedure expects a reason
 6. **Communicate**: Notify production that baseline is locked
 
 ### 3.3 When to Update a Baseline
@@ -342,17 +343,17 @@ When a signal indicates process shift:
 To find parts produced during an out-of-control period:
 
 1. Note the **timestamp range** of suspect measurements from SPC chart (`/spc`)
-2. Navigate to `/tracker` or **Tracker**
-3. Use filters:
-   - Step = the affected step
-   - Date range within suspect period
-   - Equipment (if equipment-specific issue)
-4. Alternatively, use `/quality/defects` to see defect patterns by time period
-5. Export list for review
+2. Use `/quality/defects` to see defect patterns over that period, or open the
+   affected work orders directly
+
+!!! warning "The Tracker does not filter by step, date or equipment"
+    Older instructions here described exactly that. It is an order-progress
+    view, not a parts query tool, so the dependable route for "which parts ran
+    during this window" is the API.
 
 **API approach:**
 ```
-GET /api/parts/?step={step_id}&created_at__gte={start}&created_at__lte={end}
+GET /api/Parts/?step={step_id}&created_at__gte={start}&created_at__lte={end}
 ```
 
 ### 5.4 Disposition Considerations

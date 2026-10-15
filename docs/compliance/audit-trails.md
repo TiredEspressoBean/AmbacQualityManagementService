@@ -117,7 +117,7 @@ Full system audit trail with filtering:
 - By date range
 
 ### Record History
-On any record, view **History** tab:
+On any record, open the record's **Activity History** section:
 - All changes to that record
 - Chronological order
 - Full change details

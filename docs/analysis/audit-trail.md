@@ -32,8 +32,12 @@ Full system-wide audit trail:
 View history for specific records:
 
 1. Open any record (order, part, NCR, etc.)
-2. Click **History** or **Audit Trail** tab
+2. Scroll to the **Activity History** section at the bottom of the detail page
 3. See all changes to that record
+
+!!! note "A section, not a tab"
+    There is no *History* or *Audit Trail* tab. The audit trail is a section on
+    the record's own detail page.
 
 ## Audit Log Interface
 

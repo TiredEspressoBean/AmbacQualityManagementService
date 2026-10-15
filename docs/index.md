@@ -32,11 +32,18 @@ uqmes helps manufacturing teams:
 | Role | Start Here |
 |------|------------|
 | **Operator** | [Operator Guide](roles/operator.md) - Moving parts through production steps |
+| **Shift Lead** | [Shift Lead Guide](roles/shift-lead.md) - Running a shift, holds and decisions |
 | **QA Inspector** | [Inspector Guide](roles/qa-inspector.md) - Inspections and quality reports |
 | **QA Manager** | [QA Manager Guide](roles/qa-manager.md) - Approvals, CAPA, and analytics |
-| **Production Manager** | [Production Guide](roles/production-manager.md) - Orders and scheduling |
+| **Production Manager** | [Production Guide](roles/production-manager.md) - Orders and work orders |
+| **Planner** | [Planner Guide](roles/planner.md) - Scheduling and releasing work |
+| **Engineering** | [Engineering Guide](roles/engineering.md) - Processes, BOMs and specs |
+| **Purchasing** | [Purchasing Guide](roles/purchasing.md) - Suppliers and incoming material |
+| **Receiving** | [Receiving Guide](roles/receiving.md) - Taking material in |
+| **Shipping** | [Shipping Guide](roles/shipping.md) - Sending product out |
 | **Document Controller** | [Document Guide](roles/document-controller.md) - Document management |
 | **Administrator** | [Admin Guide](roles/administrator.md) - System configuration |
+| **Auditor** | [Auditor Guide](roles/auditor.md) - Read-only review access |
 | **Customer** | [Customer Guide](roles/customer.md) - Viewing order status |
 
 ## Training

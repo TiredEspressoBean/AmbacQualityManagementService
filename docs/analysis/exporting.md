@@ -69,26 +69,18 @@ Some exports can include related data:
 
 ## Exporting from Charts
 
-### Single Chart Export
+!!! note "Planned Feature"
+    There is no per-chart export control — no hover icon, no PNG and no
+    chart-level CSV. Image and PDF export from analytics charts is planned.
 
-1. Hover over the chart
-2. Click the export icon (download or menu)
-3. Select format:
-   - PNG: Image file
-   - CSV: Underlying data
-4. Download
+    What does exist: the **Defect Analysis** page's own **Export**, which
+    downloads the current view as CSV respecting the period and part type you
+    have selected, and the **SPC Report** PDF on the SPC page.
 
 ### Dashboard Export
 
 !!! note "Planned Feature"
     Dashboard export is planned for a future release.
-
-When available, you will be able to:
-
-1. Click **Export Dashboard**
-2. Select format (PDF recommended)
-3. All visible charts included
-4. Download
 
 ## Report Generation
 
@@ -224,14 +216,14 @@ When available:
 
 ## Export Limitations
 
-### File Size
-Large exports may be:
-- Split into multiple files
-- Generated asynchronously
-- Available via download link
+!!! warning "An export holds the tab open — do not navigate away"
+    Exports download straight to your browser. **There is no background job,
+    no asynchronous generation and no emailed download link**, so the request
+    stays open until the file is built and navigating away cancels it.
 
-### Rate Limits
-Frequent exports may be rate limited to prevent system overload.
+    For a large export, narrow the date range or filter first rather than
+    waiting it out. See [Export taking too
+    long](../troubleshooting/common-issues.md).
 
 ### Data Retention
 Exports may be limited by data retention policies.

@@ -38,7 +38,7 @@ Focus: Quality metrics and performance
 |------|-------|-------|
 | Tracker | `/tracker` | Order cards with progress bars (customer-facing) |
 | Work Orders | `/production/work-orders` | Production queue and inspection |
-| Dispositions | `/production/dispositions` | Quarantine and disposition management |
+| Dispositions | `/production/dispositions` | Quarantine and disposition management. Listed under **Quality** in the sidebar despite the URL. |
 
 ## Quality Dashboard
 

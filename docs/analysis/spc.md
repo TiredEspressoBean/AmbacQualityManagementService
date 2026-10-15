@@ -210,26 +210,6 @@ View distribution of measurements:
 
 ## SPC Reports
 
-Generate reports:
-
-### Single Measurement Report
-- Control chart
-- Capability summary
-- Data table
-- Out-of-control events
-
-### Comparison Report
-- Multiple measurements
-- Side-by-side capability
-- Trend comparison
-
-### Export Options
-- PDF for distribution
-- CSV for analysis
-- Image for presentations
-
-## SPC Reports
-
 Click **SPC Report** on the SPC page to generate a PDF:
 
 - Full-page control charts
