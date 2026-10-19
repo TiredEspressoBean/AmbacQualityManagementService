@@ -247,11 +247,9 @@ yes/no columns and ones with a default are not, since leaving them blank is a
 valid choice rather than an omission.
 
 !!! note "Templates have no example rows"
-    They used to, and the examples imported as real data if you left them in.
-    Now the guidance lives where it can't be mistaken for content: as **comments
-    on the header cells** and on the **Instructions** sheet.
-
-    So an empty-looking template is the correct one. Hover a header for the hint.
+    An empty-looking template is the correct one. The guidance lives where it
+    cannot be mistaken for content: as **comments on the header cells**, and on
+    the **Instructions** sheet. Hover a header for the hint.
 
 ### Best Practices for Templates
 

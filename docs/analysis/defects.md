@@ -32,15 +32,20 @@ Focus improvement efforts on the "vital few":
 
 ### Filtering
 
-The page offers:
-
 | Control | Purpose |
 |---------|---------|
 | **Period** | 30, 60, or 90 days |
 | **Part type** | All part types, or one |
+| **Defect type** | Click a bar in **By Defect Type** |
+| **Process** | Click a bar in **By Process** |
 
-Defects are broken down by **type** and by the **step** where they were found,
-each with a count. Below that, **Defect Records** lists the individual defects:
+Active filters show as chips above the charts; click one to remove it, or
+**Clear** to remove them all.
+
+Across the top, four cards: **Total Defects**, **Defect Rate**, **Top Type** and
+**Trend**, with a **Defect Trend** chart beneath. Then the two breakdowns, **By
+Defect Type** and **By Process**, each with a count. Below that, **Defect
+Records** lists the individual defects:
 
 | Column | Shows |
 |--------|-------|
@@ -51,8 +56,8 @@ each with a count. Below that, **Defect Records** lists the individual defects:
 | **Date** | When it was found |
 | **Status** | Where the defect stands |
 
-**Export** downloads the current view as CSV, respecting the period and part
-type you have selected.
+**Export** downloads CSV. With rows ticked, it exports just those; otherwise it
+exports every record in the current view, respecting all the filters above.
 
 !!! note "No severity filter"
     Defects cannot be filtered by severity here. Severity lives on the CAPA
@@ -88,67 +93,29 @@ count but leaves the inspected total alone.
     you are seeing that defect against *all* inspections in scope, which is the
     useful number.
 
-## Trend Analysis
+## Reading the page
 
-### Defect Trend Over Time
+### Trend
 
-Line chart showing defects by period:
+**Defect Trend** plots defects across the period you chose. Look for:
 
-- Daily, weekly, or monthly
-- Total count or rate
-- Compare to targets
+- **Increasing trend** — a problem getting worse
+- **Decreasing trend** — an improvement working
+- **Spikes** — a specific event
+- **Cycles** — something periodic: shifts, maintenance
 
-### Identifying Patterns
+Use **Defect Rate** rather than **Total Defects** when volume varies — a busier
+month will show more defects without anything getting worse.
 
-Look for:
-- **Increasing trend**: Problem getting worse
-- **Decreasing trend**: Improvement working
-- **Spikes**: Specific event caused issues
-- **Cycles**: Periodic patterns (shifts, maintenance)
+### By Process
 
-### Rate vs Count
+Where defects are **detected**. A defect found at final test may well have
+been made at machining; the page records where it was found, not where it
+originated, so the origin is a root-cause question for the CAPA.
 
-| Metric | Formula | Use When |
-|--------|---------|----------|
-| **Count** | Total defects | Volume is constant |
-| **Rate** | Defects / Parts produced | Volume varies |
-
-## By Process Step
-
-Where are defects detected?
-
-| Step | Defects | % |
-|------|---------|---|
-| Component Grading | 12 | 25% |
-| Nozzle Inspection | 18 | 38% |
-| Flow Testing | 10 | 21% |
-| Final Test | 8 | 16% |
-
-### Detection vs Origin
-
-Defects detected at a step may have originated earlier:
-
-- Early detection = good (less rework)
-- Late detection = costly (scrap or rework done)
-
-Track both:
-- Where detected
-- Where originated (root cause)
-
-## By Part Type
-
-Which products have quality issues?
-
-| Part Type | Defects | Rate |
-|-----------|---------|------|
-| Common Rail Injector | 45 | 2.3% |
-| HEUI Injector | 12 | 0.8% |
-| Unit Injector | 28 | 3.1% |
-
-Compare:
-- Absolute counts
-- Rates (normalized by production)
-- Trends over time
+!!! note "Part type is a filter, not a breakdown"
+    There is no *by part type* chart. Pick a part type in the selector to see
+    one type's defects, then compare by switching.
 
 ## By Supplier/Lot
 
@@ -164,73 +131,42 @@ delivery, and open supplier corrective action requests (SCARs). See
 
 ## Repeat Defects
 
-Identify recurring issues:
+The **Repeat defects** card on **NCR Analysis** (`/quality/ncrs`) lists every
+defect recorded **three or more times on failed reports** in the page's period,
+most frequent first, up to ten. Each row shows:
 
-### Definition
-Same error type + same part type occurring multiple times.
+- the defect
+- **Part types** and **Steps** it turned up on
+- how many times — *12×*
 
-### Analysis
-- How often does it repeat?
-- Time between occurrences
-- Root cause addressed?
-
-### Actions
-- Create CAPA for systematic issues
-- Review existing CAPAs effectiveness
-- Escalate if not improving
+A defect that keeps repeating across part types points at a shared cause — a
+step, a machine, a supplier — rather than one product. It is the usual reason to
+raise a CAPA. When nothing has reached three, the card reads *No defect has
+repeated in this period*.
 
 ## Defect Cost Analysis
 
-!!! note "Planned Feature"
-    Cost of quality is not tracked. Nothing records the cost of scrap, rework,
-    inspection, or returns, and no cost figures appear in defect analysis.
+!!! note "Cost of quality is not tracked"
+    Nothing records the cost of scrap, rework, inspection or returns, and no
+    cost figures appear here. Scrap is reported on
+    [Analytics](dashboard.md#analytics-analysis) as a **rate**, not a value.
 
-    The scrap **rate** is reported on the [Quality
-    Dashboard](dashboard.md) as a percentage of parts, not a monetary value.
+## Clicking a chart filters, it does not drill down
 
+Clicking a bar in **By Defect Type** or **By Process** adds that filter; it does
+not open a list. The records behind the numbers are the **Defect Records** table
+on the same page, already narrowed to match. Its rows are not links — to open a
+part, look it up by its ID.
 
-## Drill-Down Capability
+!!! note "No comparison, custom or scheduled reports"
+    There is no period-over-period comparison, no benchmark line, no report
+    builder and no scheduled report. Export the records and compare outside.
 
-From any chart, drill down:
+## Other exports
 
-1. Click data point or bar
-2. View list of related NCRs
-3. Click NCR for details
-4. Navigate to parts, CAPAs
-
-## Comparative Analysis
-
-### Period Comparison
-- This month vs last month
-- This quarter vs same quarter last year
-- Before/after improvement
-
-### Benchmark Comparison
-- Against target
-- Against industry standards
-- Against best-in-class
-
-## Custom Reports
-
-!!! note "Planned Feature"
-    Custom report builder functionality is planned for a future release. Currently, use filters on the defect analysis page and export data for external analysis.
-
-### Scheduled Reports
-
-!!! note "Planned Feature"
-    Scheduled defect reports are planned for a future release. Currently, export reports manually.
-
-## Export Options
-
-Export defect data from the Quality Reports table (**Quality > Quality Reports**):
-
-| Format | Use Case |
-|--------|----------|
-| **CSV** | Data analysis in Excel |
-| **Excel** | Includes reference sheets and validation |
-
-!!! note "Planned Feature"
-    PDF and image export from analytics charts are planned for a future release.
+The quality reports list (**Quality** > **Quality Reports**) exports **CSV** or
+**Excel**, the latter with reference sheets and validation. See [Exporting
+Data](exporting.md).
 
 ## Permissions
 
@@ -238,7 +174,7 @@ Export defect data from the Quality Reports table (**Quality > Quality Reports**
 |------------|--------|
 | `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 | `view_qualityreports` | See underlying data |
-| `export_data` | Export reports |
+| `export_data` | Generate PDF reports. This page's CSV export is built in the browser and needs only the view permissions above |
 
 ## Next Steps
 

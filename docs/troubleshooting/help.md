@@ -1,12 +1,14 @@
 # Getting Help
 
-!!! warning "There is no support desk"
-    uqmes has no vendor support line, no ticketing system, no service-level
-    agreement, and no account manager. Nothing in this system pages anyone.
+!!! warning "Nothing in the system raises a support request"
+    uqmes has no built-in ticketing, help-request button or escalation path, and
+    nothing in it pages anyone. Whether there is a support arrangement behind
+    your deployment — and what it covers — depends on how your organization
+    runs uqmes, and these docs cannot tell you.
 
-    If something is broken, the resources below are what exist. Escalation
-    means telling whoever runs uqmes for your organization — in person, or
-    however you normally reach them.
+    So escalation means telling whoever runs uqmes for your organization, in
+    person or however you normally reach them. The resources below are what the
+    product itself offers.
 
 ## Work the problem yourself first
 
@@ -32,9 +34,8 @@ behalf.
 
 ## When you do need a person
 
-There is no support organization, so the person who can help is whoever
-administers this deployment. Who that is depends on your site — these docs
-cannot tell you.
+The person who can help is whoever administers this deployment, or whoever they
+name. Who that is depends on your site — these docs cannot tell you.
 
 Roughly, problems sort into:
 

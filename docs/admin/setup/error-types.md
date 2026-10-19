@@ -52,6 +52,9 @@ Submit with **Create Error Type**.
     inspector marks the defect location on the model. Use it for defects whose
     position matters — see [Annotations](../../3d-models/annotations.md).
 
+    It is a **gate**, not a hint: a disposition linked to a report carrying one
+    of these errors cannot be completed until that report has an annotation.
+
 4. Save
 
 ## Error Type Hierarchy

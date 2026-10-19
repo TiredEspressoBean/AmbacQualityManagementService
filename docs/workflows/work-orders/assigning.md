@@ -47,13 +47,32 @@ which equipment the step prefers or requires.
 
 ## Operator Qualifications
 
-The system can validate operator qualifications:
+The check is not optional and it is not a warning. An operator whose record does
+not meet a step's training requirement is **refused at the moment work starts**,
+and told exactly what is missing — *"Level 1, needs Level 2"*.
 
-- **Training**: Operator trained on the process
-- **Certification**: Current certifications for the step
+A certification that has lapsed no longer counts: the gate reads the **current**
+level, meaning the highest the person holds that is still in date.
 
-!!! warning "Qualification Check"
-    If training records are enforced, operators without required training may be blocked from executing certain steps.
+### Taking over someone else's step
+
+Starting a step already assigned to another operator raises a gate naming the
+current owner. Both this and the training gate are cleared the same way: a
+**supervisor signs in on the operator's own screen**, with their own password
+and a reason.
+
+The authorisation is written onto the step execution and stays there — who was
+authorised, who authorised it, what was missing, and when. It is a recorded
+business decision, not a way to make the requirement disappear.
+
+You can see it on the **part's traveller** — the work order's control page →
+the part's history — as an amber line under the step it was used on: who worked
+it, what training they lacked, who authorised it, when, and the reason.
+
+!!! note "You cannot clear your own gap"
+    The override needs a *different*, active user, and repeated password
+    failures are throttled. See [Running Work
+    Instructions](../dwi/running.md#if-youre-not-qualified-for-the-step).
 
 ## Viewing Assignment History
 
@@ -75,11 +94,20 @@ For multi-shift operations:
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `change_workorder` | Assign/reassign work orders |
-| `view_equipments` | See equipment options |
-| `view_user` | See operator options |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `change_scheduledtask` | Dispatch, and reassign a task on the board by hand | Planner, Production Manager, QA Manager, Shift Lead, Tenant Admin |
+| `override_training_gate` | Authorise an operator to start work their record doesn't cover | Shift Lead, QA Manager, Production Manager, Tenant Admin |
+| `view_equipments` | See equipment options | Every staff role |
+| `view_user` | See operator options | Every staff role |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+!!! note "There is nothing to assign *on the work order*"
+    `change_workorder` edits the job — priority, dates, notes — not who works
+    it. Assignment lives on the **scheduled task** (planned) and the **step
+    execution** (actual), which is why a Shift Lead can reassign work on their
+    shift without being able to re-plan the shop.
 
 ## Next Steps
 

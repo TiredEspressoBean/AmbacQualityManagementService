@@ -74,7 +74,14 @@ the machine schedule as given. Assigns per lot, not per piece, and only to
 operators qualified for the step.
 
 ### Disposition
-The decision made about a non-conforming part: Use As Is, Rework, Scrap, or Return to Vendor (RTV).
+The recorded decision about a non-conforming part, and **who authorised it**.
+There are five: **Rework**, **Repair**, **Scrap**, **Use As Is** and **Return to
+Supplier**.
+
+Rework and Repair are not the same thing and auditors check the difference:
+rework restores full conformance, repair leaves a known accepted deviation.
+Use As Is and Repair both require a recorded approval reference before the
+decision will save.
 
 ### Document
 A controlled file (PDF, drawing, specification) with revision tracking and optional approval workflow.
@@ -200,7 +207,10 @@ The organizational structure, procedures, and resources for managing quality. uq
 A record documenting a non-conformance or quality issue with a part. Requires disposition and may trigger CAPA.
 
 ### Quarantine
-A status indicating a part is held for quality review and cannot proceed through production.
+A part status indicating the part is held for quality review. A quarantined part
+**can never ship**. Whether it also stops at the next step depends on that
+step's **Block on quarantine** setting, which is off by default — so a held part
+often keeps moving down the line until shipping.
 
 ## R
 

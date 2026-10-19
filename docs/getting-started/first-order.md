@@ -80,9 +80,10 @@ Parts are the individual items being tracked, and they are added against the
 
 5. Confirm
 
-Each part's ERP ID is built from the **part type's own prefix** plus a counter
-padded to four digits — a prefix of `INJ` and a start of 1 gives `INJ0001`
-through `INJ0008`. You do not type the prefix; it is set on the part type.
+Each part's ERP ID is the **work order's** ERP ID, then the **part type's own
+prefix** and a counter padded to four digits — on work order `WO-0048`, a prefix
+of `INJ` and a start of 1 gives `WO-0048-INJ0001` through `WO-0048-INJ0008`. You
+do not type the prefix; it is set on the part type.
 
 ## Step 4: Track Parts on the Tracker
 
@@ -91,9 +92,12 @@ The **Tracker** page shows all orders and their progress:
 1. Navigate to **Tracker**
 2. Find your order card
 3. You'll see:
-   - Order number and customer
-   - Progress bar showing completion
-   - Step distribution (how many parts at each step)
+   - The order's name and company
+   - Its delivery date, with days remaining
+   - The current stage, and a progress bar of stages completed
+
+The card carries no part counts — open the order for those. The Tracker has no
+search, so find the card by its name.
 
 ### Moving Parts Forward
 
@@ -141,26 +145,38 @@ If a part has a problem:
 
 1. Go to **Quality** > **Quality Reports**
 2. Create a quality report against the part
-3. Choose the error type and describe the issue
-4. The part enters quarantine for disposition
+3. Choose the error type, describe the issue, and set the result to **FAIL**
+4. The part enters quarantine, and a disposition is opened for it
+
+!!! warning "Set FAIL when you create the report"
+    The quarantine happens only as a report is **created** with result FAIL.
+    Saving a report as Pending and failing it later opens the disposition but
+    leaves the part where it is. See [Quarantine](../workflows/quality/quarantine.md).
 
 Quality issues are tracked separately and require disposition (Use As Is, Rework, Scrap, etc.).
 
 ## Step 7: Complete the Order
 
-When all parts finish the final step:
+Nothing here is a button:
 
-1. Parts automatically move to "Complete" status
-2. The order progress shows 100%
-3. The order can be marked as shipped/closed
+1. Each part takes the status its route ends in — **Completed**, **Shipped**, **In
+   Stock** or **Awaiting Pickup**, whatever the last step sets
+2. When every part on a work order has ended, the work order completes itself —
+   or cancels, if every one was scrapped
+3. When every work order on the order has ended, and at least one completed, the
+   **order** completes itself
+4. The Tracker card shows every stage done
+
+Shipping to the customer is its own step, from **Supply** > **Shipping** — see
+[Shipping](../workflows/supply/shipping.md).
 
 ## What You've Learned
 
 Congratulations! You've completed the basic workflow:
 
 - [x] Created an order with customer information
-- [x] Added parts to track through production
-- [x] Created a work order linking to a process
+- [x] Created a work order linking it to a process
+- [x] Added parts to the work order
 - [x] Tracked parts through manufacturing steps
 - [x] Understood how to handle quality issues
 

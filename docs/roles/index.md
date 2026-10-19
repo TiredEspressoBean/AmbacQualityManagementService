@@ -40,7 +40,7 @@ Order and work order management, and production oversight. Learn to create order
 Release work onto the floor, promise dates against real capacity, decide what to buy, build or recover, run the schedule, and decide a core's exit after teardown.
 
 ### [Engineering](engineering.md)
-Define what the shop builds and how: part types, processes, routings, work instructions, specs, life limits and cycle times.
+Define what the shop builds and how: part types, processes, routings, work instructions, specs, life limits, and each step's expected duration.
 
 ## Supply
 
@@ -59,7 +59,7 @@ Getting finished work out, with the right paperwork, on time.
 Document management, revisions, and approvals. Learn to upload documents, manage revisions, and route for approval.
 
 ### [Auditor](auditor.md)
-Read everything, change nothing. A seat for internal and external audits, with no write permission of any kind.
+Change nothing — a seat for internal and external audits, with no write permission of any kind. It sees the **whole tenant's** production data, but **not** the classified document tiers: an auditor reads Public and Internal documents only.
 
 ### [Administrator](administrator.md)
 System configuration, users, and setup. Learn to manage users, configure processes, and maintain system settings.
@@ -94,13 +94,26 @@ which landing you are on before assuming a page is missing.
 
 ### Every role has a Home surface
 
-All 13 staff groups have their own Home arrangement, each led by a launchpad for
-the role: **Operator**, **QA Inspector**, **QA Manager**, **Production Manager**,
-**Shift Lead**, **Engineering**, **Document Controller**, **Purchasing**,
-**Planner**, **Receiving**, **Shipping**, **Auditor** and **Tenant Admin**.
+All 13 staff groups have their own Home arrangement — **Operator**, **QA
+Inspector**, **QA Manager**, **Production Manager**, **Shift Lead**,
+**Engineering**, **Document Controller**, **Purchasing**, **Planner**,
+**Receiving**, **Shipping**, **Auditor** and **Tenant Admin**.
 
 What you see on Home is the set of cards defined for *your* role, in that role's
 order — which is why two people with different groups see different Homes.
+
+They are not all the same shape, and the difference is worth knowing before you
+go looking for something a colleague describes:
+
+- **Operator and QA Inspector** do not get a stack of cards at all. Home hands
+  them a **full-surface page** built for the job — the operator's queue, the
+  inspector's task inbox.
+- **Planner, Purchasing, Receiving, Shipping and Auditor** lead with a
+  **launchpad** card for the role.
+- **QA Manager, Production Manager and Tenant Admin** lead with oversight —
+  what needs attention, then quality KPIs. **Shift Lead** leads with its own
+  hero card, **Engineering** with change control, **Document Controller** with
+  documents due for review.
 
 ### Late deliveries
 
@@ -164,7 +177,8 @@ their own orders.
 | Close a disposition | – | Yes | Yes | Yes | Yes | – | – | – | – | – | – | – | Yes |
 | **Approve** a disposition | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
 | Initiate a CAPA | – | Yes | Yes | Yes | Yes | – | – | Yes | Yes | – | – | – | Yes |
-| **Approve** a CAPA | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
+| Verify a CAPA's effectiveness | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
+| **Approve** a CAPA † | – | – | – | Yes | Yes | – | – | – | – | – | – | – | Yes |
 | Classify documents | – | – | – | Yes | – | – | – | – | – | – | Yes | – | Yes |
 | Author processes & routings | – | – | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
 | Cancel a work order | – | – | – | – | Yes | – | – | – | – | – | – | – | Yes |
@@ -174,13 +188,71 @@ their own orders.
 | Manage users | – | – | – | – | – | – | – | – | – | – | – | – | Yes |
 
 !!! note "Approve is always narrower than do"
-    Notice the pattern: many roles can *raise* a nonconformance, a CAPA or a
-    supplier qualification, and only QA Manager can **approve** one. That
-    separation is the point — it is what an auditor checks, and it is why
-    Receiving can start a supplier problem but not settle it.
+    Notice the pattern: many roles can *raise* a nonconformance or a supplier
+    qualification, and by default only QA Manager and Tenant Admin can
+    **approve** one. That separation is
+    the point — it is what an auditor checks, and it is why Receiving can start
+    a supplier problem but not settle it.
+
+!!! important "† Approving a CAPA is configuration, not a permission"
+    This row is the one entry in the table that **your tenant can change without
+    touching any group's permissions** — so read it as *the default*, not as a
+    rule.
+
+    Every staff role already holds the permission to respond to an approval. What
+    decides whether you may approve a *particular* request is whether you are an
+    assigned approver on it, which comes from the **approval template** for that
+    type. Out of the box:
+
+    | Approval | Groups it assigns |
+    |----------|-------------------|
+    | CAPA Approval | QA Manager |
+    | Document Release | QA Manager, Document Controller |
+
+    A CAPA's severity chooses its approval template — **Critical CAPA
+    Approval** or **Major CAPA Approval** — falling back to the general **CAPA
+    Approval** where the organisation has no template of that type.
+
+    Change the template and the column above changes with it. See [Approval
+    Templates](../admin/setup/approval-templates.md).
+
+    **Auditor can never approve anything**, whatever a template says — it holds
+    no write permission at all.
+
+    **Verifying is different and is a real permission gate.** `verify_capa` is
+    granted by **group**, not assigned per request by a template — by default
+    QA Manager and Tenant Admin. So a Production Manager may *approve* a CAPA so
+    work can begin, and still cannot be the one who says it worked, unless an
+    administrator deliberately adds the permission to their group. That is the
+    separation that matters.
+
+!!! warning "Seeing an approval is not being assigned it"
+    Home's **Approvals in flight** lists what is moving through the system;
+    **Needs my approval** is the one that is yours. A Document Controller
+    routinely sees CAPA approvals in flight and can do nothing with them. Judge
+    by the second number, not the first.
 
 **Auditor holds no write permission at all**, by design. An empty row across the
 Audit column is the feature.
+
+!!! warning "But an auditor does not see everything"
+    The read side is narrower than "read-only" suggests, and it is easy to
+    promise an external auditor more than they will get. The Auditor group is
+    granted the staff **view** base plus whole-tenant visibility — and
+    deliberately **not** the classified document tiers. So an auditor sees every
+    order, work order, part, quality record and history in the tenant, and only
+    **Public** and **Internal** documents. Confidential, Restricted and Secret
+    are invisible to them.
+
+    If an audit needs a controlled document, someone who holds the tier has to
+    produce it, or the auditor's user has to be put in a group that carries it —
+    which then stops being a read-only seat.
+
+    **Export control is not part of this and cannot be set here.** ITAR/EAR
+    filtering is not a permission: it reads the **user's own** `us_person` flag,
+    so an auditor marked as a US person sees export-controlled data whatever
+    group they are in. If an external auditor must not see it, that is set on
+    their user record. See [Export Controls](../compliance/export-controls.md).
 
 ## Finding Your Role
 

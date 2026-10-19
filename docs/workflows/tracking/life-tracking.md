@@ -113,6 +113,21 @@ As parts are used, increment their life:
 
 For calendar-based items, no incrementing is needed - elapsed time is calculated automatically.
 
+!!! important "You cannot type a new accumulated value"
+    `accumulated` is not directly editable. An attempt is refused:
+
+    > Accumulated life can't be edited — record usage with increment, or reset
+    > it after an overhaul.
+
+    That is deliberate. Life accumulated is evidence about a physical part, and
+    the two legitimate ways it changes — **use** and **overhaul** — each leave
+    their own trace: an increment adds to the running total, a reset keeps the
+    previous value in the reset history with a reason. Allowing the field to be
+    overwritten would lose both.
+
+    So a wrong figure is corrected by incrementing the difference, or by a reset
+    with the reason recorded — never by editing the number.
+
 ## Viewing Life Status
 
 !!! note "Planned Feature"
@@ -124,20 +139,30 @@ For calendar-based items, no incrementing is needed - elapsed time is calculated
 
 ## Limit Overrides
 
-!!! note "API only"
+!!! note "API only, and not everyone's"
     An override extends the limits for one specific part — engineering approval
     to run past the definition's figure — and leaves the definition itself
     untouched. There is no button for it. It is an API action on the life
     tracking record, taking the new limit values, a justification reason and the
     approving user.
 
+    It is gated on the same permission as authoring life limits, by default held by **QA
+    Manager, QA Inspector, Engineering and Tenant Admin**. A **Production
+    Manager is refused** — running a part past its published life is an
+    engineering and quality call, not a production one.
+
 ## Resetting Life
 
-!!! note "API only"
+!!! note "API only, same permission as an override"
     A reset is what you do after a rebuild or overhaul: accumulated value back
     to zero, source set to `RESET`, previous value kept in the reset history,
     reason recorded. Like an override, it exists only as an API action on the
-    life tracking record — there is no control for it in the interface.
+    life tracking record — there is no control for it in the interface — and it
+    is by default held by **QA Manager, QA Inspector, Engineering and Tenant Admin**.
+
+    The previous value being kept is the point: a reset is a claim that the part
+    was overhauled, and the figure it replaced is what makes that claim
+    checkable.
 
 ## Calendar-Based Tracking
 

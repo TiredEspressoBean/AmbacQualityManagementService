@@ -2,16 +2,16 @@
 
 Comprehensive audit logging for regulatory compliance.
 
-!!! example "Demo: Audit Trail in Action"
-    In demo mode, review the audit trail for CAPA-2024-003 to see compliance logging:
+!!! example "Demo: following one record"
+    Open **Admin > Audit Log** and filter to a CAPA to see what a complete
+    history looks like — who raised it, every field change with its before and
+    after values, task assignments, the RCA, and the approval responses, each
+    attributed and timestamped.
 
-    - **Creation**: QA Inspector Sarah Chen initiated CAPA on 2024-01-15
-    - **Status changes**: INITIATED → CONTAINMENT → RCA → CORRECTIVE → VERIFICATION
-    - **Task assignments**: Task "Update incoming inspection procedure" assigned to Sarah Chen
-    - **5-Whys RCA**: Root cause analysis completed by Maria Santos
-    - **Approvals**: APR-2024-0015 pending Jennifer Walsh's closure approval
-
-    Navigate to Admin > Audit Log and filter by "CAPA" to see the complete history with timestamps and user attribution.
+    A CAPA moves through **Open → In Progress → Pending Verification → Closed**
+    (or Cancelled). Those are the statuses you will see in the log; the
+    investigation phases you may work to — containment, root cause, corrective
+    action — are how you run it, not states the record holds.
 
 ## Compliance Requirements
 
@@ -32,11 +32,20 @@ Every create, update, delete is logged:
 - When (timestamp)
 - System information
 
-### Authentication Events
-- Login attempts (success/failure)
-- Logout events
-- Session timeouts
-- Password changes
+### Authentication events are **not** logged
+
+!!! danger "There is no authentication audit trail in uqmes"
+    Logins, failed logins, logouts and session timeouts leave **no trace** in
+    the audit log. Do not offer this as evidence, and do not plan an
+    investigation around it.
+
+    If you need to show who signed in, or investigate repeated failed attempts,
+    that evidence comes from your **identity provider** or your **web server
+    logs**, not from here. Establish where it lives *before* an assessor asks.
+
+    What uqmes does record is what a signed-in user **did** — every create,
+    update and delete against a record, attributed and timestamped. The identity
+    is proven at the edge; the accountability is kept here.
 
 ### Electronic Signatures
 - Who signed
@@ -110,14 +119,18 @@ Deliberately not `all`: those three classes are the accountability set.
 ### System Audit Log
 Navigate to **Admin** > **Audit Log**
 
-Full system audit trail with filtering:
+Browsing needs `view_auditlog` — by default Tenant Admin, QA Manager, Document
+Controller and Auditor — and shows only entries for records the reader can open.
+Filter:
 - By user
 - By record type
 - By action type
 - By date range
 
 ### Record History
-On any record, open the record's **Activity History** section:
+On any record, open the record's **Activity History** section (the **History**
+card on a Data Management edit form). Every staff role can read the history of a
+record they can open:
 - All changes to that record
 - Chronological order
 - Full change details
@@ -125,17 +138,18 @@ On any record, open the record's **Activity History** section:
 ## Audit Reports
 
 Audit data can be **viewed and filtered** in the UI at **Admin** > **Audit
-Log**, and on any record's **History** tab.
+Log**, and in any record's **Activity History** section.
 
 !!! warning "Audit data cannot be exported from the UI"
-    Export is deliberately disabled on the audit log viewer. To get audit data
+    Export is turned off on the audit log viewer. To get audit data
     out for an audit or a report, use the API:
 
     ```
     GET /api/auditlog/
     ```
 
-    Filter it with the same parameters available in the UI.
+    Filter it with the same parameters available in the UI. Browsing it needs
+    `view_auditlog`, as on screen.
 
 ### Planned
 
@@ -177,8 +191,8 @@ Audit logs are never auto-deleted.
 
 ## Export for Auditors
 
-There is **no PDF or CSV export button** on the audit log — it is deliberately
-disabled, as noted above. Preparing data for an external audit means:
+There is **no PDF or CSV export button** on the audit log — export is turned off
+on that screen, as noted above. Preparing data for an external audit means:
 
 1. Filter to the audit scope in **Admin** > **Audit Log** to confirm what you
    need, then
@@ -186,7 +200,9 @@ disabled, as noted above. Preparing data for an external audit means:
    parameters
 3. Format it as the auditor asked for it
 
-This needs `export_auditlog`, held by Admin.
+Reading the API needs `view_logentry`, the same permission as the screen — by
+default held by every staff role. `export_auditlog` exists but nothing checks it,
+so do not cite it as a control over who can extract the audit trail.
 
 ## Permissions
 

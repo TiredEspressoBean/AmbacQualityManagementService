@@ -107,6 +107,22 @@ never supplied by a client.
     buy-off is already co-signed with an email and password, it is not asked again:
     that is stronger than re-entering your own.
 
+    Segregation of duties applies to all three outcomes — **pass, fail and
+    waive** are each refused to whoever signed the first piece's own substeps.
+
+!!! note "When an FPI carries a drawn signature"
+    Only a **co-signed** buy-off asks for a drawing: the inspector signs at
+    someone else's station with their email, password and signature. The drawing
+    is kept on the FPI record, but only once the email and password verify, so a
+    failed co-sign stores nothing.
+
+    A buy-off from the inspector's own session asks for no drawing — at most
+    their password, where the step's author requires it.
+
+    Either way, what identifies the signer is the re-authentication,
+    `inspected_by` and `inspected_at`. The drawing is the visible mark, not the
+    identification.
+
 !!! warning "Older releases read as what they were"
     A `QaApproval` made before this existed carries method *None* and no verified
     time. That is the honest record: it was made under the signer's session alone.

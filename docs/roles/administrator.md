@@ -1,6 +1,23 @@
 # Administrator Guide
 
-This guide is for System Administrators who configure uqmes, manage users, and maintain system settings.
+This guide is for the person who configures uqmes for their facility, manages
+users and maintains system settings.
+
+!!! important "You are a Tenant Admin, not a System Admin"
+    These are two different seats and only one of them is yours.
+
+    | Group | Who holds it | Scope |
+    |-------|--------------|-------|
+    | **Tenant Admin** | Your facility's administrator — **this guide** | Everything inside your organisation |
+    | **System Admin** | The platform operator | Every tenant on the platform |
+
+    Tenant Admin is the widest role *in your organisation*: it is the union of
+    every other role, plus user and group management, the secret document tier
+    and the compliance permissions. It is not a platform seat, and it cannot see
+    or touch another organisation's data.
+
+    If something in this guide isn't available to you, check you are in **Tenant
+    Admin** rather than a narrower group.
 
 ## Your Role
 
@@ -20,7 +37,8 @@ As an Administrator, you:
 For a new uqmes instance:
 
 1. [ ] Configure organization settings
-2. [ ] Create user groups with permissions
+2. [ ] Review the groups your organisation starts with, and adjust their
+   permissions if your roles differ
 3. [ ] Add initial users
 4. [ ] Set up companies (customers/suppliers)
 5. [ ] Define part types
@@ -47,12 +65,14 @@ For a new uqmes instance:
 1. Navigate to **Admin** > **User Management**
 2. Click **Add user**
 3. Fill in:
-   - Email (login ID)
-   - First/Last name
-   - Groups
+   - Username — the login identifier
+   - Email, first and last name
+   - Groups, and job role
 4. Save
 
-User receives invitation email.
+Creating a user sends nothing. To let them in, use **Copy access link** on
+their row and send it to them — or **Resend invitation**, if this deployment
+sends mail. See [Adding Users](../admin/users/adding.md).
 
 ### Managing Groups
 
@@ -71,22 +91,22 @@ User receives invitation email.
 ### Deactivating Users
 
 When employees leave:
-1. Open user record
-2. Uncheck **Active**
-3. Save
+1. Go to **Admin** > **User Management**
+2. Open their row menu and choose **Deactivate**
 
-User cannot log in; history preserved.
+Their access to this organisation is suspended; the account and everything they
+recorded is kept. See [Deactivating Users](../admin/users/deactivating.md).
 
 ## Process Configuration
 
 ### Creating Processes
 
-1. Navigate to **Production** > **Processes**
-2. Click **New Process**
-3. Add steps in sequence
-4. Configure requirements per step
-5. Set up measurements
-6. Submit for approval (if required)
+1. Go to **Data Management** > **Processes** and click **New Process**
+2. Build its steps and their connections in **Process Flow** — a routing is a
+   graph, not a numbered list
+3. Configure each step's requirements and measurements
+4. **Submit for approval** — always required, and refused if the organisation
+   has no `PROCESS_APPROVAL` template
 
 ### Step Configuration
 
@@ -101,9 +121,9 @@ For each step:
 ### Process Versioning
 
 - Create new version for changes
-- Approve before releasing
-- Previous version becomes obsolete
-- In-flight work continues on old version
+- Approve before it can be used
+- The previous version becomes **Deprecated**
+- In-flight work continues on the old version
 
 ## Master Data Setup
 
@@ -135,18 +155,48 @@ each recorded defect rather than defaulted from the catalog.
 ### Document Types
 
 1. Navigate to **Data Management** > **Document Types**
-2. Define categories
-3. Set approval requirements
-4. Configure retention
+2. For each type set:
+   - **Requires approval** — whether documents of this type must be released
+     through an approval before they count as current
+   - **Default review period** — how often they come up for periodic review.
+     **A type with no review period never prompts one**, which is the usual
+     reason a *Due for review* tile stays empty
+   - **Default retention** — how long they must be kept
+   - **Approval template** — optional. Leave it blank and the type uses
+     **Document Release**; set it to route this type through a different
+     approval instead
+
+A full catalogue ships by default — 39 types covering
+procedures, drawings, supplier certificates, quality records, calibration,
+training and the IATF/AS9100 set (PPAP, PSW, FMEA, 8D, FAI). Prune or extend it
+rather than starting from nothing.
 
 ### Approval Templates
 
 1. Navigate to **Data Management** > **Approval Templates**
-2. Create templates for:
-   - Document approval
-   - Disposition approval
-   - CAPA closure
-3. Define approvers and flow
+2. Configure the approval **types** the product raises:
+   - **Document Release**
+   - **Critical CAPA**, **Major CAPA** and the general **CAPA Approval** — the
+     authorisation a CAPA needs *before* work begins, chosen by its severity
+   - **PCR**, **PCO** and **PCN** — the process-change chain
+3. For each: who is assigned, whether self-approval is allowed, how long it has
+   and when it escalates
+
+!!! warning "Two things people expect here and won't find"
+    **Disposition approval** and **CAPA closure** have no templates. A
+    disposition is recorded and co-signed in place by someone holding
+    `approve_disposition`; closure follows from verifying a CAPA's
+    effectiveness. Neither is routed as an approval request, so neither can be
+    configured here.
+
+!!! danger "Group names must match exactly"
+    A template assigns approvers by **group name**, matched exactly. A name that
+    matches nothing assigns the approval to **nobody** — silently, because a
+    filter that finds nothing is not an error.
+
+    Group names carry no underscores: *QA Manager*, *Document Controller*,
+    *Tenant Admin*. After editing a template, check it actually resolves to
+    people before relying on it.
 
 ## System Settings
 
@@ -169,10 +219,11 @@ Configure:
 
 ### Notification Settings
 
-Configure system notifications:
-- Email templates
-- Notification triggers
-- Default preferences
+Under **Settings** > **Notifications**:
+- **Notification rules** — what event tells whom, through which channel
+- **Defaults** — what a new user receives until they change it
+
+See [Notification Rules](../admin/setup/notification-rules.md).
 
 ## Monitoring & Maintenance
 
@@ -190,18 +241,14 @@ Regularly review **Admin** > **Audit Log**:
 
 ### System Health
 
-Monitor:
-- User adoption
-- Performance issues
-- Error patterns
-- Storage usage
+uqmes has no system-health page: no adoption, performance, error or storage
+figures. Those come from wherever this deployment is hosted.
 
 ### Periodic Tasks
 
 **Weekly:**
 - [ ] Review new user requests
 - [ ] Check pending access issues
-- [ ] Monitor system alerts
 
 **Monthly:**
 - [ ] Permission audit
@@ -219,17 +266,21 @@ Monitor:
 ### User Can't Log In
 
 Check:
-1. Account is active
-2. Password not expired
-3. SSO configured correctly
-4. Account not locked
+1. Their access to this organisation is active, not deactivated
+2. They are using the right username or email
+3. If they use SSO, that your identity provider is set up for them
+4. They have not hit the rate limit — by default ten login attempts a minute
+   from one address; it clears by itself. There is no password expiry and no
+   account lockout
 
 ### Permission Issues
 
 1. Check user's groups
-2. Verify group has permission
-3. Check role type restrictions
-4. Confirm tenant assignment
+2. Verify the group has the permission
+3. For approvals, check the **approval template** assigns them — permission
+   alone does not make someone an approver
+4. A permission newly added to the product reaches an existing organisation only
+   after `sync_tenant_permissions` — see [Permissions](../admin/users/permissions.md)
 
 ### Integration Issues
 
@@ -261,7 +312,7 @@ Check:
 
 | Request | Action |
 |---------|--------|
-| Password reset | Use reset function or SSO |
+| Password reset | The reset link on the login page — or, if mail does not arrive, **Copy access link** on their row, which lets them set a new one |
 | Permission change | Modify group membership |
 | New account | Create user, assign groups |
 | Access issue | Check permissions and group membership |
@@ -269,7 +320,8 @@ Check:
 ### Escalation
 
 When you can't resolve:
-- Platform issues: Contact uqmes support
+- Platform issues: whoever hosts this deployment, under whatever support
+  arrangement your organisation has
 - Integration issues: Coordinate with IT
 - Compliance questions: Involve QA Manager
 
@@ -280,7 +332,7 @@ When you can't resolve:
 | Add user | Admin > User Management > **Add user** |
 | Create group | Data Management > User Groups > **New User Groups** |
 | Edit permissions | Groups > [Group] > Permissions |
-| Configure process | Production > Processes |
+| Configure process | Data Management > Processes, then Process Flow |
 | View audit log | Admin > Audit Log |
 | System settings | Admin > Settings |
 

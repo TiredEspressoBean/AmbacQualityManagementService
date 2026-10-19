@@ -4,7 +4,10 @@ Capture inspection and measurement data for parts as they move through productio
 
 ## Measurement Definitions
 
-Measurements are defined at the step level by administrators. Each definition specifies:
+Measurements are defined once and then attached to the steps that need them.
+Both are **authoring** acts — Engineering, QA Manager, Production Manager,
+Document Controller or Tenant Admin, not whoever administers the system. Each
+definition specifies:
 
 | Property | Description | Example |
 |----------|-------------|---------|
@@ -83,8 +86,10 @@ Standard measured values with tolerances:
 - Temperature
 - Pressure
 
-### Attribute Measurements
-Pass/fail only, no numeric value:
+### Pass/Fail Measurements
+
+Called **Pass/Fail** in the product — not "attribute", though that is the
+industry term. No numeric value:
 
 - Visual inspection (acceptable/defect)
 - Go/No-Go gauge
@@ -98,8 +103,29 @@ Measurements may require calibrated equipment:
 2. System verifies calibration is current
 3. Measurement is linked to equipment record
 
-!!! warning "Expired Calibration"
-    If equipment calibration has expired, you may be blocked from recording measurements or warned to use different equipment.
+!!! warning "Failed calibration is refused; overdue is only a warning"
+    The two are treated differently on purpose.
+
+    | Gauge state | What happens |
+    |-------------|--------------|
+    | **Out of service**, or its last calibration **failed** | The capture is **refused**: *"Equipment 'X' is OUT_OF_SERVICE (failed or missing calibration). Recalibrate or pick a different gauge."* |
+    | Calibration **overdue** | The reading **is recorded**, and you are told |
+
+    A failed check is evidence the gauge was wrong, so anything it measures is
+    suspect at the moment of writing — the refusal happens at the source rather
+    than relying on someone noticing later. **Overdue is a scheduling lapse, not
+    evidence of error**, so the reading stands and the nag is the control.
+
+    Both the status flag and the calibration result are checked, so an edit that
+    puts the two out of step cannot open a gap.
+
+!!! info "A failed calibration also raises the backward question"
+    Setting a gauge out of service protects the *next* part. It says nothing
+    about the ones already measured — a gauge drifts during the interval rather
+    than failing the instant it is checked. Everything it measured since its
+    last good calibration is in question, which is what ISO 9001 **7.1.5.2**
+    asks you to assess. See [the gauge's exposure
+    list](../../roles/qa-manager.md).
 
 ## Where recorded measurements appear
 

@@ -37,14 +37,13 @@ Due Date, Customer, Order, and a Details link.
     without one. The reason is stored with the change, and the edit form lists
     the last five: *Normal → Urgent · who, when*, with the reason beneath.
 
-    So the trail answers *what, who, when* **and** *why*, which it did not
-    before. Setting a priority when you first create the work order needs no
+    So the trail answers *what, who, when* **and** *why*. Setting a priority when you first create the work order needs no
     reason; there is nothing to explain yet.
 
 !!! warning "An import changes priority silently"
     The reason is asked for on the edit form and the API. A CSV import or the
     master workbook can change priority **without** recording one, so a bulk
-    re-prioritisation leaves the same gap the edit form now closes. Worth
+    re-prioritisation leaves no *why* behind. Worth
     knowing before you reach for an import to move a lot of work at once.
 
 ## When scrap outruns the gross-up
@@ -82,12 +81,18 @@ the schedule is marked stale so the next solve picks them up.
 
 ### Work Order Detail
 
-Detailed progress view includes:
+`/workorder/$workOrderId` carries, in its header, the status, the priority, an
+**Overdue** badge once the due date has passed (unless the job is completed or
+cancelled), and **N at outside process** when parts are out at a vendor — that
+badge links to the control page, where send-out and receive-back live.
 
-- **Parts by Step**: Bar chart showing distribution
-- **Parts Complete**: Count and percentage
-- **Parts In Process**: Currently being worked
-- **Parts Quarantine**: Held for quality
+Below, three tabs:
+
+| Tab | Shows |
+|-----|-------|
+| **Overview** | Customer, due date, quantity, and **QA Progress** — completed, total parts, need rework — with the digital traveler and notes |
+| **Parts** | The parts on the job, filterable by status |
+| **Materials** | Material for the job |
 
 ### On the Home page
 
@@ -96,96 +101,59 @@ order state for production roles — jobs going late, work orders in flight, and
 the biggest fire — alongside links into the Control Center. See [Role
 Guides](../../roles/index.md).
 
-## Progress Calculation
-
-```
-Progress % = (Completed Parts / Total Parts) × 100
-```
-
-Parts are "completed" when they finish the final step of the process.
-
-## Step Distribution
-
-See where parts are in the process:
-
-| Step | Count | % |
-|------|-------|---|
-| Machining | 2 | 20% |
-| Inspection | 3 | 30% |
-| Assembly | 3 | 30% |
-| Complete | 2 | 20% |
-
-This helps identify:
-
-- Bottlenecks (parts piling up)
-- Idle stations
-- Flow issues
-
-## Time Metrics
-
-### Cycle Time
-Average time per part through the process.
-
-### Throughput
-Parts completed per hour/shift/day.
-
-### Lead Time
-Time from work order release to completion.
-
-### Step Duration
-Average time at each step.
-
-View metrics on the work order detail or analytics dashboard.
-
 ## Status Updates
 
-### Automatic Updates
-Status updates automatically based on progress:
+### Automatic
 
-| Condition | Status Change |
-|-----------|---------------|
-| First part moved | Pending → In Progress |
-| All parts complete | In Progress → Completed |
-| Part quarantined | No change (tracked separately) |
+| Status | Set when |
+|--------|----------|
+| **Pending** | The work order is created |
+| **In progress** | Someone actually starts work on one of its steps |
+| **Completed** | Every part on it has ended |
+| **Cancelled** | Every part on it ended **scrapped** — automatically, not as a manual cancel |
 
-### Manual Updates
+!!! note "Started is a fact, not a button"
+    *In progress* records that work began. It is separate from **release**,
+    which authorises the job, and a planner needs both: released-but-not-started
+    is exactly the queue that workload control manages.
 
-Status changes are explicit actions on the work order, not a dropdown:
+### Manual, on the work order page
 
-| Action | Effect |
-|--------|--------|
-| **Place on hold** | Opens *Put Work Order on Hold*, which requires a **Reason** |
-| **Cancel Work Order** | Cancels the work order |
-| **Process order** | Moves the order forward |
-| **Split…** | Splits the work order |
+| Button | Appears when | Effect |
+|--------|--------------|--------|
+| **Release** | Not yet released, and not on hold | Releases the job — the readiness check runs, and if it refuses, *Not ready to release* lists the blockers and asks for a **reason to release anyway**. It does **not** change the status |
+| **Un-release** | Released | Withdraws the authorisation |
+| **Place on hold** | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
+| **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending** |
+| **Cancel Work Order** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
 
-## Bottleneck Detection
+!!! note "Status is not something you set"
+    These buttons are the only way to change a work order's status by hand.
+    The status field on the edit form is locked on an existing work order, and
+    the API refuses a status set directly, naming the action to use instead —
+    *"place the work order on hold, with a reason, instead of setting the
+    status"*. **In progress** and **Completed** follow the work and are never
+    set by hand.
 
-Identify bottlenecks by:
+See [Releasing](../scheduling/releasing.md) for what release decides and the
+other places it can be done.
 
-1. **Step Distribution**: Where are parts accumulating?
-2. **Wait Time**: How long are parts waiting at each step?
-3. **Resource Utilization**: Is equipment/operator maxed out?
+## Progress figures
 
-Dashboard alerts can highlight:
+The work order's progress is its **QA Progress** counts: parts completed, total,
+and needing rework. An **order's** progress is counted differently, in stages
+— see [Order Status](../orders/order-status.md#progress-calculation).
 
-- Steps with excessive WIP
-- Steps with long wait times
-- Overdue work orders
+## What is not measured
 
-## On-Time Tracking
+!!! note "No time metrics on a work order"
+    There is no cycle time, throughput, lead time or step-duration figure for a
+    work order. Step timings are a planning *input*.
 
-Track on-time delivery:
-
-```
-On-Time % = (Work orders completed by due date / Total completed) × 100
-```
-
-Work orders are flagged:
-
-- **Green**: On track (due date > 2 days out)
-- **Yellow**: At risk (1-2 days to due date)
-- **Red**: Overdue
+    Delivery is measured, but on **Shipping**, not here: it shows on-time % for
+    the last 90 days, scored against each work order's line due date or
+    expected completion. See [Shipping](../supply/shipping.md#seeing-whether-you-are-on-time). For where work is piling up against capacity, see
+    [Capacity](../scheduling/capacity.md).
 
 ## How current the figures are
 
@@ -199,49 +167,24 @@ instantly. Reload if you need the current position immediately.
 
 ## Notifications
 
-Configure alerts for progress events:
+Who hears about a work order is set by this organisation's [notification
+rules](../../admin/setup/notification-rules.md), not by the work order.
 
-| Event | Notification |
-|-------|--------------|
-| Work order complete | Assigned user, supervisor |
-| Work order approaching due | Assigned user |
-| Work order overdue | Supervisor, planner |
-| All parts at final step | Quality team |
+## Reports
 
-## Progress Reports
+The work order page carries the **Traveler**. Dispatch lists and labour hours
+come from scheduling. There is no work-order status report or production
+summary report.
 
-Generate progress reports:
+## Several at once
 
-### Work Order Status Report
-- All work orders by status
-- Progress percentages
-- Due date compliance
+Bulk actions across work orders live on the **WO Control Center**'s bulk bar —
+see [Assigning](assigning.md) and [Work Order Basics](basics.md).
 
-### Production Summary
-- Daily/weekly output
-- By process or equipment
-- Trend analysis
+## History
 
-### Export Options
-- PDF for distribution
-- CSV for analysis
-
-## Bulk Progress Updates
-
-For supervisor or planner:
-
-1. Select multiple work orders
-2. View aggregate progress
-3. Bulk status changes if needed
-
-## Historical Progress
-
-View past performance:
-
-1. Open work order
-2. View **History** tab
-3. See progress over time
-4. Analyze delays or issues
+A work order's own changes, including priority with its reasons, are on the
+**History** card of its edit form in **Data Management**.
 
 ## Permissions
 

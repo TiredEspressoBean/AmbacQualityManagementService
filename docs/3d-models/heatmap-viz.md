@@ -15,10 +15,27 @@ A heat map shows defect concentration:
 ```
 Low ─────────────────────────────── High
 Blue    Cyan    Green   Yellow   Red
-  1      2-3     4-6     7-10    11+
 ```
 
-The scale adjusts based on your data range.
+Heat **adds up**: each defect contributes heat around its point — how much is
+set by **Intensity**, how far it spreads by **Radius** — and overlapping
+contributions sum until they reach red, where they stop.
+
+Two things shape a defect's contribution before you touch anything:
+
+- **Severity weights it** — Critical counts double, High one and a half times,
+  Medium once, Low half
+- **The defaults scale themselves** — Radius starts at 5% of the model's largest
+  dimension, and Intensity starts lower the more annotations are in view
+  (1.5 ÷ √count), so a busy map does not turn solid red
+
+!!! tip "Red means saturated, not 'the most'"
+    Once an area reaches red, more defects there change nothing, so two areas
+    can read the same red with very different counts behind them. Turn
+    **Intensity** down to tell dense areas apart again.
+
+    And because severity weights the heat, a few Critical defects can glow as
+    hot as many Low ones. Filter by **Severity** when you need a count.
 
 ## Viewing Heat Maps
 
@@ -53,21 +70,19 @@ Two sliders shape how the heat map renders:
 | **Intensity** | How strongly each defect contributes to the colour |
 
 !!! note "No opacity, interpolation or contour controls"
-    Older instructions listed Point Size, Opacity, Interpolation and Contours,
-    and a choice between Defect Count, Defect Rate and per-severity maps. The
-    two sliders above are the whole of it.
+    The two sliders above are the whole of it — there is no point size,
+    opacity, interpolation or contour setting, and no choice between count,
+    rate and per-severity maps. To see one severity, filter by it.
 
 ## Filtering
 
-The viewer filters on five things, all of them dropdowns:
-
-| Filter | Default |
+| Filter | Options |
 |--------|---------|
-| **Step** | All Steps |
-| **Defect type** | All Defect Types |
-| **Severity** | All Severities |
-| **Time** | All Time |
-| **Work order** | All Work Orders |
+| **Manufacturing Step** | All steps, or one |
+| **Defect Type** | All defect types, or one |
+| **Severity** | All, Low, Medium, High or Critical |
+| **Date Range** | All time, last 7, 30 or 90 days, or a custom start and end |
+| **Work Order** | All work orders, or one |
 
 ## Interpreting Heat Maps
 
@@ -86,10 +101,10 @@ The viewer filters on five things, all of them dropdowns:
 
 Compare to identify changes:
 
-1. Set date range A
-2. Screenshot or save
-3. Set date range B
-4. Compare visually
+1. Set the date range to the earlier period
+2. Take a screen capture — the viewer has no export
+3. Set the date range to the later period
+4. Compare the two
 
 Look for:
 - New hot spots
@@ -100,11 +115,11 @@ Look for:
 
 ### Investigating Hot Spots
 
-1. Click on a hot spot
-2. View list of annotations at that location
-3. Click annotations to see details
-4. Review linked NCRs
-5. Identify common factors
+1. Narrow the filters until the hot spot is what you are looking at
+2. Select the annotation points inside it — each shows its defect type,
+   severity, notes, date found and who reported it
+3. Open the linked quality reports for the parts involved
+4. Look for what they share: step, machine, material lot, shift
 
 ### Root Cause Questions
 
@@ -137,22 +152,17 @@ Document improvement in CAPA verification.
 
 ### Image Export
 
-!!! note "Planned Feature"
-    Heat map image export (PNG) is planned. There is no export or screenshot
-    control in the heat map viewer yet — use your operating system's screen
-    capture.
-
-!!! warning "There is no Generate Report or Export Data button"
-    Older instructions on this page described both, plus scheduled heat map
-    reports. None of them exist. Annotation data is reachable through the REST
-    API if you need it outside the viewer.
+!!! note "No export of any kind"
+    There is no image export, no report and no data export from the heat map
+    viewer, and no scheduled heat map report. Use your operating system's screen
+    capture for an image; annotation data is reachable through the REST API.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `view_heatmapannotations` | View heat maps and their annotation details |
-| `export_data` | Export heat map data |
+| `change_heatmapannotations` | **Edit Annotation** from the viewer |
 
 ## Next Steps
 

@@ -100,7 +100,9 @@ the action fails with a message naming the type:
 | `PCR_APPROVAL` | A process change request is submitted | QA Manager |
 | `PCO_APPROVAL` | A process change order is submitted | Production Manager |
 | `PCN_RELEASE` | A process change notice is released | Document Controller |
-| `CAPA_APPROVAL` / `CAPA_MAJOR` / `CAPA_CRITICAL` | A CAPA needs management approval | QA Manager / Tenant Admin |
+| `CAPA_CRITICAL` | A **Critical** CAPA is created, or its approval requested | Tenant Admin |
+| `CAPA_MAJOR` | A **Major** CAPA is created, or its approval requested | QA Manager |
+| `CAPA_APPROVAL` | Any other CAPA approval request, and the fallback when the two above are missing | QA Manager |
 | `TRAINING_CERT` | Reserved for certifying training | QA Manager |
 
 !!! warning "A missing template stops the workflow"
@@ -134,10 +136,31 @@ Sequence **Sequential**, flow **All Required**, approvers in order: the document
 owner, the Engineering role, then QA Manager. Each is asked once the one before
 has responded.
 
-### CAPA closure
+### CAPA authorisation
 
-Sequence **Sequential**, flow **All Required**, approvers QA Inspector then QA
-Manager.
+Sequence **Sequential**, flow **All Required**, approvers QA Manager then
+Production Manager.
+
+!!! note "Severity chooses the CAPA template"
+    A **Critical** CAPA raises its approval from a `CAPA_CRITICAL` template and
+    a **Major** one from `CAPA_MAJOR` — both when the CAPA is created and when
+    approval is requested by hand. Where the organisation has no template of
+    that type, the general `CAPA_APPROVAL` is used instead.
+
+    With **no** CAPA template at all, a Critical or Major CAPA is created
+    without an approval request; that is treated as a deliberate choice, and
+    only the server log records it. Requesting approval by hand is then refused
+    — *"No CAPA approval template is configured. Add one in approval
+    templates."*
+
+!!! warning "There is no CAPA *closure* approval to configure"
+    A Major or Critical CAPA raises its approval **at creation** — authorisation
+    for the work to begin. **Closure is not an approval at all**: it follows
+    from recording a *Confirmed Effective* verification, gated by `verify_capa`.
+
+    So do not build a template expecting to gate closure with it. Approving a
+    CAPA and verifying one are different acts by potentially different people,
+    and only the first is routable here.
 
 ### Process change
 
@@ -151,15 +174,28 @@ approved.
 
 ## Applying Templates
 
-### Default for Document Type
-1. Edit document type
-2. Set default approval template
-3. All documents of type use this template
+Templates are matched by **approval type**, not chosen at the moment of
+submitting. There are two places the binding is made:
 
-### Per Document
-1. When submitting for approval
-2. Select template
-3. Override default if needed
+### By approval type (the default)
+
+Each type resolves to its current template. Nothing to configure beyond having
+the template exist — this is how PCRs, PCOs, CAPAs and the rest find theirs.
+
+### Per document type (the override)
+
+1. Edit the **document type**
+2. Set its **approval template**
+3. Every document of that type routes through it instead of Document Release
+
+Leave it blank and the type uses **Document Release**. This is how two kinds of
+document can route to different approvers.
+
+!!! note "A submitter never picks a template"
+    There is no template selector on the submit dialog and no per-document
+    override. Someone routing a document for release chooses nothing — the type
+    decides. If the wrong people are being asked, the fix is on the document
+    type or the template, not on the document.
 
 ## Permissions
 

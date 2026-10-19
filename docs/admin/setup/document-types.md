@@ -4,15 +4,18 @@ Configure categories for documents with specific handling rules.
 
 ## What are Document Types?
 
-Document Types define:
-- **Categories** for organizing documents
-- **Approval requirements** per type
-- **Retention policies**
-- **Access controls**
+A document type is a category, and it carries three things:
+
+- Whether documents of this type **need approval**, and on which template
+- How often they should be **reviewed**
+- How long they should be **kept**
+
+It does **not** carry access control — see [Access
+Settings](#access-settings) below.
 
 ## Default Document Types
 
-**About forty document types are seeded into every organisation**, covering far more
+**39 document types are seeded into every organisation**, covering far more
 than the handful below: procedures and work instructions, drawings and CAD, material
 and test certificates (MTR, CoC, CoA, SDS), inspection and nonconformance records
 (IR, NCR, 8D, CAR, SCAR, FAI), automotive submissions (PPAP, PSW, FMEA, MSA, AAR),
@@ -28,18 +31,34 @@ Agreement) and training records.
     Open **Document Types** and read the list first. Create one only when nothing
     fits, which is rarer than it looks.
 
-A few of the most-used, to show the shape:
+Each is identified by a short **code**. A few, to show the shape:
 
-| Type | Purpose | Approval |
-|------|---------|----------|
-| **Work Instruction** | Step-by-step procedures | Required |
-| **Specification** | Technical requirements | Required |
-| **Drawing** | Engineering drawings | Required |
-| **Form** | Blank forms/templates | Required |
-| **Certificate** | Certifications, CoCs | Reference |
-| **Report** | Test/inspection reports | Optional |
-| **Contract** | Agreements, POs | Reference |
-| **Manual** | Equipment manuals | Reference |
+| Code | Type | Needs approval |
+|------|------|----------------|
+| **SOP** | Standard Operating Procedure | Yes |
+| **WI** | Work Instruction | Yes |
+| **CP** | Control Plan | Yes |
+| **DWG** | Drawing/Print | Yes |
+| **SPEC** | Specification | Yes |
+| **COC** | Certificate of Conformance | No |
+| **MTR** | Material Test Report | No |
+| **IR** | Inspection Report | No |
+| **NCR** | Nonconformance Report | No |
+| **CAL** | Calibration Certificate | No |
+
+!!! tip "The split is 'ours' versus 'theirs'"
+    The types that need approval are the ones **you author** — procedures, work
+    instructions, control plans, drawings, change records. The ones that don't
+    are **evidence you receive**: a supplier's certificate, a test report, a
+    calibration certificate. You don't approve someone else's certificate, you
+    file it.
+
+!!! note "Review and retention periods"
+    The four authored types — **SOP**, **WI**, **CP** and **POL** — arrive with
+    a 365-day review period. A document of one of those types comes due for
+    review a year after it takes effect, and shows in **Due for review** on Home.
+    The other 35 types arrive with no review period, and no type has a retention
+    period. Set either on any type that needs one.
 
 ## Creating Document Types
 
@@ -114,10 +133,10 @@ Access is not configured per document type. It is governed by:
 See [Permissions](../users/permissions.md).
 
 !!! warning "There is no per-type access matrix"
-    Older instructions gave examples like *"Work Instructions: QA can approve,
-    Operators can view"*. Approval rights come from the type's **approval
-    template**, and read access from the document's **classification** — never
-    from the type itself.
+    You cannot say *"Work Instructions: QA can approve, Operators can view"* on
+    the type. Approval rights come from the type's **approval template**, and
+    read access from the individual document's **classification** — never from
+    the type itself.
 
 ## Permissions
 

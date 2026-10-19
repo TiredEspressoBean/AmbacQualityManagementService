@@ -6,11 +6,16 @@ Work orders connect customer orders to manufacturing processes. This guide expla
 
 A **Work Order** defines:
 
-- **Which order** is being worked on
+- **Which order** is being worked on, if any
 - **What process** to follow
-- **Who** is assigned (equipment, operators)
+- **How many** units — both what was started and what the job owes
 - **When** it should be completed
 - **Priority** level
+
+It does **not** name equipment or operators. Machines are recorded at the step
+as the work is done, and people claim or are dispatched to steps — so one job
+routinely runs across several machines and several people. See [Assigning Work
+Orders](assigning.md).
 
 !!! example "Demo: Work Order"
     Work Order `WO-2024-0042-A` processes 24 fuel injectors for order `ORD-2024-0042` (Midwest Fleet Services) using the "Common Rail Injector Remanufacturing" process. Parts are tracked from Core Receiving through Final Test and Packaging.
@@ -67,9 +72,12 @@ An order may have multiple work orders if:
 | **Pending** | Created but not started |
 | **In Progress** | Active production |
 | **On Hold** | Temporarily paused |
-| **Waiting for Operator** | Ready to work, awaiting assignment |
 | **Completed** | All parts finished |
 | **Cancelled** | Work order cancelled |
+
+Statuses change through the work and through the work order page's **Place on
+hold**, **Resume** and **Cancel** — not by editing the field. See [Status
+Updates](progress.md#status-updates).
 
 ## Priority Levels
 
@@ -195,9 +203,12 @@ To cancel:
 2. Click **Cancel Work Order**
 3. Confirm
 
-No reason is asked for, and nothing else changes: the status becomes
-**Cancelled**, so the order drops out of scheduling, and its parts keep their
-link to it. The record of what was planned stays intact.
+No reason is asked for. The status becomes **Cancelled**, so the work order
+drops out of scheduling, and its parts keep their link to it. The record of what
+was planned stays intact. If every work order on the customer order is now
+completed or cancelled, the order completes too.
+
+A work order already completed or cancelled cannot be cancelled again.
 
 !!! warning "You cannot cancel once anything has left"
     The cancel is refused outright if any part on the order has shipped,
@@ -206,13 +217,9 @@ link to it. The record of what was planned stays intact.
     work cannot be un-planned.
 
 !!! note "Cancelling is manager-tier"
-    It needs **`cancel_workorder`**, held by **Tenant Admin** and **Production
+    It needs **`cancel_workorder`**, by default held by **Tenant Admin** and **Production
     Manager** only, and the button is hidden from anyone else. Abandoning a job
     breaks a commitment to a customer, so it is not an operator's call.
-
-    This is new as of 2026-10-13. Before that the action fell through to a
-    generic default every staff role held, so any operator could cancel a work
-    order.
 
 ## Work Order Permissions
 
@@ -220,7 +227,7 @@ link to it. The record of what was planned stays intact.
 |------------|--------|
 | `view_workorder` | View work orders |
 | `add_workorder` | Create work orders |
-| `change_workorder` | Edit and status changes |
+| `change_workorder` | Edit, release, place on hold and resume — one at a time or in bulk from the Control Center. By default every staff role holds it; without it those buttons are hidden |
 | `delete_workorder` | Delete work orders |
 | `cancel_workorder` | Cancel a work order — Tenant Admin and Production Manager |
 

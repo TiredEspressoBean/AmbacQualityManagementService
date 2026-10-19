@@ -12,27 +12,22 @@ Revision control:
 - **Supports approvals** for changes
 - **Provides audit trail** of who changed what
 
-## Revision vs Version
+## Versions are numbered, and that is not configurable
 
-| Term | Meaning |
-|------|---------|
-| **Revision** | Major change, typically requires approval |
-| **Version** | Minor update, internal draft iterations |
+There is **one** concept, not two: a document carries a **version number** — a
+plain integer starting at 1 and incrementing with each revision. Each version
+points back to the one it superseded, and exactly one is flagged current.
 
-In uqmes, "Revision" is the primary version identifier shown to users.
+!!! warning "There is no revision scheme to choose"
+    uqmes does not offer letter revisions (Rev A, Rev B), letter-and-number
+    schemes or date-based identifiers, and there is no administrator setting to
+    pick one. Versions are 1, 2, 3.
 
-## Revision Identifiers
-
-Common revision schemes:
-
-| Scheme | Example | When to Use |
-|--------|---------|-------------|
-| **Numeric** | 1, 2, 3 | Simple, sequential |
-| **Letter** | A, B, C | Engineering standard |
-| **Letter + Number** | A1, A2, B1 | Major.Minor |
-| **Date-based** | 2026-03-15 | Date is identifier |
-
-Your administrator configures the scheme.
+    If your drawings are controlled as **Rev C** in the system that owns them,
+    carry that in the document's **file name** or its reason-for-revision text.
+    Do not expect the version number here to match your engineering revision —
+    they are different identifiers, and conflating them is how people end up
+    citing the wrong one in an audit.
 
 ## Creating a New Revision
 
@@ -74,11 +69,11 @@ View all revisions of a document:
 
 | Column | Description |
 |--------|-------------|
-| **Revision** | Identifier (A, B, C) |
+| **Version** | The number — 1, 2, 3 |
 | **Date** | When created |
 | **Author** | Who created |
-| **Status** | Draft, Approved, Obsolete |
-| **Notes** | Change summary |
+| **Status** | Draft, Under Review, Released, Obsolete |
+| **Reason** | Why it changed — the required justification |
 
 ### Accessing Previous Revisions
 
@@ -88,14 +83,28 @@ View all revisions of a document:
 
 ## Current vs Previous Revisions
 
-| Status | Meaning |
-|--------|---------|
-| **Current** | Active revision, what users see by default |
-| **Previous** | Superseded, retained for reference |
-| **Draft** | In progress, not yet released |
-| **Obsolete** | Retired, should not be used |
+These are **two independent things**, and reading them as one list is the
+commonest misunderstanding on this page.
 
-Only one revision is "Current" at a time.
+**Which version is current** — exactly one, always:
+
+| | Meaning |
+|---|---------|
+| **Current** | The active version, what users see by default |
+| **Superseded** | An earlier version, retained and still readable |
+
+**What state that version is in** — its status, independent of the above:
+
+| | Meaning |
+|---|---------|
+| **Draft** | Being worked on |
+| **Under Review** | Submitted, awaiting approval |
+| **Approved** | Signed off |
+| **Released** | In force |
+| **Obsolete** | Deliberately retired |
+
+A version can be **Current and Draft at the same time**, and routinely is. See
+the warning below.
 
 ## Making a Revision Current
 
@@ -141,13 +150,15 @@ Rules](../../admin/setup/notification-rules.md).
 No revision routing is seeded by default. Revision activity is visible on
 the document itself and in the audit trail whether or not anyone is notified.
 
-## External Revision References
+## External revision references
 
-Link to external revision systems:
+There is no field for an outside identifier — no PLM/PDM number, customer
+revision or regulatory submission version. If a document is controlled as
+something else in the system that owns it, carry that identifier in the
+**file name** and repeat it in the **reason for the revision**.
 
-- PLM/PDM document numbers
-- Customer revision identifiers
-- Regulatory submission versions
+That keeps it searchable and puts it in the controlled record, which is what an
+auditor tracing your revision back to the customer's will look for.
 
 ## Retention of Revisions
 

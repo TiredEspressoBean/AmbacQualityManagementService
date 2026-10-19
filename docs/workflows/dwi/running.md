@@ -48,6 +48,9 @@ throttled. You cannot clear your own competency gap.
     business decision — it is not a way to make the requirement disappear, and
     a reviewer will see every one of them.
 
+    It shows on the **part's traveller** (work order control page → the part's
+    history), as an amber line under the step it was used on.
+
 ### Taking over someone else's step
 
 The same shape applies if the step is already assigned to another operator:
@@ -144,16 +147,30 @@ If a substep genuinely does not apply to the part in front of you:
 The reason code is required — the dialog will not submit without one — and it stays
 in the part's record.
 
+!!! important "Mark N/A only appears where the author allowed it"
+    N/A is not a general escape. The person who wrote the instruction marks a
+    substep **optional** to permit it; on everything else the button is simply
+    not there.
+
+    So its absence is the author saying *this one is not skippable*, not a
+    permissions problem and not a fault. If a substep you genuinely cannot
+    perform offers no N/A, that is a conversation with your supervisor or with
+    whoever authored the step — not something to work around.
+
 !!! tip "Add a note if the reason code doesn't tell the whole story"
     Notes are optional and the N/A dialog does not ask for one, so if the *why*
     matters beyond the code, put it in the step's notes or a shift note. Nothing
     will prompt you for it.
 
-!!! warning "Some substeps can never be N/A"
-    Safety-critical substeps — torque on safety-critical fasteners, witnessed
-    signoffs, final dimensional verification — cannot be marked N/A. If you
-    can't complete one, raise it with your supervisor rather than working
-    around it.
+!!! warning "Safety-critical substeps can never be N/A, even if marked optional"
+    A substep flagged **safety-critical** by its author refuses N/A outright —
+    and that beats everything else. Even if the same substep is also marked
+    optional, N/A is rejected, and it is rejected **again at the gate** when the
+    step is completed, so it cannot slip through by a different route.
+
+    Typical examples are torque on safety-critical fasteners, witnessed
+    sign-offs and final dimensional verification. If you cannot complete one,
+    raise it with your supervisor rather than working around it.
 
 ## Finishing the step
 
@@ -173,11 +190,11 @@ used, a value was miscalculated. The completion can be **voided** after the
 fact.
 
 !!! info "Who can void"
-    Voiding requires the `void_substepcompletion` permission, held by **QA
+    Voiding requires the `void_substepcompletion` permission, by default held by **QA
     Inspector**, **QA Manager**, and **Tenant Admin**.
 
-    It is deliberately withheld from **Operator**, **Shift Lead**, and
-    **Production Manager** — including the operator whose own work is being
+    It is deliberately left out of the default **Operator**, **Shift Lead**, and
+    **Production Manager** groups — including the operator whose own work is being
     retracted. Performing or supervising the work and adjudicating the record
     are different jobs. The Tenant Admin holds it so a tenant's administrator
     can correct a bad record without first granting themselves the permission

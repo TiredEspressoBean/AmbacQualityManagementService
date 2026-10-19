@@ -72,6 +72,24 @@ The **approval template** for that approval type decides:
 So "why can't this person approve?" is almost always a template question. See
 [Approval Templates](../../admin/setup/approval-templates.md).
 
+### Approving your own request
+
+**Refused by default.** If you raised the request, responding to it is rejected:
+
+> Self-approval is not permitted for this approval type
+
+This is **per approval type**, not per person — the template carries an **Allow
+self-approval** switch which is off unless somebody turns it on. Where a tenant
+does allow it, the approver must also write a **justification of at least ten
+characters**, and the response is permanently flagged as self-approved so an
+auditor can find every one.
+
+!!! note "Eligibility and authorisation are different layers"
+    You may well *see* **Submit Response** on your own request — being an
+    assigned approver is decided before anyone asks who raised it. The refusal
+    comes from the server when you submit. That is not a bug: the button means
+    you are eligible, not that this particular response will be accepted.
+
 ## How a request closes
 
 Two independent settings:
@@ -100,7 +118,11 @@ There is one action — **Submit Response** — which opens a dialog with a
 |----------|--------|
 | **Approved** | You approve |
 | **Rejected** | You reject; the requester can revise and resubmit |
-| **Delegated** | You pass the decision on, if the template allows delegation |
+| **Delegated** | You pass the decision on — **only if the template allows it**, and delegation is **disabled by default** |
+
+There is no "request more information" decision. If you need more before you can
+decide, leave the request open and ask outside it, or reject with comments
+saying what is missing.
 
 Your response records your identity, the decision, a timestamp, the
 verification method used, and your comments. See [Electronic

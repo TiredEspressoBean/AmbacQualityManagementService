@@ -3,13 +3,14 @@
 This guide is for Quality Assurance Inspectors who perform inspections, record measurements, create quality reports, and manage sampling in uqmes.
 
 !!! tip "Demo Account"
-    In demo mode, log in as **Sarah Chen** (sarah.qa@demo.ambac.com) to experience the QA Inspector workflow. You'll see:
+    In demo mode, log in as **Sarah Chen** (sarah.qa@demo.ambac.com) to work the
+    QA Inspector surface. Home gives you the live picture: first pieces waiting,
+    the incoming queue split by source, your dispositions and CAPA tasks, and the
+    gauges you have used that are coming due for calibration.
 
-    - Parts ready for inspection: INJ-0042-018 at Final Test, INJ-0042-021 at Flow Testing
-    - Quarantined parts awaiting disposition: INJ-0042-017, INJ-0042-019
-    - SPC violation alert: Flow rate Rule 2 violation
-    - CAPA task: "Update incoming inspection procedure" for CAPA-2024-003
-    - Pending approval: APR-2024-0015 (CAPA closure)
+    Which serials and reports are waiting changes with every reseed and with
+    anyone else's walkthrough, so follow what Home shows rather than looking for
+    a particular part number.
 
 ## Your Role
 
@@ -90,9 +91,24 @@ are met, they advance automatically.
 
 When problems are found:
 
-1. Create quality report (part is automatically quarantined)
+1. Create the quality report **with status FAIL** — that is what quarantines the
+   part, raises its disposition and alerts the step
 2. Add annotations (if 3D model available)
 3. Notify appropriate parties
+
+!!! warning "Create it as FAIL — failing it afterwards does only half the job"
+    A FAIL triggers two different things, and they fire at different times:
+
+    - **Quarantining the part** happens **only when the report is created**, and
+      only when it names a part.
+    - **Opening the disposition** happens on **any** save at FAIL.
+
+    So editing a PENDING report to FAIL afterwards leaves a **disposition open
+    against a part nobody quarantined** — somebody is asked to decide it while
+    the part carries on down the line.
+
+    If you are not ready to call it, leave the report uncreated rather than
+    creating a placeholder you mean to change later.
 
 ## Performing Inspections
 
@@ -117,7 +133,7 @@ Quality Report alongside the completion.
 the receiving inspection queue and use **Record Measurements** there.
 
 !!! note "There is no Record Measurements button on a part"
-    The per-part button older instructions describe does not exist. For parts,
+    There is no per-part measurement button. For parts,
     the step player is the recording surface. See [Recording
     Measurements](../workflows/tracking/measurements.md).
 
@@ -204,20 +220,33 @@ Based on lot size and AQL level:
 | **Major** | Out of spec, affects function |
 | **Critical** | Safety risk, regulatory violation |
 
+A new defect defaults to **Major** — set it deliberately.
+
 ## Annotating Defects
 
 If 3D models are configured:
 
 ### Adding Annotations
 
-1. Open the work order containing the part (**Production > Work Orders**)
-2. Find the part and open the annotation tool
-3. Click location of defect on model
-4. Fill in annotation details:
-   - Error type
-   - Severity
-   - Description
-5. Save
+An annotation belongs to a **quality report**, so choose the report first:
+
+1. On the work order's page, select the part — the **QA panel** on the right
+   shows its model; or open the **Annotator** (`/annotator`) and pick the
+   report; or use the step's **Part annotation** capture if it has one
+2. Click the location of the defect on the model
+3. Fill in **Error Type**, **Severity Level** and **Notes**
+4. Save
+
+!!! note "Two severity scales"
+    An annotation's severity is **Low, Medium, High or Critical** — a different
+    scale from the defect's Minor / Major / Critical on the report itself.
+
+!!! important "Delete misplaced markers before you finish the report"
+    While the report is still Pending you can delete an annotation and place it
+    again. Once the report is **Pass** or **Fail**, the annotation is inspection
+    evidence and only the quality team can delete it — by default QA Inspector,
+    QA Manager and Tenant Admin, so you can, but your operators cannot. See
+    [Annotations](../3d-models/annotations.md).
 
 ### Why Annotate
 
@@ -283,8 +312,12 @@ the run is released.
 
 !!! important "Separation of duties"
     The operator signed the inspection substeps; **you** sign the buy-off. They
-    must be different people — if you had also signed the substeps, the buy-off
-    is refused.
+    must be different people — if you signed *any* substep on the first piece's
+    current step execution, the verdict is refused with a message saying so.
+
+    That applies to **all three outcomes**, not just the pass: Fail and Waive are
+    blocked for the same person too. A waive additionally needs a reason of at
+    least ten characters — it releases the run as surely as a pass does.
 
     An inspector who lacks `sign_off_fpi` is not stuck: the banner offers an
     inline co-signature for an authorized colleague, the same pattern as a
@@ -302,10 +335,27 @@ For material from suppliers:
 
 ### Rejected Incoming Material
 
-1. Create quality report
-2. Mark lot status
-3. Initiate RTV if appropriate
-4. Notify purchasing/quality manager
+Reject from the lot itself — **the disposition is opened with it**, on every
+branch, so there is no separate "raise an NCR then mark the lot" sequence.
+
+| What you reject | What happens |
+|-----------------|--------------|
+| **Part of the lot** | The bad pieces split off and the rest is accepted |
+| **The whole lot** | Needs `reject_whole_lot` — see below |
+
+!!! important "Your whole-lot reject may be a request, not a rejection"
+    Rejecting an entire lot back to a vendor is a VDMR, and it sits with the QA
+    Manager tier. **Without that permission your whole-lot reject becomes a
+    request that holds the lot** rather than rejecting it — which is the correct
+    outcome, not a failure, but it means the lot is waiting on a manager and
+    will not move until one acts.
+
+    Some facilities grant it to their inspectors' group. Check which yours does
+    before assuming a lot you rejected has gone anywhere.
+
+Once a lot is genuinely rejected, **Ship back** appears for the return: RMA
+number, printed RTV sheet, carrier and tracking, and the replacement delivery is
+raised automatically. Any credit is settled in your ERP, not here.
 
 ## Supporting CAPA
 
@@ -319,18 +369,29 @@ You may be assigned CAPA tasks:
 
 ## End of Shift
 
-### Handoff
+### Clear the gates before you clear your desk
 
-1. Complete in-progress inspections
-2. Document partial inspections
-3. Note any pending items
-4. Inform next shift
+Most of your work leaves nothing hanging — each inspection is its own record
+with your name on it, and the next inspector picks up the queue as it stands.
+**Two things are different, because somebody is stopped behind them.**
 
-### Records
+**A pending First Piece Inspection is an andon call, not a queue item.** A
+machine and an operator may be idle waiting on it, and no part moves past that
+step until it is bought off. Do not leave one unresolved at the end of a shift
+without telling the lead.
 
-- Ensure all measurements saved
-- Quality reports submitted
-- Annotations complete
+**An acknowledged FPI with no verdict is worse than an unacknowledged one.**
+*I'm on it* tells the floor somebody is handling it — if that was you and you
+have gone home, the batch is blocked *and* nobody is looking for an inspector.
+Either finish it or say so.
+
+### Before you go
+
+- **A held lot is still held.** Paperwork holds clear themselves when the
+  paperwork arrives; a judgement hold needs a quality manager, so hand it over
+  rather than leaving it to age.
+- **Dispositions you opened but did not decide** stay on your name. Check *My
+  dispositions* on Home.
 
 ## Quick Reference
 
@@ -338,7 +399,7 @@ You may be assigned CAPA tasks:
 |------|-------|
 | Record measurement | On a part: step player → inspection substep → enter value → **Confirm & next** · On an incoming lot: receiving inspection → **Record Measurements** |
 | Create NCR | Select part → Create Quality Report → Fill form → Submit |
-| Add annotation | Heat Map → Click location → Enter details → Save |
+| Add annotation | Work order page → select part → QA panel, or **Annotator** → choose the report → click the defect → Save |
 | Buy off a first piece | Home red banner → **Start check** → review captures → **Sign off & pass** (or Fail / Waive) |
 | Accept lot | Complete sampling → Record results → System calculates |
 
@@ -346,8 +407,12 @@ You may be assigned CAPA tasks:
 
 Typically you cannot:
 
-- Approve dispositions (QA Manager)
-- Close CAPAs (QA Manager)
+- Approve dispositions (QA Manager) — you *record* the decision; an approver
+  co-signs on your screen if you don't hold it
+- Verify that a CAPA worked, which is the act that closes it (QA Manager)
+- Approve a root-cause analysis (`review_rca` — QA Manager)
+- Override the training gate for an unqualified operator (Shift Lead, QA
+  Manager, Production Manager — deliberately not QA Inspector)
 - Manage users (Tenant Admin)
 - Classify documents, or read the Secret tier (QA Manager classifies; Document
   Controller and Tenant Admin read Secret)
@@ -361,11 +426,18 @@ Escalate to QA Manager as needed.
 
 ## Troubleshooting
 
-### Measurement equipment shows expired
+### Measurement equipment shows overdue or failed
 
-- Don't use that equipment
-- Select different calibrated equipment
-- Report to calibration manager
+The two are handled differently, and the system tells you which you have:
+
+- **Failed** calibration, or out of service — the capture is **refused**. Pick a
+  different gauge; this one cannot be used until a passing calibration is
+  recorded.
+- **Overdue** — the reading **is accepted**, with a warning. An overdue check is
+  a scheduling lapse, not evidence the gauge is wrong. Record the work, then
+  get it calibrated.
+
+Either way, tell whoever owns calibration.
 
 ### Can't find part to inspect
 

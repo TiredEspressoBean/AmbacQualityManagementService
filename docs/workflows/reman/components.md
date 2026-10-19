@@ -59,7 +59,8 @@ requires a reason.
     Recording a component and its grade is the teardown technician's work.
     **Accepting** it into stock needs `accept_component`, and **scrapping** it
     needs `reject_component` — both enforced on the server, not just hidden in
-    the UI. The person who tore the unit down does not decide what becomes of
+    the UI, and by default both held by **QA Inspector, QA Manager, Shift Lead, Production
+    Manager and Tenant Admin**. By default an Operator holds neither. The person who tore the unit down does not decide what becomes of
     what they found.
 
 !!! warning "An accepted part can be spoken for"
@@ -131,11 +132,19 @@ time**.
 ## Filtering Components
 
 The list has a single control — a **search** box ("Search harvested
-components...") — plus **Import** and **Export**.
+components...") — plus **Import** and **Export**. Search matches a component's
+**position** and **original part number** only, not its core number or type.
 
 !!! note "No filter dropdowns"
-    There is no filtering by core, component type, condition, status, or
-    date on this page. Use search, or export to CSV and slice it there.
+    There are no filter controls on this page. Two links on the
+    **Remanufacturing** dashboard open it already narrowed:
+
+    | Link | Shows |
+    |------|-------|
+    | **Usable Components** | Everything not scrapped, accepted or not |
+    | **Pending Inventory Acceptance** | Not scrapped and **not yet accepted** — the acceptance worklist |
+
+    Otherwise, use search, or export and slice it there.
 
 ## Traceability
 

@@ -14,10 +14,6 @@ Parts are the individual items tracked through production. This guide covers add
 1. Go to **Production** > **WO Control Center**
 2. Tick exactly one work order — the bulk bar appears at the bottom
 3. Click **Add Parts** (it stays disabled until exactly one is selected)
-
-!!! note "Not Production > Work Orders"
-    That page is a read-only list with no bulk bar. The Control Center is the
-    one with the actions.
 4. Fill in the dialog:
 
 | Field | Description |
@@ -29,6 +25,10 @@ Parts are the individual items tracked through production. This guide covers add
 
 5. Click to confirm, and the parts are created attached to that work order
 
+!!! note "Not Production > Work Orders"
+    That page is a read-only list with no bulk bar. The Control Center is the
+    one with the actions.
+
 !!! note "The work order needs a process"
     If the work order has no process assigned, the dialog refuses with "This
     work order has no process — assign a process first." There are no steps to
@@ -36,87 +36,64 @@ Parts are the individual items tracked through production. This guide covers add
 
 ## ERP ID Generation
 
-Each part gets an ERP ID built from the part type's own prefix and a counter:
+Each part's ERP ID is built from the **work order's** ERP ID, the part type's
+prefix, and a counter:
 
 ```
-ERP ID = <part type's ID prefix><counter padded to 4 digits>
+ERP ID = <work order ERP ID>-<part type's ID prefix><counter padded to 4 digits>
 ```
 
 The counter starts at the **ERP ID Start** you entered and increments by one per
-part. A part type with prefix `WA` and an ERP ID Start of 1 gives `WA0001`,
-`WA0002`, ... `WA0010` for ten parts. A part type with no prefix configured
-falls back to `P`.
+part. On work order `WO-2024-0038-A`, a part type with prefix `WA` and an ERP ID
+Start of 1 gives `WO-2024-0038-A-WA0001`, `WO-2024-0038-A-WA0002`, and so on. A
+part type with no prefix configured falls back to `P`.
 
 You do not type the prefix — set it on the part type.
 
-## Lot Numbers
+!!! tip "Adding the same range twice does not duplicate"
+    An ID that already exists on the work order is skipped. So if you are unsure
+    whether an earlier add went through, adding the same range again is safe —
+    you get the parts that were missing and nothing extra. To add *more* parts,
+    start the counter past the last one.
 
-Lots group parts manufactured together:
+## Lots
 
-- Same raw material batch
-- Same machine setup
-- Same operator shift
-
-Benefits of lot tracking:
-
-- Faster recalls if issues found
-- Traceability to material sources
-- Quality trend analysis by lot
+A part does not carry a lot number of its own. What groups parts is the **work
+order** they were made on, and their trail back to material is the **material
+lots** drawn into them at each step — see [Material Lot
+Tracking](../tracking/lot-tracking.md).
 
 ## Part Attributes
 
-Depending on your part type configuration, parts may have additional fields:
+A part carries its export-control fields — **ITAR controlled**, **ECCN**,
+**export licence required**, **country of origin** — alongside its type, step,
+status, work order and order.
 
-| Field | Description |
-|-------|-------------|
-| **Revision** | Drawing or design revision |
-| **Material** | Material specification |
-| **Customer Part Number** | Customer's identifier |
-| **Country of Origin** | For export compliance |
-| **ECCN** | Export control classification |
-| **ITAR Controlled** | Defense article flag |
+There is no revision, material specification or customer part number field on a
+part, and none on its part type either.
 
 ## Part Status
 
-New parts start at the first step of their process. Status changes as they progress:
-
-| Status | Meaning |
-|--------|---------|
-| **Pending** | Part not yet started |
-| **In Progress** | Part is moving through steps |
-| **Awaiting QA** | Part waiting for quality inspection |
-| **Ready for Next Step** | Step complete, ready to advance |
-| **Quarantined** | Part held for quality review |
-| **Rework Needed** | Part requires rework |
-| **Rework In Progress** | Rework underway |
-| **Completed** | Part finished all steps |
-| **Shipped** | Part has been shipped |
-| **In Stock** | Part in inventory |
-| **Scrapped** | Part disposed as scrap |
-| **Cancelled** | Part cancelled |
+New parts start at the **Start Step** you chose, at **Pending**. See [Order
+Status](order-status.md#part-status) for all eighteen statuses.
 
 ## Viewing Part Details
 
-Click on any part to see:
-
-- Current step and status
-- Measurement history
-- Quality reports
-- Step transition log
-- Associated documents
+A part's own page carries its activity history, its traveller and what was
+recorded against it. See [Part History](../tracking/part-history.md).
 
 ## Removing Parts
 
-To remove parts from an order:
+On the order page, the **Parts on this order** card lists each part with its
+type, step and status. Tick the parts — or all of them — and press **Remove from
+order (N)**:
 
-1. Select the parts (checkboxes)
-2. Click **Remove** or use the action menu
-3. Confirm the removal
+> *Only the link to this customer order is removed. The parts stay on their work
+> orders, at their current step and status, and no longer count toward this
+> order.*
 
-!!! note "The parts are not deleted"
-    Removing a part from an order only clears its order link — the part record
-    survives, unattached to any order, and nothing is archived. If you remove a
-    part by mistake you will need to set its order again rather than restore it.
+Removing needs `change_orders`. Each removal is recorded in the audit trail
+against the part.
 
 ## Next Steps
 

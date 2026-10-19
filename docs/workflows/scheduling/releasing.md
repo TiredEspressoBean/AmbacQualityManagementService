@@ -59,6 +59,17 @@ any **blockers** or **warnings**. A priority badge appears only for Urgent and
 High. Readiness shows as the absence of blockers rather than as a marker of its
 own.
 
+!!! note "Every Release button is the same release"
+    **Pull in work**, capacity planning, the Schedule board's work order dialog,
+    **Release (N)** on the WO Control Center and **Release** on a work order's
+    own page all go through the same release: the readiness check, the override
+    reason when it refuses, and the record of who released it and when.
+
+    Releasing does **not** change the job's status. It reads *In progress* only
+    once someone actually starts work. On a released job the work order page
+    offers **Un-release** instead, which withdraws the authorisation — under
+    manual mode the solver then drops the order.
+
 ## The recommendation
 
 Alongside the queue, the system recommends **which orders to release now**.
@@ -85,7 +96,16 @@ order is held and the resource is named.
 **Recommend** pre-selects the recommended rows; nothing is released until you
 confirm. **Select all ready** is there because overriding the norms is a
 legitimate thing to do. Releasing an order that is *not* ready requires an
-override reason.
+override reason — the release is **refused** without one, naming each blocker.
+
+!!! note "What the override reason does and doesn't survive"
+    - A reason given on an order that was **ready anyway** is discarded. The
+      field records an override, not a comment.
+    - **Re-releasing** an already-released order does not move the original
+      timestamp — the first release is the one that counts — but it **does**
+      refresh the recorded reason.
+    - **Unreleasing** clears the reason entirely. If you unrelease and release
+      again, the justification has to be given again.
 
 Utilisation is shown as a banded colour rather than a smooth gradient, because
 the decision changes at the boundaries and a ramp makes 88% and 104% look alike.

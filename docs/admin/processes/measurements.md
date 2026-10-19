@@ -101,8 +101,7 @@ There are **two**, and no others:
 | **Pass/Fail** | A go/no-go result. Takes no nominal and no tolerances. |
 
 !!! warning "There is no Attribute or Text type"
-    Older versions of this page listed three types including a free-text one.
-    Free-form observations are captured with a **text input** in the work
+    There are two types, numeric and pass/fail. Free-form observations are captured with a **text input** in the work
     instruction, not as a measurement — only measurements are evaluated against
     a specification and feed SPC.
 

@@ -61,9 +61,11 @@ glTF (GL Transmission Format) is preferred because:
 | Field | Description |
 |-------|-------------|
 | **Name** | Display name |
-| **Part Type** | Associated part type |
-| **Description** | Optional notes |
-| **Version** | Model version |
+| **File** | The model file |
+| **Part Type** | The part type it shows — required |
+| **Step** | Optional: the step whose intermediate state it shows, when it is not the finished part |
+
+A model is versioned for you; there is no version field to fill in.
 
 5. Click **Upload**
 
@@ -114,8 +116,8 @@ STL files usually work directly, but consider:
 ## Model Positioning
 
 !!! warning "There are no orientation, scale or units controls"
-    The upload form has four fields — Name, Part Type, Description, Version —
-    and nothing to rotate, centre, set an "up" direction, choose units or apply
+    The upload form has four fields — Name, File, Part Type and Step — and
+    nothing to rotate, centre, set an "up" direction, choose units or apply
     a scale factor.
 
     The model is used as it was exported, so **get the orientation and scale
@@ -124,34 +126,29 @@ STL files usually work directly, but consider:
 
 ## Linking to Part Types
 
-Each model is linked to a Part Type:
+Every model belongs to a **part type**, chosen on the form. A part type can have
+**several** models — the finished part, and others tied to a **step** to show an
+intermediate state.
 
-1. Edit the model
-2. Select **Part Type**
-3. Save
+!!! warning "The work order page annotates on the first model by name"
+    When you annotate a part from the work order page's QA panel, it uses the
+    part type's model that comes **first alphabetically** — whatever its step,
+    and whether or not it has finished converting. With more than one model on a
+    type, name the one you want annotated so it sorts first, and archive models
+    you no longer use.
 
-When creating defect annotations on parts of that type, this model is used.
-
-!!! note "One model per part type"
-    A model is linked to a part type and that is the model used for annotation
-    on parts of that type. There is no concept of alternative views — assembly,
-    exploded, cross-section — attached to one part type.
+    Annotating from a work-instruction substep uses the model that substep's
+    **Part annotation** capture was authored with.
 
 ## Model Versioning
 
-When parts change, update models:
+There is no **Upload New Version** action on a 3D model. Upload the updated file
+as a new model record and archive the old one. Annotations belong to the model
+they were placed on, so the old model's annotations stay with it.
 
-!!! note "Planned Feature"
-    There is no in-place **Upload New Version** action on a 3D model. Upload the
-    updated file as a model record and retire the old one.
+## Thumbnails
 
-Previous versions are retained for historical parts.
-
-## Thumbnail Generation
-
-Thumbnails are generated automatically and used in lists and previews. There
-is no way to regenerate or re-frame one — the viewer has no camera control to
-set a view from.
+There are none. Models are listed by name; open one to see it.
 
 ## Permissions
 

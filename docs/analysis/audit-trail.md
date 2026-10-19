@@ -22,10 +22,15 @@ The audit trail captures:
 
 Navigate to **Admin** > **Audit Log**
 
-Full system-wide audit trail:
-- All users
-- All record types
-- All actions
+The audit trail across records — every user, every record type, every action.
+Browsing it needs `view_auditlog`, by default held by **Tenant Admin**,
+**QA Manager**, **Document Controller** and **Auditor**. Other roles do not see
+the menu entry.
+
+!!! note "You see the history of what you can open"
+    Even with `view_auditlog`, an entry is shown only if you can open the record
+    it belongs to. A document you are not cleared for, or a record outside your
+    access, leaves no trace in your view of the log.
 
 ### Record-Level History
 
@@ -34,6 +39,11 @@ View history for specific records:
 1. Open any record (order, part, NCR, etc.)
 2. Scroll to the **Activity History** section at the bottom of the detail page
 3. See all changes to that record
+
+This needs only `view_logentry`, which every staff role holds by default. It
+shows the history of the record in front of you, and never of a record you
+cannot open. On a Data Management edit form the same history is the **History**
+card.
 
 !!! note "A section, not a tab"
     There is no *History* or *Audit Trail* tab. The audit trail is a section on
@@ -125,13 +135,16 @@ Signature events include:
 - Signature meaning
 - Signed record
 
-### Login/Logout
+### Login/Logout — not recorded here
 
-Authentication events:
-- Successful logins
-- Failed login attempts
-- Logouts
-- Session timeouts
+!!! warning "There is no authentication trail in uqmes"
+    Logins, failed logins, logouts and session timeouts leave **no trace** in
+    the audit log. Do not plan an investigation around them, and do not offer
+    them as evidence.
+
+    That evidence lives in your **identity provider** or your **web server
+    logs**. What uqmes records is what a signed-in user *did* — every create,
+    update and delete, attributed and timestamped.
 
 ### Permission Changes
 
@@ -184,25 +197,14 @@ Custom and compliance-focused reports (AS9100D, IATF 16949, ISO 9001) are also p
 
 ## Exporting Audit Data
 
-!!! note "Planned Feature"
-    UI export of audit data is planned for a future release.
+!!! note "No export from the audit log screen"
+    The audit log viewer has no Export control. To take audit data out, read it
+    from the REST API — `GET /api/auditlog/` — with the same filters, and format
+    it as the auditor asks.
 
-**Current access:** Use the REST API endpoint `GET /api/auditlog/` with filters to retrieve audit data programmatically for external reporting or archival.
-
-When UI export is available:
-
-| Format | Use Case |
-|--------|----------|
-| **CSV** | Analysis, archival |
-| **PDF** | Auditor submission |
-| **JSON** | Integration, backup |
-
-Steps will be:
-
-1. Filter to desired data
-2. Click **Export**
-3. Select format
-4. Download
+    Reading the API across records needs `view_auditlog`, the same as the
+    screen, and it returns only entries for records you can open. A separate
+    `export_auditlog` permission exists, but nothing checks it.
 
 ## Retention
 
@@ -227,11 +229,14 @@ out of reach in the first place.
 
 | Permission | Allows |
 |------------|--------|
-| `view_auditlog` | View audit trail |
-| `export_auditlog` | Export audit data |
+| `view_logentry` | The history of a record you can open — by default, every staff role |
+| `view_auditlog` | Browse the audit trail across records — by default Tenant Admin, QA Manager, Document Controller and Auditor |
+| `export_auditlog` | Exists, but nothing checks it — there is no export to gate |
 
-Standard users can view history of records they can access.
-Full audit log access is typically admin-only.
+!!! note "Credentials are not recorded"
+    Passwords, API keys, integration secrets and invitation tokens are left out
+    of the audit trail. A password change still appears as a change to the
+    user, but without the field.
 
 ## Next Steps
 

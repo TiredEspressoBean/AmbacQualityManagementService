@@ -92,7 +92,11 @@ Controlled document types require approval. Click **Submit for Approval** to sta
 Open the document, click **Create Revision**, upload new file, and submit for approval.
 
 ### Who can see my documents?
-Visibility depends on document settings (Public, Internal, Confidential) and user permissions.
+Visibility depends on the document's classification — **Public, Internal,
+Confidential, Restricted** or **Secret** — and on your permissions. Note that
+Confidential and Restricted are by default held by every staff role: **Secret** is the only
+tier that keeps a document from most of the shop. See [Classification
+Levels](../workflows/documents/library.md#classification-levels).
 
 ## Administration
 
@@ -127,7 +131,10 @@ Check: same tenant selected, same filters applied, permission differences.
 ## Compliance
 
 ### Is my data backed up?
-Yes. Your administrator configures the schedule and how long backups are kept.
+**That depends on your deployment, and it is not configured in uqmes.** Backup
+schedule and retention are properties of the database and hosting your
+organisation runs — there is no backup setting in the application. Ask whoever
+operates it what the policy is; do not assume one exists.
 
 ### How long are records kept?
 Per your organization's retention policy, typically 7+ years for quality records.
@@ -137,8 +144,12 @@ No. PostgreSQL triggers reject UPDATE and DELETE on the audit tables, and they
 apply to superusers too — so this holds even for someone connecting directly
 to the database, not just through the application.
 
-pgAudit additionally logs write, DDL and role statements, so an attempt to
-remove a trigger would itself be recorded. See [Audit
+Where pgAudit is present it additionally logs write, DDL and role statements,
+so an attempt to remove a trigger would itself be recorded — **but it is not
+part of every deployment.** It comes from the custom Postgres image, so a
+managed or templated database may not have it, while the triggers travel with
+every deployment. Confirm which layers you actually have before describing them
+to an assessor. See [Audit
 Trails](../compliance/audit-trails.md#immutability).
 
 ### How do I export data for an audit?
@@ -173,8 +184,9 @@ narrow the filters or date range if it times out.
 ## Getting Help
 
 ### Who do I contact when something is broken?
-There is no support desk. See [Getting Help](help.md) for what to try and who
-to raise it with.
+Whoever administers uqmes for your organization — nothing in the system raises a
+request for you. See [Getting Help](help.md) for what to try first and what to
+include.
 
 ### How do I report a bug?
 Raise it with whoever maintains the deployment, with: steps to reproduce, expected vs actual behaviour, and the exact error text. See [Writing a report worth reading](help.md#writing-a-report-worth-reading).

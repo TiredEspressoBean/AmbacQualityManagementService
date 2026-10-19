@@ -36,42 +36,46 @@ Process
   └── Step 6: Complete
 ```
 
-## Process Types
+## What kind of process it is
 
-### Production Process
-Standard manufacturing workflow:
-- Sequential steps
-- Quality gates
-- Measurement collection
+There is no "process type" field. What a process is for comes from three
+separate things:
 
-### Rework Process
-For correcting defects:
-- Subset of production steps
-- Additional inspection
-- Links back to main process
+| Setting | What it decides |
+|---------|-----------------|
+| **Category** | Manufacturing, Quality, Maintenance, New Product Introduction, or Document Control. Routing and reporting |
+| **Remanufactured** | This process rebuilds an existing unit rather than making a new one |
+| **Disassembly** | This process is a teardown, and may be picked when a core is torn down |
 
-### Incoming Inspection
-For receiving material:
-- Inspection steps only
-- Sampling rules
-- Supplier quality tracking
+A part type can have several processes — a manufacturing routing and one or more
+teardowns — and the work order picks which runs.
+
+### Expected scrap
+
+A process carries a **default scrap rate**, a fraction from 0 to 1, which its
+steps inherit unless they set their own.
+
+!!! tip "This is what makes a work order release 11 to ship 10"
+    The rate grosses up the started quantity so the job still finishes the number
+    asked for. Leaving it at zero is a claim that nothing is ever lost, and the
+    cost of that claim is a short shipment discovered at the end.
 
 ## Process Versioning
 
-Processes support version control:
+A process has a **status**, and new versions are created rather than edited in
+place:
 
-| Version | Status | Description |
-|---------|--------|-------------|
-| v1.0 | Obsolete | Original process |
-| v2.0 | Obsolete | Added inspection step |
-| v3.0 | Current | Updated measurements |
-| v3.1 | Draft | Adding new equipment |
+| Status | Means |
+|--------|-------|
+| **Draft** | Editable, and not available to work orders |
+| **Pending approval** | Submitted, waiting on its approvers |
+| **Approved** | Locked, and what new work orders use |
+| **Deprecated** | Still works for the jobs already running it, hidden from new ones |
 
-### Version Rules
-- Only one **Current** version active
-- **Draft** versions for development
-- **Obsolete** versions archived
-- Parts track which version they used
+!!! important "Deprecated is not deleted, and that is the point"
+    A job that started on last year's routing finishes on last year's routing.
+    Deprecating stops new work picking it up without disturbing work in flight —
+    which is also why the version a part ran is readable long after.
 
 ### Versions share their steps
 
@@ -138,25 +142,31 @@ same edits, so it holds however you reach it:
 
 ## Process Approval
 
-Changes to processes may require approval:
+1. Create or edit the process as a **Draft**
+2. Submit it, which moves it to **Pending approval**
+3. Its approvers respond
+4. On approval it becomes **Approved**, and work orders can use it
+5. The version it replaces becomes **Deprecated** — still running its existing
+   jobs, hidden from new ones
 
-1. Create or edit process (Draft)
-2. Submit for approval
-3. Reviewers approve changes
-4. Process becomes Current
-5. Previous version becomes Obsolete
+Who may respond comes from the approval template, not from `change_processes`.
+See [Approvals](../../workflows/approvals/overview.md).
 
 ## Linking Processes
 
 ### To Part Types
-Each part type links to a default process:
-- New parts of that type use the process
-- Can override per work order
+
+The link runs from the **process** to the part type, not the other way: a
+process names the part type it is for, and a part type has no default-process
+field.
+
+So a part type's processes are whichever processes point at it. Create the
+process against the type.
 
 ### To Work Orders
-Work orders specify which process to follow:
-- Usually default from part type
-- Can select different process
+
+A work order names the process it follows, chosen from the approved processes
+for its part type.
 
 ## Process Configuration Elements
 
@@ -190,21 +200,15 @@ Conditional paths through a process, built on the
 
 ### Process List
 
-Navigate to **Production** > **Processes**
+The processes list is at `/editor/processes`, reached through **Data
+Management**. It is the CRUD list — name, part type, version and status — and
+its row actions open the process form (`/editor/processes/$id/edit`) for the
+record's own fields.
 
-See all processes with:
-- Name and description
-- Version and status
-- Part types using it
-- Step count
-
-### Process Detail
-
-Click a process to see:
-- Full step sequence
-- Each step's requirements
-- Linked part types
-- Version history
+!!! tip "The list is not where you build a routing"
+    The form edits what the process *is*. The steps and the order they run in
+    are **Process Flow**, below. Looking for steps on the process form will not
+    find them.
 
 ### Process Flow
 
@@ -221,15 +225,19 @@ See [Step Configuration](steps.md).
 
 ## Process Metrics
 
-Track process performance:
+!!! note "There is no per-process performance view"
+    Nothing reports cycle time, yield or rework rate *for a process*. The
+    numbers that exist live elsewhere and are grouped differently:
 
-| Metric | Description |
-|--------|-------------|
-| **Cycle Time** | Average time through process |
-| **Step Duration** | Time at each step |
-| **Bottleneck** | Longest step |
-| **FPY** | First pass yield |
-| **Rework Rate** | % requiring rework |
+    | What you want | Where it actually is |
+    |---------------|----------------------|
+    | Cycle and setup times | **Step timings** — a planning *input* you author, not a measurement of what happened |
+    | Constraint / bottleneck | [Capacity planning](../../workflows/scheduling/capacity.md), by resource |
+    | First pass yield, defect Pareto | Per **part type**, on its record view (**View** on the part types list) |
+    | Rework rate | The quality dashboard, tenant-wide |
+
+    Be careful with the first row in particular: a step's cycle time is what you
+    told the scheduler to expect. It is not evidence of how long the work takes.
 
 ## Permissions
 

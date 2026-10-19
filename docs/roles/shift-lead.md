@@ -22,6 +22,23 @@ An operator runs the work; you settle what the work runs into.
 | **Close a disposition** | [Dispositions](../workflows/quality/dispositions.md) | Ends a nonconformance's open state |
 | **Accept or reject a harvested component** | [Components](../workflows/reman/components.md) | Puts a used part back into customer product, or destroys it |
 | **Override the training gate** | At claim / work-start | Nobody clears their own competency gap |
+| **Clear somebody else's unsubmitted signature** | The substep they signed | Unblocks work when the signer has gone home |
+| **Apply a cycle count** | [Locations & Cycle Counts](../workflows/supply/locations.md) | Counting is the counter's job; changing stock on the strength of it isn't |
+
+!!! note "Clearing a signature is narrower than it sounds"
+    A signature inside a substep is **provisional until the substep is
+    submitted** — the person who signed can always undo their own, no permission
+    needed. Yours is the other case: an operator signs a block, goes off shift,
+    and the work has to move.
+
+    **Once the substep is submitted this stops applying.** The signature is part
+    of the record then, and retracting it is a void — which is QA's, not yours.
+    See *What you deliberately don't hold*.
+
+!!! note "Counting and applying are deliberately two people"
+    Anyone on the dock can run a count, including a blind one. **Applying** it —
+    writing the difference onto the stock figure — is a lead's. The differences
+    export as a spreadsheet for keying into the ERP.
 
 !!! note "A QA_RESULT decision point needs nobody"
     Decision points that route from a quality result resolve themselves from the
@@ -42,13 +59,14 @@ the system doesn't know yet.*
     You can't wave it through from the operator's screen. A **supervisor signs in
     separately** to authorise — *"logged against their name"* — so the
     authorisation carries a second person, their reason and a timestamp, recorded
-    on the step execution.
+    on the step execution. It shows afterwards as an amber line on the part's
+    traveller, under that step.
 
     Then **enter the training record**, so the next person doesn't need you.
 
 You can also **write training records**, which is how someone stops needing the
-override. That is deliberately not an operator permission — it used to be, and
-it let people certify themselves. See [Training
+override. That is deliberately not an operator permission — an operator who could write
+training records could certify themselves. See [Training
 Matrix](../workflows/tracking/training-matrix.md).
 
 ## Your shift's board
@@ -76,14 +94,13 @@ not a state you set, it is simply what priority Urgent looks like.
     without one. The reason is stored with the change, and the edit form lists
     the last five: *Normal → Urgent · who, when*, with the reason beneath.
 
-    So the trail answers *what, who, when* **and** *why*, which it did not
-    before. Setting a priority when you first create the work order needs no
+    So the trail answers *what, who, when* **and** *why*. Setting a priority when you first create the work order needs no
     reason; there is nothing to explain yet.
 
 !!! warning "An import changes priority silently"
     The reason is asked for on the edit form and the API. A CSV import or the
     master workbook can change priority **without** recording one, so a bulk
-    re-prioritisation leaves the same gap the edit form now closes. Worth
+    re-prioritisation leaves no *why* behind. Worth
     knowing before you reach for an import to move a lot of work at once.
 
 ## Speaking to the next shift
@@ -102,11 +119,13 @@ not owning it; see [CAPA Overview](../workflows/capa/overview.md).
 | Not yours | Whose |
 |-----------|-------|
 | **Void a substep completion** | QA Inspector, QA Manager, Tenant Admin |
-| **Reject a whole lot (VDMR)** | QA |
+| **Reject a whole lot (VDMR)** | QA Manager, Tenant Admin |
 | **Approve a disposition** | QA Manager |
 | **Solve / commit a schedule** | Planner, Production Manager, Tenant Admin |
 | **Author processes, BOMs, specs** | Engineering, QA Manager, Production Manager, Document Controller, Tenant Admin |
 | **Cancel a work order** | Production Manager, Tenant Admin |
+
+These are the default groups an organisation starts with. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
 
 !!! note "Voiding a sign-off is a quality judgement, not a production override"
     Retracting a record of work someone else signed is withheld from Shift Lead

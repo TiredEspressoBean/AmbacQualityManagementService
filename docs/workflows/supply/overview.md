@@ -534,12 +534,9 @@ continues with **that one check waived** — any other hold still applies. Anyon
 without the permission sees: *"A quality manager can release this hold, or the
 lot can be rejected."*
 
-!!! note "Holds used to be a dead end"
-    A held lot could once only be **rejected**; nothing released it. A delivery
-    missing its cert had to be sent back rather than held until the paperwork
-    caught up.
-
-    The split is the point: **paperwork clears itself, judgements need
+!!! note "A hold is not a rejection"
+    A delivery missing its certificate waits for the paperwork rather than
+    going back to the supplier. The split is the point: **paperwork clears itself, judgements need
     authority.** Waiting on a document is not the same as deciding a supplier is
     acceptable.
 
@@ -724,6 +721,13 @@ certificate.
 Supplier qualifications, with expiry. The Home page surfaces qualifications that
 are expiring or expired, since an expired qualification affects what you're
 allowed to receive.
+
+A qualification works exactly like a [part approval](part-approvals.md): it
+saves as **Pending**, which qualifies nothing, and only **Grant…** — held by
+by default **QA Manager** and **Tenant Admin**, through `approve_supplierqualification` —
+makes it count. The status cannot be set on the form or through the API.
+**Suspend…** and **Disqualify…** take a reason. Only **Approved** and
+**Conditional** count at receiving.
 
 ## Next Steps
 

@@ -101,13 +101,33 @@ action is recorded on it. See [Dispositions](dispositions.md).
 |--------|---------|-------------|
 | **Pending** | Inspection not yet complete | Complete inspection |
 | **Pass** | Part passed inspection | Continue production |
-| **Fail** | Part failed inspection | Create disposition |
+| **Fail** | Part failed inspection | Decide the disposition |
 
-Note: Quality reports with FAIL status trigger the disposition workflow for handling non-conforming parts.
+!!! danger "Create it as Fail — failing it afterwards does only half the job"
+    A FAIL sets off two different things, and they do **not** fire at the same
+    time:
+
+    | Effect | When |
+    |--------|------|
+    | **Quarantine the part**, alert the step, update sampling | **Only on create** |
+    | **Open the disposition** | **On any save** where the status is Fail |
+
+    So a report saved as Pending and changed to Fail afterwards leaves you with
+    **a disposition open against a part that was never quarantined** — the
+    record says FAIL, somebody is being asked to decide it, and the part is
+    still moving down the line.
+
+    Set the result when you create the report. If you are not ready to call it,
+    don't save a placeholder you mean to change later.
+
+    *(Quarantine also needs the report to name a part. Receiving-inspection and
+    batch-cycle failures take their own routes — a lot reject opens a populated
+    disposition itself, and a failed batch cycle contains the whole load.)*
 
 ## Disposition
 
-Quality reports with FAIL status trigger a separate disposition workflow. Disposition decisions are made through the Dispositions feature, not directly on the quality report.
+Disposition decisions are made through the Dispositions feature, not on the
+quality report itself.
 
 Available dispositions:
 
@@ -166,7 +186,8 @@ Every failed report carries a CAPA decision:
 
 Find existing reports:
 
-- By status (Open, Closed)
+- By status — **Pending**, **Pass** or **Fail** (there is no Open/Closed on a
+  report; a report is not a thing that closes — its *disposition* is)
 - By error type
 - By severity
 - By date range

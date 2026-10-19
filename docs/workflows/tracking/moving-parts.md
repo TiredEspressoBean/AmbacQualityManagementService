@@ -112,12 +112,21 @@ Each transition records:
 If an issue is found:
 
 1. Create a Quality Report against the part with its result set to **FAIL** —
-   it has to be FAIL *at creation*; failing it afterwards does not quarantine
+   it has to be FAIL *at creation*. Failing it afterwards opens a disposition
+   but does **not** quarantine the part, which leaves somebody deciding a part
+   that is still moving
 2. Add each defect to the report, with its own error type, count, location and
    severity. Error type is **not** a field on the report itself
 3. The part enters quarantine
 
-Quarantined parts cannot progress until disposition is determined. See [Quarantine](../quality/quarantine.md).
+!!! warning "Quarantine always stops a part shipping — it does not always stop it advancing"
+    A quarantined part can never leave the building. Whether it stops at the
+    **next step** depends on that step's **Block on quarantine** setting, which
+    is **off by default**. On a routing where nobody armed it, a quarantined
+    part keeps moving down the line until it reaches shipping.
+
+    If your procedure expects a hold to stop work immediately, check the flag on
+    the steps that matter. See [Quarantine](../quality/quarantine.md).
 
 ## Handling Quarantined Parts
 
@@ -153,13 +162,21 @@ When a step is configured for batch processing:
 
 ## Troubleshooting
 
-### "Cannot pass parts"
+### A part won't advance
 
-Check for:
+Work down these, commonest first:
 
-- Parts in quarantine (need disposition first)
-- Missing quality reports
-- Required measurements not recorded
+- **Another part in its lot isn't done.** Unsplit parts move as a cohort, so a
+  finished part waits on its slowest sibling. This is the usual answer.
+- **Required captures are missing** — a substep not completed, or a signature
+  block unsigned.
+- **The step is waiting on a First Piece Inspection** that nobody has bought off.
+- **A manual decision point** is waiting for someone to choose the branch.
+- **A completion was voided**, so it no longer satisfies its substep — and that
+  holds the whole lot. Check the traveler.
+- **The part is quarantined** *and* the step blocks on quarantine.
+- **The operator isn't qualified** for the step, and nobody has authorised the
+  override.
 
 ### "No parts at step"
 

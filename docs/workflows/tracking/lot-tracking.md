@@ -1,8 +1,8 @@
 # Material Lot Tracking
 
 Material lots are managed from **Supply** > **Materials**
-(`/production/material-lots`), a hub segmented by lifecycle status — **On
-order**, **Awaiting inspection**, **On hand**, and **Held** — with **Expect**,
+(`/production/material-lots`), a hub of tabs — **On order**, **Late**,
+**Awaiting inspection**, **On hand**, **Held**, **Rejected** and **All** — with **Expect**,
 **Receive**, and **Inspect** actions, plus import and export.
 
 Material lot tracking provides full traceability for raw materials, components, and consumables used in production.
@@ -28,23 +28,40 @@ A **material lot** represents a batch of material received or produced:
 | **Material Type** | Type of material (part type) |
 | **Supplier** | Company that supplied this lot |
 | **Supplier Lot Number** | Vendor's lot identification |
-| **Status** | RECEIVED, IN_USE, CONSUMED, SCRAPPED, QUARANTINE |
+| **Status** | Where the lot is in its life — see [Lot Statuses](#lot-statuses) |
 | **Quantity** | Amount in lot (with unit) |
 | **Parent Lot** | If this lot was split from another |
 
 ### Lot Statuses
 
-| Status | Meaning |
-|--------|---------|
-| **On Order** | Expected, not yet arrived |
-| **Received** | Arrived, not yet inspected or released |
-| **Awaiting Inspection** | Held for incoming inspection |
-| **Accepted** | Passed inspection |
-| **Rejected** | Failed inspection |
-| **In Use** | Released and available for production |
-| **Consumed** | Fully used |
-| **Scrapped** | Disposed of |
-| **Quarantine** | Under investigation |
+There are twelve. The column that matters most is the last one — whether
+planning counts the lot as **stock**, as **incoming supply**, or as neither.
+
+| Status | Meaning | Counts as |
+|--------|---------|-----------|
+| **On Order** | Expected, not yet arrived | Incoming supply |
+| **Received** | Arrived, not yet inspected or released | Neither — on the dock |
+| **Awaiting Inspection** | Held for incoming inspection | Neither |
+| **Accepted** | Passed inspection | **Stock** |
+| **In Use** | Released and being drawn against | **Stock** |
+| **Quarantine** | Held — under investigation, or a receiving hold | Neither |
+| **Rejected** | Failed inspection, awaiting return or scrap | Neither |
+| **Returned to supplier** | Shipped back on a return-to-supplier disposition | Neither |
+| **Consumed** | Fully used | Neither |
+| **Scrapped** | Destroyed | Neither |
+| **Cancelled** | An expected receipt that will never come | Neither |
+| **Shipped to customer** | Went out on a shipment — their property returned, or your material sold or kitted | Neither |
+
+!!! important "Only Accepted and In Use can be drawn against"
+    Consumption and staging work from an allowlist of **Accepted** and **In
+    Use**. Everything else — including **On Order** — can never be picked or
+    issued, so an expected receipt cannot be consumed by accident.
+
+!!! note "Returned is not Scrapped, and Cancelled never was stock"
+    **Returned** means the goods exist, at the vendor: not destroyed, and the
+    record stays live for the credit conversation. **Scrapped** means gone.
+    **Cancelled** is an expected receipt the ERP withdrew — it was never
+    physical stock, and it stops counting as supply.
 
 ### Material Usage
 
@@ -74,16 +91,6 @@ A **material lot** represents a batch of material received or produced:
 │              │     │ investigation│
 └──────────────┘     └──────────────┘
 ```
-
-### Later statuses
-
-Beyond the lifecycle above, a lot can reach:
-
-| Status | Means |
-|--------|-------|
-| **Cancelled** | An expected receipt you are no longer waiting for |
-| **Returned** | Rejected and shipped back to the supplier |
-| **Shipped** | Sent out to a customer — see [Shipping](../supply/overview.md) |
 
 ### Returned
 

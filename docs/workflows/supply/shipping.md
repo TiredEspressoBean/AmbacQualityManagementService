@@ -78,15 +78,23 @@ that much off and the rest stays"* — so a partial return works.
 - An order's **Shipping card** shows shipped against ordered per line, the
   shipments themselves, and flags lines that are late
 
-!!! warning "If on-time reads \"—\", the orders have no dated lines"
-    The figure attributes each shipment to its work order's **order line** and
-    compares against that line's **due date**. An order with no line, or a line
-    with no due date, cannot be scored — so the board shows *"On time, last 90
-    days: —"* even beside units that plainly shipped, and the **Line · due**
-    column is empty for the same reason.
+### What it measures against
 
-    That is a data gap rather than a delivery problem. Check the order has lines
-    with due dates before reading anything into the figure.
+Each shipment is scored against the work order's **order line due date** where
+there is one, and the work order's own **expected completion** where there
+isn't — so a shop that raises work orders directly is still measured.
+
+!!! important "Read the percentage and the unmeasured count together"
+    A work order carrying **neither** date cannot be judged on time. It is
+    excluded from the percentage and **counted beside it**, as *"N not
+    measurable"*.
+
+    *100% (2 of 2) · 4 not measurable* is a very different claim from *100%*. If
+    the unmeasured count is high, the percentage is describing a small corner of
+    your shipping, and the fix is to get due dates onto the work that lacks
+    them.
+
+    A dash means nothing in the window could be scored at all.
 
 !!! note "This is OTD to the CUSTOMER"
     Supplier on-time delivery is a different measure, on the receiving side —

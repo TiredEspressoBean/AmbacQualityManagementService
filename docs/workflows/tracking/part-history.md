@@ -34,6 +34,19 @@ record with no entries yet shows *"No audit history."*
     they have their own **Quality Reports** and **Dispositions** sections on the
     same page.
 
+!!! tip "For the whole story in one document, use the Traveler"
+    Activity History is the record's **change log** — fields altered, by whom.
+    It is not the same thing as the unit's manufacturing history, and reading
+    one off the other means following several sections and links.
+
+    The part's **Traveler** button produces that history as a single document:
+    *"this serial's as-built traveler — its work order's routing, filled with
+    who did each step, what was measured, the lots that went in."*
+
+    That is what to produce when an auditor asks to see everything about one
+    serial, and what to attach when a customer asks what was done to their
+    unit. See [Compliance Reports](../../compliance/reports.md).
+
 ## Event Types
 
 The history tracks all part-related events:

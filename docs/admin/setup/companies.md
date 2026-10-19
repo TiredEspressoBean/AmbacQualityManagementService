@@ -4,16 +4,9 @@ Manage customer and supplier company records.
 
 ## Company Types
 
-A company has **no type field**. What a company *is* follows from how it is
-used:
-
-| Acts as | Because it has |
-|---------|----------------|
-| **Customer** | Orders, returned cores, or portal users |
-| **Supplier** | Supplied material lots or part types, supplier qualifications, outside-process shipments |
-| **Both** | Any combination of the above |
-
-So the same record serves both roles without being flagged as either.
+There is one company record, not separate customer and supplier records. Two
+switches say which it is, and a company can be **both** — see [What a company is
+to you](#what-a-company-is-to-you) below.
 
 ## Creating a Company
 
@@ -55,15 +48,20 @@ Once narrowed, the pickers follow:
 - **Suppliers only** — Expect, Expect from shortages, batch receive, the
   preferred supplier on a Material or Part Type, supplier qualifications, part
   approvals, outside-processing send-out, Supplier Quality
-- **Customers only** — the order form
+- **Customers only** — the order form, and the core lots list
+- **Either, depending on the row** — core receiving, where a *purchased* core
+  came from a supplier (a core broker) and every other source is a customer's
+  own unit
 
 !!! tip "Narrowing is how you shorten the lists"
     The switches exist so a company that only ever sells to you stops appearing
     when someone picks a customer. On a shop with a long company list that is the
     difference between a usable picker and a scroll.
 
-!!! note "Reman core pickers are not narrowed yet"
-    They still offer every company.
+!!! warning "Turning a switch off does not remove existing links"
+    The switches decide what is **offered** next time someone picks. Orders,
+    lots and qualifications already recorded against the company stay exactly as
+    they are. Narrowing is a tidying action, not a way to undo a relationship.
 
 ## Outside contacts
 
@@ -173,8 +171,7 @@ Portal access is granted per **person**, not per company:
 They then see only their own company's orders.
 
 !!! warning "There is no 'Role Type' field"
-    Older instructions said to set *Role Type: Customer*. The account type is
-    **User type**, with two values — Internal and Portal — and *Customer* is a
+    The account type is **User type**, with two values — Internal and Portal — and *Customer* is a
     group. See [Adding Users](../users/adding.md).
 
 ## Company Documents
@@ -184,18 +181,27 @@ They then see only their own company's orders.
     certification or NDA — upload it and use the document's own **Link To**
     field. See [Uploading Documents](../../workflows/documents/uploading.md).
 
-    Documents linked to a company surface on the **order** detail page, under
-    *Company Documents*.
+    Documents linked to a company surface on the generic record view of each of
+    its orders (`/details/Orders/<id>`), under *Company Documents*. They are
+    not on the order page you reach from the Tracker, which lists only what is
+    attached to the order itself.
 
 ## HubSpot Integration
 
-If HubSpot integration is enabled:
+Where a HubSpot integration is configured, the sync walks **deals**, and
+companies arrive as a side effect of that:
 
-- Companies sync from HubSpot
-- Deals create orders
-- Contact information shared
+- A deal becomes an **order**
+- The deal's associated company is matched to a company here, or created if
+  there is none, and the HubSpot id is stored on the record
+- The deal's associated contact becomes the order's customer
 
-Company records show HubSpot link.
+!!! note "The HubSpot id is on the record, not on the screen"
+    The company carries its HubSpot id and the API returns it, but nothing in
+    the interface shows it or links out to HubSpot. To find a company's HubSpot
+    counterpart, read the id through the API.
+
+See [Integrations](../../integrations/api.md).
 
 ## Permissions
 

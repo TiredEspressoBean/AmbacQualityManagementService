@@ -1,218 +1,216 @@
-# Railway Deployment - Technical Reference
+# Railway Deployment — Technical Reference
 
-Internal reference for deployment configuration and troubleshooting.
+Internal runbook for this deployment's Railway project. Not part of the product
+help docs: it describes one hosted instance, not how uqmes works.
 
-## Project Details
+## Architecture
 
-- **Project Name**: enthusiastic-reverence
-- **Environment**: production
-- **Repository**: TiredEspressoBean/AmbacQualityManagementService
+The project is **enthusiastic-reverence**, with a single **production** environment
+running **eight services**. Names below are exactly as the Railway CLI expects them
+after `--service`, **case included**.
 
-## Services
+| Service | Purpose |
+|---------|---------|
+| `Backend` | Django API + Gunicorn |
+| `Frontend` | React/Vite UI |
+| `proxy-caddy` | Reverse proxy and TLS termination in front of the app |
+| `celery-worker` | Background task processing |
+| `celery-beat` | Scheduled task scheduler |
+| `docs` | MkDocs documentation — lowercase |
+| `pgvector` | PostgreSQL with the vector extension |
+| `Redis` | Message broker and cache |
 
-| Service | Config File | SERVICE_TYPE | Healthcheck |
-|---------|-------------|--------------|-------------|
-| Backend | `railway.toml` | `web` (default) | `/health/` |
-| celery-worker | `railway.celery.toml` | `worker` | None |
-| celery-beat | `railway.celery.toml` | `beat` | None |
-| Frontend | `ambac-tracker-ui/` | N/A | `/` |
-| Docs | `docs-service/railway.toml` | N/A | `/` |
-| pgvector | Railway template | N/A | N/A |
-| Redis | Railway service | N/A | N/A |
+!!! warning "Confirm the service list before trusting any page about deployment"
+    Services get added, and a page like this one goes stale quietly. Run
+    `railway status` or open the project to see what is actually deployed before
+    following instructions that name a service.
 
-## Key Configuration Decisions
+**Config files in the repo:** `PartsTracker/railway.toml`,
+`PartsTracker/railway.celery.toml`, `docs-service/railway.toml` and
+`proxy-service/railway.toml`.
 
-### Single Dockerfile, Multiple Services
-The backend Dockerfile uses `SERVICE_TYPE` env var to determine what to run:
-```dockerfile
-CMD if [ "$SERVICE_TYPE" = "worker" ]; then \
-      celery -A PartsTrackerApp worker -l info; \
-    elif [ "$SERVICE_TYPE" = "beat" ]; then \
-      celery -A PartsTrackerApp beat -l info; \
-    else \
-      python manage.py migrate --noinput && \
-      python manage.py collectstatic --noinput && \
-      gunicorn PartsTrackerApp.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4; \
-    fi
-```
+The Celery services build from the **same backend image** with a different start
+command — `railway.celery.toml` differs from the backend's only in dropping the
+HTTP healthcheck, since a worker serves no HTTP.
 
-### Separate Config Files
-- `railway.toml` - For services needing HTTP healthchecks (Backend, Frontend)
-- `railway.celery.toml` - For background workers (no healthcheck)
+## Environment Variables
 
-Config-as-code locks UI fields, so separate files allow per-service customization.
+### Required for all backend services
 
-### Database Choice: pgvector Template
-Railway's base Postgres does NOT include pgvector binaries. Must use:
-- pgvector-pg17 template: https://railway.com/deploy/qcuy_M
-- Extension enabled via migration in `0001_initial.py`
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection | `${{pgvector.DATABASE_URL}}` |
+| `REDIS_URL` | Redis connection | `${{Redis.REDIS_URL}}` |
+| `DJANGO_SECRET_KEY` | Django secret key | Generate with `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+| `DJANGO_SETTINGS_MODULE` | Settings module | `PartsTrackerApp.settings` |
 
-`railway connect` doesn't work with pgvector template (Docker-based, not managed).
+### Backend-specific
 
-## Environment Variable Patterns
+| Variable | Description |
+|----------|-------------|
+| `SERVICE_TYPE` | `web` (default), `worker`, or `beat`. Dispatched in `PartsTracker/Dockerfile`'s `CMD` — `worker` and `beat` start Celery, anything else migrates and starts Gunicorn. If a Celery service comes up serving HTTP, this is the variable to check. |
+| `PORT` | HTTP port (set to `8000` for healthchecks) |
+| `ALLOWED_HOSTS` | `.railway.app` |
 
-### Working References
-```
-DATABASE_URL = ${{pgvector.DATABASE_URL}}
-REDIS_URL = ${{Redis.REDIS_URL}}
-```
+### Service type configuration
 
-### Broken Patterns (Don't Use)
-```
-# These don't resolve properly:
-CELERY_BROKER_URL = redis://default:${{Redis.REDISPASSWORD}}@${{Redis.RAILWAY_PRIVATE_DOMAIN}}:6379/0
-# Results in: redis://default:@:6379/0 (empty password/host)
-```
+The Dockerfile uses `SERVICE_TYPE` to determine what to run:
+- `web` or empty: Runs Gunicorn (Django)
+- `worker`: Runs Celery worker
+- `beat`: Runs Celery beat scheduler
 
-### Shared Variables
-Shared variables (`${{shared.X}}`) have resolution issues. Set variables directly on each service instead.
+## Management Commands
 
-## Healthcheck Requirements
-
-For healthchecks to work:
-1. **PORT must be set explicitly** - Railway needs to know which port to hit internally
-2. **ALLOWED_HOSTS** must include `.railway.app` and `healthcheck.railway.app`
-3. **SECURE_SSL_REDIRECT = false** - Railway's healthcheck uses HTTP, not HTTPS
-4. **Public networking OR new environment** - Legacy environments (pre-Oct 2025) are IPv6-only; healthchecks use IPv4
-
-### Why Public Domain Fixed Healthchecks
-When you generate a public domain, Railway's HTTP proxy auto-detects your port and configures routing. The healthcheck piggybacks on that configuration. Setting `PORT` explicitly achieves the same without public domain.
-
-## Celery Workers Don't Need HTTP Healthchecks
-
-Celery workers:
-- Don't serve HTTP requests
-- Auto-reconnect to Redis on failure
-- Are restarted by Railway's `restartPolicyType = "on_failure"`
-
-The `celery-healthcheck` package exists but adds complexity. Standard approach is no HTTP healthcheck for background workers.
-
-## CLI Commands Reference
-
+### SSH into a service
 ```bash
-# Link to project
-railway link
+railway ssh --service Backend
+python manage.py createsuperuser
+python manage.py shell
+```
 
-# Check status
-railway status
+### Run command with Railway env vars locally
+```bash
+railway run --service Backend python manage.py migrate
+railway run --service Backend python manage.py dbshell
+```
 
-# View/set variables
-railway variable --service Backend
-railway variable set PORT=8000 --service Backend
-railway variable delete BROKEN_VAR --service celery-worker
-
-# Logs
+### View logs
+```bash
 railway logs --service Backend
 railway logs --service celery-worker
-
-# Redeploy
-railway redeploy --service Backend --yes
-
-# SSH into container
-railway ssh --service Backend
-
-# Run command with Railway env
-railway run --service Backend python manage.py createsuperuser
-
-# Connect to database (only works with managed Postgres, not pgvector template)
-railway connect Postgres
 ```
 
-## Troubleshooting Log
+### Redeploy a service
+```bash
+railway redeploy --service Backend --yes
+```
 
-### Issue: Healthcheck "service unavailable"
-**Cause**: Multiple possible causes
-1. SECURE_SSL_REDIRECT = true (302 redirect, not 200)
-2. PORT not set (Railway doesn't know which port)
-3. ALLOWED_HOSTS missing Railway domains
-4. TenantMiddleware not exempting /health/ path
+### Check/set variables
+```bash
+railway variable --service Backend
+railway variable set KEY=value --service Backend
+railway variable delete KEY --service Backend
+```
 
-**Fix**:
-- Set `SECURE_SSL_REDIRECT = false` (Railway handles SSL)
-- Set `PORT = 8000` explicitly
-- Add `/health/` to TenantMiddleware.TENANT_EXEMPT_PATHS
+## Healthchecks
 
-### Issue: Celery can't connect to Redis
-**Cause**: Manually constructed CELERY_BROKER_URL with unresolved variables
-**Fix**: Delete CELERY_BROKER_URL, let Django fall back to REDIS_URL
+- **Backend**: HTTP healthcheck on `/health/` endpoint
+- **Celery services**: No HTTP healthcheck (background workers don't serve HTTP)
 
-### Issue: "type vector does not exist"
-**Cause**: pgvector extension not enabled
-**Fix**:
-1. Use pgvector template (not base Postgres)
-2. Run `CREATE EXTENSION IF NOT EXISTS vector;`
-3. Or add to migrations (already in 0001_initial.py)
+The healthcheck requires:
+1. `PORT` environment variable set (e.g., `8000`)
+2. Public networking enabled, OR new environment (after Oct 2025) with dual-stack networking
 
-### Issue: railway connect "No supported database found"
-**Cause**: pgvector template is Docker-based, not Railway managed DB
-**Fix**: Connect directly via psql using DATABASE_PUBLIC_URL
+## Database Setup
+
+### pgvector extension
+The initial migration automatically enables pgvector:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### Connecting to database
+```bash
+railway connect pgvector
+-- or with psql directly:
+psql "your-DATABASE_PUBLIC_URL"
+```
+
+## Troubleshooting
+
+### Healthcheck fails with "service unavailable"
+1. Check `PORT` is set: `railway variable --service Backend | grep PORT`
+2. Ensure `ALLOWED_HOSTS` includes `.railway.app`
+3. Check `SECURE_SSL_REDIRECT` is `false` (Railway handles SSL at load balancer)
+
+### Celery can't connect to Redis
+1. Check `REDIS_URL` resolves: `railway variable --service celery-worker | grep REDIS`
+2. Ensure it shows actual connection string, not `${{...}}` template
+
+### Database connection refused
+1. Verify `DATABASE_URL` is set correctly
+2. Check pgvector service is running
+3. Use private networking URL (`.railway.internal`) for service-to-service
+
+## Config Files
+
+### railway.toml (Backend)
+```toml
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health/"
+healthcheckTimeout = 300
+healthcheckGracePeriod = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+```
+
+### railway.celery.toml (Celery services)
+```toml
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# No healthcheck - celery workers don't serve HTTP
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+```
 
 ## Documentation Service
 
-Standalone service that builds and serves MkDocs documentation.
+The docs service serves MkDocs-generated documentation.
 
-### Files
-- `docs-service/Dockerfile` - Multi-stage: Python builds MkDocs, Caddy serves
-- `docs-service/railway.toml` - Railway config with healthcheck on `/`
+### Deploying the docs service
 
-### Deploying
-1. Create new service in Railway
-2. Root Directory: `/` (repo root, not `docs-service/`)
-3. Config File Path: `docs-service/railway.toml`
+1. In Railway dashboard, click "New Service"
+2. Select "GitHub Repo" and choose this repository
+3. Set **Root Directory** to `/` (repo root)
+4. Set **Config File Path** to `docs-service/railway.toml`
+5. Deploy
 
-The Dockerfile references `mkdocs.yml` and `docs/` from repo root.
+The service builds documentation from `docs/` folder using MkDocs and serves via Caddy.
 
-## Cloudflare Worker (Path-Based Routing)
+### docs-service/railway.toml
+```toml
+[build]
+builder = "dockerfile"
+dockerfilePath = "docs-service/Dockerfile"
 
-For unified domain with path-based routing (`/docs/*`, `/api/*`, etc.).
-
-### File
-- `cloudflare/worker.js` - Routes requests to appropriate Railway service
-
-### Environment Variables (set in Cloudflare)
-```
-DOCS_ORIGIN=https://docs-xxx.railway.app
-API_ORIGIN=https://backend-xxx.railway.app
-FRONTEND_ORIGIN=https://frontend-xxx.railway.app
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
 ```
 
-### Route Pattern
-Add route in Cloudflare: `yourdomain.com/*` → worker
+## Path-based routing
 
-### Routing Logic
-- `/docs/*` → Docs service
-- `/api/*`, `/auth/*`, `/admin/*` → Backend
-- Everything else → Frontend
+All services sit behind one domain, routed by **`proxy-service`** — a Caddy
+reverse proxy deployed as its own Railway service. Its `Caddyfile` reads three
+environment variables and routes on path:
 
-## Files Modified for Railway
+| Variable | Points at |
+|----------|-----------|
+| `BACKEND_URL` | e.g. `backend.railway.internal:8000` |
+| `FRONTEND_URL` | e.g. `frontend.railway.internal:8080` |
+| `DOCS_URL` | e.g. `docs.railway.internal:80` |
 
-- `PartsTracker/Dockerfile` - Added SERVICE_TYPE logic
-- `PartsTracker/railway.toml` - Healthcheck config for web services
-- `PartsTracker/railway.celery.toml` - No healthcheck for workers
-- `PartsTracker/PartsTrackerApp/settings.py`:
-  - Added `dj_database_url` for DATABASE_URL parsing
-  - Set `SECURE_SSL_REDIRECT = false` by default
-  - Added `.railway.app` to ALLOWED_HOSTS
-  - Added CORS regex for Railway domains
-  - CELERY_BROKER_URL falls back to REDIS_URL
-- `PartsTracker/Tracker/middleware.py` - Added `/health/` to exempt paths
-- `PartsTracker/Tracker/migrations/0001_initial.py` - Added pgvector extension
-- `docs-service/Dockerfile` - MkDocs build + Caddy serve
-- `docs-service/railway.toml` - Docs service Railway config
-- `cloudflare/worker.js` - Path-based routing worker
+| Path | Destination |
+|------|-------------|
+| `/api/*`, `/auth/*`, `/accounts/*`, `/admin/*`, `/media/*` | Backend |
+| `/docs/*` | Docs service |
+| Everything else | Frontend |
 
-## Costs
+Routing is over Railway **private networking**, so the backend and frontend do
+not need public domains of their own — only the proxy does.
 
-Railway pricing:
-- **Hobby**: $5/mo + usage over $5
-- **Pro**: $20/mo + usage over $20
+## Useful Links
 
-Estimated for this setup: $10-30/month depending on usage.
-
-## Future Considerations
-
-1. **Custom Domain**: Add custom domain for production (removes .railway.app dependency)
-2. **Redis Persistence**: Consider Redis with persistence for production
-3. **Scaling**: Celery workers can be scaled horizontally
-4. **Monitoring**: Add proper monitoring/alerting beyond Railway's basic metrics
-5. **Docs Migration**: When traffic/cost justifies, move docs to Cloudflare Pages (free, CDN-cached)
+- [Railway CLI Reference](https://docs.railway.com/reference/cli-api)
+- [Railway Healthchecks](https://docs.railway.com/reference/healthchecks)
+- [Railway Private Networking](https://docs.railway.com/guides/private-networking)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)

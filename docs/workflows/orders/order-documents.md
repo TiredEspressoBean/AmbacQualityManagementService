@@ -50,31 +50,31 @@ is **Linked To** and what it is **Also Linked To**.
 
 ## Viewing Documents
 
-### Document List
+### On the order page
 
-The order's Documents tab shows:
+The order page you reach from the **Tracker** has a **Documents** card listing
+what is attached to **the order itself**: each file's name and upload date, with
+a count in the header.
 
-- Document title and type
-- Current revision
-- Upload date
-- Status (Draft, Approved, etc.)
+Clicking one **opens the file** in a new tab. It does not open the document's
+own page, so revision, status and approval are not shown here — for those, open
+the document from **Documents**.
 
-### Document Actions
-
-Click a document to:
-
-- Download the file (opens in new tab for viewing)
-- See version history
-- View approval status
+!!! note "Company and customer documents are on the other order view"
+    Documents linked to the order's **company** or **customer** — a quality
+    agreement, an NDA — are not on that card. They appear on the generic record
+    view of the order (`/details/Orders/<id>`, reached by following an order
+    link from a part or work order), under **Company Documents** and **Customer
+    Documents**.
 
 ## Document Permissions
 
-| Action | Description |
-|--------|-------------|
-| **View** | See document list and contents |
-| **Download** | Download files locally |
-| **Upload** | Add new documents |
-| **Delete** | Remove document links |
+| Permission | Allows |
+|------------|--------|
+| `view_documents` | See documents — subject to their classification |
+| `add_documents` | Upload |
+| `change_documents` | Edit, including what a document is linked to |
+| `classify_documents` | Change a document's classification |
 
 !!! info "Controlled Documents"
     Some document types require approval before use. These show as "Draft" until approved. See [Document Approval](../documents/approval.md).
@@ -122,17 +122,15 @@ Typically hidden from customers:
 
 ## Required Documents
 
-Your organization may require certain documents per order:
+Nothing checks that an order has particular documents attached. There is no
+required-document list per order, and a missing document blocks nothing.
 
-- CoC before shipping
-- Final inspection report
-- Customer-specific requirements
+The requirements that *are* enforced live elsewhere:
 
-Missing required documents may:
-
-- Block order completion
-- Trigger reminders
-- Show warnings on the order
+| Requirement | Where it is set | What it does |
+|-------------|-----------------|--------------|
+| **Requires CoC on shipment** | The customer's company record | A Certificate of Conformance is printed with every shipment to them |
+| **Requires CoC** / **Requires heat number** | The part type | A *received lot* is held until its certificate or heat number is in |
 
 ## Searching Documents
 
@@ -144,26 +142,18 @@ Find documents across orders:
    - Approval status
    - Is-image
    - Needs my approval
+3. Click a result to open the document
 
 !!! note "No date or author filter"
     There is no date-range or created-by filter on the document list. To find
     documents for one order, open the order and read its linked documents
     rather than filtering the library.
-3. Click a result to open the document
 
 ## Version History
 
-Documents maintain revision history:
-
-1. Open the document
-2. View the **Versions** or **History** tab
-3. See all revisions with:
-   - Version number
-   - Upload date
-   - Who uploaded it
-   - Change notes
-
-Download or view any previous version.
+Revisions belong to the document, not to the order. See
+[Revisions](../documents/revisions.md) for how a new revision supersedes the
+one before and what the history shows.
 
 ## Next Steps
 

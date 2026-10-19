@@ -53,10 +53,9 @@ Configure master data and system settings.
 
 ### Deployment
 
-How the application is hosted and served. Needed when something is down rather
-than misconfigured.
+How these help pages are built and served. How the application itself is
+hosted depends on your deployment, and is documented by whoever runs it.
 
-- [Railway Deployment](deployment/railway.md) - Services, environment variables, logs and redeploys
 - [Documentation Site](deployment/documentation-site.md) - How these pages are built and served
 
 ## Accessing Administration
@@ -160,7 +159,7 @@ For new implementations:
 
 - Review specific guides in this section
 - Check [FAQ](../troubleshooting/faq.md) for common questions
-- Ask whoever else administers this deployment — there is no vendor support line, see [Getting Help](../troubleshooting/help.md)
+- Ask whoever else administers this deployment, or whatever support arrangement your organization has — see [Getting Help](../troubleshooting/help.md)
 
 ## Next Steps
 

@@ -98,7 +98,8 @@ or export-control status is what needs looking at.
 | `add_orders` | Create new orders |
 | `add_parts` | Add parts to orders |
 | `add_qualityreports` | Create NCRs |
-| `add_capa` | Initiate CAPAs |
+| `add_capa` | The underlying create right for a CAPA — **not sufficient on its own** |
+| `initiate_capa` | **Raise** a CAPA. Checked in addition to `add_capa`, so every staff role holds the first and only the supervisory roles hold the second |
 
 ### Editing Data
 
@@ -139,25 +140,39 @@ or export-control status is what needs looking at.
     They are routed through approval templates: holding `respond_to_approval`
     makes you *eligible*, and the template decides which requests reach you.
 
-### Confidential Access
+### Document classification
 
-| Permission | Allows |
-|------------|--------|
-| `view_confidential_documents` | See confidential docs |
-| `view_restricted_documents` | See restricted docs |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_confidential_documents` | See Confidential documents | **Every staff role** |
+| `view_restricted_documents` | See Restricted documents | **Every staff role** |
+| `view_secret_documents` | See Secret documents | **Tenant Admin and Document Controller only** |
+| `classify_documents` | Set a document's classification | Tenant Admin, Document Controller, QA Manager |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](roles.md).
+
+!!! warning "Confidential and Restricted do not restrict anyone on staff"
+    Both are in the shared staff base, so an Operator and the dock hold them.
+    They separate **staff from customers and auditors**, not managers from the
+    floor.
+
+    **Secret is the only tier that withholds a document from most of the shop.**
+    If you need something kept from the floor, that is the one to use — and note
+    a QA Manager can *classify* a document Secret and then not be able to read
+    it back.
 
 ### Export Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `export_data` | Export CSV/PDF reports |
-| `export_auditlog` | Export audit trail |
+| `export_auditlog` | Exists, but nothing checks it — the audit log has no export |
 
 ### Admin Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `view_auditlog` | Access full audit trail |
+| `view_auditlog` | Browse the audit trail across records. By default held by Tenant Admin, QA Manager, Document Controller and Auditor. A record's own history needs only `view_logentry` |
 | `change_tenant` | Modify organization settings |
 | `add_user`, `change_user` | Create and edit users |
 

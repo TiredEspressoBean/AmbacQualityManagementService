@@ -176,7 +176,6 @@ nav:
       - Sampling Rules: admin/setup/sampling-rules.md
       - Notification Rules: admin/setup/notification-rules.md
     - Deployment:
-      - Railway: admin/deployment/railway.md
       - Documentation Site: admin/deployment/documentation-site.md
   - Compliance:
     - Overview: compliance/overview.md

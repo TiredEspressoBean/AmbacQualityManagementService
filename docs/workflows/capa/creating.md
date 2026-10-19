@@ -18,13 +18,13 @@ This guide covers how to initiate and set up a CAPA investigation.
 3. Complete the form
 4. Link related records manually
 
-### From Dashboard Alert
+### From a pattern you spotted
 
-1. Dashboard may suggest CAPA for:
-   - Recurring error types
-   - Multiple NCRs on same part type
-   - Trend alerts
-2. Click the suggestion to create
+There is **no suggestion engine** — nothing proposes a CAPA to you. Recurring
+error types, several NCRs against one part type and worsening trends are all
+visible on the dashboard and in [Defect Analysis](../../analysis/defects.md),
+but noticing the pattern and deciding it warrants a CAPA is yours. Raise it from
+the CAPA list and link the reports it answers.
 
 ## CAPA Form
 
@@ -38,7 +38,7 @@ This guide covers how to initiate and set up a CAPA investigation.
 | **Due Date** | Target closure date | No |
 | **Assigned To** | Responsible person | No |
 
-### Problem Definition (D2)
+### Problem Definition
 
 The problem is described in two free-text fields, not a structured
 questionnaire. There is no discovery date, discovery method, scope, impact or
@@ -48,7 +48,7 @@ statement.
 | Field | Description |
 |-------|-------------|
 | **Problem Statement** | Clear description of the issue. Say what, where, when and how much here. |
-| **Immediate Action** | Containment already taken, in one field. See [Containment Actions](#containment-actions-d3) below. |
+| **Immediate Action** | Containment already taken, in one field. See [Containment Actions](#containment-actions) below. |
 
 ### Context Links
 
@@ -106,7 +106,7 @@ Connect related items:
    - Customer communications
    - Procedures
 
-## Assigning the Team (D1)
+## Assigning the Team
 
 ### CAPA Owner
 Primary responsible person:
@@ -125,7 +125,7 @@ Primary responsible person:
     individually — the set of task assignees is what functions as the team.
     See [CAPA Tasks](tasks.md).
 
-## Containment Actions (D3)
+## Containment Actions
 
 Containment is recorded as a single **Immediate Action** field on the CAPA —
 describe what was done to contain the problem while the root cause is
@@ -187,13 +187,27 @@ the tasks and RCA are complete. Your administrator can add further rules.
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `add_capa` | Create CAPAs |
-| `change_capa` | Edit CAPAs, including changing the assignee |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `initiate_capa` | **Raise** a CAPA | QA Inspector, QA Manager, Shift Lead, Production Manager, Purchasing, Receiving, Tenant Admin |
+| `add_capa` | The underlying create right — **not sufficient on its own** | Every staff role |
+| `change_capa` | Edit a CAPA, including changing the assignee | Every staff role |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+!!! important "Raising one takes more than the create permission"
+    Creating a CAPA checks **both** `add_capa` and `initiate_capa`. Every staff
+    role holds the first; only the roles above hold the second.
+
+    So an **Operator** or an **Engineer** can open, read and help fill in a CAPA
+    somebody else raised — and cannot raise one. That is deliberate: a CAPA
+    commits the shop to root cause analysis, effectiveness verification and an
+    audit trail, so starting one is a supervisory act. If you find something
+    that warrants it, raise the quality report and ask a lead or QA to promote
+    it.
 
 ## Next Steps
 
 - [CAPA Tasks](tasks.md) - Creating action items
 - [Verification & Closure](verification.md) - Completing CAPAs
-- [CAPA Overview](overview.md) - 8D process reference
+- [CAPA Overview](overview.md) - Process reference

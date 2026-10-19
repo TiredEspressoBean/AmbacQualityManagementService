@@ -138,12 +138,13 @@ useful thing on the screen, since it turns "no" into something you can offer.
     training matrix, not the shop floor.
 
 !!! warning "Cycle times are what make all of this honest"
-    An operation with no cycle time contributes **no load**. The heatmap then
-    shows more free capacity than exists, release dates come out too late, and
-    promises come out too generous.
+    Where a step has no authored cycle time, the planner falls back to measured
+    history, then to the step's own expected duration. An operation with **none**
+    of those contributes **no load**. The heatmap then shows more free capacity
+    than exists, release dates come out too late, and promises come out too
+    generous — so treat the figures as a floor.
 
-    Capacity Planning warns when orders have operations with no cycle time
-    recorded. Fix it on [Step Timings](setup.md#step-timings) — there is nothing
+    Capacity Planning names the orders that have such operations. Fix it on [Step Timings](setup.md#step-timings) — there is nothing
     to adjust in the planning views themselves.
 
 ## Next Steps

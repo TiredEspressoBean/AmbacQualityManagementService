@@ -1,6 +1,20 @@
 # Export Controls
 
-ITAR and EAR compliance features for defense and controlled articles.
+ITAR and EAR features for defense and controlled articles.
+
+!!! warning "Not an actively developed area — check before relying on it"
+    The filtering described here is real and enforced, but export control is
+    **not a current product target** and the machinery has gaps. Two in
+    particular:
+
+    - **There is no way to grant a non-US person access.** The code looks for an
+      `itar_authorized` flag that **does not exist as a field**, so someone
+      holding a TAA or a licence cannot be authorised through the system.
+      Access is decided solely by the **US person** flag.
+    - Screening **at the point of shipment** is not built.
+
+    Treat this as a starting point to assess, not a control to certify against,
+    and confirm each behaviour yourself before describing it to anyone.
 
 ## Regulatory Overview
 
@@ -8,7 +22,6 @@ ITAR and EAR compliance features for defense and controlled articles.
 |------------|-------|
 | **ITAR** | Defense articles, technical data |
 | **EAR** | Dual-use items, commercial with military application |
-| **UK Export Control** | UK defense and dual-use |
 
 ## ITAR Features
 
@@ -26,11 +39,13 @@ ITAR and EAR compliance features for defense and controlled articles.
 | Field | Description |
 |-------|-------------|
 | **Citizenship** | User's citizenship (ISO country code) |
-| **US Person** | ITAR "US Person" status |
-| **UK Person** | UK Export Control authorization |
+| **US Person** | ITAR "US Person" status — **this is the flag that decides access** |
+| **EU Authorized** | EU Dual-Use Regulation (EC 428/2009) status |
 | **Export Control Verified** | Verification status |
 | **Verified By** | Who verified |
 | **Verified Date** | When verified |
+
+There is **no UK person flag**; UK export control is not modelled.
 
 ## US Person Definition
 

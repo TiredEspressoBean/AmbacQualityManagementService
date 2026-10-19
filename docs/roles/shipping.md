@@ -27,8 +27,14 @@ right paperwork, and knowing afterwards whether it went on time.
 - **finished stock on an order**
 - **a customer's own material**, under that customer
 
-You can add **your own stock lots** to a shipment too — surplus bar, a kit —
-whole or in part.
+!!! important "The board is a queue, not a catalogue"
+    It lists what somebody is **waiting for**. Stock appears only when it is
+    claimed — on an order, or owned by a customer.
+
+    **Unclaimed stock still ships; it just isn't listed.** A harvested component,
+    a build-to-stock unit, your own surplus bar or a kit can all go out, whole or
+    in part — you name them when you ship rather than finding them on the board.
+    So an empty board does not mean there is nothing you could send.
 
 !!! warning "A returned core gets no shipment, and so no paperwork"
     A reman core going back to its owner is not shipped from here — **Return**
@@ -51,6 +57,16 @@ numbered **SHP-YYYY-######**.
 
 **Partial shipments are allowed** — ship what is ready rather than holding a
 complete order for one line.
+
+!!! note "One shipment, one customer"
+    Two customers cannot share a shipment. The customer is worked out for you —
+    from the parts' order, or from a lot's owner — so mixing them is refused
+    rather than silently split. A customer's own material goes back **only** to
+    them.
+
+    It is all or nothing: if anything on the list can't go, the whole shipment is
+    refused and the reason names each item — *"not at a Ship step yet"*, *"on
+    hold (Quarantined)"*, *"a core — return it from Remanufacturing"*.
 
 ### The paperwork
 
@@ -90,8 +106,7 @@ isn't — so a shop that raises work orders directly is still measured.
     **"N not measurable"**.
 
     Read the two together. *100% (2 of 2) · 4 not measurable* is a very
-    different claim from *100%*, and the second is what this figure used to
-    show. If the not-measurable count is high, the percentage is describing a
+    different claim from *100%*. If the not-measurable count is high, the percentage is describing a
     small corner of your shipping.
 
 ## Next Steps

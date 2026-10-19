@@ -4,15 +4,20 @@ Generate reports for regulatory compliance and audits.
 
 ## Currently Available
 
-### Part Traveler API
+### Part Traveler
 
-Complete part history available via API:
+**The per-serial traveler is the usual answer to "show me everything about this
+unit."** Open the part and click **Traveler**: its work order's routing, filled
+in with who did each step, what was measured and the lots that went in — as a
+PDF you can hand to an auditor.
+
+The same data is available programmatically:
 
 ```
 GET /api/Parts/{id}/traveler/
 ```
 
-Returns step-by-step history including:
+Either way it returns step-by-step history including:
 - Step transitions with timing (started/completed/duration)
 - Operator and approver info
 - Equipment used

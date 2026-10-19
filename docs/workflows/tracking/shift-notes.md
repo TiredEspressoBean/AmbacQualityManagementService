@@ -31,10 +31,8 @@ who has actually read it.
 
 Default is **everyone on the floor**. You can narrow it to specific roles:
 
-The list is every role in your tenant: Auditor · Customer · Document
-Controller · Engineering · Operator · Planner · Production Manager ·
-Purchasing · QA Inspector · QA Manager · Receiving · Shift Lead · Shipping ·
-Tenant Admin
+The list is this tenant's groups, so it shows whatever groups exist here rather
+than a fixed menu.
 
 Narrow the audience when a note is only relevant to one group — a note everyone
 must dismiss but few need trains people to dismiss without reading.
@@ -43,11 +41,23 @@ must dismiss but few need trains people to dismiss without reading.
 
 | Option | Effect |
 |--------|--------|
-| **High priority** | The note is surfaced more prominently |
-| **Requires acknowledgment** | Recipients must confirm they've read it, and you can see who has |
+| **High priority** | The note carries a **High** badge |
+| **Requires acknowledgment** | Recipients must confirm they've read it. The note shows **Acknowledged N of M**, with the names of those who have |
 
 Reserve acknowledgment for things with a consequence if missed. It's the only
 signal that separates "posted" from "read".
+
+## Retracting a note
+
+**Retract** on a posted note withdraws it. It stays in the list, greyed and
+badged **Retracted**, rather than disappearing — a handoff that was posted and
+withdrawn is still part of what the floor was told.
+
+!!! note "Two settings the page cannot set"
+    A note can also be **scoped to one work order** and given a **validity
+    window** — *from* and *until* — after which it stops showing. Both exist on
+    the record; neither is offered when writing a note, so from this page every
+    note is floor-wide in time and not tied to a job.
 
 ## Where operators see them
 

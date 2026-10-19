@@ -19,7 +19,12 @@ Equipment records represent:
 - **Production machines** - CNC, presses, assembly stations
 - **Measurement instruments** - CMMs, calipers, gauges
 - **Tools** - Fixtures, molds, dies
-- **Work centers** - Grouped equipment
+
+!!! note "Equipment does not belong to a work centre"
+    A **work centre** groups **steps**, not machines — it is a property of the
+    routing. An individual machine is placed at a **location**, and the
+    scheduler reaches it through the step. Looking for a work-centre field on
+    the equipment record will not find one.
 
 ## Creating Equipment
 
@@ -59,26 +64,29 @@ Submit with **Create Equipment**.
 
 ## Equipment Types
 
-Define equipment categories:
+An equipment type is a category you define — *CMM*, *Torque tools*, *Ultrasonic
+cleaner*. None ship; you create the ones your shop has.
 
-| Type | Examples |
-|------|----------|
-| **Flow Test Stand** | Injector flow testers (FTS-001, FTS-002) |
-| **Ultrasonic Cleaner** | Parts cleaning systems (UC-100) |
-| **CMM** | Coordinate measuring machines (CMM-001) |
-| **Torque Tools** | Torque wrenches, drivers (TW-25) |
-| **Spray Analyzer** | Spray pattern verification (SPA-01) |
-| **Assembly Station** | Manual assembly, automation |
-| **Gauge** | Go/no-go, thread gauges |
-| **Caliper** | Digital, dial, vernier |
+The type is where **calibration policy** lives, which is the reason to bother
+with it: say once that torque tools need calibrating every 180 days, and every
+torque wrench inherits it.
 
 ### Creating Equipment Types
 
 1. Navigate to **Admin** > **Data Management** > **Equipment Types**
-2. Click **New Equipments**
-3. Enter type name and description
-4. Set calibration requirements
-5. Save
+2. Click **New Equipment Types**
+3. Fill in:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | The category |
+| **Description** | Free text |
+| **Requires calibration** | Whether items of this type are calibrated at all. Off by default |
+| **Default calibration interval (days)** | How often, unless an item overrides it |
+| **Portable** | Recorded, but nothing reads it |
+| **Track downtime** | Off for a type that is not a production resource — handhelds, torque tools. Downtime cannot be recorded against equipment of that type; uqmes refuses the event. Equipment with no type is treated as tracked |
+
+4. Save
 
 ## Equipment Fields
 
@@ -127,7 +135,6 @@ Counts](../../workflows/supply/locations.md).
 | **Runs unattended** | Can run without an operator present |
 | **Batch mode** and **batch capacity** | Whether it processes a batch, and how large |
 | **Operating shifts** | Which shifts it runs |
-| **Work centers** | Which work centers it belongs to |
 
 ## Calibration Tracking
 
@@ -137,9 +144,15 @@ Configure per equipment:
 
 | Field | Description |
 |-------|-------------|
-| **Requires calibration** | Set on the **equipment type**, not the individual item |
+| **Requires calibration** | Set on the **equipment type**. Each item inherits it, and can override it either way |
 | **Default calibration interval** | Days, set on the equipment type |
 | **Calibration interval (days)** | Per-item override of the type's interval |
+
+!!! tip "Set the rule on the type, the exception on the item"
+    Both calibration settings work the same way: the type carries the policy for
+    its category, and an individual machine overrides it only where it genuinely
+    differs. Leaving the item's override unset is what keeps a change to the
+    type's interval reaching everything of that type.
 
 Dates are not fields on the equipment. Each calibration is a **calibration
 record** carrying its own **calibration date**, **due date**, result,
@@ -148,64 +161,124 @@ adjustments made. The next due date comes from the most recent record.
 
 ### Calibration Status
 
-| Status | Meaning | Color |
-|--------|---------|-------|
-| **Current** | Calibration valid | Green |
-| **Due Soon** | Within 30 days | Yellow |
-| **Overdue** | Past due date | Red |
-| **Not Required** | No calibration needed | Gray |
+A calibration record's status is derived, not chosen:
+
+| Status | Meaning |
+|--------|---------|
+| **Failed** | The calibration result was Fail — this wins over any date |
+| **Overdue** | Past its due date |
+| **Due soon** | Due within 30 days |
+| **Current** | Everything else |
+
+!!! note "Failed is checked before the dates"
+    A gauge whose last calibration failed reads **Failed** even if that
+    calibration's due date is months away. A failure is a statement about the
+    instrument, not a deadline, so it cannot be aged out of.
 
 !!! warning "Demo: Overdue Calibration Alert"
     In demo mode, **Torque Wrench TW-25** shows as overdue (last calibrated 200 days ago with 180-day interval). Production Manager Jennifer Walsh sees this in her dashboard alerts, demonstrating how the system flags equipment needing attention before use.
 
 ### Recording Calibration
 
-1. Open equipment
-2. Go to **Calibration** tab
-3. Click **Record Calibration**
-4. Enter:
-   - Calibration date
-   - Performed by
-   - Results (pass/fail)
-   - Certificate number
-   - Attachments
-5. Save
+A calibration is its own record, written from **Quality** > **Calibrations**, not
+from the machine:
 
-Next due date updates automatically.
+1. Go to **Quality** > **Calibrations** and open **Records**
+2. Click **Record a calibration**
+3. Pick the equipment and fill in:
 
-## Equipment Usage Tracking
+    | Field | Notes |
+    |-------|-------|
+    | **Calibration date** and **due date** | Both are entered; the due date is not calculated for you |
+    | **Result** | **Pass**, **Fail**, or **Limited / restricted use** |
+    | **Calibration type** | Scheduled, Initial, After repair, After adjustment, or Verification check |
+    | **Performed by** / **External lab** | Free text — who did it, and the lab if it went out |
+    | **Certificate number** and **standards used** | The traceability chain |
+    | **As found in tolerance** | Whether it was *in* tolerance when it arrived |
+    | **Adjustments made** | Whether it was adjusted |
 
-Track equipment utilization:
+4. Save
 
-### Per Part Transition
-When parts move through steps:
-- Equipment can be recorded
-- Builds utilization history
-- Links parts to equipment
+The machine's own form carries a **Calibration** card showing its latest records
+read-only, with a link through to record a new one. The next due date comes from
+the most recent record.
 
-### Usage Reports
-- Parts produced per equipment
-- Utilization percentage
-- Downtime tracking
+!!! important "Say honestly whether it was found in tolerance"
+    That field is not bookkeeping. A gauge found **out** of tolerance means
+    everything it measured since its last good calibration is suspect, and the
+    record's **exposure list** is what turns that into a list of quality reports
+    to assess. Recording a pass because the gauge passed *after* adjustment
+    destroys the only evidence that there was anything to go back for.
+
+    See [Measurements](../../workflows/tracking/measurements.md).
+
+## What equipment was used
+
+A step can include an **Equipment + roles** capture, which records the machine
+actually used against that part's record as the operator works. That is the only
+place equipment use is captured, and it is per substep.
+
+What it gives you is **traceability** — which machine touched which part — not a
+utilisation figure. See [Authoring Work
+Instructions](../../workflows/dwi/authoring.md).
+
+## Changeovers
+
+The equipment form carries a **Changeovers** table: the minutes it takes to
+reconfigure this machine when it switches from one step to another. Switching
+back the other way is its own row, because it is often not the same number.
+
+The scheduler uses these to decide the order work runs in — a sequence that
+avoids changeovers finishes sooner than the same jobs in a different order.
 
 ## Equipment Documents
 
-Attach related documents — manuals, maintenance procedures, calibration
-certificates:
+!!! note "There is no Documents tab on equipment"
+    A document is attached from the document's own **Link To** field rather than
+    from the machine. Manuals, maintenance procedures and calibration
+    certificates all go on that way. See [Uploading
+    Documents](../../workflows/documents/uploading.md).
 
-1. Go to the **Documents** tab
-2. Upload or link documents
+    A calibration **record** takes documents the same way, which is where a
+    certificate PDF usually belongs.
 
-## Calibration
+## Calibration overview
 
 Equipment due and overdue for calibration is listed under
 **Quality** > **Calibrations**.
 
-!!! note "No maintenance or utilisation tracking"
-    uqmes records **calibration**, not maintenance. There are no scheduled
-    maintenance dates, downtime records or utilisation reports, and no
-    specification fields for accuracy or capacity. What equipment was actually
-    used is captured per substep by the operator.
+## Downtime
+
+A machine being down is recorded as a **downtime event** against the equipment,
+the work centre, or both. Record one from a work order's **Report…** dialog:
+choose **Downtime (equipment / resource)**, pick the machine and a category,
+and give a reason. The event starts when you record it and ends when someone
+resolves it from the exceptions list. The categories are:
+
+**Planned maintenance** · **Unplanned / breakdown** · **Changeover / setup** ·
+**Calibration** · **No work available** · **No operator available** · **Waiting
+for material** · **Quality issue** · **Other**
+
+Open events show on the work order control pages and on the operator's home.
+Equipment whose type has **Track downtime** off is not offered in the dialog,
+and uqmes refuses an event against it from anywhere else.
+
+### Where downtime adds up
+
+The **Downtime** card on **Analytics** totals the period's events: hours lost
+and event counts **by cause** and **by machine**, largest first. An event still
+open counts up to now, and an event with no machine is grouped under its work
+centre.
+
+The percentage beside each machine is its share of the period's **calendar**
+time spent down — not of its scheduled time. It is lost time, not OEE: there is
+no availability or OEE figure.
+
+!!! note "No scheduled maintenance"
+    uqmes records **calibration** due dates, not maintenance ones. There is no
+    PM schedule, no service-interval field, and no specification fields for
+    accuracy or capacity. A planned maintenance downtime event records that it
+    happened; nothing tells you it was coming.
 
 ## Permissions
 

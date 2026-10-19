@@ -166,11 +166,10 @@ accepts the same things:
 - lot numbers
 - serial numbers
 - work orders
-- location labels (the barcode reads `LOC:<name>`)
+- location labels (`LOC:<code>`, or `LOC:<name>` where the location has no label code)
 - the QR code on a printed label
 
-Staging's **I took a different lot** takes a scan and records the lot actually
-used.
+Staging's **Took another** takes a scan and records the lot actually used.
 
 !!! tip "Setting up a scanner"
     Use a **keyboard-wedge** scanner — one that types what it reads — paired to

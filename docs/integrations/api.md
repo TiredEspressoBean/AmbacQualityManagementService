@@ -58,19 +58,31 @@ Once you have a token, use it in the Authorization header. Tokens inherit user's
 
 ## Core Endpoints
 
-!!! warning "Resource paths are PascalCase"
-    The model collections are named exactly as the model is —
-    `/api/Orders/`, `/api/QualityReports/`, `/api/WorkOrders/`. A lowercase
-    guess like `/api/orders/` or `/api/quality-reports/` is **not** the same
-    URL and will not resolve.
+!!! warning "Path casing is inconsistent — never guess it"
+    **Most** model collections are PascalCase, named exactly as the model is:
+    `/api/Orders/`, `/api/QualityReports/`, `/api/Parts/`. A lowercase guess
+    like `/api/orders/` is **not** the same URL and will not resolve.
 
-    A handful of non-model endpoints *are* lowercase — `/api/auditlog/`,
-    `/api/spc/`, `/api/dashboard/`, `/api/reports/`, `/api/notifications/`,
-    `/api/integrations/`, `/api/tenant/`. Those are the exception, and they are
-    not model collections.
+    But there are three patterns in use, not one:
 
-    The authority is the schema, not this page: fetch `/api/schema/` and search
-    it rather than guessing a casing.
+    | Pattern | Examples |
+    |---------|----------|
+    | **PascalCase** — most model collections | `/api/Orders/`, `/api/Parts/`, `/api/MaterialLots/` |
+    | **lowercase**, mostly non-model | `/api/auditlog/`, `/api/spc/`, `/api/dashboard/`, `/api/reports/`, `/api/scope/`, `/api/content-types/`, `/api/ai/search/` |
+    | **lowercase kebab, but a real model collection** | `/api/process-change-requests/`, `/api/process-change-orders/`, `/api/process-change-notices/`, `/api/spc-baselines/` |
+
+    And two that match no rule at all:
+
+    ```
+    /api/Sampling-rule-sets/
+    /api/Sampling-rules/
+    ```
+
+    Capital S, then kebab-case. `/api/SamplingRules/` returns **404**.
+
+    **The schema is the authority, not this page.** Fetch `/api/schema/` and
+    search it rather than inferring a casing from a model name — the inference
+    is wrong often enough to cost you.
 
 ### Orders
 ```

@@ -3,7 +3,12 @@
 This guide is for production floor operators who move parts through manufacturing steps and record production data in uqmes.
 
 !!! tip "Demo Account"
-    In demo mode, log in as **Mike Rodriguez** (mike.ops@demo.ambac.com) to experience the operator workflow with real work queue items like parts INJ-0042-020 (at Assembly) and INJ-0042-022 (at Cleaning).
+    In demo mode, log in as **Mike Rodriguez** (mike.ops@demo.ambac.com) to work
+    the operator surface against a seeded queue.
+
+    Which parts are waiting, and at which steps, changes every time the demo is
+    reseeded or anyone walks it — so follow what Home actually shows you rather
+    than looking for a particular serial.
 
 ## Your Role
 
@@ -27,19 +32,20 @@ As an Operator, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Work Orders** | Production > Work Orders | Your main work queue |
+| **Home** | Home | **Your queue** — Up next, Then, In progress, and the scan box |
+| **Work Orders** | Production > Work Orders | A job's whole picture, when you need it |
 | **Inbox** | Personal > Inbox | CAPA tasks and notifications (if assigned) |
-| **Tracker** | Tracker | Customer-facing order view |
 
 ## Daily Workflow
 
-### 1. Get Your Assignment
+### 1. See what is next
 
-Your supervisor assigns you to specific work orders:
+**Home is your queue.** It shows **Up next**, **Then** and **In progress**, plus
+*See everything ready* — you do not have to be told what to work on, and you do
+not start from the Work Orders page.
 
-1. Check with your supervisor for today's work assignment
-2. Note the work order number and operation you're assigned to
-3. Review any special instructions
+Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
+wants a **Got it** before you start; it is how the last shift talks to you.
 
 ### 2. Find Your Work Order
 
@@ -64,21 +70,26 @@ It takes more than work orders:
 Or navigate by hand:
 
 1. Navigate to **Production** > **Work Orders**
-2. Search or filter to find your assigned work order
+2. Search or filter to find the work order
 3. Click to open the work order detail
-
-See [Scanning](../workflows/supply/locations.md#scanning) for scanner setup.
 4. Review parts at your step
 
-### 3. Work on Parts
+See [Scanning](../workflows/supply/locations.md#scanning) for scanner setup.
 
-For each operation:
+### 3. Claim the parts you'll work
 
-1. Open the step's work instructions for your part
-2. Work through the substeps, recording what each one asks for
-3. Complete the step — the parts advance on their own once the step's
-   requirements are met
-4. Continue to next part or batch
+From the work order, click **Start Work**. The **Start work on parts** dialog
+asks you to check the parts you'll do *in the order you'll do them*, then opens
+the step player on the first one.
+
+After you complete a part's step, **the player moves to the next part you
+checked automatically** — so you work a batch without going back to the work
+order. When you finish the last one, it returns you to the work order.
+
+!!! note "If a part is already claimed"
+    Starting a part assigned to someone else raises a gate naming who has it. A
+    supervisor can sign in on your screen to reassign it — recorded against
+    their name, not yours. That is normal, not an error.
 
 ## Moving Parts Forward
 
@@ -137,18 +148,23 @@ separate "Record Measurements" button:
 
 ### Reading Pass/Fail
 
-| Indicator | Meaning |
-|-----------|---------|
-| Green ✓ | Measurement passed |
-| Red ✗ | Measurement failed |
-| Yellow ! | Warning (near limit) |
+As you enter a value, the capture reads **In spec** or **Out of spec** against
+the specification. There is no "near the limit" warning — only those two.
 
-### If Measurement Fails
+### If a reading is out of spec
 
-1. Verify your measurement is correct
-2. Re-measure if uncertain
-3. If confirmed fail, flag the part
-4. Follow your supervisor's guidance
+1. **Re-measure before you confirm.** Until you tap **Confirm & next**, the value
+   is still yours to change
+2. If it really is out of spec, confirm it — **do not adjust it to pass**
+
+What happens next depends on the substep:
+
+- At an **inspection point**, confirming an out-of-spec reading fails the
+  quality report, which **quarantines the part and opens a disposition by
+  itself**. You do not flag it separately
+- Anywhere else, the reading is recorded as process data — it feeds SPC — and
+  nothing is quarantined. If you think the part is bad, **tell your lead** or
+  quarantine it from the parts list
 
 ## Flagging Issues
 
@@ -159,10 +175,30 @@ you find it:
   the step player. That writes the quality record for you.
 - **Part already past the step** — tick it in the work order's parts list and
   click **Quarantine**.
-- **Bigger than one part** — open the work order and click **Report…**.
+- **A machine is down** — open the work order and click **Report…**, then
+  **Downtime**.
+- **Bigger than one part** — raise a disposition or a CAPA; **Report…** links
+  to both forms.
 
 See [Flagging Issues](../workflows/tracking/flagging-issues.md) for the full
 procedure and when to use each.
+
+### If you can't run the job at all
+
+That is a different thing from a bad part, and it has its own path: **Can't run
+this?** in the step player. Pick the reason and it routes straight to the person
+who owns it —
+
+| Reason | Goes to |
+|--------|---------|
+| Missing material | Materials |
+| Tooling or fixture unavailable | Your lead |
+| Quality hold | QA |
+| Something else | Your lead |
+
+It says what will happen before you commit: the job **leaves your queue and your
+next one appears**. Use it rather than sitting on a job you cannot start, or
+leaving it for the next shift to find.
 
 ### When to Flag
 
@@ -177,20 +213,25 @@ procedure and when to use each.
 
 ## Using Equipment
 
-If equipment tracking is enabled:
+Where a substep captures equipment, record the gauge or machine you actually
+used. It is kept against the measurement, which is what lets quality answer
+*"what else did this gauge measure?"* if it later fails a calibration check.
 
-### Selecting Equipment
+### Calibration — the system handles it, you don't have to remember
 
-1. When moving parts, you may be prompted
-2. Select the equipment you used
-3. System records utilization
+A gauge whose calibration **failed**, or that is out of service, **cannot be
+used to capture a measurement**. The capture is refused outright: *"Recalibrate
+or pick a different gauge."* Get a different one and tell your lead — the gauge
+is the problem, not your reading.
 
-### Checking Calibration
+A gauge that is merely **overdue** is different. The reading is **recorded** and
+you are told, because an overdue check is a scheduling lapse rather than
+evidence the gauge is wrong. Don't ignore the warning, but your work is not
+lost.
 
-Before using measurement equipment:
-- Look for calibration status indicator
-- Green = current calibration
-- Red = overdue, don't use
+Nobody can quietly put a failed gauge back into service either: returning
+equipment to service is refused until a *passing* calibration is recorded
+against it.
 
 ## Work Orders
 
@@ -203,10 +244,13 @@ Before using measurement equipment:
 
 ### Accessing Work Instructions
 
-1. Open the work order
-2. Go to **Documents** tab
-3. Click linked work instruction
-4. Follow procedures
+**The work instructions are the step player.** There is no separate document to
+open and follow alongside the job — the substeps you work through *are* the
+instruction, and what you record in them is the quality record.
+
+Documents attached to the job — a drawing, a spec, a customer requirement — are
+reference material. Useful to consult, but they are not where the procedure
+lives.
 
 ## First Piece Inspection (FPI)
 
@@ -236,17 +280,26 @@ If FPI is required at your step:
 
 ## End of Shift
 
-### Handoff
+### There is nothing to hand over
 
-1. Update part status for in-progress work
-2. Note any issues in work order
-3. Inform next shift of status
+Work is batched and nobody stops half way through a part. You finish the units
+you finish; whoever is on next picks up the rest of the batch. **Each part
+carries its own record with its own name on it**, so a batch worked by two
+people across a shift change is a hundred attributed records, not a transfer.
 
-### Don't Leave Hanging
+There is no "hand over" action, and there is nothing to update to say you have
+stopped — because nothing was ever held open in your name.
 
-- Complete any step you finished, so the lot isn't held up
-- Record all measurements
-- Flag any open issues
+### What does matter before you go
+
+- **Complete any step you actually finished.** A lot cannot advance until every
+  part in it is done, so an uncompleted step of yours holds up everyone else's.
+- **Submit, don't leave drafts.** Confirming a substep saves it as a draft;
+  until you tap **Complete step** nothing is official and the part has not
+  moved.
+- **Raise anything you couldn't run** with *Can't run this?* rather than leaving
+  it for the next person to rediscover — it routes to a named owner and clears
+  the job out of the queue.
 
 ## Common Tasks Quick Reference
 
@@ -257,7 +310,8 @@ If FPI is required at your step:
 | Substep doesn't apply | Step player → **Mark N/A** → pick a reason |
 | Finish a step | Step player → review screen → **Complete step** |
 | Flag issue | In the player: record it on the inspection substep · Otherwise: tick the part → **Quarantine** |
-| View instructions | Open work order → Documents → Click instruction |
+| Can't run the job | Step player → **Can't run this?** → pick the reason |
+| View instructions | They are the step player's substeps — there is no separate document to open |
 
 ## What You CAN'T Do
 
@@ -268,11 +322,13 @@ These are withheld from the Operator role and enforced on the server:
 | **Approve a disposition** | QA Manager |
 | **Sign off a first piece** | Shift Lead, QA Inspector, QA Manager, Production Manager |
 | **Resolve a manual decision point** | Shift Lead, QA, Production Manager |
-| **Initiate a CAPA** | Shift Lead, QA, Production Manager, the dock |
-| **Close a CAPA** | QA Manager |
+| **Initiate a CAPA** | Shift Lead, QA, Production Manager, Purchasing, Receiving |
+| **Verify a CAPA worked** (which is what closes it) | QA Manager |
 | **Void a substep completion** | QA Inspector, QA Manager, Tenant Admin |
 | **Write a training record** | Shift Lead, QA Manager, Production Manager, Engineering, Document Controller |
 | **Manage users** | Tenant Admin |
+
+These are the default groups an organisation starts with. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
 
 !!! note "You can do more than you might expect"
     The shared staff base is broad: an Operator **can** create orders and work
@@ -298,10 +354,12 @@ completion](../workflows/dwi/running.md#voiding-a-completion).
 ### "Cannot move forward"
 
 Check for:
-- Required measurements not recorded
-- Pending approval
+- Required substeps or measurements not recorded
+- A QA sign-off the step needs, not given yet
 - FPI required but not passed
-- Part in quarantine
+- Another part in the lot still has outstanding work — the lot moves together
+- Part in quarantine, **where the step is set to block on quarantine** — most
+  steps are not, so a quarantined part often keeps moving
 
 ### "Permission denied"
 

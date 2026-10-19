@@ -16,18 +16,23 @@ Before creating in uqmes:
 
 ### From Process Editor
 
-1. Navigate to **Production** > **Processes**
+1. Go to **Data Management** > **Processes** (`/editor/processes`)
 2. Click **New Process**
 3. Fill in basic information:
 
 | Field | Description | Required |
 |-------|-------------|----------|
 | **Name** | Descriptive name | Yes |
-| **Description** | Purpose and scope | Yes |
-| **Version** | Initial version (e.g., 1.0) | Yes |
-| **Part Type** | Default part type (optional) | No |
+| **Part Type** | What this process makes, rebuilds or tears down | **Yes** |
+| **Category** | Manufacturing, Quality, Maintenance, NPI, or Document Control | No — defaults to Manufacturing |
+| **Remanufactured** / **Disassembly** | What kind of work this is. See [Process Overview](overview.md#what-kind-of-process-it-is) | No |
+| **Default scrap rate** | Expected loss, 0–1, inherited by steps that set none | No |
 
 4. Click **Save**
+
+!!! note "You do not choose a version number"
+    Versioning is handled for you — a new version is created when the process
+    changes, and the number follows. There is nothing to type.
 
 Process is created in **Draft** status.
 
@@ -142,11 +147,11 @@ To activate a process:
 2. Click **Submit for Approval**
 3. Select approval template
 4. Approvers review
-5. On approval, status becomes **Current**
+5. On approval, status becomes **Approved**
 
 !!! warning "Approval cannot be skipped"
     There is no *Activate* or *Make Current* shortcut for when approval "isn't
-    enforced". Submitting for approval is the only route to Current, and it
+    enforced". Submitting for approval is the only route to Approved, and it
     refuses outright if the tenant has no **PROCESS_APPROVAL** template:
 
     > *PROCESS_APPROVAL approval template not found. Please configure approval
@@ -167,28 +172,33 @@ process as a new draft, which you then modify and submit for approval.
 
 ## Linking to Part Types
 
-Associate process with part types:
+A process is for **one** part type, named on the process itself when you create
+it. There is no multi-select, and there is no field on the part type pointing
+back.
 
-1. Open process
-2. In **Part Types** section
-3. Select part types that use this process
-4. Save
+To run the same routing on a second part type, duplicate the process and change
+the part type on the copy.
 
-Or from Part Type:
-1. Open Part Type
-2. Select default process
-3. Save
+## Checking a process before you approve it
 
-## Testing Process
+!!! warning "You cannot trial a draft on a work order"
+    A draft is deliberately unavailable to work orders — that is what *draft*
+    means here. So there is no dry run: you cannot push a test part through it
+    and watch.
 
-Before activation:
+What you can check before submitting:
 
-1. Create test order
-2. Create test work order with draft process
-3. Move parts through steps
-4. Verify flow works correctly
-5. Check measurements capture
-6. Confirm requirements enforce
+1. Read the routing in **Process Flow** — every step reachable, every branch
+   terminating somewhere
+2. Open each step's properties and confirm its measurements, training, sampling
+   and documents
+3. Confirm the steps that should block a quarantined part have **Block on
+   quarantine** set — it is off by default
+4. Check **BOM allocation** on any step that consumes material, especially after
+   a step copy, which does not carry it
+
+Then approve it, and run the first job with someone watching. The first real
+work order *is* the trial; plan for that rather than expecting a sandbox.
 
 ## Versioning
 
@@ -200,9 +210,9 @@ Before activation:
 4. Make changes
 5. Submit for approval
 6. On approval:
-   - New version becomes Current
-   - Old version becomes Obsolete
-   - In-flight work continues on old version
+   - The new version becomes **Approved**
+   - The old one becomes **Deprecated**
+   - Work already running continues on the old version
 
 ### Version Tracking
 

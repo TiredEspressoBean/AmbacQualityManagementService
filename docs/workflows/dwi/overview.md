@@ -32,9 +32,9 @@ and the kind of capture determines what the operator sees:
 | **Measurement** | A numeric value, evaluated against its specification |
 | **Text** | Free text |
 | **Choice** | One option from a list |
-| **Photo** / **Video** | Media from the device camera |
+| **Photo** | An image, from the device camera or a file |
 | **Scan** | A barcode or QR code |
-| **File** | An uploaded file |
+| **File** | An uploaded file of any kind — the way to attach a video |
 | **Timer** | A countdown or stopwatch reading |
 | **Computed** | A value derived by formula from other captures |
 | **Attestation** | A confirmation or signature |
@@ -43,7 +43,13 @@ and the kind of capture determines what the operator sees:
 | **Inspection signatures** | Detected-by and verified-by signatures |
 | **Defects** | Defect findings against error types |
 | **Part annotation** | A marked point on the part's 3D model |
-| **Harvested components** | Components recovered during teardown (reman) |
+| **Harvested components** | Components recovered during teardown, with their grades (reman) |
+| **Component install** | Which components went into the unit — its as-built record |
+| **Rebuild finding** | A component found worse than its teardown grade, for a lead to decide (reman) |
+
+Not every substep asks for something. Callouts, document links, embedded
+media — an image, a video, a 3D model — and measurement specs are instruction
+content the author places for the operator to read; they record nothing.
 
 Numeric measurements are stored as measurement results, so they flow into SPC
 and the usual measurement reporting. The other captures are stored as substep

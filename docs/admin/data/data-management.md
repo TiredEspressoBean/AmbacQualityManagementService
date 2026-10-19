@@ -15,16 +15,16 @@ The dividing line is **how often you touch it**:
 | Run the business daily or weekly | The **sidebar** |
 | Shared config touched monthly or yearly | **Data Management** only |
 
-So several pages left the sidebar and are reached from here instead: **Step
-Timings**, **Machine Eligibility**, **Changeovers**, **Repair Codes**, **Rebuild
-Levels**, **Measurements** and **Work Centers**. **Processes** and **Receiving
-Inspection Plans** stayed, because they are worked on continuously.
+So **Step Timings**, **Machine Eligibility**, **Changeovers**, **Repair Codes**,
+**Rebuild Levels**, **Measurements** and **Work Centers** are reached only from
+here. **Processes** and **Receiving Inspection Plans** are also in the sidebar,
+because they are worked on continuously.
 
-!!! tip "More people can reach this than before"
-    The Data Management link now shows to anyone who can view **at least one** of
-    its tables, and the page lists only the tables you can view. It used to be
-    limited to user administrators — so a Production Manager who maintains work
-    centres or step timings now gets there without one.
+!!! tip "This is not an administrators-only page"
+    The Data Management link shows to anyone who can view **at least one** of its
+    tables, and the page lists only the tables you can view. A Production Manager
+    who maintains work centres or step timings reaches them without needing user
+    administration.
 
 ## What a row tells you
 
@@ -114,11 +114,13 @@ a running count.
     with the size of the file.
 
 **Recent changes** alongside it draws from the audit log, so you can see what has
-been touched lately without leaving the page.
+been touched lately without leaving the page. It shows for holders of
+`view_auditlog` — by default Tenant Admin, QA Manager, Document Controller and
+Auditor.
 
 !!! tip "For a whole plant, use the Master workbook instead"
     The **Master workbook** panel links to `/admin/master-workbook`, which carries
-    33 sheets in load order in one file, with a dry-run check before anything is
+    34 sheets in load order in one file, with a dry-run check before anything is
     written. The load order above is the per-table route; the workbook is the
     same sequence as one document. See [Master
     workbook](import-export.md#loading-a-whole-plant-the-master-workbook).
@@ -187,16 +189,12 @@ form.
 Records revised before the audit trail existed say so rather than showing an
 empty diff.
 
-!!! note "Author names on the audit log"
-    The audit log page previously showed every author as *System*. That was a
-    schema fault, now fixed — real names appear, on both the History card and the
-    audit log itself.
+Both the History card and the audit log name the person who made each change.
 
 ## Pickers
 
-Dropdown pickers on these forms are **searchable combo boxes**. The visible
-difference from the old ones: the value you already chose stays on screen while
-you type to search for another.
+Dropdown pickers on these forms are **searchable combo boxes**: the value you
+already chose stays on screen while you type to search for another.
 
 Multi-selects show their choices as **chips** — dispositions' and CAPAs' quality
 reports, CAPA dispositions, and the quality form's operators and error types.

@@ -10,7 +10,8 @@ Configure inspection sampling for quality control.
     - **First Piece**: First 3 parts always inspected at setup (First N rule)
     - **Incoming Inspection**: 10% random sampling for supplier materials
 
-    Delphi Fuel Systems supplier is currently in **tightened** state after 2 consecutive lot rejections. Next 5 consecutive passing lots will return to normal.
+    Delphi Fuel Systems is in **tightened** severity, having had 2 of its last 5
+    lots rejected. Five consecutive accepted lots will return it to normal.
 
 ## What are Sampling Rules?
 
@@ -23,19 +24,60 @@ Sampling rules determine:
 
 ## Sampling Concepts
 
-### Fallback Sampling
-When quality issues occur, tighter sampling is automatically triggered:
-- After N consecutive failures, fallback ruleset activates
-- Fallback remains active until N consecutive passes
-- Automatic deactivation rewards improved performance
+### Tightening, and getting back
 
-!!! tip "State Transitions in Demo"
-    The demo shows Delphi Fuel Systems in **tightened** state:
+There are **two** tightening mechanisms, and they are not the same thing. Which
+one you get depends on whether you are inspecting your own production or an
+incoming lot.
 
-    1. **Normal → Tightened**: After 2 consecutive lot failures (triggered)
-    2. **Tightened → Normal**: After 5 consecutive lot passes (pending)
+#### On production: the fallback ruleset
 
-    This mirrors ANSI/ASQ Z1.4 switching rules where tightened inspection provides higher defect detection until quality improves.
+A rule set can name a **fallback ruleset** — a stricter set that takes over when
+a [gate](#gates-reacting-to-bad-results) fires. Getting back to the primary set
+is automatic, and governed by **Number of good parts required before reverting**
+on the primary:
+
+- Each passing part counts towards the run
+- **A failure resets the count to zero** — the run has to be *consecutive*
+- On reaching the figure, the fallback deactivates and parts still in flight are
+  re-evaluated against the primary set
+
+!!! warning "Fallback state is per work order, per step"
+    It does not follow the part type or the process. A job that tightened and
+    never recovered leaves the **next** work order starting at normal, because
+    the state belongs to the job that earned it.
+
+    If you want tightening that persists across jobs, that is a supplier
+    question, and it is the mechanism below.
+
+#### On receiving: Z1.4 severity switching
+
+Where the rule set's strategy is **Z1.4**, incoming inspection carries a
+**severity** per supplier per receiving step, and it switches itself on lot
+history. This one is **cross-work-order** — it is a standing judgement about
+that supplier:
+
+| Transition | When |
+|------------|------|
+| Normal → **Tightened** | 2 of the last 5 lots rejected |
+| Tightened → **Normal** | 5 consecutive lots accepted |
+| Normal → **Reduced** | 10 consecutive lots accepted |
+| Reduced → **Normal** | One lot rejected, or one landing in the reduced accept/reject gap |
+
+!!! note "The severity on the rule set is only the starting point"
+    Once a supplier has lot history at a step, the live severity is runtime
+    state and the configured field no longer decides anything. Editing it does
+    not pull a tightened supplier back to normal — five accepted lots do.
+
+!!! danger "Discontinue is a recommendation, never automatic"
+    Z1.4 says that where tightened inspection persists for 5 consecutive lots
+    without earning a return to normal, you stop accepting that supplier's
+    product. The system raises that as a **recommendation**. It does not suspend
+    the supplier's approval, and it never will — removing a source is a
+    commercial decision with a person's name on it.
+
+    C=0 and Z1.9 do not switch severity. C=0 escalates through the gate's
+    100%-inspection and fallback path instead.
 
 ### 100% Inspection
 Inspect every part:
@@ -233,34 +275,64 @@ Rules are evaluated in order, by their `order` field.
     rule sets**, each scoped to its supplier. A single set does not switch
     between its own rules by condition.
 
-## Recording Sampling Results
+## Using the rules
 
-When sampling applies:
+Nobody picks a sample by hand. The rules decide which parts are flagged for
+inspection as work moves, and which lots are judged at receiving — see
+[Sampling](../../workflows/quality/sampling.md) for what that looks like at the
+inspection point.
 
-1. System shows sample size
-2. Select/mark sample parts
-3. Inspect and record results
-4. System calculates accept/reject
-5. Lot disposition determined
+### Why this part and not that one
 
-## Sampling Audit Trail
+Every selection is logged: the part, the rule that decided it, whether it was
+selected or skipped, which ruleset type was in force, and when.
 
-All sampling decisions logged:
-- Rule applied
-- Sample size used
-- Results recorded
-- Accept/reject decision
+!!! tip "The skips are the point"
+    Logging only the parts you inspected proves nothing — an auditor's question
+    is *why was that one not inspected?* Because the log records the decision
+    rather than the outcome, that question has an answer: this rule, this
+    position in the lot, this moment.
 
-For regulatory compliance.
+    A part skipped because a rule ruled it out — outside a *first N* or
+    *last N* window — is logged against that rule. A part that **no** rule
+    selected is logged against the rule set, with no rule named: every rule was
+    weighed and none chose it. **Pure Random** is unreconstructable by design,
+    as above.
+
+### Reading a part's decisions
+
+On the work order's control page, open a part's history: the **Sampling
+decisions** block lists every decision for it, newest first, with the time.
+Selected lines are bold, and a decision made under the fallback rule set says
+so.
+
+- *Selected by every 5th part* — or *5% of parts*, *a random 10% of parts*,
+  *the first 15 parts*, *exactly 3 parts*
+- *Excluded by the first 15 parts* — outside a first-N or last-N window
+- *Not selected — no rule in <rule set> chose it*
+
+A plain *Not selected* comes from a decision recorded before skips were
+attributed. Read it as "this rule set did not select it". There is no list of
+decisions across parts or by rule set.
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_samplingrule` | View rules |
-| `add_samplingrule` | Create rules |
-| `change_samplingrule` | Edit rules |
-| `delete_samplingrule` | Remove rules |
+Authoring sampling is **quality planning**, so it sits with the quality roles
+rather than with every staff role — the same tier as SPC baselines.
+
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_samplingrule` / `view_samplingruleset` | See the rules and sets | Every staff role |
+| `add_samplingrule` / `change_samplingrule` | Author the rules | QA Inspector, QA Manager, Tenant Admin |
+| `add_samplingruleset` / `change_samplingruleset` | Author the sets, where the scope and plan live | QA Inspector, QA Manager, Tenant Admin |
+| `delete_samplingrule` / `delete_samplingruleset` | Remove them | QA Manager, Production Manager, Document Controller, Tenant Admin |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
+
+!!! note "Engineering does not author sampling by default"
+    A step's **Sampling required** flag is Engineering's, because it is part of
+    the routing. *How much* to sample is a quality judgement, and the rule sets
+    belong to QA.
 
 ## Next Steps
 

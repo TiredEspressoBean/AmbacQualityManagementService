@@ -10,9 +10,11 @@ sidebar — they are configuration you revisit occasionally, not a daily surface
 
 !!! important "These are the inputs every other number rests on"
     Capacity heatmaps, release-by dates and delivery promises are all computed
-    from what is in these three tables. An operation with no timing contributes
-    **no load** — so the shop looks emptier than it is, dates come out too late
-    and promises come out too generous.
+    from what is in these three tables. Where a step has no authored timing, the
+    planner falls back to measured history, then to the step's own expected
+    duration. An operation with **none of the three** contributes **no load** —
+    so the shop looks emptier than it is, start-by dates come out too late and
+    promises come out too generous. Capacity planning names the orders affected.
 
     If the planning views look implausibly comfortable, start here rather than
     with the solver. See [How the numbers are

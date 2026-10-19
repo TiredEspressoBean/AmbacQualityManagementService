@@ -106,7 +106,7 @@ sits**, so read the warning below before relying on either property:
 
 ## Sampling Rules Configuration
 
-Sampling rules are configured by administrators:
+Sampling rules are authored by **QA** — see [Permissions](#permissions) below:
 
 ### Rule Components
 
@@ -341,13 +341,27 @@ All sampling decisions are logged:
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_samplingrule` | View sampling configuration |
-| `change_samplingrule` | Modify sampling rules |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_samplingrule` | View sampling configuration | Every staff role |
+| `add_samplingrule` / `change_samplingrule` | Author the rules | **QA Manager, QA Inspector, Tenant Admin** |
+| `add_samplingruleset` / `change_samplingruleset` | Author the sets and their plan parameters | **QA Manager, QA Inspector, Tenant Admin** |
+| `delete_samplingruleset` | Remove one | Manager tier |
 
-Sampling decisions are written by the engine, not by people — recording one is
-part of running the step, and is covered by `change_stepexecution`.
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+!!! note "This is a quality decision, not an administrative one"
+    Sampling rules are **not** configured by whoever administers the system.
+    How much gets inspected is a quality judgement, so authoring sits with QA —
+    including the **QA Inspector**, which surprises people.
+
+    Production Manager, Shift Lead and Engineering do **not** hold it, even
+    though Engineering authors the step the rule hangs off and owns SPC control
+    limits. If a rule is inspecting the wrong amount, that is a conversation
+    with QA.
+
+Sampling decisions themselves are written by the engine, not by people —
+recording one is part of running the step.
 
 ## Next Steps
 

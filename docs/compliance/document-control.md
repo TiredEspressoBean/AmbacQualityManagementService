@@ -25,10 +25,21 @@ Document management for regulated environments.
 - Rejection tracking
 
 ### Access Control
-- Permission-based access
-- Visibility levels (Public, Internal, Confidential)
-- Role-based restrictions
-- Customer access control
+
+Five classification levels — **Public, Internal, Confidential, Restricted,
+Secret** — plus per-document links and customer access control.
+
+!!! warning "Only Secret withholds a document from the shop floor"
+    Confidential and Restricted are by default both held by **every staff role**, Operator
+    included. They separate staff from **customers and auditors**, not managers
+    from the floor.
+
+    **Secret** is the only tier that restricts within staff — Tenant Admin and
+    Document Controller. Note a QA Manager can classify a document Secret and
+    then be unable to read it back.
+
+    If a control plan or a customer drawing must not be visible to the floor,
+    Confidential will not do it.
 
 ### Audit Trail
 - All changes logged

@@ -6,33 +6,67 @@ Monitor order progress and understand status indicators throughout uqmes.
 
 ### Tracker Page
 
-The main **Tracker** page shows all orders as cards:
+The main **Tracker** page shows orders as cards, 25 at a time, loading more as
+you scroll:
 
 - **Order name** and the **company** it is for
-- **Delivery date**, with a days-remaining badge ("Today", "6d") that disappears
-  once the date is past
+- **Delivery date**, with a badge — days remaining ("6d"), **Today**, or a red
+  **Overdue · 3d** once the date has passed
 - **Current stage** - the stage the order is at, or "Not started"
 - **Progress bar** - stages completed out of total
 
-The card carries no part counts, no order-status badge and no overdue
-highlighting — for those, open the order.
+The card carries no part counts and no order-status badge — for those, open the
+order.
+
+!!! note "How the badge counts"
+    Days are counted as calendar days, so an order due tomorrow reads **1d** all
+    day today. A **completed** or **cancelled** order shows its date with no
+    badge, late or not. The same badge appears on the order page, and on the
+    Tracker a customer sees.
+
+!!! note "There is no search or filter on the Tracker"
+    It lists every order you can see, completed and cancelled included, in one
+    scrolling column. Orders with no stages and no milestone yet are left off,
+    and when that leaves nothing, the page says *No active orders to display*.
+
+    To find a particular order, use the orders list in **Data Management**,
+    which searches by order name, company, and customer name.
 
 ### Order Detail Page
 
-Click an order to see detailed status:
+Click an order to open it. The page carries:
 
-- **Summary cards** - Parts complete, in process, on hold
-- **Step distribution chart** - Parts by step
-- **Recent activity** - Latest transitions and events
+- The **delivery date**, with the same badge — days remaining, **Today**, or
+  **Overdue · N days**. If it has moved, *Originally <date>* shows the first
+  date, struck through
+- **Progress** through its stages, and the **Stages** list itself
+- **Notes**, as a timeline
+- **Line Items** — per part type, ordered, planned and remaining
+- **Parts on this order** — each part with its type, step and status. Staff only:
+  it needs `change_orders`, and customers do not see it
+- **Shipping** — shipped against ordered per line, the shipments themselves, and
+  late lines flagged
+- **Details**
+- **Documents** attached to the order
+- **People** with access to it
+
+### When the delivery date moves
+
+The first time an order's delivery date changes, uqmes keeps the earlier date as
+the **original**, and it is never overwritten after that. It counts as a move
+whoever made it: an edit to the order, an import, the CRM sync, or a work order
+whose expected completion pushed the order later. An order given its first date
+has not slipped.
 
 ### Dashboard KPIs
 
-The **Analytics** dashboard shows aggregate metrics:
+!!! note "There are no order-delivery KPIs"
+    The **Analytics** dashboard's figures are quality figures — first pass
+    yield, scrap and rework rates, open issues, active and overdue CAPAs. There is no average cycle time, no "orders due this week" and
+    no "orders at risk" tile.
 
-- Orders due this week
-- On-time delivery rate
-- Average cycle time
-- Orders at risk (behind schedule)
+    On-time delivery *is* measured — on **Shipping**, over the last 90 days. See
+    [Shipping](../supply/shipping.md#seeing-whether-you-are-on-time).
 
 ## Progress Calculation
 
@@ -55,90 +89,87 @@ For example:
 
 ### Order Status
 
-| Status | Color | Meaning |
-|--------|-------|---------|
-| **RFI** | Gray | Request for Information |
-| **Pending** | Gray | Order created, not started |
-| **In Progress** | Blue | Work underway |
-| **On Hold** | Yellow | Temporarily paused |
-| **Completed** | Green | All parts finished |
-| **Cancelled** | Red | Order cancelled |
+| Status | Meaning |
+|--------|---------|
+| **RFI** | Request for information — not yet a firm order |
+| **Pending** | Created, not started |
+| **In progress** | Work underway |
+| **On hold** | Temporarily paused |
+| **Completed** | Finished |
+| **Cancelled** | Will not be made |
 
 ### Part Status
 
-| Status | Color | Meaning |
-|--------|-------|---------|
-| **Pending** | Gray | Created, not yet started |
-| **In Progress** | Blue | Actively being worked on |
-| **Awaiting QA** | Yellow | Step done, waiting inspection |
-| **Ready for Next Step** | Blue | Can move to next step |
-| **Quarantined** | Yellow | Held for quality review |
-| **Rework Needed** | Orange | Needs rework from QA |
-| **Rework In Progress** | Orange | Rework underway |
-| **Completed** | Green | Passed all steps |
-| **Shipped** | Green | Shipped to customer |
-| **In Stock** | Green | In inventory |
-| **Scrapped** | Red | Rejected permanently |
-| **Cancelled** | Red | Removed from production |
-| **Scrapped** | Red | Rejected permanently |
-| **At Outside Process** | Blue | Sent to a subcontract vendor — the part has left the building |
-| **Awaiting Pickup** | Green | Ready for the customer to collect |
+Eighteen, in four groups.
 
-### Due Date Indicators
+**Moving through the work**
 
-| Indicator | Meaning |
-|-----------|---------|
-| **Green** | On track (>3 days to due date) |
-| **Yellow** | Approaching (1-3 days) |
-| **Red** | Overdue or due today |
+| Status | Meaning |
+|--------|---------|
+| **Pending** | Created, not yet started |
+| **In Progress** | Being worked on |
+| **At Outside Process** | Sent to a subcontract vendor — the part has left the building |
+| **Awaiting QA** | Step done, waiting for inspection |
+| **Ready for next step** | Can move on |
+| **Completed** | Passed all steps |
 
-## Filtering Orders
+**Held**
 
-Use filters to find specific orders:
+| Status | Meaning |
+|--------|---------|
+| **Quarantined** | Held for quality review |
+| **Rework Needed** | Sent back for rework |
+| **Rework In Progress** | Rework underway |
+| **On Hold** | Parked on a decision someone else owns — a customer's authorisation, a release call after teardown |
 
-### By Status
-- Show only "In Progress" orders
-- Hide completed orders
-- Find orders on hold
+**Finished**
 
-### By Customer
-- View orders for specific customer
-- Compare across customers
+| Status | Meaning |
+|--------|---------|
+| **Shipped** | Gone to the customer |
+| **In Stock** | Completed into inventory |
+| **Awaiting Pickup** | Ready for the customer to collect |
+| **Scrapped** | Rejected permanently |
+| **Cancelled** | Removed before production finished |
 
-### By Date
-- Due this week
-- Due this month
-- Overdue only
+**Reman**
 
-## Searching Orders
+| Status | Meaning |
+|--------|---------|
+| **Core Banked** | Stored as a core |
+| **RMA Closed** | Return completed |
+| **Dismantled** | Torn down; its components became parts of their own |
 
-The search bar finds orders by:
+!!! note "On Hold is not finished, and Dismantled is not output"
+    **On Hold** is deliberately not a terminal status — if it were, a work
+    order could close around a unit that is still waiting on someone.
 
-- Order number
-- Customer name
-- Part serial numbers
-- Notes content
+    **Dismantled** *does* count as done for an order's progress, because a
+    teardown order's job is to get its units taken apart. It never counts as
+    something produced.
+
+## Finding orders
+
+The **Tracker** has no search. The orders list in **Data Management** searches
+by **order name**, **company name**, and the **customer's first or last name** —
+not by part serial number and not by notes. To get from a serial number to its
+order, look the part up instead.
 
 ## Notifications
 
-Configure alerts for order events:
-
-- Order approaching due date
-- Order status changed
-- Parts entering quarantine
-- Order completed
-
-See your **My Notifications** to configure.
+Who is told about what is decided by this organisation's **notification
+rules**, not by the order itself. See [Notification
+Rules](../../admin/setup/notification-rules.md).
 
 ## Exporting Status
 
-Export order status for reporting:
+1. Open the orders list in **Data Management**
+2. Search or filter it
+3. Choose **Export**, then **Excel** or **CSV**
 
-1. Navigate to **Orders**
-2. Apply desired filters
-3. Click **Export**
-4. Select columns to include
-5. Download CSV
+The export takes the list's current search and filters. There is no column
+picker in the interface; the file carries every exported column. See [Import &
+Export](../../admin/data/import-export.md).
 
 ## Customer Portal View
 
@@ -153,4 +184,4 @@ Customers with portal access see:
 
 - [Order Documents](order-documents.md) - Attach files to orders
 - [Tracker Overview](../tracking/tracker-overview.md) - Detailed tracking
-- [Analytics](../../analysis/dashboard.md) - Order metrics and trends
+- [Analytics](../../analysis/dashboard.md) - Quality metrics and trends

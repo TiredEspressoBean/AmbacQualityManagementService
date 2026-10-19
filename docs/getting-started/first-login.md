@@ -4,13 +4,8 @@ This guide walks you through logging into uqmes for the first time and setting u
 
 ## Accessing uqmes
 
-Your organization's uqmes instance is available at a URL like:
-
-```
-https://yourcompany.uqmes.com
-```
-
-Your administrator will provide the exact URL for your organization.
+Your organization's uqmes has its own web address, which depends on how it is
+hosted. Your administrator will give it to you.
 
 ## Login Methods
 
@@ -28,6 +23,11 @@ If your organization uses Microsoft Entra ID or another identity provider:
 !!! tip "SSO Benefits"
     SSO uses your existing corporate credentials, so you don't need a separate password. Your IT team manages authentication policies like multi-factor authentication (MFA).
 
+!!! note "The Microsoft button is always there"
+    **Login with Microsoft** appears on every login page, whether or not your
+    organization has set SSO up. If yours hasn't, it will not sign you in — use
+    your email and password.
+
 ### Email and Password
 
 If your organization uses direct login:
@@ -41,12 +41,16 @@ If your organization uses direct login:
 
 ### Invited Users
 
-If you received an invitation email:
+You are let in by an **invitation link**. It may reach you by email, or your
+administrator may hand it to you directly — whether email is sent depends on how
+your deployment is set up.
 
-1. Click the link in the invitation email
+1. Open the link
 2. Set your password (if not using SSO)
 3. Complete your profile information
 4. You'll be logged in automatically
+
+If the link has expired, ask your administrator for a new one.
 
 ### Profile Setup
 
@@ -78,6 +82,11 @@ If you forget your password:
 !!! note "SSO Users"
     If your organization uses SSO, password reset is handled by your IT department through your identity provider (Microsoft Entra ID, Okta, etc.).
 
+!!! tip "If the reset email never arrives"
+    The reset depends on this deployment sending mail, which not every one does.
+    If nothing arrives, ask your administrator: an **access link** from User
+    Management lets you set a new password without email.
+
 ## Multi-Tenant Access
 
 If you belong to multiple organizations (tenants):
@@ -93,11 +102,12 @@ Your permissions may differ between organizations based on your assigned roles.
 
 | Problem | Solution |
 |---------|----------|
-| "Invalid credentials" | Check email spelling, reset password if needed |
-| "Account locked" | Contact your administrator |
-| SSO redirect fails | Clear browser cache, try incognito mode |
-| "Access denied" | Your account may not be activated—contact admin |
-| MFA not working | Check your authenticator app, contact IT |
+| *"Invalid email or password"* | Check the spelling, then reset your password if needed |
+| *"Request was throttled"* | Too many attempts in a short time — by default ten logins a minute, or five password resets an hour, from one address. Wait for the time it names. There is no account lockout |
+| **Login with Microsoft** does nothing useful | Your organization may not use SSO — sign in with email and password |
+| SSO redirect fails | Clear browser cache, try a private window; if it persists, it is your identity provider's configuration |
+| You can sign in but see nothing, or are refused | Your access to this organization may be deactivated — contact your administrator |
+| MFA not working | MFA belongs to your identity provider — check your authenticator app, then contact IT |
 
 ## Next Steps
 

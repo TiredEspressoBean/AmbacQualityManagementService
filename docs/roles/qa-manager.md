@@ -25,33 +25,39 @@ As a QA Manager, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Quality Dashboard** | Quality > Dashboard | KPIs and overview |
+| **Home** | Home | Your role's landing page — what needs you today |
+| **Quality Dashboard** | Quality > Dashboard | CAPA counts, your approvals, your CAPA tasks |
 | **CAPAs** | Quality > CAPAs | Corrective actions |
 | **Quality Reports** | Quality > Quality Reports | All NCRs |
 | **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
 | **Approvals** | Approvals > Overview | All pending approval requests |
-| **Analytics** | Analytics | Trends and analysis |
+| **Analytics** | Analytics | Quality KPIs — yield, scrap, rework — and top defects |
+| **NCR Analysis** | From Analytics or Home, or `/quality/ncrs` | NCR trend, aging, disposition breakdown |
 | **Dispositions** | Quality > Dispositions | Quarantine management |
 
 ## Daily Workflow
 
 ### 1. Check Dashboard
 
-Start with the Quality Dashboard:
-
-1. Review KPI cards (Open CAPAs, NCRs, Pending)
-2. Check defect trends
-3. Identify priority items
+1. **Home** shows what needs you today
+2. **Quality** > **Dashboard** has the CAPA picture: open, overdue, pending
+   verification and closed, with your approvals and your CAPA tasks
+3. **Analytics** has yield, scrap and rework against target, and the top
+   defects — the place to spot a trend
 4. Note any critical issues
 
 ### 2. Process Approvals
 
 1. Navigate to **Personal > Inbox**
-2. Review pending approvals:
-   - Disposition approvals
-   - Document approvals
-   - CAPA closures
+2. Review what is actually assigned to you — typically **document releases** and
+   **CAPA approvals** (the authorisation a Major or Critical CAPA needs *before*
+   work begins), plus process changes if your facility routes them here
 3. Take action on each item
+
+Two things that look like they should be in this queue and are not:
+**dispositions**, which are recorded directly rather than requested — see below
+— and **CAPA closure**, which follows from verification and has no approval step
+of its own.
 
 ### 3. Review Quality Reports
 
@@ -83,13 +89,19 @@ authorized act. Your involvement takes one of two forms:
 Before either, review the originating NCR, the justification, and the affected
 parts.
 
-### Approval Decision
+### The three decisions
+
+Every approval in uqmes offers the same three, whatever the subject:
 
 | Decision | When to Use |
 |----------|-------------|
-| **Approve** | Disposition is appropriate |
-| **Reject** | Need different disposition |
-| **Request Info** | Need more details |
+| **Approved** | It is acceptable as submitted |
+| **Rejected** | It is not — say why in the comments |
+| **Delegated** | Pass it to another eligible approver |
+
+There is **no "Request more information"** decision. If you need more before you
+can decide, leave the request open and ask outside it, or reject with comments
+saying what is missing.
 
 ### Signing Approval
 
@@ -99,12 +111,12 @@ parts.
 4. Sign if the approval template requires it
 5. Submit the response
 
-### High-Value Dispositions
+### Expensive or customer-facing dispositions
 
-For expensive scrap or customer deviations:
-- May require additional approvers
-- Document carefully
-- Consider management notification
+uqmes holds no costs, so nothing routes a disposition differently by its value.
+Where your procedure wants more than one signature on an expensive scrap or a
+deviation the customer must accept, that is your procedure: record the customer's
+approval on the disposition, and document the rest in its justification.
 
 ## Managing CAPAs
 
@@ -120,12 +132,15 @@ For significant issues:
 
 1. Click **New CAPAs** or create from NCR
 2. Fill in:
-   - Problem description
-   - Priority
+   - Problem statement
+   - **Severity** — Critical, Major or Minor
    - Owner assignment
-   - Due dates
+   - Due date
 3. Assign team members
 4. Submit
+
+A **Critical** or **Major** CAPA raises its approval as it is created — work on
+it waits for that approval. See [Creating CAPAs](../workflows/capa/creating.md).
 
 ### Monitoring Progress
 
@@ -135,6 +150,17 @@ For each open CAPA:
 2. Check for overdue tasks
 3. Follow up with owners
 4. Provide guidance as needed
+
+### Approving root causes
+
+On a CAPA's **RCA** tab, **Approve** an unverified or disputed RCA once you
+accept its root cause. You cannot approve one you conducted, unless the CAPA
+allows self-verification. Then you must write at least ten characters of
+justification.
+
+Nothing gets to Pending Verification, and no effectiveness check is accepted,
+until the root cause is approved. See [Approving the root
+cause](../workflows/capa/overview.md#approving-the-root-cause).
 
 ### CAPA Verification
 
@@ -155,19 +181,36 @@ There is no separate closure request or closure approval. The gate is
 `verify_capa`; if you don't hold it, an authorised colleague can co-sign inline
 with their email and password and the closure is attributed to them.
 
-!!! warning "You cannot verify a CAPA you initiated or were assigned"
-    The server refuses it outright. Effectiveness is judged by someone other
-    than the person who did the work — so if you assigned a CAPA to yourself,
-    which is routine, **you are not the one who can close it.** A colleague
-    holding `verify_capa` co-signs, and the closure is theirs.
+!!! warning "By default you cannot verify a CAPA you initiated or were assigned"
+    Effectiveness is judged by someone other than the person who did the work.
+    If you are the CAPA's **initiator or its assignee** — and assigning one to
+    yourself is routine — the server refuses:
 
-    This is the commonest way the step fails, and it fails at the end, after
-    the evidence is assembled.
+    > Self-verification is not permitted for this CAPA
+
+    **There is a deliberate exception, set per CAPA.** `allow_self_verification`
+    is a toggle on the CAPA itself, off by default, meant for minor issues or
+    where nobody independent exists. With it on, you may verify your own — but
+    you must supply **at least ten characters of justification**, and that text
+    is kept as the record of why it was acceptable.
+
+    Otherwise a colleague holding `verify_capa` co-signs, and the closure is
+    attributed to them.
+
+    This is the commonest way the step fails, and it fails at the end, after the
+    evidence is assembled. Check who the CAPA is assigned to before you gather
+    it.
 
 !!! warning "Closed is the end of the line"
     A closed CAPA cannot be reopened. If the check shows the action did *not*
-    work, record **Not effective** instead — that returns the CAPA to In Progress
-    rather than closing it.
+    work, record **Not effective** instead. That does three things rather than
+    one: the CAPA returns to **In Progress**, its root-cause analysis is flagged
+    for review — on the grounds that an ineffective action usually means the
+    cause was wrong — and a follow-up **corrective task is raised automatically,
+    due in 30 days**.
+
+    So "not effective" is not a dead end or a failure to record; it is the
+    restart, and it leaves someone holding a dated task.
 
 ## Document Approvals
 
@@ -181,11 +224,9 @@ with their email and password and the closure is attributed to them.
 
 ### Approval Actions
 
-| Action | When |
-|--------|------|
-| **Approve** | Document is acceptable |
-| **Reject** | Issues found, return to author |
-| **Comment** | Need clarification |
+The same three decisions as everywhere else — **Approved**, **Rejected**,
+**Delegated**. Comments travel with whichever you choose; they are not a
+decision of their own.
 
 ### Electronic Signature
 
@@ -200,10 +241,9 @@ with their email and password and the closure is attributed to them.
 
 Regular review of:
 
-- **FPY Trend**: First pass yield over time
-- **Defect Pareto**: Top defect types
-- **NCR Aging**: Time to close NCRs
-- **CAPA Metrics**: Open count, age, effectiveness
+- **FPY trend** and **top defects** — on Analytics
+- **NCR aging** and trend — on NCR Analysis
+- **CAPA counts** — on the Quality dashboard
 
 ### Identifying Trends
 
@@ -251,19 +291,22 @@ When control charts show issues:
 
 ### Reports for Auditors
 
-- CAPA summary report
-- NCR trending
-- Audit trail exports
-- Training records
+- CAPA report and NCR report — PDFs from the record itself
+- Training records report
+- The audit log, read on screen — it has no export
+- NCR trend and aging, from NCR Analysis
 
 ## Configuration Responsibilities
 
 ### Sampling Rules
 
 Review and adjust:
-- AQL levels per product
-- Skip-lot qualifications
-- Supplier quality levels
+- AQL and inspection level per rule set
+- Which suppliers get their own rule set
+- Whether a fallback (tightened) set is wired in
+
+A supplier's Z1.4 severity — normal, tightened, reduced — switches itself on lot
+history; you do not set it. See [Sampling Rules](../admin/setup/sampling-rules.md).
 
 ### Error Types
 
@@ -274,10 +317,19 @@ Maintain defect categories:
 
 ### Approval Templates
 
-Configure workflows for:
-- Document approvals
-- Disposition approvals
-- CAPA closure
+A template decides, per approval *type*, who is assigned, whether self-approval
+is allowed, how long it has and when it escalates. The types that are raised are
+**Document Release**, the CAPA approvals — **Critical CAPA** and **Major CAPA**
+by severity, with the general **CAPA Approval** as their fallback — and the
+process-change set (PCR, PCO, PCN).
+
+**Dispositions and CAPA closure are not among them** — a disposition is recorded
+and co-signed in place, and closure follows verification. Neither has a template
+to configure.
+
+This is also where you change *who* approves what: the assignment comes from the
+template, not from anyone's role. See [Approval
+Templates](../admin/setup/approval-templates.md).
 
 ## Managing Your Team
 
@@ -313,10 +365,11 @@ Configure workflows for:
 
 | Task | Location |
 |------|----------|
-| Approve disposition | Inbox → Disposition → Approve |
+| Record a disposition decision | Quality > Dispositions → open it → set the type |
+| Co-sign someone else's | On *their* screen — they press Update Disposition, you supply email, signature and password |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
-| Close CAPA | CAPA detail → Verification → Confirmed effective |
-| Approve document | Inbox → Document → Approve |
+| Close CAPA | CAPA detail → Verification → **Confirmed effective** |
+| Approve document | Inbox → Document → **Submit Response** → Approved |
 | View analytics | Analytics |
 
 ## Related Documentation

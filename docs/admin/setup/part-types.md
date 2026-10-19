@@ -4,12 +4,19 @@ Define product templates that determine how parts are tracked.
 
 ## What are Part Types?
 
-Part Types define:
+A part type is the definition of a thing you make, buy or recover. It carries:
 
-- **Product identity** - Part number, description
-- **Default process** - Manufacturing workflow
-- **Attributes** - Fields for this type of part
-- **3D model** - Visual representation
+- **Identity** — name, ERP id and the prefix used when generating part identifiers
+- **Sourcing** — make, buy, preferred supplier, lead time, safety stock
+- **Export control** — ITAR, ECCN, USML category
+- **Receiving rules** — purchase unit, and the holds that keep a received lot
+  from being used until its paperwork is in
+
+!!! note "Processes and 3D models are attached *to* a part type, not chosen on it"
+    A part type has no "default process" field and no "3D model" field. A
+    [process](../processes/overview.md) names the part type it is for, and a
+    [3D model](../../3d-models/uploading.md) does the same — so you create them
+    against the type rather than picking them from the type's form.
 
 ## Creating a Part Type
 
@@ -31,9 +38,18 @@ Part Types define:
 4. Click **Create Part Type**
 
 !!! tip "Make, buy, or both"
-    **Made in-house** and **Purchased** are independent. A type that is both
-    can be manufactured or sourced, which is what lets it appear in production
-    and in [sourcing requirements](../../workflows/scheduling/overview.md#requirements).
+    **Made in-house** and **Purchased** are independent, and a type can be both
+    — a part you normally make but are short of this week.
+
+    **Purchased** is the one that does work: it is what lets the type be a
+    **BUY** line on a BOM, and what lets an expected receipt be imported
+    against it. See [sourcing
+    requirements](../../workflows/scheduling/overview.md#requirements).
+
+!!! note "Made in-house is recorded but nothing reads it"
+    Nothing refuses to manufacture a type with the flag off, and nothing
+    filters by it. Set it accurately — it is the honest description of the
+    part — but do not expect it to gate anything.
 
 ## Part Type Fields
 
@@ -126,48 +142,65 @@ See [Export Controls](../../compliance/export-controls.md).
     If someone asks why received stock cannot be used yet, these are the first
     things to check — the lot is not lost, it is held.
 
-## Linking to Process
+## Giving a part type a process
 
-Connect part type to manufacturing process:
+Processes are authored against a part type from the process side — see
+[Process Configuration](../processes/overview.md). A type can have several: a
+manufacturing routing, and, where the type **can be recovered**, one or more
+teardown processes. The work order picks which one it runs.
 
-1. In **Default Process** field
-2. Select process
-3. All parts of this type use this process by default
-4. Can override per work order
+Only the **default disassembly process** is held on the part type, and only as a
+preselection for the teardown dialog.
 
 ## 3D Model
 
-Link visual model for annotations:
-
-1. In **3D Model** field
-2. Select uploaded model
-3. Model used for heat maps
-4. Enable defect annotation
+A 3D model is uploaded against a part type, and optionally against a particular
+step where it shows an intermediate state. Models are what defect annotations
+and heat maps are drawn on.
 
 See [Uploading Models](../../3d-models/uploading.md).
-
-## Creating parts from a type
-
-When parts are created against a type, the type's defaults apply — its process,
-its ERP ID prefix, and the rest of its configuration.
 
 ## Bulk import and export
 
 Part types can be imported and exported. **Export first and fill in the file you
-get back** rather than building one from a column list: the identity fields are
-**Name**, **ERP ID** and **ERP ID Prefix**, and an older version of this page
-showed a `part_number` column that is not a field.
+get back** rather than building one from a column list. The identity fields are
+**Name**, **ERP ID** and **ERP ID Prefix** — there is no part number field.
 
 Start at [Data Management](../data/data-management.md) for the Import and Export
 links, and see [Import & Export](../data/import-export.md) for how references to
 other records are written.
 
-## Active vs Inactive
+## Quality for a part type
 
-- **Active**: Available for new parts
-- **Inactive**: Hidden from selection, existing parts remain
+In the part types list, click **View** on a row. The detail page carries a
+**Quality Overview** panel, which rolls up every part of that type:
 
-Don't delete—inactivate to preserve history.
+- **First Pass Yield** across all inspections, with passed, failed and pending counts
+- **Parts** — how many parts of this type exist
+- **Open dispositions** and **Open CAPAs**
+- **FPY Trend (30 days)** — daily first-pass yield over the last month
+- **Top Defects** — the defect Pareto
+- **SPC / Measurement Capability** — for each numeric measurement, the share in spec and, where it can be computed, Ppk
+- **Recent Failures** — the five latest failed inspections
+
+The panel shows only the records you are allowed to see, so two people can see
+different numbers for the same part type.
+
+## Retiring a part type
+
+!!! warning "There is no active / inactive flag"
+    A part type cannot be deactivated. It is either there or deleted, and
+    delete is a real delete — nothing archives it.
+
+    What protects you is that **a part type with steps cannot be deleted at
+    all**: the database refuses while any step references it, which in practice
+    means any type that has ever had a process authored against it. So a type
+    that has been used is effectively permanent, and a type that was created by
+    mistake can be removed.
+
+    To stop a finished type being bought, turn **Purchased** off — that removes
+    it from BOM buy lines and expected receipts. There is no equivalent for
+    production, and no retirement status.
 
 ## Permissions
 
@@ -176,7 +209,8 @@ Don't delete—inactivate to preserve history.
 | `view_parttypes` | View part types |
 | `add_parttypes` | Create part types |
 | `change_parttypes` | Edit part types |
-| `delete_parttypes` | Deactivate part types |
+| `change_parttype_sourcing` | Edit **only** preferred supplier, lead time and safety stock |
+| `delete_parttypes` | Delete a part type, where nothing references it |
 
 ## Next Steps
 

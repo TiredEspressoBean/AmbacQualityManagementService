@@ -144,7 +144,7 @@ Two different acts, and the difference matters to an auditor:
     **Revisions are never deleted** at all, only archived, so a document's
     history stays intact regardless.
 
-Deleting needs `delete_documents`, held by **Document Controller, QA Manager,
+Deleting needs `delete_documents`, by default held by **Document Controller, QA Manager,
 Production Manager, Engineering and Tenant Admin** — the authoring and manager
 tiers. Operators, inspectors, the dock and auditors cannot.
 
@@ -167,8 +167,8 @@ tiers. Operators, inspectors, the dock and auditors cannot.
     tier that does it.
 
 !!! important "QA Manager can classify, but cannot read Secret"
-    `classify_documents` is held by **Tenant Admin, QA Manager and Document
-    Controller**. `view_secret_documents` is held by **Tenant Admin and Document
+    `classify_documents` is by default held by **Tenant Admin, QA Manager and Document
+    Controller**. `view_secret_documents` is by default held by **Tenant Admin and Document
     Controller** only.
 
     So a QA Manager can mark a document Secret and then not be able to open it.

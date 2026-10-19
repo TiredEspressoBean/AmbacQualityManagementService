@@ -9,13 +9,14 @@ production operations in uqmes.
     production side.
 
 !!! tip "Demo Account"
-    In demo mode, log in as **Jennifer Walsh** (jennifer.mgr@demo.ambac.com) to experience the Production Manager workflow. You'll see:
+    In demo mode, log in as **Jennifer Walsh** (jennifer.mgr@demo.ambac.com).
+    Home opens on what is at risk — jobs going late, parts in quarantine, CAPAs
+    pending verification, first pass yield, supplier qualifications expiring and
+    competency coverage.
 
-    - 3 orders in different states: ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending)
-    - Work order WO-2024-0042-A in progress with 67% completion
-    - CAPA-2024-003 that you own (nozzle defect investigation)
-    - Pending approval APR-2024-0015 (CAPA closure requiring your sign-off)
-    - Equipment alert: Torque Wrench TW-25 calibration overdue
+    Orders, work orders and approvals move with every reseed and every
+    walkthrough, so read the numbers Home gives you rather than looking for a
+    particular order.
 
 ## Your Role
 
@@ -40,20 +41,23 @@ As a Production Manager, you:
 
 | Page | Location | Purpose |
 |------|----------|---------|
-| **Work Orders** | Production > Work Orders | Main production management |
+| **Home** | Home | What is at risk today |
+| **WO Control Center** | Production > WO Control Center | The fleet view, with the bulk actions — release, hold, add parts |
+| **Work Orders** | Production > Work Orders | A read-only list, with search and filters |
 | **Orders** | Data Management > Orders | Customer order management |
 | **Tracker** | Tracker | Customer-facing order overview |
-| **Analytics** | Analytics | Production metrics |
+| **Shipping** | Supply > Shipping | On-time delivery over the last 90 days |
+| **Analytics** | Analytics | Quality KPIs — yield, scrap, rework |
 | **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
 
 ## Daily Workflow
 
 ### 1. Review Production Status
 
-1. Navigate to **Production** > **Work Orders**
-2. Check work order progress
-3. Identify behind-schedule orders
-4. Note bottlenecks
+1. **Home** shows jobs going late and the biggest fire
+2. **WO Control Center** filters to **Overdue**, **Due today**, **On hold** and
+   **With exceptions**
+3. Note bottlenecks — capacity planning shows them by resource
 
 ### 2. Manage Priorities
 
@@ -104,7 +108,7 @@ priority field** — priority lives on the work order.
 5. Confirm
 
 Part Type is shown, not chosen: it comes from the work order's process. ERP IDs
-are `<part type prefix><counter padded to 4 digits>`.
+are `<work order ERP ID>-<part type prefix><counter padded to 4 digits>`.
 
 ### Bulk Order Import
 
@@ -136,24 +140,34 @@ For multiple orders:
 
 | Field | Purpose |
 |-------|---------|
-| **Priority** | Urgent, High, Normal, Low |
-| **Equipment** | Assigned machine |
+| **Priority** | Urgent, High, Normal, Low — changing it after creation needs a reason |
+| **Quantity** | Parts *started*, grossed up for expected scrap |
+| **Target good quantity** | The good parts the job actually owes, before gross-up |
 | **Notes** | Production instructions |
+
+!!! note "There is no equipment field on a work order"
+    Machines are not assigned to a job. Equipment is recorded **at the step**, as
+    the work is done, which is why one job can run across several machines — and
+    it is what lets quality ask later what a given gauge or machine touched. See
+    *Resource Management* below.
+
+!!! note "Quantity and target good quantity are different numbers"
+    If a job was planned with a yield allowance, **Quantity** is what was started
+    and **Target good quantity** is what the customer is owed. Scrap eats the
+    difference; when it outruns the allowance the job is short and can be topped
+    up. See [Make-up planning](planner.md).
 
 ## Managing Production
 
 ### Monitoring Progress
 
-On **Work Orders** page:
-- Detailed progress by work order
-- Parts by step
-- Time metrics
-- Priority and status indicators
+On a **work order's page**: status, priority, an **Overdue** badge once it is
+late, and its QA progress — parts completed, total, needing rework.
 
-On **Tracker** (for customer-facing overview):
-- Progress bars show completion
-- Color coding shows on-time status
-- Expand for step distribution
+On the **Tracker**, the customer-facing view: each order's current stage, a
+progress bar of stages done, and its delivery date with a red **Overdue** badge
+once it has passed. There are no time metrics — no cycle time or throughput —
+on either.
 
 ### Identifying Bottlenecks
 
@@ -165,10 +179,31 @@ Look for:
 
 ### Adjusting Priorities
 
-1. Open work order
-2. Change priority level
-3. Save
-4. Notify floor supervisor
+There is **no Expedite action**. Jumping a job to the front means setting the
+work order's priority to **Urgent** — *Expedited* on the control centre is not a
+state you set, it is what Urgent looks like.
+
+1. Open the work order for edit
+2. Change the priority
+3. **Say why.** The form asks — *"Why change priority from Normal to Urgent?"* —
+   and the save is refused without it: *"Say why the priority is changing."*
+4. Save, and notify the floor supervisor
+
+!!! note "The reason is kept, and the last five are shown"
+    The change is recorded with the field, the old and new value, the reason, who
+    made it and when. The edit form lists the **last five priority changes** with
+    their reasons beneath, so the job's expediting history reads back at the
+    point you are about to add to it.
+
+    Setting a priority when you first create the work order needs no reason —
+    there is nothing to explain yet. Changing it to the value it already has
+    records nothing.
+
+!!! warning "An import changes priority silently"
+    The reason is required on the edit form and the API. A CSV import or the
+    master workbook can change priority **without** recording one, so a bulk
+    re-prioritisation leaves exactly the gap the form closes. Worth knowing
+    before reaching for an import to move a lot of work at once.
 
 ## Handling Quality Holds
 
@@ -196,10 +231,13 @@ For urgent orders:
 
 Equipment tracking:
 
-1. Equipment is selected during step execution
-2. Each step records which equipment was used
-3. Equipment usage is tracked for calibration and maintenance
-4. Check equipment availability via the Equipment page
+1. Equipment is recorded during step execution, by an **Equipment + roles**
+   capture
+2. That record is what links a machine or gauge to the parts it touched — the
+   basis of a calibration exposure check
+3. Machine downtime is raised from a work order's **Report…** dialog
+4. There is no maintenance schedule and no equipment-availability page; what a
+   machine is booked to do is on the [Schedule board](../workflows/scheduling/gantt.md)
 
 ### Capacity Planning
 
@@ -223,9 +261,15 @@ When customers inquire:
 
 When orders will be late:
 1. Document the reason
-2. Calculate new estimate
-3. Notify customer proactively
-4. Update order notes
+2. Calculate new estimate — **Could we take this order?** on capacity planning
+   gives the earliest month that fits
+3. Notify customer proactively — uqmes does not
+4. Update the order's estimated completion and notes
+
+!!! note "The first date is kept, not the reason"
+    The first time the date moves, the order keeps the earlier one and shows
+    *Originally <date>*. Later moves are not kept individually, and no reason is
+    asked for, so put the reason in the notes.
 
 ## Working with Documents
 
@@ -237,29 +281,34 @@ Attach relevant documents:
 - Special instructions
 - Certificates
 
-### Accessing Work Instructions
+### Work instructions are not documents
 
-Ensure operators can access:
-1. Link documents to work order
-2. Verify latest revision
-3. Check accessibility
+Operators do not open a document and work alongside it. **The instruction is the
+step player** — the authored substeps they work through, which are also what
+records the quality data. Nothing you attach to a work order changes what they
+are told to do.
+
+What that means for you:
+
+- A revised procedure reaches the floor through **process change control**
+  (PCR → PCO → PCN), not by swapping an attached file.
+- Documents on a work order are **reference** — a customer drawing, a spec, a
+  special instruction. Useful, but optional reading.
+- If an operator is doing the wrong thing, the fix is in the process, and it is
+  Engineering's to author.
 
 ## Analytics and Reporting
 
-### Production Metrics
+### What is measured
 
-Review regularly:
-- **On-time delivery** rate
-- **Throughput** by area
-- **WIP** levels
-- **Cycle time** trends
+- **On-time delivery** — on **Shipping**, over the last 90 days, with the count
+  of work orders that could not be scored beside it
+- **Quality** — yield, scrap and rework on **Analytics**
+- **Load against capacity** — on capacity planning
 
-### Reports
-
-Generate for management:
-- Daily production summary
-- Weekly status report
-- Customer-specific reports
+There is no throughput, WIP-level or cycle-time figure, and no daily or weekly
+production report. Exports from the work order and order lists are the raw
+material for one.
 
 ## Coordination
 
@@ -296,7 +345,7 @@ Generate for management:
 | Create order | Data Management > Orders → **New Orders** → Order Name → **Create Order** |
 | Add parts | Production > WO Control Center → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start |
 | Create work order | Data Management > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
-| Change priority | Open work order → Change priority → Save |
+| Change priority | Open work order → change priority → **give a reason** → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
 
 ## Related Documentation

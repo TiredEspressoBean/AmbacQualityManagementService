@@ -15,15 +15,6 @@ happened to the jobs already running under the old version.
     opened against it. From then on each record has its own page and its own
     actions.
 
-!!! note "The page still carries a banner saying the actions aren't built"
-    It is out of date — it predates the actions shipping. The register looks
-    empty on a fresh tenant because there are no PCRs yet, which makes the
-    banner convincing.
-
-    Walked end to end 2026-10-12: Propose Change → Draft + `PCR-2026-0001` →
-    **Submit for approval** → `SUBMITTED`, with the diff captured and an approval
-    request raised.
-
 !!! warning "A tenant needs its change-control approval templates"
     Submitting a PCR looks up the tenant's **`PCR_APPROVAL`** template, and
     approving the PCO needs **`PCO_APPROVAL`**. Without them the step refuses
@@ -78,6 +69,20 @@ Submitting a PCR snapshots the in-flight work orders it would affect and records
 the baseline process version, so the impact is captured at proposal time rather
 than reconstructed later.
 
+!!! important "What a PCR points at is fixed when it is proposed"
+    The **target process** and the **draft** it forked are set at proposal and
+    cannot be edited afterwards — not in Draft, not at any later status. An
+    attempt is refused: *"the target and draft process are set when the change
+    is proposed, and the diff is computed at submit."*
+
+    On top of that, the record **locks once it leaves Draft**. So an approved
+    PCR cannot be quietly repointed at a different process or a different draft
+    after somebody signed it, which is the property that makes the approval
+    mean anything.
+
+    If the change turns out to be against the wrong process, cancel it and
+    propose a new one. That leaves the mistake visible, which is the intent.
+
 ## PCO — Process Change Order
 
 Authorisation to implement an approved PCR.
@@ -107,6 +112,9 @@ deciding what to do with work orders already in flight under the old version:
 | **Migrate Selected** | Named work orders move; the rest stay |
 | **Keep All** | All in-flight work finishes on the old version |
 
+A [temporary change](#temporary-changes-deviations) offers no choice: it applies
+only to the work orders it names.
+
 The choice and its reason are recorded on the PCO, and each work order's move is
 captured in the audit trail.
 
@@ -129,6 +137,75 @@ Distribution and effectiveness verification for an implemented PCO.
 Who gets told is handled by notification rules on the **PCN released** event
 rather than an audience list on the notice itself — see
 [Notification Rules](../../admin/setup/notification-rules.md).
+
+## Temporary changes (deviations)
+
+When the process has to depart from its approved form for a **bounded** piece of
+work — a customer agrees to 27 Nm on two named jobs, say — raise it as a
+**temporary change**. It goes through the same PCR, PCO and PCN, with three
+differences:
+
+- **It applies to the work orders it names, and nothing else.** Implementing it
+  approves the revised version and moves those work orders onto it. The
+  baseline stays current, so new work and every other job keep using the
+  approved process. A temporary version is never offered for new work.
+- **It ends.** When you submit the PCR, switch on **Temporary change
+  (deviation)** and give an **Ends on** date. The change is over when its work
+  orders finish; the date is the backstop.
+- **The customer's agreement is recorded on the PCR.** With **Customer
+  notification required** on, a **Customer agreement** field records what was
+  agreed.
+
+Because the named work orders run a version whose spec *is* the agreed value, a
+reading at that value passes. Nothing is quarantined, and no disposition opens
+for work that was authorised in advance.
+
+!!! warning "After the end date, the work stops"
+    Once the date has passed, starting a step on one of its work orders is
+    refused:
+
+    > *PCR-… is a temporary change that ended on … Extend it through change
+    > control, or move … back to the baseline, before more work is done.*
+
+    This cannot be overridden by a supervisor. There are two ways on:
+
+    - **Extend…** on the PCR page raises a new PCR, *"Extend PCR-… to
+      <date>"*. It is submitted, approved and implemented like any other, and
+      implementing it moves the end date. The new date must be later than the
+      current one.
+    - **Move back to baseline**, per work order, on the PCR's **Temporary
+      change** card. Parts are re-pointed step by step, as in a migration. If a
+      part is at a step the baseline does not have, the move is refused and the
+      stranded parts are listed. The work order returns to the line's current
+      approved version — the baseline, or its successor if a permanent change
+      has since replaced it.
+
+### How a temporary change shows
+
+- **The register:** a **Temporary** badge with its end date and the number of
+  work orders. It turns red once the date has passed. An extension reads
+  *Extends PCR-…*.
+- **The PCR page:** the badge, the end date, the customer agreement, and an
+  amber **Temporary change** card listing its work orders — red, *Ended …*, once
+  it has expired.
+- **The process editor:** *"Temporary change PCR-… — in force until … for the
+  work orders it names only. New work uses the current version."*
+- **The PCN:** it says the change is temporary, gives the end date and lists
+  the work orders, and states that the baseline remains current for all other
+  work.
+
+!!! note "Version numbers"
+    A temporary version takes the next version number, as any revision does. A
+    later permanent change from the same baseline takes that number too. The
+    process's version history leaves temporary versions out, and the register
+    and the editor label them temporary — so read a version by its PCR, not by
+    its number alone.
+
+!!! tip "Temporary change or concession?"
+    A temporary change authorises a departure **before** the work. A
+    [disposition](../quality/dispositions.md) — *Use As Is* or *Repair* —
+    accepts nonconforming product **after** it was made. If you know in advance,
+    raise the temporary change; the parts then never become nonconforming.
 
 ## Substeps ride the same process
 

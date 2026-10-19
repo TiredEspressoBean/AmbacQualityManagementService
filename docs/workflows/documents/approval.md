@@ -20,16 +20,25 @@ Your administrator configures which types require approval.
 
 ```
 ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│  Draft   │────▶│ Pending  │────▶│ Approved │────▶│ Released │
-│          │     │ Approval │     │          │     │          │
+│  Draft   │────▶│  Under   │────▶│ Approved │────▶│ Released │
+│          │     │  Review  │     │          │     │          │
 └──────────┘     └──────────┘     └──────────┘     └──────────┘
-                      │
-                      ▼
-                ┌──────────┐
-                │ Rejected │
-                │          │
-                └──────────┘
+                      │                                  │
+                      ▼                                  ▼
+                 (rejected —                        ┌──────────┐
+                  back to Draft)                    │ Obsolete │
+                                                    └──────────┘
 ```
+
+The five statuses are **Draft**, **Under Review**, **Approved**, **Released**
+and **Obsolete**. *Approved* and *Released* are distinct: approval is the
+signature, release is putting it into force.
+
+!!! note "Obsolete is always a deliberate act"
+    Nothing retires a document automatically. Approving a new version does not
+    obsolete the old one — the old one simply stops being current and keeps
+    whatever status it had. If your procedure says superseded documents must
+    read Obsolete, that is a step on somebody's checklist.
 
 ## Submitting for Approval
 
@@ -64,11 +73,14 @@ After submission:
 4. The document stays editable — both metadata and the file
 
 !!! warning "Review does not lock the document"
-    Nothing is locked while a document is under review. The file can only be
-    swapped once the document is **Approved** or **Released**; until then an
-    editor can replace the very file the approvers are reading. If that matters
-    for your process, it is a convention to hold to, not a rule the system
-    enforces.
+    Nothing is locked while a document is under review. The file stops being
+    swappable only once the document reaches **Approved** or **Released** —
+    until then an editor can replace the very file the approvers are reading,
+    and nothing tells them it changed.
+
+    If your process requires that what was approved is what was reviewed, that
+    is a convention to hold to, not a rule the system enforces. The safe habit
+    is to re-check the file before signing.
 
 ### Viewing Pending Documents
 
@@ -191,7 +203,7 @@ On the document:
 2. View **Approvals** section
 3. See each approver:
    - Name
-   - Status (Pending, Approved, Rejected)
+   - Status — **Not Required**, **Pending**, **Approved**, **Rejected** or **Cancelled**
    - Date/time of action
    - Comments
 

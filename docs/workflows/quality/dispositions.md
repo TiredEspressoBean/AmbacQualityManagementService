@@ -55,7 +55,10 @@ reference**:
 > customer/design approval — provide an approval reference.*
 
 This is a hard stop, not a warning. Obtain the concession or deviation through
-your normal customer/engineering channel first, then enter its reference. The
+your normal customer/engineering channel first, then enter its reference. If the
+departure is known **before** the work, raise a [temporary
+change](../change-control/overview.md#temporary-changes-deviations) instead, so
+the parts are made to the agreed spec and never become nonconforming. The
 reference, the date, and who authorized the decision are all stored on the
 record.
 
@@ -190,14 +193,28 @@ first.
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_quarantinedisposition` | View disposition records |
-| `add_quarantinedisposition` | Raise a disposition |
-| `approve_disposition` | Record the decision, or co-sign someone else's |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_quarantinedisposition` | View disposition records | Every staff role |
+| `add_quarantinedisposition` | Raise a disposition | Every staff role |
+| `approve_disposition` | **Record the decision**, or co-sign someone else's | QA Manager, Tenant Admin |
+| `close_disposition` | **Close it** once the resolution is done | QA Inspector, Shift Lead, Production Manager, QA Manager, Tenant Admin |
 
-Closing a resolution does not require `add_quarantinedisposition` — the person
-who authorizes or closes a record needn't be the one who raised it.
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+Raising, deciding and closing are three different permissions, and they are
+deliberately not held by the same set of people:
+
+- **Raising** is open — anyone who finds a problem can start the record.
+- **Deciding** is narrow. Accepting or scrapping nonconforming product is
+  material review authority, which is a quality function under AS9100. The
+  Production Manager does **not** hold it.
+- **Closing** is broad again, because many roles legitimately finish the work on
+  the floor. The line Operator is still excluded: they surface the problem, they
+  don't disposition it.
+
+So the person who authorizes a record needn't be the one who raised it, and the
+person who closes it needn't be either.
 
 ## Next Steps
 

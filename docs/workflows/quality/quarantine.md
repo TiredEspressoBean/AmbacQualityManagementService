@@ -54,18 +54,10 @@ a quality report or a disposition.
     **Quarantine**, like **Rework** and **Scrap** beside it, applies to every
     ticked part rather than one row. Check the selection first.
 
-**Raising it as an exception** — when the problem belongs to the work order
-rather than to particular parts:
-
-1. Open the work order in the **WO Control Center** or its control page
-2. Click **Report…** to open the **Report exception** dialog
-3. Choose type **Quarantine (quality hold)**
-
-   The same dialog also raises **Downtime (equipment / resource)** and
-   **CAPA (corrective action)** — the type routes the event to the right
-   record.
-4. Add the reason and notes
-5. Submit
+**Raising it as a disposition** — when the problem belongs to the work order
+rather than to particular parts, open the **disposition form**. The work
+order's **Report…** dialog offers **Quarantine (quality hold)** as a type, but
+only as a link to that form; it does not hold anything by itself.
 
 A **failed** quality report against a part also puts it into quarantine; a
 passing or pending one does not — see [Quality Reports](quality-reports.md).
@@ -78,8 +70,22 @@ Quarantined parts display:
 
 - **Yellow status badge** on Tracker
 - **Quarantine indicator** in part detail
-- **Cannot pass** to next step
 - **Appear in quarantine queue**
+- **Cannot ship** — always, from anywhere
+
+!!! warning "Quarantine does not stop a part advancing unless the step says so"
+    This is the one most people assume wrongly. Blocking is a **per-step
+    opt-in**: a step only refuses to let a quarantined part past when its
+    **Block on quarantine** flag is set, and that flag is **off by default**.
+
+    On a routing where nobody armed it, a quarantined part keeps moving from
+    step to step. What quarantine always does is hold the part out of
+    **shipping** — it can never leave the building — and put it on the
+    dispositions queue.
+
+    If your procedure expects a quarantined part to stop dead at the next
+    operation, check the flag on the steps that matter. It is authored on the
+    step, so it is Engineering's to set.
 
 ## Quarantine Queue
 
@@ -106,21 +112,24 @@ For each quarantined part:
 
 ## Releasing from Quarantine
 
-Parts leave quarantine through disposition:
+Parts leave quarantine through a disposition. There are **five**, and the
+decision needs `approve_disposition` — or a co-signature from someone who holds
+it:
 
-### Use As Is
-Part is acceptable, release to continue production.
+| Decision | What happens to the part |
+|----------|--------------------------|
+| **Rework** | Back for correction to **full** conformance, then re-inspected |
+| **Repair** | Corrected, but with a **known accepted deviation** — needs a recorded approval reference |
+| **Scrap** | Terminal. Scrap verification records the method, so the part cannot re-enter the supply chain |
+| **Use As Is** | Accepted as it stands — needs a recorded approval reference. The part returns to **In progress** at the step it was already at, not to the next one |
+| **Return to Supplier** | Goes back to the vendor. The **RTV sheet** travels with the goods |
 
-### Rework
-Route to rework step, then re-inspect.
+!!! note "Rework and Repair only re-route a part that is still held"
+    If the part has already moved on, the disposition is recorded as a paper
+    record of what was authorised and the part's status is left alone — it does
+    not get dragged backwards.
 
-### Scrap
-Part is scrapped, removed from active inventory.
-
-### RTV
-Part returns to vendor.
-
-See [Dispositions](dispositions.md) for details.
+See [Dispositions](dispositions.md) for the full detail.
 
 ## Quarantine Location
 
@@ -132,21 +141,24 @@ For physical segregation:
 
 Best practice: Designated quarantine area with controlled access.
 
-## Lot Quarantine
+## A suspect material lot
 
-Quarantine entire material lots:
+When the problem is the material rather than one part — an incoming issue, a
+supplier escape, a recall — the question is *which units did this lot go into?*
 
-1. Identify suspect lot
-2. Search for all parts from lot
-3. Bulk quarantine
-4. Investigate
-5. Disposition by lot
+1. Open the lot and read its **forward trace**: the parts each step drew it
+   into, up through assemblies to the work order, order and customer
+2. Quarantine those parts from the work order's control page, ticking them in
+   the list
+3. Investigate
 
-This is common for:
+!!! note "There is still no bulk disposition"
+    You can quarantine many parts in one action. **Deciding** them is one record
+    at a time — see [A whole load quarantined at once](#a-whole-load-quarantined-at-once)
+    below for the single exception, which the system raises itself.
 
-- Incoming material issues
-- Supplier quality escapes
-- Recall situations
+The lot itself also has its own hold and reject routes at receiving, which are
+separate from part quarantine — see [Supply](../supply/overview.md).
 
 ## Quarantine Notifications
 
@@ -188,14 +200,26 @@ for how shared cycles differ from per-part work.
 
 ## Permissions
 
-Quarantine is implemented as a part status (QUARANTINED), so standard part permissions apply:
+Quarantine is a part **status**, not a record of its own, so putting a part into
+it is an ordinary part write — by default **every staff role can do it**,
+including an Operator. That is deliberate: anyone who sees a problem should be able to stop
+the part.
 
-| Permission | Allows |
-|------------|--------|
-| `view_parts` | View quarantined parts |
-| `change_parts` | Change part status to/from quarantine |
-| `approve_disposition` | Approve disposition decisions |
-| `close_disposition` | Close dispositions and release parts |
+The narrow permissions are the ones that decide what happens next:
+
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_parts` | See quarantined parts | Every staff role |
+| `add_parts` / `change_parts` | Put a part into or out of quarantine | Every staff role |
+| `approve_disposition` | **Decide** what happens to it | QA Manager, Tenant Admin |
+| `close_disposition` | **Close** the disposition once resolved | QA Inspector, Shift Lead, Production Manager, QA Manager, Tenant Admin |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+!!! note "Holding is open; releasing is not"
+    Anyone can quarantine. Getting a part *out* means a disposition, and
+    deciding one is material review authority — so the part stays held until
+    quality acts, whoever put it there.
 
 ## Next Steps
 

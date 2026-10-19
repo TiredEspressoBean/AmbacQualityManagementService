@@ -1,7 +1,10 @@
 # Role Workflow Audit
 
-**Status:** live and maintained. **138 rows across 11 roles**, nearly all walked
-against the running application and dated. This is the one file in `Documents/`
+**Status:** live and maintained. **131 rows across 11 roles**, nearly all walked
+against the running application and dated. (Counted 2026-10-15: Operator 18,
+Shift Lead 16, QA Inspector 14, Receiving 13, Shipping 13, QA Manager 12,
+Production Manager 11, Scheduler 10, Document Controller 9, Engineering 8,
+Purchasing 7. The header previously said 138, which matched nothing.) This is the one file in `Documents/`
 that is *not* design history — see the staleness note on the rest of that
 directory before trusting anything else in it.
 
@@ -96,9 +99,14 @@ see the note under QA Inspector.
 
 ## Scope
 
-The eight roles who are in the software constantly or daily. Periodic roles
-(Planner, Purchasing, Document Controller, Engineering) and read-only roles
-(Auditor, Customer, Administrator) are out of scope for this pass.
+**Eleven roles, all walked** — the daily ones first, the periodic ones added once
+their training tracks needed ground truth. Out of scope: **Administrator**,
+**Auditor** and **Customer**, by user decision 2026-10-15 (see the header).
+
+*The original scope was narrower — the eight daily roles only, with Planner,
+Purchasing, Document Controller and Engineering deferred as "periodic". It
+widened on 2026-10-12. The note below is how that happened; the sentence above
+is where it stands.*
 
 > **Update 2026-10-12.** **Engineering**, **Purchasing** and **Document
 > Controller** have since been walked and have their own sections below — their
@@ -233,17 +241,15 @@ The eight roles who are in the software constantly or daily. Periodic roles
 > nuance the doc does not state is that a substep is saved when the operator moves
 > off it, not on each keystroke.
 >
-> **Docs queued against the skip retirement — do NOT write them early.** The peer's
-> work is uncommitted, and HEAD still contains `skip_out_of_scope`, so
-> `docs/workflows/reman/rebuild.md:269-276` (*"Out-of-scope steps are skipped, and
-> the skip is recorded"*) is **correct today** and becomes false only on their
-> commit. Rewriting it now would make the docs wrong about HEAD. On their commit,
-> rewrite that admonition as the check/Repair-node behaviour and revisit
-> `dwi/running.md` (traveler section; the "What happens next" blocker table wants a
-> repair-hold row). Everything else in docs/ matching "skip" is an unrelated sense —
-> skip-lot sampling, optional substeps, FEFO lot skipping, labour-model conditions —
-> and stays correct. `training/shift-lead.md:428` cites "resolved scope" for
-> over-and-above and also survives, since scope still plans the rebuild.
+> **The skip retirement is done, and the docs followed it.**
+> `workflows/reman/rebuild.md` now states the current behaviour — *"Nothing is
+> skipped. Every unit walks the whole main line of its rebuild route. Scope
+> decides which repair branches the route's checks send it down, not which
+> operations it performs."* It also keeps why the earlier arrangement was
+> replaced: an operation nothing happened to name was walked past, and a
+> decision point walked past with no result left the unit deadlocked. Other
+> uses of "skip" in `docs/` are unrelated senses — skip-lot sampling, optional
+> substeps, FEFO lot skipping, labour-model conditions.
 >
 > **Demo-data gaps are collected in `DEMO_SEED_REQUIREMENTS.md`** (new,
 > 2026-10-13). Several rows here are blocked not by a missing feature but by a
@@ -260,7 +266,8 @@ The eight roles who are in the software constantly or daily. Periodic roles
 > Two statements in this section have also aged out: Shift Lead now **has** a role
 > guide (`docs/roles/shift-lead.md`), and the Home-block counts below predate the
 > launchpad cards being added for Planner, Receiving, Shipping, Purchasing and
-> Auditor.
+> Auditor. **Both acted on 2026-10-15** — the Role-page column is gone, since
+> every one of the fifteen roles now has a guide.
 
 ### Interaction depth
 
@@ -268,23 +275,34 @@ From `ambac-tracker-ui/src/components/home/home-blocks.tsx`, which declares the
 Home blocks each group receives — the application's own statement of what a role
 does daily.
 
-| Role | Home blocks | Role page |
-|------|-------------|-----------|
-| QA Manager | 13 | yes |
-| Production Manager | 12 | yes |
-| **Shift Lead** | **11** | **none** |
-| Document Controller | 6 | yes |
-| Engineering | 5 | none |
-| Purchasing | 4 | none |
-| Operator | 3 | yes |
-| QA Inspector | 3 | yes |
-| Auditor, Customer | welcome only | Customer only |
+| Role | Home blocks |
+|------|-------------|
+| QA Manager | 13 |
+| Production Manager | 12 |
+| **Shift Lead** | **11** |
+| Document Controller | 6 |
+| Engineering | 5 |
+| Purchasing | 4 |
+| Operator | 3 |
+| QA Inspector | 3 |
+| Auditor, Customer | welcome only |
 
 !!! note
     Block count is **not** depth. Operator gets three blocks because operators
     live inside the step player, not on Home. Their depth is in DWI.
 
-**Shift Lead is the third-heaviest role in the application and has no guide.**
+!!! note "The "Role page" column is gone — it is all yes now"
+    Dropped 2026-10-15. It existed to carry one finding: *Shift Lead is the
+    third-heaviest role in the application and has no guide.* That was true when
+    written and is not now — `docs/roles/` holds a page for **all fifteen**
+    roles, including the three the column still marked "none" (Shift Lead,
+    Engineering, Purchasing) and the Auditor it marked "Customer only". A column
+    whose every cell reads yes measures nothing, and leaving it stale let one
+    fixed gap keep reading as open in four places at once.
+
+    Counts are also older than the launchpad cards added for Planner, Receiving,
+    Shipping, Purchasing and Auditor. Re-measure from `home-blocks.tsx` before
+    quoting a number here.
 
 ## Only code settles the Code column
 
@@ -350,34 +368,39 @@ shop does not have.
     which made the Code column unreadable at a glance — the thing the column
     exists for. If you add a marker, add it here in the same edit.
 
-!!! important "The Code column answers *does it work*, not *can you show it*"
-    A third state exists and has no column: **supported in code, not
-    demonstrable on seeded data.** Those rows are green and correctly so — the
-    application does the job — but nobody can watch it happen, which makes them
-    invisible to a demo and **unteachable in a training track**.
+!!! important "Docs, Code, Demo and Training are four different questions"
+    They are deliberately not collapsible, and each answers something the others
+    cannot:
 
-    That distinction is the seed's worklist, and it is derived here rather than
-    invented elsewhere. **As of 2026-10-15, eight rows are in that state:**
+    | Column | Question |
+    |--------|----------|
+    | **Docs** | Is there a page that explains it? |
+    | **Code** | Does the application do the job? |
+    | **Demo** | Can it be **shown** on seeded data? |
+    | **Training** | Is there a module where someone is taught to **do** it? |
 
-    | Row | Why it cannot be shown |
-    |-----|------------------------|
-    | Operator R2 | The finding capture is authored, but no demo core is at a step that raises one |
-    | Operator R3 | Bench-side half needs a core on a work order with a settled scope |
-    | Operator C1 | Rework refuses — the demo's rework step has no inspection substep to send a unit to |
-    | Shipping 8 | Return customer property |
-    | Shipping 9 | Both shipped work orders carry order lines, so neither the fallback nor the unmeasured count is exercised |
-    | QA Manager R1 | Recording the customer's answer on over-and-above |
-    | Engineering 4 | Authoring DWI substeps |
-    | Document Controller 6 | No document has a review interval, so *due for review* is permanently empty |
-    | QA Manager 10 | Gauge-exposure page is built, but no calibration FAIL record exists to open it from |
-    | QA Manager R1 | Recording the customer's answer — no demo exhibit |
+    **Demo exists because a third state kept leaking.** A row can be green on
+    Code and correctly so — the application does the job — while nobody can
+    watch it happen, which makes it invisible in a demo and **unteachable**. That
+    state used to live in a hand-maintained list here; it is now a column, which
+    is the point. A list beside a table is a second source of truth, and this one
+    drifted within three days of being written: it said "eight" above a table of
+    ten, listed one row twice, and named four rows their own cells recorded as
+    closed. It had been built with a regex, which matched each row's description
+    of its **old** dark state and never saw the correction appended after it.
 
-    **This list is not exhaustive.** It was assembled by reading, and a row only
-    appears once someone notices. Add to it when you meet one; that is cheaper
-    than a periodic sweep and more reliable than remembering.
+    > **A pattern match over a cell reads the first thing said about a row, not
+    > the last.** Set Demo by reading the row.
 
-    **Do not mark these ⚠️.** The caveat marker means the capability itself has
-    a catch; these have none. Say it in the note and list it here.
+    **Training is downstream of Demo** — you cannot teach what you cannot show —
+    so a `❌` in Demo predicts one in Training. It is `?` on every row today,
+    deliberately: the training arc has not been built, and judging the current
+    files against 131 rows would record claims about artifacts that are about to
+    be replaced.
+
+    **Do not reach for ⚠️ here.** The caveat marker means the capability itself
+    has a catch. A row that works but cannot be shown is `✅` on Code and `❌` or
+    `🚧` on Demo.
 
 !!! note "The Docs column was caught up on 2026-10-12 — and this warning outlived it"
     **Re-counted 2026-10-15: 130 of 131 rows now read ✅ in the Docs column.**
@@ -468,7 +491,16 @@ shop does not have.
     **voiding a completion** is in `workflows/dwi/running.md` with the right
     permission split.
 
-    **Both columns are now trustworthy.** Code was walked; Docs was read.
+    **Both columns were trustworthy on 2026-10-12.** Code was walked; Docs was
+    read.
+
+    !!! warning "And that is a claim with a shelf life — it had already expired"
+        Added 2026-10-15. Five Docs rows went stale within three days of this
+        sentence being written, because work landed and nobody came back to the
+        row. **A sweep makes a column true on a date; only the
+        flip-the-row-with-the-change habit keeps it true.** Read any
+        "now trustworthy" line here as *as of the date beside it*, and if you
+        need to rely on it, re-check the rows you depend on.
 
 ---
 
@@ -476,18 +508,26 @@ shop does not have.
 
 The unit of work is a **step**, not a job.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | See what to work next, and claim it | ✅ | ✅ | verified 2026-10-06 as `mike.ops`. Up next / Then / In progress / See everything ready |
-| 2 | Identify the right physical unit (scan) | ✅ | ✅ | verified in the batch/load runtime — *"Scan each part into the load"*, Captured ✓. Docs narrower than the app (see DRIFT) |
-| 3 | Prove qualification before starting, or be authorised | ✅ | ✅ | **verified live 2026-10-07** — refused, overridden by a supervisor, override recorded |
-| 4 | Follow the instruction and record as you go | ✅ | ✅ | verified 2026-10-06 — DWI runtime: spec check, in-spec badge, attestation, review screen |
-| 5 | Record which material lot was actually taken | ✅ | ✅ | **row misframed** — it's automatic FEFO on step exit, not an operator choice. 0 rows exist **LIT 2026-10-12** by seed phase 9 (`dark_exhibits.py`). `MaterialUsage` was **0 rows tenant-wide**; consumption now runs through `consume_for_step`, which resolves released BOM lines, honours shelf life and refuses another customer's property. Verified on the traveller: INJ-0042-005's Assembly row carries *Lot STOCK-CRI-SPR · Injector Spring · 1* and *Lot STOCK-CRI-SOL · Solenoid Coil · 1*. This also revives the traveller's recorded-values and overrides sections and the backward part→lot trace. |
-| 6 | Report a problem mid-step | ✅ | ✅ | verified — **"Can't run this?"** is the live path (4 reasons, each routed to a named owner). The home *Report a problem* tile is dimmed preview |
-| 7 | Work a batch another operator started | ✅ | ✅ | verified 2026-10-06 — batch claim dialog + **reassignment gate** fires live |
-| 8 | Finish and move the unit on | ✅ | ✅ | **fix verified 2026-10-07** — lands on the work order, no live Complete step button |
-| 9 | Account for time | ✅ | ✅ | verified — clock in/out/break/lunch writes a `SHIFT` TimeEntry. Note `approved:false` → an approval gate exists |
-| 10 | See what I am qualified for, and what is expiring | ✅ | ✅ | verified — *My Training* + his own expiring cert. (He also sees manager tiles; API refuses him) |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See what to work next, and claim it | ✅ | ✅ | ✅ | ? | 2026-10-06 | Up next / Then / In progress / See everything ready. The operator home is the claiming surface, not the Work Orders page. |
+| 2 | Identify the right physical unit (scan) | ✅ | ✅ | ✅ | ? | 2026-10-06 | Verified in the batch/load runtime — *"Scan each part into the load"*, Captured ✓. The box takes lots, serials and locations as well as work orders; the docs are narrower than the app. |
+| 3 | Prove qualification before starting, or be authorised | ✅ | ✅ | ✅ | ? | 2026-10-07 | Refused, overridden by a supervisor, override recorded with worker, authoriser, reason and what was missing. Demo lit by one field (Nozzle Inspection `min_level: 2`). |
+| 4 | Follow the instruction and record as you go | ✅ | ✅ | ✅ | ? | 2026-10-06 | DWI runtime: spec check, in-spec badge, attestation, review screen. A value fixed before **Complete step** never becomes a nonconformance. |
+| 5 | Record which material lot was actually taken | ✅ | ✅ | ✅ | ? | 2026-10-12 | **Row misframed** — consumption is automatic FEFO on step exit, attributed to the operator, not a choice they make. Reads correctly as *"have the lots I used recorded against the unit"*. |
+| 6 | Report a problem mid-step | ✅ | ✅ | ✅ | ? | 2026-10-06 | **"Can't run this?"** is the live path — four reasons, each routed to a named owner, stating the consequence up front. The home *Report a problem* tile is dimmed preview. |
+| 7 | Work a batch another operator started | ✅ | ✅ | ✅ | ? | 2026-10-06 | Batch claim dialog plus the **reassignment gate**, which fires live and names the current owner. |
+| 8 | Finish and move the unit on | ✅ | ✅ | ✅ | ? | 2026-10-07 | Lands on the work order with no live **Complete step** button. The **lot** advances, not the part — a finished unit can still wait on a lot-mate. |
+| 9 | Account for time | ✅ | ✅ | ✅ | ? | 2026-10-06 | Clock in/out/break/lunch writes a `SHIFT` TimeEntry. `approved: false` means an approval gate exists. |
+| 10 | See what I am qualified for, and what is expiring | ✅ | ✅ | ✅ | ? | 2026-10-06 | *My Training* plus his own expiring certification. He also sees manager tiles; the API refuses him. |
+| 11 | Read and acknowledge shift notes and notifications at clock-in | ✅ | ✅ | ✅ | ? | 2026-10-07 | Note received with MUST ACKNOWLEDGE, acknowledged, recorded with name and timestamp. |
+| 12 | Be called over as the second person on someone else's gate | ✅ | ✅ | ✅ | ? | 2026-10-07 | Verified on **both** gates — training override and reassignment. The one thing an operator does purely for somebody else's record. |
+| R1 | Grade a component at teardown, with the part in your hand | ✅ | ✅ | ✅ | ? | 2026-10-07 | A DWI capture node, not a button. Carries the best domain guidance in the product: *"When in doubt, grade down — a reused-but-marginal component fails downstream."* **Copy-vs-control drift:** the instruction says sort into reuse / rework / scrap; the control offers Pass / Fail / Pending. |
+| R2 | Raise a finding at the bench when a reused part fails later | ✅ | ✅ | ✅ | ? | 2026-10-13 | Walked end to end: the check held the unit, a lead applied the finding, the rebuild plan re-resolved from it, and the unit routed down Nozzle Recondition and rejoined at Flow Testing. |
+| R3 | Work a rebuild step whose scope was only settled this morning | ✅ | ✅ | ✅ | ? | 2026-10-12 | `scope.py` derives on read and writes nothing — the plan page renders operations and slots with a per-row *Because/Why* and states that it reserves and orders nothing. |
+| C1 | Pull one unit out of a batch and send it back for rework | ✅ | ✅ | ❌ | ? | 2026-10-15 | The bulk write lands and is scoped to the selection (two parts quarantined, the unselected one untouched). **Demo ❌:** Rework refuses, correctly — the demo's rework step has no inspection substep to send a unit to. Seed authoring, not product capability. |
+| C2 | Get an erroneous record corrected | ✅ | ⚠️ | 🚧 | ? | 2026-10-15 | Corrections go through `RecordEdit`, written at 10 service sites. **Only the priority-change site has a read surface**; the other nine capture a reason nothing displays. Pairs with Shift Lead C1, where a reason is captured and now shown. <br><br>**Reframed 2026-10-19.** The `RecordEdit` sites are not operator corrections. They cover lot moves, quantity adjustments, cancelled and chased expected deliveries, shipments and voided shipments, WO priority, and receiving hold reasons — supply-side changes. An operator's bad record is corrected by a quality role voiding the substep completion and the work being re-captured (void scope decided substep-only, 2026-10-19). So the unread reasons are a Receiving / Shipping / Purchasing gap, not an Operator one. **Undecided:** whether and where to show them. |
+| C3 | Work when the terminal or scanner is down, and catch up after | ✅ | ❌ | — | ? | 2026-10-07 | **Settled intent, not a gap.** `entered_at` is deliberately not backdatable (it is traceability evidence) and there is no offline mode — an offline write queue would be a backdating mechanism by another name. The paper traveller is the fallback and `running.md` says so. |
 
 !!! danger "Correction: there is no handover, and no pause — the unit of work is wrong"
     **Work is batched, and nobody stops half way through a part.** An operator
@@ -510,23 +550,6 @@ The unit of work is a **step**, not a job.
     single part being worked, held, interrupted or transferred needs re-reading
     against batch flow before it is audited.
 
-| 11 | Read and acknowledge shift notes and notifications at clock-in | ✅ | ✅ | **verified end to end 2026-10-07** — note received, MUST ACKNOWLEDGE, acked, recorded with name + timestamp |
-| 12 | Be called over as the second person on someone else's gate | ✅ | ✅ | **verified live 2026-10-07** on both gates — training override and reassignment |
-| R1 | Grade a component at teardown, with the part in your hand | ✅ | ✅ | **verified 2026-10-07** — Component Grading substep, walked end to end |
-| R2 | Raise a finding at the bench when a reused part fails later | ✅ | ✅ | **Authored and reachable in principle; not demonstrable on current demo data (2026-10-08).** `rebuildFindingCapture` is now authored — step **Nozzle Inspection**, optional substep *"Report a component found worse (reman)"* (confirmed in `Substep.body_blocks`). But the demo's only core under rebuild, CORE-240210-0007, **does not have Nozzle Inspection in its resolved scope** (its 5 operations are Cleaning, Flow Testing, Assembly, Final Test, Packaging), so it never visits the step. The 7 units that ARE at Nozzle Inspection are ordinary parts, not cores, so a component finding has no subject there. The mechanism is proven to work from the other end — the seed raises one through `findings.record_finding` and Shift Lead R1 decides it. **What is missing is a rebuild whose scope includes the step the node sits on.** **WALKED END TO END 2026-10-13 — row closed.** Scope no longer routes a unit, so CORE-240210-0007 now *visits* Nozzle Inspection, and the full repair sequence ran: the check held the unit with *"A finding on **Injector Nozzle Assembly** … (grade C) is waiting on a lead's decision"*; a Shift Lead (`casey.dual`) applied it on the rebuild plan (toast *"Injector Nozzle Assembly: grade is now C"*); **the plan re-resolved from the applied finding**, flipping Expected repairs from `NZL-REPLACE / Needs approval` to `Nozzle Recondition / NZL-RECON / Goes ahead / Injector Nozzle Assembly: Grade C, from this unit` — a grade-C nozzle is reconditionable, so it stops needing replacement; the player's panel then showed **"This unit goes here"** on NZL-RECON; and completing the check routed the unit down the branch and back:
-
-    Cleaning            COMPLETED
-    Nozzle Inspection   COMPLETED   (check — routed on the applied finding)
-    Nozzle Recondition  COMPLETED   (repair branch)
-    Flow Testing        PENDING     (rejoined the main line)
-
-The repair node's own instruction names the rejoin: *"Flow Testing comes next and proves the repair — you don't test it here."* |
-| R3 | Work a rebuild step whose scope was only settled this morning | ✅ | ✅ | `scope.py` resolves it and writes nothing — **the derive-on-read claim is now confirmed in the browser**: the rebuild plan page renders operations + slots with a per-row *Because/Why*, and states it reserves and orders nothing. Bench-side half still not walked (needs a core on a work order with a settled scope).  **Re-checked 2026-10-12 — the bench-side half is blocked by DEMO DATA, not by the harness.** The tenant's only `IN_REBUILD` core, CORE-240210-0007 (*Rebuild & return*, Injector Reman), sits at **Cleaning with zero `StepExecution` rows** — the rebuild was released but no work has begun, so there is nothing at a bench to work and no out-of-scope step to observe being SKIPPED. Unlike the other dark exhibits this is not a row insert: it needs a core **walked into** rebuild work, which the seed can do and phase 9 deliberately does not (it populates records, it does not advance flows). **UNBLOCKED 2026-10-12 alongside R2.** The bench half needed an out-of-scope step to observe being SKIPPED; there is no such thing any more. What replaces it is the check/Repair-node outcome, which is a different and better observation: the traveler shows a branch not taken rather than an op walked past. Re-frame this row to that when the reseed lands. |
-
-| C1 | Pull one unit out of a batch and send it back for rework | ✅ | ✅ | **RE-WALKED 2026-10-15 — the bug is gone; what remains is a seed gap, not a code one, so this is green and on the not-demonstrable list in the status key.** On WO-2024-0042-A as `admin@demo.ambac.com`: selected INJ-0042-020 and INJ-0042-022 (both IN_PROGRESS), pressed **Quarantine** in the bulk bar, and both went to QUARANTINED in the database while the unselected INJ-0042-024 stayed IN_PROGRESS — **the write lands and is scoped to the selection.** Test state restored afterwards. The button sends `status: "QUARANTINED"`, a valid `PartsStatus`, and `services/mes/parts.bulk_set_status` raises on anything invalid rather than passing silently, so the old string-vs-UUID symptom cannot recur in that form. <br><br>**Why this still is not green: Rework refuses**, and correctly — the demo's rework step has no inspection substep to send a unit to. That is **demo authoring, not product capability**, so the job is supported and simply undemonstrable until the seed authors one. It belongs to the seed work, not a bug list. <br><br>**A silent no-op is the one class of defect a code read cannot clear** — the absence of a write is not visible in the source — which is why this row needed driving rather than reading, twice. Original note: *Walked 2026-10-07 — found a bug. Quarantine returned HTTP 200 and wrote nothing — string-vs-UUID key bug in `_load_parts_scoped`, affecting all three bulk actions.* |
-| C2 | Get an erroneous record corrected | ✅ | ⚠️ | **Walked 2026-10-07.** Operators cannot delete — 403 on DELETE across every model probed — which is correct: the escape hatch is a lead (Shift Lead C2, `void_substepcompletion`). Corrections themselves go through **`RecordEdit`**, whose own docstring is exactly this row: *"Used when records are edited (not voided) to maintain history of what was changed, by whom, and why."* It is written at **9 service call sites** (locations, material_lot ×4, shipping ×3, receiving_inspection) and the demo now holds 3 real rows, two of them from this audit's own walks (`storage_location/Moved`, `chase_note/Chased`, `promised_date/"Spoke to their scheduler…"`). **But `RecordEdit` is write-only: no viewset, no serializer, no URL, and no frontend reference anywhere.** The reason a record was corrected is captured and then unreachable outside the database. `django-auditlog` separately records the *change* and IS surfaced (part history / audit trail) — so the field, old value and new value are visible while the **why** is not. **Pairs with Shift Lead C1:** there, a reason is never captured; here, it is captured and never shown. <br><br>**Both halves moved on 2026-10-15, and the pairing predicted it.** Shift Lead C1 now *captures* a reason on a priority change (`5b9b6d0`), and the same work gave `RecordEdit` its **first read surface**: `WorkOrderSerializer.priority_changes` is a `SerializerMethodField` calling `services/mes/work_order.priority_changes`, so the work order response carries `[{from_priority, to_priority, reason, changed_by, changed_at}]` and the edit form lists the last five with their reasons. **So `RecordEdit` is no longer write-only — but only for this one field.** The other 9 call sites (locations, material lot ×4, shipping ×3, receiving inspection) still write a reason nothing reads. The row stays ⚠️ for that remainder, and the shape of the fix is now known rather than theoretical. |
-| C3 | Work when the terminal or scanner is down, and catch up after | ✅ | ❌ | **Answered 2026-10-07 — and this one is settled intent, not an accidental gap.** **Catch up after: deliberately refused.** `StepExecution.entered_at` carries the decision in the model: *"Deliberately auto_now_add — NOT backdatable (user decision 2026-10-07). It is traceability evidence: when the part really reached the step. Making it writable would let any code path, and the serializers, rewrite execution history. History from the ERP at go-live, if ever needed, goes through a separate import path that marks rows as imported — this is why the earlier go-live-history feature was removed."* **Work while down: not supported.** No service worker, no PWA plugin, nothing in `public/`, no `navigator.onLine` handling, no offline mutation queue. `queryClient` sets `networkMode: 'offlineFirst'` with a 60s staleTime, so cached **reads** survive a brief drop — **writes do not**. So the honest answer is: the floor stops, and the work is entered when the terminal returns, at the time it is entered. **This is the one row where absence IS the answer** — the backdating half is a recorded decision, and the offline half follows from it: an offline queue would be a backdating mechanism by another name. ~~**Docs ❌: should be written down as a stated limitation, not left for a customer to discover.**~~ **Done — `workflows/dwi/running.md` states it plainly: there is no offline mode, the player needs the server, and when the terminal or network is out "work does not stop — the paper traveller does." Verified 2026-10-15.** |
-
 ## QA Inspector
 
 The unit of work is a **decision** — but not the one I first wrote down. The
@@ -540,37 +563,37 @@ journeys are an independent derivation of this same list. Its companion is
 
 ### Where work arrives
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Read the home page | ✅ | ✅ | FPI banner · Inbox chips (All/Receiving/OSP returns/In-process) · My quality actions · Your gauges |
-| 2 | Scan to navigate | ✅ | ✅ | every scan resolves to the **parent work order** |
-| 3 | Receiving inspection, and clear the paperwork holds | ✅ | ✅ | *Accept lot / Reject lot*, not "complete step"; self-clearing holds resolve here |
-| 4 | First-piece buy-off | ✅ | ✅ | a **batch gate**; SoD — the operator signed the substeps, so QA signs the buy-off |
-| 5 | A sampled in-process inspection | ✅ | ✅ | the workflow is answering **"why this part?"** — the plan and sample size are generated |
-| 6 | OSP return inspection | ✅ | ✅ | before it rejoins the routing; unified queue = purchased + OSP |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Read the home page | ✅ | ✅ | ✅ | ? | 2026-10-06 | FPI banner · Inbox chips (All / Receiving / OSP returns / In-process) · My quality actions · Your gauges. |
+| 2 | Scan to navigate | ✅ | ✅ | ✅ | ? | 2026-10-06 | Every scan resolves to the **parent work order**. |
+| 3 | Receiving inspection, and clear the paperwork holds | ✅ | ✅ | ✅ | ? | 2026-10-06 | *Accept lot / Reject lot*, not "complete step". Self-clearing holds resolve here; the multi-hold panel on `RCV-MAT-HOLD` matches the documentation exactly. |
+| 4 | First-piece buy-off | ✅ | ✅ | 🚧 | ? | 2026-10-13 | A **batch gate**, and a separation of duties: the operator signed the substeps, so QA signs the buy-off. **Demo 🚧:** both *seeded* FPIs are unsignable — one has no designated part, the other's is quarantined with an out-of-spec measurement. A walk-created FPI signs first time. Recorded in `DEMO_SEED_REQUIREMENTS.md` item 2. |
+| 5 | A sampled in-process inspection | ✅ | ✅ | ✅ | ? | 2026-10-06 | The workflow is answering **"why this part?"** — the plan and sample size are generated, not decided. `INJ-QA-INSPECT-002` is staged with reason *Post-repair verification* and one rework pass. |
+| 6 | OSP return inspection | ✅ | ✅ | ✅ | ? | 2026-10-06 | Before it rejoins the routing. The unified queue is purchased lots + OSP returns, with a **Source** column and one runtime for both. |
 
 ### The core — "the one to protect"
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 7 | An out-of-spec reading quarantines the part and raises its disposition | ✅ | ✅ | derived, not chosen |
-| 8 | Work the disposition — **the decision needs a co-sign** | ✅ | ✅ | inspector lacks `approve_disposition`; manager authenticates on the inspector's screen (AS9100 8.7) |
-| 9 | Close the disposition — this one is yours | ✅ | ✅ | **verified 2026-10-07** — refusal names BOTH missing things in one message |
-| 10 | Re-inspect after rework, history first | ✅ | ✅ | exhibit correctly poised (FAIL → CLOSED REWORK → AWAITING_QA); **could not confirm it surfaces in the inbox** |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 7 | An out-of-spec reading quarantines the part and raises its disposition | ✅ | ✅ | ✅ | ? | 2026-10-06 | Derived, not chosen. *The spec is the judge* — there is no Pass/Fail button. **The two side effects of a FAIL fire on different triggers:** `record_quality_report_side_effects` (quarantine, step alert, sampling) runs **only on create** and only with a part attached, while `signals.auto_create_disposition` is a `post_save` with no `created` check, so it fires on **any** save at FAIL. A report edited from PENDING to FAIL therefore opens a disposition against a part that was never quarantined. |
+| 8 | Work the disposition — **the decision needs a co-sign** | ✅ | ✅ | ✅ | ? | 2026-10-06 | The inspector lacks `approve_disposition`; an approver authenticates **on the inspector's screen** without logging them out, and the decision commits under the approver's name (AS9100 8.7). Verified: `decision_authorized_by` = the approver, state → IN_PROGRESS. The single best screen in the product. |
+| 9 | Close the disposition — this one is yours | ✅ | ✅ | ✅ | ? | 2026-10-07 | The refusal names **both** missing things in one message — no decision selected, and containment required before closing a CRITICAL/MAJOR. One pass to satisfy rather than two bounces. |
+| 10 | Re-inspect after rework, history first | ✅ | ✅ | ✅ | ? | 2026-10-07 | Exhibit correctly poised: `INJ-QA-INSPECT-004` runs FAIL → CLOSED REWORK → AWAITING_QA, staged at the re-inspection moment. **Unconfirmed:** whether the part surfaces in the inspector's queue — in-process rows are grouped by (work order, step) and carry no part ids, so its absence from the payload proves nothing. Needs a grouped row expanded in the UI, not another API read. |
 
 ### Alongside
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 11 | Work a CAPA task; author a verification plan; initiate one for a pattern | ✅ | ✅ | outcome needs `verify_capa` — manager. Disposition = this part, CAPA = the pattern |
-| 12 | Check a gauge's calibration before using it | ✅ | ✅ | *Your gauges* tile is the point-of-use nag |
-| 13 | Read a finished record and narrate it backward | ✅ | ✅ | red flag: QUARANTINED/SCRAPPED with no QR or disposition behind it |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 11 | Work a CAPA task; author a verification plan; initiate one for a pattern | ✅ | ✅ | ✅ | ? | 2026-10-06 | The outcome needs `verify_capa`, which is a manager's. Two stages the button names do not convey: **Add Verification** records a *plan*, **Complete Verification** records the *outcome*. Disposition = this part; CAPA = the pattern. |
+| 12 | Check a gauge's calibration before using it | ✅ | ✅ | ✅ | ? | 2026-10-06 | The *Your gauges* tile is the point-of-use nag — a gauge used in the last 7 days whose calibration is due within 7 days. Lit by `quality.py::link_inspector_gauge`; reads *"Torque Wrench TW-25 — overdue 15d"*. |
+| 13 | Read a finished record and narrate it backward | ✅ | ✅ | ✅ | ? | 2026-10-15 | Red flag to teach: QUARANTINED or SCRAPPED with no quality report or disposition behind it. The per-serial **Traveler** now supplies the step history this row used to lack. |
 
 ### Reman
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| R1 | Accept or reject a harvested component into stock | ✅ | ✅ | **Walked 2026-10-07 as maria.qa.** `/reman/components` → row menu offers *View Source Core / Accept to Inventory / Scrap Component*. Accept dialog states the customer-property rule in plain words: *"It becomes a part in stock. If its core goes back to its customer, the part is reserved for that core and can't go into anyone else's rebuild."* Confirmed → status **Pending → In Inventory**, Part ID issued. Two small blemishes (neither a defect): no success toast, unlike every comparable flow; and the generated serial `HC-CORE-240215-0006-BODY01A1171B` appends a raw UUID fragment. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| R1 | Accept or reject a harvested component into stock | ✅ | ✅ | ✅ | ? | 2026-10-07 | `/reman/components` → *View Source Core / Accept to Inventory / Scrap Component*. The Accept dialog states the customer-property rule plainly: *"It becomes a part in stock. If its core goes back to its customer, the part is reserved for that core and can't go into anyone else's rebuild."* Pending → In Inventory, Part ID issued. Two blemishes, neither a defect: no success toast, unlike every comparable flow; and the generated serial appends a raw UUID fragment. |
 
 !!! note "Three rows removed, with reasons"
     - **Know the sample size / accept-reject rule** — generated and displayed, not
@@ -587,15 +610,26 @@ journeys are an independent derivation of this same list. Its companion is
     met and cleared inside #3, and releasing a judgement hold is a manager's act.
 
 
-!!! warning "Table back-filled 2026-10-07 — rows 9 and 10 remain genuinely unaudited"
+!!! note "Table back-filled 2026-10-07 — and the four exceptions it named are now closed"
     These marks were reconstructed from the Findings below, which were written as
-    the pass happened while the table was not kept in step. Every ✅ above points to
-    a named finding; **rows 9 (close the disposition) and 10 (re-inspect after
-    rework, history first) were never walked** and keep their `?`.
+    the pass happened while the table was not kept in step. Every ✅ above points
+    to a named finding.
 
-    Row 2 is ⚠️ on docs because of the scan-box drift; row 13 is ⚠️ because the
-    record reads back but, as QA Manager row 11 records, there is no step-by-step
-    history behind it.
+    **Corrected 2026-10-15.** This admonition described four rows that have since
+    moved, and it was contradicting its own table in all four:
+
+    - **Row 9** (close the disposition) — said to keep its `?`; **walked
+      2026-10-07**, see *VERIFIED — closing a disposition, and a refusal that
+      names everything at once*.
+    - **Row 10** (re-inspect after rework) — said to keep its `?`; walked the
+      same day. The exhibit is correctly poised; what stayed open is narrower and
+      is recorded on the row itself — whether the part surfaces in the grouped
+      inbox could not be confirmed, because no inbox row carries part ids.
+    - **Row 2** — said to be ⚠️ on docs for the scan-box drift. The drift was
+      written up; the row is ✅.
+    - **Row 13** — said to be ⚠️ because no step-by-step history sat behind the
+      record. **QA Manager row 11 closed that on 2026-10-15**: the part detail
+      page carries a per-serial **Traveler**. The reason for the caveat is gone.
 
     **The lesson is about the artifact, not the work.** A table left at `?` while
     the prose fills up makes a finished pass look untouched — the at-a-glance view
@@ -605,26 +639,24 @@ journeys are an independent derivation of this same list. Its companion is
 
 The unit of work is the **shift**.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | See the shift's state at a glance | ✅ | ✅ | **verified 2026-10-07** as `casey.dual` — biggest fire, late jobs, quarantine, CAPAs, OSP, training |
-| 2 | Put people on jobs | ✅ | ✅ | **Unblocked and walked 2026-10-12** — the earlier note (*0 ScheduledTasks — never solved*) is stale; there are now **2,849 tasks across 5 solves**. Walked as `casey.dual`: the board renders every resource as a lane, a task panel gives work order / due date / machine / work centre / operator / fence zone / live status, and **Reassign** is honest about scope — *"Reassign — applies now, re-solve to optimize"*. The operator picker is **filtered by eligibility** (work-centre membership), not a flat list. |
-| 3 | Cover an absence or no-show | ✅ | ✅ | **Unblocked 2026-10-12**, same surface as row 2. Worth teaching as a diagnostic: an **empty operator picker is a training problem wearing a scheduling costume** — nobody is qualified and rostered for that work centre. |
-| 4 | Unblock a stopped job | ✅ | ✅ | the Control Center **Exceptions** tab — unified 21 items, each with its impacted WO and a direct link |
-| 5 | Authorise an unqualified operator, on the record | ✅ | ✅ | **verified 2026-10-07** via the Operator pass — override recorded with both names, reason and timestamp |
-| 6 | Triage a quality event without escalating everything | ✅ | ✅ | Exceptions tab: source, severity, age, owner, *Open only* filter, bulk resolve |
-| 7 | Watch what is going late | ✅ | ✅ | *Jobs going late (2)* on the hero + **Overdue / Due today** filters in the Control Center |
-| 8 | Hand over to the next shift | ✅ | ✅ | **verified end to end 2026-10-07** — NOT weak: audience targeting, priority, acknowledgment tracking |
-| 9 | See who is qualified for what | ✅ | ✅ | training matrix (verified under QA Manager row 8) + current/expiring/expired on the hero |
-| 10 | Escalate what the shift cannot solve | ✅ | ✅ | **Report exception** on the Exceptions tab; existing items carry source and severity |
-
-| R1 | Decide a pending finding — apply or dismiss | ✅ | ✅ | **Walked end to end 2026-10-08, after the reseed authored the capture nodes.** `PendingFindingsCard` rendered for the first time in this audit: *"1 finding to decide — Raised at the bench after teardown. Nothing below has changed the plan yet — applying one re-grades the component, and this plan re-resolves from it."* Injector Body, **Grade A → B**, *"Light pitting on the seat face, visible only after cleaning"*, attributed to Lisa Park with a timestamp. **Apply** → toast `Injector Body: grade is now B`, card cleared. Verified in the DB: `condition_grade` A→B, `proposed_grade` emptied, and the application appended to `condition_notes` as a trail. **Dismiss** is offered beside it (takes a reason). ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| R2 | Request customer authorisation for over-and-above | ✅ | ✅ | **Walked 2026-10-07.** From an IN_REBUILD core the card offers **Authorise…** → status becomes *Awaiting customer authorisation*. `send_for_authorisation` refuses when nothing exceeds the sold rebuild level (*"Nothing on … goes beyond the rebuild level that was sold, so there is nothing to authorise"*) — it compares resolved scope against the `RebuildScopePreset`. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| R3 | Decide a torn-down unit's exit: rebuild, harvest, or return | ✅ | ✅ | **Walked 2026-10-07 after fixing the teardown dead-end.** A DISASSEMBLED core offers **Rebuild to stock** / **Release to inventory**, each with a tooltip explaining the consequence (identity kept and stocked as reman FG, vs components accepted and the core consumed). Chose rebuild → **In Rebuild**. The third exit (*return*) is unreachable — no `REPAIR_RETURN` core exists. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-
-| C1 | Jump a job to the front, with a reason | ✅ | ✅ | **BUILT 2026-10-15 (`5b9b6d0`) — the second half now exists.** A priority change requires a reason and refuses without one (`services/mes/work_order.change_priority` raises *"Say why the priority is changing"*), writing a `RecordEdit` with field/old/new/reason/who/when beside auditlog's who-and-when. The edit form asks *"Why change priority from Normal to Urgent?"* and lists the last five changes with their reasons. **Residual:** a CSV import or the master workbook still changes priority with no reason recorded. Docs updated in `5c006f3`. Original note: Walked 2026-10-07, the first half works, the second doesn't exist. There is no expedite *action*: **Expedited is derived**, `w.priority === 1` (`WorkOrdersControlCenterPage.tsx:280`), i.e. `WorkOrderPriority.URGENT`. Jumping a job = setting priority on the work order. Verified live: PATCH priority 2→1 → the Control Center's **Expedited** tile went **0 → 1**; reverted to 2. `change_workorder` is held by every operational role incl. the Shift Lead (dave.wilson); only the customer lacks it. **“With a reason” is unsupported.** No reason field on the WO edit form, none on the API, and no expedite service. `django-auditlog` records the change — `{'priority': ['2', '1']}`, actor *Maria Santos*, timestamped — so **who, when and what are kept; why is not.** Contrast the rest of the app, where consequential changes carry a reason (hold, scrap, reject, ship-back, rollback). ~~**Decision needed:** either accept priority-with-no-justification, or give expedite the reason the other consequential actions already take.~~ **Answered 2026-10-15 — the second option was taken; see the top of this row.** |
-| C2 | Void an operator's bad record | ✅ | — | **NOT THIS ROLE, BY DESIGN — and the row was wrong, corrected 2026-10-15.** The *product* supports voiding; the **Shift Lead does not hold it, at all**. `VOID_COMPLETION_PERMISSIONS` goes to `tenant_admin`, `qa_manager` and `qa_inspector`, and it is withheld from Operator, Shift Lead **and** Production Manager on purpose: performing or supervising the work and adjudicating the record are different jobs (`workflows/dwi/running.md`). A lead who needs a record retracted escalates — which is **R10**, not this row. `roles/shift-lead.md` has always listed it correctly under what is not yours, so the docs were right and this row was not. Marked `—` rather than ❌ because the capability exists and is simply somebody else's; ❌ would read as a product gap. Original note, which was the error: *holds `void_substepcompletion` only, narrower than the row implies*. |
-| C3 | Take a machine out of service and re-plan around it | ✅ | ✅ | holds `change_equipments`; the *re-plan* half needs a solved schedule |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See the shift's state at a glance | ✅ | ✅ | ✅ | ? | 2026-10-07 | Biggest fire, late jobs, quarantine, CAPAs, OSP, training — one screen. |
+| 2 | Put people on jobs | ✅ | ✅ | ✅ | ? | 2026-10-12 | The board renders every resource as a lane; the task panel gives work order / due date / machine / work centre / operator / fence zone / live status. **Reassign** is honest about scope — *"applies now, re-solve to optimize"* — and the operator picker is filtered by **eligibility** (work-centre membership), not a flat list. **Row may be misframed:** operators *claim* through Start Work rather than being pushed work, with the lead stepping in to reassign; *"reassign work when someone cannot run it"* is closer to the real model. |
+| 3 | Cover an absence or no-show | ✅ | ✅ | ✅ | ? | 2026-10-12 | Same surface as row 2. Worth teaching as a diagnostic: an **empty operator picker is a training problem wearing a scheduling costume** — nobody is qualified and rostered for that work centre. |
+| 4 | Unblock a stopped job | ✅ | ✅ | ✅ | ? | 2026-10-07 | The Control Center **Exceptions** tab — 21 unified items, each with its impacted work order and a direct link. |
+| 5 | Authorise an unqualified operator, on the record | ✅ | ✅ | ✅ | ? | 2026-10-07 | Override recorded with both names, the reason and a timestamp, and `authorized: false` preserved so the record never claims the operator was qualified. Shares one exhibit with Operator 3 and 12. **No screen displays it** — `training_authorization` is on the StepExecution detail endpoint and nothing in the frontend reads it. |
+| 6 | Triage a quality event without escalating everything | ✅ | ✅ | ✅ | ? | 2026-10-07 | Exceptions tab: source, severity, age, owner, *Open only* filter, bulk resolve. |
+| 7 | Watch what is going late | ✅ | ✅ | ✅ | ? | 2026-10-07 | *Jobs going late* on the hero, plus **Overdue / Due today** filters in the Control Center. |
+| 8 | Hand over to the next shift | ✅ | ✅ | ✅ | ? | 2026-10-07 | **Not weak, as the row was first guessed** — audience targeting by role, a High priority flag, *Requires acknowledgment*, and acknowledgment recorded with name and timestamp. The composer's placeholder teaches the genre. |
+| 9 | See who is qualified for what | ✅ | ✅ | ✅ | ? | 2026-10-06 | The training matrix, plus current / expiring / expired on the hero. Note the matrix reports **role** gaps while the start gate reads **step** requirements — a person can show a role gap and still start every step. |
+| 10 | Escalate what the shift cannot solve | ✅ | ✅ | ✅ | ? | 2026-10-19 | **Report…** on the Exceptions tab records **downtime** for real and links out to the disposition and CAPA forms for the other two — see **Report exception saves nothing** (fixed). Walked 2026-10-19 as Tenant Admin on the WO control page and the Control Center: equipment list excludes types with *Track downtime* off, the event survives a reload and resolves from the card. **Demo seeds no downtime events**, so the card shows only what someone records. Escalating a record for retraction (C2) has no dedicated route. Existing items in the tab are real and carry source and severity. |
+| R1 | Decide a pending finding — apply or dismiss | ✅ | ✅ | ✅ | ? | 2026-10-08 | `PendingFindingsCard`: *"1 finding to decide — Raised at the bench after teardown. Nothing below has changed the plan yet — applying one re-grades the component, and this plan re-resolves from it."* Injector Body **Grade A → B**, attributed with a timestamp. **Apply** re-grades and clears the card; the application is appended to `condition_notes` as a trail and `proposed_grade` is emptied. **Dismiss** sits beside it and takes a reason. |
+| R2 | Request customer authorisation for over-and-above | ✅ | ✅ | ✅ | ? | 2026-10-07 | From an IN_REBUILD core, **Authorise…** → *Awaiting customer authorisation*. `send_for_authorisation` compares resolved scope against the `RebuildScopePreset` and refuses when nothing exceeds the sold level: *"Nothing on … goes beyond the rebuild level that was sold, so there is nothing to authorise."* Only genuinely new work reaches a gate. |
+| R3 | Decide a torn-down unit's exit: rebuild, harvest, or return | ✅ | ✅ | 🚧 | ? | 2026-10-15 | A DISASSEMBLED core offers **Rebuild to stock** / **Release to inventory**, each tooltipped with its consequence (identity kept and stocked as reman FG, vs components accepted and the core consumed). Rebuild → **In Rebuild**, walked. **Demo 🚧:** the third exit (*return*) has a subject since the reseed — `CORE-240210-0007`, a Midwest warranty unit, `REPAIR_RETURN`, `returns_to_customer=True` — but it waits on that unit reaching REBUILT, which Shipping R1 tracks. |
+| C1 | Jump a job to the front, with a reason | ✅ | ✅ | ✅ | ? | 2026-10-15 | **Both halves now exist** (`5b9b6d0`). There is no expedite *action*: **Expedited is derived** from `priority === URGENT`, so jumping a job means setting priority. `change_priority` refuses without a reason — *"Say why the priority is changing"* — and writes a `RecordEdit` with field / old / new / reason / who / when beside auditlog's who-and-when. The edit form asks *"Why change priority from Normal to Urgent?"* and lists the last five with their reasons. **Residual:** a CSV import or the master workbook still changes priority with no reason recorded. |
+| C2 | Void an operator's bad record | ✅ | — | — | ? | 2026-10-15 | **Not this role, by design.** The product supports voiding; the Shift Lead does not hold it at all. `VOID_COMPLETION_PERMISSIONS` goes to `tenant_admin`, `qa_manager` and `qa_inspector`, withheld from Operator, Shift Lead **and** Production Manager on purpose — performing or supervising work and adjudicating the record are different jobs. A lead who needs a record retracted escalates, which is row 10. Marked `—` not ❌: the capability exists and is somebody else's. |
+| C3 | Take a machine out of service and re-plan around it | ✅ | ✅ | ✅ | ? | 2026-10-12 | Holds `change_equipments`. The *re-plan* half needs a solved schedule, which now exists. An uncalibrated or out-of-service machine is dropped from solver affinities, so the two halves interlock. |
 
 ## Shift Lead — first pass (2026-10-07)
 
@@ -702,79 +734,82 @@ docs currently get wrong by omission:
 
 ## Receiving
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Know what is expected | ✅ | ✅ | **lit 2026-10-07** — *On order 3 / Late 2* chips on Materials; 3 ON_ORDER lots seeded |
-| 2 | Receive a delivery | ✅ | ✅ | **walked end to end 2026-10-07** — booked in 180 of 200, new lot number, auto-routed to inspection |
-| 3 | Verify against the paperwork | ✅ | ✅ | the unified **Incoming Inspection** queue — purchased + OSP, one runtime for both |
-| 4 | Handle a short or over delivery | ✅ | ✅ | **lit 2026-10-07** — RCV-MAT-0004 is 40 of 60 ordered, BACKORDERED |
-| 5 | Resolve holds | ✅ | ✅ | verified in the QA Inspector pass — RCV-MAT-HOLD shows **Held**, multi-hold panel matches the docs |
-| 6 | Reject and return | ✅ | ✅ | **Walked end to end 2026-10-07 as maria.qa (QA Manager).** `Reject remaining stock…` → *Return to supplier* + reason → toast `Rest of lot RCV-MAT-0005 rejected · disposition opened` (On hand 4→3, Rejected 1→2). **Ship back** then appeared → RMA number, *Print RTV sheet*, carrier/tracking, *The supplier is sending replacements* + date → `Lot RCV-MAT-0005 shipped back to the supplier.` (Rejected 2→1, **On order 3→4**). The replacement expected delivery `ONORDER-PO-2026-0005` (120 EA, promised 2026-10-21) was created automatically — the return→replacement→chase loop closes. Boundary held: *"Any credit is settled in your ERP."* **Permission gate verified both ways:** `reject_whole_lot` — present for maria.qa (QA Manager) and the tenant admin, absent for sarah.qa (Inspector), jennifer.mgr (PM), mike.ops, dave.wilson, casey.dual. As mike.ops the menu item is simply not rendered. ~~**Docs ⚠️: none of this is documented.**~~ **Covered — `workflows/supply/overview.md` and `roles/receiving.md`. Trailer cleared 2026-10-15.** |
-| 7 | Put away and find again | ✅ | ✅ | **Walked end to end 2026-10-07 (verified first-hand, not taken from the peer's report).** `/production/locations` lists 6 locations with live Lots/Units/Machines counts and a drag-to-nest hint; Receiving Dock carries a *Receiving dock* flag. **Put away:** lot menu → *Move…* → dialog scoped to the lot (*"Now in Receiving Dock. Scan the destination's label or type it."*), destination as a native datalist, quantity optional (*blank moves all 500 EA*) so partial putaway works → toast `Lot RCV-MAT-0003 moved to Main Stores.` **Find again:** the location detail then lists it *here* and the ledger records **`In · RCV-MAT-0003 · from Receiving Dock · Maria Santos`** with a timestamp. Empty states are honest throughout (*"No serialised units here"*, *"Nothing moved in or out"*). Refusals are good too — a bad destination returns **`“MainStores” isn't one of your locations.`**, quoting the input in plain English. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 8 | Count stock | ✅ | ✅ | built (blind + applied) but **0 CycleCounts exist** — dark exhibit **LIT 2026-10-12** by seed phase 9 (`dark_exhibits.py`). `CC-2026-0001` is started blind at Main Stores, two lots counted with one deliberately one short, and **submitted but not applied** — applying needs `apply_cyclecount`, a lead, so both halves of the workflow stay exercisable. |
-| 9 | Chase a late delivery | ✅ | ✅ | **lit 2026-10-07** — RCV-EXP-0103 chased; UI shows *"first promised 2026-10-02"* beside the new date |
-| 10 | Hand receipts to the ERP | ✅ | — | **Rewritten 2026-10-15; the old note asked for exactly this.** The row as first drafted assumed a system-to-system hand-off. There isn't one and there is not going to be: **Glovia is human-bridged** — the ERP it has to reach dates from 1996 and cannot be integrated with, so every exchange is a person carrying a sheet of paper. That is a deliberate boundary, not a missing feature, and the integration backlog behind it was parked by the user on 2026-10-05. **What UQMES owes this job is therefore a document, not a feed**: receipts have to be legible and printable by someone who will key them in elsewhere. Judge the row on that, and mark it a gap only if the paperwork is unfit for a human to carry. |
-
-| 11 | Stage and kit material to the bench for the next shift | ✅ | ✅ | **Walked 2026-10-08, unblocked by the solve.** `/production/staging` now lists the next 8 h of scheduled work per station — Assembly Cell, Grading Bench, Machine Shop, Pack & Ship, Teardown Bay — each job with its WO, step, part type, unit count and a relative time (*now*, *in 58m*, *in 3h*), and each material line with quantity, source lot and location (*Injector Spring ×2 · STOCK-CRI-SPR · Main Stores*). Optional lines are marked. Steps consuming nothing say so rather than showing an empty table. **Confirm** staged a line → station went **0/1 → 1/1 staged**, the row became *took 2 · STOCK-CRI-SPR*, and it recorded **"Staged by Jennifer Walsh"**. **Took another** handles the picker grabbing a different lot. It also carries the staleness warning: *"The schedule is stale — these times may have moved. Re-solve before staging to them."* **Re-walked 2026-10-12, and found the trap:** the window defaults to **next 8h**, and 2026-10-12 is *Labor Day* in the plant calendar, so the page reads *"Nothing scheduled in this window. Try a longer window, or check the schedule board."* and looks broken. At **24h** it is full — *Assembly Cell · 2 jobs · 0/2 staged*, WO-ASSESS-004 at 05:59 AM with `Injector Spring ×4 · STOCK-CRI-SPR · Main Stores` and an **(optional)** seal kit. This doubles as the **fastest proof a calendar exception reached the solver** (Scheduler row 9). **Docs: now covered in `docs/training/receiving.md` Module 8 and `docs/training/planner.md` Module 5.** |
-| R1 | Receive a core | ✅ | ✅ | **walked 2026-10-07** — scan identity band, photograph as received, grade arrival condition, sign off |
-| R2 | Receive a bulk core lot and identify units from it | ✅ | ✅ | **Walked end to end 2026-10-07.** `/reman/core-lots` had an honest empty state (*"No bulk lots waiting… received here with Receive in bulk"*). **Receive in bulk** → *"A counted delivery with no serials. Units are given identities later, one at a time, and are exchange cores."* The core-type picker offered **only** Common Rail Injector — the lot must be of a type cores were received as, or with a disassembly BOM, so purchased stock can't be counted into the core bank. Received 40 → `Received CORELOT-2026-0001: 40 × Common Rail Injector`, listed **40 / 40** unidentified at Receiving Dock with the reference beneath. **Identify a unit** → grade (A/B/C/Scrap), source, serial, notes, plus an **Identify and next** for working down a pallet → `CORE-2026-0001 identified from CORELOT-2026-0001`, count **40/40 → 39/40**. **Verified in the DB:** core RECEIVED, grade B, serial `MFS-INJ-440219`, part CORE_BANKED, `fulfilment_mode=EXCHANGE` (enforced — *"definitional, not shop policy"*), and **`part.received_in_lot → CORELOT-2026-0001`**, so the trace back to the receipt holds exactly as the module claims. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Know what is expected | ✅ | ✅ | ✅ | ? | 2026-10-07 | *On order / Late* chips on Materials. An expected receipt is **not a separate model** — it is a `MaterialLot` that has not arrived yet, carrying PO number, line, promised date and chase fields. |
+| 2 | Receive a delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | Booked in 180 of 200 → new lot number, heat number captured, auto-routed to inspection with no manual step. The dialog states its own consequence and takes a photo or PDF of the CoC and packing slip. |
+| 3 | Verify against the paperwork | ✅ | ✅ | ✅ | ? | 2026-10-07 | The unified **Incoming Inspection** queue — purchased lots + OSP returns, one runtime for both, separated by a **Source** column. |
+| 4 | Handle a short or over delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | The best copy in the receiving flow: *"20 fewer than the 200 on order. What does the packing slip say?"* → *More coming* keeps the remainder on order; *That's all* stops UQMES planning on it and says outright that closing the PO line happens in the ERP. Produces a BACKORDERED lot plus a named remainder. |
+| 5 | Resolve holds | ✅ | ✅ | ✅ | ? | 2026-10-06 | `RCV-MAT-HOLD` shows **Held for 2 reasons — each clears on its own**. Paperwork holds self-clear inline (enter the heat number and it moves); judgement holds need a quality manager, and an inspector gets no release button. |
+| 6 | Reject and return | ✅ | ✅ | ✅ | ? | 2026-10-07 | `Reject remaining stock…` → *Return to supplier* + reason → disposition opened with it. **Ship back** then appears: RMA number, *Print RTV sheet*, carrier and tracking, replacement expected. The replacement delivery is created automatically, so return → replacement → chase closes as a loop. The lot leaves as **Returned, not scrapped — the goods exist, at the vendor**; credit is settled in the ERP. `reject_whole_lot` is QA Manager and Tenant Admin only; for anyone else the menu item is not rendered. |
+| 7 | Put away and find again | ✅ | ✅ | ✅ | ? | 2026-10-07 | `/production/locations` — 6 locations with live Lots / Units / Machines counts and drag-to-nest. **Move…** is scoped to the lot, destination is a datalist, quantity optional so partial putaway works. The location detail then lists it and the ledger records **`In · from Receiving Dock · <who>`** with a timestamp. Refusals quote the input: *"MainStores isn't one of your locations."* |
+| 8 | Count stock | ✅ | ✅ | ✅ | ? | 2026-10-12 | Blind count then apply. `CC-2026-0001` is seeded started-blind at Main Stores with two lots counted and one deliberately one short, **submitted but not applied** — applying needs `apply_cyclecount`, a lead's, so both halves stay exercisable. |
+| 9 | Chase a late delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | `chase_expected_receipt` records what the buyer was told and any new promise, and **keeps the first one**: *"The first promise stays as it was — on-time delivery is judged against it."* The UI shows *"first promised …"* beside the new date, so **a supplier cannot improve their OTD by asking for a later date**, and the screen says so. |
+| 10 | Hand receipts to the ERP | ✅ | — | ✅ | ? | 2026-10-15 | **Not a feed, by design.** **Glovia is human-bridged** — the ERP this has to reach dates from 1996 and cannot be integrated with, so every exchange is a person carrying a sheet. What UQMES owes the job is a **document**: the Materials page carries *"Receipts for ERP"*, and the row is a gap only if that paperwork is unfit for a human to carry. |
+| 11 | Stage and kit material to the bench for the next shift | ✅ | ✅ | ✅ | ? | 2026-10-12 | `/production/staging` lists scheduled work per station with each material line's quantity, source lot and location; optional lines are marked and steps consuming nothing say so. **Confirm** moves a station 0/1 → 1/1 and records who staged it; **Took another** handles the picker grabbing a different lot. Carries its own staleness warning. **Trap worth teaching:** the window defaults to 8 h, so on a plant holiday the page reads *"Nothing scheduled in this window"* and looks broken — at 24 h it is full. Doubles as the fastest proof a calendar exception reached the solver (Scheduler 9). |
+| R1 | Receive a core | ✅ | ✅ | ✅ | ? | 2026-10-07 | **Not a form on the core page — an authored DWI step**, which is why it was unreachable until a core sat on a route. Scan the identity band, photograph as received, grade arrival condition, sign off. *"Cores arrive as-is from the field - record what you see, don't clean yet"* is the right instruction: cleaning destroys the evidence of arrival condition, and the photograph is what supports ISO 9001 8.5.3 for customer property. |
+| R2 | Receive a bulk core lot and identify units from it | ✅ | ✅ | ✅ | ? | 2026-10-07 | *"A counted delivery with no serials. Units are given identities later, one at a time, and are exchange cores."* The core-type picker offers only types cores were received as or with a disassembly BOM, so purchased stock cannot be counted into the core bank. **Identify a unit** takes grade, source, serial and notes, with **Identify and next** for working down a pallet. `fulfilment_mode=EXCHANGE` is enforced — *"definitional, not shop policy"* — and `part.received_in_lot` holds the trace back to the receipt. |
 
 ## Shipping
 
-> **Rows 1–7 and 9 walked 2026-10-08 once the reseed landed.** Row 8 remains open. — the shipping code is complete
-> and coherent; no seeded route can reach it. Re-walk once the two processes are
-> authored with a `SHIPPED` terminal.
+> **All thirteen rows walked.** Rows 1–7 and 9 on 2026-10-08 once the reseed
+> landed; **row 8 on 2026-10-12**, when seed phase 9 (`dark_exhibits.py`) gave
+> `RCV-MAT-0005` a permanent owner and the board's **Customer property** group
+> rendered on a fresh seed.
+>
+> *Corrected 2026-10-15.* This header read *"Row 8 remains open. — the shipping
+> code is complete and coherent; no seeded route can reach it"* — a sentence
+> welded to the middle of an older one by an edit that never finished, and wrong
+> twice over: row 8 had been lit three days earlier, and the ship-terminal
+> problem it was describing belongs to the rows that *do* still wait on it, not
+> to row 8, which never depended on a ship step at all.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | See what is ready | ✅ | ✅ | **Walked 2026-10-08, after the reseed.** `/production/shipments` — header states the boundary: *"What can go to customers now, and what has gone. Invoicing stays in your ERP."* Tabs **Ready to ship (6)** / **Shipped**, grouped by order with the customer named (ORD-2024-0042 · Midwest Fleet Services), columns Serial / Item / Work order / Line · due / Waiting at. |
-| 2 | Confirm it passed and is complete | ✅ | ✅ | **Walked 2026-10-08.** Each unit shows *Waiting at: Ship step*, and the ship dialog states the release check in words: *"Each part at a Ship step completes it, so its sign-off checks must be done."* — the ISO 9001 §8.6 gate runs through `advance_part_step` exactly as it would for one part. |
-| 3 | Create the shipment | ✅ | ✅ | **Walked 2026-10-08.** Selected 3 units → **Ship …** → `SHP-2026-000003 shipped to Midwest Fleet Services.`, landing on the shipment detail. |
-| 4 | Produce the paperwork | ✅ | ✅ | **Walked 2026-10-08.** Shipment detail offers **Packing list**, **CoC**, **Edit paperwork** and **Void…**. Paperwork block shows Carrier, Tracking, ERP shipper / packing slip, Expected delivery; Units table lists each serial with its WO and order; History records CREATED with actor and time. |
-| 5 | Ship partially | ✅ | ✅ | **Walked 2026-10-08.** Per-unit checkboxes; **Ship …** stays disabled until something is selected. Shipped 3 of 6 → board recounted **Ready to ship (6) → (3)** with the correct three (014/015/016) still waiting. |
-| 6 | Record carrier and tracking | ✅ | ✅ | **Walked 2026-10-08.** Carrier `FedEx Freight`, tracking `7742 9910 3356`, ERP slip `PS-2026-00841`, all recorded and shown. Tracking is explicitly *(can add later)* and **Edit paperwork** exists for it — the dock often ships before the number comes back. |
-| 7 | Undo a mistake | ✅ | ✅ | **Walked end to end 2026-10-12.** The earlier pass inspected the affordance but did not execute it, to avoid disturbing freshly staged data; that reason has expired. To keep the seeded history intact I **shipped a unit specifically to void it**: INJ-0042-011 → `SHP-2026-000003`, then **Void…** with a reason. The dialog states the distinction exactly — *"For a shipment recorded by mistake — the parts didn't go. They return to their Ship step (sign-off runs again) or to stock. Goods that went and came back are a return, not a void."* After voiding: header reads **SHP-2026-000003 Voided**, the reason is kept on the record, History retains CREATED, and **in the DB INJ-0042-011 is back to IN_PROGRESS at the Ship step with `customer_shipment: None`** — the promise in the dialog holds. SHP-2026-000001/2 untouched, so the demo is net unchanged. |
-| 8 | Return customer property | ✅ | ✅ | **Walked 2026-10-08 — and my earlier block reason was WRONG.** This never depended on a `SHIPPED` terminal: the shipping board has a second half for **lots**, filtered on `owner__isnull=False`, independent of any ship step — *"A customer's own material, still here: it can go back to them, grouped under them."* It was blocked only because **0 of 13 demo lots have an `owner`**. Set one temporarily and the board grew a dedicated **Customer property · \<customer\>** group with its own Ship action and columns *Their material · lot / Here / Location*; the dialog is lot-aware (*"Ship 1 lot… Blank quantity ships the whole lot; less splits that much off and the rest stays"*), so partial return works. Reverted after. `MaterialLot.owner` is a developed concept citing **ISO 9001 §8.5.3** in the model and enforced throughout — consumption draws customer property only for that customer's work, requirements never cover anyone else's demand, dock metrics exclude it from receipts, and the lot label prints it *"so nobody draws it into someone else's job"*. **Remaining gap is demo data only: seed one customer-owned lot.** **LIT 2026-10-12** by seed phase 9 (`dark_exhibits.py`). `RCV-MAT-0005` is now permanently owned by Midwest Fleet Services, so the board's **Customer property** group renders on a fresh seed rather than needing a hand-set owner and a revert. |
-| 9 | Know whether we are on time | ✅ | ✅ | **FIXED 2026-10-15 (`e81d371`).** `delivery_performance` falls back to the work order's own `expected_completion` where there is no order line, and returns an `unmeasured` count for shipments carrying no date at all instead of filtering them out of the query. **The silent exclusion was the defect** — the page reported a confident percentage of whatever happened to carry order lines, which reads as covering everything shipped. The Shipping page now shows "N not measurable" beside the figure. Five tests in `test_customer_shipping.py` cover the fallback, a late fallback, the unmeasured count and a key collision that would have folded two line-less work orders on one shipment into a single delivery; **live demo data exercises none of them**, since both shipped work orders carry lines, so those tests are the only evidence. Docs `b5c3e7b`, `f24bc93`. <br><br>**How it got here, in order.** *2026-10-08* — measured unmeasurable: `{deliveries: 0, on_time_pct: None}` against 24 shipped units, because it keyed on `work_order__order_line__due_date` and **0 of 18 work orders had an order line**. Read at the time as a demo-data gap rather than a product one. *2026-10-12* — **LIT** by seed phase 9 (`dark_exhibits.py`): 14 dated `OrderLine`s seeded, 14 of 18 work orders pegged to one, and the figure became `{deliveries: 2, on_time: 2, on_time_pct: 100.0}`. *2026-10-15* — seeding the data had hidden the real fault rather than fixing it: a 100% from two deliveries, with four work orders still invisible, is worse than a dash. **Root cause of the original emptiness, still worth knowing:** migration 0178 backfills lines onto orders that existed when `OrderLine` was introduced, but it is one-shot history repair and `seed_demo` creates its orders afterwards — so every fresh seed produced line-less orders. |
-
-| 10 | Send parts out to a subcontract vendor, and record them back | ✅ | ✅ | **Walked 2026-10-07** on WO-2024-0042-A. `OutsideProcessPanel` on the WO Control page: *2 at vendor · 1 to inspect*. **Send out** → dialog (vendor preselected, *PO / packing-slip reference*, qty `2 of 2 ready`, optional pick-specific-units) → toast `OSP-2026-000004 — 2 parts sent to Apex Plating Co`, panel recounted to *2 at vendor · 0 ready*. **Receive back** and **Inspect** both route into the **operator substep runtime** (`/operator/steps/…/substeps?execution=…&osp_shipment=…`) — the return inspection *is* a step execution, not a side dialog. That runtime is **properly authored**: Coating Thickness `12 +3 −2 µm`, photo capture, Pass/Fail/Pending result, and a required signature. **CORRECTION 2026-10-13 — this row was marked complete on a claim I conflated.** The shipment closes; **the parts do not move on**. `accept_return` sets every shipped part to `READY_FOR_NEXT_STEP`, completes the executions and closes the shipment, but never calls the advancement engine — despite its own docstring saying it *"advances the shipped parts past the OSP step"*. `try_advance_lot` then refuses with `['No active StepExecution']`, because the execution is already COMPLETED. Measured: **OSP-DEMO-005, OSP-DEMO-006 and CORE-240210-0007 are all stranded at Nitride Coating** with no flow out; only the control page's manual step dropdown moves them, which bypasses the gates. **What I verified and what I assumed:** I confirmed the shipment reaches CLOSED and the return inspection records — both true. I did not check that the units left the step, and asserted end-to-end completion from the shipment status alone. *"The shipment closed"* and *"the parts moved on"* are different claims. **CORE-240210-0007 was moved past Nitride Coating by MANUAL OVERRIDE** (control page step dropdown), with the user's approval, so the rest of its route could be walked. **That hop verifies nothing about advancement** — it bypasses the gates by design. `OSP-DEMO-005` and `OSP-DEMO-006` are deliberately left stranded as the reproduction. The real test is a reseed plus a fresh OSP return once `accept_return` calls the advancement engine. **Lesson for this audit: a row is walked when the SUBJECT moves, not when the surface reports success** — the same mistake shape as `complete_step` returning 200 on a refusal. **Re-walked 2026-10-13 after the reseeds, shipment side only — `OSP-2026-000002` is CLOSED.** The panel shows both halves at once (*1 at vendor · 1 to inspect*), with **Receive back** on the shipment still out and **Inspect** on the returned one. Coating Thickness 12 µm against `12 +3 −2 µm` read **In spec**, result Pass, sign-off captured, **Accept return**. **Completion first walked 2026-10-12, closing this row end to end.** The stated blocker — *"`react-signature-canvas` can't be driven synthetically"* — was wrong; there is no canvas on the node (see the corrected summary note). Recorded Coating Thickness **12.5 µm** against `12 +3 −2 µm` → panel read **In spec**, result **Pass**, *Return inspection sign-off* signed, then **Accept return** (the review screen's action here is `Accept return`, not `Complete step` — the OSP return has its own verb). Verified in the DB: the `SubstepCompletion` landed, and **`OutsideProcessShipment OSP-2026-000003` moved to `CLOSED`**. So send out → at vendor → inspect → accept is walked in full. ~~**Docs ⚠️: subcontract/outside processing appears in no doc at all** — another instance of unmentioned capability.~~ **Covered — `workflows/supply/outside-processing.md` is a page of its own. Trailer cleared 2026-10-15.** |
-| R1 | Return a rejected core to its owner | ✅ | ✅ | **Unblocked by the reseed, but not completable with this tooling (2026-10-08).** The demo now has a REPAIR_RETURN unit — CORE-240210-0007, `returns_to_customer=True`, IN_REBUILD on Injector Reman. `return_to_customer` needs REBUILT or DECLINED; REBUILT is reached by finishing the scoped rebuild route (`complete_rebuild` via `finish_route`). That route's last step, **Final Test**, carries a `signature` substep (*Final leak / pressure test*). **The stated blocker was wrong (corrected 2026-10-12):** there is no `react-signature-canvas` on that node — it is a one-click attestation, and it was walked end to end on TRAIN-001-008 (value 200 bar in spec, result PASS, *Release sign-off* signed, **Complete step** accepted). The part then correctly **stayed** at Final Test, held by the step's pending FPI, which is exactly what `running.md` and `operator.md` claim. So the mechanism is walked. **What actually blocked this row was the rebuild-scope deadlock (see the summary), not the signature** — the unit could not leave Cleaning at all, and my own 2026-10-12 note that 'only 5 remaining operations' stood in the way was itself wrong: there was no route forward. That defect is now fixed in a peer's tree and the core advances again. The row stays open only until the demo process is reseeded with Repair nodes and the unit is walked to REBUILT. Service, precondition and UI all verified present. |
-| R2 | Ship a rebuilt unit with a cert describing what was replaced | ❌ | ❌ | **WALKED 2026-10-13 — and the join does not exist. A product gap, not an unwalked row.** All three pieces are present and never meet: (1) **the as-built record exists** — walking CORE-240210-0007 to REBUILT produced two `AssemblyUsage` rows, both naming the unit's OWN components (*"Injector Nozzle Assembly from Core CORE-240210-0007"*, *"Control Valve Assembly from …"*), recorded at Assembly by the operator, so the repair-and-return rule holds as designed; (2) **the CoC exists**, in `reports/adapters/shipment_documents.py`, whose docstring is explicit — *"Both are built from one `CustomerShipment`"*; (3) **but `return_to_customer` creates no `CustomerShipment`** — it sets the stage RETURNED, the part SHIPPED, stamps `returned_at`/`returned_by`, and stops. The returned core is on neither shipment in the tenant. **So a repair-and-return unit goes back with no document route at all** — no packing list, no CoC, and no way to hand over the as-built list the system just recorded. The paperwork is shipment-scoped and a return is not a shipment. For a reman shop that is the sharp end: the point of repair-and-return is giving the customer back THEIR unit with evidence of what was done to it. **The earlier signature-substep blocker was wrong and is withdrawn (2026-10-12, see R1).** Worth recording what IS confirmed: `componentInstallCapture` is authored on **Assembly**, in substep *"Record the components fitted (reman)"*, and Assembly **is** in CORE-240210-0007's resolved scope — so the as-built record (what actually went in) is collected on the one unit that will be returned. The shipment surface itself is walked (rows 3–4): **CoC** is offered beside **Packing list** on every shipment. What is unwalked is the join — a cert carrying the as-built list for a returned rebuild. |
-
-| C1 | Export-control screening before anything leaves | ✅ | — | **NOT A TARGET — user decision 2026-10-14: export control "is an artifact of a need that didn't turn out to be a true need."** Marked `—` rather than ⚠️ so nobody reads the findings below as a worklist: **do not build the rework items, do not create a non-US test account, do not flag more part types.** The machinery is real and enforced, so the mechanism notes stay accurate and are kept in case it is ever revived — but the right amount of effort to spend here is none. Everything from here down is the 2026-10-07/12 record, unchanged. <br><br>**Gate logic verified in isolation 2026-10-07; completely unexercised by the demo.** `for_export_control(user)` is wired into `SecureManager.for_user()` via `_apply_security_filters`, excludes `itar_controlled=True` rows for a non-US person, and logs each denial to a separate `compliance.access_control` logger for SIEM, citing NIST 800-171 / CMMC. Probed directly: `us_person=True` → allowed; `us_person=False` → denied with *ITAR_VIOLATION: User is not a US Person (22 CFR 120.62)*. EAR denied-country list is `BLR CUB IRN PRK RUS SYR`. **Nothing exercises it:** 0 of 153 parts are `itar_controlled`, 0 carry an ECCN, 0 require an export licence, 0 of 4 documents are controlled, and **all 8 demo users are `us_person=True`** — so neither side of the filter can fire. **Dead escape hatch:** `can_access_itar_data` falls back to `getattr(user, 'itar_authorized', False)` — commented *"explicit ITAR authorization (e.g. TAA or license)"* — but **`itar_authorized` appears exactly once in the codebase, in that `getattr` default.** No field, no migration, nothing sets it, so a non-US person holding a TAA or licence can never be granted access. The screen *at the point of shipment* still needs rework item 3. **PARTLY LIT 2026-10-12** by seed phase 9. The **data** side now exists: *Control Valve Assembly* is `itar_controlled` with ECCN `9A610`, and one document is controlled with a reason. Deliberately the **least-used** part type — the hero type carries 152 of 153 parts, so flagging it would make the whole demo export-controlled and empty it the moment a facility added a non-US user. **The denial side stays dark:** every demo user is `us_person=True`, and flipping one would silently change what that persona sees everywhere else. A facility's own non-US test account is the right way to watch the filter fire. The dead `itar_authorized` escape hatch (no field, nothing sets it) is unchanged and still needs rework item 3. |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See what is ready | ✅ | ✅ | ✅ | ? | 2026-10-08 | `/production/shipments` states the boundary in its header: *"What can go to customers now, and what has gone. Invoicing stays in your ERP."* Tabs **Ready to ship** / **Shipped**, grouped by order with the customer named. |
+| 2 | Confirm it passed and is complete | ✅ | ✅ | ✅ | ? | 2026-10-08 | Each unit shows *Waiting at: Ship step*. The ship dialog states the release check plainly — *"Each part at a Ship step completes it, so its sign-off checks must be done"* — so the ISO 9001 §8.6 gate runs through `advance_part_step` exactly as it would for one part. **The route's Ship step is the queue.** |
+| 3 | Create the shipment | ✅ | ✅ | ✅ | ? | 2026-10-08 | Select units → **Ship …** → shipment number issued, landing on the shipment detail. |
+| 4 | Produce the paperwork | ✅ | ✅ | ✅ | ? | 2026-10-08 | Shipment detail offers **Packing list**, **CoC**, **Edit paperwork** and **Void…**. The paperwork block carries carrier, tracking, ERP shipper / packing slip and expected delivery; Units lists each serial with its work order and order; History records CREATED with actor and time. |
+| 5 | Ship partially | ✅ | ✅ | ✅ | ? | 2026-10-08 | Per-unit checkboxes, **Ship …** disabled until something is selected. Shipping 3 of 6 recounts the board and leaves the correct three waiting. |
+| 6 | Record carrier and tracking | ✅ | ✅ | ✅ | ? | 2026-10-08 | Carrier, tracking and ERP slip recorded and shown. Tracking is explicitly *(can add later)* with **Edit paperwork** for it — the dock often ships before the number comes back. |
+| 7 | Undo a mistake | ✅ | ✅ | ✅ | ? | 2026-10-12 | The dialog states the distinction exactly: *"For a shipment recorded by mistake — the parts didn't go. They return to their Ship step (sign-off runs again) or to stock. **Goods that went and came back are a return, not a void.**"* Verified by shipping a unit specifically to void it: header reads **Voided**, the reason is kept, History retains CREATED, and in the database the part is back to IN_PROGRESS at its Ship step with `customer_shipment: None`. |
+| 8 | Return customer property | ✅ | ✅ | ✅ | ? | 2026-10-12 | **Independent of any ship step** — the board's second half filters lots on `owner__isnull=False`: *"A customer's own material, still here: it can go back to them, grouped under them."* The dialog is lot-aware (*"Blank quantity ships the whole lot; less splits that much off and the rest stays"*), so partial return works. `MaterialLot.owner` cites **ISO 9001 §8.5.3** and is enforced throughout: consumption draws customer property only for that customer's work, requirements never cover anyone else's demand, dock metrics exclude it, and the lot label prints it *"so nobody draws it into someone else's job"*. |
+| 9 | Know whether we are on time | ✅ | ✅ | 🚧 | ? | 2026-10-15 | **Fixed** (`e81d371`): `delivery_performance` falls back to the work order's own `expected_completion` where there is no order line, and returns an `unmeasured` count for shipments carrying no date at all. **The silent exclusion was the defect** — the page reported a confident percentage of whatever happened to carry order lines, which reads as covering everything shipped. Now shows "N not measurable" beside the figure. **Demo 🚧:** both shipped work orders carry lines, so neither the fallback nor the unmeasured count fires on seeded data; five tests in `test_customer_shipping.py` are the only evidence, including a key collision that would have folded two line-less work orders on one shipment into one delivery. **Worth knowing:** migration 0178 backfills order lines as one-shot history repair, and `seed_demo` creates its orders afterwards — which is why every fresh seed produced line-less orders. |
+| 10 | Send parts out to a subcontract vendor, and record them back | ✅ | ✅ | ✅ | ? | 2026-10-19 | `OutsideProcessPanel` on the WO Control page. **Send out** takes vendor, PO / packing-slip reference and quantity. **Receive back** and **Inspect** both route into the **operator substep runtime** — the return inspection *is* a step execution, not a side dialog — properly authored with a measured coating thickness, photo capture, result and sign-off. The review screen's verb is **Accept return**, not Complete step. Shipment reaches CLOSED. <br><br>**Fixed (re-checked 2026-10-19):** `services/mes/outside_process.py::accept_return` now sends each part through `advance_part_step`, so an accepted return moves its parts on. Since 2026-10-19 a step naming a **Special process** also refuses send-out to an unqualified vendor. *History of the defect, kept for the lesson:* **The shipment used to close while the parts did not move on.** `accept_return` sets each part `READY_FOR_NEXT_STEP`, completes the executions and closes the shipment, but never calls the advancement engine — despite its docstring saying it *"advances the shipped parts past the OSP step"*. `try_advance_lot` then refuses with `['No active StepExecution']` because the execution is already COMPLETED. `OSP-DEMO-005` and `OSP-DEMO-006` are deliberately left stranded at Nitride Coating as the reproduction. **Lesson: a row is walked when the SUBJECT moves, not when the surface reports success** — I asserted end-to-end completion from the shipment status alone. **Residue:** `OSP-DEMO-005` / `-006` are still `READY_FOR_NEXT_STEP` at Nitride Coating from the old reproduction — a reseed or the arc clears them. |
+| R1 | Return a rejected core to its owner | ✅ | ✅ | 🚧 | ? | 2026-10-13 | Service, precondition and UI all verified present. `return_to_customer` needs REBUILT or DECLINED; REBUILT comes from finishing the scoped rebuild route (`complete_rebuild` via `finish_route`), and the Final Test sign-off that was once thought to block it is a one-click attestation, walked. **Demo 🚧:** `CORE-240210-0007` is the subject and has not yet been walked to REBUILT. `return_to_customer` refuses an EXCHANGE unit by design — *"it is an exchange unit — it has no owner to go back to"* — so this row needs that one warranty core specifically. |
+| R2 | Ship a rebuilt unit with a cert describing what was replaced | ❌ | ❌ | — | ? | 2026-10-13 | **A product gap, and the sharpest one in the file.** Three pieces exist and never meet: (1) the **as-built record** is collected — `componentInstallCapture` is authored on Assembly, which is in this unit's resolved scope, producing `AssemblyUsage` rows naming the unit's **own** components; (2) the **CoC** exists, built from a `CustomerShipment`; (3) **`return_to_customer` creates no `CustomerShipment`** — it sets the stage RETURNED, the part SHIPPED, stamps `returned_at`/`returned_by` and stops. **So a repair-and-return unit goes back with no document route at all** — no packing list, no CoC, no way to hand over the as-built list just recorded. The paperwork is shipment-scoped and a return is not a shipment. For a reman shop that is the point of the whole lane: giving a customer back *their* unit with evidence of what was done to it. |
+| C1 | Export-control screening before anything leaves | ✅ | — | — | ? | 2026-10-14 | **Not a target — user decision:** export control *"is an artifact of a need that didn't turn out to be a true need."* Marked `—` so nobody reads this as a worklist: **do not build the rework items, do not create a non-US test account, do not flag more part types.** The machinery is real and enforced — `for_export_control(user)` excludes `itar_controlled` rows for a non-US person and logs each denial to a `compliance.access_control` logger — and is kept accurate in case it is ever revived. Two facts worth retaining: the denial side can never fire in demo, because every seeded user is `us_person=True`; and `can_access_itar_data` falls back to `getattr(user, 'itar_authorized', False)`, a field that **exists nowhere else in the codebase**, so a non-US person holding a TAA or licence could never be granted access. |
 
 ## Scheduler
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Produce a schedule | ✅ | ✅ | **Walked 2026-10-08 as jennifer.mgr (Production Manager).** `/production/schedule`. Solve is gated on `add_scheduleresult` — held only by the PM and tenant admin — so as mike.ops the toolbar is absent and the empty state reads *"No active schedule yet — run Solve"* without an action; as the PM it gains **Undo / Solve / What-if / Dispatch** and the empty state offers Solve. Solve dispatches a Celery task; with no worker the banner says so honestly: *"Solving the schedule — queued 6s ago, waiting for a worker."* With a worker it completed **FEASIBLE in 182.7 s**, writing 1 `ScheduleResult` and **571 `ScheduledTask`s**. Header then carries the whole objective: *FEASIBLE · within 66% · 571 tasks · makespan 357.1 h · lateness 121,800 (priority-wtd) · solved in 181087 ms (machine 72452 · people 108635 ms) · ⏰ 2 late orders* — including the **two-phase split**, machine then people. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 2 | Find out why something is not on it | ✅ | ✅ | **Walked 2026-10-08 — one of the best surfaces in the product.** *Not scheduled* (17 before the solve, **6 after**) opens *"Why isn't this scheduled?"*: *"6 of 17 open work order(s) aren't fully on the board"*, grouped **by cause** with counts and a remedy per group. **NOTHING LEFT TO WORK (2)** — *"All 8 unit(s) are finished, shipped, scrapped or quarantined"* → *"Close the work order, or release the quarantined units."* **NOT PLACED BY THE LAST SOLVE (4)** — per-WO placed ratios (*12/18 placed*, *10/11*, *5/6*) and an honest admission: *"nothing above explains it — the solve most likely ran out of horizon or time"* → *"Re-solve with a longer time limit, or widen the horizon."* Each row is clickable straight into the work-order editor — diagnose and fix without leaving the dialog. `diagnostics.py` / `infeasibility.py`. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 3 | Dispatch people | ✅ | ✅ | **Walked 2026-10-08.** **Dispatch** → toast `Dispatched: 259/265 attended tasks covered`, and the schedule header gains a standing **"14 uncovered"** chip. Coverage is reported rather than assumed, and the gap stays visible on the board instead of only in the toast. `scheduling/dispatch.py`. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 4 | Adjust by hand | ✅ | ✅ | **Walked 2026-10-08.** Clicking a Gantt bar opens a task panel: work order, due date, machine, work centre, operator, start/end, **fence zone** (Frozen), live status (*▶ Running ~41 min left*), planner pin, material state. Reassign is honest about what it does — *"Reassign — applies now, re-solve to optimize"*. The operator picker is **filtered by eligibility** (4 of 9 users for Assembly Cell, via work-centre membership), not a flat list. Assigned an uncovered task to Dave Wilson → toast `Operator updated`, panel updated, and the header recounted **14 → 13 uncovered** live. Also offers **Pin** (planner lock), **Merge into batch** and **Edit WO**. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 5 | React to a disruption | ✅ | ✅ | **Spine walked 2026-10-08; the three disruption types not each walked separately.** The mechanism is reactive staleness: signals flip `ScheduleResult.is_stale` when the world changes under the live plan — new or cancelled demand, a part leaving the flow (SCRAPPED / CANCELLED / QUARANTINED), lost capacity — and `staleness.mark_active_schedule_stale` is the single entry point so bulk `.update()` paths in `services/qms/` trip it identically rather than slipping past the signals. **Deliberately NOT tripped by routine step advances**, with the reason stated: *"an actuals drift on every advance would leave the flag permanently on and meaningless."* It is *"a hint, not an auto-solve"*. Verified in the browser: `is_stale: true` and the header carries a **`stale — re-solve`** badge, from which the planner can Solve or What-if first. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 6 | Test a change before committing | ✅ | ✅ | **Walked end to end 2026-10-08 — one of the strongest surfaces in the product.** **What-if** runs a second solve as a DRAFT (`is_draft: True`, its own `ScheduleResult`), leaving the live plan untouched. The board gains a **Live / Draft** toggle and a comparison panel, *"What-if draft — review vs live"*, that states the trade-off in both directions rather than selling the change: **makespan 357.1 → 284.5 h (−72.6 h)** but **lateness 121,800 → 811,111 (+689,311)**, moves 571 tasks. It also warns what the change costs the existing plan: *"⚠ 58 frozen task(s) had to move — the world changed under the pinned plan. Review before committing."* **Commit draft** / **Discard** — discarded, and the live figures returned exactly (357.1 h, 121,800, 14 uncovered). ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 7 | Get the plan to the floor | ✅ | ✅ | **Walked 2026-10-08, same action as row 3.** Dispatch is the hand-off: it assigns people to the solved tasks and reports what it could not cover. The floor-side half (the operator's queue reflecting it) was already walked under Operator rows. The Control Center also carries a **Dispatch List** button, a separate printable path to the same plan. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| 8 | See whether the floor followed it | ✅ | ⚠️ | **Mechanism verified, no data yet — and that is by design (2026-10-08).** `scheduling/actuals.py` is **capture-only**: it stamps `ScheduledTask.actual_start` / `actual_end` as a part enters and leaves a step, and its docstring is explicit that it *"deliberately does NOT re-time the plan or mark the schedule stale — the solver already pins in-progress ops at solve time, and routine step advances are intentionally not a re-solve trigger."* Measured now: **0 of 1142 tasks carry an actual**, because capture is forward-looking and this schedule was solved after all of the demo's step activity. So planned-vs-actual is real but needs work to move *after* a solve before it shows anything. **Not re-walkable without advancing parts post-solve.** **LIT 2026-10-12.** **11 of 569 live tasks now carry an `actual_start`.** Capture fires from a signal on `StepExecution` save, matched to the active non-draft schedule; re-saving the 11 executions whose part+step pair exists on the live board stamped their real entry times. `actual_end` stays null for steps still in progress, which is correct. **Not seedable deterministically** — it needs a solve followed by movement, and the seed does not solve. |
-
-| 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | **Verified 2026-10-08, including that the solver honours it — which is the half that matters.** All four kinds are authored: `PlantCalendarException` — *Labor Day (HOLIDAY) 2026-10-12*, *Quarterly Inventory Count (INVENTORY) 2026-11-04*, *Winter Shutdown (SHUTDOWN) 2026-12-24→31*; `LaborCalendarBlock` — a user's *PTO (ONCE) 2026-10-09*, another's *TRAINING (ONCE) 2026-10-14*, and an *ALL MEETING (WEEKLY)*; plus one `Shift` (Day, 06:00–18:00). **The live solve respected the holiday**: 2026-10-12 carries **0 of 571 tasks** while 2026-10-13 carries 119. The row's own warning — *"a stale calendar breaks the plan on day one"* — is therefore guarded against, not merely modelled. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| R1 | Schedule work whose route isn't known until teardown | ✅ | ⚠️ | **Walked 2026-10-08, and it surfaced a real disagreement between two subsystems.** `routing.py` schedules the **nominal** route — DEFAULT edges only, from the part's current step; ALTERNATE (rework) and ESCALATION branches are *"not scheduled up front; a re-solve handles a part that actually fails"*, which keeps the scheduled subgraph acyclic. So the answer to the row is: **book the nominal route, and re-solve when reality diverges.** Measured on the live schedule: a teardown core (IN_DISASSEMBLY) books all **10** steps, Core Receiving → Packaging; a core **DISASSEMBLED and awaiting its exit decision books 0**, which is correct — nothing is known yet. **But CORE-240210-0007 (IN_REBUILD) books 7 steps including Nozzle Inspection and Nitride Coating, which its resolved rebuild scope EXCLUDES** (the rebuild plan lists 5 operations). So the solver reserves capacity for operations the rebuild plan says will be skipped — `skip_out_of_scope` then marks them SKIPPED at runtime. The scheduler is the pessimistic one, which is the safe direction, but it inflates booked load (the board reads **220%**) and makespan for every reman unit. `routing.py`'s design note does not mention rebuild scope at all, which suggests the two were built independently rather than reconciled. **Not a defect — a stated deferral.** Per the user (2026-10-08): *"Reman side may be a bit weird, that is planned. Because of the tree versus sequential nature of reman I'm waiting until I have real data to fully flesh out the scheduling system strategy."* So the solver treating a reman unit as a sequential nominal route, rather than consuming the resolved rebuild scope, is a known simplification held open until real shop data arrives — reman is tree-shaped (what comes off a unit determines what goes back on) and the sequential model is the placeholder. **Recorded so the 220% load figure and the inflated reman makespan are read as a consequence of that choice, not as a bug.** **RESOLVED 2026-10-12 — and resolved by removal rather than reconciliation.** Under *nothing is skipped*, booking the main line stops being pessimistic and is simply correct: the ops the solver reserves are the ops that run. Verified in the peer's tree — `scheduling/data.py` has dropped `_rebuild_scope()` and the `scoped_step_ids` field, and **no production caller passes `resolve_route(..., keep_step_ids=...)` any more**. The two subsystems no longer disagree because one of them stopped having an opinion. **Re-measure the 220% figure after the reseed** — if it moves, this row and Scheduler 5 both need their numbers rewritten. **Three stale references were left behind and are now resolved (2026-10-13).** I reported them; the peer removed rather than patched the first two — `keep_step_ids` and `tests/test_scheduling_scoped_route.py` are **deleted**, since with nothing skipped the scheduler books the main line and the parameter had no caller. `reports/adapters/pick_list.py` had its divergence paragraph rewritten; its own behaviour was never affected, so it was a stale comment rather than a regression — worth recording, because the word *divergence* in it reads like a bug and is not one. **Lesson for this audit:** when a mechanism is retired, grep for its NAME, not just its call sites. The retired phrase *"emits operations"* survived in five places after the code was gone, and `skip_out_of_scope` in three. |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Produce a schedule | ✅ | ✅ | ✅ | ? | 2026-10-15 | Solve is gated on `add_scheduleresult`, held by **Planner, Production Manager and Tenant Admin** — `presets.py:984` grants it to `planner` directly rather than via the `SCHEDULING_PLANNER_PERMISSIONS` bundle, whose own comment names only the other two. For anyone else the toolbar is absent and the empty state has no action. Solve dispatches a Celery task and says so honestly with no worker: *"queued 6s ago, waiting for a worker."* The header then carries the whole objective, including the **two-phase split**, machine then people. |
+| 2 | Find out why something is not on it | ✅ | ✅ | ✅ | ? | 2026-10-08 | One of the best surfaces in the product. *Not scheduled* opens *"Why isn't this scheduled?"*, grouped **by cause** with a remedy per group, and admits what it cannot explain: *"nothing above explains it — the solve most likely ran out of horizon or time."* Every row clicks straight into the work-order editor, so you diagnose and fix without leaving the dialog. |
+| 3 | Dispatch people | ✅ | ✅ | ✅ | ? | 2026-10-08 | **Dispatch** reports coverage rather than assuming it — *"259/265 attended tasks covered"* — and the uncovered count becomes a standing chip on the board, not just a toast. |
+| 4 | Adjust by hand | ✅ | ✅ | ✅ | ? | 2026-10-08 | The task panel gives work order, due date, machine, work centre, operator, **fence zone**, live status and material state. Reassign is honest about scope — *"applies now, re-solve to optimize"* — and the operator picker is filtered by **eligibility**, not a flat list. Reassigning recounts the uncovered chip live. Also offers Pin, Merge into batch and Edit WO. |
+| 5 | React to a disruption | ✅ | ✅ | ✅ | ? | 2026-10-08 | Reactive staleness: signals flip `ScheduleResult.is_stale` when demand, a part or capacity changes under the live plan, with `mark_active_schedule_stale` as the single entry point so bulk `.update()` paths trip it identically. **Deliberately not tripped by routine step advances** — *"an actuals drift on every advance would leave the flag permanently on and meaningless."* A hint, not an auto-solve. |
+| 6 | Test a change before committing | ✅ | ✅ | ✅ | ? | 2026-10-08 | **What-if** runs a second solve as a DRAFT, leaving the live plan untouched, and the comparison panel states the trade-off in **both** directions rather than selling the change — makespan down, lateness up. It also warns what the change costs: *"⚠ 58 frozen task(s) had to move — the world changed under the pinned plan."* Discard restores the live figures exactly. **Caveat:** solves finish at a 66–99.6% optimality gap, so two runs on identical inputs give very different objective numbers — the panel presents that as the effect of the change. |
+| 7 | Get the plan to the floor | ✅ | ✅ | ✅ | ? | 2026-10-08 | Dispatch is the hand-off; the floor-side half is covered by the Operator rows. The Control Center's **Dispatch List** is a separate printable path to the same plan — a report, not an assignment surface. |
+| 8 | See whether the floor followed it | ✅ | ⚠️ | 🚧 | ? | 2026-10-12 | `scheduling/actuals.py` is **capture-only** by design: it stamps `actual_start` / `actual_end` as a part enters and leaves a step and *"deliberately does NOT re-time the plan or mark the schedule stale."* **Demo 🚧:** 11 of 569 tasks carry an `actual_start`; `actual_end` stays null for steps still running, which is correct. **Not seedable deterministically** — it needs a solve *followed by* movement, and the seed does not solve. **Re-checked 2026-10-19:** unchanged — still capture-only, no adherence view, and the demo still has no solved schedule (0 `ScheduledTask` rows). |
+| 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | ✅ | ? | 2026-10-08 | All four kinds authored: plant calendar exceptions (holiday, inventory, shutdown) and labour blocks (PTO, training, a recurring meeting), plus a shift. **The solve honours them** — the seeded holiday carries 0 tasks while the next day carries 119. That is the half that matters; the row's own warning is *"a stale calendar breaks the plan on day one."* |
+| R1 | Schedule work whose route isn't known until teardown | ✅ | ⚠️ | ✅ | ? | 2026-10-13 | **Book the nominal route, re-solve when reality diverges.** `routing.py` schedules DEFAULT edges only; rework and escalation branches are *"not scheduled up front; a re-solve handles a part that actually fails"*, keeping the scheduled subgraph acyclic. A core awaiting its exit decision books **0** steps, correctly — nothing is known yet. <br><br>**⚠️ A deliberate simplification, held open.** Per the user: *"Because of the tree versus sequential nature of reman I'm waiting until I have real data to fully flesh out the scheduling system strategy."* The scheduler treats a reman unit as a sequential nominal route; reman is tree-shaped, since what comes off a unit decides what goes back on. The earlier disagreement — the solver booking operations the rebuild scope would skip — **resolved itself by removal**: under *nothing is skipped*, booking the main line is simply correct, and `scheduling/data.py` dropped `_rebuild_scope()` entirely. The two subsystems stopped disagreeing because one stopped having an opinion. **Re-measure the 220% board load after a reseed**; if it moves, this row and Scheduler 6 need their numbers rewritten. |
 
 ## Production Manager
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | See what is at risk | ✅ | ✅ | **verified 2026-10-07** as `jennifer.mgr` — late jobs, quarantine, CAPAs, FPY, supplier quals, competency coverage |
-| 2 | Release work | ✅ | ⚠️ | **Walked 2026-10-08 — and my earlier note was wrong. Release is NOT the schedule's Dispatch**; it has its own service, `services/mes/release.py`, *"the planner's authorization gate"*. Its stated design is unusual and worth keeping: **the gate is advisory, not blocking** — *"a failing check never refuses; it demands a written reason, which is stored on the work order. Blocking here would just teach people to fake the data."* `EditWorkOrderDialog` on the scheduling surface uses it properly: `useReleaseReadiness` renders blockers and warnings, then `WorkOrders.release` writes `released_at`, `released_by` and — when readiness fails — `release_override_reason`. **Inconsistency found:** the WO Control Center has a button also labelled **Release (N)** that calls `handleBulkTransition(ids, 'IN_PROGRESS')` — a plain status flip. It runs no readiness check and writes none of the three release fields, so a unit 'released' there has no recorded releaser, no timestamp and no override reason. **Scope of the consequence:** `data.py:471` notes *"`released_at` is recorded but never filters — the plan stays date-driven"*, and the demo runs `release_mode=auto`, so today the bypass costs only the audit fields. **Under `release_mode=MANUAL` the solver filters on release**, and a work order 'released' from the Control Center would silently never be planned. Demo state: **0 of 18 work orders have `released_at` set.** |
-| 3 | Promise a date | ✅ | ✅ | **Green since the fix below landed; the ⚠️ was left over from the walk that found it (corrected 2026-10-15).** CTP answers the question asked, the labels no longer contradict the arithmetic, and a regression test holds it. **Walked 2026-10-12 as `jennifer.mgr`.** `/production/capacity` → **Could we take this order?**. Asked for **300 Common Rail Injectors by 2026-11-01**. Answer: *"**Not by 2026-11.** What runs out: **Labor** — needs **551.6h**, only **327.8h** free by then. **Earliest it fits: 2026-11.** Work content: labor 551.6h · Wash Line 150.2h · Assembly Cell 225.3h · Pack & Ship 50.1h · Test Cell 300.4h · Machine Shop 125.5h"*. Binding resource, shortfall, counter-offer and full work content — everything the row asks for. The page also warns up front that **12 orders have operations with no cycle time**, naming four and pointing at the process editor, which is Engineering row 6 seen from the planning end. **DISPLAY DEFECT (code ⚠️): the refusal and the counter-offer name the same month and read as a contradiction.** Not a capacity-math bug — `capable_to_promise` measures the refusal to `target_end = due date + 1 day` and the earliest-fit to `buckets[i].end`, and the docstring is explicit that a whole final month is right for *"by the end of which month could we?"*. The UI renders the refusal with the **month label** instead of the date asked for, so a due date on the 1st collides with its own month. **FIXED 2026-10-12.** The collision was in the service contract, not only the render: `capable_to_promise` returned `target_bucket` (a month) to describe a refusal computed against `target_end = due date + 1 day`, and `earliest_feasible_bucket` from a scan that *starts at the same bucket* measured to its end — so both came back as the identical string and `CapacityPlanningPage.tsx` faithfully printed a contradiction. Added `target_date` and `earliest_is_target_bucket` to the payload and the inline serializer; the page now renders the **date** for the verdict and prefixes the offer with *end of* when the earliest fit is the due date's own month. **Neither figure changed** — the arithmetic was right, the labels were lossy. Re-walked in the browser: the same query now reads *"Not by **2026-11-01**. Labor — needs 551.6h, only 327.8h free by then. Earliest it fits: **end of 2026-11**."* Schema and FE types regenerated, `bun run typecheck` clean, regression test `test_ctp_answers_name_the_date_asked_about_not_just_its_month`. |
-| 4 | Resolve escalations | ✅ | ✅ | holds `resolve_step_decision`; Control Center **Exceptions** is the shared surface (verified under Shift Lead) |
-| 5 | Balance capacity and staffing | ✅ | ✅ | **Both halves now seen (2026-10-08).** Staffing was already confirmed (competency coverage: uncovered 0, single-operator 0). The capacity half is live on the solved board: per-resource booked hours down the left rail — Final Test Bench FTB-1 **265.8 h**, Torque Wrench TW-26 **187.2 h**, Flow Test Stand #1 **108.4 h**, Packaging PK-1 **93.2 h**, Disassembly Press DP-1 **92.0 h**, against near-idle Machine Shop 0.0 h and Wash Line 0.5 h — plus a headline **220%** load figure and **⏰ 2 late orders**. Dispatch reports staffing coverage against it (`259/265 attended tasks covered`, **13–14 uncovered**), so the two halves are read together on one surface. Note the 220% and the reman makespan are inflated by the nominal-route booking described in Scheduler R1 — a stated deferral, not a measurement error. |
-| 6 | Approve over-and-above and deviations | ✅ | ✅ | **half misframed** — a deviation is a QA decision (`approve_disposition`), which the PM does **not** hold |
-| 7 | Review OTD and throughput | ✅ | ✅ | **First pass yield 53.8%** on the hero; OTD lives on the supplier scorecard (verified) — no single throughput view |
-| 8 | Maintain the data planning depends on | ✅ | ✅ | **Master Workbook** — 21 sheets in load order, validate-then-commit, nothing kept unless every row loads |
-
-| 9 | Top up a job after scrap outruns the gross-up | ✅ | ✅ | built end to end with a live exhibit; **its only door is the deferred schedule page** |
-| R1 | Authorise over-and-above and record the customer's answer | ✅ | ✅ | **Walked end to end 2026-10-07.** *Awaiting customer authorisation* → **Approved** / **Declined**; chose Approved → back to *In Rebuild*. Declined routes to DECLINED, which the service notes is deliberately **not** straight to returned — *"it still has to physically go back, and that is the same dispatch step a rebuilt unit takes."* **The product boundary holds exactly as stated:** the card's own comment is *"The conversation happened elsewhere; these record what the customer said."* No price, no quote, no approval-of-quote — UQMES produces the scope and records the answer. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-| R2 | Decide harvest versus buy on a rebuild kit | ✅ | ✅ | **Surface walked 2026-10-07** at `/reman/cores/$id/rebuild`. Header states the boundary exactly: *"Proposed, not committed — nothing here is reserved or ordered. This is what the system would put back into this unit, and why — read it before anyone commits capacity or money to it."* **Operations** table carries a **Because** column (*Standard rebuild* / *always*) — *"nothing is on the job without a reason you can challenge."* **Slots** (*2 need a decision · 0 settled*): Position / Needs / Found at teardown / Proposed / Why / Decide / Options, e.g. *Injector Nozzle Assembly · not recovered from this unit · Replace — buy · nothing serviceable available*. **No pricing anywhere — boundary held.** Decision not exercised: `Options` is *none* because no serviceable component of those types is in stock. ~~**Docs ⚠️: this whole surface is undocumented.**~~ **Covered — `workflows/reman/components.md`, `disassembly.md` and `overview.md`. Trailer cleared 2026-10-15.** |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See what is at risk | ✅ | ✅ | ✅ | ? | 2026-10-07 | One screen: late jobs, quarantine, CAPAs, first pass yield, supplier qualifications expiring, competency coverage. The last of those is the training matrix's staffing-risk lens surfaced for a manager. |
+| 2 | Release work | ✅ | ✅ | ❌ | ? | 2026-10-19 | Release is **not** the schedule's Dispatch — it has its own service, *"the planner's authorization gate"*, and the gate is **advisory, not blocking**: *"a failing check never refuses; it demands a written reason, which is stored on the work order. Blocking here would just teach people to fake the data."* <br><br>**Every door uses the service.** The scheduling surfaces (`useReleaseForScheduling` — capacity planning, the Gantt, Pull in work), the WO Control Center's **Release (N)** (`useBulkRelease` → `bulk_release`, `services/mes/release.py:238`, which re-offers blocked orders for an override reason) and, since 2026-10-19, the work order page's **Release** all call `release_work_order`, writing `released_at`, `released_by` and `release_override_reason`. Releasing never changes status; *In progress* follows from work starting. See **BUG — the work order page's Release skips release** (fixed). **Demo ❌:** 0 of 18 work orders have `released_at` set. |
+| 3 | Promise a date | ✅ | ✅ | ✅ | ? | 2026-10-12 | `/production/capacity` → **Could we take this order?** gives binding resource, shortfall, counter-offer and full work content: *"Not by 2026-11-01. Labor — needs 551.6h, only 327.8h free by then. Earliest it fits: end of 2026-11."* The page also warns that 12 orders have operations with **no cycle time**, naming four and linking to the process editor — Engineering 6 seen from the planning end. **Fixed on the walk:** the verdict and the counter-offer both rendered as a month, so a due date on the 1st collided with its own month and read as a contradiction. The arithmetic was always right; the labels were lossy. Regression test holds it. |
+| 4 | Resolve escalations | ✅ | ✅ | ✅ | ? | 2026-10-07 | Holds `resolve_step_decision`. Control Center **Exceptions** is the shared surface with the Shift Lead. |
+| 5 | Balance capacity and staffing | ✅ | ✅ | ✅ | ? | 2026-10-08 | Both halves on one surface: per-resource booked hours down the board's left rail, with Dispatch reporting staffing coverage against it. The demo's shop cannot deliver its own order book — ~3,758 h of work against ~2,222 h of labour — which the solver reports correctly rather than hiding. **That is a seed property, not a scheduling defect**, and the 220% figure is further inflated by the nominal-route booking in Scheduler R1. |
+| 6 | Approve over-and-above and deviations | ✅ | ✅ | ✅ | ? | 2026-10-07 | **Half misframed.** A "deviation" here is a `QuarantineDisposition` of type USE_AS_IS or REPAIR, rendered as the Deviation Request document — so approving one needs `approve_disposition`, which the PM does **not** hold. That is correct under AS9100: material review authority is a quality function. The PM holds `close_disposition` — production closes the paperwork, quality makes the call. The row should split into *record the customer's answer on over-and-above* (which R1 states correctly) and *close out a deviation once QA has decided it*. |
+| 7 | Review OTD and throughput | ✅ | ✅ | ✅ | ? | 2026-10-07 | First pass yield on the hero; customer OTD on the Shipping page, supplier OTD on the scorecard. **There is no single throughput view** — the row is answered across three surfaces. |
+| 8 | Maintain the data planning depends on | ✅ | ✅ | ✅ | ? | 2026-10-08 | **Master Workbook** — 21 sheets in load order, validate-then-commit, nothing kept unless every row loads. |
+| 9 | Top up a job after scrap outruns the gross-up | ✅ | ✅ | ✅ | ? | 2026-10-08 | Planner-confirmed by design: `work_order_shortfall` reports the gap, `create_makeup_parts` is the explicit action — topping up is never automatic. The demo carries a clean teaching pair: one job where scrap outran the gross-up and owes one, and one that absorbed its scrap because the gross-up covered it. **Placement question:** the only UI door is the scheduling page's work-order dialog, though the shortfall is a property of the work order and the person who needs it is looking at the work order. |
+| R1 | Authorise over-and-above and record the customer's answer | ✅ | ✅ | ✅ | ? | 2026-10-07 | *Awaiting customer authorisation* → **Approved** / **Declined**. Approved resumes rebuild; Declined routes to DECLINED rather than straight to returned, because *"it still has to physically go back, and that is the same dispatch step a rebuilt unit takes."* **The product boundary holds exactly:** the card's own comment is *"The conversation happened elsewhere; these record what the customer said."* No price, no quote, no approval-of-quote — UQMES produces the scope and records the answer. |
+| R2 | Decide harvest versus buy on a rebuild kit | ✅ | ✅ | 🚧 | ? | 2026-10-07 | `/reman/cores/$id/rebuild` states its boundary in the header: *"Proposed, not committed — nothing here is reserved or ordered."* **Operations** carries a **Because** column so *"nothing is on the job without a reason you can challenge"*; **Slots** gives Position / Needs / Found at teardown / Proposed / Why / Decide / Options. **No pricing anywhere.** **Demo 🚧:** the decision itself cannot be exercised — `Options` is empty because no serviceable component of those types is in stock, so every slot reads *Replace — buy* with nothing to choose between. |
 
 ## QA Manager
 
@@ -787,32 +822,30 @@ each.
 
 ### The other side of the inspector's gates
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Authorize a disposition decision | ✅ | ✅ | co-sign at the inspector's station, or commit directly holding `approve_disposition`. Verified: `decision_authorized_by` = the approver |
-| 2 | Record a CAPA's effectiveness outcome | ✅ | ✅ | verified 2026-10-06. Holding `verify_capa` she goes straight through, no co-sign. Recording **Effective** auto-closes the CAPA |
-| 3 | Approve a MAJOR/CRITICAL CAPA before work can start | ✅ | ✅ | verified. Full e-signature gate: decision + drawn signature + password re-auth |
-| 4 | Co-sign an FPI buy-off for an inspector lacking `sign_off_fpi` | ✅ | ✅ | **Walked live 2026-10-12 as `mike.ops` (Operator, no `sign_off_fpi`)** — previously code-verified only. On WO-2024-0048-A the FPI panel reads *"First piece waiting on QA 1 · No part moves past these steps until the first piece is bought off"* and offers **Get QA sign-off** rather than a direct buy-off. The dialog switches to co-sign mode and says so in words: *"You aren't authorized to buy off a first piece. An authorized QA inspector can sign here without logging you out."* and *"It is recorded against the QA inspector's name — not the person logged in."* It collects **QA inspector email**, a **signature**, a confirmation checkbox, and the inspector's **password** (*"to verify their identity"*). **WALKED TO COMPLETION 2026-10-13 — this row is now closed.** On the reman teardown WO, as `dave.wilson` (Operator, no `sign_off_fpi`), the co-sign dialog was signed by the user and the record landed: `status=PASSED`, `result=PASS`, **`inspected_by = Sarah Chen`** — *not* the person at the keyboard, which is the whole point of the co-sign and matches the dialog's promise that it *"is recorded against the QA inspector's name — not the person logged in."* Both surfaces updated: the control page's *First piece waiting on QA* panel disappeared, and the player banner flipped to **"First Piece Inspection signed off — Setup verified"**. **Why it took four reseeds:** the two SEEDED FPIs can never be signed (one has no designated part, the other's is quarantined with an out-of-spec measurement), so the row was never blocked by the pad or the harness — it was blocked by having no signable subject. A walk-created FPI, whose designated part is clean and in spec, signs first time. Recorded in `DEMO_SEED_REQUIREMENTS.md` item 2. **DEFECT, separate: the drawn signature is discarded.** `fpi-sign-off-dialog.tsx` validates `requireSignature: true` so the user cannot proceed without drawing, then posts only `{id, notes, cosign_email, cosign_password}` — the image never leaves the browser, and `FPIRecord` has no field to hold one. The file's own comment (`viewsets/qms.py:161`) states the requirement: *"act under AS9100/ISO 9001 8.7 & 21 CFR 820.90 — the record must carry the signature of the individual authorizing it."* The password re-auth plus `inspected_by`/`inspected_at` is arguably a valid e-signature on its own, in which case the pad should not be demanded; what is not defensible is requiring it and keeping nothing. Note `ApprovalResponse.signature_data` DOES store a real PNG from the same shared component, so the two signature surfaces disagree. **Original note retained:** completion was once thought blocked by the signature pad — and here the pad is REAL, unlike the in-player node (see the corrected note in the summary; the FPI co-sign dialog genuinely draws one, because it records against someone else). The affordance, the gating and the wording are all confirmed.
-
-**Defect found 2026-10-12 while walking this row:** on WO-2024-0048-A the panel offers **Get QA sign-off** for an FPI with `designated_part = None` — no part has reached Nozzle Inspection, so there is nothing to inspect. The signature, confirmation checkbox and the QA inspector's password are all collected, and only then does the server refuse: `400 {"detail":"No first piece has reached this step yet - nothing to inspect."}`. The refusal is correct and well-worded; the UI is not. The panel **displays** *"first piece not yet designated"* immediately beside the button, so it holds the information and offers the action anyway, and it collects a signature for something that could never succeed. Contrast the step player, which correctly offers **Start FPI** (designate the first piece) rather than a buy-off in that state — and contrast WO-QA-INSPECT-01, whose FPI has designated INJ-QA-INSPECT-001 and whose panel names the part instead. |
-| 5 | Release a judgement hold at receiving | ✅ | ✅ | unqualified supplier / unapproved part — *"A quality manager can release this hold"* |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Authorize a disposition decision | ✅ | ✅ | ✅ | ? | 2026-10-06 | Either co-sign at the inspector's station or commit directly holding `approve_disposition`. `decision_authorized_by` records the approver, not the person logged in. The complement of QA Inspector 8, confirming the control from both sides. |
+| 2 | Record a CAPA's effectiveness outcome | ✅ | ✅ | ✅ | ? | 2026-10-06 | Holding `verify_capa` she goes straight through with no co-sign. Recording **Effective** **auto-closes the CAPA**, which is undocumented and will surprise someone. A second, separate control sits beside it: `allow_self_verification` is per-CAPA and default-deny, so *"Self-verification is not permitted for this CAPA"* refuses an initiator-assignee even though she holds the permission — an independence bar, not a permission one. |
+| 3 | Approve a MAJOR/CRITICAL CAPA before work can start | ✅ | ✅ | ✅ | ? | 2026-10-19 | **Severity chooses the template** (since 2026-10-19): Critical → `CAPA_CRITICAL`, Major → `CAPA_MAJOR`, each falling back to `CAPA_APPROVAL` — see **CAPA approval is not tiered by severity** (built). In demo, Critical falls back (no `CAPA_CRITICAL` template). Full e-signature gate: decision + drawn signature + password re-auth. Self-approval is refused by default per template and, where allowed, demands ≥10 characters of justification and flags `self_approved` on the record permanently. |
+| 4 | Co-sign an FPI buy-off for an inspector lacking `sign_off_fpi` | ✅ | ✅ | 🚧 | ? | 2026-10-19 | Walked to completion as an operator with no `sign_off_fpi`: the dialog switches to co-sign mode and says so — *"An authorized QA inspector can sign here without logging you out… It is recorded against the QA inspector's name — not the person logged in."* The record landed with `inspected_by` = the **inspector**, not the person at the keyboard, and both surfaces updated. <br><br>**⚠️ Two defects.** (1) **The drawn signature is discarded.** The dialog validates `requireSignature: true` so you cannot proceed without drawing, then posts only `{id, notes, cosign_email, cosign_password}` — the image never leaves the browser and `FPIRecord` has no field for it, while `ApprovalResponse.signature_data` stores a real PNG from the *same component*. The password re-auth plus `inspected_by`/`inspected_at` may well be a valid e-signature on its own; requiring a pad and keeping nothing is not defensible either way. (2) **The action is offered when it cannot succeed** — for an FPI with no designated part the panel displays *"first piece not yet designated"* and offers **Get QA sign-off** beside it, collecting a signature and a password before the server refuses. <br><br>**Demo 🚧:** both *seeded* FPIs are unsignable (no designated part; designated part quarantined). A walk-created one signs first time. `DEMO_SEED_REQUIREMENTS.md` item 2. **Defect (1) → FIXED 2026-10-19** (migration 0239): `FPIRecord.signature_data` keeps the co-signer's drawing, stored only on the co-sign path and only after email and password verify; the API exposes `has_signature`. `compliance/signatures.md` and `work-orders/fpi.md` updated. **Defect (2) left open deliberately:** the server designates the first piece lazily at sign-off, so "not yet designated" does not always mean sign-off fails, and hiding the button would block that case. **→ FIXED 2026-10-19:** `get_or_create` refuses with `fpi_no_first_piece` when no part has reached the step, so every new FPI has a first piece and fail and waive always run segregation of duties. The panel's old-row text now reads *"first piece designated at sign-off"*. The seeded undesignated FPI is training-arc work. **As found:** the FPI is created only from the runtime banner's **Start FPI**, where a part is already at the step, so it is always designated. A null `designated_part` comes only from the seed or a direct API call. On such a record, fail and waive skip the segregation-of-duties check (`_reject_self_signoff` returns early on None). **Fix handed to the code session:** `get_or_create` refuses when nothing can be designated. The seeded undesignated FPI is training-arc work. |
+| 5 | Release a judgement hold at receiving | ✅ | ✅ | ✅ | ? | 2026-10-06 | Unqualified supplier or unapproved part — *"A quality manager can release this hold, or the lot can be rejected."* The judgement/self-clearing split is the whole teaching point of the hold panel. |
 
 ### Their own work
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 6 | Decide which of this week's NCRs becomes a CAPA — and justify the ones that don't | ✅ | ✅ | **Green — corrected 2026-10-15. Both halves of this row work and the ⚠️ was stale**: the promotion half was fixed in the pass that found it, and the justify-the-ones-that-don't half was never missing, only undocumented. promotion works (was broken, fixed this pass). **Docs correction 2026-10-12:** the note *"no way to record a declined CAPA"* is **stale** — `services/qms/capa_decision.py` records `NOT_REQUIRED` and `DEFERRED` with a **mandatory** reason (*"Say why — the reason is what an auditor reads"*), cites ISO 9001 10.2.1(b), and leaves undecided reports visible on the NCR page so an unevaluated backlog is countable. `PROMOTED` can't be set by hand; it follows from the CAPA linking the report, so the two can't disagree. Now documented in `workflows/quality/quality-reports.md`. |
-| 7 | Work the approvals centre | ✅ | ✅ | verified 2026-10-06. 5 awaiting, By Type, My Submitted, Overdue |
-| 8 | Qualify someone for a process, and find whose qualification lapses this month | ✅ | ✅ | verified 2026-10-06. Matrix answers more than asked — coverage risk + single-point-of-failure |
-| 9 | Raise a SCAR, track the response, change the supplier's standing | ✅ | ✅ | verified 2026-10-06 on `/production/supplier-quality`. SCAR = CAPA `capa_type='SUPPLIER'`, not a parallel model |
-| 10 | Find everything measured by a gauge that just failed its check | ✅ | ✅ | **built this pass.** `/quality/calibrations/records/$id/exposure`; verified 2026-10-06. Dark in seed data — no FAIL record exists |
-| 11 | Pull the complete record for one serial, on demand | ✅ | ✅ | **CLOSED 2026-10-15 — and it was already done; this row was behind the product, not ahead of it.** The part detail page carries a **Traveler** button scoped to that serial (`fieldsConfigMap.tsx`, passing both the work order and the part id), described there as *"This serial's as-built traveler: its work order's routing, filled with who did each step, what was measured, the lots that went in."* That answers **both** halves of the original finding — the step-by-step history *is* the routing filled in, and the printable is the PDF. `analysis/exporting.md` still called a per-part traveler "planned" and sent readers to the API until `c3eab7f`. A row and a help page both lagging the same shipped feature is the drift this file exists to catch, so: *flip the row when the work lands.* Original note: *PARTIAL — page gathers QRs, dispositions, documents, but no step-by-step history and no per-serial printable.* |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 6 | Decide which of this week's NCRs becomes a CAPA — and justify the ones that don't | ✅ | ✅ | ✅ | ? | 2026-10-15 | Both halves work. Promotion goes through **Create CAPA** on a FAIL report. The *declining* half is `services/qms/capa_decision.py`: `NOT_REQUIRED` and `DEFERRED` with a **mandatory** reason — *"Say why — the reason is what an auditor reads"* — citing ISO 9001 10.2.1(b), with undecided reports left visible so an unevaluated backlog is countable. `PROMOTED` cannot be set by hand; it follows from the CAPA linking the report, so the two can never disagree. |
+| 7 | Work the approvals centre | ✅ | ✅ | ✅ | ? | 2026-10-06 | Awaiting / By Type / My Submitted / Overdue. The queue is **not type-scoped** — document releases, CAPA approvals, process changes and training certifications all land in the same place. |
+| 8 | Qualify someone for a process, and find whose qualification lapses this month | ✅ | ✅ | ✅ | ? | 2026-10-06 | The matrix answers more than the row asks: coverage risk and single-point-of-failure, not just who holds what. Writing a training record is deliberately **not** an operator or inspector permission — it used to be, and it let people certify themselves. |
+| 9 | Raise a SCAR, track the response, change the supplier's standing | ✅ | ✅ | ✅ | ? | 2026-10-06 | A SCAR is **not a parallel model** — it is a CAPA with `capa_type='SUPPLIER'` plus a supplier FK, so it inherits root cause, tasks, verification and closure. Worth saying in the docs, because "SCAR" reads like a separate object and someone will go looking for one. The API filter value is `SUPPLIER`; `capa_type=SCAR` is rejected. The scorecard recommends an action (*"Review: suspend"*) rather than only scoring. |
+| 10 | Find everything measured by a gauge that just failed its check | ✅ | ✅ | ✅ | ? | 2026-10-19 | `/quality/calibrations/records/$id/exposure`, answering ISO 9001 **7.1.5.2**. The window leads, because the window *is* the finding. "Found unfit" includes `as_found_in_tolerance=False`, not just FAIL — a gauge adjusted back into tolerance measured wrongly until the adjustment, which is the commoner case. It deliberately does **not** act on its list: the assessment is required, the judgement belongs to a person. **Demo ✅ (2026-10-19):** the seed now records Keyence Vision IM-7020 found out of tolerance at calibration on seed day, adjusted and passed (`as_found_in_tolerance=False`, not a FAIL, so the gauge stays in service), and links it as GAUGE to the Nozzle Inspection reports since its previous calibration. Its exposure lists 9 reports, all with parts (`seed_found_out_calibration`, run last in the scenario). |
+| 11 | Pull the complete record for one serial, on demand | ✅ | ✅ | 🚧 | ? | 2026-10-15 | The part detail page carries a **Traveler** scoped to the serial: *"This serial's as-built traveler: its work order's routing, filled with who did each step, what was measured, the lots that went in."* Step history and printable, both halves. **Demo 🚧:** the demo's parts are staged in end state rather than walked, so a seeded serial has few or no `StepExecution` rows to narrate — audit readiness is the hardest thing in this product to *demonstrate*, which is the argument for the deferred seed rewrite. |
 
 ### Reman
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| R1 | Record the customer's answer on over-and-above work | ✅ | ✅ | **row was misframed** — the decision is the customer's, not the QA Manager's. No demo exhibit |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| R1 | Record the customer's answer on over-and-above work | ✅ | ✅ | ❌ | ? | 2026-10-12 | **Row was misframed** — the decision is the **customer's**, not the QA Manager's, and the system is deliberately right about that. `request_authorisation` computes the over-and-above and refuses when findings added nothing beyond the sold level; `record_authorisation` records what the customer said. No quote, no approval-of-quote, no PO. **Demo ❌:** no core sits in `AWAITING_AUTHORISATION` on a fresh seed, so there is no answer to record — and over-and-above is the single most distinctive thing reman does. |
 
 !!! note "Why this list is shaped differently"
     Five of eleven rows exist **only because an inspector reached a gate**. That
@@ -836,16 +869,16 @@ role (§Scope). Walked now because its training track needed ground truth.
     whether the surface works, not whether Engineering can reach it. Permission
     boundaries below are read from `Tracker/presets.py`, not observed.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Author a part type and its specifications | ✅ | ✅ | `/editor/processes` family; authoring perms confirmed in presets (`add_parttypes`, `change_parttypes`) |
-| 2 | Author a routing: steps, the graph, branches | ✅ | ✅ | **Walked 2026-10-12.** Flow editor renders nodes (name + description) and labelled edges. A **QA Pass/Fail** step carries **Pass** / **Fail** handles and the edges leaving it are labelled — that is how rework lanes are authored. |
-| 3 | Revise an approved routing | ✅ | ✅ | **Walked 2026-10-12.** An approved process is **locked**: *"This process is locked. Duplicate to make changes."* Duplicate → Draft → Approve is the versioning mechanism. The list showed a **Draft beside the Approved version it replaces** (*Injector Reman — Authoring Draft (SHOWCASE)*, 12 steps, alongside *Injector Reman*, Approved, 12 steps) — the normal working state. |
-| 4 | Author work instructions (DWI substeps) | ✅ | ✅ | Covered by the DWI passes under Operator; `SubstepResource` and `SubstepTranslation` are **0 rows**, so no demo instruction carries an image or a translation. |
-| 5 | Define measurements and attach them as step requirements | ✅ | ✅ | 12 `MeasurementDefinition` rows seeded; definition-vs-requirement distinction holds. |
-| 6 | Give the solver what it needs | ✅ | ✅ | Cycle times, machine eligibility, changeovers. **15 steps carry no `expected_duration`** — each contributes no load, so the capacity heatmap overstates free capacity. Same finding as Scheduler row 1 seen from the authoring end. |
-| 7 | Life limits | ✅ | ✅ | 4 definitions, 2 part-type links. The link **is** the application — unlinking stops life inheritance and drops shelf life to the default. |
-| C1 | Change control (PCR / PCO / PCN) | ✅ | ⚠️ | **WORKS END TO END as of 2026-10-12 — three blockers were found and fixed in the course of one walk, and the detail below is kept because each was a different class of fault.** The caveat keeping this row off green is the last paragraph: PATCH is not status-gated, so an approved PCR's `draft_process_version` can still be repointed. *The walk began "broken at step one"; that is the story, not the state.* Two corrections first: my original *"read-only shell"* was wrong (I believed the page's own stale banner), and the receiving session was right that the actions are wired. **Walked as `admin@demo.ambac.com`:** process editor → header menu → **Propose Change · *File a PCR + fork an editable draft*** (beside *Duplicate as Template · no change trail* — the menu distinguishes them). The approved process flipped from **Viewer / locked** to **Editor / DRAFT** with a banner *"Working draft for **PCR-2026-0001** · DRAFT"* plus **Submit for approval** and **View PCR**. The PCR page is real: target process, creator, **Affected in-flight WOs**, and a **Proposed changes** panel (*"Structured diff between the approved baseline and the draft"*). The submit dialog is ISO-shaped — Title, Proposed change, Justification, **Risk analysis**, Priority, **Customer notification required**. **DEFECT — a PCR cannot be submitted from the browser.** `PATCH /api/process-change-requests/{id}/` returns **200** and the server saves every field, but the zod client rejects the response: *`invalid_type, expected string, received undefined, path: ["submitted_by_username"]`*. The user sees **"Submit failed"** and the PCR stays DRAFT, so **nothing downstream can ever run** — approve, author, implement, release and close are all POSTs to `@action`s (not partial, so they serialise fine) but none is reachable until a PCR is SUBMITTED. **Mechanism (verified, not inferred):** `submitted_by_username = CharField(source='submitted_by.username', default=None, allow_null=True)`. DRF's `Field.get_default()` raises `SkipField` when `self.root.partial` is true, so on a **PATCH** the field is **omitted entirely** rather than sent as null — and `undefined` fails a zod `string | null`. Proven by serialising the same row both ways: non-partial → key present, value `None`; partial → key absent. `created_by_username` survives only because `created_by` is set, so no default is needed. **Six fields share the pattern**, all in `serializers/change_control.py` — `created_by_username`:34, `submitted_by_username`:40, `approved_by_username`:136, `implemented_by_username`:142, `released_by_username`:222, `closed_by_username`:228. Only the PATCH path is currently hit. **This is the CLAUDE.md nullable-field trap in a new shape:** a write that SUCCEEDS is reported to the user as a failure, invisible to backend tests and to `tsc`, visible only in a browser. **FIXED by the receiving session** (dropped `default=None`, kept `allow_null=True`, so DRF falls through to allow_null on partial writes; 55/55 green). **A SECOND blocker sat behind it.** With the zod error gone the real action ran and returned **400: *"PCR_APPROVAL approval template not found. Please configure approval templates."*** The tenant had `DOCUMENT_RELEASE`, `CAPA_APPROVAL`, `CAPA_MAJOR` and **`ECO`** — the old name — and none of the three the services look up (`PCR_APPROVAL`, `PCO_APPROVAL`, `PCN_RELEASE`). **FIXED:** all three added to the demo seed; `PCN_RELEASE` also added to `defaults_service.APPROVAL_TEMPLATES`, which had PCR and PCO but not the notice, so a new tenant could approve a change and then stall at the point the floor is told. **A THIRD, wider bug surfaced from the same thread.** `auto_assign_by_role` and `default_groups_names` are matched against `TenantGroup.name` **exactly** (`approval.py:211`, and `name__in` for the M2M), but both carried the obsolete underscored convention. Measured before the fix: **3 of 4 live templates auto-assigned to 0 users**, silently, because a filter that matches nothing is not an error. A previous pass had caught this for CAPA Approval alone and left the comment *"it's 'QA Manager', not 'QA_Manager'"* — the other three were never done. Fixed in the demo seed **and** in `defaults_service.py`, which matters more: it provisions **every new tenant**. After: **10 of 10 templates resolve, 0 unresolved.** **Walked to completion 2026-10-12:** PCR-2026-0001 is now `SUBMITTED`, stamped with actor and time, the **structured diff captured**, and an approval request auto-assigned to **Maria Santos (QA Manager)** — the assignment that previously found nobody. **Not recorded as fact:** the receiving session reports PATCH is not status-gated on PCR/PCO/PCN despite the viewset docstring, so an approved PCR's `draft_process_version` can still be repointed. Unfixed, with the user. |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Author a part type and its specifications | ✅ | ✅ | ✅ | ? | 2026-10-12 | The `/editor/processes` family. Authoring permissions confirmed in presets, not observed — no demo account holds Engineering alone. |
+| 2 | Author a routing: steps, the graph, branches | ✅ | ✅ | ✅ | ? | 2026-10-12 | The flow editor renders nodes and labelled edges. A **QA Pass/Fail** step carries **Pass** and **Fail** handles with labelled edges leaving it — that is how rework lanes are authored. |
+| 3 | Revise an approved routing | ✅ | ✅ | 🚧 | ? | 2026-10-19 | An approved process is **locked**: *"This process is locked. Duplicate to make changes."* Duplicate → Draft → Approve is the versioning mechanism, and the list shows a Draft beside the Approved version it replaces — the normal working state. **Demo 🚧 (2026-10-19):** the demo tenant has **no `PROCESS_APPROVAL` template**, so a duplicated draft cannot be approved through **Submit for approval** — `services/mes/processes.py:107` refuses with *"PROCESS_APPROVAL approval template not found"*. The change-control route (C1) still approves a new version. See **GAP (config) — CAPA approval is not tiered by severity**, *Also seen*. |
+| 4 | Author work instructions (DWI substeps) | ✅ | ✅ | ❌ | ? | 2026-10-12 | Covered by the DWI passes under Operator. **Demo ❌:** `SubstepResource` and `SubstepTranslation` are **0 rows**, so no demo instruction carries an image or a translation — two authored capabilities that cannot be shown. |
+| 5 | Define measurements and attach them as step requirements | ✅ | ✅ | ✅ | ? | 2026-10-12 | 12 `MeasurementDefinition` rows seeded. The definition-vs-requirement distinction holds: a definition is the characteristic, the requirement is its attachment to a step. |
+| 6 | Give the solver what it needs | ✅ | ⚠️ | 🚧 | ? | 2026-10-15 | **Only the cycle time is Engineering's.** `Steps.expected_duration` rides on `change_steps`, so authoring roles set it. **Machine eligibility (`stepequipmentaffinity`), changeovers and `StepTiming` are not in `AUTHORING_PERMISSIONS`** — they sit in `SCHEDULING_PLANNER_PERMISSIONS` (Production Manager, Tenant Admin), with changeovers also granted to Planner. So the role that authors the route cannot tell the solver which machines can run it. **15 steps carry no `expected_duration`**, and a step with no duration contributes no load, so the capacity view overstates free capacity — the capacity page surfaces this from the other end, naming the orders affected. **Re-checked 2026-10-19 against `presets.py`:** unchanged — `change_steps` is Engineering's; `steptiming` and `stepequipmentaffinity` are Production Manager / Tenant Admin only, changeovers add Planner. `roles/engineering.md` now says so. |
+| 7 | Life limits | ✅ | ✅ | ✅ | ? | 2026-10-12 | 4 definitions, 2 part-type links. **The link *is* the application** — unlinking stops a harvested component inheriting its core's accumulated life and drops a lot's shelf life to the default, which is why `delete_parttypelifelimit` travels with the definition's write permission. |
+| C1 | Change control (PCR / PCO / PCN) | ✅ | ✅ | ✅ | ? | 2026-10-15 | **Works end to end.** The process editor's **Propose Change · *File a PCR + fork an editable draft*** sits beside *Duplicate as Template · no change trail*, and the menu distinguishes them. The approved process flips from Viewer/locked to Editor/DRAFT with a banner naming the PCR. The PCR page carries target process, creator, **Affected in-flight WOs** and a **Proposed changes** structured diff; the submit dialog is ISO-shaped — Title, Proposed change, Justification, **Risk analysis**, Priority, **Customer notification required**. Submitting stamps actor and time, captures the diff and auto-assigns an approval. <br><br>**An approved record cannot be repointed.** Two independent guards: `assert_pcr_editable` refuses any write outside `PCR_EDITABLE_FIELDS`, so `target_process` and `draft_process_version` are never editable — *"set when the change is proposed, and the diff is computed at submit"* — and the shared approval lock freezes the row once it leaves DRAFT. PUT on a PCO or PCN is refused outright (405); they are created by approving a PCR and implementing a PCO, not by POST. <br><br>**Three blockers were found and fixed on one walk, each a different class, and the first is the one to remember.** A PCR could not be submitted from the browser: the PATCH returned **200** and saved every field, but the zod client rejected the *response* on `submitted_by_username`, so the user saw "Submit failed" and nothing downstream could ever run. Cause: `CharField(source=…, default=None, allow_null=True)` — DRF's `get_default()` raises `SkipField` when the serializer is **partial**, so on a PATCH the key is omitted entirely rather than sent as null, and `undefined` fails a zod `string | null`. **That is the CLAUDE.md nullable-field trap in a new shape: a write that SUCCEEDS reported to the user as a failure**, invisible to backend tests and to `tsc`. Six fields in `serializers/change_control.py` share the pattern. The other two: the tenant had an `ECO` template and none of the three the services look up; and `auto_assign_by_role` matched `TenantGroup.name` **exactly** while carrying the obsolete underscored convention, so **3 of 4 live templates auto-assigned to 0 users** — silently, because a filter that matches nothing is not an error. Both fixed in the seed *and* in `defaults_service.py`, which provisions every new tenant. |
 
 ---
 
@@ -853,15 +886,15 @@ role (§Scope). Walked now because its training track needed ground truth.
 
 **Added 2026-10-12**, same reason and same caveat as Engineering.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | Know what is on order and what is late | ✅ | ✅ | 3 `ON_ORDER` lots, 2 of them late. Shares the Receiving surface (Receiving rows 1, 9). |
-| 2 | Chase a late delivery | ✅ | ✅ | Receiving row 9. **OTD is scored against the *first* promise**, so re-promising never repairs the score — deliberate. |
-| 3 | Maintain sourcing: lead time, preferred supplier, safety stock | ✅ | ✅ | What the requirements report nets against. A wrong lead time fails **silently** — the shortage surfaces later as a job that cannot start, and reads as a planning fault rather than a data one. Sourcing edits never version the part. |
-| 4 | Qualify a supplier; maintain the approved list | ✅ | ✅ | 4 `SupplierQualification` rows. **Raising is Purchasing; `approve_supplierqualification` is QA Manager** — separation of duties, confirmed in presets. |
-| 5 | Read the supplier scorecard and act on standing | ✅ | ✅ | **Walked 2026-10-12.** `/production/supplier-quality` — per-supplier acceptance, reject rate, CoC compliance, on-time delivery and open SCARs, with standing (*Qualified* / *Conditional* / *Not qualified*). Great Lakes Diesel showed **Rating C · 9 lots · 1 open SCAR** and the card **recommended an action: "Review: suspend"**. Empty states are honest — *"No material lots received from this supplier yet."* rather than zeros that read as failure. **Docs correction 2026-10-12:** my note said *"the scorecard appears in no doc"* — **wrong.** `workflows/supply/overview.md` already documented all six metrics accurately. What was missing was the **rating and its recommendation**, now added with the real thresholds (C on any open SCAR, reject ≥ 10% or on-time < 85%; A at reject ≤ 2%, CoC ≥ 99%, on-time ≥ 95%), plus the two exclusions that explain surprising numbers — on-time scores against the FIRST promise, and customer property is left out entirely. |
-| 6 | Raise a SCAR against a supplier | ✅ | ✅ | A SCAR is a CAPA against a supplier; gated on `initiate_capa`, which Purchasing holds. |
-| C1 | Purchase orders, prices, spend approval | ✅ | — | **Out of bounds by design.** UQMES records what is expected and what waits on it; the PO lives in the ERP. Not a gap. |
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Know what is on order and what is late | ✅ | ✅ | ✅ | ? | 2026-10-12 | Shares the Receiving surface (Receiving 1 and 9). Permission boundaries read from `presets.py`, not observed — no demo account holds Purchasing alone. |
+| 2 | Chase a late delivery | ✅ | ✅ | 🚧 | ? | 2026-10-12 | Receiving row 9's surface. **OTD is scored against the *first* promise**, so re-promising never repairs the score — deliberate, and the screen shows the original promise beside the revised one. **Demo 🚧:** `ExternalContact` is **0 rows**, and `late_deliveries.py` reads the supplier's deliveries contact for the Late deliveries card — so the "who to chase" half has nothing to show. |
+| 3 | Maintain sourcing: lead time, preferred supplier, safety stock | ✅ | ✅ | ✅ | ? | 2026-10-12 | What the requirements report nets against. **A wrong lead time fails silently** — the shortage surfaces later as a job that cannot start and reads as a planning fault rather than a data one. Sourcing edits never version the part. |
+| 4 | Qualify a supplier; maintain the approved list | ✅ | ✅ | ✅ | ? | 2026-10-12 | **Raising is Purchasing; approving is QA Manager** (`approve_supplierqualification`) — separation of duties. The create/grant split is the pattern worth copying: anyone may raise a draft, which lands PENDING with `status` read-only, and only the `approve_*`-gated action gives it force. |
+| 5 | Read the supplier scorecard and act on standing | ✅ | ✅ | ✅ | ? | 2026-10-12 | Per-supplier acceptance, reject rate, CoC compliance, on-time delivery and open SCARs, with standing and a **recommended action** (*"Review: suspend"*), not just a score. Thresholds: C on any open SCAR, reject ≥ 10% or on-time < 85%; A at reject ≤ 2%, CoC ≥ 99%, on-time ≥ 95%. Empty states are honest rather than showing zeros that read as failure. **Label trap:** "Lots received 6" beside "Reject rate 50%" invites 1/6 — the denominator is *inspected* lots, and customer property is excluded entirely. |
+| 6 | Raise a SCAR against a supplier | ✅ | ✅ | ✅ | ? | 2026-10-12 | A SCAR is a CAPA against a supplier, gated on `initiate_capa`, which Purchasing holds. See QA Manager 9 for why it is not a parallel model. |
+| C1 | Purchase orders, prices, spend approval | ✅ | — | — | ? | 2026-10-12 | **Out of bounds by design.** UQMES records what is expected and what waits on it; the PO lives in the ERP. Not a gap, and not a row to build against. |
 
 !!! note "Two empty tables behind documented behaviour"
     `ExternalContact` is **0 rows**, and `late_deliveries.py` reads the supplier's
@@ -876,22 +909,17 @@ role (§Scope). Walked now because its training track needed ground truth.
 Document Controller — so unlike Engineering and Purchasing, the Code column here
 reflects what the role can actually reach.
 
-| # | Workflow | Docs | Code | Notes |
-|---|----------|------|------|-------|
-| 1 | See what needs me | ✅ | ✅ | **Walked 2026-10-12.** Home carries **Approvals in flight 5** (APR-2026-0003…0007, each with type and due date), **Documents** — *Needs my approval 0 · Pending approval 1 · Due for review 0 · Released 2* — and **Training** (22 / 1 / 1). Every figure links. |
-| 2 | Upload a document with type and classification | ✅ | ✅ | **Walked 2026-10-12.** `/documents/list` — **New Documents**, and the list carries **File Name · ID · Version · Status · Type · Classification · Uploaded · Uploaded By**. 4 documents seeded: *DWG-CRI-8800* (Drawing/DWG, **Released**, Internal) and *WI-1003 Flow Test Procedure v4.0* (Work Instruction/WI, **Under Review**, Internal). |
-| 3 | Route a document for release approval | ✅ | ✅ | Approval type **Document Release** appears in the in-flight queue alongside CAPA Approval (APR-2026-0003). |
-| 4 | Work a mixed approvals queue | ✅ | ✅ | The queue is **not document-only** — four of the five in flight are *CAPA Approval*. A Document Controller is an approvals operator, not only a document operator. ~~**Docs ⚠️: no guide says this.**~~ **Was still true until 2026-10-15 — this row's finding outlived the sweep that cleared the others.** Now written: `roles/document-controller.md` states that the approvals queue is not document-only, that CAPA approvals, process changes and training certifications sit in it, and that a request assigned to you has nobody else coming for it. |
-| 5 | Track the lifecycle | ✅ | ✅ | Draft → **Under Review** → **Released**, with **Version** on the row. Both live states observed. |
-| 6 | Find what is due for review | ✅ | ✅ | *Due for review* tile is present and reads **0** — the periodic-review loop has no demo data, so the exhibit is dark. **LIT 2026-10-12** by seed phase 9 (`dark_exhibits.py`). One document now carries a `review_date` 14 days past, so the **Due for review** tile reads non-zero and the periodic-review loop is walkable. |
-| 7 | Classify, and hold the secret tier | ✅ | ✅ | `classify_documents` + `view_secret_documents` are Document Controller's and QA Manager's alone (presets). All 4 demo documents are **Internal**, so no tier above Internal is exercised and the filtering cannot be seen working. ~~**Docs ⚠️: the tiers appear in no role guide.**~~ **Covered — `roles/document-controller.md` holds the tiers and the Secret pairing, and `workflows/documents/library.md` carries the full table plus the warning that Confidential and Restricted are not manager-only. Trailer cleared 2026-10-15.** **LIT 2026-10-12** by seed phase 9 (`dark_exhibits.py`). One document is now **Confidential**, so classification is no longer uniformly Internal and the tier filtering can be observed hiding a document from a reader below it. |
-| 8 | Write training records | ✅ | ✅ | Holds `TRAINING_RECORD_WRITE` — same tier as the training gate override. Visible on Home. |
-| C1 | Delete a document | ✅ | ✅ | **Delete Document** is offered on every row (manager-tier `MANAGER_DELETE_PERMISSIONS`). Soft-delete semantics — see [[soft-delete-defeats-protect]]. ~~**Docs ⚠️: undocumented.**~~ **Covered since 2026-10-12; trailer cleared 2026-10-15.** |
-
-!!! note "Two dark exhibits, both demo-data"
-    *Due for review* is 0 and every document is **Internal**. The review loop and
-    the classification tiers are the two things a Document Controller is most
-    distinctively for, and neither can be demonstrated on current seed data.
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See what needs me | ✅ | ✅ | ✅ | ? | 2026-10-12 | Home carries **Approvals in flight**, **Documents** (*Needs my approval · Pending approval · Due for review · Released*) and **Training**. Every figure links. Walked as a real seeded Document Controller, so unlike Engineering and Purchasing this role's Code column reflects what the role can actually reach. |
+| 2 | Upload a document with type and classification | ✅ | ✅ | ✅ | ? | 2026-10-12 | The list carries File Name · ID · Version · Status · Type · Classification · Uploaded · Uploaded By. The document's name comes from the file — there is no title, description or document-number field. |
+| 3 | Route a document for release approval | ✅ | ✅ | ✅ | ? | 2026-10-12 | Approval type **Document Release** appears in the in-flight queue. There is no template to choose: the template is selected by approval *type*, not by the submitter. |
+| 4 | Work a mixed approvals queue | ✅ | ✅ | 🚧 | ? | 2026-10-15 | **In flight ≠ assigned to me.** Home's *Approvals in flight* lists everything moving through the system; *Needs my approval* is the actionable number, and for this role it reads **0** beside an in-flight count of 5. Eligibility is per-request: `can_approve()` checks approver and group assignment, enforced at `services/core/approval.py:553`, and those assignments come from the **approval template**. By default (`defaults_service.py:149-184`) Document Controller is assigned to **Document Release** only — CAPA approvals follow the severity-chosen template (`CAPA_CRITICAL` / `CAPA_MAJOR`, falling back to `CAPA_APPROVAL`) — none of them assigns Document Controller by default. So this is a document approvals queue unless a tenant routes other types here. **Demo 🚧:** nothing is assigned to this role, so the queue cannot be worked. |
+| 5 | Track the lifecycle | ✅ | ✅ | ✅ | ? | 2026-10-12 | Draft → **Under Review** → **Released**, with Version on the row; both live states observed. **Obsoleting is a deliberate act** — approving a new revision does not retire the old one, which simply stops being current and keeps whatever status it had. |
+| 6 | Find what is due for review | ✅ | ✅ | ✅ | ? | 2026-10-12 | **Nothing notifies you** — the *Due for review* tile on Home is the only thing that will tell you, and you have to go and look. The review period is a document-*type* setting, and a type with no review period never prompts one. Lit by seed phase 9: one document carries a `review_date` 14 days past. |
+| 7 | Classify, and hold the secret tier | ✅ | ✅ | 🚧 | ? | 2026-10-12 | `classify_documents` and `view_secret_documents` are this role's and the QA Manager's alone, so the Document Controller can both set and read back all five tiers. **Demo 🚧:** one document is now Confidential, so the filtering can be seen hiding a document from a reader below it — but **no tier above Confidential is exercised**, and Secret, the distinctive one, stays dark. |
+| 8 | Write training records | ✅ | ✅ | ✅ | ? | 2026-10-12 | Holds `TRAINING_RECORD_WRITE` — the same tier as the training gate override, and deliberately withheld from Operator and QA Inspector. |
+| C1 | Delete a document | ✅ | ✅ | ✅ | ? | 2026-10-12 | **Delete Document** is offered on every row at manager tier. Soft-delete semantics — see [[soft-delete-defeats-protect]]. Obsolete documents are **not** hidden: they stay in the library and status is a filter you choose. |
 
 ---
 
@@ -946,6 +974,43 @@ a signpost to Tracker, not a missing portal.
        Per the user (2026-10-12): **no customer rows exist in any production
        environment**. Nothing is exposed today; this matters before the portal
        is offered to real customers.
+
+   !!! warning "Re-checked and DELEGATED 2026-10-15 — and the mechanism is sharper than written above"
+       Still live: `viewsets/mes_standard.py:1356` and `:1379`. Handed to the
+       scheduling session to fix; it was the oldest unfixed finding in the file
+       and the only outstanding one that is a disclosure issue rather than a
+       decision owed.
+
+       **The root cause is not a missing gate — it is a weaker one replacing the
+       default.** `settings.py:341-345` sets `DEFAULT_PERMISSION_CLASSES` to
+       three stacked classes — `IsAuthenticated`, `TenantAccessPermission`,
+       `TenantModelPermissions`. Every other viewset in the file inherits all
+       three, which is why `TenantModelPermissions` appears **zero** times in it.
+       These two declare `permission_classes = [IsAuthenticated]`, and DRF treats
+       that as a **replacement**: the line that reads as *adding* a check drops
+       two. Worth stating plainly, because the original write-up below reads as
+       "no permission class was set", and someone checking would find one and
+       move on.
+
+       **Queryset filtering cannot run even in principle.**
+       `build_incoming_rows()` and `build_inbox_rows()` are declared with **no
+       parameters at all**, so the viewset has `request.user` and nowhere to pass
+       it. `for_user()` (`models/core.py:655`) is never reachable from here.
+
+       **Tenant isolation is intact** and the finding should not be read as a
+       cross-tenant leak: both builders use `.objects`, which auto-scopes via the
+       ContextVar `TenantMiddleware` sets. What leaks is **within-tenant, across
+       roles** — a customer reading the supplier list and quarantine state, but
+       equally any operator reading the inspector's queue.
+
+       **The fix is two parts**, and the second is where the work is:
+       `build_inbox_rows()` composes five sub-builders (`_fpi_rows`,
+       `_qa_signoff_rows`, `_receiving_rows`, `_outside_process_rows`,
+       `_in_process_rows`), each constructing its own queryset, so the user has
+       to be threaded through each rather than at one call site. Note
+       `awaiting_inspection(qs)` is shared with the MaterialLot
+       `inspection_pending` lens and has already drifted into three copies once —
+       keep the rule in one place.
 
 2. **The sidebar is not role-filtered.** A customer is shown the full internal
    navigation — Processes, Scheduling, CAPAs, Change Control, Analytics, Admin.
@@ -1054,7 +1119,26 @@ Also: the table lists **six** serials; the work order seeds **eight**
 steps, per `qa_walk.py`). Not a fault, but a trainer counting parts will be
 confused.
 
-### PARTIAL — "pull the complete record for one serial" (QA Manager #11)
+### ~~PARTIAL~~ → CLOSED 2026-10-15 — "pull the complete record for one serial" (QA Manager #11)
+
+!!! success "Both halves of this finding are answered; the row is green"
+    The two gaps below — *no step-by-step execution history* and *no single
+    per-serial artifact* — are both closed by the **Traveler** button on the part
+    detail page, scoped to that serial (`fieldsConfigMap.tsx`, passing both the
+    work order and the part id): *"This serial's as-built traveler: its work
+    order's routing, filled with who did each step, what was measured, the lots
+    that went in."* The step history **is** the routing filled in, and the
+    printable is the PDF.
+
+    Two things this finding said would be needed arrived separately and are worth
+    connecting: `MaterialUsage` was lit by seed phase 9, so the lots-that-went-in
+    line is populated; and QA Inspector row 13's ⚠️ was resting on this same
+    absence and has been cleared with it.
+
+    **Kept rather than deleted** because the reasoning below — that audit
+    readiness is the hardest thing to *demonstrate*, and that the demo's
+    staged-end-state data has no history to narrate — is still true and is the
+    argument for the deferred seed rewrite.
 
 Tested as `maria.qa` on `INJ-0042-023` (SCRAPPED, with a FAIL QR and a CLOSED
 SCRAP disposition).
@@ -1090,7 +1174,24 @@ visiting a page and following three links, with no printable result.
 dispositions, printable) something uqmes should produce? It is the natural
 companion to the receiving inspection record, which does exactly this for a lot.
 
-### CODE GAP — a failed calibration is not traced back to what the gauge measured
+### ~~CODE GAP~~ → BUILT — a failed calibration is not traced back to what the gauge measured
+
+!!! success "This gap was specced here and built from the spec"
+    It closed within the same pass. The backward assessment now exists as
+    `/quality/calibrations/records/$id/exposure` — see **VERIFIED — the gauge
+    recall page ("What it measured") answers ISO 9001 7.1.5.2** below, which
+    walks it and records three places the builder went beyond this spec and was
+    right to. QA Manager row 10 and QA Inspector C2 are both green on it.
+
+    The question the finding ends on — *is the backward assessment expected to be
+    in UQMES, or run as a procedure outside it?* — was answered **in**, and the
+    page deliberately stops short of acting on its own list: 7.1.5.2 requires the
+    assessment, and the judgement belongs to a person.
+
+    **One thing here is still true:** the exhibit is dark. All 13 seeded
+    calibration records are PASS and the link only appears on a record that found
+    the gauge unfit, so the page cannot be reached in a fresh demo. That is
+    carried on the not-demonstrable list in the status key.
 
 **QA Manager #10 / QA Inspector C2.** The forward control exists; the backward
 assessment does not.
@@ -1181,7 +1282,13 @@ Re-snapshot first. A case-sensitive grep also nearly produced a second false
 finding in the same stretch — "YOUR GAUGES" renders uppercase and a search for
 `Gauge` missed it.
 
-### BUG (severe) — every CAPA dialog destroys itself as you type
+### ~~BUG (severe)~~ → FIXED — every CAPA dialog destroys itself as you type
+
+> **Fixed; see *RE-CHECKED 2026-10-06 — the CAPA dialog focus bug is FIXED*
+> below.** Re-confirmed 2026-10-15 by reading: none of the five dialogs is a
+> component defined in a parent body any more — `CapaVerificationTab.tsx:258`
+> holds `completeVerificationDialog` as plain JSX, and `RcaDialog`, `TaskDialog`
+> and `CompleteDialog` no longer exist as identifiers anywhere in `src/`.
 
 **Found:** 2026-10-06, Journey 9, trying to author a verification plan as
 `sarah.qa`.
@@ -1298,7 +1405,16 @@ Rewrite it as a stop to make, not one to avoid.
 The lot *is* held; the panel is rendering the hold. The conditional reads as
 uncertainty about something the screen can see. Low priority.
 
-### BUG — core lots appear in the QA inspector's home Receiving chip
+### ~~BUG~~ → FIXED — core lots appear in the QA inspector's home Receiving chip
+
+> **Fixed; see *RE-CHECKED 2026-10-06 — core lots are excluded everywhere* below.**
+> Re-confirmed 2026-10-15: `inspection_inbox.py:126` imports the shared
+> `awaiting_inspection` helper from `incoming_inspection`, which carries the
+> `holds_cores=False` exclusion, rather than keeping its own copy of the query.
+> **A grep for `holds_cores` in `inspection_inbox.py` still returns nothing** —
+> which is the fix working, not the bug persisting. Searching for the filter
+> rather than the helper nearly re-filed this as live during the 2026-10-15
+> read-through.
 
 **Found:** 2026-10-06, QA Inspector pass, logged in as `sarah.qa`.
 
@@ -1330,7 +1446,9 @@ at identification, not sampled.
 **Fix:** add `.filter(holds_cores=False)` to `_receiving_rows()`. Owned by the
 receiving/shipping session.
 
-### BUG (major) — the entire receiving-hold subsystem is dark in demo data
+### ~~BUG (major)~~ → PARTIAL, CARRIED TO THE TRAINING ARC — the entire receiving-hold subsystem is dark in demo data
+
+> **Re-checked 2026-10-19.** Partly lit: of 4 current part types, 1 now has `requires_supplier_qualification` and 1 `requires_heat_number`; `requires_part_approval` and `requires_coc` are armed on none, and on 0 of 3 materials. One lot is held (`RCV-MAT-HOLD`). The code was never at fault — this is seed coverage, and seed and training are one arc, so the remaining gates are armed there.
 
 **Found:** 2026-10-06, sweeping outward from the hold-exhibit bug below.
 
@@ -1369,7 +1487,9 @@ multi-hold and self-clearing in a single exhibit.
 moment that assumed it was automatic goes dark — silently, because an unarmed
 gate looks exactly like a passing one.
 
-### BUG — the "unqualified supplier" hold exhibit no longer holds
+### ~~BUG~~ → FIXED — the "unqualified supplier" hold exhibit no longer holds
+
+> **Re-checked 2026-10-19:** `RCV-MAT-HOLD` is `QUARANTINE` with `hold_reason = SUPPLIER_UNQUALIFIED`, matching Receiving row 5.
 
 **Found:** 2026-10-06, Journey 3.
 
@@ -1422,7 +1542,9 @@ Do not file this as a missing workflow. If it comes back into the system later i
 will most likely attach to the scope-authorisation flow, which already has the
 right shape: produce the finding, export it, record the answer.
 
-### DRIFT — the scan box takes more than the docs say
+### ~~DRIFT~~ → FIXED IN HELP DOCS, CARRIED TO THE TRAINING ARC — the scan box takes more than the docs say
+
+> **Re-checked 2026-10-19.** The help docs now say the box takes work orders, serials, lots and locations (`supply/locations.md`, `getting-started/navigation.md`). The narrower wording survives in `Documents/QA_INSPECTOR_TRAINING_SCRIPT.md` and its trainer-packet copy — training material, fixed in the arc.
 
 `QA_INSPECTOR_TRAINING_SCRIPT.md` Journey 2 teaches *"anything typed or scanned
 resolves to a work order"* and *"a scan anchors on the parent WO"*. The live
@@ -1517,7 +1639,9 @@ It also turned up a **reverse** bug in `CapaVerificationTab`, which stamped
 date, so after 8pm ET it recorded **tomorrow**. That one wrote a wrong value
 rather than merely showing one. Also fixed.
 
-### OPEN (needs a decision) — 33 more date-only display sites, 28 files
+### ~~OPEN (needs a decision)~~ → DECIDED AND FIXED — 33 more date-only display sites, 28 files
+
+> **Re-checked 2026-10-19.** Swept in `3e4cba4` (*fix(ui): read date-only fields as local*, 35 files), and `TrackerCard.tsx` on 2026-10-19. The last site, `pages/quality/PcoDetailPage.tsx:119` (`ProcessChangeOrder.effective_date`, a `DateField`), was fixed the same day with `parseDateOnly`. The `ApprovalRequest.due_date` sites on the approvals, inbox and dashboard pages are correct — that field is a `DateTimeField`.
 
 The same `new Date(<date-only field>)` shape survives in 33 places across 28
 files: training dashboard and records, user detail, work orders, orders,
@@ -1529,12 +1653,74 @@ sessions are active in several. **This is a decision for you, not a finding.** T
 tidy fix is one `parseDateOnly` helper applied across the sweep, done as a single
 opportunistic refactor in its own commit rather than piecemeal.
 
+!!! note "Decided and delegated 2026-10-15 — this is no longer a question"
+    **Do the sweep.** User decision; handed to the receiving/shipping session as
+    a self-contained piece of work. Re-checked first: `parseISO` appears in only
+    **7 files** across `src/`, which is the two fixed with the original bug plus
+    a handful of others — not the 28 this finding names — so no sweep had
+    happened.
+
+    **"Display-only" was WRONG, and the sweep is what proved it.** I scoped this
+    as cosmetic when delegating it — *"storage is correct everywhere, the seed is
+    untouched"* — on the strength of the original bug, where `onSelect` did
+    `format(date, "yyyy-MM-dd")` and the right value reached the API. **Two sites
+    were display-and-write:**
+
+    - **`OrderFormPage`** loaded `estimated_completion` with `new Date()` (UTC
+      midnight = the previous evening, locally) and submitted
+      `format(values.estimated_completion, "yyyy-MM-dd")`, which formats
+      **local**. Opening an order and saving it *without touching the date* moved
+      it back one day. Every save, for every user behind UTC.
+    - **`EditWorkOrderFormPage`** had the identical round trip on
+      `expected_completion`. Its submit side was already careful — a comment
+      explains it must send a local date string rather than an ISO timestamp —
+      so the care at one end was being undone at the other.
+
+    **The general shape, worth keeping:** a date-only field is safe only if
+    *both* ends agree. The parse is UTC and the format is local, so a form that
+    merely round-trips a value it never edited still corrupts it. Checking the
+    submit path alone — which is what made the original bug look cosmetic — sees
+    nothing.
+
+    **DONE 2026-10-15 — 45 sites across 33 files, 9 deliberately skipped,
+    `bun run typecheck` clean.** Helper is `src/lib/date-only.ts`
+    (`parseDateOnly`, wrapping `parseISO`), with the scope rule in its docstring
+    so the next person does not apply it to an `_at` field. Uncommitted at time
+    of writing.
+
+    **The count was 45, not 33, and the raw grep was 301.** Neither number was
+    trusted: every `new Date(<expr>)` site was extracted, the leaf field name
+    taken, and each classified against `schema.yaml` by `format: date` vs
+    `format: date-time`. **83 distinct leaf names, of which 7 are date-only.**
+    That is the method this finding asked for — the distinction is the whole bug,
+    and a grep-driven fix would have broken the 250-odd sites that were already
+    right.
+
+    !!! warning "`due_date` is a DateField on every model except one"
+        All nine skips share a single cause: **`ApprovalRequest.due_date` is a
+        `DateTimeField`** while every other model's `due_date` is a `DateField` —
+        22 date-only against 3 date-time in the schema. So `approval.due_date` in
+        `InboxPage` (×2), `ApprovalsHistoryPage` (×2), `ApprovalsOverviewPage`
+        (×3), `DocumentsDashboardPage` and `QualityDashboardPage` is correctly
+        out of scope. It was the **only** ambiguous field name in the codebase;
+        everything else was uniform. Anyone reasoning about dates by field name
+        will get `due_date` wrong, and only there.
+
+    **The predicted sibling existed.** `CoreReceiveFormPage:72` defaulted
+    `received_date` to `new Date().toISOString().split("T")[0]` — today's **UTC**
+    date — so after ~8pm ET the receive form opened pre-filled with *tomorrow*.
+    Exactly the `CapaVerificationTab` shape, found by looking for it. One more in
+    `work-order-status-actions.tsx:78` fed a note a person reads back and was
+    fixed too; `DefectAnalysisPage:253` only names a download file and was left.
+
 Worth noting the general lesson, which is not specific to this codebase:
 **`new Date("YYYY-MM-DD")` is UTC, `new Date("YYYY-MM-DDTHH:mm")` is local.** The
 bug only ever appears for date-only fields, and only for users behind UTC — so it
 is invisible to a UTC-based CI run and to every backend test.
 
-### BUG (demo data) — no failed calibration exists, so the recall page is dark
+### ~~BUG (demo data)~~ → FIXED — no failed calibration exists, so the recall page is dark
+
+> **Fixed 2026-10-19** by `DemoQualitySeeder.seed_found_out_calibration`: a PASS calibration found out of tolerance and adjusted, on the Keyence Vision gauge, with GAUGE links to the reports in its window — the exposure list shows 9 reports and the gauge stays in service. QA Manager row 10 is Demo ✅.
 
 All 13 seeded calibration records are **PASS**. The "What it measured" link shows
 only on a record that found the gauge unfit, so out of the box the entire recall
@@ -1595,7 +1781,9 @@ shows "—". That asymmetry is correct: `on_time_rate` is genuinely `None` with 
 promised dates, whereas CoC is 0 of 1 received lots, which is a real zero. I
 nearly filed it before reading `compute_supplier_scorecard`.
 
-### BUG — `is_customer` and `is_supplier` both default to True, so neither means anything
+### BUG → PARTIAL — `is_customer` and `is_supplier` both default to True, so neither means anything
+
+> **Re-checked 2026-10-19.** The flags now **mean something** wherever they are set: order, receiving, qualification, part-approval, outside-process and core pickers all narrow by them (`admin/setup/companies.md`). What is unchanged is the **data**: all 8 demo companies are still both, internal org included, so the supplier scorecard still lists carriers and AMBAC Manufacturing. The defaults stay True by design (existing companies keep appearing until narrowed). Remaining: narrow the demo companies — training arc. **Decision (user, 2026-10-19): the internal org stays both customer and supplier**, so its scorecard and picker entries are by choice, not a defect.
 
 `Companies.is_customer` and `Companies.is_supplier` are both
 `BooleanField(default=True)` (`models/core.py:1577-1578`). Any company created
@@ -1615,8 +1803,40 @@ Consequences beyond cosmetics: the scorecard invites a manager to act on standin
 for a company that cannot have one, and the same default will be flattering or
 alarming in the other direction wherever customer lists are drawn.
 
-**This needs your decision, because the fix is a data migration, not a default
-flip.** Changing the default to `False` is right going forward but silently
+!!! note "Re-scoped 2026-10-15 — cosmetic, and the proposed fix was the risky option"
+    `models/core.py:1577-1578` are unchanged, but **the severity below is
+    overstated and the remedy is worse than the symptom.** Established by
+    enumerating every reader, after the user pushed back on it being a decision
+    at all:
+
+    **Almost every consumer is a dropdown filter.** `is_supplier: true` narrows
+    the pickers in `ExpectedReceiptDialog`, `SendPartsOutDialog`,
+    `EditMaterialFormPage`, `EditPartTypeFormPage`, `PartApprovalFormPage`,
+    `SupplierQualificationFormPage` and `ReceiveLotsBatchPage`; `is_customer:
+    true` narrows `ShippingPage`, `CoreLotsPage`, `OrderFormPage` and
+    `CoreReceiveFormPage`. With the default `True` those lists are unnarrowed —
+    a longer dropdown, not a wrong outcome. The only other surface is
+    `SupplierQualityPage.tsx:131`, which is the eight-scorecard symptom described
+    below.
+
+    **The flags gate nothing today, and the three validations fail OPEN.**
+    `shipping.py:194,206` (refuse to ship to a non-customer), `reman.py:58,61`
+    (core source) and `stock_import.py:70` all raise on `not company.is_customer`
+    / `not company.is_supplier`. With everything `True`, none of them ever fires.
+
+    **That inverts the risk.** Setting the flags *correctly* is what introduces
+    refusals — a behavioural backfill that misjudges one company breaks shipping
+    to them. The permissive default is the safe state, and the "honest fix" below
+    is the option with a downside.
+
+    **So: not a decision owed.** If the cards are the annoyance, exclude the
+    internal org in `SupplierQualityPage`, or set `is_supplier=False` on the two
+    carriers in the seed. No model change, no migration, no backfill rule. This
+    finding was listed beside the RCA question as a pending decision; it does not
+    belong there.
+
+~~**This needs your decision, because the fix is a data migration, not a default
+flip.**~~ Changing the default to `False` is right going forward but silently
 reclassifies nothing — existing rows keep their `True`. The honest fix is the
 default plus a one-off pass that sets the flags from behaviour (has orders →
 customer; has material lots or qualifications → supplier) with the internal org
@@ -1784,7 +2004,25 @@ Cosmetic leftover, logged not fixed: the prefilled chip shows the raw UUID
 (*"Report #01a11263-… - FAIL"*) rather than the report number. Only the
 prefilled-from-URL path does this; picking a report by hand shows a proper label.
 
-### GAP — there is nowhere to record an NCR that *doesn't* become a CAPA
+### ~~GAP~~ → BUILT — there is nowhere to record an NCR that *doesn't* become a CAPA
+
+!!! success "Built to the shape this finding proposed, including the field names"
+    Closed and documented. `services/qms/capa_decision.py` records
+    **`NOT_REQUIRED`** and **`DEFERRED`** with a **mandatory** reason — *"Say why
+    — the reason is what an auditor reads"* — cites ISO 9001 **10.2.1(b)**, and
+    leaves undecided reports visible on the NCR page so an unevaluated backlog is
+    countable. `PROMOTED` cannot be set by hand; it follows from the CAPA linking
+    the report, so the decision and the link can never disagree.
+
+    That is almost exactly the *"nullable `capa_decision` +
+    `capa_decision_rationale`, set when a manager triages"* proposed below, which
+    is the fields-over-tables default working. Documented in
+    `workflows/quality/quality-reports.md`; QA Manager row 6 is green on both
+    halves.
+
+    **The paragraph below beginning "This matters more than it sounds" is the
+    reason the feature exists** and is worth keeping for anyone asking why the
+    reason field is mandatory.
 
 The other half of row 6, and the half the system doesn't do.
 
@@ -1847,7 +2085,49 @@ Fixed server-side (`perform_create` defaults to `request.user`), with a regressi
 test. Server-side matters — a client-side default would let an API caller omit the
 field and reintroduce the gap.
 
-### OPEN (needs a decision) — RCA has two verification paths; the guarded one is unreachable
+### ~~OPEN (needs a decision)~~ → DECIDED AND BUILT — RCA has two verification paths; the guarded one is unreachable
+
+!!! success "Option 1 was taken, the same day this was filed — `3ed193a`"
+    Checked against the code 2026-10-15. **There is no longer a decision here**,
+    and this entry sat as "needs a decision" for nine days after the work landed.
+
+    `approve_rca` (`services/qms/rca.py:62`) is now four lines that delegate to
+    `verify_root_cause`, and its docstring states the reversal: *"This used to
+    set VERIFIED unconditionally on the assumption that the reviewer is a
+    different person; nothing checked that, and `self_verified` was never set
+    (2026-10-06)."* `review_rca` is gated declaratively —
+    `action_permissions = {'approve_rca': ['review_rca']}` (`viewsets/qms.py:1207`).
+
+    **Three of the four consequences below are now false:**
+
+    | Claimed | Now |
+    |---|---|
+    | `verify_root_cause` is dead code no viewset reaches | `approve_rca` calls it; `/approve/` calls that |
+    | `self_verified` is structurally always False | `rca.py:56` sets it from `is_self_verification` |
+    | Nothing enforces reviewer ≠ conductor | the guard runs on the reachable path |
+    | **No RCA approval UI at all** | **still true** — the only frontend call is `useCreateRcaRecord` |
+
+    **The exploit recorded below is now a regression test.**
+    `test_capa.py:964` posts to `/approve/` as the author and asserts **400**
+    with the bare sentence (not Django's list repr — that was the sibling bug).
+    Three more cover a different reviewer passing with `self_verified: False`,
+    the author passing where the CAPA allows it with a justification that is
+    **kept** rather than only checked, and a short justification refused.
+    `perform_create` now defaults `conducted_by`, with a backfill that reads the
+    author from the audit log and refuses to guess.
+
+    **What genuinely remains is narrower and is a UI question:** there is still
+    no approval affordance, so a correct control is reachable only by
+    hand-written POST. Either it belongs on `CapaRcaTab` beside the create, or
+    RCA review is meant to run through the approvals centre and `/approve/` is
+    the machinery for that. Open, but not the independence question this entry
+    poses.
+
+    **Method note.** This was carried as one of three decisions owed for over a
+    week because the entry said so and nobody re-read the code. The lesson the
+    entry itself draws — *passing tests prove the code works, not that anyone can
+    reach it* — has a twin: **an OPEN finding proves something was open once.**
+    Re-check before quoting one.
 
 **I filed this first as "the self-verification control can never fire" and had the
 mechanism wrong.** The correction matters more than the original claim, and the
@@ -1917,7 +2197,31 @@ liability, because it reads as coverage.
 > reachability — who calls this, from where — before counting a control as
 > present.
 
-### BUG (major) — `auto_now_add` silently discards every seeded step timestamp
+### ~~BUG (major)~~ → DECIDED, NOT A BUG — `auto_now_add` silently discards every seeded step timestamp
+
+!!! important "Overtaken by a user decision on 2026-10-07 — read this first"
+    Re-checked 2026-10-15: `StepExecution.entered_at` is **still**
+    `auto_now_add=True` (`models/mes_lite.py:1758`), and that is now deliberate.
+    **The fix prescribed at the end of this finding was considered and
+    refused.** The model carries the decision in its own comment:
+
+    > *"Deliberately auto_now_add — NOT backdatable (user decision 2026-10-07).
+    > It is traceability evidence: when the part really reached the step. Making
+    > it writable would let any code path, and the serializers, rewrite execution
+    > history. History from the ERP at go-live, if ever needed, goes through a
+    > separate import path that marks rows as imported — this is why the earlier
+    > go-live-history feature was removed."*
+
+    So the finding's **diagnosis stands and its remedy does not.** The negative
+    durations were real and the seed's timestamps are fiction, but the answer is
+    *the seed must advance parts through the service* (see **Deferred: make the
+    demo walk the flow instead of staging its outcome**), not *make the field
+    writable*. Operator C3 records the same decision from the row side. Do not
+    re-file this as a bug; the field is doing its job.
+
+    The go-live paragraph below reads as an open question and is answered:
+    the removal of the master-workbook go-live-history feature was for exactly
+    this reason ([[master-workbook-decisions]]).
 
 Visible on the **hero showcase work order**: the Digital Traveler on
 `WO-SHOWCASE-01` prints step durations of **`-11520m`, `-8640m`, `-5760m`,
@@ -2048,7 +2352,9 @@ bulk core receiving has no demo lot, so neither the exclusion nor the core-lot
 workflow itself can be shown. Worth a seeded bulk lot — it would light the
 `/reman/core-lots` surface **and** make this regression detectable.
 
-### BUG (severe, compliance) — any operator can write training records, for anyone
+### ~~BUG (severe, compliance)~~ → FIXED — any operator can write training records, for anyone
+
+> **Re-checked 2026-10-19:** the `operator` preset holds neither `add_trainingrecord` nor `change_trainingrecord` (`Tracker/presets.py`). The 403 was already verified in the follow-up entry below.
 
 Found auditing Operator row 10 ("see what I'm qualified for"). **Proven by doing
 it**, logged in as `mike.ops`, an operator.
@@ -2122,7 +2428,9 @@ Worth sweeping `STAFF_OPERATIONAL_WRITE` for other compliance-shaped records tha
 landed in an operational bucket. This is the only one found so far, and it was
 found by accident.
 
-### GAP (exhibit + surface) — the qualification gate is sound, unprovable, and its evidence is invisible
+### ~~GAP (surface)~~ → BUILT — the qualification gate is sound, unprovable, and its evidence is invisible
+
+> **Re-checked 2026-10-19.** The **exhibit** half is lit: **4** step executions carry a real override (others carry an authorisation snapshot without one), and Shift Lead row 5 is Demo ✅. **Surface built 2026-10-19 (uncommitted):** the part traveller (`Parts/{id}/traveler/`, via `lifecycle.override_summary`) carries `training_overrides` per step row, shown as an always-visible amber line under the step — worker, missing training, authoriser, time, reason. Walked on INJ-QA-INSPECT-001 → Nozzle Inspection. Docs: `work-orders/assigning.md`, `dwi/running.md`.
 
 Covers Operator rows **3** ("prove qualification before starting, or be
 authorised") and **12** ("be called over as the second person"), and by the gates
@@ -2168,7 +2476,9 @@ point of permitting the override.
 serializer, not a missing field. The detail endpoint returns it, `null` on seeded
 rows.)*
 
-### BUG (severe, compliance) — training was not alone: five more compliance records are operator-writable
+### ~~BUG (severe, compliance)~~ → FIXED — training was not alone: five more compliance records are operator-writable
+
+> **Re-checked 2026-10-19:** the three real defects are closed — the `operator` preset holds none of `add_calibrationrecord`, `add_samplingruleset` / `add_samplingrule`, `add_lifelimitdefinition` (nor SPC baseline writes). Supplier qualifications and part approvals stay creatable, by design: they save **Pending** and only the `approve_*`-gated **Grant** gives them force.
 
 The training-record fix is **verified** (`POST /api/TrainingRecords/` as
 `mike.ops` now returns **403**; it returned 201 before). But the sweep it
@@ -2329,7 +2639,9 @@ gets all of this.
 false statement** — the first was a case-sensitive grep missing `YOUR GAUGES`.
 Treat a `| head` on an enumeration as a sample, never as the set.
 
-### GAP (data) — material traceability is half-dark: forward trace is empty everywhere
+### ~~GAP (data)~~ → FIXED — material traceability is half-dark: forward trace is empty everywhere
+
+> **Re-checked 2026-10-19:** 66 `MaterialUsage` rows now exist, so forward trace has data to show. The broader lesson recorded below — *make the demo walk the flow instead of staging its outcome* — is training-arc work.
 
 Operator row **5**, and it reframes the row. The operator does **not** pick a lot.
 `services/mes/consumption.py` draws the BOM lines for the step from stock
@@ -2437,7 +2749,9 @@ closes any doubt about the deferred seed work being the right fix.
 **idempotent** — the part did not advance twice and no second material draw
 occurred.
 
-### BUG (UX) — finishing the LAST part of a batch leaves the operator on a dead screen
+### ~~BUG (UX)~~ → FIXED — finishing the LAST part of a batch leaves the operator on a dead screen
+
+> **Re-checked 2026-10-19:** `pages/operator/completion-adapters.tsx::advanceToNextQueuedPart` now treats an empty queue as the batch finished and leaves the step — to the work order, else operator home — instead of returning silently.
 
 **My first diagnosis of this was wrong and the correction is the finding.** I
 reported "no feedback, no navigation". A toast *does* fire — I polled 5 s after the
@@ -2552,7 +2866,9 @@ times. **It only holds if the browser check is sound.**
 Row 7 and row 12 remain verified, now on firmer ground: the reassignment gate is
 not merely implemented, it is the normal, visible behaviour on a claim conflict.
 
-### BUG (CRITICAL, verified) — any operator can forge a manager's e-signature, permanently
+### ~~BUG (CRITICAL, verified)~~ → FIXED — any operator can forge a manager's e-signature, permanently
+
+> **Re-checked 2026-10-19:** `ApprovalResponseViewSet` (`viewsets/core.py:2323`) is now a `ReadOnlyModelViewSet` — there is no create endpoint to forge through. Responses are written only by `submit-response`, which checks `approval.can_approve(request.user)` and signs as the requesting user. **The probe's forged response is still in the dev database** — responses are immutable, so neither DELETE nor archive can remove it (the request and CAPA were restored to PENDING). CAPA-2024-003's approval history therefore carries a response in the QA Manager's name that she never gave. A reseed clears it; until then, do not use CAPA-2024-003 as an approval exhibit in training.
 
 **The most serious finding in this audit.** Surfaced by the scheduling session's
 classification sweep as a code reading; **I probed it, and it is real.**
@@ -2793,7 +3109,9 @@ Exactly the agreed pass condition. Note the fix only engages on the queue-driven
 path; arriving by URL still no-ops, which is correct — there is no batch to be at
 the end of.
 
-### DRIFT (copy vs control) — "reuse / rework / scrap" is offered as Pass / Fail / Pending
+### DRIFT (copy vs control) → STILL OPEN, CARRIED TO THE TRAINING ARC — "reuse / rework / scrap" is offered as Pass / Fail / Pending
+
+> **Re-checked 2026-10-19 (`Substep.body_blocks`):** both **Component Grading → "Grade and sort components"** substeps still say *reuse / rework / scrap* and still carry only a `qualityStatusField`. The four-grade capture (`harvestedComponentCapture`) is now authored, but on a different substep. Seed authoring — fixed in the arc.
 
 On the Component Grading substep the instruction says to *"sort into reuse /
 rework / scrap"* — three outcomes — while the only control is **Pass / Fail /
@@ -2809,7 +3127,9 @@ Low severity, but it is exactly the class this audit exists to find: **instructi
 text describing a richer action than the control offers.** Either the wording
 should match the two-way decision, or the third outcome needs a route.
 
-### GAP (data) — no shift notes exist, so row 11 is half-dark
+### GAP (data) → STILL OPEN, CARRIED TO THE TRAINING ARC — no shift notes exist, so row 11 is half-dark
+
+> **Re-checked 2026-10-19:** `ShiftNote` has **0 rows**. Seed coverage — the arc writes one.
 
 `useActiveShiftNotes` and the notification feed are both live on the operator home
 — notifications verified (a CAPA assignment with a working **Got it**
@@ -2861,7 +3181,9 @@ The new containment/resolution fields are present: **"Resolution performed by (i
 not you)"** with the explanation *"Closing the disposition records who resolved
 it, and when."*
 
-### BUG (data + UI) — the QA Inspector walkthrough's own disposition cannot be saved
+### ~~BUG (data + UI)~~ → DATA FIXED, FORM UNVERIFIED — the QA Inspector walkthrough's own disposition cannot be saved
+
+> **Re-checked 2026-10-19:** `DISP-QAI-006-OPEN` now has **1** linked quality report, so the serializer's non-empty rule is met. Its `disposition_type` is still blank — the form-display issue noted below (the select showing *Rework* for a blank type) was not re-checked and needs a browser.
 
 `DISP-QAI-006-OPEN` has **zero linked quality reports**, while the serializer
 requires at least one — `quality_reports: ["This list may not be empty."]`. So any
@@ -2887,7 +3209,9 @@ Two smaller things found alongside, on the same form:
 PATCH of the type alone returns 200. Checking the response rather than inferring
 from the rule is what separated the two.)*
 
-### PARTIAL — row 10's exhibit is poised correctly, but I could not confirm the queue
+### PARTIAL → UNCHANGED, NEEDS A BROWSER — row 10's exhibit is poised correctly, but I could not confirm the queue
+
+> **Not re-checked 2026-10-19:** resolving it needs expanding a grouped inbox row in the UI, which this pass did not do.
 
 `INJ-QA-INSPECT-004` reads exactly as the row describes: **QR-QA-INSPECT-004-FT
 FAIL** → **DISP-QAI-004-REW CLOSED / REWORK** → part now **AWAITING_QA**. The
@@ -2902,7 +3226,9 @@ WO-QA-INSPECT-01"*. A search of the payload for the part's ERP id finds nothing,
 Left PARTIAL rather than filed. Resolving it needs expanding a grouped row in the
 UI, not another API read.
 
-### DRIFT (convention) — the disposition create/edit routes break the documented URL rule
+### ~~DRIFT (convention)~~ → FIXED — the disposition create/edit routes break the documented URL rule
+
+> **Fixed 2026-10-19 (uncommitted):** now `/production/dispositions/new` and `/production/dispositions/$id/edit`, matching the list; the old paths redirect. The shared `legacyRedirect` helper also now carries the query string over (it dropped it), so `?partId=` survives — for every legacy redirect. All 9 callers updated, including the Report dialog. No help page named the old URLs.
 
 `router.tsx:959,965` define `/dispositions/create` and `/dispositions/edit/$id`,
 while the list sits correctly at `/production/dispositions`.
@@ -2959,7 +3285,9 @@ first match. Confirmed from the network log: both clicks were
 > disambiguate by surrounding context before acting — and confirm from the network
 > request which thing you actually hit.**
 
-### GAP (data) — the schedule has never been solved, so four rows cannot be walked
+### GAP (data) → STILL OPEN, CARRIED TO THE TRAINING ARC — the schedule has never been solved, so four rows cannot be walked
+
+> **Re-checked 2026-10-19:** 0 `ScheduleResult` and 0 `ScheduledTask` rows in the dev database. A solve is a seed step — the arc runs it.
 
 `/production/schedule` renders and is clearly built — **Machines / People / Work
 orders** views, an **Undo**, a **Dispatch**, a load figure of 220% and *"Not
@@ -2998,7 +3326,9 @@ should read *"reassign work when someone cannot run it"* rather than *"put peopl
 on jobs"*. Worth settling before the docs describe a push model the product does
 not use.
 
-### CODE GAP — "void an operator's bad record" is narrower than the row assumes
+### CODE GAP → DECIDED AS-IS (substep only) — "void an operator's bad record" is narrower than the row assumes
+
+> **Re-checked 2026-10-19:** `void_substepcompletion` is still the only `void_*` permission in `presets.py`. **Decision (user, 2026-10-19): substep completions only.** Measurements and quality reports get no void. A wrong one is corrected by a new record, and the pair is the evidence. NOT A GAP.
 
 Shift Lead **C2**. Casey's 297 effective permissions include exactly one void:
 **`void_substepcompletion`**. There is no general void for a step execution, a
@@ -3043,7 +3373,9 @@ every exchange is a person carrying a sheet ([[glovia-human-bridge]]). Like ISO
 document and a human carries it. The row should say so rather than wait for a
 feature.
 
-### GAP (data) — the demo seeds only the post-arrival half of the receiving lifecycle
+### GAP (data) → PARTIAL, CARRIED TO THE TRAINING ARC — the demo seeds only the post-arrival half of the receiving lifecycle
+
+> **Re-checked 2026-10-19:** 3 lots are now `ON_ORDER`, so the expected half has a start. Whether they carry PO, promised date and a late one for the OTD story was not checked — arc work.
 
 Thirteenth dark exhibit, and unlike the others it is **half a lifecycle rather
 than one feature**.
@@ -3272,7 +3604,9 @@ resolved, or over-and-above authorisation has anything to ask about. Reaching th
 needs a QA sign-off first — one account switch, not a seeding problem. The lane is
 open; the unit simply has not travelled far enough along it yet.
 
-### BUG (major) — a QA sign-off gate with no way to satisfy it
+### ~~BUG (major)~~ → FIXED — a QA sign-off gate with no way to satisfy it
+
+> **Re-checked 2026-10-19:** `services/qms/step_signoff.py` now writes the `QaApproval` the gate waits for, and the work order page's QA progress section opens it through `components/qa/QaSignOffDialog.tsx` — no longer only FPI pass/waive.
 
 Found while pushing the newly-seeded core along the teardown route. **My first
 diagnosis was wrong in two specifics; the corrected one is worse.**
@@ -3384,7 +3718,9 @@ Production can close the paperwork; it cannot make the call.
 decided it*. As written it claims an authority the role does not have, and should
 not.
 
-### OPEN QUESTION (product) — a temporary departure from the process has no home
+### OPEN QUESTION (product) → STILL OPEN — a temporary departure from the process has no home
+
+> **Re-checked 2026-10-19:** no deviation-permit model exists; see *Post-audit rework — item 1*, still unbuilt.
 
 Raised by the user 2026-10-07 while reviewing row 6, and it is a real gap rather
 than a documentation one. Three distinct things exist in a quality system; UQMES
@@ -3480,6 +3816,344 @@ the same way *"which parts did this gauge measure?"* now is.
 
 Not filed as a defect: a shop that handles every method change through change
 control is behaving correctly, just more slowly.
+
+### ~~BUG (major)~~ → FIXED — Report exception saves nothing
+
+**Found 2026-10-19** by the code session while wiring `track_downtime`; it breaks
+Shift Lead row **10**, which was marked ✅ on the 2026-10-07 walk.
+
+**Symptom.** The **Report…** dialog (`pages/workorders/ReportExceptionDialog.tsx`)
+offers **Downtime**, **Quarantine** and **CAPA**. Submitting one shows it in the
+Exceptions list straight away — and it is gone on reload.
+
+**Cause.** Both callers, `WorkOrderControlPage.reportWoException` and
+`WorkOrdersControlCenterPage.reportException`, push the payload into React state
+with a made-up `source_ref` (`DowntimeEvent/exc-<timestamp>`). Nothing is POSTed
+for any of the three types. No UI anywhere calls `DowntimeEvents_create`.
+
+**Why it matters.** A lead who reports a quarantine has quarantined nothing, and a
+lead who escalates a record for retraction (row 10 → C2) has escalated nothing.
+The draft appearing in the list is the most convincing possible false positive.
+
+**What does work.** The Exceptions tab *lists* real records — `DowntimeEvents_list`,
+quarantines and CAPAs from the API — and **Bulk resolve downtime** calls the real
+`resolve` action. So rows **4** and **6** stand; only *raising* is broken.
+
+**How the walk missed it.** The 2026-10-07 walk saw the item appear and recorded
+the row. It proved the dialog renders and the list updates, not that anything
+persisted — a reload would have caught it. Same lesson as *walk proves a path, not
+an invariant*.
+
+**Fixed and walked 2026-10-19 (uncommitted).** User decision: **Downtime**
+now POSTs a real `DowntimeEvent` — equipment (types with *Track downtime* off are
+left out), one of nine categories, a required reason (≤200), optional description,
+and in the Control Center an optional work order; it starts now and is resolved
+from the Exceptions list. **Quarantine** and **CAPA** no longer pretend to save:
+each links to its form (`/dispositions/create`, `/quality/capas/new`) and offers
+only Cancel. Severity and the free-text *Impacted WOs* field are gone. Server
+refusal is tested. Walked as Tenant Admin on WO-SHOWCASE-01's control page and the
+Control Center: 11 production machines offered and none of the 8 handheld /
+torque / gauge items, *Record downtime* disabled until machine and reason are set,
+the event survives a reload and **Resolve** clears it, and the DB row carries
+equipment, category, work order, start, end, reporter and resolver. Both form
+links land on their create pages. Walk residue deleted.
+
+Help pages updated: `roles/operator.md`, `workflows/tracking/flagging-issues.md`,
+`workflows/quality/quarantine.md`, `admin/setup/equipment.md`. **Still to update
+when the training arc starts:** `training/operator.md`, `training/shift-lead.md`.
+
+### ~~BUG~~ → FIXED — the work order page's Release skips release
+
+**Found 2026-10-19** in the help-doc pass (`work-orders/progress.md`). Scheduler
+row **2** had recorded the Control Center's **Release (N)** as the bypass; that
+button now goes through `bulk_release` → `release_work_order` and is sound. This
+one is the remaining bypass.
+
+**Symptom.** `/workorder/$id` shows **Release** on a Pending work order.
+`components/work-order-status-actions.tsx:109` — `handleRelease()` →
+`updateStatus("IN_PROGRESS", "RELEASED")`, a plain PATCH of `workorder_status`
+with a `[RELEASED - ts]` note prefix.
+
+**Consequence.** It never reaches `services/mes/release.py::release_work_order`:
+no readiness evaluation, no `released_at` / `released_by` / override reason, and
+an unstarted job reads **In progress** — the exact regression `mark_started`'s
+docstring (`services/mes/work_order.py:284`) says was fixed. The fix reached the
+scheduling surfaces only.
+
+Every other Release goes through the service: `useReleaseForScheduling`
+(`CapacityPlanningPage`, `SchedulingGanttPage`, `PullInWorkDialog`) and the
+Control Center's `useBulkRelease`. This button is the only one that does not.
+
+**Fixed and walked 2026-10-19 (user approved; uncommitted).** The button now
+calls `api_WorkOrders_release_create`: readiness check, `released_at` /
+`released_by`, schedule marked stale, and no status change or notes stamp. A
+refusal opens *Not ready to release* with the blockers and a required *Reason to
+release anyway*. A released order shows **Un-release**. It appears whenever the
+order is unreleased and not on hold (completed and cancelled orders render no
+actions at all); permission unchanged (`change_workorder`). Walked as Tenant Admin
+on both paths — WO-2024-0048-A blocked (*No units left to work*), released with an
+override; WO-ASSESS-004 clean — status stayed Pending, `released_at` / `released_by`
+and the reason were written, notes untouched, and Un-release flipped it back. Walk
+residue reverted. The walk also removed a duplicate *Operation failed* toast that
+`useReleaseForScheduling` / `useUnreleaseForScheduling` raised on every surface
+sharing them.
+
+### ~~BUG~~ → FIXED — the Remanufacturing dashboard's component links never loaded
+
+**Found 2026-10-19** in the help-doc pass (`reman/components.md`); **fixed and walked
+the same day** by the code session (user approved; uncommitted).
+
+**First diagnosis, from reading:** `component_part__isnull` was not a declared filter
+on `HarvestedComponentViewSet`, so *Pending Inventory Acceptance* would show the same
+list as *Usable Components*.
+
+**What a user actually saw:** both links showed *"Couldn't load harvested components.
+Try refreshing."* — neither ever showed a list. Three layers:
+
+1. **Server** — `component_part__isnull` undeclared (`viewsets/reman.py:680`).
+2. **Router** — Link search values arrive JSON-quoted (`is_scrapped=%22false%22`);
+   the page passed `'"false"'` to the zod client, which wants a boolean and refused
+   before any request was sent.
+3. **No metadata endpoint** for this viewset, so `ModelEditorPage` never converted
+   the filters to booleans.
+
+**Fix.** `filterset_fields` is a dict including `component_part: ['isnull']`
+(schema regenerated); `ModelEditorPage` unwraps JSON-quoted URL values, which helps
+every list page a router Link deep-links into; `HarvestedComponentsPage` converts
+both filters to booleans. Walked: *Pending* → 5 rows, all Pending; *Usable* → 8 (5
+pending + 3 in inventory, scrapped excluded). `test_reman` + the four guards, 128 OK.
+
+**Lesson worth keeping:** the read-only diagnosis was right about the server and
+wrong about the symptom. A deep link can fail on the client before the server is ever
+asked — a reading of the viewset alone cannot see that.
+
+### ~~GAP (config)~~ → BUILT — CAPA approval is not tiered by severity; the Critical and Major templates are never used
+
+**Found 2026-10-19** in the help-doc pass, checking AS9100 8.1.1's claim of
+"auto-escalation for critical". Affects QA Manager row **3** and Document
+Controller row **4**, and four help pages that described severity tiers.
+
+**What ships.** `services/defaults_service.py` seeds three CAPA templates:
+
+| Template | Type | Approvers | Shape |
+|---|---|---|---|
+| CAPA Approval | `CAPA_APPROVAL` | QA Manager | parallel, 5 days, delegation optional |
+| Major CAPA Approval | `CAPA_MAJOR` | QA Manager, Production Manager | parallel, all required, 5 days |
+| Critical CAPA Approval | `CAPA_CRITICAL` | QA Manager → Production Manager → Tenant Admin | **sequential**, all required, **no delegation**, 3 days, escalates after 1 |
+
+**What runs.** The `post_save` signal (`signals.py:285-289`) calls
+`services/qms/capa.py::auto_request_capa_approval` for any new CAPA of severity
+CRITICAL or MAJOR, and that looks up **`CAPA_APPROVAL` only** — its own template
+description says *"Generic CAPA approval used by the post_save signal regardless of
+severity"*. No code anywhere selects `CAPA_MAJOR` or `CAPA_CRITICAL`.
+
+**Consequence.** A Critical CAPA is authorised by **one QA Manager**, exactly like a
+Major one. The three-signature sequential chain the Critical template describes —
+and the help docs promised — never happens, and editing that template has no
+effect. If the template silently goes missing, `auto_request_capa_approval`
+returns `None` and the CAPA proceeds with **no approval at all**.
+
+**For an audit.** Do not cite severity-tiered authorisation as a control. What is
+true: Major and Critical CAPAs require a management approval before work, signed
+with re-authentication, and self-approval is refused by the template.
+
+**Also seen:** the dev demo tenant carries no `CAPA_CRITICAL`, `PROCESS_APPROVAL` or
+`TRAINING_CERT` template at all (current types: CAPA_APPROVAL, CAPA_MAJOR,
+DOCUMENT_RELEASE, PCN_RELEASE, PCO_APPROVAL, PCR_APPROVAL). A missing
+`PROCESS_APPROVAL` refuses every process submission in demo — worth checking
+against the Engineering rows.
+
+**Built 2026-10-19 (user confirmed; uncommitted).** `services/qms/capa.py::
+capa_approval_template` picks `CAPA_CRITICAL` / `CAPA_MAJOR` by severity, each
+falling back to `CAPA_APPROVAL` when the tenant has no current template of its own
+type; Minor and others use `CAPA_APPROVAL`. Both the automatic request at creation
+and the manual *request approval* use it. **No CAPA template at all** is, per the
+user, a deliberate configuration: an automatically raised Critical or Major CAPA
+proceeds without approval and the server logs a WARNING (nothing shown to a user);
+a manual request refuses — *"No CAPA approval template is configured. Add one in
+approval templates."* Completion is keyed on the CAPA, so approve/reject behave as
+before. `CAPASeverityTemplateTests` (5) + signals + approval tests + the four
+guards, 90 OK. **Demo:** has `CAPA_MAJOR` but no `CAPA_CRITICAL`, so new Critical
+CAPAs fall back to `CAPA_APPROVAL` there (seed left untouched by user decision). Help pages now describe the real behaviour: `roles/index.md`,
+`admin/setup/approval-templates.md`, `roles/administrator.md`, `roles/qa-manager.md`.
+
+### ~~GAP~~ → BUILT — a special-process qualification is recorded but never checked at send-out
+
+**Found 2026-10-19** in the help-doc pass (`compliance/as9100.md`, 8.5.1.2).
+`SupplierQualification` supports `scope_type = SPECIAL_PROCESS` with a
+`scope_label` (e.g. *Heat treat*, basis *Nadcap*), and
+`services/qms/supplier_qualification.py::is_supplier_qualified` accepts a
+`special_process` argument. The only caller passing it is the status query at
+`viewsets/qms.py:403`. **Outside-processing send-out does not call it**, so parts
+can be dispatched to a vendor for plating or heat treat with no qualification for
+that process on record — the case AS9100 8.4 / 8.5.1.2 and Nadcap customers care
+about most. Part-type and commodity scopes, by contrast, **are** enforced at
+receiving.
+
+**Built and walked 2026-10-19 (uncommitted).** New step field
+`Steps.outside_special_process` (free text, blank by default, migration 0235), in
+the process editor's outside-process section under *Default vendor*. When set,
+`send_parts_out` refuses unless the vendor holds an active (APPROVED / CONDITIONAL,
+in date) SPECIAL_PROCESS qualification with the same label, case-insensitive:
+*"<Vendor> has no active qualification for <process>. Qualify them for it, or send
+the parts to a vendor who is."* It **refuses rather than holds**, unlike receiving —
+once parts have gone, the work is already being done. Blank checks nothing, so
+existing steps and the demo are unchanged. Walked on the showcase draft's Nitride
+Coating → Apex Plating Co with *Nitriding* set: refused, nothing moved; restored to
+blank. `test_outside_process` (6 new) + versioning tests + the four guards, 97 OK.
+
+**Found and fixed alongside:** the step's **Turnaround (calendar days)** never
+saved (`ProcessFlowPage` did not load or send `outside_process_lead_days`), and the
+outside-process section showed only on RECEIVING-type steps although any flagged
+step sends out — so the demo's Nitride Coating (a TASK) showed no vendor,
+turnaround or toggle at all. Both fixed. Docs: `admin/processes/steps.md` gained an
+*Outside processing* section; `compliance/as9100.md` 8.5.1.2 updated.
+
+### BUG — the Control Center's bulk "Change status" writes any status, with no rules
+
+**Found 2026-10-19** while tracing why `WAITING_FOR_OPERATOR` exists.
+
+**Symptom.** The WO Control Center's bulk bar opens *"Change status for N WOs"*,
+offering Pending, In progress, Waiting for operator, On hold, Completed and
+Cancelled. It calls `services/mes/work_order.py::bulk_transition` (endpoint
+`bulk_transition`, `viewsets/mes_lite.py:2962`), whose docstring says *"no legality
+gate"* — it writes the chosen status onto every selected work order.
+
+**Consequence.** Each target undoes a rule the product enforces elsewhere:
+**Completed** with parts still in progress, skipping the completion date and the
+order-completion cascade that follow from parts ending; **In progress** with no work
+started, the regression the Release fix closed; **On hold** with no reason, which the
+single-WO hold requires; and reopening a Completed or Cancelled work order. The
+proper bulk actions — release, hold with reason, clear hold — sit beside it on the
+same bar.
+
+**Decision (user, 2026-10-19): remove the dialog.** The endpoint's only caller is
+this dialog (`useBulkTransitionWorkOrders`). **→ FIXED 2026-10-19:** the dialog, its
+bulk-bar button, `POST /api/WorkOrders/bulk_transition/`, `bulk_transition` and the
+hook are gone. Release (N), Hold, Clear hold, Report, Add parts and Split remain.
+
+**Still open, the same shape on one work order:** a plain PATCH of
+`workorder_status` writes any status. The WO page's Hold / Resume / Cancel use it, so
+the buttons are the only thing keeping it legal — the API does not. Filed below as
+**Single-WO status PATCH has no legality gate**.
+
+### ~~GAP~~ → FIXED — single-WO status PATCH has no legality gate
+
+> **→ FIXED 2026-10-19** (code session; uncommitted).
+> - **The gate:** PATCH or PUT of `workorder_status` on an existing WO is refused
+>   with a 400 naming the action to use (`services/mes/work_order.manual_status_refusal`).
+>   Create is not gated, and an unchanged status still saves.
+> - **The WO page's buttons:** Hold, Resume and Cancel now call `place_on_hold`
+>   (with the shared hold reasons), `clear_hold` and the new `cancel_work_order`.
+>   Hold is now offered on Pending too, and the edit form's Status is locked.
+> - **Found and fixed on the way:**
+>   - Clearing a hold, single or bulk, left the WO at ON_HOLD forever. It now
+>     returns to In progress if work has started, else to Pending.
+>   - Cancel skipped the order-completion cascade; it now runs it.
+>   - Single hold and clear-hold fell back to `add_workorder`; they are now gated
+>     on `change_workorder`.
+>
+> Docs: `work-orders/progress.md`, `basics.md`.
+>
+> **Still open, filed below:** the bulk hold and clear-hold still fall back to
+> `add_workorder`.
+
+### ~~GAP~~ → FIXED 2026-10-19 — bulk hold and clear-hold fall back to `add_workorder`
+
+> **Fixed:** `bulk_place_on_hold` and `bulk_clear_hold` are gated on
+> `change_workorder`, with 3 tests checking an add-only role gets 403. The WO page's
+> Release, Un-release, Hold and Resume, and the bulk bar's Release, Hold and Clear
+> hold, are hidden without the permission. Every staff group holds
+> `change_workorder` by default, so the fix matters only for custom groups.
+
+**Found 2026-10-19** by the code session. The single-WO hold and clear-hold are gated
+on `change_workorder`. The Control Center's bulk **Hold** and **Clear hold** still fall
+back to `add_workorder`, which every staff role holds by default, so any role can
+hold or release a selection of work orders that it could not hold one at a time. Size
+**XS**: add both to the viewset's `action_permissions`.
+
+**Found 2026-10-19** by the code session while removing `bulk_transition`, whose
+docstring said it *"matches single-WO behavior (no legality gate)"*. `PATCH
+/api/WorkOrders/{id}/` accepts any `workorder_status`, so every consequence listed
+above for the bulk dialog — Completed with parts in progress, In progress with no
+work started, On hold with no reason, reopening a closed work order — is still
+reachable one work order at a time through the API. The UI's buttons only offer legal
+moves. **Decision (user, 2026-10-19): gate it to the legal moves**: the set the WO page's Hold / Resume / Cancel define. Derived statuses (In progress, Completed, auto-Cancelled) can't be set by hand. **Handed to the code session.**
+
+### ~~BUG (moderate, security)~~ → FIXED — the audit log shows every record's changes to every staff role, password hashes included
+
+**Found 2026-10-19** while checking what `export_auditlog` gates (it gates nothing).
+
+> **→ FIXED 2026-10-19** (code session; uncommitted, not yet browser-walked).
+> - **Row visibility follows the record:** `services/core/audit_visibility.visible_entries`
+>   keeps an entry only if the reader can open its record through that model's
+>   `for_user()`. Classification and export control therefore apply.
+> - **Browsing is gated:** listing without `content_type` + `object_pk` needs
+>   `view_auditlog`. That permission moved off the staff base onto Tenant Admin, QA
+>   Manager, Document Controller and Auditor (the user's choice).
+> - **Per-record history is filtered:** it still needs only `view_logentry`, but
+>   shows only records the reader can open, and a hidden single entry returns 404.
+> - **Credentials are excluded:** `AUDITLOG_EXCLUDE_TRACKING_FIELDS` covers
+>   password, the IntegrationConfig secrets (which auditlog would have logged
+>   *decrypted*), invitation and unsubscribe tokens. Existing rows are masked on
+>   read, not rewritten.
+> - **Not changed:** `export_auditlog` is still checked nowhere, so the last-mile row
+>   stands.
+>
+> Docs updated: `analysis/audit-trail.md`, `compliance/audit-trails.md`,
+> `admin/users/permissions.md`, `admin/data/data-management.md`, `navigation.md`,
+> `roles/auditor.md`.
+
+**Severity, as weighed with the user.** A pbkdf2 hash cannot be used to sign in and is
+slow to guess against; the real risk is offline guessing of *weak* passwords by an
+insider, so it is **moderate**, not severe. The larger problem is the row-filtering
+bypass below — the hash is only its most vivid instance. Nobody has a legitimate use
+for a credential hash in an audit log, which is why stopping it is still worth doing.
+
+**Where it shows in the UI, not only the API.** **Admin > Audit Log** is in the sidebar
+for anyone holding `view_auditlog` or `view_logentry` (`app-sidebar.tsx:182`) — every
+staff role by default — and its change renderer (`HistoryPage.tsx:206`) skips only
+`id`, timestamps, `created_by`, `version` and a few relation fields, so a password change
+reads *password: <old hash> → <new hash>*. The **History** card on a user's edit form
+(`EditUserFormPage.tsx:580` → `RecordHistoryCard`, via `services/core/audit_display.py`,
+whose `BOILERPLATE` set does not include `password` either) shows the same.
+
+**The mechanism.** `AUDITLOG_INCLUDE_ALL_MODELS = True` (`settings.py:624`) audits every
+model, including `User`, and nothing masks fields — so a password change is logged with
+the `password` field's old and new **hash** in `changes`. `GET /api/auditlog/`
+(`LogEntryViewSet`, `viewsets/core.py:1876`, a plain `ReadOnlyModelViewSet`) returns
+the raw `changes` for every entry whose actor belongs to the tenant, gated only by
+`view_logentry` — held by every staff role by default. `AuditLogSerializer` and
+`services/core/audit_display` mask nothing.
+
+**Proven 2026-10-19, rolled back.** As `mike.ops` (Operator), `POST
+/auth/password/change/`; then as `dave.wilson` (another Operator) read the audit log
+for Mike's user record: one entry, carrying the new `pbkdf2_sha256` hash. Run inside a
+transaction with `set_rollback(True)`; Mike's password verified unchanged afterwards.
+
+**Scope.** Live wherever a signed-in user changes a password (actor = that user, so the
+entry is tenant-visible). The 18 password-bearing entries already in the dev database
+were written with no actor (by the seed) and are visible to superusers only. Signup and
+reset-by-link run anonymously and are likewise actor-less.
+
+**The same hole, wider.** The endpoint applies **no** row filtering beyond the actor's
+tenant — not `for_user()`, not document classification, not export control. So the
+field-level changes of any record are readable by anyone with `view_logentry`,
+including records that user cannot open: Secret-tier document metadata, export-controlled
+part data, other users' emails and flags. Not demonstrated on documents (the dev
+database has no Secret documents); true by construction.
+
+**Related:** `export_auditlog` is defined and granted (Tenant Admin, Document
+Controller) but checked nowhere, and the audit log screen has export turned off — see
+the last-mile row.
+
+**Status: handed to the code session 2026-10-19, with the user's framing.** In order:
+(1) **filter entries by whether the reader may see the underlying record** — the
+bypass is the main problem; (2) gate the endpoint and the sidebar link on a specific
+permission rather than `view_logentry`; (3) **stop logging credential fields going
+forward** (`password`, and any token or secret fields). **Leave the existing audit rows
+alone** — per the framing agreed with the user, the stored hashes are not worth an
+exception to audit immutability.
 
 ## The dominant documentation gap is unmentioned capability, not wrong statements
 
@@ -3622,7 +4296,9 @@ first time in this audit.
 earlier by lacking `sign_off_fpi` (403), and seeing the SoD message needs a lead
 who also completed the captures. The peer has it under test; I have not walked it.
 
-### GAP (authoring) — the three reman capture nodes exist but no process uses them
+### ~~GAP (authoring)~~ → FIXED — the three reman capture nodes exist but no process uses them
+
+> **Re-checked 2026-10-19 (`Substep.body_blocks`):** `harvestedComponentCapture`, `componentInstallCapture` and `rebuildFindingCapture` are each authored on a seeded substep.
 
 Walked the teardown lane end to end on 2026-10-07: Core Receiving → QA sign-off →
 Disassembly → Component Grading, both cores moving as a lot. **The route works.
@@ -3716,6 +4392,76 @@ nowhere.** That one holds on independent evidence: all `HarvestedComponent` rows
 `proposed_grade: ''`, the `PendingFindingsCard` never rendered, and the authoring had to
 be *added* in the seed before the card worked. But it was established with an unsound
 query, and it happened to be right — which is a different thing from being verified.
+
+## The other half of the pattern — capability built to the edge of visibility, then stopped
+
+**Recorded 2026-10-16, from the help-doc pass.** The section above records
+capability that is *finished and unmentioned*. This records its inverse:
+capability where the model, the capture and the service logic are done and the
+thing that would make it visible to a person was never built. Nothing here is
+broken. Each one is a last mile.
+
+**These were found by writing from the code, which the note above says finds
+nothing.** That claim needs narrowing rather than retracting: *walking a role*
+finds work that is finished but undocumented, because only a walk shows you a
+surface nobody wrote about. *Writing a doc page from the code* finds this class
+instead, because a help page forces the question nobody asks while building —
+**"and then where do you go to look at it?"** There is no way to write
+"Viewing life status" and not discover there is nowhere to view it. The two
+methods find disjoint sets; neither substitutes for the other.
+
+### Captured but never analysed
+
+| Item | Built | Missing |
+|---|---|---|
+| ~~**Downtime**~~ → BUILT 2026-10-19 — **Downtime** card on Analytics, `GET /api/DowntimeEvents/summary/` (`services/mes/downtime.downtime_summary`): hours lost and counts by cause and by machine, open events counted to now, share of calendar time. Still no OEE or availability — by design. **As found:** `models/mes_standard.py:1165` | `DowntimeEvent` with nine categories (the Six Big Losses shape: planned, unplanned, changeover, calibration, no work, no operator, material, quality, other), FKs to equipment / work centre / work order, reporter and resolver, `duration`. Raised from the work order **Report…** dialog (it saved nothing until 2026-10-19 — see **Report exception saves nothing** below). Open events show on the WO control pages and operator home. Composite indexes on `(equipment, start_time)`, `(work_center, start_time)`, `(category, start_time)` | Any rollup. No OEE, no availability %, no Pareto, no per-machine downtime list. Its own docstring says it exists for OEE. **The indexes are built for a query nobody wrote** |
+| ~~**Part-type quality rollup**~~ → BUILT (already) — `quality-summary` action on the PartTypes viewset | Inspection pass/fail, FPY, open dispositions and CAPAs, defect Pareto, recent failures, 30-day yield trend — honouring `qs_for_user` | **Mis-filed: it was already drawn.** `PartTypeQualityRenderer` (via `usePartTypeQualitySummary`) is the right-hand panel of `/details/PartTypes/$id`, reached by **View** on the part types list. A grep for `quality-summary` misses it because the hook calls the generated alias. Only the help page was wrong; fixed 2026-10-19 |
+| ~~**Sampling decision log**~~ → BUILT 2026-10-19 (per part) — `GET /api/Parts/{id}/sampling-decisions/`, shown as **Sampling decisions** in a part's history on the WO control page. No cross-part or per-ruleset list. **As found:** `models/mes_standard.py:827`, written at `services/mes/sampling_applier.py:153` | Every selection *and* skip, with part, rule, decision, ruleset type, timestamp. The skips are what answer an auditor's "why was that one not inspected?" **Attribution → FIXED 2026-10-19** (migration 0238): an exclusion is logged against the rule that excluded; a part no rule selected has `rule = NULL` and names the `ruleset` — it used to be credited to the first rule | **No surface — confirmed 2026-10-19:** no viewset, no frontend reader; the only reader is a debug dict at `models/mes_lite.py:3870`. **STILL OPEN.** `sampling-rules.md` now says no screen shows it |
+| ~~**Repeat defects**~~ → BUILT 2026-10-19 — **Repeat defects** card on NCR Analysis, defects on 3+ failed reports in the page's range; response now typed in the schema. **As found:** `/api/dashboard/repeat-defects/` (`viewsets/dashboard.py:1138`) | The same error recurring on the same part type — the classic CAPA candidate list — computed server-side | Any UI. Not called by any page or hook (checked by URL and by generated alias `api_dashboard_repeat_defects_retrieve`). Its siblings on the same viewset — NCR trend, aging, disposition breakdown, defects by process — all render on NCR Analysis or Defect Analysis. Size **S**: a card on NCR Analysis |
+
+### Flags recorded that nothing reads
+
+| Item | Note |
+|---|---|
+| **`can_make`** on PartTypes | **User, 2026-10-19:** intended for the scheduler's make-or-buy distinction — a type the shop *could* make but would rather buy (shims). Not wired; no decision on how. Editable on the part-type form (`EditPartTypeFormPage.tsx:244`), zero readers in backend or frontend. `can_buy` by contrast gates BOM BUY lines and expected-receipt import |
+| **`export_auditlog`** permission | Defined on the model and held by Tenant Admin and Document Controller by default, but **checked nowhere**: the audit log screen has `disableExport={true}`, and `GET /api/auditlog/` is gated by `view_auditlog` (browsing) and `view_logentry` (one record's history) since 2026-10-19. So it controls nothing, and the docs had cited it as the gate on extracting the audit trail. **Decision (user, 2026-10-19): leave as is.** It is reserved for a future CSV export of the audit log, which would be gated on it; until then it stays defined, granted and inert. Origin: `bb9a749` (2026-02-24), documented as *"Export audit data for auditors"*. NOT A GAP |
+| **`is_portable`** on EquipmentType | Seeded into demo, no readers. **User, 2026-10-19: leave it, documented as inert** |
+| ~~**`track_downtime`** on EquipmentType~~ → BUILT 2026-10-19 | `DowntimeEventSerializer.validate_equipment` refuses equipment whose type has it off (`services/mes/downtime.py`); untyped equipment is allowed. The rebuilt **Report…** dialog leaves those machines out of its picker. When this was first filed, the dialog had no equipment picker and **saved nothing** — both handlers (`WorkOrderControlPage.reportWoException`, `WorkOrdersControlCenterPage.reportException`) only push a draft into React state, so a reported downtime, quarantine or CAPA is gone on reload. No UI calls `DowntimeEvents_create`. That is a bigger gap than this row, filed below |
+
+### Built, with no way in
+
+| Item | Note |
+|---|---|
+| **Life tracking, entirely** | Limit definitions, accumulation, status calculation, shelf life, limit overrides and resets-with-history all work server-side. There is no screen anywhere — not on part detail, not as a list of parts near their limits. Overrides and resets are API-only and gated to QA/Engineering |
+| **Life-limit `required`** | Recorded; nothing creates a tracking record from it, and nothing refuses a part missing one. Already noted in `life-tracking.md` before this pass |
+| ~~**RCA approval paths**~~ → BUILT 2026-10-19 — **Approve** on each RCA card in `CapaRcaTab` for `review_rca` holders. It refuses the conductor unless self-verification is allowed, and then notes are required. submit-for-review now sets REQUIRED; approval sets COMPLETED; the dead pencil is removed. **Gate built:** `CAPA.rca_verified()` is required for → Pending Verification *and* in `verify_capa_effectiveness`, which had not checked status and could close from In progress. `rca_complete()` rejects a blank summary. All 4 demo CAPAs past In progress already had verified RCAs. Docs: `capa/overview.md`, `capa/verification.md`, `roles/qa-manager.md`. **As found:** **Re-verified 2026-10-19.** `POST /api/RcaRecords/{id}/approve/` works, gated by `review_rca` (QA Manager, Tenant Admin by default), under the independence rule. No UI: only create is wired, and each RCA card's pencil button has no handler. Also found: `submit-for-review` writes `'PENDING'`, not a `RcaReviewStatus` choice; approval never sets `COMPLETED`, so an RCA flagged REQUIRED by a *Not effective* check stays REQUIRED; and nothing downstream needs a VERIFIED RCA — the CAPA's move to Pending Verification checks only that `root_cause_summary` is not None. **Decision (user, 2026-10-19): verify, then build.** The UI and the two status bugs were handed to the code session. **Gate decided (user, 2026-10-19: "match the standard"):** per 8D D4 / ISO 9001 10.2.1(b), a VERIFIED RCA is required before Pending Verification, and an empty `root_cause_summary` no longer counts as complete. Containment and tasks are not gated. Handed to the code session |
+| ~~**Delivery-date slip**~~ → BUILT 2026-10-19 — `original_completion_date` is now a DateField (0241), stamped once by `services/mes/orders.note_completion_change` from all three writers (order edit and CSV, HubSpot sync, WO cascade). System-driven moves count. The seed writes none, so demo shows no slips. **As found:** `Orders.original_completion_date` | The order detail page shows *Originally <date>*, struck through, when the delivery date has moved (`OrderDetailsPage.tsx:312-381`), and the generic detail config lists the field. **Nothing in the product ever writes it** — not the order form, not a service, not the HubSpot sync; the seed sets it to `None`. So a slipped date is never captured and the line can never appear. Size **S**, but two parts: stamp it from a service on the first change to `estimated_completion` (not in `save()`), **and** make it a `DateField` — it is a `DateTimeField` against a `DateField`, compared by exact millisecond at line 313, so once written it would read as *changed* on every order west of UTC |
+| ~~**Calibration exposure**~~ → BUILT (seed) | QA Manager row 10 flipped to Demo ✅ 2026-10-19 — see that row |
+| ~~**Report exception saves nothing**~~ → BUILT 2026-10-19 — `pages/workorders/ReportExceptionDialog.tsx` | **Fixed:** Downtime now POSTs a real `DowntimeEvent` (equipment filtered by `track_downtime`, category, reason, optional WO; starts now, resolved from the exceptions list). Quarantine and CAPA link to `/dispositions/create` and `/quality/capas/new` instead of faking a draft; the draft state is gone from both callers. **As found:** The dialog offers Downtime / Quarantine / CAPA and both callers keep the result as a client-side draft (`source_ref` `DowntimeEvent/exc-<timestamp>`, a fake id). Nothing is POSTed. Downtime can only be recorded through the API. The 'Captured but never analysed' downtime row above overstated the capture side |
+
+### Found later in the pass (2026-10-19)
+
+| Item | Note |
+|---|---|
+| ~~**QA panel annotates on the first model by name**~~ → FIXED 2026-10-19 — now prefers a COMPLETED model with no step, then any COMPLETED one; none completed → no 3D tab. **As found:** `components/qa-right-panel.tsx:22-43` | Fetches the part type's 3D models with `limit: 1` under the viewset's `ordering = ['name']`, so it uses whichever sorts first — including one still converting or failed, or one tied to a single step. Size **XS**: filter to completed, prefer a model with no step |
+| **`WaitingForOperator` is never set** — `WorkOrderStatus.WAITING_FOR_OPERATOR` | **Legacy.** In the original status set (`7211e68`, 2025-07-27) and ticked *DONE* on `WO_MANAGEMENT_FEATURE_MATRIX.md` 1.2.5 because the enum existed; nothing in the repo's history ever set it automatically — only the bulk *Change status* dialog could, by hand. Its meaning is now carried by Dispatch's *uncovered* and by *In progress* = work began. **Decision (user, 2026-10-19): remove it.** 0 work orders hold it. **→ REMOVED 2026-10-19** (migration 0237); the lot gate now accepts Pending / In progress. `basics.md` and `progress.md` updated |
+| ~~**Removing parts from an order is API-only**~~ → BUILT 2026-10-19 — **Parts on this order** card (staff, `change_orders`) with **Remove from order (N)**, through the audited `services/mes/orders.remove_parts_from_order`; the endpoint is now gated on `change_orders`. **Still orphaned:** bulk-add (endpoint and hook, gated on `add_orders`). **As found:** `Orders.parts/bulk-remove` | `useRemovePartsMutation` exists; no component calls it. Clears the order link only, leaving the work order. **Bigger than filed (code session, 2026-10-19):** the order page shows part **counts only** — no screen lists an order's parts — and the add-parts hook is orphaned too. The endpoint uses `.update(order=None)`, which skips auditlog, and it falls back to `add_orders`. Proposed: an audited service gated on `change_orders`, plus a staff-only Parts card on the order page. Size **S–M**; scope with the user |
+
+### Seeded into inertness
+
+| Item | Note |
+|---|---|
+| ~~**Document review**~~ → BUILT 2026-10-19 (review only; the user chose no retention default) — SOP, WI, POL, CP carry `default_review_period_days: 365` in `DOCUMENT_TYPES`. Not pushed to existing tenants: `seed_document_types(update_existing=True)` setattrs every key (name, description too) and saves in place, bypassing `create_new_version` | A **new organisation** gets all 39 types from `DOCUMENT_TYPES` in `services/defaults_service.py` (via the `seed_tenant_defaults` signal), and none of those dicts carries `default_review_period_days` or `default_retention_days` — so the review queue works and stays empty until someone sets a period. **The demo tenant is not like this:** it has only 4 types (WI, RCA, PO, DWG) from the demo seed, all at 365-day review / 2555-day retention, so the queue *does* fill in demo. That difference hides the gap from anyone evaluating on the demo. The cheapest fix in this list — add the two keys to the authored types (SOP, WI, CP, POL) in `DOCUMENT_TYPES` |
+
+### Reading it
+
+The spread in cost is wide and worth separating. A downtime Pareto and a
+quality-summary page are small — the queries exist and the work is a route and a
+chart. Review periods are a seed edit. A life tracking screen is a real build.
+
+**Scope:** sixteen items from the full help-doc pass (every page outside
+`training/`, completed 2026-10-19). Five are built and two are decided as-is; the rest are listed with sizes
+for the user to prioritise.
 
 ## Post-audit rework — item 2: the demo has no new-manufacture process
 
@@ -3842,7 +4588,14 @@ inference. `reject_remainder` → disposition → `ship_back` → RTV sheet → 
 replacement delivery all work end to end, and the `reject_whole_lot` permission is
 distributed correctly across tenant roles. Receiving row 6 stays ✅.
 
-### BUG — every bulk part action silently no-ops: string ids vs UUID keys
+### ~~BUG~~ → FIXED — every bulk part action silently no-ops: string ids vs UUID keys
+
+> **Fixed, and it was never marked here.** `services/mes/parts.py:769` now reads
+> `return {str(p.id): p for p in qs}` — the one-place fix proposed below, so all
+> three bulk actions are indifferent to whether a caller passes a string or a
+> UUID. Confirmed 2026-10-15 by reading the helper, and independently by Operator
+> C1's re-walk the same day, which drove **Quarantine** on two selected parts and
+> saw both land in the database while the unselected one did not move.
 
 **Found 2026-10-07 walking Operator C1. Verified end to end, cause isolated,
 blast radius enumerated. This is a real product bug, not a seed artifact.**
@@ -3954,17 +4707,18 @@ surface offering these actions) cannot act on them either. The staged outcome ex
 where the mechanism cannot run, and is absent where it could.
 
 **Second, independent block on the same lane: every core is EXCHANGE.**
+**— CLOSED by the reseed; struck 2026-10-15.**
 
-| | |
-|---|---|
-| cores in demo | 8 |
-| `fulfilment_mode == 'REPAIR_RETURN'` | **0** |
-| `returns_to_customer` | **False for all 8** |
+~~| cores in demo | 8 | · | `fulfilment_mode == 'REPAIR_RETURN'` | **0** | · |
+`returns_to_customer` | **False for all 8** |~~
 
 `return_to_customer` refuses an exchange unit by design — *"it is an exchange unit — it
-has no owner to go back to"* — so **Shipping R1 is unwalkable regardless** of the
-disassembly gap. The whole repair-and-return path (IN_REBUILD → REBUILT → RETURNED, and
-the DECLINED → RETURNED_UNREPAIRED ending) has no representative unit.
+has no owner to go back to"* — which was, at the time, a second block on Shipping R1.
+**`seed/demo/reman.py:230` now seeds `CORE-240210-0007`**, a Midwest Fleet warranty
+unit with `fulfilment_mode='REPAIR_RETURN'` and `returns_to_customer=True`, carrying a
+bench finding that routes it down the Nozzle Recondition branch. The repair-and-return
+path has a representative unit; Shipping R1 records what it still waits on, which is
+that unit reaching REBUILT — **not** the absence of a subject.
 
 **PARTIAL CORRECTION, same day, found while reviewing a peer's reman seed plan.**
 My problem statement above was overstated, and the overstatement would mislead
@@ -4027,10 +4781,16 @@ AWAITING_AUTH --Approved-----------> IN_REBUILD      (PM R1 / Shift Lead R2)
 **One ~20-line fix unblocked four rows.** Everything downstream was already built and
 correct; nothing could reach it.
 
-**Still outstanding — the demo half**, which belongs with rework item 2:
+~~**Still outstanding — the demo half**, which belongs with rework item 2:
 seed at least one `REPAIR_RETURN` core (all 8 are EXCHANGE, so the whole
 repair-and-return ending is still unrepresented and **Shipping R1 stays blocked**), and
-stop seeding cores into `DISASSEMBLED` off a work order.
+stop seeding cores into `DISASSEMBLED` off a work order.~~
+
+**Half done — corrected 2026-10-15.** The `REPAIR_RETURN` core was seeded
+(`CORE-240210-0007`, `seed/demo/reman.py:230`), so that clause is closed and
+Shipping R1 is no longer blocked on a missing subject. **Still outstanding:**
+stop seeding cores into `DISASSEMBLED` off a work order — the staged outcome
+still sits where the mechanism cannot run.
 
 ## Post-audit rework — item 3: no seeded route can ever reach Shipping
 
@@ -4156,11 +4916,46 @@ the bench did not appear in the planner UI either.
    tasks: a third of the frozen set moved. The solver is right to (the fence is a soft
    penalty by design, `solver.py:79`), but the board presents **Frozen** as a lock.
 
-## Post-audit rework — item 1: deviation permits and conditional spec
+## Post-audit rework — item 1: deviation permits and conditional spec → BUILT as temporary process changes
 
 **Flagged by the user 2026-10-07 as the first large piece of rework to follow this
 audit.** Not a bug, not a documentation gap — a missing concept with a real UX
 consequence.
+
+> **Decision (user, 2026-10-19): a deviation is a temporary process revision**, so it
+> is supported through change control rather than as a permit model. The details:
+> - **Scope:** it applies to **named work orders only**. The revised version is
+>   approved, and those WOs move onto it through the existing *migrate selected* path.
+>   The baseline stays current for new work. The WOs' parts bound the quantity.
+> - **Ending:** it ends when its WOs finish, with an **expiry date** as a backstop.
+>   After the date, the deviated work can't proceed until the change is extended
+>   through change control or the WO moves back to the baseline.
+> - **Customer agreement:** recorded on the PCR through the existing *Customer
+>   notification required* flag and its text or attachment.
+>
+> Today, implementing a PCO always makes the new version current and retires the
+> predecessor (`services/mes/processes.py:60-77`). That is the piece to change.
+> **→ BUILT 2026-10-19** (migration 0240; uncommitted, not browser-walked).
+> - **Fields:** `is_temporary`, `temporary_until`, `extends_request` and
+>   `customer_agreement` on the PCR; `is_temporary` and `temporary_until` on
+>   Processes.
+> - **Implementing:** a temporary change approves without becoming current and is
+>   MIGRATE_SELECTED only.
+> - **Expiry:** starting a step is refused once the date passes, with no supervisor
+>   override.
+> - **Ways on:** an extension is a new PCR; *Move back to baseline* works per work
+>   order.
+> - **Versioning:** history, rebase, sibling detection and propose all exclude
+>   temporary versions, and a WO can't be pointed at one by hand.
+> - **Left as is:** version numbering — a temporary version still takes v(n+1), so a
+>   later permanent change can share its number; the labels say *temporary*. **Accepted
+>   (user, 2026-10-19):** a version number is for reference, not a record of
+>   lineage.
+>
+> Docs: `change-control/overview.md` (new section), `iatf-16949.md` 8.5.6.1.1,
+> `quality/dispositions.md`. The runtime problem below — a reading against a
+> permitted value raising an NCR — is gone, because the named WOs run a version whose
+> spec *is* the permitted value.
 
 **The gap.** UQMES implements the **concession** (accept what was made, via the
 disposition and its co-signed decision) but not the **deviation permit**

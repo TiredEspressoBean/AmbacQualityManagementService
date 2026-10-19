@@ -16,7 +16,7 @@ work instructions, specifications and the limits parts live under.
 | **Measurement definitions and step requirements** | [Measurements](../admin/processes/measurements.md) |
 | **Digital work instructions (substeps)** | [DWI Authoring](../workflows/dwi/authoring.md) |
 | **Raw materials** | [Supply](../workflows/supply/overview.md#materials) |
-| **Work centres** | [Equipment](../admin/setup/equipment.md) |
+| **Work centres** | [Data Management](../admin/data/data-management.md) — a work centre groups steps; deleting one is manager-tier |
 | **Life limits** | [Life Tracking](../workflows/tracking/life-tracking.md) |
 | **SPC control limits** | [SPC](../analysis/spc.md) |
 
@@ -53,28 +53,32 @@ See [Processes Overview](../admin/processes/overview.md).
     approved, rejected or cancelled; a PCO authored, approved, linked to affected
     work orders and implemented; a PCN released and closed with evidence.
 
-!!! note "The page carries a stale banner"
-    It still says creating and approving *"are all backend-built but not yet
-    exposed in the UI"*. That text dates from June 2026 and was not updated when
-    the actions shipped. The register looks empty in the demo because the tenant
-    has **0 PCRs, 0 POs and 0 PCNs** — not because the feature is missing.
-
-    See [Change Control](../workflows/change-control/overview.md).
+    An empty register means the tenant has no change records yet, not that the
+    feature is missing. See [Change Control](../workflows/change-control/overview.md).
 
 ## Cycle times are a planning input, not documentation
 
-An operation with **no cycle time contributes no load**. The capacity heatmap
-then shows free capacity that doesn't exist, and promised dates come out too
-optimistic — a planning failure whose cause is a blank field on your routing
-step.
+An operation the planner has no time for contributes **no load**. The capacity
+heatmap then shows free capacity that doesn't exist, and promised dates come out
+too optimistic — a planning failure whose cause is a blank field.
 
-!!! tip "Fix it on the routing step"
-    Capacity Planning warns when orders contain operations with no cycle time.
-    The fix belongs on the step, never in the planning view. See [Step
-    Timings](../workflows/scheduling/setup.md#step-timings).
+The planner looks in this order: the step's authored **step timing**, then
+measured history, then the step's own **expected duration**. Only the last one is
+yours.
 
-The same goes for **machine eligibility** (work on the wrong machine) and
-**changeovers** (the solver interleaving jobs that shouldn't interleave).
+| Solver input | Who sets it, by default |
+|--------------|-------------------------|
+| A step's **expected duration** | **You** — it is part of the step |
+| **Step timings** — setup, cycle, load/unload, attention | Production Manager, Tenant Admin |
+| **Machine eligibility** — which machines can run a step | Production Manager, Tenant Admin |
+| **Changeovers** | Production Manager, Tenant Admin, Planner |
+
+!!! warning "You author the route but not what the solver believes about it"
+    So when a new routing goes live, give every step an expected duration — the
+    fallback that keeps it from contributing nothing — and hand the step timings
+    and machine eligibility to Production Manager. Capacity Planning names the
+    orders that still have operations with no timing at all. See [Scheduling
+    Setup](../workflows/scheduling/setup.md).
 
 ## Life limits
 
@@ -92,9 +96,22 @@ revives it.
 |-----------|-------|
 | **Classify a document** | Document Controller, [QA Manager](qa-manager.md), Tenant Admin |
 | **See the secret tier** | Document Controller, Tenant Admin |
-| **Approve a disposition or a CAPA** | [QA Manager](qa-manager.md) |
-| **Solve the schedule** | [Planner](planner.md), Production Manager |
+| **Approve a disposition, or verify a CAPA** | [QA Manager](qa-manager.md), Tenant Admin |
+| **Raise a CAPA** | QA, the leads, Production Manager, Purchasing, Receiving |
+| **Author sampling rules** | QA Manager, QA Inspector, Tenant Admin |
+| **Solve the schedule** | [Planner](planner.md), Production Manager, Tenant Admin |
 | **Delete a work centre** | Manager tier |
+
+These are the default groups an organisation starts with. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
+
+!!! note "Sampling rules are not yours, though SPC limits are"
+    The two look like the same kind of quality planning and are split
+    deliberately. **SPC control limits** are yours — they describe how a process
+    behaves, which is an engineering judgement. **Sampling rules** decide how
+    much gets inspected, which is a quality decision, so they sit with QA.
+
+    If a rule is inspecting the wrong amount, that is a conversation with QA
+    rather than a field you can edit.
 
 !!! note "You can approve documents — if a template names you"
     There is no separate document-approval permission. You hold the general

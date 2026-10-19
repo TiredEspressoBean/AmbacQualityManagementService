@@ -22,7 +22,18 @@ found and where you are standing when you find it.
 |-----------|-------|
 | You're working the step and the substep asks for a result | Record it **in the step player** |
 | The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list |
-| The problem is the process, the machine, or the whole lot | **Report…** an exception on the work order |
+| A machine or resource is down | **Report…** downtime on the work order |
+| The problem is the process or the whole lot | Raise a **disposition** or a **CAPA** — **Report…** links to both |
+| **You can't run the job at all** | **Can't run this?** in the step player |
+
+!!! note "A blocker is not a defect"
+    *Can't run this?* is for when the work cannot proceed — missing material,
+    tooling unavailable, a quality hold, or something else. It is **not** a way
+    to report a bad part, and it does not create a quality record.
+
+    Pick the reason and the job routes to whoever owns it — Materials, your
+    lead, or QA — and **leaves your queue**, with your next job appearing. Use it
+    rather than sitting on a job you cannot start.
 
 ### In the step player (the in-process path)
 
@@ -52,19 +63,28 @@ so follow it with a quality report or a disposition.
     These are bulk actions on every ticked part. Check the selection before
     clicking — quarantining a lot you did not mean to select stops all of it.
 
-### Reporting an exception on the work order
+### Reporting downtime on the work order
 
-When the problem is bigger than one part — a machine down, a bad batch, a
-process out of control:
+When a machine or resource is down:
 
 1. Open the work order in the **WO Control Center** or its control page
-2. Click **Report…**
-3. Choose the type — **Quarantine (quality hold)**, **Downtime (equipment /
-   resource)**, or **CAPA (corrective action)**
-4. Add the reason and notes, then submit
+2. Click **Report…** and choose **Downtime (equipment / resource)**
+3. Pick the **equipment**, a **category**, and a **reason** (required, up to 200
+   characters); add a description if it helps
+4. In the Control Center, optionally pick the **work order** it affects — from a
+   work order's own page it is recorded against that work order
+5. **Record downtime**
 
-The type routes the event to the right record, and the exception is listed on
-the work order until it is resolved. See [Quarantine](../quality/quarantine.md).
+The event starts now and stays open in the Exceptions list until someone
+resolves it there.
+
+!!! note "Quarantine and CAPA open their own forms"
+    **Report…** also lists **Quarantine** and **CAPA**, but it does not raise
+    either itself — each shows a link to the form that does: the disposition
+    form, or the CAPA form. To hold specific parts, quarantine them from the
+    parts list as above.
+
+    Equipment whose type has **Track downtime** turned off is not offered.
 
 ### Raising a report after the fact
 
@@ -123,20 +143,39 @@ The quality report tracks containment activities.
 Connect related issues:
 
 ### Link to CAPA
-If a CAPA is created:
 
-1. The quality report links to the CAPA
-2. Track investigation through CAPA
-3. Closure requires CAPA completion
+If a CAPA is raised, the quality report links to it and the investigation is
+tracked there.
 
-## Operator Notifications
+!!! note "The two close independently"
+    A linked CAPA does **not** hold the disposition open, and the disposition
+    does not hold the CAPA open. You can close out the part — rework it,
+    re-inspect it, close its disposition — while the CAPA investigating *why* it
+    happened runs on for weeks. That is normal: one is about this part, the
+    other is about the cause.
 
-When an issue is flagged:
+## Who gets told
 
-- Quality team receives notification
-- Supervisor is alerted (for major/critical)
-- Dashboard shows new issues
-- Email sent based on preferences
+Notifications are **rule-driven**, and only two quality rules ship by default:
+
+| Event | Goes to | Channels |
+|-------|---------|----------|
+| An NCR is opened | **QA Manager** group | In-app and email |
+| A step fails | **QA Manager** and **QA Inspector** groups | In-app and email |
+
+!!! warning "Severity does not change who is told"
+    There is **no severity-based routing**. A Critical nonconformance notifies
+    exactly the same people as a Minor one, and no supervisor is alerted on the
+    strength of severity alone. Nor is there a per-user notification preference
+    deciding this — the rules are tenant-level and your administrator owns them.
+
+    If your procedure expects a Critical to escalate differently, that is a
+    [notification rule](../../admin/setup/notification-rules.md) somebody has to
+    write. Until then, severity is a label a reader acts on, not a trigger.
+
+**Do not rely on a notification to hand work over.** Check the work order's
+exceptions, the Dispositions list or your inbox rather than assuming someone was
+paged.
 
 ## What Happens Next
 
@@ -148,11 +187,16 @@ Issue Flagged → Quarantine → Investigation → Disposition → Resolution
                     └── CAPA (if needed)
 ```
 
-1. **Quarantine**: Part is held, cannot proceed
-2. **Investigation**: Quality team reviews
-3. **Disposition**: Decision made (Use As Is, Rework, Scrap, RTV)
-4. **Resolution**: Part is processed per disposition
-5. **CAPA**: Corrective action if systemic issue
+1. **Quarantine**: the part is held — it can never ship, and it stops at the
+   next step **only if that step is set to block on quarantine**
+2. **Investigation**: Quality reviews
+3. **Disposition**: the decision — Use As Is, Rework, Repair, Scrap or Return to
+   Supplier
+4. **Resolution**: the part is processed per the decision, then the disposition
+   is closed
+5. **CAPA**: corrective action, *if* the pattern warrants it — most
+   nonconformances do not become CAPAs, and declining is itself a recorded
+   decision with a reason
 
 See [Dispositions](../quality/dispositions.md) for disposition workflow.
 

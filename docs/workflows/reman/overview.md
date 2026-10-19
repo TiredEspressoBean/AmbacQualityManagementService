@@ -102,13 +102,15 @@ else's unit away for parts.
 **Exchange** — the customer gets a unit from stock, and theirs joins the pool.
 It has two exits:
 
-- **Rebuild to stock** — rebuilt and shelved as finished goods, keeping its own
-  identity
-- **Harvest for parts** — stripped, its components becoming stock in their own
-  right
+- **Rebuild to stock** — rebuilt and shelved as finished goods, keeping its
+  own identity. The stage ends at *Rebuilt to stock*
+- **Release to inventory** — harvested: stripped, its components becoming stock
+  in their own right, and the core itself consumed
 
-The planner chooses at release: **Release to rebuild** for repair-and-return;
-**Rebuild to stock** or **Harvest for parts** for exchange.
+So an exchange core is offered **Rebuild to stock** and **Release to
+inventory**. A repair-and-return unit is offered one button, **Release into
+rebuild** — releasing someone else's unit into your stock is refused outright,
+with the reason given.
 
 ## The Remanufacturing dashboard
 

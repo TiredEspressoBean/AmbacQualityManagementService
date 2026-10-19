@@ -11,29 +11,31 @@ Properly offboard users when they leave the organization or no longer need acces
 - **Data integrity** - Related records remain valid
 - **Reversible** - Can reactivate if needed
 
-!!! important "Deleting a user does this anyway"
-    **Delete** on a user list does not destroy anything. It **removes their
-    access to this organisation** by suspending their membership — the account
-    survives, and so does everything they recorded: training, approvals,
-    signatures.
+!!! important "There is no route that destroys an account"
+    This is not a policy you have to remember — it is what the system does.
+    Both ways out suspend the person's **membership of this organisation**: the
+    account survives, and so does everything they recorded. Training, approvals
+    and signatures all keep their name.
 
-    Reactivate them from **User Management**. The Data Management Users list
-    shows them as **Access removed**.
+    **Delete** on the Data Management users list does the same thing as
+    **Deactivate** in User Management. Despite the name it destroys nothing, and
+    it is reversible from User Management either way.
 
-    You cannot remove your own access.
-
-    So the choice is not *delete or deactivate* — both lead to the same safe
-    place, which is why the compliance argument above holds either way.
+    You cannot do it to yourself.
 
 ## Removing someone's access
 
 1. Navigate to **Admin** > **User Management**
 2. Find the user
-3. Use **Delete** on the user list
-4. Confirm
+3. Open their row menu and choose **Deactivate**
 
-There is no *Deactivate* action and no **Active** checkbox. **Delete** is what
-removes access, and despite the name it destroys nothing.
+To put them back, the same menu offers **Activate**. Several at once: tick them
+and use the bulk bar.
+
+!!! note "This is per organisation, not the whole account"
+    Deactivating suspends their membership *here*. It does not disable the
+    underlying account, and someone who belongs to another organisation keeps
+    their access there.
 
 ## What happens
 
@@ -42,7 +44,7 @@ removes access, and despite the name it destroys nothing.
 | **Cannot log in** | Their membership of this organisation is suspended |
 | **Assigned items remain** | Parts, NCRs and the rest keep their assignment |
 | **History preserved** | The audit trail still shows their name |
-| **Still listed** | They remain in the Data Management Users list, badged **Access removed** — they are not hidden |
+| **Still listed** | They are not hidden. User Management badges them **Inactive**; the Data Management users list says **Access removed** |
 
 ## SSO Considerations
 
@@ -84,7 +86,7 @@ Before deactivating, consider reassigning:
 
 For urgent access removal:
 
-1. **Delete them on the user list** — this takes effect immediately
+1. **Deactivate them in User Management** — this takes effect immediately
 2. **Notify IT** — coordinate with other systems, and with your IdP if they
    sign in through SSO
 3. **Review recent actions** — check the audit trail
@@ -99,9 +101,12 @@ For urgent access removal:
 For multiple users:
 
 1. Navigate to **Admin** > **User Management**
-2. Click **Bulk Actions**
-3. Add a row per user (**Manual entry**) or **Upload workbook** for a batch
-4. Set their status, then click **Apply rows**
+2. Tick the people in the list
+3. Use **Deactivate** on the bulk bar that appears
+
+For a long list from somewhere else — a leavers report, a contract ending —
+**Bulk Actions** takes a workbook instead, with a status per row, and reconciles
+existing people to match it.
 
 Use for:
 - Contractor project end
@@ -113,8 +118,9 @@ Use for:
 If user needs access again:
 
 1. Navigate to **Admin** > **User Management**
-2. Find the user — they are still listed, badged **Access removed**
-3. Reactivate them
+2. Find the user — they are still listed, badged **Inactive**. The **Inactive**
+   filter narrows the list to them
+3. Open their row menu and choose **Activate**
 4. Review and update their groups
 
 They can log in immediately.
@@ -123,8 +129,9 @@ They can log in immediately.
 
 | Action | Effect | Use When |
 |--------|--------|----------|
-| **Delete** on the user list | Can't log in; history preserved; row stays, badged *Access removed* | Standard offboarding |
-| **Remove from groups** | Still logged in, but nothing they can do | Temporary restriction |
+| **Deactivate** | No access to this organisation; history preserved; the row stays, badged *Inactive* | Standard offboarding |
+| **Delete** on the Data Management list | The same thing under a different name | Never deliberately — prefer Deactivate, so the next person reading the audit log is not misled |
+| **Remove from groups** | Can still log in, but has nothing to do | Temporary restriction, or a change of job |
 
 ## Compliance Considerations
 
@@ -145,12 +152,17 @@ They can log in immediately.
 
 ## Audit Trail
 
-Deactivation is logged:
-- Who deactivated the user
-- When deactivated
-- Previous active status
+The membership record itself carries **when** it was suspended and **by whom**,
+and the change is in the audit log like any other.
 
-View in Admin > Audit Log.
+!!! warning "Reactivating clears those two fields"
+    Putting someone back wipes the suspended-at and suspended-by values from
+    their membership — the record describes the present, not the past. So a
+    person who was offboarded and later returned shows no sign of it there.
+
+    The [audit log](../../analysis/audit-trail.md) is where that history
+    survives. If you need to answer *when did they lose access and who removed
+    it?* about someone currently active, that is the only place with the answer.
 
 ## Permissions
 
@@ -158,13 +170,18 @@ View in Admin > Audit Log.
 |------------|--------|
 | `change_user` | Deactivate and reactivate users |
 | `view_user` | See inactive users |
-| `delete_user` | Use **Delete** on the user list, which suspends their membership of this organisation. It does **not** destroy the account — see the note at the top of this page. |
+| `delete_user` | **Delete** on the Data Management list — which suspends membership, exactly as Deactivate does |
+
+By default only **Tenant Admin** holds these.
 
 !!! note "You cannot remove your own access"
-    Removing yourself is refused: *"You can't remove your own access."* Worth
-    knowing if you are the only administrator — you cannot lock yourself out this
-    way, and you cannot hand over by removing yourself. Add the other person and
-    give them what they need first.
+    Both routes refuse it — Delete answers *"You can't remove your own access,"*
+    and a bulk deactivation silently skips you, so the count it reports may be
+    one lower than the number you ticked.
+
+    Worth knowing if you are the only administrator: you cannot lock yourself
+    out this way, and you cannot hand over by removing yourself. Add the other
+    person and give them what they need first.
 
 ## Checklist: User Offboarding
 

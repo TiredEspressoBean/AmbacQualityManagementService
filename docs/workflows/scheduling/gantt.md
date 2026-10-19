@@ -140,6 +140,8 @@ The board splits into two levels of authority, and they are not the same group.
 | **Move**, **Pin/Unpin**, **Reassign**, **Dispatch** | `change_scheduledtask` | Production Manager, Tenant Admin, **QA Manager**, **Shift Lead**, **Planner** |
 | **Merge**, **Break** | `change_parts` | See [Working on several tasks](#working-on-several-tasks) |
 
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
 !!! note "A shift lead can work the board without being able to re-plan it"
     Direct manipulation is deliberately wider than solving. A shift lead
     covering a shift can pin, reassign and dispatch; committing a new plan for
@@ -159,10 +161,10 @@ A forward drag pushes the unit's later operations along ahead of it. You'll see
 *"Task moved & pinned — N downstream operations shifted"*.
 
 !!! tip "That is why a forward move doesn't bounce"
-    The board used to refuse any move finishing after a successor starts — which
-    is every forward move on a job with work already scheduled behind it, so the
-    planner's most ordinary action was the one the board said no to. Now the
-    route follows the move.
+    Almost every forward move on a job ends after a successor's planned start,
+    because there is usually work scheduled behind it. If that refused the move,
+    the planner's most ordinary action would be the one the board said no to —
+    so the route follows the move instead.
 
 ### Why a drop is refused
 

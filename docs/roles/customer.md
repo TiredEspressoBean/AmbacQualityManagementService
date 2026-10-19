@@ -11,10 +11,10 @@ This guide is for external customers who access uqmes to view their order status
 !!! tip "Demo Account"
     **Tom Bradley** — tom.bradley@midwestfleet.com, password `demo123`.
 
-    Verified 2026-10-12: Tom sees **11 orders, all Midwest Fleet Services**, out
-    of 16 in the tenant. Great Lakes Diesel's and Northern Trucking's are
-    filtered out entirely. Each card shows the customer, delivery date, days
-    remaining, current stage and progress — *6 / 11 stages*.
+    He sees Midwest Fleet Services' orders only; every other customer's are
+    filtered out of the list entirely, not greyed out. Each card carries the
+    customer, delivery date, days remaining, current stage and progress through
+    the stages.
 
 !!! note "You will see internal menu items you cannot open"
     The sidebar is not yet filtered by role, so entries like Processes,
@@ -37,8 +37,9 @@ Your access is limited to orders you own or were invited onto. It is read-only f
 
 ### First-Time Login
 
-1. You'll receive an invitation email
-2. Click the link to set up your account
+1. You'll receive an invitation link — by email, or from your contact at the
+   supplier directly, depending on how they run uqmes
+2. Open the link to set up your account
 3. Create a password (or use SSO if available)
 4. Log in to the portal
 
@@ -57,22 +58,17 @@ Documents for your orders are accessible from within the order details on Tracke
 1. Navigate to **Tracker**
 2. See all your company's orders
 3. Each card shows:
-   - Order number
-   - Progress percentage
-   - Due date
-   - Status
+   - The order's name
+   - Its delivery date, with days remaining — or a red **Overdue** badge once it
+     has passed
+   - The stage it is at now
+   - A progress bar of stages completed out of the total
 
 ### Order Progress
 
-The progress bar shows completion:
-
-| Progress | Meaning |
-|----------|---------|
-| 0-25% | Early stage |
-| 25-50% | In production |
-| 50-75% | Progressing |
-| 75-99% | Nearing completion |
-| 100% | Complete |
+The progress bar counts **stages**, not parts: *3 / 11* means three of the
+order's eleven production stages are done. A stage counts as done once no part
+is still sitting at it and at least one has moved past.
 
 ### Order Details
 
@@ -135,31 +131,26 @@ You can access documents shared with you:
 | **Report** | Test or inspection results |
 | **Specification** | Product specs (if shared) |
 
-## Searching
+## Finding an order
 
-### Finding Orders
-
-Use the search bar:
-- Search by order number
-- Search by part number
-- Search by PO reference
-
-### Filtering
-
-Use filters to narrow results:
-- By status
-- By date range
+The Tracker has **no search box and no filters**. It lists your own orders —
+and only yours — as cards you scroll, loading more as you go. Find the order by
+its name; your browser's find-in-page (Ctrl+F) searches the cards already
+loaded.
 
 ## Notifications
 
-You may receive notifications for:
+You may receive notifications about your orders — a shipment going out, for
+example.
 
-- Order status changes
-- Documents shared with you
-- Order completion
-- Shipping updates
+**Whether you get them, and which ones, is set up by your supplier.** There is
+no notification preference page for you: the rules live on their side and are
+routed to the contacts they hold for your company. Notifications about customer
+orders are **off unless your supplier turns them on**, so silence may mean no
+rule rather than no news.
 
-Configure preferences in your profile.
+If you want to be told about something, or told at a different address, ask your
+contact there.
 
 ## Your Profile
 
@@ -171,13 +162,14 @@ Click your name at the bottom of the sidebar, then **Profile**.
 
 - Update contact information
 - Change password (if not SSO)
-- Set notification preferences
 
 ## Frequently Asked Questions
 
 ### How do I track a specific order?
 
-Use the search bar on Tracker with your order number or PO reference.
+The Tracker has no search. It lists only your own orders, as cards you scroll,
+so find the order by its name and click it to open the detail. Your browser's
+find-in-page (Ctrl+F) works on the names of the cards already loaded.
 
 ### Why can't I see certain information?
 
@@ -213,7 +205,8 @@ As a customer portal user:
     The portal is read-only for *order data*, but not for everything. You can
     **respond to an approval** sent to you — which records an electronic signature
     against your name — and you can **invite another viewer** onto an order you
-    own, so a colleague can follow it without an account of their own.
+    own, so a colleague can follow it too. Inviting them gives them a portal
+    account if they do not already have one, and sends them an invitation.
 
 ## Getting Help
 
@@ -241,9 +234,8 @@ separate portal support line.
 
 1. **Bookmark the portal** - Quick access
 2. **Check regularly** - Stay updated on progress
-3. **Use search** - Find orders quickly
-4. **Download documents** - Save for your records
-5. **Update contact info** - Ensure you receive notifications
+3. **Download documents** - Save for your records
+4. **Update contact info** - Ensure you receive notifications
 
 ## Browser Compatibility
 

@@ -2,9 +2,22 @@
 
 The final phases of CAPA: verifying corrective actions worked and formally closing the investigation.
 
-## Verification Phase (D7)
+## Verification
 
 After implementing corrective actions, verify they were effective.
+
+!!! important "The root cause must be verified first"
+    An effectiveness check is refused until the CAPA's root cause analysis is
+    complete **and approved** — *"The root cause must be verified before
+    effectiveness can be checked"*. See [Approving the root
+    cause](overview.md#approving-the-root-cause).
+
+!!! note "uqmes does not model 8D phases"
+    If your facility works to 8D, verification maps to **D6** and prevention to
+    **D7** — but the CAPA record has no phase field and the system does not
+    track where you are in that sequence. 8D exists here as a **document type**
+    you attach, not as a workflow. Run the method your way and keep the report
+    against the CAPA.
 
 ### What to Verify
 
@@ -80,7 +93,7 @@ Define measurable criteria:
 - No related customer complaints
 - Process capability maintained
 
-## Prevent Recurrence (D7)
+## Prevent Recurrence
 
 Beyond fixing the immediate issue:
 
@@ -140,9 +153,8 @@ The closure record includes:
 | **Problem Statement** | Original issue |
 | **Root Cause** | Verified cause |
 | **Corrective Actions** | What was done |
-| **Verification** | Proof of effectiveness |
 | **Preventive Actions** | Systemic changes |
-| **Verification** | Who verified, when, and whether it was self-verified |
+| **Verification** | The criteria, what was found, who verified it, when — and whether it was **self-verified** |
 
 ## Closed is the end of the line
 
@@ -152,7 +164,8 @@ CAPA and reference the old one.
 
 The one route back is *before* closure: a **Not Effective** verification returns
 the CAPA from Pending Verification to **In Progress**, marks the root cause
-analysis for review, and raises a follow-up corrective task due in 30 days. That
+analysis for review, and raises a follow-up corrective task due in 30 days. The
+reviewed RCA has to be approved again before the next effectiveness check. That
 is the only reopening the system does, and it happens because the CAPA never
 closed.
 
@@ -176,14 +189,22 @@ Closure-related metrics:
 
 ## Regulatory Considerations
 
-For regulated industries:
+Corrective action sits at **clause 10.2** in all three of the standards this
+product is built against:
 
-- **AS9100D**: Clause 10.2 corrective action
-- **IATF 16949**: Clause 10.2 problem solving
-- **AS9100**: Clause 10.2
-- **IATF 16949**: Clause 10.2.3
+| Standard | Clause | What it asks for |
+|----------|--------|------------------|
+| **ISO 9001:2015** | 10.2 | Evaluate the need for action to eliminate the cause, act, review effectiveness, and **retain documented evidence** of both |
+| **AS9100D** | 10.2 | As ISO 9001, plus specific flow-down and human-factors expectations |
+| **IATF 16949** | 10.2.3 | Adds a defined problem-solving method and error-proofing |
 
-Ensure documentation meets requirements.
+ISO 9001 is the primary target; IATF is a later one. See [ISO
+9001](../../compliance/iso9001.md).
+
+!!! tip "The part auditors actually sample"
+    Not whether a CAPA exists — whether its **effectiveness was reviewed**, and
+    on what evidence. That is this page. A CAPA closed with no verification
+    criteria recorded satisfies the first half of 10.2 and fails the second.
 
 ## Permissions
 

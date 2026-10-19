@@ -4,13 +4,18 @@ CAPA tasks are action items assigned to team members to complete the investigati
 
 ## Task Types
 
-| Task Type | Purpose | Phase |
-|-----------|---------|-------|
-| **Containment** | Immediate actions to limit impact | D3 |
-| **Corrective Action** | Actions to fix the problem and address root cause | D5, D6 |
-| **Preventive Action** | Systemic changes to prevent recurrence | D7 |
+| Task Type | Purpose |
+|-----------|---------|
+| **Containment** | Immediate actions to limit impact |
+| **Corrective Action** | Actions to fix the problem and address root cause |
+| **Preventive Action** | Systemic changes to prevent recurrence |
 
-Note: Root cause analysis is tracked separately via RCA records linked to the CAPA.
+There are only these three, and the type is a label — **nothing behaves
+differently because of it**. It tells a reader which kind of action they are
+looking at; it does not change ordering, gating or closure.
+
+Root cause analysis is not a task. It is tracked separately as an RCA record
+linked to the CAPA — see [CAPA Overview](overview.md).
 
 ## Creating Tasks
 
@@ -190,12 +195,20 @@ The **Personal > Inbox** page shows:
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_capatasks` | View tasks |
-| `add_capatasks` | Create tasks |
-| `change_capatasks` | Edit, complete tasks |
-| `delete_capatasks` | Remove tasks |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_capatasks` | View tasks | Every staff role |
+| `add_capatasks` | Create tasks | Every staff role |
+| `change_capatasks` | Edit and **complete** tasks | Every staff role |
+| `delete_capatasks` | Remove a task outright | Manager tier — QA Manager, Production Manager, Document Controller, Tenant Admin |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
+
+Working CAPA tasks is deliberately open: anyone on the team can be given one and
+complete it. **Deleting** one is not, because a task that was raised and then
+removed is a hole in the investigation record. If a task is no longer needed,
+set it to **Cancelled** rather than deleting it — that keeps the decision
+visible.
 
 ## Next Steps
 

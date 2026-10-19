@@ -54,7 +54,8 @@ These ask the operator for something and create the record.
 | **Measurement input** | A numeric value, checked against its spec |
 | **Text input** | Free text |
 | **Choice input** | One option from a list you define |
-| **Photo capture** / **File capture** | Media or an uploaded file |
+| **Photo capture** | An image |
+| **File capture** | An uploaded file of any kind — use it when the operator needs to attach a video |
 | **Scan input** | A barcode or QR code |
 | **Timer** | A countdown or stopwatch |
 | **Computed value** | A value derived by formula from other captures |
@@ -64,7 +65,9 @@ These ask the operator for something and create the record.
 | **Equipment roles** / **Personnel roles** | Who and what was involved |
 | **Inspection signatures** | Detected-by and verified-by signatures |
 | **Part annotation** | A marked point on the part's 3D model |
-| **Harvested component capture** | Components recovered during teardown (reman) |
+| **Harvested component capture** | Components recovered during teardown, with their grades (reman) |
+| **Component install capture** | Which components went into the unit — its as-built record |
+| **Rebuild finding capture** | A component found worse than its teardown grade, for a lead to apply or dismiss (reman) |
 
 !!! tip "Measurements are more than a number field"
     Use **Measurement input** rather than a text input for numeric values. Only
@@ -129,9 +132,8 @@ act rather than the step: "Release sign-off" reads better in an audit than the
 substep's title.
 
 There is no separate substep setting. A substep needs a signature exactly when its
-body contains a signature block, which is why you can't accidentally ask for one
-twice — the old toggle sat beside these blocks and a substep carrying both made the
-operator sign, then sign again.
+body contains a signature block, so the operator is never asked to sign the same
+thing twice.
 
 A signature block works the same way in a **batch** substep, except one signature
 covers the whole load rather than each part in it.

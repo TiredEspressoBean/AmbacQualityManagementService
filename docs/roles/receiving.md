@@ -10,8 +10,17 @@ somewhere findable.
     the delivery, inspects it, and puts it away.
 
     At a small plant one person holds both — the roles compose, as QA Inspector
-    and Shift Lead already do. **Operator**, **Shift Lead** and **Production
-    Manager** can also do this work.
+    and Shift Lead already do.
+
+    **Receiving work itself is not locked to this group.** Taking a delivery in,
+    inspecting it, moving it and counting it all run on the shared staff base, so
+    an Operator, a Shift Lead or a Production Manager can cover the dock.
+
+    One thing *is* narrower: **organising the locations**. Anyone covering the
+    dock can **add** one from a picker — *Add location "Rack 9"* — and put stock
+    in it. **Renaming, nesting and changing** a location is Receiving,
+    Purchasing and the authoring roles by default, and **deleting** one is
+    narrower still — and refused while anything is in it.
 
     What Receiving does **not** carry is the authority to settle what it finds:
     rejecting a whole lot (a VDMR) and approving a disposition are QA's call. The

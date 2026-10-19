@@ -4,15 +4,10 @@ Taking a core apart, recording what came out of it, and deciding what happens to
 the unit next.
 
 !!! info "There is no separate disassembly screen"
-    Teardown used to have a standalone page. It doesn't any more: a core **is a
-    part**, so teardown is ordinary work at a step, run in the operator's step
-    player like any other operation. The old
-    `/reman/cores/{id}/disassembly` link redirects to the core's page.
-
-    That change is the point rather than a detail — the standalone screen
-    skipped the process steps entirely, so teardown bypassed the training
-    gates, sampling and quality records that every other operation runs
-    through. See [Remanufacturing Overview](overview.md).
+    A core **is a part**, so teardown is ordinary work at a step, run in the
+    operator's step player like any other operation — with the same training
+    gates, sampling and quality records. A `/reman/cores/{id}/disassembly` link
+    redirects to the core's page. See [Remanufacturing Overview](overview.md).
 
 ## Starting
 
@@ -70,7 +65,7 @@ What you are offered depends on how the unit is being fulfilled:
 
 === "Repair and return"
 
-    One button: **Release to rebuild**.
+    One button: **Release into rebuild**.
 
     The customer's own unit goes back to the customer, so rebuilding is the only
     exit. There is no harvest option, and the server refuses one — you cannot
@@ -81,14 +76,14 @@ What you are offered depends on how the unit is being fulfilled:
 
 === "Exchange"
 
-    Two buttons: **Rebuild to stock** and **Harvest for parts**.
+    Two buttons: **Rebuild to stock** and **Release to inventory**.
 
     The unit belongs to the shop, so both exits are legitimate:
 
     - **Rebuild to stock** — the normal choice. It is rebuilt and shelved as
       finished goods, **keeping its own identity** rather than becoming an
       anonymous unit.
-    - **Harvest for parts** — when its body has failed, or cores of this type are
+    - **Release to inventory** — when its body has failed, or cores of this type are
       in surplus. Its usable components become stock in their own right and the
       unit itself ceases to exist.
 

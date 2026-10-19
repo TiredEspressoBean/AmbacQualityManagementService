@@ -37,11 +37,31 @@ The footer shows **how many people can cover each skill**.
 ## Why it affects scheduling
 
 Training isn't only a compliance record. Operator dispatch will only assign
-someone a step they are **qualified for at the required level**, so a gap in
-this matrix becomes unassignable work on the schedule.
+someone a step they are **qualified for at the required level**, so missing
+competency becomes unassignable work on the schedule.
 
 If the scheduler can't place work on a person you expected, check here first.
 See [Schedule (Gantt)](../scheduling/gantt.md#dispatch).
+
+!!! important "A role gap is not the same as being blocked from work"
+    This is the commonest misreading of the matrix, and it goes both ways.
+
+    A training requirement is scoped to **one** of: a **job role**, a **step**,
+    a **process**, or an **equipment type**. The matrix reports **role fit** —
+    whether someone meets the competence profile of the role they hold. The
+    **start gate** reads **step** requirements.
+
+    They are different questions:
+
+    - Somebody can show **"1 gap"** here and still start **every step** they are
+      asked to run, because no step required the skill they are short of. That
+      is correct, not a bug.
+    - Somebody can show **"meets"** and still be refused at a step, because that
+      step carries a requirement their role profile never mentioned.
+
+    So read a role gap as *this person does not yet fit their job description* —
+    a development and staffing signal — and the refusal at a step as *this
+    person cannot run this operation today*. Only the second stops work.
 
 ## Filtering
 

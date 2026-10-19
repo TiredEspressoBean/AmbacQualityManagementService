@@ -15,14 +15,29 @@ Comma-separated values for spreadsheet analysis:
 ### Excel Export
 The same data as a workbook, with reference sheets for lookups.
 
-!!! note "PDF and image export are not general export formats"
-    You cannot export a list, a chart or a dashboard as PDF or PNG. Two
-    specific **report** buttons produce a PDF, and they are the only ones:
+!!! note "PDF is for *reports*, not for exporting a view"
+    You cannot export an arbitrary list, chart or dashboard as PDF or PNG —
+    those export as CSV or Excel.
 
-    - **Traveler** on a work order — the Work Order Traveler
-    - **SPC Report** on the SPC page
+    PDF is how **documents** come out, and there are a lot of them. They are
+    reached from the record they describe rather than from a general export
+    menu, which is why they are easy to miss:
 
-    Everything else exports as CSV or Excel.
+    | Where you are | What prints |
+    |---------------|-------------|
+    | A work order | **Traveler** — the as-built routing, filled in |
+    | A part | That serial's own traveler |
+    | A shipment | **Packing list** and **Certificate of Conformance** |
+    | A rejected lot | **RTV sheet**, to travel with the goods |
+    | A received lot | Receiving inspection record; lot and part labels |
+    | The schedule | **Dispatch list**; pick and staging lists |
+    | A calibration | Certificate, and the calibrations-due list |
+    | A quality record | NCR, CAPA report, SCAR, deviation request |
+    | The SPC page | **SPC Report** |
+
+    Plus requirements, lot trace, BOM, labour hours and training records. If you
+    are looking for a printable version of something, check the record's own
+    page before concluding there isn't one.
 
 ## Exporting from Tables
 
@@ -87,8 +102,8 @@ Currently available report types:
 | Report | How to Access |
 |--------|---------------|
 | **Table Exports** | Click **Export** on any data table (Orders, Parts, Quality Reports, etc.) |
-| **Part Traveler** | API: `GET /api/Parts/{id}/traveler/` |
-| **SPC Charts** | Via management command (see [Compliance Reports](../compliance/reports.md)) |
+| **Part Traveler** | The **Traveler** button on the part detail page — *"this serial's as-built traveler: its work order's routing, filled with who did each step, what was measured, the lots that went in"*. Also available at `GET /api/Parts/{id}/traveler/` |
+| **SPC Report** | The **SPC Report** button on the SPC page |
 | **Audit Trail** | Planned - see [Audit Trail Export](#audit-trail-export) |
 
 ### Running a Table Export
@@ -187,17 +202,22 @@ Use for:
 
 ## Certificate of Conformance
 
-!!! note "Planned Feature"
-    Certificate of Conformance generation is planned for a future release.
+**The CoC exists and prints from the shipment**, not from the order — it
+certifies what actually went, so it is produced once there is a shipment to
+certify.
 
-When available:
+1. Open the shipment (**Supply** > **Shipping** > Shipped, or from the order's
+   shipping card)
+2. Click **CoC**
 
-1. Open order
-2. Click **Generate CoC**
-3. Select parts to include
-4. Add required information
-5. Generate and sign
-6. Export PDF
+It prints automatically alongside the packing list for any customer whose
+company record has **CoC with every shipment** set, and the shipping board
+badges those customers so you know before you pack.
+
+!!! warning "A returned reman core gets no CoC"
+    Returning a unit through Remanufacturing does **not** create a shipment, and
+    the certificate is built from one — so a repair-and-return unit currently
+    goes back without a packing list or a CoC. See [Shipping](../roles/shipping.md).
 
 ## Document Packages
 

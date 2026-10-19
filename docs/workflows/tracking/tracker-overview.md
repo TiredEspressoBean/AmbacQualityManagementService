@@ -27,7 +27,7 @@ Each card shows:
 |---------|-------------|
 | **Order name** | The order's name, e.g. "Great Lakes Diesel Order - 12 Injectors" |
 | **Company** | Who the order is for. The Tracker does not pass a customer name, so no individual contact appears here |
-| **Delivery** | The delivery date, with a badge for how far away it is — "Today" or "6d". The badge is dropped once the date is past, leaving the date alone |
+| **Delivery** | The delivery date, with a badge: days remaining ("6d"), **Today**, or a red **Overdue · 3d** once it has passed. Counted in calendar days. A completed or cancelled order shows the date with no badge |
 | **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" — or "Not started" when no stage is current |
 | **Progress** | A progress bar with stages completed out of total, e.g. 3/11 stages |
 | **Latest note** | The most recent note on the order, with who left it |
@@ -45,8 +45,15 @@ in place.
 
 !!! note "No search or filters here"
     The Tracker has no search box and no filter controls — it is one list of
-    cards you scroll. To search or filter, use the **Work Orders** page
-    (Production > Work Orders), which has both.
+    cards you scroll, completed and cancelled orders included. To find an
+    **order**, use the orders list in **Data Management**, which searches by
+    order name, company and customer name. To find a **work order**, use
+    **Production** > **Work Orders**.
+
+!!! note "Orders with nothing to show are left off"
+    An order with no stages yet and no milestone is not shown. When that leaves
+    nothing, the page says *No active orders to display* — which can mean the
+    orders exist but none has been started.
 
 ## Card View
 

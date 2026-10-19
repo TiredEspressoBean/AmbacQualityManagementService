@@ -1,179 +1,82 @@
 # Dashboard Overview
 
-uqmes provides several dashboards for monitoring operations, quality, and production metrics.
+uqmes has several dashboards. Two of them are easy to confuse, because the
+**Analytics** page's own heading reads *Quality Dashboard* while a different page
+is the Quality dashboard.
 
 ## Available Dashboards
 
 | Dashboard | Route | Focus |
 |-----------|-------|-------|
-| **Analysis Dashboard** | `/analysis` | KPI trends, FPY, defect pareto, needs attention |
-| **Quality Dashboard** | `/quality` | Open CAPAs, NCRs, disposition status |
-| **SPC Charts** | `/spc` | Control charts, capability indices |
-| **Defect Analysis** | `/quality/defects` | Defect trends by type, supplier, part |
-| **Tracker** | `/tracker` | Order progress, production status |
+| **Analytics** | `/analysis` | Quality KPIs, FPY trend, what needs attention, top defects. Headed *Quality Dashboard* |
+| **Quality dashboard** | `/quality` | **CAPAs** — counts, quick actions, approvals, your tasks |
+| **NCR Analysis** | `/quality/ncrs` | NCR trend, aging, disposition breakdown |
+| **Defect Analysis** | `/quality/defects` | Defects by type, process, part — with filters and CSV export. See [Defect Analysis](defects.md) |
+| **SPC Charts** | `/spc` | Control charts, capability indices. See [SPC](spc.md) |
+| **Tracker** | `/tracker` | Order progress |
 
-### Analysis Dashboard (`/analysis`)
+## Analytics (`/analysis`)
 
-Navigate to **Analytics** in the sidebar or go directly to `/analysis`
+Navigate to **Analytics** in the sidebar.
 
-Focus: Comprehensive KPI analysis
-- First Pass Yield trend with date range toggle
-- Needs attention items (overdue CAPAs, pending approvals)
-- Defect Pareto charts
-- Links to SPC, Defects, and CAPAs
-
-### Quality Dashboard (`/quality`)
-
-Navigate to **Quality** > **Dashboard** or `/quality`
-
-Focus: Quality metrics and performance
-- Open CAPAs and NCRs
-- Defect trends
-- First Pass Yield
-- Disposition breakdown
-
-### Production Views
-
-| Page | Route | Focus |
-|------|-------|-------|
-| Tracker | `/tracker` | Order cards with progress bars (customer-facing) |
-| Work Orders | `/production/work-orders` | Production queue and inspection |
-| Dispositions | `/production/dispositions` | Quarantine and disposition management. Listed under **Quality** in the sidebar despite the URL. |
-
-## Quality Dashboard
-
-### KPI Cards
-
-Four metrics across the top:
+### KPI cards
 
 | KPI | Description |
 |-----|-------------|
-| **First Pass Yield** | Percentage passing without rework, against a 95% target |
+| **First Pass Yield** | Percentage passing without rework, against a **95%** target |
 | **Scrap Rate** | Percentage of parts scrapped |
+| **Rework Rate** | Percentage of parts reworked |
+| **Open Issues** | Open quality issues |
 | **Active CAPAs** | CAPAs in progress |
 | **Overdue** | CAPAs past their due date |
 
-Below them, a **needs-attention** row surfaces NCRs open more than 7 days,
-CAPAs past due, parts in quarantine, and CAPAs pending verification — the same
-counts the Home page shows.
+### Below the cards
 
-**View Issues**, **NCR Analysis**, **Full Analysis** and **SPC** open the
-detailed views.
-
-### Charts
-
-**Defect Trend**
-- Line chart showing NCRs over time
-- By day, week, or month
-- Identify increasing/decreasing trends
-
-**Defect Pareto**
-- Bar chart of defects by error type
-- 80/20 analysis
-- Focus improvement efforts
-
-**Disposition Breakdown**
-- Pie chart of disposition decisions
-- Scrap, Rework, Use As Is, RTV
-- Track disposition patterns
-
-### Recent Activity
-
-- Latest quality reports
-- Recent CAPA updates
-- Documents pending approval
-
-## Analytics Dashboard
+- **FPY Trend** — first pass yield over the period, with the target line, and a
+  link to SPC
+- **Needs attention** — the urgent items; *All Clear — No urgent issues* when
+  there are none
+- **Top Defects** — the most frequent error types, linking to Defect Analysis
+- Links to **NCRs**, **CAPAs** and the quality reports list
 
 ### Period
 
-The dashboard has one control: a period selector offering **30 days**,
-**60 days**, and **90 days**.
+The page has one control: a period toggle of **30**, **60** or **90 days**.
 
-!!! note "No dimension filters here"
-    There is no part type, process, customer, or error type filter on the
-    dashboard. To slice defects that way, use
-    [Defect Analysis](defects.md), which has its own filters and CSV export.
+!!! note "No dimension filters, drill-down, export or refresh"
+    There is no part type, process, customer or error type filter here, no
+    custom date range, nothing to click through from a chart, and no export.
+    To see the records behind a number, open the page that owns them: [Defect
+    Analysis](defects.md), [Quality Reports](../workflows/quality/quality-reports.md),
+    or [SPC](spc.md). For files, see [Exporting Data](exporting.md).
 
-### KPI Trends
+## Quality dashboard (`/quality`)
 
-**FPY Trend**
-- First Pass Yield over time
-- Target line overlay
-- By part type or process
+Navigate to **Quality** > **Dashboard**. This is the **CAPA** dashboard:
 
-**Defect Rate**
-- Defects per unit or per thousand
-- Trend analysis
-- Compare periods
+| Tile | Counts |
+|------|--------|
+| **Open CAPAs** | Requiring attention |
+| **Overdue** | Past due date |
+| **Pending Verification** | Awaiting review |
+| **Closed** | Successfully resolved |
 
-**NCR Aging**
-- Time to close NCRs
-- Identify bottlenecks
-- Track improvement
+Below: **Quick Actions** (*View All CAPAs*, *Create New CAPA*), the items
+**requiring your approval**, and **My Tasks** — CAPA tasks assigned to you.
 
-### Defect Analysis
+!!! note "No FPY, quarantine count or charts here"
+    Yield, scrap and defect charts are on **Analytics**. The *In quarantine*
+    count is on **Home**.
 
-**Pareto by Error Type**
-- Which defects occur most
-- Cumulative percentage line
-- Focus areas for improvement
+## NCR Analysis (`/quality/ncrs`)
 
-**Defect by Process Step**
-- Where defects are found
-- Detection effectiveness
-- Process problem areas
+NCRs over time, how long they stay open, and how their dispositions break down —
+scrap, rework, use as is, return to supplier.
 
-**Defect by Part Type**
-- Which parts have most issues
-- Compare performance
-- Prioritize attention
-
-### Repeat Defects
-
-Track recurring issues:
-
-- Same error on same part type
-- Indicator of systemic problems
-- CAPA candidates
-
-## Dashboard Widgets
-
-### Widget Types
-
-| Type | Purpose |
-|------|---------|
-| **KPI Card** | Single metric with trend |
-| **Line Chart** | Trends over time |
-| **Bar Chart** | Comparisons |
-| **Pie Chart** | Distributions |
-| **Table** | Lists of records |
-
-!!! note "Planned Feature"
-    Dashboard widget customization (add/remove, resize, rearrange) is planned for a future release.
-
-!!! warning "There are no preset ranges, custom ranges, drill-down or refresh"
-    Older instructions on this page described seven preset ranges, a custom
-    date picker, clicking a chart to open the records behind it, and a Refresh
-    icon. None of them exist.
-
-    The period selector described above — 30 / 60 / 90 days — is the whole of
-    the dashboard's interactivity. To see the records behind a number, open the
-    page that owns them: [Defect Analysis](defects.md), [Quality
-    Reports](../workflows/quality/quality-reports.md), or
-    [SPC](spc.md).
-
-## Exporting Dashboard Data
-
-!!! note "Planned Feature"
-    Dashboard export functionality is planned for a future release.
-
-When available:
-
-- Export individual charts as PNG or CSV
-- Export entire dashboard as PDF
-
-For current data exports, see [Exporting Data](exporting.md).
+**Repeat defects** lists every defect recorded **three or more times on failed
+reports** in the selected period — the classic CAPA candidate. Each row names
+the defect, the part types and steps it turned up on, and the count. See
+[Repeat Defects](defects.md#repeat-defects).
 
 ## Big Screen Mode
 

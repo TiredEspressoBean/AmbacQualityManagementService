@@ -16,40 +16,21 @@ This visual approach helps identify:
 
 ## Accessing Heat Maps
 
-Navigate to **Quality** > **Heat Map** (`/heatmap`).
+Navigate to **Quality** > **Heat Map** (`/heatmap`), titled *Defect Heat Map*.
 
-!!! note "Two different heat map surfaces"
-    `/heatmap` is the analysis page described here. The **3D model viewer** is
-    separate and opens per part or per part type at
-    `/heatMapViewer/part/{id}` and `/heatMapViewer/partType/{id}` — see
-    [Heat Map Visualization](../3d-models/heatmap-viz.md). Both exist; they are
-    not alternative spellings of one route.
+The per-part and per-type links — `/heatMapViewer/part/{id}` and
+`/heatMapViewer/partType/{id}` — open **the same viewer** with that part or part
+type already chosen. See [Heat Map
+Visualization](../3d-models/heatmap-viz.md).
 
-## Heat Map Views
+## Choosing what to show
 
-### By Part Type
+Pick a **Part Type** to see defects across every part of that type — the view
+for systemic, location-driven problems — or a single **Part** to see just its
+own.
 
-View aggregate defects across all parts of a type:
-
-1. Select a Part Type
-2. Heat map shows defect frequency across all parts
-3. Identifies systemic location issues
-
-### By Specific Part
-
-View defects on a single part:
-
-1. Select or search for part
-2. See all defects on that part
-3. Useful for part-specific analysis
-
-### By Order
-
-View defects across parts in an order:
-
-1. Select order
-2. Combined heat map of all parts
-3. Identify order-specific patterns
+!!! note "There is no by-order view"
+    To look at one job, narrow by **Work Order** in the filters below.
 
 ## 3D Model Heat Map
 
@@ -74,57 +55,51 @@ Blue    Green    Yellow    Orange    Red
 
 ## Heat Map Data
 
-Each point represents:
-
-| Data | Description |
-|------|-------------|
-| **Location** | X, Y, Z coordinates |
-| **Frequency** | Number of defects at location |
-| **Error Types** | Types of defects found |
-| **Severity** | Distribution of severities |
+Each point is an **annotation**: a location on the model, the defect type
+recorded, its severity, notes, who reported it and when.
 
 ### Filtering
 
-Filter heat map data:
+| Filter | Options |
+|--------|---------|
+| **Manufacturing Step** | All steps, or one |
+| **Defect Type** | All defect types, or one |
+| **Severity** | All, **Low**, **Medium**, **High** or **Critical** |
+| **Date Range** | All time, last 7, 30 or 90 days, or a custom range |
+| **Work Order** | All work orders, or one |
 
-- **Date Range**: Time period
-- **Error Type**: Specific defect types
-- **Severity**: Minor/Major/Critical
-- **Detected By**: Who found the defects
+**Heatmap Settings** adjusts how the points are drawn.
 
 ## Creating Annotations
 
-### During Inspection
+An annotation has to belong to a **quality report**: the annotator asks you to
+*select a report to annotate* before you can place a point.
 
-1. Open the quality report the defect belongs to — an annotation has to belong
-   to one
-2. Open the part annotator
-3. Click the defect location on the 3D model
-4. Enter the defect details
-5. Save
+### Where
+
+- **In the step player**, where a substep carries a **Part annotation** capture
+- **On the work order page**, from the QA panel on the right when a part is
+  selected
+
+### Placing one
+
+1. Choose the quality report
+2. Click the defect location on the 3D model
+3. Fill in **Error Type**, **Severity Level** and **Notes**
+4. Save
 
 See [Annotations](../3d-models/annotations.md) for the full procedure.
 
-### From Work Order
-
-Navigate to **Production > Work Orders**:
-
-1. Open the work order containing the part
-2. Find the part and open the annotation tool
-3. Click location of defect on 3D model
-4. Fill in annotation form
-5. Attach photo if available
-6. Save
-
-### Annotation Details
-
 | Field | Description |
 |-------|-------------|
-| **Location** | 3D coordinates (auto from click) |
+| **Location** | 3D coordinates, from where you clicked |
 | **Error Type** | Category of defect |
-| **Severity** | Minor/Major/Critical |
-| **Description** | Detailed notes |
-| **Photo** | Optional image |
+| **Severity Level** | Low, Medium, High or Critical |
+| **Notes** | Detailed notes |
+
+!!! note "No photo on an annotation"
+    An annotation carries no image. Photograph the defect with a **Photo**
+    capture on the inspection substep, or attach it to the quality report.
 
 ## Analyzing Heat Maps
 
@@ -161,27 +136,15 @@ Correlate heat map with:
 
 ## Heat Map Reports
 
-!!! note "Planned Feature"
-    Heat map export functionality (PNG, PDF, CSV) is planned for a future release.
-
-When available, reports will include:
-
-- 3D view capture
-- Location frequency table
-- Error type breakdown
-- Trend comparison
-
-Currently, annotation data can be accessed via the REST API.
+!!! note "No export"
+    The heat map cannot be exported as an image, PDF or CSV. Annotation data is
+    available through the REST API.
 
 ## Time-Based Analysis
 
-Use date range filters to compare defect patterns over time:
-
-- Before and after process changes
-- Different production periods
-- Improvement validation
-
-Filter annotations by date range to see how defect patterns evolve.
+Use the **Date Range** filter to compare defect patterns over time — before and
+after a process change, across production periods, or to confirm an improvement
+held.
 
 ## Permissions
 
@@ -189,6 +152,8 @@ Filter annotations by date range to see how defect patterns evolve.
 |------------|--------|
 | `view_heatmapannotations` | View heat maps and their annotations |
 | `add_heatmapannotations` | Create annotations |
+| `delete_heatmapannotations` | Delete an annotation while its report is still Pending |
+| `delete_submitted_heatmapannotations` | Delete one on a finished report — by default the quality team only |
 | `view_threedmodel` | Access 3D models |
 
 ## Next Steps

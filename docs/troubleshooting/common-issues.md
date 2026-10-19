@@ -15,7 +15,9 @@ Solutions for frequently encountered problems.
     - **Parts stuck at step**: INJ-0042-025 blocked at Assembly pending FPI approval
     - **Permission restrictions**: Customer Tom Bradley can only see Midwest Fleet orders
     - **Training block**: Dave Wilson can't work at Flow Testing (expired certification)
-    - **Calibration alert**: Torque Wrench TW-25 shows overdue, equipment usage blocked
+    - **Calibration**: Torque Wrench TW-25 shows overdue — the reading is still
+      accepted, with a warning. A gauge whose calibration *failed* is refused
+      outright
     - **Pending approval**: APR-2024-0015 awaiting Jennifer Walsh's sign-off
 
 ## Login Issues
@@ -82,7 +84,9 @@ cause is by far the most common and the least obvious:
    every part at that step.
 3. **A required capture is missing.** Open the step's review screen; it shows
    which.
-4. **The part is quarantined.** It won't move until a disposition is decided.
+4. **The part is quarantined** *and* the step it is at is set to **block on
+   quarantine**. That setting is off by default, so a quarantined part often
+   keeps moving — check the step before assuming the hold is what stopped it.
 5. **The operator isn't trained for the step**, so the work can't be completed
    or assigned.
 6. **A completion at that step was voided.** The gate ignores voided rows, so

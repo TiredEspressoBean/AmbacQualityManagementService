@@ -54,6 +54,9 @@ Three links sit at the top with no section header:
 - **Incoming Inspection** - Receiving inspection queue
 - **Outside Processing** - Parts out at outside vendors
 - **Materials** - Material lots by lifecycle status
+- **Receiving Metrics** - Dock-to-stock time and supplier delivery
+- **Shipping** - What is ready to go out, and what has gone
+- **Locations** - Where everything is, and cycle counts
 - **Receiving Inspection Plans** - Inspection plans applied on receipt
 - **Supplier Quality** - Supplier performance and issues
 - **Approved Suppliers** - Supplier qualifications
@@ -62,10 +65,12 @@ Three links sit at the top with no section header:
 ### Remanufacturing
 - **Dashboard** - Reman overview
 - **Cores** - Core receiving and tracking
+- **Core Lots** - Cores received in bulk, not yet identified
+- **Ready to Rebuild** - The rebuild queue
 - **Components** - Harvested components
 
 ### Quality
-- **Dashboard** - Quality KPIs at a glance
+- **Dashboard** - CAPA counts, your approvals and your CAPA tasks (yield and defect KPIs are on **Analytics**)
 - **CAPAs** - Corrective and Preventive Actions
 - **Quality Reports** - Non-conformance reports
 - **Change Control** - Process change requests, orders, and notices
@@ -87,9 +92,8 @@ Three more standalone links follow, again with no section header:
 ### Admin
 - **Settings** - Organization and system configuration
 - **User Management** - Users, invitations, and roles
-- **Work Centers** - Shop-floor work center master data
-- **Data Management** - Access to all data editors
-- **Audit Log** - System audit trail
+- **Data Management** - Every shared-configuration table, including work centers
+- **Audit Log** - The audit trail across records — by default for Tenant Admin, QA Manager, Document Controller and Auditor
 
 !!! info "Section Visibility"
     You'll only see sections you have permission to access. If a section is missing, contact your administrator about your role assignments.
@@ -119,8 +123,9 @@ At the **bottom of the sidebar**, click your name to access:
 
 !!! note "No global search"
     uqmes has no application-wide search bar. Each list page has its own search
-    and filter controls, and the Home page has a **Look up a work order or
-    part…** box.
+    and filter controls. The Home page has a lookup box — *"Look up a work order,
+    serial, lot or location…"*, or *"Scan or type…"* for floor roles — which
+    takes any of those, typed or scanned.
 
 ## Page Types
 
@@ -168,11 +173,10 @@ Click it to create a new record.
 Click a row to view details, then click **Edit** or use the action menu (three dots) on the row.
 
 ### Filtering Data
-Use the filter controls above tables to narrow results:
-
-1. Click **Filters** or the filter icon
-2. Select your criteria
-3. Click **Apply**
+On a wide screen, a **Filter** panel sits to the right of the table: *By
+<field>* groups of choices, the current one in bold, with a **Clear** link.
+Narrower screens show the same filters as dropdowns in the toolbar. A choice
+applies as soon as you pick it — there is no Apply button.
 
 ### Exporting Data
 Many list pages support export. Click the **Export** menu and choose:
@@ -181,8 +185,8 @@ Many list pages support export. Click the **Export** menu and choose:
 - **Export as CSV** - plain data
 
 Exports respect the filters, search, and sorting currently applied to the
-table. Import templates (**Excel Template** / **CSV Template**) download from
-the same menu.
+table. Import templates are in the **Import** dialog, not the Export menu — see
+[Import & Export](../admin/data/import-export.md).
 
 ## Keyboard Shortcuts
 

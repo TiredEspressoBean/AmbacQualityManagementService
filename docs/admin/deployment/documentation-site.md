@@ -87,9 +87,8 @@ docker inspect $(docker compose --profile production ps -q caddy) \
 
 !!! danger "Don't mount the docs inside the SPA root"
     `docs-dist` is mounted at **`/srv/docs`**, deliberately outside
-    `/usr/share/caddy`. It used to be nested at `/usr/share/caddy/docs`, inside
-    the `frontend-dist` volume, and that caused a failure that is very hard to
-    diagnose:
+    `/usr/share/caddy`. Nesting it at `/usr/share/caddy/docs`, inside the
+    `frontend-dist` volume, causes a failure that is very hard to diagnose:
 
     A nested mount is attached when the container is **created**, and depends on
     its mountpoint directory continuing to exist in the parent volume. Rebuilding
@@ -124,7 +123,3 @@ docker run --rm \
 MkDocs reports pages missing from the `nav` configuration and links pointing at
 anchors that don't exist. Both are `INFO` rather than errors, so read the output
 even when the build succeeds.
-
-## Next Steps
-
-- **[Railway Deployment](railway.md)** - Deploying the application itself

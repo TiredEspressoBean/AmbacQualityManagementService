@@ -27,9 +27,22 @@ Create a CAPA for:
 
     The seeded **5-Whys** example is on a different CAPA, CAPA-2024-002, about receiving documentation.
 
-## CAPA Process (8D Methodology)
+## CAPA Process
 
-uqmes follows the 8D problem-solving methodology:
+!!! note "8D is a method you run, not a structure uqmes tracks"
+    The eight disciplines below are a widely used framework and map cleanly onto
+    the work — but **the CAPA record has no phase field**. The system tracks
+    *status* (Open → In Progress → Pending Verification → Closed), an RCA
+    record, tasks and a verification. It does not know which D you are on. One
+    step of the sequence is enforced: the root cause must be **verified** (D4)
+    before effectiveness can be checked. Containment and tasks are never held
+    back waiting for it.
+
+    Use 8D if your facility works that way, and attach the **8D Report**
+    document type to the CAPA. IATF 16949 expects a defined problem-solving
+    method; it does not require this one.
+
+The disciplines, and where each lands in uqmes:
 
 ```
 D1: Team         D2: Problem      D3: Containment
@@ -58,20 +71,46 @@ D7: Preventive   D8: Close &
 ### D4: Root Cause Analysis
 Recorded as an **RCA record** linked to the CAPA, with one of four methods:
 
-| Method | |
-|--------|--|
-| **5 Whys** | Iterative questioning, captured as structured whys |
-| **Fishbone Diagram** | Cause categories, captured as a fishbone |
-| **Fault Tree** | Logical decomposition of failure paths |
-| **Pareto Analysis** | Ranking causes by contribution |
+| Method | Structured capture |
+|--------|--------------------|
+| **5 Whys** | **Yes** — the whys are captured as their own fields |
+| **Fishbone Diagram** | **Yes** — causes captured per category (man, machine, material, method, measurement, environment) |
+| **Fault Tree** | **No** — the method is recorded, the tree is not |
+| **Pareto Analysis** | **No** — the method is recorded, the ranking is not |
 
 Each RCA carries a problem description, the identified root causes, a root
 cause summary, and who conducted it.
+
+!!! warning "Two of the four methods have no structured form behind them"
+    Choosing **Fault Tree** or **Pareto** records *that* you used it. There is
+    no tree to build and no chart to fill in — the analysis itself lives in the
+    problem description, the root causes and the summary, or in a document you
+    attach.
+
+    That is workable, but it means the evidence for those two is prose. If you
+    want the analysis itself held as data, use 5 Whys or Fishbone.
 
 The root cause then has its own **verification status** — **Unverified**,
 **Verified**, or **Disputed**. *Disputed* matters: a root cause can be
 challenged rather than silently accepted, and the CAPA shows that it is
 contested.
+
+### Approving the root cause
+
+On the CAPA's **RCA** tab, a holder of `review_rca` — by default QA Manager and
+Tenant Admin — presses **Approve** on an unverified or disputed RCA. Approving
+verifies the root cause, records who did it and when, and adds any
+**Verification notes**.
+
+**Whoever conducted the RCA cannot approve it**, unless the CAPA allows
+self-verification. If it does, the notes become required, at least ten
+characters, and the RCA is flagged self-verified. If it does not, the dialog
+says so and offers no Approve.
+
+Until the root cause is verified, the CAPA cannot move to Pending Verification
+and no effectiveness check can be recorded: *"The root cause must be verified
+before effectiveness can be checked"*. The CAPA lists *Root cause not verified*
+among what is blocking it.
 
 ### D5: Develop Corrective Actions
 - Define permanent fixes

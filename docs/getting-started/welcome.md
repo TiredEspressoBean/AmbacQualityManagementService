@@ -1,6 +1,6 @@
 # Welcome to uqmes
 
-uqmes is a **Quality Management System (QMS)** and **Manufacturing Execution System (MES)** built for modern manufacturing teams. Whether you're tracking parts through production, managing quality inspections, or maintaining compliance documentation, uqmes provides the tools you need.
+uqmes is a **Quality Management System (QMS)**, a **Manufacturing Execution System (MES)** and a **scheduler**, with digital work instructions running through all three, built for modern manufacturing teams. Whether you're tracking parts through production, managing quality inspections, or maintaining compliance documentation, uqmes provides the tools you need.
 
 ## Who Uses uqmes?
 
@@ -15,15 +15,19 @@ uqmes serves different roles in your organization:
 | **Administrators** | Configure processes, manage users, set up system | Alex Demo |
 | **Customers** | View order status, access documents (portal access) | Tom Bradley (Midwest Fleet) |
 
+These are six of the fourteen roles that ship — planners, receiving, shipping,
+engineering, document control, purchasing, shift leads and auditors have their
+own. See [Role Guides](../roles/index.md).
+
 ## Core Concepts
 
 Before diving in, here are the key concepts you'll encounter:
 
 ### Orders
-An **Order** represents a customer request—typically a purchase order or sales order. Orders contain parts that need to be manufactured or processed.
+An **Order** records what a customer asked for — the demand. It is not an accounting record: uqmes holds no prices, quotes or invoices. The work to meet an order is carried by its work orders.
 
 ### Parts
-**Parts** are individual items being tracked through production. Each part has a type, belongs to an order, and moves through steps in a process.
+**Parts** are individual items being tracked through production. Each part has a type, belongs to a work order — and through it, usually, an order — and moves through the steps of that work order's process.
 
 ### Processes & Steps
 A **Process** defines the workflow for manufacturing a part type. It consists of **Steps**—the individual operations like "Machining," "Inspection," or "Assembly."
@@ -67,7 +71,14 @@ When something goes wrong, a **Quality Report** (also called a Non-Conformance R
     - Upload and organize documents
     - Manage revisions with approval workflows
     - Link documents to orders, parts, and processes
-    - Control access by document type
+    - Control who can read each document by its classification
+
+=== "Planning"
+
+    - Schedule work onto machines and people
+    - Check capacity months ahead, and whether an order can be taken
+    - Decide what to release to the floor
+    - See what to buy, build or tear down to meet demand
 
 === "Analysis"
 

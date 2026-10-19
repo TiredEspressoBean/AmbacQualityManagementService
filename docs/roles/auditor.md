@@ -1,8 +1,11 @@
 # Auditor
 
-**Read everything, change nothing.** A seat for internal and external audits,
-built so that audit independence is a property of the system rather than a
-promise.
+**Change nothing.** A seat for internal and external audits, built so that audit
+independence is a property of the system rather than a promise.
+
+You see the whole tenant's production record. You do **not** see the classified
+document tiers — that exclusion is real and is described below, so agree what
+you need access to before the audit rather than during it.
 
 !!! info "The whole permission set is 'view'"
     Auditor holds the staff **view** permissions and full-tenant visibility. It
@@ -28,12 +31,11 @@ document permissions, so the documents you can read are the **Public** and
 **Internal** ones. Confidential, Restricted and Secret are all closed to you.
 
 !!! warning "Export control is not a group permission"
-    ITAR and EAR access is decided by two flags on *your own user record* —
-    whether you are a US person and whether you are ITAR-authorised — not by
-    which groups you are in. An auditor flagged as a US person **will** see
-    export-controlled documents, and no change to the Auditor group will alter
-    that either way. If an auditor should not see controlled technical data,
-    the flags on their user are what to check. See [Export
+    ITAR and EAR access is decided by the **US person** flag on *your own user
+    record*, not by which groups you are in. An auditor flagged as a US person
+    **will** see export-controlled documents, and no change to the Auditor group
+    will alter that either way. If an auditor should not see controlled
+    technical data, that flag on their user is what to check. See [Export
     Controls](../compliance/export-controls.md).
 
 !!! note "This can look like a gap, and isn't"
@@ -46,7 +48,7 @@ document permissions, so the documents you can read are the **Public** and
 
 | Question | Where |
 |----------|-------|
-| Who did what, when, to which record | [Audit Trails](../compliance/audit-trails.md) |
+| Who did what, when, to which record | **Admin > Audit Log** — see [Audit Trails](../compliance/audit-trails.md). It shows only records you can open, so the classified tiers stay out of it too |
 | Was the person qualified | [Training Matrix](../workflows/tracking/training-matrix.md) |
 | Was the equipment in calibration | Calibrations |
 | What happened to this nonconformance | [Dispositions](../workflows/quality/dispositions.md) |
@@ -57,10 +59,13 @@ document permissions, so the documents you can read are the **Public** and
 
 ## Things worth knowing before you start
 
-!!! tip "Records are voided, not deleted"
-    uqmes soft-deletes. A voided record stays readable with its reason and its
-    author. An empty list rarely means something was destroyed — check whether
-    you are filtering voided rows out.
+!!! tip "Deleting archives; voiding keeps the record"
+    A delete in uqmes archives the record rather than destroying it — **Show
+    archived** brings it back into a list. A **void** is different: it marks a
+    record as wrong and to be captured again, and the voided record stays
+    readable with its reason and who voided it. An empty list rarely means
+    something was destroyed — check whether you are filtering archived or
+    voided rows out.
 
 !!! tip "A version is the same entity, updated"
     A new version of a process, document or supplier record is not a new thing.

@@ -14,7 +14,7 @@ SPC data connects to several pages in uqmes:
 |------|-------|---------|
 | **Analysis Dashboard** | `/analysis` | KPI overview: FPY trends, needs attention, defect pareto |
 | **SPC Charts** | `/spc` | Control charts, capability indices, baseline management |
-| **SPC Report** | Button on the SPC page | Generates a PDF SPC report, downloaded or emailed to you |
+| **SPC Report** | Button on the SPC page | Generates a PDF SPC report, downloaded — or emailed to you, where this deployment sends mail |
 | **Quality Dashboard** | `/quality` | Quality metrics, open NCRs, CAPA status |
 | **Defect Analysis** | `/quality/defects` | Defect trends by type, supplier, part type |
 | **CAPA List** | `/quality/capas` | Active CAPAs, some triggered by SPC |
@@ -81,7 +81,7 @@ When a signal appears, systematically check these factors:
 | **Machine** | Different equipment? Calibration due? | Check equipment assignment, calibration status |
 | **Method** | Process change? New work instruction? | Check document versions, process revision |
 | **Measurement** | Different gauge? Different operator measuring? | Check measurement records, equipment used |
-| **Man** | New operator? Different shift? | Check StepTransitionLog for operator |
+| **Man** | New operator? Different shift? | Check the part's activity history for who ran the step |
 | **Environment** | Temperature change? Humidity? | Check environmental logs if available |
 
 !!! example "Demo: Flow Rate Investigation"
@@ -90,7 +90,7 @@ When a signal appears, systematically check these factors:
     1. Navigate to **Analytics**, then select **SPC** (or go directly to `/spc`)
     2. Select: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar
     3. Click on the red-flagged points to see timestamps
-    4. Cross-reference with parts INJ-0042-017 and INJ-0042-019 (search in `/tracker`)
+    4. Cross-reference with parts INJ-0042-017 and INJ-0042-019 — open them from the scan box on **Home**, or the Parts list in **Data Management**; the Tracker has no search
     5. Check part history for common factors (equipment, operator, material lot)
 
     The demo data shows these parts share a common material lot from Delphi Fuel Systems.
@@ -226,7 +226,8 @@ Update (unfreeze and refreeze) when:
 4. **Approve change**: QA Manager + Engineering sign-off
 5. **Update in system**: Click **Unfreeze** to return to baseline mode with
    recalculated limits, then **Freeze Limits** once the new limits are right
-6. **Retain history**: Old baseline is archived automatically
+6. **Retain history**: the old baseline is kept, marked **superseded**, with
+   the reason given
 
 ```
 BASELINE UPDATE JUSTIFICATION TEMPLATE:
@@ -347,8 +348,7 @@ To find parts produced during an out-of-control period:
    affected work orders directly
 
 !!! warning "The Tracker does not filter by step, date or equipment"
-    Older instructions here described exactly that. It is an order-progress
-    view, not a parts query tool, so the dependable route for "which parts ran
+    It is an order-progress view, not a parts query tool, so the dependable route for "which parts ran
     during this window" is the API.
 
 **API approach:**
@@ -432,6 +432,8 @@ Monthly SPC summary for leadership:
 | Rule 4 (8 same side) | Medium | Continue | Within 24h | Yes |
 | Rule 5 (6 trending) | Medium | Continue | Within 24h | Yes |
 | Rule 6 (14 alternating) | Low | Continue | Within week | If persists |
+| Rule 7 (15 within 1σ) | Low | Continue | Within week | Check the limits first — often too wide |
+| Rule 8 (8 beyond 1σ, either side) | Medium | Monitor | Within 24h | If two sources are confirmed |
 
 ### Cpk Action Thresholds
 

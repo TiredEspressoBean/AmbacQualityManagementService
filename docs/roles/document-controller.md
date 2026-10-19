@@ -31,16 +31,23 @@ As a Document Controller, you:
 | **Approvals** | Approvals > Overview | Pending approval requests |
 | **Approval History** | Approvals > History | Approval records |
 
-!!! important "Your approvals queue is not document-only"
-    The queue routes **every** approval type you are an assigned approver for —
-    CAPA approvals, process changes and training certifications sit in it
-    alongside document releases, and on a working system the non-document ones
-    are often the majority.
+!!! important "Two different numbers, and only one of them is your work"
+    Home shows **Approvals in flight** and **Needs my approval**. The first is
+    everything moving through the system, whatever its type — you will routinely
+    see CAPA approvals and process changes there. The second is what is actually
+    assigned to you.
 
-    That is deliberate: you are an **approvals operator**, not only a document
-    operator. Do not filter the queue down to documents and assume the rest is
-    somebody else's — if a request is assigned to you, nobody else is coming
-    for it.
+    **Seeing an approval does not mean you can act on it.** Out of the box you
+    are an assigned approver for **Document Release** only; the CAPA templates
+    assign other groups. So a queue showing five in flight and zero
+    needing you is working correctly, not broken.
+
+    Your tenant *can* route other approval types to you — the assignment comes
+    from the approval template, not from your role's permissions — so if that has
+    been configured, the queue genuinely becomes mixed and anything assigned to
+    you has nobody else coming for it. Check [Approval
+    Templates](../admin/setup/approval-templates.md) for what your facility
+    routes where.
 
 ## Daily Workflow
 
@@ -69,20 +76,18 @@ As a Document Controller, you:
 ### Browsing Documents
 
 1. Navigate to **Documents**
-2. Use filters:
-   - Document type
-   - Status
-   - Date range
-   - Created by
-3. Search by title or number
+2. Use filters: **document type**, **approval status**, **is-image** and
+   **needs my approval**
+3. Search by **file name**, or by the **uploader's email** — the way to find
+   what one person uploaded, since there is no created-by filter
+
+There is no date-range filter.
 
 ### Document Organization
 
-Organize by:
-- Document type (Work Instructions, Specs, etc.)
-- Product line
-- Department
-- Process
+A document carries a **type** and a **classification**, and is **linked** to the
+records it concerns — a part type, an order, a process. There are no product-line
+or department fields; organise by type, and find by what it is linked to.
 
 ## Uploading Documents
 
@@ -131,10 +136,12 @@ Documents](../workflows/documents/uploading.md).
 
 ### Revision Best Practices
 
-- Increment revision per scheme (A, B, C or 1, 2, 3)
-- Clear change notes
-- Reference ECO/change request if applicable
-- Don't overwrite—always create revision
+- **The number increments itself** — versions are 1, 2, 3 and there is no scheme
+  to pick. If your drawings are controlled as *Rev C* elsewhere, keep that in the
+  file name; the version number here is a different identifier
+- Write the reason so a reader can tell what changed *and* why
+- Reference the change request if there is one
+- Never overwrite — always create a revision
 
 ## Approval Workflow
 
@@ -183,39 +190,50 @@ If you're also an approver:
 
 ## Document Distribution
 
-### Internal Distribution
+Distribution is **access**, not a list of recipients. A released document is
+readable by whoever its **classification** allows; a customer sees only
+**Public** documents linked to their own orders.
 
-For released documents:
-- Available per permissions
-- Users notified of new versions
-- Old versions clearly marked
-
-### External Distribution
-
-For customer documents:
-- Set visibility appropriately
-- Track distribution
-- Consider watermarking
+- **Nobody is told about a new revision** unless your organisation has a
+  notification rule for it — none is set up by default. See [Notification
+  Rules](../admin/setup/notification-rules.md)
+- There is no distribution record of who received which revision, and no
+  watermarking. If your procedure needs either, it happens outside uqmes
 
 ## Document Types Management
 
 ### Working with Types
 
 Each type has:
-- Approval requirements
-- Retention settings
-- Numbering scheme
+- Whether approval is required, and on which template
+- A default review period
+- A default retention period
+
+There is no numbering scheme per type — see [Document
+Types](../admin/setup/document-types.md).
 
 ### Common Document Types
 
 | Type | Typical Control |
 |------|-----------------|
-| Work Instruction | Requires approval |
-| Specification | Requires approval |
-| Drawing | Requires approval |
-| Form | Requires approval |
-| Certificate | Reference (no approval) |
-| Manual | Reference |
+| Work Instruction, SOP, Policy, Control Plan | Requires approval |
+| Specification, Drawing, BOM | Requires approval |
+| Form / Checklist | Requires approval |
+| Certificate of Conformance, Material Test Report, Calibration Certificate | Reference — no approval |
+| Equipment Manual, Safety Data Sheet | Reference — no approval |
+
+The default catalogue is much longer than this — 39 types,
+including the quality records the system generates itself (inspection reports,
+NCRs, containment evidence) and the IATF/AS9100 set (PPAP, PSW, FMEA, 8D, FAI).
+
+!!! note "Whether a type needs approval is a setting, not a rule"
+    Nothing about being a "drawing" forces approval — it is the **Requires
+    approval** flag on the type, which your administrator can change. The
+    pattern in the defaults is that *things the shop writes* need approval and
+    *things that arrive or are generated as evidence* do not.
+
+    A type can also be pointed at a specific approval template rather than the
+    default Document Release, so two types can route to different approvers.
 
 ## Obsolete Documents
 
@@ -269,30 +287,31 @@ Maintain ready:
 - Approval records
 - Distribution records
 
-### Compliance Reports
+### Answering an auditor
 
-Generate reports for:
-- Document status by type
-- Pending reviews
-- Approval history
-- Obsolete documents
+There are no document compliance reports to generate. The answers come from
+lists you can filter and export:
+
+- **Status by type** — the document list, filtered by type and status
+- **Pending reviews** — **Due for review** on Home
+- **Approval history** — **Approvals** > **History**
+- **Obsolete documents** — the document list, filtered by status
 
 ## Training Integration
 
 ### Linking to Training
 
-When documents update:
-1. Identify affected personnel
-2. Training may be required
-3. Coordinate with training manager
-4. Track acknowledgments
+A new document revision does not touch training records, and there is no
+read-and-acknowledge step for a document. If a revision means people need
+retraining, record that as training — see [Training
+Matrix](../workflows/tracking/training-matrix.md).
 
 ## Weekly Tasks
 
 - [ ] Process pending uploads
 - [ ] Follow up stalled approvals
 - [ ] Review upcoming periodic reviews
-- [ ] Check for expired documents
+- [ ] Check **Due for review** on Home
 - [ ] Update document inventory
 
 ## Quick Reference

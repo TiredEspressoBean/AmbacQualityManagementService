@@ -59,7 +59,7 @@ with **Submit N cores**.
 |-------|-------------|
 | **Serial Number** | Original equipment serial number |
 | **Reference Number** | RMA, PO, or other reference |
-| **Customer** | Customer who returned the core |
+| **Customer** | Who the core came from. For a **Purchased** core this lists **suppliers** (the broker it was bought from); for every other source it lists **customers** |
 | **Credit Value ($)** | Core credit owed for the return — informational only |
 | **Condition Notes** | Detailed observations |
 
@@ -218,7 +218,10 @@ Once received, a core can be:
 
 1. **Torn down** — see [Teardown](disassembly.md)
 2. **Scrapped** — if inspection shows it is not usable
-3. **Held** — awaiting a decision or more information
+
+There is no separate *held* status for a core. One awaiting a decision simply
+stays at **Received** — which is also the only stage at which its fulfilment can
+still be corrected.
 
 ## Troubleshooting
 
@@ -240,6 +243,10 @@ Core numbers must be unique. If the number is already used:
 If the returning customer isn't in the system:
 
 - Add the company first via **Data Management > Companies**
+- Check its switches: the picker offers only companies marked **Customer** — or,
+  for a **Purchased** core, only those marked **Supplier**. A company that
+  exists but is marked only as the other kind will not appear. See
+  [Companies](../../admin/setup/companies.md#what-a-company-is-to-you)
 - Or leave customer blank and add later
 
 ## Next Steps

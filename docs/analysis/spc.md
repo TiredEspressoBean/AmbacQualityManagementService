@@ -16,7 +16,7 @@ SPC applies statistical methods to:
 | Page | Route | Purpose |
 |------|-------|---------|
 | SPC Charts | `/spc` | Main control chart view with measurement selection |
-| SPC Report | Button on the SPC page | Generates a PDF SPC report, downloaded or emailed to you |
+| SPC Report | Button on the SPC page | Generates a PDF SPC report, downloaded — or emailed to you, where this deployment sends mail |
 | Analysis Dashboard | `/analysis` | Overview with links to SPC |
 
 Navigate to **Analytics**, then select **SPC**, or go directly to `/spc`
@@ -131,6 +131,24 @@ thing in both places.
     above, so mixing the two schemes sends the wrong response to the wrong
     signal.
 
+!!! important "Which rules you actually get depends on the chart"
+    Not all eight are evaluated on every chart type:
+
+    | Chart | Rules evaluated |
+    |-------|-----------------|
+    | **X̄-R** and **X̄-S** — the averages chart | **1–8** |
+    | **X̄-R** and **X̄-S** — the range / std-dev chart | **1–4** |
+    | **I-MR** — individuals and moving range | **1–5** |
+
+    So the subtler patterns — alternating (6), stratification (7) and mixture
+    (8) — are flagged **only on the averages chart of a subgroup plot**. If you
+    are running I-MR because of low volume or destructive testing, those three
+    will never fire, and you are reading the chart for them yourself.
+
+    That is not unusual practice — the later rules are weakest on individuals —
+    but do not take an absence of Rule 7 flags on an I-MR chart as evidence
+    there is no stratification.
+
 ## Capability Indices
 
 ### Cp (Process Capability)
@@ -214,18 +232,29 @@ Click **SPC Report** on the SPC page to generate a PDF:
 
 - Full-page control charts
 - Capability summary tables
-- Delivered as a download, or emailed to you
+- Delivered as a download, or emailed to you where this deployment sends mail
 
 Select a measurement and date range first — the report is generated for the
 current selection.
 
 ## Permissions
 
-| Permission | Allows |
-|------------|--------|
-| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
-| `view_measurementresult` | Access measurement data |
-| `change_spcbaseline` | Modify baselines |
+| Permission | Allows | Held by |
+|------------|--------|---------|
+| `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar | Every staff role |
+| `view_measurementresult` | Read the measurement data behind a chart | Every staff role |
+| `add_spcbaseline` / `change_spcbaseline` | **Freeze and re-freeze control limits** | QA Manager, QA Inspector, Production Manager, Shift Lead, Engineering, Document Controller, Tenant Admin |
+
+*Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
+
+!!! note "Reading a chart is open; freezing limits is not"
+    Anyone on staff can look at an SPC chart. **Freezing** the limits is quality
+    planning — it decides what counts as out of control from then on — so it
+    sits with the same tier that authors the rest of the quality model.
+
+    **Operators, Planners and the docks cannot freeze a baseline.** If limits
+    look wrong to you and you cannot change them, that is the boundary working,
+    not a missing permission.
 
 ## Next Steps
 

@@ -25,34 +25,39 @@ Create annotations when:
 
 ## Creating an Annotation
 
-### Method 1: From Work Order
+### Method 1: From the work order page
 
-1. Navigate to **Production > Work Orders**
-2. Open the work order containing the part you want to annotate
-3. Find the part and click **Annotate** or open the annotation tool
-4. Model loads with existing annotations
-5. Click location on model where defect is
-6. Fill in annotation form — **Error Type**, **Severity Level**, and **Notes**
-7. Save
+1. Open the work order, and select the part
+2. The **QA panel** on the right loads the part type's model with its existing
+   annotations — see [which model it uses](uploading.md#linking-to-part-types)
+3. Choose the quality report the defect belongs to
+4. Click the location on the model where the defect is
+5. Fill in **Error Type**, **Severity Level** and **Notes**
+6. Save
 
-### Method 2: From a Quality Report
+### Method 2: The Annotator (`/annotator`)
 
-1. Open the **Part Annotator** for the part
-2. Select the quality report the defect belongs to
-3. Click the defect location directly on the model
-4. Complete the annotation form
-5. The annotation links to that report
+The standalone page starts from **Select Quality Reports**: pick the report or
+reports, and it opens their part on its model. A disposition that is waiting on
+annotations links here — **Go to Annotator**.
 
 !!! note "There is no 'Add Annotation' button"
     Annotations are created by clicking the model itself while in annotate
-    mode. In standalone QA review you must select a quality report before
-    the model accepts a click — the annotation has to belong to something.
+    mode, and only once a quality report is selected — the annotation has to
+    belong to something.
 
 ### Method 3: As a substep capture
 
 A step can include a **Part annotation** capture, so the operator marks the
-model as part of the work instructions. See
-[Authoring Work Instructions](../workflows/dwi/authoring.md).
+model as part of the work instructions. There the report is already the
+substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
+
+!!! important "Some defects must be annotated before a disposition can close"
+    An error type can be marked **Requires 3D Annotation**. A disposition linked
+    to a quality report carrying such an error **cannot be completed** until
+    that report has at least one annotation — the disposition form says *"N
+    quality report(s) require 3D annotations before this disposition can be
+    closed"* and links to the Annotator. See [Error Types](../admin/setup/error-types.md).
 
 ## Annotation Form
 
@@ -60,7 +65,7 @@ model as part of the work instructions. See
 |-------|-------------|
 | **Location** | Captured from your click on the model (X, Y, Z) — you do not type it |
 | **Error Type** | Category of defect |
-| **Severity Level** | Minor, Major, Critical |
+| **Severity Level** | Low, Medium, High or Critical |
 | **Notes** | Free text |
 
 !!! note "The quality report is not an optional field"
@@ -74,16 +79,29 @@ The point is captured from where you click on the model. Rotate and zoom to get
 the angle you want before clicking — the viewer's orbit, pan and zoom all work
 in annotate mode.
 
-!!! warning "There is no way to edit, move or delete an annotation"
-    No Edit, Move, Delete, Multi-Add or Area control exists, and no way to type
-    coordinates by hand. A misplaced annotation is corrected the way any other
-    quality record is: it stands, and you add a correct one.
+## Correcting an annotation
 
-    The API will accept a change to an annotation's position, so an integration
-    could move one. Nothing in the product offers it.
+| Change | Where |
+|--------|-------|
+| **Error type, severity, notes** | **Edit Annotation** on the heat map viewer |
+| **Delete it** | Select it in the annotator — *Edit Defect Annotation* — and delete. Once its quality report is finished, only the quality team can |
+| **Move it** | Not possible. Delete it and place a new one |
 
-    Older instructions on this page described all of those controls. None of
-    them exist.
+!!! important "Deleting is open while inspecting, closed once the report is finished"
+    While every quality report an annotation belongs to is still **Pending** —
+    or it belongs to none, as a work-instruction capture's markers do — anyone
+    on staff can delete it, so an inspector can remove a misplaced marker as
+    they work.
+
+    Once **any** of its reports is **Pass** or **Fail**, the annotation is
+    inspection evidence. Deleting it then needs
+    `delete_submitted_heatmapannotations`, by default held by **QA Inspector,
+    QA Manager and Tenant Admin**; anyone else does not see **Delete**, and the
+    server refuses — *"This annotation is on a finished quality report, so it is
+    inspection evidence. Only the quality team can delete it."*
+
+    A delete archives the annotation rather than destroying it, and is in the
+    audit log. Editing its type, severity and notes stays open to staff.
 
 ## Attaching Photos
 
@@ -92,30 +110,24 @@ through the annotation itself.
 
 ## Viewing Existing Annotations
 
-### On Model
+Annotations show as points on the model. Select one to open it:
 
-Annotations appear as colored points:
-- Click to see details
-- Hover for quick info
-- Color indicates severity
+- In the **annotator**, it opens *Edit Defect Annotation* — error type,
+  severity, notes, and delete
+- On the **heat map viewer**, it shows its details — including **Date Found**
+  and **Reported By** — with **Edit Annotation**
 
-### In List
-
-Below the viewer, annotation list shows:
-- Error type
-- Severity
-- Date created
-- Creator
-
-Click list item to highlight on model.
+There is no annotation list beside the model. To see many at once, use the
+[heat map](heatmap-viz.md), with its filters.
 
 ## Annotation Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `add_heatmapannotations` | Create annotations |
-| `change_heatmapannotations` | Edit annotations |
-| `delete_heatmapannotations` | Remove annotations |
+| `change_heatmapannotations` | Edit an annotation's type, severity and notes |
+| `delete_heatmapannotations` | Remove an annotation whose reports are all still Pending, or that has none |
+| `delete_submitted_heatmapannotations` | Remove an annotation on a finished (Pass / Fail) report |
 | `view_heatmapannotations` | View annotations |
 
 ## Troubleshooting
@@ -128,8 +140,8 @@ Click list item to highlight on model.
 ### Annotation Appears Wrong Location
 - Rotate the model and check from another angle — a point that looks off from
   one view is often correct
-- Try a different click position on the next one; an existing annotation
-  cannot be moved
+- If it really is wrong, delete it and place it again; an annotation cannot be
+  moved
 
 ### Photo Won't Upload
 Photos attach to the **quality report**, not to the annotation. Upload it

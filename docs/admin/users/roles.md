@@ -72,11 +72,14 @@ at the end of this section).
     side is [Purchasing](../../roles/purchasing.md), and approving a supplier
     qualification is [QA Manager](../../roles/qa-manager.md).
 
-!!! note "The permission counts are a size, not a ranking"
-    A bigger number is not more senior. **Auditor** holds 138 and can change
-    nothing; **Operator** holds 270 because the shared staff base is broad. What
-    separates the roles is a short list of specific authorities — see [Role
-    Comparison](../../roles/index.md#what-tells-the-roles-apart).
+!!! note "A permission count is a size, not a ranking"
+    If you compare counts in the Groups editor, read them carefully: a bigger
+    number is not a more senior role. **Auditor** holds a large set and can
+    change **nothing** — they are all `view_` permissions. **Operator** holds
+    more still, because the shared staff base is broad.
+
+    What separates the roles is a short list of specific authorities, not
+    volume — see [Role Comparison](../../roles/index.md#what-tells-the-roles-apart).
 
 For what each group can actually *do*, see the [Role Guides](../../roles/index.md).
 

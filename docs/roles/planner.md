@@ -9,9 +9,22 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
     plan is built on — shifts, overtime, holidays, PTO, changeovers and who is
     rostered where.
 
-    **Production Manager** and **Tenant Admin** hold the same authority, which is
+    **Production Manager** and **Tenant Admin** hold the plan as well, which is
     why most plants never staff this separately. The group exists so a facility
     that *does* staff planning separately can.
+
+    !!! warning "They are not identical, and the difference bites"
+        A Planner holds the **calendars** (shifts, overtime, holidays, PTO),
+        **changeovers**, **rostering**, the solver settings and the board itself
+        — including removing a slot and deleting a shift, which the manager
+        cannot.
+
+        A Planner does **not** hold two of the solver's own inputs: **step
+        timings** (cycle times) and **machine eligibility**. Those sit with
+        Production Manager and Tenant Admin. So when the plan is wrong *because
+        the model is wrong*, a standalone Planner can diagnose it and cannot fix
+        it — they have to hand it over. Worth knowing before you staff the role
+        on its own.
 
     Working the board — moving, pinning, reassigning, dispatching — is wider than
     the group: **QA Manager** and **Shift Lead** hold it as well, so a shift lead
@@ -116,12 +129,30 @@ and how long the solve took.
 ### Why isn't my job on the board?
 
 **Not scheduled** answers it directly, grouped by reason, each row naming the
-work order, how many units were placed, and the fix. Twelve reasons, from *On
-hold* and *Not released* through *No trained operator* and *Material short* to
-*Added since the last solve*.
+work order, how many units were placed, and the fix. There are twelve reasons,
+and they are checked in order — the first that applies is the one you are shown:
+
+| | Reason | What it means |
+|---|--------|---------------|
+| 1 | **On hold** | The work order is held |
+| 2 | **Not released** | Not yet admitted to the floor |
+| 3 | **No process assigned** | Nothing to schedule against |
+| 4 | **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
+| 5 | **No routing to schedule** | The process has no usable route |
+| 6 | **No timings authored** | Operations carry no cycle time |
+| 7 | **No trained operator** | Nobody certified and rostered can run a gated step |
+| 8 | **Starts past the horizon** | Real, but beyond the window solved for |
+| 9 | **Waiting on material** | Gated on material that has not arrived |
+| 10 | **Material short** | Not enough to cover it |
+| 11 | **Added since the last solve** | The board simply predates it |
+| 12 | **Not placed by the last solve** | Nothing above explains it — the solve ran out of horizon or time |
+
+The order matters when you are reading a long list: a job showing **Not
+released** may *also* have no timings, and you will not see the second until you
+fix the first.
 
 Several resolve themselves on the next solve, and the dialog says so when the
-schedule is stale.
+schedule is stale. Number 7 is the one that never does — see *Labour* above.
 
 ### Dispatch
 
@@ -140,12 +171,13 @@ separately. **Unpin** is what a pinned-successor refusal is asking for.
 
 ### When the shop fights the plan
 
-| Symptom | Look at |
-|---------|---------|
-| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no cycle time contributes no load |
-| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) |
-| The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) |
-| A promise failed on people, not machines | The training matrix — a binding resource can be a certification |
+| Symptom | Look at | Yours to fix? |
+|---------|---------|---------------|
+| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **No** — the step's own duration is [Engineering](engineering.md)'s |
+| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) | **No** — Production Manager or Tenant Admin |
+| The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) | Yes |
+| Nobody can run a gated step | The training matrix — a binding resource can be a certification | Rostering yes; the certification itself no |
+| The calendar is wrong | Shifts, overtime, holidays, PTO | Yes |
 
 ## Promising a date
 
@@ -179,7 +211,8 @@ back empty, nothing in the planning horizon fits.
     today. That is the arithmetic working, not drifting.
 
 !!! danger "Missing cycle times make every capacity answer optimistic"
-    An operation with no cycle time contributes **no load**. The capacity
+    An operation with no authored cycle time, no measured history and no
+    expected duration on the step contributes **no load**. The capacity
     heatmap then shows more free capacity than exists and release dates come out
     too late. Capacity Planning warns when orders have operations with no cycle
     time — take it seriously, and fix it on the routing step rather than
@@ -202,10 +235,16 @@ If the shop remans, one planning decision is yours and it is not reversible:
 A torn-down unit sits at *Disassembled*, on hold, until you choose its exit. What
 you're offered depends on how it is being fulfilled:
 
-- **Repair and return** — one option, *Release to rebuild*. It is the customer's
-  own unit; it goes back to them.
-- **Exchange** — *Rebuild to stock* or *Harvest for parts*. The unit is the
-  shop's, so both are legitimate.
+- **Repair and return** — one option, *Release into rebuild*. It is the
+  customer's own unit, so it goes back to them. Releasing it to inventory is
+  **refused outright**, and the refusal says why: its components are that
+  customer's property and cannot become your stock.
+- **Exchange** — *Rebuild to stock* or *Release to inventory*. The customer
+  already has a unit from stock, so this one is the shop's and both are
+  legitimate.
+
+A rebuilt exchange unit ends at **Rebuilt to stock** and **keeps its identity** —
+same unit, same core number — ready to go out against the next exchange.
 
 Releasing to rebuild is refused when the unit's **route does not continue past
 teardown** — there is nowhere for the rebuild to pick up:
@@ -219,10 +258,18 @@ walks its main line and no repair branch is offered.
 
 See [Remanufacturing Overview](../workflows/reman/overview.md).
 
-!!! note "Harvest is a real decision, not a fallback"
-    Harvesting ends the unit — it becomes *Dismantled*, terminal and explicitly
-    not counted as output. Choose it when the body has failed or cores of that
-    type are in surplus, not when you are unsure.
+!!! note "Releasing to inventory is a real decision, not a fallback"
+    It ends the unit. Its usable components are accepted into stock and the core
+    itself is **consumed**: the core's stage becomes *Harvested to inventory*
+    and its part goes to *Dismantled*. The unit does not come back from it.
+
+    **Dismantled is terminal but is deliberately not counted as output** — a
+    harvested unit no longer exists and must not read as something the shop
+    produced. Choose this when the body has failed or cores of that type are in
+    surplus, not when you are unsure.
+
+    Partial runs finish cleanly: components already accepted are skipped rather
+    than erroring, so releasing again after an interruption completes the job.
 
 ## What good looks like
 

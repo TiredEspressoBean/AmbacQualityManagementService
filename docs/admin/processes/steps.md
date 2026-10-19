@@ -32,6 +32,18 @@ A step represents a single operation in a process:
     *Packaging*, *Shipping*, *Hold* or *Complete* type — older lists on this
     and other pages named categories that do not exist.
 
+!!! important "A step belongs to a part type — or, if it is Receiving Inspection, to a material"
+    This is enforced in the database, not just in the form, and it is the one
+    place the two diverge:
+
+    - Every ordinary step belongs to **a part type**.
+    - A **Receiving Inspection** step may instead belong to **a material** —
+      which is how incoming acceptance is authored for bulk stock that is never
+      a unit.
+
+    It is strictly one or the other. A step cannot carry both, and a
+    material-owned step that is not Receiving Inspection is rejected outright.
+
 ## Where Steps Are Edited
 
 Steps are edited on the **Process Flow** viewer, in the context of the process
@@ -93,6 +105,16 @@ The properties panel covers:
 | **Sampling required** | Sampling applies at this step |
 | **Requires first-piece inspection** | FPI gates the step |
 | **Move lot as a unit** | Parts advance as a cohort rather than individually |
+| **Block on quarantine** | A quarantined part cannot advance off this step. **Off by default** |
+
+!!! warning "Block on quarantine is off unless you set it"
+    This is the setting people assume is global behaviour. A quarantined part
+    can **never ship** — that is unconditional. But it keeps moving from step to
+    step unless the step it is at has this flag.
+
+    So if your procedure is "a held part stops at the next operation", arm it on
+    the operations where that matters, and be ready to say which ones have it.
+    Arming every step is also legitimate; the default simply is not that.
 
 ## Step Requirements
 
@@ -133,7 +155,15 @@ level** (1–4), and is scoped to exactly one of:
     as unassignable work — see [Training
     Matrix](../../workflows/tracking/training-matrix.md).
 
-Operators without required training may be blocked.
+!!! note "The gate refuses, it does not warn"
+    An operator whose record does not meet a step's training requirement is
+    **stopped**, and told what is missing — *"Level 1, needs Level 2"*. It is
+    not a warning they can click past.
+
+    A supervisor can authorise the start anyway, with a reason, and the
+    authorisation is written onto the step execution: who was authorised, who
+    authorised it, what was missing, and when. That is a recorded business
+    decision, not a way to make the requirement disappear.
 
 ### Equipment Requirements
 
@@ -206,6 +236,33 @@ READY before the batch goes.
 !!! note "The field is named differently underneath"
     The stored field is `requires_batch_completion`. If you meet that name in
     the API or an export, it is this setting.
+
+### Outside processing
+
+A step done by a vendor — plating, heat treat, specialist machining — is marked
+**Outside process (subcontract)** in the step's properties. That reveals:
+
+| Field | What it does |
+|-------|--------------|
+| **Default vendor** | Who the parts usually go to. Can be changed per shipment |
+| **Special process** | The special process this step performs, e.g. *Heat treat*. Blank by default |
+| **Turnaround (calendar days)** | How long the scheduler reserves for the vendor. Blank uses the vendor's own default, then the organisation's |
+
+!!! important "Special process is a gate at send-out"
+    With **Special process** set, parts can only be sent to a vendor holding an
+    **active** (approved or conditional, in-date) supplier qualification for a
+    special process with the **same name** — matched ignoring case. Otherwise
+    send-out is refused: *"<Vendor> has no active qualification for <process>.
+    Qualify them for it, or send the parts to a vendor who is."*
+
+    It refuses rather than holds, because once parts have gone the work is
+    already being done to them. Leave the field blank and nothing is checked.
+
+    Spell the process the same way here and on the qualification — *Nitriding*
+    on the step will not match *Nitride* on the vendor.
+
+See [Outside Processing](../../workflows/supply/outside-processing.md) for
+sending parts out and receiving them back.
 
 ### Settings that are enforced but have no control
 

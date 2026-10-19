@@ -43,8 +43,11 @@ defense, aerospace, automotive and general manufacturing.
     - **Approval workflows**: APR-2024-0015 shows multi-step approval with electronic signatures
     - **RBAC enforcement**: Customer Tom Bradley can only view Midwest Fleet orders (tenant isolation)
     - **Training compliance**: Dave Wilson blocked from Flow Testing due to expired certification
-    - **Calibration alerts**: Torque Wrench TW-25 flagged as overdue, preventing use at Assembly step
-    - **Document control**: WI-001-A shows version history and approval workflow
+    - **Calibration**: a gauge whose calibration **failed** is refused for
+      capture outright; one merely **overdue** records the reading and warns —
+      the two are deliberately different controls
+    - **Document control**: version history and approval workflow on a
+      controlled document
 
 ## Audience
 
@@ -67,7 +70,20 @@ This analysis covers the **software application layer**:
 | Session management | Django session framework |
 | Approval workflows | ApprovalRequest/Response models |
 | Document versioning | SecureModel with version tracking |
-| Tenant isolation | Row-Level Security on all tables |
+| Tenant isolation | Application-level scoping, with database Row-Level Security beneath it |
+
+!!! note "Tenant isolation is two layers, and you can cite both"
+    **In the application**, every tenant-scoped model's default manager filters
+    to the current tenant, which middleware sets per request. Reaching across
+    tenants requires explicitly asking for it, and those call sites are
+    deliberate and documented.
+
+    **In the database**, RLS policies cover the tenant-scoped tables using
+    `FORCE ROW LEVEL SECURITY`, so the policy binds the table owner too.
+
+    Either would hold on its own. The one thing RLS does not cover is
+    **superusers** — a property of PostgreSQL rather than a gap here, which
+    makes control over those accounts part of the same answer.
 
 ### Infrastructure Controls (Customer Responsibility)
 
@@ -167,7 +183,8 @@ The following depend on deployment configuration and are **not application featu
 
 !!! note "Separation of duties is the design"
     Many roles can *raise* a nonconformance, a CAPA or a supplier qualification;
-    only **QA Manager** can approve one. See [Role
+    approving one takes a separate permission or approval assignment, which by
+    default only managers hold. See [Role
     Comparison](../roles/index.md#what-tells-the-roles-apart).
 
 **Key files**: `Tracker/permissions.py`

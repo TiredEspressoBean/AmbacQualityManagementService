@@ -228,8 +228,8 @@ how you deploy it.
 
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| SC.L2-3.13.2 | Security architecture | ✅ | Row-level security over **129 listed tenant-scoped tables** (`setup_rls`, run by `setup_database`), using `FORCE ROW LEVEL SECURITY` so the policy binds the table owner too, not only unprivileged roles |
-| SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant isolation via `SecureManager` and the RLS policies above |
+| SC.L2-3.13.2 | Security architecture | ✅ | Two layers. Tenant isolation is enforced in the application by tenant-scoped managers, and row-level security covers **129 listed tenant-scoped tables** (`setup_rls`, run by `setup_database`) using `FORCE ROW LEVEL SECURITY`, so the policy binds the table owner too, not only unprivileged roles. Note RLS does not apply to **superusers** — keep those accounts few and accounted for |
+| SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant isolation via `SecureManager` and the RLS policies above; `perform_update()` prevents tenant reassignment |
 | SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | TLS terminates at the reverse proxy (`conf/Caddyfile`) self-hosted, or at the platform when hosted. Cite your TLS configuration; uqmes does not terminate TLS itself |
 | SC.L2-3.13.15 | Communication authenticity | ✅ | CSRF protection with an explicit trusted-origin list; CORS allow-list rather than wildcard |
 | SC.L2-3.13.16 | Protect CUI at rest | ➖ | Yours, via storage-level encryption on the host or volume. uqmes encrypts one field only (a stored integration `api_key`), so do not cite application-layer encryption for CUI |

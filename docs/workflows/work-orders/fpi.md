@@ -33,12 +33,13 @@ When enabled, the first part at that step triggers FPI workflow.
 signed off at a step, every part at that step may proceed — regardless of shift
 change, machine change or who is running it.
 
-!!! warning "The per-shift and per-equipment settings do not hold work"
-    A step carries an FPI *scope* setting offering Per Shift and Per Equipment, and
-    it does change which inspection **records** get created — a new shift or a
-    different machine mints its own. But the gate that actually holds parts ignores
-    it: one PASSED or WAIVED inspection satisfies the step for the entire work
-    order either way.
+!!! warning "The narrower scope settings do not hold work"
+    A step carries an FPI *scope* setting with four options — **per work order**,
+    **per shift**, **per equipment** and **per operator**. The setting does
+    change which inspection **records** get created: a new shift, a different
+    machine or a different operator mints its own. But the gate that actually
+    holds parts ignores it — one PASSED or WAIVED inspection satisfies the step
+    for the entire work order, whichever scope is set.
 
     So the extra records read as per-shift control that is not enforced. **Do not
     rely on it.** If a shift or machine change genuinely needs re-verification,
@@ -159,16 +160,29 @@ into the step's substeps. See
 
 ## FPI Documentation
 
-FPI records include:
+The FPI record itself is thin, because the inspection evidence lives on the
+step, not on it:
 
-| Data | Description |
-|------|-------------|
-| Part | First piece serial number |
-| Measurements | All recorded values |
-| Inspector | Who performed/approved |
-| Timestamp | When approved |
-| Equipment | Machine/setup used |
-| Attachments | Photos, CMM reports |
+| On the FPI record | On the step execution |
+|-------------------|------------------------|
+| Work order, step, part type | **The measurements** and every other capture |
+| The **designated part** | Photos and scans taken during the work |
+| Equipment and shift date (for the scoped variants) | The operator's own sign-offs |
+| Status, result, notes | |
+| Who acknowledged it, and when | |
+| Who bought it off, and when — or who waived it, with the reason | |
+| The co-signer's drawn signature, where it was co-signed | |
+
+So "show me the first-piece inspection" means the record **and** the designated
+part's traveler for that step. The record tells you it was bought off and by
+whom; the step tells you what was actually measured.
+
+!!! note "The drawing is kept only when it is co-signed"
+    A co-signing inspector draws a signature at the operator's station, and it
+    is stored on the record once their email and password verify. A buy-off from
+    the inspector's own session asks for no drawing. What identifies the signer
+    in both cases is the re-authentication plus `inspected_by` and
+    `inspected_at`.
 
 ## Batch Hold During FPI
 
