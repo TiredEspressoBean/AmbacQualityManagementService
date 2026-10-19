@@ -103,7 +103,6 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
     CANCELLED: { icon: Ban, colorClass: COLORS.neutral, label: "Cancelled" },
     BLOCKED: { icon: XCircle, colorClass: COLORS.danger, label: "Blocked" },
     NOT_STARTED: { icon: CircleDot, colorClass: COLORS.neutral, label: "Not Started" },
-    WAITING_FOR_OPERATOR: { icon: Clock, colorClass: COLORS.purple, label: "Waiting for Operator" },
 
     // ═══════════════════════════════════════════════════════════════
     // ORDER STATUSES

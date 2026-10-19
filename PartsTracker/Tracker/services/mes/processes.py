@@ -28,8 +28,13 @@ from Tracker.models.mes_lite import EdgeType
 _UNSET = object()
 
 
-def approve_process(process: Processes, user=None) -> Processes:
+def approve_process(process: Processes, user=None, *, temporary_until=None) -> Processes:
     """Approve a draft or pending process for production use.
+
+    `temporary_until` approves it as a TEMPORARY change instead: approved, but never
+    current, and the predecessor (the baseline) is left current and unarchived so new
+    work keeps using it. Only the work orders the change control migrates onto it run
+    it, until that date (services/change_control/temporary.py).
 
     Raises:
         ValueError: Process is not in DRAFT or PENDING_APPROVAL status.
@@ -57,6 +62,16 @@ def approve_process(process: Processes, user=None) -> Processes:
         # Using `.save()` rather than `.update()` so `updated_at` moves,
         # the auditlog `pre_save` / `post_save` hooks record the
         # archive event, and any model-level side effects still fire.
+        if temporary_until is not None:
+            process.status = ProcessStatus.APPROVED
+            process.approved_at = timezone.now()
+            process.approved_by = user
+            process.is_current_version = False
+            process.is_temporary = True
+            process.temporary_until = temporary_until
+            process.save()
+            return process
+
         if process.previous_version_id is not None:
             # tenant-safe: scoped via the previous_version FK in the
             # caller's tenant.

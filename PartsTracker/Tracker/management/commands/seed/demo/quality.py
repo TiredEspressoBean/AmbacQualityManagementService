@@ -670,6 +670,79 @@ class DemoQualitySeeder(BaseSeeder):
             linked += 1
         return linked
 
+    FOUND_OUT_GAUGE = "Keyence Vision IM-7020"
+    FOUND_OUT_STEP = "Nozzle Inspection"
+
+    def seed_found_out_calibration(self):
+        """Give the calibration exposure page something to show.
+
+        `/quality/calibrations/records/$id/exposure` lists what a gauge measured
+        between its last good calibration and one that found it unfit. Every
+        seeded calibration was a clean PASS, so the link never appeared.
+
+        This records the commoner real case, not a FAIL: the vision system was
+        found reading out at its calibration today, adjusted back in, and passed.
+        That is "found unfit" (`as_found_in_tolerance=False`) but leaves the gauge
+        in service — a FAIL would set it OUT_OF_SERVICE and disturb other exhibits.
+        It is the named gauge for Spray Angle, so the reports it is linked to are
+        the Nozzle Inspection reports since its previous calibration (every one
+        of them carries a part, which the Cleaning reports mostly do not).
+
+        Must run after the reports exist. Idempotent: the record is keyed on its
+        date, and the gauge links are replaced on re-run.
+        """
+        from datetime import datetime, timedelta
+        from Tracker.models import (CalibrationRecord, EquipmentRole, Equipments,
+                                    QualityReports, QualityReportEquipment)
+        from Tracker.services.core.clock import plant_tz
+
+        gauge = Equipments.objects.filter(tenant=self.tenant, name=self.FOUND_OUT_GAUGE,
+                                          is_current_version=True).first()
+        if gauge is None:
+            return 0
+        records = CalibrationRecord.objects.filter(equipment=gauge, archived=False)
+        # A re-run on a later day keeps the one found-out record rather than adding
+        # another dated that day.
+        found_out = records.filter(as_found_in_tolerance=False).order_by("-calibration_date").first()
+        if found_out:
+            cal_date = found_out.calibration_date
+        else:
+            cal_date = self.today.date() if hasattr(self.today, "date") else self.today
+        previous = (records.filter(result__in=("PASS", "LIMITED"), calibration_date__lt=cal_date)
+                    .order_by("-calibration_date").first())
+        if previous is None:
+            return 0
+
+        interval = (gauge.equipment_type.default_calibration_interval_days
+                    if gauge.equipment_type else None) or 365
+        CalibrationRecord.objects.update_or_create(
+            tenant=self.tenant, equipment=gauge, calibration_date=cal_date,
+            defaults={
+                'due_date': cal_date + timedelta(days=interval),
+                'result': CalibrationRecord.CalibrationResult.PASS,
+                'calibration_type': CalibrationRecord.CalibrationType.SCHEDULED,
+                'performed_by': 'Metrology Lab (in-house)',
+                'external_lab': '',
+                'certificate_number': f'CAL-{gauge.serial_number or gauge.pk}-ADJ',
+                'standards_used': 'Certified angle reference artifact, NIST-traceable',
+                'as_found_in_tolerance': False,
+                'adjustments_made': True,
+                'notes': 'As found: reading +0.4 deg on the 15 deg reference against '
+                         'a 0.25 deg tolerance. Lens cleaned, optics re-calibrated; '
+                         'as left within 0.05 deg.',
+            })
+
+        start = datetime.combine(previous.calibration_date, datetime.min.time(),
+                                 tzinfo=plant_tz(self.tenant))
+        reports = QualityReports.objects.filter(
+            tenant=self.tenant, archived=False, step__name=self.FOUND_OUT_STEP, created_at__gte=start)
+        QualityReportEquipment.objects.filter(
+            equipment=gauge, role=EquipmentRole.GAUGE).delete()
+        for qr in reports:
+            QualityReportEquipment.objects.create(
+                quality_report=qr, equipment=gauge, role=EquipmentRole.GAUGE)
+        return reports.count()
+
     def _enrich_auto_dispositions(self, qa_users, operators):
         """Advance the bare auto-created NCRs through a realistic lifecycle.
 

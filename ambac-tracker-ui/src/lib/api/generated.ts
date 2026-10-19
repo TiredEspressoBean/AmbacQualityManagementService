@@ -2957,6 +2957,21 @@ export type DowntimeEventRequest = {
   work_order?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
+export type DowntimeSummary = {
+  start: string;
+  end: string;
+  total_hours: number;
+  total_events: number;
+  open_events: number;
+  by_category: Array<DowntimeBucket>;
+  by_equipment: Array<DowntimeBucket>;
+};
+export type DowntimeBucket = {
+  key: string;
+  label: string;
+  hours: number;
+  events: number;
+};
 export type Equipments = {
   id: string;
   /**
@@ -3174,6 +3189,7 @@ export type FPIRecord = {
    */
   performed_by: number | null;
   performed_by_info: UserSelect;
+  has_signature: boolean;
   /**
    * Whether FPI requirement was waived
    */
@@ -3422,6 +3438,7 @@ export type HeatMapAnnotations = {
   updated_at: string;
   archived?: boolean | undefined;
   deleted_at: string | null;
+  is_submitted: boolean;
 };
 export type HeatMapAnnotationsSeverityEnum =
   /**
@@ -7373,6 +7390,9 @@ export type ProcessChangeOrder = {
   request: string;
   request_artifact_number: string;
   request_title: string;
+  request_is_temporary: boolean;
+  request_is_extension: boolean;
+  request_temporary_until: string | null;
   target_process_name: string;
   draft_process_version_id: string;
   /**
@@ -7504,6 +7524,26 @@ export type ProcessChangeRequest = {
    * Structured diff between target_process and draft_process_version, populated at submit time.
    */
   unknown | undefined;
+  is_temporary?: /**
+   * A deviation for named work orders, not a new baseline.
+   */
+  boolean | undefined;
+  temporary_until?:
+    | /**
+     * Last day the temporary change may be worked (or, on an extension, the new last day).
+     */
+    (string | null)
+    | undefined;
+  /**
+   * On an extension PCR: the temporary change it extends.
+   */
+  extends_request: string | null;
+  extends_request_number: string | null;
+  customer_agreement?: /**
+   * The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate.
+   */
+  string | undefined;
+  temporary_info: TemporaryChangeInfo;
 };
 export type ProcessChangeStatusEnum =
   /**
@@ -7532,6 +7572,18 @@ export type ChangeControlPriorityEnum =
    * @enum LOW, NORMAL, HIGH, CRITICAL
    */
   "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+export type TemporaryChangeInfo = {
+  version_id: string;
+  version: number;
+  until: string | null;
+  expired: boolean;
+  work_orders: Array<TemporaryWorkOrder>;
+};
+export type TemporaryWorkOrder = {
+  id: string;
+  erp_id: string;
+  status: string;
+};
 export type PaginatedProcessWithStepsList = {
   /**
    * @example 123
@@ -7585,6 +7637,14 @@ export type ProcessWithSteps = {
   version: number;
   previous_version: string | null;
   is_current_version: boolean;
+  /**
+   * Approved for named work orders only; never the current version.
+   */
+  is_temporary: boolean;
+  /**
+   * Last day a temporary version may be worked. Extended only by an approved PCR.
+   */
+  temporary_until: string | null;
 };
 export type ProcessStep = {
   id: number;
@@ -7685,6 +7745,12 @@ export type Step = {
     (string | null)
     | undefined;
   outside_supplier_name: string | null;
+  outside_special_process?: /**
+   * The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
   outside_process_lead_days?:
     | /**
      * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
@@ -7948,6 +8014,14 @@ export type Processes = {
    * @pattern ^-?\d{0,1}(?:\.\d{0,4})?$
    */
   string | undefined;
+  /**
+   * Approved for named work orders only; never the current version.
+   */
+  is_temporary: boolean;
+  /**
+   * Last day a temporary version may be worked. Extended only by an approved PCR.
+   */
+  temporary_until: string | null;
   part_type_name: string | null;
   process_steps: Array<ProcessStep>;
   step_edges: Array<StepEdge>;
@@ -9882,6 +9956,12 @@ export type Steps = {
      */
     (string | null)
     | undefined;
+  outside_special_process?: /**
+   * The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
   outside_process_lead_days?:
     | /**
      * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
@@ -11771,16 +11851,10 @@ export type WorkOrderStatusEnum =
    * `COMPLETED` - Completed
    * `ON_HOLD` - On hold
    * `CANCELLED` - Cancelled
-   * `WAITING_FOR_OPERATOR` - Waiting for operator
    *
-   * @enum PENDING, IN_PROGRESS, COMPLETED, ON_HOLD, CANCELLED, WAITING_FOR_OPERATOR
+   * @enum PENDING, IN_PROGRESS, COMPLETED, ON_HOLD, CANCELLED
    */
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "ON_HOLD"
-  | "CANCELLED"
-  | "WAITING_FOR_OPERATOR";
+  "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED";
 export type WorkOrderPriorityEnum =
   /**
    * * `1` - Urgent
@@ -11922,6 +11996,7 @@ export type TravelerStepEntry = {
   materials_used: Array<TravelerMaterial>;
   attachments: Array<TravelerAttachment>;
   batch_cycles: Array<TravelerBatchCycle>;
+  training_overrides: Array<TravelerTrainingOverride>;
 };
 export type TravelerStepStatusEnum =
   /**
@@ -12014,6 +12089,14 @@ export type TravelerBatchMeasurement = {
   actual_value: number | null;
   passed: boolean | null;
   recorded_at: string | null;
+};
+export type TravelerTrainingOverride = {
+  visit_number: number;
+  worker_name: string;
+  authorized_by_name: string;
+  reason: string;
+  at: string | null;
+  missing_training: Array<string>;
 };
 export type PartTypesRequest = {
   tenant?:
@@ -13632,6 +13715,18 @@ export type PatchedProcessChangeRequestRequest = Partial<{
    * Structured diff between target_process and draft_process_version, populated at submit time.
    */
   proposed_change_diff: unknown;
+  /**
+   * A deviation for named work orders, not a new baseline.
+   */
+  is_temporary: boolean;
+  /**
+   * Last day the temporary change may be worked (or, on an extension, the new last day).
+   */
+  temporary_until: string | null;
+  /**
+   * The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate.
+   */
+  customer_agreement: string;
 }>;
 export type PatchedProcessWithStepsRequest = Partial<{
   /**
@@ -14237,6 +14332,12 @@ export type PatchedStepsRequest = Partial<{
    * Default subcontract vendor for this outside-process op (overridable per shipment).
    */
   outside_supplier: string | null;
+  /**
+   * The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out.
+   *
+   * @maxLength 120
+   */
+  outside_special_process: string;
   /**
    * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
    *
@@ -15173,6 +15274,20 @@ export type ProcessChangeRequestRequest = {
    * Structured diff between target_process and draft_process_version, populated at submit time.
    */
   unknown | undefined;
+  is_temporary?: /**
+   * A deviation for named work orders, not a new baseline.
+   */
+  boolean | undefined;
+  temporary_until?:
+    | /**
+     * Last day the temporary change may be worked (or, on an extension, the new last day).
+     */
+    (string | null)
+    | undefined;
+  customer_agreement?: /**
+   * The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate.
+   */
+  string | undefined;
 };
 export type ProcessSPC = {
   id: string;
@@ -15860,6 +15975,16 @@ export type RepairCodeRequest = {
   TriggerEnum | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
+};
+export type RepeatDefectsResponse = {
+  data: Array<RepeatDefectItem>;
+  total_repeat_count: number;
+};
+export type RepeatDefectItem = {
+  error_type: string;
+  count: number;
+  part_types_affected: Array<string>;
+  processes_affected: Array<string>;
 };
 export type RootCauseRequest = {
   rca_record: string;
@@ -16785,6 +16910,12 @@ export type StepRequest = {
      */
     (string | null)
     | undefined;
+  outside_special_process?: /**
+   * The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
   outside_process_lead_days?:
     | /**
      * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
@@ -16969,6 +17100,12 @@ export type StepsRequest = {
      */
     (string | null)
     | undefined;
+  outside_special_process?: /**
+   * The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out.
+   *
+   * @maxLength 120
+   */
+  string | undefined;
   outside_process_lead_days?:
     | /**
      * Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides.
@@ -17982,11 +18119,6 @@ export type WorkOrderBulkAddPartsInputRequest = {
    * @minimum 1
    */
   number | undefined;
-};
-export type WorkOrderBulkTransitionInputRequest = {
-  ids: Array<string>;
-  status: WorkOrderStatusEnum;
-  notes?: string | undefined;
 };
 export type WorkOrderMaterialRequirements = {
   rows: Array<WorkOrderMaterialRequirementRow>;
@@ -20061,6 +20193,21 @@ const PatchedDowntimeEventRequest = z
     archived: z.boolean(),
   })
   .partial();
+const DowntimeBucket = z.object({
+  key: z.string(),
+  label: z.string(),
+  hours: z.number(),
+  events: z.number().int(),
+});
+const DowntimeSummary = z.object({
+  start: z.string().datetime({ offset: true }),
+  end: z.string().datetime({ offset: true }),
+  total_hours: z.number(),
+  total_events: z.number().int(),
+  open_events: z.number().int(),
+  by_category: z.array(DowntimeBucket),
+  by_equipment: z.array(DowntimeBucket),
+});
 const PaginatedUserSelectList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -20278,6 +20425,7 @@ const FPIRecord = z.object({
   inspected_at: z.string().datetime({ offset: true }).nullable(),
   performed_by: z.number().int().nullable(),
   performed_by_info: UserSelect.nullable(),
+  has_signature: z.boolean(),
   waived: z.boolean(),
   waived_by: z.number().int().nullable(),
   waived_by_info: UserSelect.nullable(),
@@ -20321,6 +20469,7 @@ const api_FPIRecords_fail_create_Body = z
     notes: z.string(),
     cosign_email: z.string(),
     cosign_password: z.string(),
+    cosign_signature: z.string(),
   })
   .partial();
 const api_FPIRecords_pass_create_Body = z
@@ -20329,6 +20478,7 @@ const api_FPIRecords_pass_create_Body = z
     password: z.string(),
     cosign_email: z.string(),
     cosign_password: z.string(),
+    cosign_signature: z.string(),
   })
   .partial();
 const api_FPIRecords_waive_create_Body = z
@@ -20337,6 +20487,7 @@ const api_FPIRecords_waive_create_Body = z
     password: z.string(),
     cosign_email: z.string(),
     cosign_password: z.string(),
+    cosign_signature: z.string(),
   })
   .partial();
 const api_FPIRecords_get_or_create_create_Body = z
@@ -20522,6 +20673,7 @@ const HeatMapAnnotations = z.object({
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
   deleted_at: z.string().datetime({ offset: true }).nullable(),
+  is_submitted: z.boolean(),
 });
 const PaginatedHeatMapAnnotationsList = z.object({
   count: z.number().int(),
@@ -21871,7 +22023,7 @@ const Orders = z.object({
   company: z.string().uuid().nullish(),
   company_info: z.object({}).partial().passthrough().nullable(),
   estimated_completion: z.string().nullish(),
-  original_completion_date: z.string().datetime({ offset: true }).nullable(),
+  original_completion_date: z.string().nullable(),
   order_status: OrdersStatusEnum,
   current_hubspot_gate: z.string().uuid().nullish(),
   current_milestone: z.string().uuid().nullish(),
@@ -22547,6 +22699,15 @@ const PartRollbackPendingApproval = z.object({
   requires_approval: z.boolean(),
   previous_step_name: z.string().nullable(),
 });
+const PartSamplingDecision = z.object({
+  id: z.string(),
+  timestamp: z.string().datetime({ offset: true }),
+  selected: z.boolean(),
+  summary: z.string(),
+  ruleset_type: z.string(),
+  ruleset_name: z.string().nullable(),
+  rule_type: z.string().nullable(),
+});
 const ReasonEnum = z.enum(["quarantine", "rework", "scrap"]);
 const PartsSplitFromLotInputRequest = z.object({
   reason: ReasonEnum,
@@ -22632,6 +22793,14 @@ const TravelerBatchCycle = z.object({
   quality_status: z.union([BatchCycleQualityStatusEnum, NullEnum]).nullable(),
   measurements: z.array(TravelerBatchMeasurement),
 });
+const TravelerTrainingOverride = z.object({
+  visit_number: z.number().int(),
+  worker_name: z.string(),
+  authorized_by_name: z.string(),
+  reason: z.string(),
+  at: z.string().datetime({ offset: true }).nullable(),
+  missing_training: z.array(z.string()),
+});
 const TravelerStepEntry = z.object({
   step_id: z.string().uuid(),
   step_name: z.string(),
@@ -22653,6 +22822,7 @@ const TravelerStepEntry = z.object({
   materials_used: z.array(TravelerMaterial),
   attachments: z.array(TravelerAttachment),
   batch_cycles: z.array(TravelerBatchCycle),
+  training_overrides: z.array(TravelerTrainingOverride),
 });
 const PartTravelerResponse = z.object({
   part_id: z.string().uuid(),
@@ -22824,6 +22994,7 @@ const Step = z.object({
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
   outside_supplier_name: z.string().nullable(),
+  outside_special_process: z.string().max(120).optional(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
@@ -22877,6 +23048,8 @@ const Processes = z.object({
     .string()
     .regex(/^-?\d{0,1}(?:\.\d{0,4})?$/)
     .optional(),
+  is_temporary: z.boolean(),
+  temporary_until: z.string().nullable(),
   part_type_name: z.string().nullable(),
   process_steps: z.array(ProcessStep),
   step_edges: z.array(StepEdge),
@@ -22932,6 +23105,8 @@ const ProcessWithSteps = z.object({
   version: z.number().int(),
   previous_version: z.string().uuid().nullable(),
   is_current_version: z.boolean(),
+  is_temporary: z.boolean(),
+  temporary_until: z.string().nullable(),
 });
 const PaginatedProcessWithStepsList = z.object({
   count: z.number().int(),
@@ -24618,6 +24793,7 @@ const Steps = z.object({
   repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_special_process: z.string().max(120).optional(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -24673,6 +24849,7 @@ const StepsRequest = z.object({
   repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_special_process: z.string().max(120).optional(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -24710,6 +24887,7 @@ const PatchedStepsRequest = z
     repair_code: z.string().uuid().nullable(),
     is_outside_process: z.boolean(),
     outside_supplier: z.string().uuid().nullable(),
+    outside_special_process: z.string().max(120),
     outside_process_lead_days: z
       .number()
       .int()
@@ -25846,7 +26024,7 @@ const CustomerOrder = z.object({
   order_status: z.string(),
   order_status_code: z.string(),
   estimated_completion: z.string().nullable(),
-  original_completion_date: z.string().datetime({ offset: true }).nullable(),
+  original_completion_date: z.string().nullable(),
   process_stages: z.array(
     z.object({
       name: z.string(),
@@ -26412,7 +26590,6 @@ const WorkOrderStatusEnum = z.enum([
   "COMPLETED",
   "ON_HOLD",
   "CANCELLED",
-  "WAITING_FOR_OPERATOR",
 ]);
 const WorkOrderPriorityEnum = z.union([
   z.literal(1),
@@ -26698,14 +26875,6 @@ const BulkReleaseRequestRequest = z.object({
   ids: z.array(z.string().uuid()),
   override_reason: z.string().optional(),
 });
-const WorkOrderBulkTransitionInputRequest = z.object({
-  ids: z.array(z.string().uuid()),
-  status: WorkOrderStatusEnum,
-  notes: z.string().optional(),
-});
-const WorkOrderBulkTransitionResponse = z.object({
-  results: z.array(z.object({}).partial().passthrough()),
-});
 const QueueBlocker = z.object({ code: z.string(), detail: z.string() });
 const QueueWarning = z.object({ code: z.string(), detail: z.string() });
 const ReleaseQueueRow = z.object({
@@ -26927,8 +27096,14 @@ const QualityRatesResponse = z.object({
   total_inspected: z.number().int(),
   total_failed: z.number().int(),
 });
+const RepeatDefectItem = z.object({
+  error_type: z.string(),
+  count: z.number().int(),
+  part_types_affected: z.array(z.string()),
+  processes_affected: z.array(z.string()),
+});
 const RepeatDefectsResponse = z.object({
-  data: z.array(z.object({}).partial().passthrough()),
+  data: z.array(RepeatDefectItem),
   total_repeat_count: z.number().int(),
 });
 const HubSpotPipelineStage = z.object({
@@ -27556,6 +27731,9 @@ const ProcessChangeOrder = z.object({
   request: z.string().uuid(),
   request_artifact_number: z.string(),
   request_title: z.string(),
+  request_is_temporary: z.boolean(),
+  request_is_extension: z.boolean(),
+  request_temporary_until: z.string().nullable(),
   target_process_name: z.string(),
   draft_process_version_id: z.string().uuid(),
   implementation_plan: z.string(),
@@ -27655,6 +27833,18 @@ const ProcessChangeStatusEnum = z.enum([
   "CANCELLED",
 ]);
 const ChangeControlPriorityEnum = z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]);
+const TemporaryWorkOrder = z.object({
+  id: z.string(),
+  erp_id: z.string(),
+  status: z.string(),
+});
+const TemporaryChangeInfo = z.object({
+  version_id: z.string(),
+  version: z.number().int(),
+  until: z.string().nullable(),
+  expired: z.boolean(),
+  work_orders: z.array(TemporaryWorkOrder),
+});
 const ProcessChangeRequest = z.object({
   id: z.string().uuid(),
   tenant: z.string().uuid().nullable(),
@@ -27684,6 +27874,12 @@ const ProcessChangeRequest = z.object({
   data_origin: DataOriginEnum,
   draft_process_version: z.string().uuid().nullish(),
   proposed_change_diff: z.unknown().nullish(),
+  is_temporary: z.boolean().optional(),
+  temporary_until: z.string().nullish(),
+  extends_request: z.string().uuid().nullable(),
+  extends_request_number: z.string().nullable(),
+  customer_agreement: z.string().optional(),
+  temporary_info: TemporaryChangeInfo.nullable(),
 });
 const PaginatedProcessChangeRequestList = z.object({
   count: z.number().int(),
@@ -27701,6 +27897,9 @@ const ProcessChangeRequestRequest = z.object({
   customer_notification_required: z.boolean().optional(),
   draft_process_version: z.string().uuid().nullish(),
   proposed_change_diff: z.unknown().nullish(),
+  is_temporary: z.boolean().optional(),
+  temporary_until: z.string().nullish(),
+  customer_agreement: z.string().optional(),
 });
 const PatchedProcessChangeRequestRequest = z
   .object({
@@ -27713,6 +27912,9 @@ const PatchedProcessChangeRequestRequest = z
     customer_notification_required: z.boolean(),
     draft_process_version: z.string().uuid().nullable(),
     proposed_change_diff: z.unknown().nullable(),
+    is_temporary: z.boolean(),
+    temporary_until: z.string().nullable(),
+    customer_agreement: z.string(),
   })
   .partial();
 const PcrApproveResponse = z.object({
@@ -27722,7 +27924,15 @@ const PcrApproveResponse = z.object({
 const PcrCancelPayloadRequest = z
   .object({ reason: z.string().default("") })
   .partial();
+const PcrExtendInputRequest = z.object({
+  temporary_until: z.string(),
+  justification: z.string().optional(),
+});
 const PcrRejectPayloadRequest = z.object({ reason: z.string().min(1) });
+const PcrReturnToBaselineInputRequest = z.object({
+  work_order: z.string().uuid(),
+  stranded_resolutions: z.object({}).partial().passthrough().optional(),
+});
 const ProposeProcessChangeRequestRequest = z.object({
   target_process_id: z.string().uuid(),
   title: z.string().optional(),
@@ -28302,6 +28512,7 @@ const StepRequest = z.object({
   repair_code: z.string().uuid().nullish(),
   is_outside_process: z.boolean().optional(),
   outside_supplier: z.string().uuid().nullish(),
+  outside_special_process: z.string().max(120).optional(),
   outside_process_lead_days: z.number().int().gte(0).lte(2147483647).nullish(),
   is_terminal: z.boolean().optional(),
   terminal_status: z.union([TerminalStatusEnum, BlankEnum]).optional(),
@@ -28515,6 +28726,8 @@ export const schemas = {
   PaginatedDowntimeEventList,
   DowntimeEventRequest,
   PatchedDowntimeEventRequest,
+  DowntimeBucket,
+  DowntimeSummary,
   PaginatedUserSelectList,
   EquipmentsStatusEnum,
   BatchModeEnum,
@@ -28773,6 +28986,7 @@ export const schemas = {
   api_Parts_rollback_create_Body,
   PartRollbackDone,
   PartRollbackPendingApproval,
+  PartSamplingDecision,
   ReasonEnum,
   PartsSplitFromLotInputRequest,
   PartsSplitFromLotResponse,
@@ -28788,6 +29002,7 @@ export const schemas = {
   BatchCycleQualityStatusEnum,
   TravelerBatchMeasurement,
   TravelerBatchCycle,
+  TravelerTrainingOverride,
   TravelerStepEntry,
   PartTravelerResponse,
   AdvanceLotInputRequest,
@@ -29210,8 +29425,6 @@ export const schemas = {
   WorkOrderBulkPlaceOnHoldInputRequest,
   WorkOrderBulkPlaceOnHoldResponse,
   BulkReleaseRequestRequest,
-  WorkOrderBulkTransitionInputRequest,
-  WorkOrderBulkTransitionResponse,
   QueueBlocker,
   QueueWarning,
   ReleaseQueueRow,
@@ -29252,6 +29465,7 @@ export const schemas = {
   NeedsAttentionResponse,
   OpenDispositionsResponse,
   QualityRatesResponse,
+  RepeatDefectItem,
   RepeatDefectsResponse,
   HubSpotPipelineStage,
   PaginatedHubSpotPipelineStageList,
@@ -29336,13 +29550,17 @@ export const schemas = {
   PcoImplementResponse,
   ProcessChangeStatusEnum,
   ChangeControlPriorityEnum,
+  TemporaryWorkOrder,
+  TemporaryChangeInfo,
   ProcessChangeRequest,
   PaginatedProcessChangeRequestList,
   ProcessChangeRequestRequest,
   PatchedProcessChangeRequestRequest,
   PcrApproveResponse,
   PcrCancelPayloadRequest,
+  PcrExtendInputRequest,
   PcrRejectPayloadRequest,
+  PcrReturnToBaselineInputRequest,
   ProposeProcessChangeRequestRequest,
   ProposeProcessChangeResponse,
   GenerateReportRequest,
@@ -35935,6 +36153,21 @@ Returns documents where review_date &lt;&#x3D; today.`,
   },
   {
     method: "get",
+    path: "/api/DowntimeEvents/summary/",
+    alias: "api_DowntimeEvents_summary_retrieve",
+    description: `Downtime over the last &#x60;days&#x60; days by category and by machine, largest first. Events are clipped to the period; an open event counts up to now. Lost time, not OEE.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: DowntimeSummary,
+  },
+  {
+    method: "get",
     path: "/api/Employees-Options/",
     alias: "api_Employees_Options_list",
     description: `Select list for employees (the tenant&#x27;s internal workforce).`,
@@ -38169,6 +38402,11 @@ Components are created during core disassembly, then either:
     requestFormat: "json",
     parameters: [
       {
+        name: "component_part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "component_type",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -39249,7 +39487,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/",
@@ -39303,10 +39544,7 @@ keep running (only PlantCalendarException stops machines).`,
       },
     ],
     response: PaginatedLaborCalendarBlockList,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/LaborCalendarBlocks/",
@@ -43685,7 +43923,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedStepDistributionResponseList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/orders/:order_id/parts/",
@@ -43714,10 +43955,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedPartsList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -45189,6 +45427,26 @@ remain, and the ESCALATION target it routes to once the cap is exceeded
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/Parts/:id/sampling-decisions/",
+    alias: "api_Parts_sampling_decisions_list",
+    description: `Every sampling decision logged for this part, newest first, with why: the rule that selected or excluded it, or that no rule in the ruleset chose it. Visibility follows the part.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: z.array(PartSamplingDecision),
   },
   {
     method: "post",
@@ -47386,6 +47644,32 @@ Lifecycle endpoints:
   },
   {
     method: "post",
+    path: "/api/process-change-requests/:id/extend/",
+    alias: "api_process_change_requests_extend_create",
+    description: `Raise the PCR that extends this temporary change to a new end date. It is a DRAFT; submit and approve it like any other change.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PcrExtendInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ProcessChangeRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/process-change-requests/:id/reject/",
     alias: "api_process_change_requests_reject_create",
     description: `CRUD + lifecycle actions for ProcessChangeRequest.
@@ -47409,6 +47693,32 @@ Lifecycle endpoints:
       },
     ],
     response: ProcessChangeRequest,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/process-change-requests/:id/return-to-baseline/",
+    alias: "api_process_change_requests_return_to_baseline_create",
+    description: `Move one of this temporary change&#x27;s work orders back to the baseline, re-pointing its parts by step identity. A part at a step the baseline lacks needs a resolution (the same shape as PCO implementation).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: PcrReturnToBaselineInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
     errors: [
       {
         status: 400,
@@ -49155,7 +49465,8 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
     method: "post",
     path: "/api/RcaRecords/:id/submit-for-review/",
     alias: "api_RcaRecords_submit_for_review_create",
-    description: `Submit RCA for review`,
+    description: `Ask for the RCA to be reviewed: its review status becomes REQUIRED, and
+approving it (review_rca) completes the review.`,
     requestFormat: "json",
     parameters: [
       {
@@ -49249,7 +49560,10 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: PaginatedRebuildScopePresetList,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/RebuildScopePresets/",
@@ -49319,10 +49633,7 @@ the conductor can&#x27;t approve their own RCA unless the CAPA allows it.`,
       },
     ],
     response: RebuildScopePreset,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/RebuildScopePresets/:id/",
@@ -54735,7 +55046,10 @@ from. One row per step (the step is the key).`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepTimings/import-status/:task_id/",
@@ -54794,10 +55108,7 @@ from. One row per step (the step is the key).`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StorageLocations/",
@@ -59489,7 +59800,10 @@ Provides endpoints for:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/UserInvitations/validate-token/",
@@ -59575,10 +59889,7 @@ PERMISSIONS — admin + manager tier). view is broad (STAFF_VIEW_PERMISSIONS).`,
       },
     ],
     response: PaginatedUserWorkCenterMembershipList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/UserWorkCenterMemberships/",
@@ -60385,14 +60696,7 @@ Import/Export endpoints (auto-configured from model):
         name: "workorder_status",
         type: "Query",
         schema: z
-          .enum([
-            "CANCELLED",
-            "COMPLETED",
-            "IN_PROGRESS",
-            "ON_HOLD",
-            "PENDING",
-            "WAITING_FOR_OPERATOR",
-          ])
+          .enum(["CANCELLED", "COMPLETED", "IN_PROGRESS", "ON_HOLD", "PENDING"])
           .optional(),
       },
     ],
@@ -60896,21 +61200,6 @@ releasing 12 where 2 aren&#x27;t ready releases the 10 and reports the 2.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
-  {
-    method: "post",
-    path: "/api/WorkOrders/bulk_transition/",
-    alias: "api_WorkOrders_bulk_transition_create",
-    description: `Transition multiple work orders. Per-id errors captured.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: WorkOrderBulkTransitionInputRequest,
-      },
-    ],
-    response: WorkOrderBulkTransitionResponse,
   },
   {
     method: "get",

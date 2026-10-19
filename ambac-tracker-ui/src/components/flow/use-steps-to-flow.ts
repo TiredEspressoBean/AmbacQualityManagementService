@@ -59,6 +59,7 @@ export interface StepData {
   is_outside_process?: boolean;
   outside_supplier?: string | null;
   outside_supplier_name?: string | null;
+  outside_special_process?: string;
   outside_process_lead_days?: number | null;
   // Repair node (reman, 2026-10-12): the repair code this step carries out. A check
   // sends a unit here only when that code is raised for it (services/reman/repair_routing).
@@ -191,6 +192,7 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         isOutsideProcess: step.is_outside_process,
         outsideSupplier: step.outside_supplier,
         outsideSupplierName: step.outside_supplier_name,
+        outsideSpecialProcess: step.outside_special_process,
         outsideProcessLeadDays: step.outside_process_lead_days,
         // Repair node
         repairCode: step.repair_code_code ?? null,

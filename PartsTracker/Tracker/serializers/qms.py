@@ -1789,6 +1789,9 @@ class FPIRecordSerializer(SecureModelMixin):
     waived_by_info = serializers.SerializerMethodField()
     acknowledged_by_info = serializers.SerializerMethodField()
     equipment_info = serializers.SerializerMethodField()
+    # Whether the co-signer's drawing was kept — a flag rather than the image, which
+    # would put a base64 PNG in every list row.
+    has_signature = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1798,6 +1801,10 @@ class FPIRecordSerializer(SecureModelMixin):
         if self.instance is not None:
             for name in ('work_order', 'step', 'part_type', 'designated_part', 'equipment', 'shift_date'):
                 self.fields[name].read_only = True
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_has_signature(self, obj):
+        return bool(obj.signature_data)
 
     class Meta:
         from Tracker.models import FPIRecord
@@ -1814,7 +1821,7 @@ class FPIRecordSerializer(SecureModelMixin):
             'result', 'result_display',
             'inspected_by', 'inspected_by_info',
             'inspected_at',
-            'performed_by', 'performed_by_info',
+            'performed_by', 'performed_by_info', 'has_signature',
             'waived', 'waived_by', 'waived_by_info',
             'waive_reason',
             'acknowledged_by', 'acknowledged_by_info', 'acknowledged_at',

@@ -956,13 +956,13 @@ export const dispositionsRoute = createRoute({
 
 // Disposition Form Routes
 export const dispositionCreateRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/dispositions/create',
+    getParentRoute: () => rootRoute, path: '/production/dispositions/new',
     validateSearch: DispositionSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
 });
 
 export const dispositionEditRoute = createRoute({
-    getParentRoute: () => rootRoute, path: '/dispositions/edit/$id',
+    getParentRoute: () => rootRoute, path: '/production/dispositions/$id/edit',
     validateSearch: DispositionSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditDispositionFormPage")),
 });
@@ -1526,12 +1526,18 @@ const lifeLimitDefinitionEditRoute = createRoute({
 function legacyRedirect(path: string, to: (params: Record<string, string>) => string) {
     return createRoute({
         getParentRoute: () => rootRoute, path,
-        beforeLoad: ({ params }) => {
-            throw redirect({ to: to(params as Record<string, string>) as never, replace: true });
+        // The query string rides along: `/dispositions/create?partId=…` must keep its part.
+        beforeLoad: ({ params, location }) => {
+            throw redirect({
+                href: `${to(params as Record<string, string>)}${location.searchStr ?? ""}`,
+                replace: true,
+            });
         },
     });
 }
 const legacyRedirectRoutes = [
+    legacyRedirect("/dispositions/create", () => "/production/dispositions/new"),
+    legacyRedirect("/dispositions/edit/$id", (p) => `/production/dispositions/${p.id}/edit`),
     legacyRedirect("/PartTypeForm/create", () => "/editor/part-types/new"),
     legacyRedirect("/PartTypeForm/edit/$id", (p) => `/editor/part-types/${p.id}/edit`),
     legacyRedirect("/PartForm/create", () => "/editor/parts/new"),

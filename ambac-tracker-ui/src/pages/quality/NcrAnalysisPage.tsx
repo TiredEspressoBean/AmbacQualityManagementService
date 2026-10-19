@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import { Package, Clock, CheckCircle2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,12 +50,19 @@ const undecidedColumns: AnalyticsColumnDef<UndecidedRow>[] = [
     { key: "created", header: "Reported", accessor: (r) => r.created, sortable: true, sortValue: (r) => r.created },
 ];
 
+const repeatDefectsOptions = (days: number) =>
+    queryOptions({
+        queryKey: ["dashboard", "repeat-defects", { days }] as const,
+        queryFn: () => api.api_dashboard_repeat_defects_retrieve({ queries: { days } }),
+    });
+
 export function NcrAnalysisPage() {
     const [range, setRange] = useState<DateRange>("30d");
 
     // API Hooks
     const { data: ncrTrendData, isLoading: isLoadingTrend } = useNcrTrend({ days: rangeToDays(range) });
     const { data: dispositionData, isLoading: isLoadingDisposition } = useDispositionBreakdown({ days: rangeToDays(range) });
+    const { data: repeatData, isLoading: isLoadingRepeat } = useQuery(repeatDefectsOptions(rangeToDays(range)));
     const { data: agingData, isLoading: isLoadingAging } = useNcrAging();
     const { data: dispositionsResponse, isLoading: isLoadingTable } = useOpenDispositions(20);
     const { data: undecided, isLoading: isLoadingUndecided } = useQuery({
@@ -299,6 +306,35 @@ export function NcrAnalysisPage() {
                     emptyMessage="Every failed report has a CAPA decision"
                     compact
                 />
+            </ChartCard>
+
+            {/* The same defect failing again and again — the pattern a corrective action should
+                have stopped. min_occurrences 3 is the endpoint's default. */}
+            <ChartCard
+                title="Repeat defects"
+                description={`Defects on 3 or more failed reports in the last ${rangeToDays(range)} days`}
+                isLoading={isLoadingRepeat}
+                loadingHeight="h-[120px]"
+            >
+                {(repeatData?.data ?? []).length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">No defect has repeated in this period</p>
+                ) : (
+                    <div className="divide-y">
+                        {(repeatData?.data ?? []).map((d) => (
+                            <div key={d.error_type} className="flex items-start justify-between gap-4 py-2 text-sm">
+                                <div className="min-w-0">
+                                    <p className="font-medium">{d.error_type}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {d.part_types_affected.length > 0 && <>Part types: {d.part_types_affected.join(", ")}</>}
+                                        {d.part_types_affected.length > 0 && d.processes_affected.length > 0 && " · "}
+                                        {d.processes_affected.length > 0 && <>Steps: {d.processes_affected.join(", ")}</>}
+                                    </p>
+                                </div>
+                                <span className="shrink-0 font-mono text-sm font-semibold">{d.count}×</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </ChartCard>
 
             {/* Open Dispositions Table */}

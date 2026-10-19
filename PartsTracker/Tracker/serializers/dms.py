@@ -414,6 +414,7 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
     model_display = serializers.CharField(source='model.__str__', read_only=True)
     part_display = serializers.CharField(source='part.__str__', read_only=True)
     created_by_display = serializers.SerializerMethodField()
+    is_submitted = serializers.SerializerMethodField()
 
     class Meta:
         model = HeatMapAnnotations
@@ -422,7 +423,7 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
             'position_x', 'position_y', 'position_z',
             'measurement_value', 'defect_type', 'severity',
             'notes', 'quality_reports', 'created_by', 'created_by_display', 'created_at', 'updated_at',
-            'archived', 'deleted_at'
+            'archived', 'deleted_at', 'is_submitted',
         ]
         read_only_fields = ['created_by', 'created_at', 'updated_at', 'deleted_at']
 
@@ -433,6 +434,12 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
         if obj.created_by:
             return obj.created_by.get_full_name().strip() or obj.created_by.email
         return None
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_submitted(self, obj):
+        """Linked to a finished quality report — deleting it then needs the quality team."""
+        from Tracker.services.qms.annotations import is_submitted
+        return is_submitted(obj)
 
     def create(self, validated_data):
         """Set created_by to current user"""

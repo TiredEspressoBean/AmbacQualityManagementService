@@ -70,7 +70,7 @@ import {
     FileText,
 } from "lucide-react";
 import { UndoSplitButton } from "./SplitWorkOrderUndo";
-import { ReportExceptionDialog, type ReportExceptionPayload } from "./ReportExceptionDialog";
+import { ReportExceptionDialog } from "./ReportExceptionDialog";
 
 type SplitMode = "QUANTITY" | "OPERATION" | "REWORK";
 import { cn } from "@/lib/utils";
@@ -100,6 +100,7 @@ import type { PartSplitReason } from "@/hooks/parts";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { PendingDecisionsPanel } from "@/components/dwi/PendingDecisionsPanel";
 import { StepCompletionsList } from "@/components/dwi/StepCompletionsList";
+import { PartSamplingDecisions } from "@/components/parts/PartSamplingDecisions";
 import { PendingFpiPanel } from "@/components/workorders/PendingFpiPanel";
 import { OutsideProcessPanel } from "@/components/workorder/OutsideProcessPanel";
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
@@ -210,6 +211,7 @@ function adaptTravelerEntry(t: TravelerStepEntry): MockStepVisit {
             batch_id: b.batch_id,
             part_count: b.part_count,
         })),
+        training_overrides: t.training_overrides ?? [],
     };
 }
 
@@ -248,7 +250,12 @@ function StepHistoryPanelLive({ partId }: { partId: string }) {
         requires_sampling: false,
         traveler: visits,
     };
-    return <StepHistoryPanel part={part} />;
+    return (
+        <div className="space-y-2">
+            <StepHistoryPanel part={part} />
+            <PartSamplingDecisions partId={partId} />
+        </div>
+    );
 }
 
 const STATUS_OPTIONS: MockPartStatus[] = [
@@ -870,6 +877,22 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                 )}
                             </TableCell>
                         </TableRow>
+                        {/* Always shown, not behind the expander: an override is
+                            the competence evidence for this step (who worked it
+                            unqualified, who let them, and why). */}
+                        {(v.training_overrides ?? []).map((o) => (
+                            <TableRow key={`ovr-${o.visit_number}`} className="hover:bg-transparent">
+                                <TableCell colSpan={8} className="py-1 pl-6 text-[11px] text-amber-700 dark:text-amber-400">
+                                    <ShieldAlert className="mr-1 inline h-3 w-3 align-[-2px]" />
+                                    Training override{(v.training_overrides?.length ?? 0) > 1 ? ` (visit #${o.visit_number})` : ""}:{" "}
+                                    {o.worker_name || "the operator"} worked this step unqualified
+                                    {o.missing_training.length > 0 && ` (missing ${o.missing_training.join(", ")})`}
+                                    , authorized by {o.authorized_by_name || "a supervisor"}
+                                    {o.at ? ` on ${new Date(o.at).toLocaleString()}` : ""}
+                                    {o.reason ? ` — “${o.reason}”` : ""}
+                                </TableCell>
+                            </TableRow>
+                        ))}
                         {isOpen && (
                             <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={8} className="bg-muted/40 p-0">
@@ -1335,17 +1358,15 @@ export function WorkOrderControlPage() {
 
     const { data: exceptionsData, resolveException: resolveExceptionMutation } = useExceptions();
     const [resolvedExceptionIds, setResolvedExceptionIds] = useState<Set<string>>(new Set());
-    const [draftWoExceptions, setDraftWoExceptions] = useState<ExceptionItem[]>([]);
     const [reportOpen, setReportOpen] = useState(false);
 
     const woExceptions: ExceptionItem[] = useMemo(() => {
-        const merged = [...draftWoExceptions, ...exceptionsData];
-        return merged.filter((e) => {
+        return exceptionsData.filter((e) => {
             if (resolvedExceptionIds.has(e.id)) return false;
             if (e.closed_at) return false;
             return wo ? e.work_order_ids.includes(wo.id) : false;
         });
-    }, [exceptionsData, draftWoExceptions, resolvedExceptionIds, wo]);
+    }, [exceptionsData, resolvedExceptionIds, wo]);
 
     // Open exceptions (quarantine / downtime / CAPA) are the most urgent thing on
     // a WO, so they belong in the same "Needs attention" gate as the pending-work
@@ -1359,29 +1380,13 @@ export function WorkOrderControlPage() {
         Number(attention.sampling) + Number(attention.fpi) + Number(hasOpenExceptions);
 
     function resolveException(id: string) {
-        const e = [...draftWoExceptions, ...exceptionsData].find((x) => x.id === id);
+        const e = exceptionsData.find((x) => x.id === id);
         setResolvedExceptionIds((prev) => {
             const next = new Set(prev);
             next.add(id);
             return next;
         });
         if (e) resolveExceptionMutation(e.id, e.kind);
-    }
-
-    function reportWoException(payload: ReportExceptionPayload) {
-        const id = `exc-${Date.now()}`;
-        setDraftWoExceptions((prev) => [
-            {
-                ...payload,
-                id,
-                state: "OPEN",
-                opened_at: new Date().toISOString(),
-                closed_at: null,
-                work_order_ids: wo ? [wo.id] : [],
-                source_ref: `${payload.kind === "DOWNTIME" ? "DowntimeEvent" : payload.kind === "QUARANTINE" ? "QuarantineDisposition" : "CAPA"}/${id}`,
-            },
-            ...prev,
-        ]);
     }
 
     if (realWoError && !realWo) {
@@ -1481,7 +1486,7 @@ export function WorkOrderControlPage() {
                                             size="sm"
                                             variant="outline"
                                             className="h-7 text-xs"
-                                            onClick={() => navigate({ to: `/dispositions/edit/${e.id}` })}
+                                            onClick={() => navigate({ to: `/production/dispositions/${e.id}/edit` })}
                                         >
                                             Open disposition
                                         </Button>
@@ -2433,7 +2438,6 @@ export function WorkOrderControlPage() {
                 onOpenChange={setReportOpen}
                 scopedWorkOrderId={wo.id}
                 scopedWorkOrderErpId={wo.erp_id}
-                onSubmit={reportWoException}
             />
         </div>
     );

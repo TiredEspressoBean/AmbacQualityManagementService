@@ -226,6 +226,13 @@ class DowntimeEventSerializer(SecureModelMixin):
         )
         read_only_fields = ('created_at', 'updated_at', 'duration_minutes', 'reported_by', 'resolved_by')
 
+    def validate_equipment(self, value):
+        from Tracker.services.mes.downtime import downtime_refusal
+        refusal = downtime_refusal(value)
+        if refusal:
+            raise serializers.ValidationError(refusal)
+        return value
+
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_reported_by_name(self, obj):
         return obj.reported_by.display_name if obj.reported_by else None
@@ -239,6 +246,24 @@ class DowntimeEventSerializer(SecureModelMixin):
         if obj.duration:
             return obj.duration.total_seconds() / 60
         return None
+
+
+class DowntimeBucketSerializer(serializers.Serializer):
+    key = serializers.CharField(allow_blank=True)
+    label = serializers.CharField()
+    hours = serializers.FloatField()
+    events = serializers.IntegerField()
+
+
+class DowntimeSummarySerializer(serializers.Serializer):
+    """Downtime over a period, by category and by machine, largest first."""
+    start = serializers.DateTimeField()
+    end = serializers.DateTimeField()
+    total_hours = serializers.FloatField()
+    total_events = serializers.IntegerField()
+    open_events = serializers.IntegerField()
+    by_category = DowntimeBucketSerializer(many=True)
+    by_equipment = DowntimeBucketSerializer(many=True)
 
 
 # ===== MATERIAL LOT SERIALIZERS =====

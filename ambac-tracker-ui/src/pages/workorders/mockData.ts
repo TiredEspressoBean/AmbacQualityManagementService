@@ -51,6 +51,15 @@ export type MockStepVisit = {
      *  these rather than to a step_execution, and `part_count` is how many
      *  parts a void here would reach. */
     batch_cycles?: { batch_id: string; part_count: number }[];
+    /** Supervisor overrides of the training gate, one per visit that had one. */
+    training_overrides?: {
+        visit_number: number;
+        worker_name: string;
+        authorized_by_name: string;
+        reason: string;
+        at: string | null;
+        missing_training: string[];
+    }[];
 };
 
 export type MockPart = {
@@ -74,8 +83,7 @@ export type MockWorkOrderStatus =
     | "IN_PROGRESS"
     | "ON_HOLD"
     | "COMPLETED"
-    | "CANCELLED"
-    | "WAITING_FOR_OPERATOR";
+    | "CANCELLED";
 
 export type MockSplitReason = "QUANTITY" | "OPERATION" | "REWORK";
 

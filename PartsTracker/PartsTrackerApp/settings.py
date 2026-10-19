@@ -622,6 +622,18 @@ if os.getenv("AWS_S3_ENDPOINT_URL"):
     AWS_S3_SIGNATURE_VERSION = 's3v4'
 
 AUDITLOG_INCLUDE_ALL_MODELS = True
+# Credentials never enter the audit trail. With every model logged, a password change
+# stored the old and new hash, and an integration's EncryptedCharField would be logged
+# DECRYPTED (auditlog records the Python value). Excluded rather than masked: the mask
+# keeps half the string visible. Global by field name — every field so named is a
+# credential. Existing rows are left as written; the API masks these keys on read
+# (services/core/audit_visibility.py).
+AUDITLOG_EXCLUDE_TRACKING_FIELDS = (
+    "password",
+    "api_key", "oauth_refresh_token", "webhook_secret",  # integrations IntegrationConfig
+    "token",                                            # UserInvitation link token
+    "unsubscribe_token",                                # notification unsubscribe link
+)
 
 # Password reset URL configuration
 # FRONTEND_URL should be full URL like https://app.example.com

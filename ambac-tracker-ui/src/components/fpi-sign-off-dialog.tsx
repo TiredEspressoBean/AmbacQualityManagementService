@@ -132,6 +132,9 @@ export function FpiSignOffDialog({
                     : {
                         cosign_email: cosignEmail.trim(),
                         cosign_password: signature.password,
+                        // Kept on the record once the password verifies (it used to
+                        // be required here and then thrown away).
+                        cosign_signature: signature.signature_data,
                     }),
             },
             {

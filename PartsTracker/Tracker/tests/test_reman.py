@@ -2507,3 +2507,42 @@ class RecoveredStockVisibilityTests(TenantTestCase):
         self.assertEqual(recovered_stock_by_type(self.tenant_a).get(self.rotable.id), 1)
         Parts.objects.filter(pk=self.recovered_part.pk).update(reserved_for_core=owner)
         self.assertIsNone(recovered_stock_by_type(self.tenant_a).get(self.rotable.id))
+
+
+class PendingAcceptanceFilterTests(TenantTestCase):
+    """The reman dashboard's "Pending Inventory Acceptance" link filters on
+    `component_part__isnull=true`. The filter was not declared, so django-filter
+    dropped it silently and the queue listed accepted components too — the same list
+    as "Usable"."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import HarvestedComponent, PartTypes
+
+        core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
+        comp_type = PartTypes.objects.create(tenant=self.tenant_a, name='Nozzle')
+        core = create_core(
+            tenant=self.tenant_a, core_number='CORE-PEND-1', core_type=core_type,
+            received_date=date.today(), received_by=self.user_a, status='IN_DISASSEMBLY')
+        self.pending = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=core, component_type=comp_type,
+            condition_grade='B', disassembled_by=self.user_a)
+        self.accepted = HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=core, component_type=comp_type,
+            condition_grade='A', disassembled_by=self.user_a)
+        self.accepted.accept_to_inventory(user=self.user_a)
+        self.grant_tenant_permissions(
+            self.user_a, self.tenant_a, ['view_harvestedcomponent', 'full_tenant_access'])
+        self.authenticate_as(self.user_a)
+
+    def _ids(self, query):
+        resp = self.client.get(f'/api/HarvestedComponents/?{query}')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        return {row['id'] for row in resp.json()['results']}
+
+    def test_pending_leaves_out_an_accepted_component(self):
+        self.assertEqual(self._ids('component_part__isnull=true&is_scrapped=false'),
+                         {str(self.pending.id)})
+
+    def test_the_inverse_is_the_accepted_ones(self):
+        self.assertEqual(self._ids('component_part__isnull=false'), {str(self.accepted.id)})

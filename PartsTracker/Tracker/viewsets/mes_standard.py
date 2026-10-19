@@ -16,7 +16,6 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import viewsets, status, serializers, parsers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from django.db import transaction
@@ -33,6 +32,7 @@ from Tracker.serializers.mes_standard import (
     ShiftSerializer,
     ScheduleSlotSerializer,
     DowntimeEventSerializer,
+    DowntimeSummarySerializer,
     MaterialSerializer,
     MaterialLotSerializer, MaterialLotSplitSerializer,
     CancelExpectedReceiptSerializer, ChaseExpectedReceiptSerializer, ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
@@ -491,6 +491,29 @@ class DowntimeEventViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelVie
 
     def perform_create(self, serializer):
         serializer.save(reported_by=self.request.user)
+
+    @extend_schema(
+        parameters=[OpenApiParameter('days', int, required=False,
+                                     description="Period length ending now (default 30, max 366).")],
+        responses=DowntimeSummarySerializer,
+        description="Downtime over the last `days` days by category and by machine, "
+                    "largest first. Events are clipped to the period; an open event "
+                    "counts up to now. Lost time, not OEE.",
+    )
+    @action(detail=False, methods=['get'], url_path='summary', pagination_class=None,
+            filter_backends=[])
+    def summary(self, request):
+        from datetime import timedelta
+        from Tracker.services.mes.downtime import downtime_summary
+        try:
+            days = int(request.query_params.get('days', 30))
+        except ValueError:
+            return Response({'detail': 'days must be a whole number.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        days = min(max(days, 1), 366)
+        end = timezone.now()
+        result = downtime_summary(start=end - timedelta(days=days), end=end)
+        return Response(DowntimeSummarySerializer(result).data)
 
     @extend_schema(
         request=inline_serializer(name="ResolveDowntimeInput", fields={}),
@@ -1352,8 +1375,15 @@ class IncomingInspectionViewSet(viewsets.ViewSet):
     """Unified incoming-inspection worklist — purchased MaterialLots awaiting
     inspection + OutsideProcessShipments out/returned, in one list keyed by a
     `source` origin (SAP QM QA32-style). Read-only aggregation; rows carry enough
-    to dispatch the Inspect action to the right runtime."""
-    permission_classes = [IsAuthenticated]
+    to dispatch the Inspect action to the right runtime.
+
+    Permissions: the default stack (no `permission_classes` override — declaring
+    `[IsAuthenticated]` REPLACED it and left only "logged in"). With no queryset the
+    CRUD gate has no model to name, so `action_permissions` is the gate: the views of
+    what the rows are drawn from. A Customer holds neither."""
+    action_permissions = {
+        'list': ['view_materiallot', 'view_outsideprocessshipment'],
+    }
 
     def get_view_name(self):
         return "Incoming Inspection"
@@ -1375,8 +1405,16 @@ class InspectionInboxViewSet(viewsets.ViewSet):
     badge + resume progress, OSP returns, in-process operations). Read-only
     aggregation, standard list-of-rows contract (the IncomingInspection
     pattern); clients derive type counts / oldest-age chips from the rows.
-    See services.qms.inspection_inbox for the row contract and tone rules."""
-    permission_classes = [IsAuthenticated]
+    See services.qms.inspection_inbox for the row contract and tone rules.
+
+    Permissions: as IncomingInspectionViewSet — the default stack, gated by the views
+    of what the rows are drawn from (lots, OSP shipments, FPI records, step
+    executions). `sign-off-step` checks `sign_off_fpi` itself."""
+    action_permissions = {
+        'list': ['view_materiallot', 'view_outsideprocessshipment', 'view_fpirecord',
+                 'view_stepexecution'],
+        'qa_signoffs': ['view_stepexecution'],
+    }
 
     def get_view_name(self):
         return "Inspection Inbox"

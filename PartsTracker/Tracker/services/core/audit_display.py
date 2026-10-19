@@ -97,10 +97,16 @@ def display_changes(entry, names: dict) -> tuple[DisplayChange, ...]:
     model = entry.content_type.model_class()
     out = []
     changes = entry.changes_dict if isinstance(entry.changes_dict, dict) else {}
+    from Tracker.services.core.audit_visibility import MASK, credential_fields
+    hidden = credential_fields()
     for field, pair in changes.items():
         if field in BOILERPLATE:
             continue
         label = field.replace('_', ' ')
+        if field in hidden:
+            # A credential written before they were excluded: say it changed, not to what.
+            out.append(DisplayChange(field=label, old=MASK, new=MASK))
+            continue
         if isinstance(pair, dict) and pair.get('type') == 'm2m':
             # auditlog's many-to-many shape — reads as "added QR-0038-003", not a dict.
             verb = _M2M_VERBS.get(pair.get('operation'), str(pair.get('operation') or 'changed'))

@@ -1439,8 +1439,14 @@ class SecureModel(models.Model):
         seen = {root.pk}
         versions = [root]
         current = root
+        has_temporary = any(f.name == 'is_temporary' for f in type(self)._meta.get_fields())
         while True:
-            next_version = type(self).all_tenants.filter(previous_version=current).first()
+            successors = type(self).all_tenants.filter(previous_version=current)
+            if has_temporary:
+                # A temporary change (deviation) branches off a version; it is not the
+                # line's next version, so the history follows the mainline past it.
+                successors = successors.filter(is_temporary=False)
+            next_version = successors.first()
             if not next_version or next_version.pk in seen:
                 break
             seen.add(next_version.pk)

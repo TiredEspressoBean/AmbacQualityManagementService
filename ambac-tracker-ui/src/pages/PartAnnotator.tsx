@@ -16,6 +16,8 @@ import {AnnotationsList} from "@/components/annotations-list";
 import {useCreateHeatMapAnnotation} from "@/hooks/useCreateHeatMapAnnotation";
 import {useUpdateHeatMapAnnotation} from "@/hooks/useUpdateHeatMapAnnotation";
 import {useDeleteHeatMapAnnotation} from "@/hooks/useDeleteHeatMapAnnotation";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import {useRetrieveThreeDModel} from "@/hooks/useRetrieveThreeDModel";
 import {useQualityReports} from "@/hooks/useQualityReports";
 import {useRetrieveErrorTypes} from "@/hooks/useRetrieveErrorTypes";
@@ -50,6 +52,8 @@ interface LocalAnnotation {
     severity: string;
     notes: string;
     isExisting?: boolean; // Flag to track if this came from the backend
+    /** On a finished quality report: inspection evidence, deletable only by the quality team */
+    isSubmitted?: boolean;
 }
 
 interface PartAnnotatorProps {
@@ -126,6 +130,7 @@ export function PartAnnotator({
             severity: ann.severity || "low",
             notes: ann.notes || "",
             isExisting: true,
+            isSubmitted: ann.is_submitted,
         }));
         setAnnotations(existingAnns);
     }, [existingAnnotationsData]);
@@ -186,6 +191,16 @@ export function PartAnnotator({
     const createAnnotation = useCreateHeatMapAnnotation();
     const updateAnnotation = useUpdateHeatMapAnnotation();
     const deleteAnnotation = useDeleteHeatMapAnnotation();
+    // A marker not yet saved is just local state. A saved one needs the delete
+    // permission; one on a finished quality report is evidence, so it also needs the
+    // quality team's (the server enforces the same — services/qms/annotations.py).
+    const { has: hasPerm } = usePermissionSet();
+    const canDeleteAnnotation = (ann: LocalAnnotation | undefined) => {
+        if (!ann) return false;
+        if (!ann.id) return true;
+        if (!hasPerm("delete_heatmapannotations")) return false;
+        return !ann.isSubmitted || hasPerm("delete_submitted_heatmapannotations");
+    };
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
         if (mode !== "annotate") return;
@@ -307,7 +322,7 @@ export function PartAnnotator({
                 toast.success("Annotation deleted");
             } catch (error) {
                 console.error("Failed to delete annotation:", error);
-                toast.error("Failed to delete annotation");
+                toast.error(apiErrorMessage(error) ?? "Failed to delete annotation");
                 return; // Don't remove from local state if API call failed
             }
         }
@@ -690,6 +705,7 @@ export function PartAnnotator({
                         </div>)}
 
                     <DialogFooter className="flex-col gap-2 sm:flex-row">
+                        {selectedIdx !== null && canDeleteAnnotation(annotations[selectedIdx]) && (
                         <Button
                             onClick={() => {
                                 handleDeleteAnnotation();
@@ -701,6 +717,7 @@ export function PartAnnotator({
                             <Trash2 className="h-4 w-4 mr-2"/>
                             Delete
                         </Button>
+                        )}
                         <Button
                             onClick={handleEditDialogClose}
                             className="w-full sm:w-auto"

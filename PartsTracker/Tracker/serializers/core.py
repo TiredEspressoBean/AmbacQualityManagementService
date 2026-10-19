@@ -657,6 +657,14 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'timestamp', 'action', 'changes', 'changes_display')
         read_only_fields = ('id', 'timestamp', 'content_type_name', 'actor_info', 'changes_display')
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Rows written before credentials were excluded still hold them; mask on read
+        # rather than rewrite the trail.
+        from Tracker.services.core.audit_visibility import mask_changes
+        data['changes'] = mask_changes(data.get('changes'))
+        return data
+
     @extend_schema_field(AuditChangeSerializer(many=True))
     def get_changes_display(self, obj):
         from dataclasses import asdict

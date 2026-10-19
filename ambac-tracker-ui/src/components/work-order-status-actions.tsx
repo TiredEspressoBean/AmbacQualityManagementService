@@ -29,31 +29,26 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { PlayCircle, PauseCircle, XCircle, RotateCcw } from "lucide-react";
-import { useUpdateWorkOrder } from "@/hooks/useUpdateWorkOrder";
+import { PlayCircle, PauseCircle, XCircle, RotateCcw, Undo2 } from "lucide-react";
+import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
+import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
+import { HOLD_REASONS, type HoldReason } from "@/pages/workorders/constants";
+import { useCancelWorkOrder, useReleaseForScheduling, useUnreleaseForScheduling } from "@/hooks/useScheduling";
+import { apiErrorBlockers } from "@/lib/api/describeApiError";
+import { apiErrorStatus } from "@/lib/api-error";
 import { toast } from "sonner";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
-import { format } from "date-fns";
 
 type WorkOrderStatus = WorkOrderStatusEnum;
 
 type Props = {
     workOrderId: string;
     currentStatus: WorkOrderStatus;
-    currentNotes?: string | null;
+    /** When the work order was released for scheduling; null if it has not been. */
+    releasedAt?: string | null;
     onStatusChange?: () => void;
 };
 
-const HOLD_REASONS = [
-    { value: "material_shortage", label: "Material shortage" },
-    { value: "equipment_issue", label: "Equipment issue" },
-    { value: "quality_hold", label: "Quality hold" },
-    { value: "engineering_review", label: "Engineering review" },
-    { value: "customer_request", label: "Customer request" },
-    { value: "other", label: "Other" },
-] as const;
-
-type HoldReasonValue = typeof HOLD_REASONS[number]["value"];
 
 /**
  * Status action buttons for work orders.
@@ -62,86 +57,94 @@ type HoldReasonValue = typeof HOLD_REASONS[number]["value"];
 export function WorkOrderStatusActions({
     workOrderId,
     currentStatus,
-    currentNotes,
+    releasedAt,
     onStatusChange,
 }: Props) {
     const [holdDialogOpen, setHoldDialogOpen] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-    const [holdReason, setHoldReason] = useState<HoldReasonValue | "">("");
+    const [holdReason, setHoldReason] = useState<HoldReason | "">("");
     const [holdDetails, setHoldDetails] = useState("");
+    const [releaseBlockers, setReleaseBlockers] = useState<string[]>([]);
+    const [overrideReason, setOverrideReason] = useState("");
 
-    const updateWorkOrder = useUpdateWorkOrder();
-
-    const updateStatus = (
-        newStatus: WorkOrderStatus,
-        notePrefix?: string
-    ) => {
-        // The local date — the UTC one stamps tomorrow on a late shift, and this
-        // string is read back by whoever opens the work order.
-        const timestamp = format(new Date(), "yyyy-MM-dd");
-        let updatedNotes = currentNotes || "";
-
-        if (notePrefix) {
-            updatedNotes = `[${notePrefix} - ${timestamp}]\n${updatedNotes}`;
-        }
-
-        updateWorkOrder.mutate(
-            {
-                id: workOrderId,
-                data: {
-                    workorder_status: newStatus,
-                    notes: updatedNotes || undefined,
-                },
-            },
-            {
-                onSuccess: () => {
-                    toast.success(`Work order status updated to ${newStatus.replace("_", " ").toLowerCase()}`);
-                    onStatusChange?.();
-                },
-                onError: (error) => {
-                    console.error("Failed to update work order status:", error);
-                    toast.error("Failed to update status");
-                },
-            }
-        );
-    };
-
-    const handleRelease = () => {
-        updateStatus("IN_PROGRESS", "RELEASED");
-    };
+    // Status isn't written directly (the server refuses it on an edit): each move has
+    // its action. A hold records its reason; clearing it returns the order to where
+    // the work is; cancel checks nothing has shipped and cascades to the order.
+    const placeOnHold = usePlaceOnHoldWorkOrder();
+    const clearHold = useClearHoldWorkOrder();
+    const cancelWorkOrder = useCancelWorkOrder();
+    const busy = placeOnHold.isPending || clearHold.isPending || cancelWorkOrder.isPending;
 
     const handleHold = () => {
         if (!holdReason) {
             toast.error("Please select a hold reason");
             return;
         }
-
-        const reasonLabel = HOLD_REASONS.find((r) => r.value === holdReason)?.label || holdReason;
-        const holdNote = holdDetails
-            ? `HOLD: ${reasonLabel} - ${holdDetails}`
-            : `HOLD: ${reasonLabel}`;
-
-        updateStatus("ON_HOLD", holdNote);
-        setHoldDialogOpen(false);
-        setHoldReason("");
-        setHoldDetails("");
+        placeOnHold.mutate(
+            { id: workOrderId, reason: holdReason, notes: holdDetails.trim() || undefined },
+            {
+                onSuccess: () => {
+                    toast.success("Work order placed on hold");
+                    setHoldDialogOpen(false);
+                    setHoldReason("");
+                    setHoldDetails("");
+                    onStatusChange?.();
+                },
+            }
+        );
     };
 
     const handleResume = () => {
-        updateStatus("IN_PROGRESS", "RESUMED");
+        clearHold.mutate({ id: workOrderId }, {
+            onSuccess: () => {
+                toast.success("Hold cleared");
+                onStatusChange?.();
+            },
+        });
+    };
+
+    // Release authorizes the order for scheduling (services/mes/release.py): it runs the
+    // readiness check and records who released it and when. It does not touch the
+    // status — that moves to In progress when work actually starts. A failing check
+    // comes back 409 with its blockers; releasing anyway needs a written reason.
+    const release = useReleaseForScheduling();
+    const unrelease = useUnreleaseForScheduling();
+
+    const handleRelease = (override_reason?: string) => {
+        release.mutate(
+            { id: workOrderId, override_reason },
+            {
+                onSuccess: () => {
+                    setReleaseBlockers([]);
+                    setOverrideReason("");
+                    onStatusChange?.();
+                },
+                onError: (e) => {
+                    if (apiErrorStatus(e) === 409) setReleaseBlockers(apiErrorBlockers(e));
+                },
+            }
+        );
+    };
+
+    const handleUnrelease = () => {
+        unrelease.mutate(workOrderId, { onSuccess: () => onStatusChange?.() });
     };
 
     const { has: hasPerm } = usePermissionSet();
 
     const handleCancel = () => {
-        updateStatus("CANCELLED", "CANCELLED");
+        cancelWorkOrder.mutate(workOrderId, { onSuccess: () => onStatusChange?.() });
         setCancelDialogOpen(false);
     };
 
     // Determine available actions based on current status
-    const canRelease = currentStatus === "PENDING";
-    const canHold = currentStatus === "IN_PROGRESS";
-    const canResume = currentStatus === "ON_HOLD";
+    // Release, hold and resume all change the order — the server gates them on
+    // change_workorder, so they aren't offered without it.
+    const canChange = hasPerm("change_workorder");
+    const canRelease = canChange && !releasedAt && currentStatus !== "ON_HOLD";
+    const canUnrelease = canChange && !!releasedAt;
+    const canHold = canChange && (currentStatus === "IN_PROGRESS" || currentStatus === "PENDING");
+    const canResume = canChange && currentStatus === "ON_HOLD";
     // Status alone isn't enough: cancelling abandons a commitment to a customer,
     // so the server gates it on `cancel_workorder` (manager tier). Mirror that here
     // rather than offering a button the API will refuse.
@@ -162,13 +165,69 @@ export function WorkOrderStatusActions({
                 <Button
                     variant="default"
                     size="sm"
-                    onClick={handleRelease}
-                    disabled={updateWorkOrder.isPending}
+                    onClick={() => handleRelease()}
+                    disabled={release.isPending}
                 >
                     <PlayCircle className="h-4 w-4 mr-2" />
                     Release
                 </Button>
             )}
+            {canUnrelease && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUnrelease}
+                    disabled={unrelease.isPending}
+                >
+                    <Undo2 className="h-4 w-4 mr-2" />
+                    Un-release
+                </Button>
+            )}
+            <Dialog
+                open={releaseBlockers.length > 0}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setReleaseBlockers([]);
+                        setOverrideReason("");
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Not ready to release</DialogTitle>
+                        <DialogDescription>
+                            The schedule would not be able to plan this work order as written. Fix
+                            these, or release anyway with a reason — the reason is recorded on the
+                            work order.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                        {releaseBlockers.map((b) => (
+                            <li key={b}>{b}</li>
+                        ))}
+                    </ul>
+                    <div className="space-y-2">
+                        <Label htmlFor="release-override">Reason to release anyway</Label>
+                        <Textarea
+                            id="release-override"
+                            placeholder="e.g. Operator certification completes Friday"
+                            value={overrideReason}
+                            onChange={(e) => setOverrideReason(e.target.value)}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setReleaseBlockers([])}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => handleRelease(overrideReason.trim())}
+                            disabled={!overrideReason.trim() || release.isPending}
+                        >
+                            Release anyway
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Hold Button */}
             {canHold && (
@@ -177,7 +236,7 @@ export function WorkOrderStatusActions({
                         variant="outline"
                         size="sm"
                         onClick={() => setHoldDialogOpen(true)}
-                        disabled={updateWorkOrder.isPending}
+                        disabled={busy}
                     >
                         <PauseCircle className="h-4 w-4 mr-2" />
                         Hold
@@ -194,7 +253,7 @@ export function WorkOrderStatusActions({
                                 <Label htmlFor="hold-reason">Reason</Label>
                                 <Select
                                     value={holdReason}
-                                    onValueChange={(value) => setHoldReason(value as HoldReasonValue)}
+                                    onValueChange={(value) => setHoldReason(value as HoldReason)}
                                 >
                                     <SelectTrigger id="hold-reason">
                                         <SelectValue placeholder="Select a reason" />
@@ -208,12 +267,12 @@ export function WorkOrderStatusActions({
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {holdReason === "other" && (
+                            {holdReason !== "" && (
                                 <div className="space-y-2">
                                     <Label htmlFor="hold-details">Details</Label>
                                     <Textarea
                                         id="hold-details"
-                                        placeholder="Provide details about the hold reason..."
+                                        placeholder={holdReason === "OTHER" ? "What is the hold for?" : "Optional details"}
                                         value={holdDetails}
                                         onChange={(e) => setHoldDetails(e.target.value)}
                                     />
@@ -229,7 +288,7 @@ export function WorkOrderStatusActions({
                             </Button>
                             <Button
                                 onClick={handleHold}
-                                disabled={!holdReason || updateWorkOrder.isPending}
+                                disabled={!holdReason || busy}
                             >
                                 Confirm Hold
                             </Button>
@@ -244,7 +303,7 @@ export function WorkOrderStatusActions({
                     variant="default"
                     size="sm"
                     onClick={handleResume}
-                    disabled={updateWorkOrder.isPending}
+                    disabled={busy}
                 >
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Resume
@@ -259,7 +318,7 @@ export function WorkOrderStatusActions({
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            disabled={updateWorkOrder.isPending}
+                            disabled={busy}
                         >
                             <XCircle className="h-4 w-4 mr-2" />
                             Cancel

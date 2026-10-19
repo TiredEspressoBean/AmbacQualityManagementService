@@ -81,7 +81,6 @@ def try_advance_lot(
         if wo.workorder_status not in (
             WorkOrderStatus.IN_PROGRESS,
             WorkOrderStatus.PENDING,
-            WorkOrderStatus.WAITING_FOR_OPERATOR,
         ):
             return LotAdvanceResult(
                 status='halted',

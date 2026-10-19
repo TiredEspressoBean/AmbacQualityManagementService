@@ -19,7 +19,7 @@
 import { z } from "zod";
 import { schemas } from "@/lib/api/generated";
 
-/** `/dispositions/new` and `/dispositions/edit/$id` — prefill from a part or QR. */
+/** `/production/dispositions/new` and `/production/dispositions/$id/edit` — prefill from a part or QR. */
 export const DispositionSearch = z.object({
     partId: z.string().uuid().optional(),
     qualityReportId: z.string().uuid().optional(),

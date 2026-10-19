@@ -19,7 +19,6 @@ IN_FLIGHT_WORKORDER_STATUSES: tuple[str, ...] = (
     WorkOrderStatus.PENDING,
     WorkOrderStatus.IN_PROGRESS,
     WorkOrderStatus.ON_HOLD,
-    WorkOrderStatus.WAITING_FOR_OPERATOR,
 )
 
 

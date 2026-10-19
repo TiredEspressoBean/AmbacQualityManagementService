@@ -113,7 +113,6 @@ _OPEN_STATUSES = (
     "PENDING",
     "IN_PROGRESS",
     "ON_HOLD",
-    "WAITING_FOR_OPERATOR",
 )
 
 

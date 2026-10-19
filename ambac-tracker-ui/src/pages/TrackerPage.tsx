@@ -92,6 +92,7 @@ export default function TrackerPage() {
                     orderName={order.name}
                     companyName={order.company_name ?? undefined}
                     estimatedCompletion={order.estimated_completion}
+                    orderStatus={order.order_status_code}
                     gateInfo={order.gate_info}
                     latestNote={order.latest_note}
                     shipments={order.shipments}

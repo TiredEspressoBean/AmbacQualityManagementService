@@ -119,9 +119,14 @@ def find_current_approved(baseline_process: Processes) -> Processes:
         if len(visited) > 100:  # Defensive bound on tree exploration.
             break
 
+    # A temporary change is APPROVED and not archived, but it is a deviation for named
+    # work orders, never the line's live spec — excluded outright rather than left to
+    # the is_current preference, or a later permanent PCR could rebase onto it and make
+    # the deviation permanent.
     approved = [
         p for p in chain
         if p.status == ProcessStatus.APPROVED and not p.archived
+        and not getattr(p, 'is_temporary', False)
     ]
     if not approved:
         return baseline_process
@@ -466,6 +471,10 @@ def _approved_siblings_targeting(pcr: ProcessChangeRequest):
             status=ProcessChangeRequest.Status.APPROVED,
         )
         .exclude(pk=pcr.pk)
+        # A temporary change (or its extension) never ships to the line, so it can't
+        # collide with a permanent change's diff.
+        .exclude(is_temporary=True)
+        .exclude(extends_request__isnull=False)
         .select_related('draft_process_version')
         .order_by('updated_at')
     )

@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -19,17 +22,38 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { CircleAlert } from "lucide-react";
-import type { ExceptionItem, ExceptionSeverity } from "./mockData";
+import { api, schemas } from "@/lib/api/generated";
+import { getCookie } from "@/lib/utils";
+import { matchKey } from "@/lib/query-filters";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
+import { useRetrieveEquipmentTypes } from "@/hooks/useRetrieveEquipmentTypes";
+import type { ExceptionItem } from "./mockData";
 
-export type ReportExceptionPayload = Omit<ExceptionItem, "id" | "opened_at" | "closed_at" | "state">;
+type DowntimeCategory = (typeof schemas.DowntimeCategoryEnum.options)[number];
+
+const CATEGORY_LABELS: Record<DowntimeCategory, string> = {
+    PLANNED: "Planned maintenance",
+    UNPLANNED: "Unplanned / breakdown",
+    CHANGEOVER: "Changeover / setup",
+    CALIBRATION: "Calibration",
+    NO_WORK: "No work available",
+    NO_OPERATOR: "No operator available",
+    MATERIAL: "Waiting for material",
+    QUALITY: "Quality issue",
+    OTHER: "Other",
+};
+
+const NO_WORK_ORDER = "__none__";
 
 type Props = {
     open: boolean;
     onOpenChange: (v: boolean) => void;
-    /** If provided, the dialog pre-scopes to this WO and hides the impacted-WO field */
+    /** If provided, downtime is recorded against this WO and the WO picker is hidden */
     scopedWorkOrderId?: string;
     scopedWorkOrderErpId?: string;
-    onSubmit: (payload: ReportExceptionPayload) => void;
+    /** Offered as an optional link when the dialog is not scoped to one WO */
+    workOrders?: { id: string; erp_id: string }[];
 };
 
 export function ReportExceptionDialog({
@@ -37,42 +61,62 @@ export function ReportExceptionDialog({
     onOpenChange,
     scopedWorkOrderId,
     scopedWorkOrderErpId,
-    onSubmit,
+    workOrders = [],
 }: Props) {
     const [kind, setKind] = useState<ExceptionItem["kind"]>("DOWNTIME");
-    const [severity, setSeverity] = useState<ExceptionSeverity>("MEDIUM");
-    const [title, setTitle] = useState("");
+    const [equipmentId, setEquipmentId] = useState("");
+    const [category, setCategory] = useState<DowntimeCategory>("UNPLANNED");
+    const [reason, setReason] = useState("");
     const [description, setDescription] = useState("");
-    const [impactedErpIds, setImpactedErpIds] = useState("");
+    const [workOrderId, setWorkOrderId] = useState(NO_WORK_ORDER);
 
     useEffect(() => {
         if (!open) return;
         setKind("DOWNTIME");
-        setSeverity("MEDIUM");
-        setTitle("");
+        setEquipmentId("");
+        setCategory("UNPLANNED");
+        setReason("");
         setDescription("");
-        setImpactedErpIds(scopedWorkOrderErpId ?? "");
-    }, [open, scopedWorkOrderErpId]);
+        setWorkOrderId(NO_WORK_ORDER);
+    }, [open]);
 
-    const canSubmit = title.trim().length > 0 && description.trim().length > 0;
+    const { data: equipmentData } = useRetrieveEquipments({ limit: 500 }, undefined, { enabled: open });
+    const { data: typeData } = useRetrieveEquipmentTypes({ limit: 500 }, undefined, { enabled: open });
 
-    function submit() {
-        onSubmit({
-            kind,
-            severity,
-            title: title.trim(),
-            description: description.trim(),
-            work_order_ids: scopedWorkOrderId
-                ? [scopedWorkOrderId]
-                : impactedErpIds
-                      .split(/[,\s]+/)
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-            reported_by: "me",
-            source_ref: "client-draft",
-        });
-        onOpenChange(false);
-    }
+    // A type with Track downtime off is not a production resource (handhelds, torque
+    // tools) and the server refuses downtime against it. Equipment with no type is tracked.
+    const equipment = useMemo(() => {
+        const untracked = new Set(
+            (typeData?.results ?? []).filter((t) => t.track_downtime === false).map((t) => t.id),
+        );
+        return (equipmentData?.results ?? [])
+            .filter((e) => !e.equipment_type || !untracked.has(e.equipment_type))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [equipmentData, typeData]);
+
+    const queryClient = useQueryClient();
+    const recordDowntime = useMutation({
+        mutationFn: () =>
+            api.api_DowntimeEvents_create(
+                {
+                    equipment: equipmentId,
+                    category,
+                    reason: reason.trim(),
+                    description: description.trim(),
+                    start_time: new Date().toISOString(),
+                    work_order: scopedWorkOrderId ?? (workOrderId === NO_WORK_ORDER ? null : workOrderId),
+                },
+                { headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
+            ),
+        onSuccess: () => {
+            queryClient.invalidateQueries(matchKey(["downtime-events"]));
+            toast.success("Downtime recorded");
+            onOpenChange(false);
+        },
+        onError: (err) => toast.error(apiErrorMessage(err) ?? "Could not record downtime"),
+    });
+
+    const canSubmit = !!equipmentId && reason.trim().length > 0 && !recordDowntime.isPending;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,85 +127,126 @@ export function ReportExceptionDialog({
                         Report exception
                     </DialogTitle>
                     <DialogDescription>
-                        Records an event that blocks or risks production. Routes to the right
-                        aggregate by type — Downtime events, Quarantine dispositions, or CAPAs.
+                        Records an event that blocks or risks production. Downtime is recorded here;
+                        a quarantine or a CAPA is raised on its own form.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <Label>Type</Label>
-                            <Select value={kind} onValueChange={(v) => setKind(v as ExceptionItem["kind"])}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="DOWNTIME">Downtime (equipment / resource)</SelectItem>
-                                    <SelectItem value="QUARANTINE">Quarantine (quality hold)</SelectItem>
-                                    <SelectItem value="CAPA">CAPA (corrective action)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-1">
-                            <Label>Severity</Label>
-                            <Select value={severity} onValueChange={(v) => setSeverity(v as ExceptionSeverity)}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="LOW">Low</SelectItem>
-                                    <SelectItem value="MEDIUM">Medium</SelectItem>
-                                    <SelectItem value="HIGH">High</SelectItem>
-                                    <SelectItem value="CRITICAL">Critical</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className="space-y-1">
+                        <Label>Type</Label>
+                        <Select value={kind} onValueChange={(v) => setKind(v as ExceptionItem["kind"])}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="DOWNTIME">Downtime (equipment / resource)</SelectItem>
+                                <SelectItem value="QUARANTINE">Quarantine (quality hold)</SelectItem>
+                                <SelectItem value="CAPA">CAPA (corrective action)</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    <div className="space-y-1">
-                        <Label htmlFor="exc-title">Title</Label>
-                        <Input
-                            id="exc-title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder={
-                                kind === "DOWNTIME"
-                                    ? "e.g. Mill-03 spindle runout OOS"
-                                    : kind === "QUARANTINE"
-                                      ? "e.g. Bearing runout OOS at Final QC"
-                                      : "e.g. Supplier delivery delay — backup vendor eval"
-                            }
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="exc-desc">Description</Label>
-                        <Textarea
-                            id="exc-desc"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            className="min-h-[80px]"
-                        />
-                    </div>
+                    {kind === "DOWNTIME" ? (
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label>Equipment</Label>
+                                    <Select value={equipmentId} onValueChange={setEquipmentId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Choose a machine" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {equipment.map((e) => (
+                                                <SelectItem key={e.id} value={e.id}>
+                                                    {e.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Category</Label>
+                                    <Select value={category} onValueChange={(v) => setCategory(v as DowntimeCategory)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {schemas.DowntimeCategoryEnum.options.map((c) => (
+                                                <SelectItem key={c} value={c}>
+                                                    {CATEGORY_LABELS[c]}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
 
-                    {scopedWorkOrderErpId ? (
-                        <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
-                            Impacts <span className="font-mono">{scopedWorkOrderErpId}</span>
-                        </div>
-                    ) : (
-                        <div className="space-y-1">
-                            <Label htmlFor="exc-wos">Impacted WOs</Label>
-                            <Input
-                                id="exc-wos"
-                                value={impactedErpIds}
-                                onChange={(e) => setImpactedErpIds(e.target.value)}
-                                placeholder="WO-2026-0142, WO-2026-0143"
-                                className="font-mono"
-                            />
+                            <div className="space-y-1">
+                                <Label htmlFor="exc-reason">Reason</Label>
+                                <Input
+                                    id="exc-reason"
+                                    value={reason}
+                                    maxLength={200}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    placeholder="e.g. Spindle runout out of spec"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="exc-desc">Description</Label>
+                                <Textarea
+                                    id="exc-desc"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="min-h-[80px]"
+                                />
+                            </div>
+
+                            {scopedWorkOrderErpId ? (
+                                <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                                    Recorded against <span className="font-mono">{scopedWorkOrderErpId}</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    <Label>Work order</Label>
+                                    <Select value={workOrderId} onValueChange={setWorkOrderId}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={NO_WORK_ORDER}>None</SelectItem>
+                                            {workOrders.map((w) => (
+                                                <SelectItem key={w.id} value={w.id}>
+                                                    {w.erp_id}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        The work order the machine was running, if any.
+                                    </p>
+                                </div>
+                            )}
                             <p className="text-xs text-muted-foreground">
-                                Comma-separated ERP IDs. Leave blank if not yet linked to a WO.
+                                Starts now. Resolve it from the exceptions list when the machine is back.
                             </p>
-                        </div>
+                        </>
+                    ) : kind === "QUARANTINE" ? (
+                        <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                            A quarantine holds a specific part and needs its own record.{" "}
+                            <Link to="/production/dispositions/new" className="text-primary hover:underline">
+                                Open the disposition form
+                            </Link>
+                            .
+                        </p>
+                    ) : (
+                        <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                            A CAPA needs a problem statement, an owner and an investigation.{" "}
+                            <Link to="/quality/capas/new" className="text-primary hover:underline">
+                                Open the CAPA form
+                            </Link>
+                            .
+                        </p>
                     )}
                 </div>
 
@@ -169,9 +254,11 @@ export function ReportExceptionDialog({
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={submit} disabled={!canSubmit}>
-                        Report exception
-                    </Button>
+                    {kind === "DOWNTIME" && (
+                        <Button onClick={() => recordDowntime.mutate()} disabled={!canSubmit}>
+                            Record downtime
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

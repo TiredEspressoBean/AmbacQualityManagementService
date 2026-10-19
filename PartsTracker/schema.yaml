@@ -8701,6 +8701,30 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/DowntimeEvents/summary/:
+    get:
+      operationId: api_DowntimeEvents_summary_retrieve
+      description: Downtime over the last `days` days by category and by machine,
+        largest first. Events are clipped to the period; an open event counts up to
+        now. Lost time, not OEE.
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: Period length ending now (default 30, max 366).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DowntimeSummary'
+          description: ''
   /api/Employees-Options/:
     get:
       operationId: api_Employees_Options_list
@@ -10912,6 +10936,10 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the verdict is attributed to them.
+                cosign_signature:
+                  type: string
+                  description: That person's drawn signature as a data URL (data:image/png;base64,…).
+                    Stored on the record once their password verifies.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -10960,6 +10988,10 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the verdict is attributed to them.
+                cosign_signature:
+                  type: string
+                  description: That person's drawn signature as a data URL (data:image/png;base64,…).
+                    Stored on the record once their password verifies.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -11007,6 +11039,10 @@ paths:
                   type: string
                   description: That person's password. Verified inline; they are never
                     logged in, and the verdict is attributed to them.
+                cosign_signature:
+                  type: string
+                  description: That person's drawn signature as a data URL (data:image/png;base64,…).
+                    Stored on the record once their password verifies.
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -12007,6 +12043,10 @@ paths:
         - accept_to_inventory -> Creates a Parts record for reuse
         - scrap -> Marks as scrapped
       parameters:
+      - in: query
+        name: component_part__isnull
+        schema:
+          type: boolean
       - in: query
         name: component_type
         schema:
@@ -21674,6 +21714,43 @@ paths:
                 description: Rollback not permitted (outside undo window, no previous
                   step, …)
           description: ''
+  /api/Parts/{id}/sampling-decisions/:
+    get:
+      operationId: api_Parts_sampling_decisions_list
+      description: 'Every sampling decision logged for this part, newest first, with
+        why: the rule that selected or excluded it, or that no rule in the ruleset
+        chose it. Visibility follows the part.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PartSamplingDecision'
+          description: ''
   /api/Parts/{id}/split_from_lot/:
     post:
       operationId: api_Parts_split_from_lot_create
@@ -25054,7 +25131,9 @@ paths:
   /api/RcaRecords/{id}/submit-for-review/:
     post:
       operationId: api_RcaRecords_submit_for_review_create
-      description: Submit RCA for review
+      description: |-
+        Ask for the RCA to be reviewed: its review status becomes REQUIRED, and
+        approving it (review_rca) completes the review.
       parameters:
       - in: path
         name: id
@@ -40666,14 +40745,12 @@ paths:
           - IN_PROGRESS
           - ON_HOLD
           - PENDING
-          - WAITING_FOR_OPERATOR
         description: |-
           * `PENDING` - Pending
           * `IN_PROGRESS` - In progress
           * `COMPLETED` - Completed
           * `ON_HOLD` - On hold
           * `CANCELLED` - Cancelled
-          * `WAITING_FOR_OPERATOR` - Waiting for operator
       tags:
       - api
       security:
@@ -41493,34 +41570,6 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
-          description: ''
-  /api/WorkOrders/bulk_transition/:
-    post:
-      operationId: api_WorkOrders_bulk_transition_create
-      description: Transition multiple work orders. Per-id errors captured.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/WorkOrderBulkTransitionInputRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkOrderBulkTransitionResponse'
           description: ''
   /api/WorkOrders/export/{export_format}/:
     get:
@@ -46400,6 +46449,50 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/process-change-requests/{id}/extend/:
+    post:
+      operationId: api_process_change_requests_extend_create
+      description: Raise the PCR that extends this temporary change to a new end date.
+        It is a DRAFT; submit and approve it like any other change.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PcrExtendInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PcrExtendInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PcrExtendInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/process-change-requests/{id}/reject/:
     post:
       operationId: api_process_change_requests_reject_create
@@ -46442,6 +46535,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessChangeRequest'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/process-change-requests/{id}/return-to-baseline/:
+    post:
+      operationId: api_process_change_requests_return_to_baseline_create
+      description: Move one of this temporary change's work orders back to the baseline,
+        re-pointing its parts by step identity. A part at a step the baseline lacks
+        needs a resolution (the same shape as PCO implementation).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Process Change Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PcrReturnToBaselineInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PcrReturnToBaselineInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PcrReturnToBaselineInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
         '400':
           content:
@@ -52428,7 +52567,7 @@ components:
           nullable: true
         original_completion_date:
           type: string
-          format: date-time
+          format: date
           readOnly: true
           nullable: true
         process_stages:
@@ -54267,6 +54406,23 @@ components:
         * `APPROVED` - Approved
         * `RELEASED` - Released
         * `OBSOLETE` - Obsolete
+    DowntimeBucket:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        hours:
+          type: number
+          format: double
+        events:
+          type: integer
+      required:
+      - events
+      - hours
+      - key
+      - label
     DowntimeCategoryEnum:
       enum:
       - PLANNED
@@ -54412,6 +54568,39 @@ components:
       - category
       - reason
       - start_time
+    DowntimeSummary:
+      type: object
+      description: Downtime over a period, by category and by machine, largest first.
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        total_hours:
+          type: number
+          format: double
+        total_events:
+          type: integer
+        open_events:
+          type: integer
+        by_category:
+          type: array
+          items:
+            $ref: '#/components/schemas/DowntimeBucket'
+        by_equipment:
+          type: array
+          items:
+            $ref: '#/components/schemas/DowntimeBucket'
+      required:
+      - by_category
+      - by_equipment
+      - end
+      - open_events
+      - start
+      - total_events
+      - total_hours
     DraftStepRequestRequest:
       type: object
       properties:
@@ -55316,6 +55505,9 @@ components:
           - $ref: '#/components/schemas/UserSelect'
           nullable: true
           readOnly: true
+        has_signature:
+          type: boolean
+          readOnly: true
         waived:
           type: boolean
           readOnly: true
@@ -55374,6 +55566,7 @@ components:
       - created_at
       - designated_part_info
       - equipment_info
+      - has_signature
       - id
       - inspected_at
       - inspected_by
@@ -56417,12 +56610,16 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        is_submitted:
+          type: boolean
+          readOnly: true
       required:
       - created_at
       - created_by
       - created_by_display
       - deleted_at
       - id
+      - is_submitted
       - model
       - model_display
       - part
@@ -60718,7 +60915,7 @@ components:
           nullable: true
         original_completion_date:
           type: string
-          format: date-time
+          format: date
           readOnly: true
           nullable: true
         order_status:
@@ -64060,6 +64257,34 @@ components:
       - previous_step_name
       - requires_approval
       - success
+    PartSamplingDecision:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        selected:
+          type: boolean
+        summary:
+          type: string
+        ruleset_type:
+          type: string
+        ruleset_name:
+          type: string
+          nullable: true
+        rule_type:
+          type: string
+          nullable: true
+      required:
+      - id
+      - rule_type
+      - ruleset_name
+      - ruleset_type
+      - selected
+      - summary
+      - timestamp
     PartSelect:
       type: object
       description: Lightweight part serializer for dropdown/combobox selections
@@ -67482,6 +67707,19 @@ components:
           nullable: true
           description: Structured diff between target_process and draft_process_version,
             populated at submit time.
+        is_temporary:
+          type: boolean
+          description: A deviation for named work orders, not a new baseline.
+        temporary_until:
+          type: string
+          format: date
+          nullable: true
+          description: Last day the temporary change may be worked (or, on an extension,
+            the new last day).
+        customer_agreement:
+          type: string
+          description: The customer's answer, when customer_notification_required
+            - recorded here or as an attached document. Not an approval gate.
     PatchedProcessWithStepsRequest:
       type: object
       description: |-
@@ -68482,6 +68720,13 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_special_process:
+          type: string
+          description: The special process this outside op performs (e.g. 'Heat treat',
+            'Nadcap plating'). When set, parts can only be sent to a vendor holding
+            an active SPECIAL_PROCESS qualification whose label matches (case-insensitive).
+            Blank means no qualification is checked at send-out.
+          maxLength: 120
         outside_process_lead_days:
           type: integer
           maximum: 2147483647
@@ -69730,6 +69975,16 @@ components:
         reason:
           type: string
           default: ''
+    PcrExtendInputRequest:
+      type: object
+      properties:
+        temporary_until:
+          type: string
+          format: date
+        justification:
+          type: string
+      required:
+      - temporary_until
     PcrRejectPayloadRequest:
       type: object
       properties:
@@ -69738,6 +69993,17 @@ components:
           minLength: 1
       required:
       - reason
+    PcrReturnToBaselineInputRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        stranded_resolutions:
+          type: object
+          additionalProperties: {}
+      required:
+      - work_order
     PendingQaSignoff:
       type: object
       description: A QA-gated step on a work order whose submitted work waits for
@@ -70409,6 +70675,17 @@ components:
         request_title:
           type: string
           readOnly: true
+        request_is_temporary:
+          type: boolean
+          readOnly: true
+        request_is_extension:
+          type: boolean
+          readOnly: true
+        request_temporary_until:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         target_process_name:
           type: string
           readOnly: true
@@ -70500,6 +70777,9 @@ components:
       - notice_id
       - request
       - request_artifact_number
+      - request_is_extension
+      - request_is_temporary
+      - request_temporary_until
       - request_title
       - status
       - target_process_name
@@ -70673,6 +70953,34 @@ components:
           nullable: true
           description: Structured diff between target_process and draft_process_version,
             populated at submit time.
+        is_temporary:
+          type: boolean
+          description: A deviation for named work orders, not a new baseline.
+        temporary_until:
+          type: string
+          format: date
+          nullable: true
+          description: Last day the temporary change may be worked (or, on an extension,
+            the new last day).
+        extends_request:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: 'On an extension PCR: the temporary change it extends.'
+        extends_request_number:
+          type: string
+          readOnly: true
+          nullable: true
+        customer_agreement:
+          type: string
+          description: The customer's answer, when customer_notification_required
+            - recorded here or as an attached document. Not an approval gate.
+        temporary_info:
+          allOf:
+          - $ref: '#/components/schemas/TemporaryChangeInfo'
+          nullable: true
+          readOnly: true
       required:
       - affected_workorders_count
       - affected_workorders_snapshot
@@ -70682,6 +70990,8 @@ components:
       - created_by
       - created_by_username
       - data_origin
+      - extends_request
+      - extends_request_number
       - id
       - is_open
       - justification
@@ -70695,6 +71005,7 @@ components:
       - submitted_by_username
       - target_process
       - target_process_name
+      - temporary_info
       - tenant
       - title
       - updated_at
@@ -70742,6 +71053,19 @@ components:
           nullable: true
           description: Structured diff between target_process and draft_process_version,
             populated at submit time.
+        is_temporary:
+          type: boolean
+          description: A deviation for named work orders, not a new baseline.
+        temporary_until:
+          type: string
+          format: date
+          nullable: true
+          description: Last day the temporary change may be worked (or, on an extension,
+            the new last day).
+        customer_agreement:
+          type: string
+          description: The customer's answer, when customer_notification_required
+            - recorded here or as an attached document. Not an approval gate.
       required:
       - justification
       - proposed_change
@@ -70962,16 +71286,29 @@ components:
         is_current_version:
           type: boolean
           readOnly: true
+        is_temporary:
+          type: boolean
+          readOnly: true
+          description: Approved for named work orders only; never the current version.
+        temporary_until:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+          description: Last day a temporary version may be worked. Extended only by
+            an approved PCR.
       required:
       - approved_at
       - approved_by
       - id
       - is_current_version
+      - is_temporary
       - name
       - part_type
       - previous_version
       - process_steps
       - step_edges
+      - temporary_until
       - version
     ProcessWithStepsRequest:
       type: object
@@ -71123,6 +71460,17 @@ components:
             process that don't set their own `Steps.scrap_rate`. Used to gross up
             the started quantity so a work order still finishes the requested number
             of good parts (release-11-to-ship-10).
+        is_temporary:
+          type: boolean
+          readOnly: true
+          description: Approved for named work orders only; never the current version.
+        temporary_until:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+          description: Last day a temporary version may be worked. Extended only by
+            an approved PCR.
         part_type_name:
           type: string
           readOnly: true
@@ -71145,12 +71493,14 @@ components:
       - approved_by
       - created_at
       - id
+      - is_temporary
       - name
       - num_steps
       - part_type
       - part_type_name
       - process_steps
       - step_edges
+      - temporary_until
       - updated_at
     ProcessesCategoryEnum:
       enum:
@@ -73928,14 +74278,33 @@ components:
       required:
       - code
       - name
+    RepeatDefectItem:
+      type: object
+      properties:
+        error_type:
+          type: string
+        count:
+          type: integer
+        part_types_affected:
+          type: array
+          items:
+            type: string
+        processes_affected:
+          type: array
+          items:
+            type: string
+      required:
+      - count
+      - error_type
+      - part_types_affected
+      - processes_affected
     RepeatDefectsResponse:
       type: object
       properties:
         data:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/RepeatDefectItem'
         total_repeat_count:
           type: integer
       required:
@@ -76532,6 +76901,13 @@ components:
           type: string
           readOnly: true
           nullable: true
+        outside_special_process:
+          type: string
+          description: The special process this outside op performs (e.g. 'Heat treat',
+            'Nadcap plating'). When set, parts can only be sent to a vendor holding
+            an active SPECIAL_PROCESS qualification whose label matches (case-insensitive).
+            Blank means no qualification is checked at send-out.
+          maxLength: 120
         outside_process_lead_days:
           type: integer
           maximum: 2147483647
@@ -77570,6 +77946,13 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_special_process:
+          type: string
+          description: The special process this outside op performs (e.g. 'Heat treat',
+            'Nadcap plating'). When set, parts can only be sent to a vendor holding
+            an active SPECIAL_PROCESS qualification whose label matches (case-insensitive).
+            Blank means no qualification is checked at send-out.
+          maxLength: 120
         outside_process_lead_days:
           type: integer
           maximum: 2147483647
@@ -78217,6 +78600,13 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_special_process:
+          type: string
+          description: The special process this outside op performs (e.g. 'Heat treat',
+            'Nadcap plating'). When set, parts can only be sent to a vendor holding
+            an active SPECIAL_PROCESS qualification whose label matches (case-insensitive).
+            Blank means no qualification is checked at send-out.
+          maxLength: 120
         outside_process_lead_days:
           type: integer
           maximum: 2147483647
@@ -78408,6 +78798,13 @@ components:
           nullable: true
           description: Default subcontract vendor for this outside-process op (overridable
             per shipment).
+        outside_special_process:
+          type: string
+          description: The special process this outside op performs (e.g. 'Heat treat',
+            'Nadcap plating'). When set, parts can only be sent to a vendor holding
+            an active SPECIAL_PROCESS qualification whose label matches (case-insensitive).
+            Blank means no qualification is checked at send-out.
+          maxLength: 120
         outside_process_lead_days:
           type: integer
           maximum: 2147483647
@@ -79942,6 +80339,42 @@ components:
         * `ANY` - Any operator
         * `SAME` - Same operator
         * `DIFFERENT` - Different operator
+    TemporaryChangeInfo:
+      type: object
+      properties:
+        version_id:
+          type: string
+        version:
+          type: integer
+        until:
+          type: string
+          format: date
+          nullable: true
+        expired:
+          type: boolean
+        work_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemporaryWorkOrder'
+      required:
+      - expired
+      - until
+      - version
+      - version_id
+      - work_orders
+    TemporaryWorkOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        erp_id:
+          type: string
+        status:
+          type: string
+      required:
+      - erp_id
+      - id
+      - status
     Tenant:
       type: object
       description: Serializer for Tenant model.
@@ -82502,6 +82935,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TravelerBatchCycle'
+        training_overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/TravelerTrainingOverride'
       required:
       - approved_by
       - attachments
@@ -82521,6 +82958,7 @@ components:
       - step_id
       - step_name
       - step_order
+      - training_overrides
       - voided_completion_count
     TravelerStepQualityStatusEnum:
       enum:
@@ -82544,6 +82982,35 @@ components:
         * `IN_PROGRESS` - IN_PROGRESS
         * `PENDING` - PENDING
         * `SKIPPED` - SKIPPED
+    TravelerTrainingOverride:
+      type: object
+      description: |-
+        A supervisor pushing an operator who wasn't qualified through the training gate —
+        the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit.
+      properties:
+        visit_number:
+          type: integer
+        worker_name:
+          type: string
+        authorized_by_name:
+          type: string
+        reason:
+          type: string
+        at:
+          type: string
+          format: date-time
+          nullable: true
+        missing_training:
+          type: array
+          items:
+            type: string
+      required:
+      - at
+      - authorized_by_name
+      - missing_training
+      - reason
+      - visit_number
+      - worker_name
     TriggerEnum:
       enum:
       - RECONDITION
@@ -83976,31 +84443,6 @@ components:
             additionalProperties: {}
       required:
       - results
-    WorkOrderBulkTransitionInputRequest:
-      type: object
-      properties:
-        ids:
-          type: array
-          items:
-            type: string
-            format: uuid
-        status:
-          $ref: '#/components/schemas/WorkOrderStatusEnum'
-        notes:
-          type: string
-      required:
-      - ids
-      - status
-    WorkOrderBulkTransitionResponse:
-      type: object
-      properties:
-        results:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
-      required:
-      - results
     WorkOrderCore:
       type: object
       description: |-
@@ -84541,7 +84983,6 @@ components:
       - COMPLETED
       - ON_HOLD
       - CANCELLED
-      - WAITING_FOR_OPERATOR
       type: string
       description: |-
         * `PENDING` - Pending
@@ -84549,7 +84990,6 @@ components:
         * `COMPLETED` - Completed
         * `ON_HOLD` - On hold
         * `CANCELLED` - Cancelled
-        * `WAITING_FOR_OPERATOR` - Waiting for operator
     WorkOrderStepHistoryResponse:
       type: object
       description: Response for GET /api/WorkOrders/{id}/step_history/

@@ -100,10 +100,12 @@ class CAPAModelTestCase(TenantTestCase):
             problem_description='Test RCA',
             root_cause_summary='Root cause identified: process not followed',
             conducted_by=self.user,
-            conducted_date=timezone.now().date()
+            conducted_date=timezone.now().date(),
+            # Effectiveness is checked against a verified cause (8D D4 before D6).
+            root_cause_verification_status='VERIFIED',
         )
 
-        # In Progress to Pending Verification (now has RCA)
+        # In Progress to Pending Verification (now has a verified RCA)
         capa.transition_to('PENDING_VERIFICATION', self.qa_manager, "Actions complete")
         self.assertEqual(capa.status, 'PENDING_VERIFICATION')
 
@@ -301,6 +303,72 @@ class CAPAApprovalTestCase(TenantTestCase):
         self.assertEqual(approval.content_object, capa)
         self.assertTrue(capa.approval_required)
         self.assertEqual(capa.approval_status, 'PENDING')
+
+
+class CAPASeverityTemplateTests(TenantTestCase):
+    """Severity chooses the approval template. CAPA_CRITICAL and CAPA_MAJOR were seeded
+    and never selected — every CAPA got the generic CAPA_APPROVAL. Each falls back to
+    CAPA_APPROVAL when the tenant doesn't keep its own, and a tenant with no CAPA
+    template at all goes ahead without approval (logged, not refused)."""
+
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(
+            username='sev-user', email='sev@example.com', password='testpass')
+
+    def _template(self, approval_type):
+        from Tracker.models import ApprovalTemplate
+        template = ApprovalTemplate.objects.create(
+            approval_type=approval_type, template_name=approval_type,
+            approval_flow_type="ALL_REQUIRED", approval_sequence="PARALLEL",
+            default_due_days=3)
+        template.default_approvers.set([self.user])
+        return template
+
+    def _capa(self, severity):
+        return CAPA.objects.create(
+            capa_type='CORRECTIVE', severity=severity, problem_statement="Issue",
+            initiated_by=self.user, assigned_to=self.user)
+
+    def _request_type(self, capa):
+        from Tracker.models import ApprovalRequest
+        from django.contrib.contenttypes.models import ContentType
+        request = ApprovalRequest.objects.get(
+            content_type=ContentType.objects.get_for_model(CAPA), object_id=str(capa.pk))
+        return request.approval_type
+
+    def test_each_severity_gets_its_own_template(self):
+        for approval_type in ('CAPA_APPROVAL', 'CAPA_MAJOR', 'CAPA_CRITICAL'):
+            self._template(approval_type)
+        self.assertEqual(self._request_type(self._capa('CRITICAL')), 'CAPA_CRITICAL')
+        self.assertEqual(self._request_type(self._capa('MAJOR')), 'CAPA_MAJOR')
+
+    def test_a_missing_severity_template_falls_back_to_the_generic_one(self):
+        self._template('CAPA_APPROVAL')
+        self.assertEqual(self._request_type(self._capa('CRITICAL')), 'CAPA_APPROVAL')
+        self.assertEqual(self._request_type(self._capa('MAJOR')), 'CAPA_APPROVAL')
+
+    def test_an_archived_severity_template_is_skipped(self):
+        self._template('CAPA_APPROVAL')
+        critical = self._template('CAPA_CRITICAL')
+        critical.archived = True
+        critical.save(update_fields=['archived'])
+        self.assertEqual(self._request_type(self._capa('CRITICAL')), 'CAPA_APPROVAL')
+
+    def test_a_manual_request_follows_severity_too(self):
+        self._template('CAPA_APPROVAL')
+        self._template('CAPA_MAJOR')
+        capa = self._capa('MINOR')  # no automatic request for a Minor CAPA
+        capa.severity = 'MAJOR'
+        capa.save(update_fields=['severity'])
+        self.assertEqual(capa.request_approval(self.user).approval_type, 'CAPA_MAJOR')
+
+    def test_no_template_at_all_proceeds_unapproved_and_logs_it(self):
+        with self.assertLogs('Tracker.services.qms.capa', level='WARNING') as logs:
+            capa = self._capa('CRITICAL')
+        capa.refresh_from_db()
+        self.assertFalse(capa.approval_required)
+        self.assertIn('No CAPA approval template configured', logs.output[0])
 
 
 @skipIf(not is_vector_extension_available(), "Vector extension not available")
@@ -575,6 +643,10 @@ class CapaVerificationTestCase(TenantTestCase):
             assigned_to=self.user,
             status='PENDING_VERIFICATION'
         )
+        # A CAPA reaches effectiveness checking only with its root cause verified.
+        RcaRecord.objects.create(
+            capa=self.capa, rca_method='FIVE_WHYS', problem_description='Quality issue',
+            root_cause_summary='Fixture cause', root_cause_verification_status='VERIFIED')
 
     def test_verification_creation(self):
         """Test creating a verification record"""
@@ -743,6 +815,11 @@ class CAPASelfVerificationTestCase(TenantTestCase):
             assigned_to=self.initiator,
             allow_self_verification=True
         )
+        # Effectiveness is checked against a verified cause — give both a verified RCA.
+        for capa in (self.capa_no_self, self.capa_allow_self):
+            RcaRecord.objects.create(
+                capa=capa, rca_method='FIVE_WHYS', problem_description='Fixture',
+                root_cause_summary='Fixture cause', root_cause_verification_status='VERIFIED')
 
     def test_self_verification_blocked_by_default(self):
         """Test that self-verification is blocked when CAPA disallows it"""
@@ -932,8 +1009,8 @@ class RcaAuthorAndApprovalTests(TenantTestCase):
         self.reviewer = User.objects.create_user(
             username='rca-reviewer', email='rca-reviewer@example.com', password='x',
             tenant=self.tenant_a)
-        perms = ['add_rcarecord', 'view_rcarecord', 'view_capa', 'review_rca',
-                 'full_tenant_access']
+        perms = ['add_rcarecord', 'view_rcarecord', 'change_rcarecord', 'view_capa',
+                 'review_rca', 'full_tenant_access']
         self.grant_tenant_permissions(self.user_a, self.tenant_a, perms)
         self.grant_tenant_permissions(self.reviewer, self.tenant_a, perms)
 
@@ -992,6 +1069,59 @@ class RcaAuthorAndApprovalTests(TenantTestCase):
         self.assertTrue(rca.self_verified)
         # The justification is the record an auditor asks for — kept, not just checked.
         self.assertEqual(rca.verification_notes, 'Two-person shop; reviewed against the gauge data')
+
+    def test_submit_for_review_requires_review_and_approval_completes_it(self):
+        """submit-for-review used to write 'PENDING' (not a review status), and
+        approving never touched the review status, so REQUIRED never cleared."""
+        rca = self._rca()
+        resp = self._client(self.user_a).post(f'/api/RcaRecords/{rca.id}/submit-for-review/',
+                                              {}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        rca.refresh_from_db()
+        self.assertEqual(rca.rca_review_status, 'REQUIRED')
+        self._client(self.reviewer).post(f'/api/RcaRecords/{rca.id}/approve/', {}, format='json')
+        rca.refresh_from_db()
+        self.assertEqual(rca.rca_review_status, 'COMPLETED')
+
+    def test_approval_leaves_a_review_that_was_not_required_alone(self):
+        rca = self._rca()
+        rca.rca_review_status = 'NOT_REQUIRED'
+        rca.save(update_fields=['rca_review_status'])
+        self._client(self.reviewer).post(f'/api/RcaRecords/{rca.id}/approve/', {}, format='json')
+        rca.refresh_from_db()
+        self.assertEqual(rca.rca_review_status, 'NOT_REQUIRED')
+
+    def test_effectiveness_waits_for_a_verified_root_cause(self):
+        """8D order: the cause is verified (D4) before effectiveness is checked."""
+        from Tracker.services.qms.capa import ROOT_CAUSE_UNVERIFIED, transition_capa
+        rca = self._rca()
+        capa = rca.capa
+        capa.status = 'IN_PROGRESS'
+        capa.save(update_fields=['status'])
+        with self.assertRaisesMessage(ValueError, ROOT_CAUSE_UNVERIFIED):
+            transition_capa(capa, 'PENDING_VERIFICATION', self.user_a)
+        self._client(self.reviewer).post(f'/api/RcaRecords/{rca.id}/approve/', {}, format='json')
+        capa.refresh_from_db()
+        transition_capa(capa, 'PENDING_VERIFICATION', self.user_a)
+        self.assertEqual(capa.status, 'PENDING_VERIFICATION')
+
+    def test_recording_effectiveness_also_waits_for_a_verified_root_cause(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import CapaVerification
+        from Tracker.services.qms.capa import ROOT_CAUSE_UNVERIFIED, verify_capa_effectiveness
+        rca = self._rca()
+        verification = CapaVerification.objects.create(
+            tenant=self.tenant_a, capa=rca.capa, verification_method='Audit',
+            verification_criteria='No recurrence in 30 days')
+        with self.assertRaisesMessage(ValidationError, ROOT_CAUSE_UNVERIFIED):
+            verify_capa_effectiveness(verification, self.reviewer, confirmed=True,
+                                      notes='Checked a month of production')
+
+    def test_a_blank_root_cause_summary_is_not_a_complete_rca(self):
+        rca = self._rca()
+        rca.root_cause_summary = '   '
+        rca.save(update_fields=['root_cause_summary'])
+        self.assertFalse(rca.capa.rca_complete())
 
     def test_backfill_takes_the_author_from_the_audit_log_and_never_guesses(self):
         import importlib

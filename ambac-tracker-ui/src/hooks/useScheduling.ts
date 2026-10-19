@@ -806,6 +806,9 @@ export function useReleaseReadiness(id: string | null) {
 export function useReleaseForScheduling() {
   const qc = useQueryClient();
   return useMutation({
+    // Errors are toasted below (and a 409 not at all), so keep the global
+    // "Operation failed" toast from shouting over the override dialog.
+    meta: { suppressGlobalError: true },
     mutationFn: ({ id, override_reason }: { id: string; override_reason?: string }) =>
       api.api_WorkOrders_release_create(
         { override_reason: override_reason ?? "" },
@@ -919,6 +922,7 @@ export function useBulkRelease() {
 export function useUnreleaseForScheduling() {
   const qc = useQueryClient();
   return useMutation({
+    meta: { suppressGlobalError: true },  // toasted locally below
     mutationFn: (id: string) =>
       api.api_WorkOrders_unrelease_create(undefined, { params: { id } }),
     onSuccess: () => {

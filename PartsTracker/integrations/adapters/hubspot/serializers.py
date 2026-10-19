@@ -144,6 +144,7 @@ class HubSpotDealInboundSerializer(serializers.Serializer):
         mapped_milestone = current_stage.mapped_milestone if current_stage else None
 
         with transaction.atomic():
+            previous_completion = instance.estimated_completion
             instance.name = name
             instance.estimated_completion = estimated_completion
             instance.archived = validated_data.get('archived', instance.archived)
@@ -153,6 +154,8 @@ class HubSpotDealInboundSerializer(serializers.Serializer):
                 instance.customer = customer
             instance.current_milestone = mapped_milestone
             instance.save()
+            from Tracker.services.mes.orders import note_completion_change
+            note_completion_change(instance, previous_completion)
 
             link = instance.hubspot_link
             link.current_stage = current_stage

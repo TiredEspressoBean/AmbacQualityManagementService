@@ -121,7 +121,7 @@ export function useFpiPass() {
         /** `cosign_*` are for the second-person path: when the caller lacks
          *  `sign_off_fpi`, an authorized QA person authenticates inline and the
          *  verdict is attributed to *them*. Omit both for a normal sign-off. */
-        mutationFn: ({ id, notes, password, cosign_email, cosign_password }: {
+        mutationFn: ({ id, notes, password, cosign_email, cosign_password, cosign_signature }: {
             id: string;
             notes?: string;
             /** The signer's OWN password, when the step is authored to need one and
@@ -130,8 +130,10 @@ export function useFpiPass() {
             password?: string;
             cosign_email?: string;
             cosign_password?: string;
+            /** The co-signer's drawn signature (data URL), stored once they verify. */
+            cosign_signature?: string;
         }) =>
-            api.api_FPIRecords_pass_create({ notes, password, cosign_email, cosign_password }, {
+            api.api_FPIRecords_pass_create({ notes, password, cosign_email, cosign_password, cosign_signature }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",

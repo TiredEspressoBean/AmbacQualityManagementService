@@ -128,12 +128,17 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         'approve': ['change_processchangerequest', 'change_processes'],
         'reject': ['change_processchangerequest', 'change_processes'],
         'cancel': ['change_processchangerequest'],
+        # Extending a temporary change raises a new PCR, so it is raising a request.
+        'extend': ['add_processchangerequest'],
+        # Moving a work order off a deviation re-points its parts, as a migration does.
+        'return_to_baseline': ['change_processchangeorder'],
     }
 
     # State transitions on an existing PCR (change_) — skip the base POST→add_
     # CRUD gate so `action_permissions` is the sole gate. `propose` is NOT exempt:
     # it genuinely creates a PCR, so add_processchangerequest is the right gate.
-    crud_exempt_actions = {'submit', 'approve', 'reject', 'cancel'}
+    crud_exempt_actions = {'submit', 'approve', 'reject', 'cancel', 'extend',
+                           'return_to_baseline'}
 
     def update(self, request, *args, **kwargs):
         # PATCH comes through here too (partial_update -> update).
@@ -386,6 +391,66 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             return _bad_request(exc)
         pcr.refresh_from_db()
         return Response(self.get_serializer(pcr).data)
+
+    @extend_schema(
+        request=inline_serializer(name='PcrExtendInput', fields={
+            'temporary_until': serializers.DateField(),
+            'justification': serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={201: ProcessChangeRequestSerializer, 400: OpenApiTypes.OBJECT},
+        description="Raise the PCR that extends this temporary change to a new end date. "
+                    "It is a DRAFT; submit and approve it like any other change.",
+    )
+    @action(detail=True, methods=['post'], url_path='extend')
+    def extend(self, request, pk=None):
+        from Tracker.services.change_control.process_change import propose_temporary_extension
+        temporary = self.get_object()
+        field = serializers.DateField()
+        try:
+            until = field.to_internal_value(request.data.get('temporary_until'))
+        except serializers.ValidationError:
+            return Response({'detail': 'temporary_until must be a date.'}, status=400)
+        try:
+            extension = propose_temporary_extension(
+                temporary, user=request.user, temporary_until=until,
+                justification=request.data.get('justification', '') or '')
+        except ValueError as exc:
+            return _bad_request(exc)
+        return Response(self.get_serializer(extension).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=inline_serializer(name='PcrReturnToBaselineInput', fields={
+            'work_order': serializers.UUIDField(),
+            'stranded_resolutions': serializers.DictField(required=False),
+        }),
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+        description="Move one of this temporary change's work orders back to the baseline, "
+                    "re-pointing its parts by step identity. A part at a step the baseline "
+                    "lacks needs a resolution (the same shape as PCO implementation).",
+    )
+    @action(detail=True, methods=['post'], url_path='return-to-baseline')
+    def return_to_baseline(self, request, pk=None):
+        from Tracker.models import WorkOrder
+        from Tracker.services.change_control.part_remap import StrandedPartsNeedResolution
+        from Tracker.services.change_control.temporary import (
+            return_to_baseline, temporary_version_of)
+        pcr = self.get_object()
+        version = temporary_version_of(pcr)
+        if version is None:
+            return Response({'detail': f"{pcr.artifact_number} isn't a temporary change in force."},
+                            status=400)
+        wo = WorkOrder.objects.filter(pk=request.data.get('work_order'), process=version).first()  # tenant-safe: .objects auto-scopes
+        if wo is None:
+            return Response({'detail': "That work order isn't on this temporary change."},
+                            status=400)
+        try:
+            return_to_baseline(wo, resolutions=request.data.get('stranded_resolutions') or None)
+        except StrandedPartsNeedResolution as exc:
+            return Response({'detail': str(exc), 'stranded': exc.stranded}, status=400)
+        except ValueError as exc:
+            return _bad_request(exc)
+        return Response({'work_order': str(wo.id), 'process': str(wo.process_id),
+                         'process_version': wo.process.version})
 
 
 # ---------------------------------------------------------------------------

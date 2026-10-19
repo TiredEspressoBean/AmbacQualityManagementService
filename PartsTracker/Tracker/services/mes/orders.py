@@ -47,3 +47,39 @@ def add_order_note(
         'visibility': visibility,
         'message': message.strip(),
     }
+
+
+def remove_parts_from_order(order: Orders, part_ids) -> int:
+    """Take parts off a customer order. Only the order link is cleared: each part stays
+    on its work order, at its step, in its status.
+
+    Saved one part at a time so the audit log records each removal — the model method
+    this replaces used a queryset `.update()`, which writes no audit entry.
+    """
+    from Tracker.models import Parts
+    removed = 0
+    for part in Parts.objects.filter(id__in=list(part_ids), order=order):  # tenant-safe: FK-scoped to the order
+        part.order = None
+        part.save(update_fields=['order'])
+        removed += 1
+    return removed
+
+
+def note_completion_change(order: Orders, previous) -> bool:
+    """Record the customer's original promised date the first time it moves.
+
+    Call after `order.estimated_completion` may have changed, with the value it had
+    before. The first move stamps `original_completion_date` with that earlier date;
+    it is never overwritten after, so "Originally <date>" keeps the first promise
+    however often the date slips again. A date set for the first time (nothing before)
+    is not a slip. Every writer counts — an edit, the HubSpot sync, a work order's
+    later date cascading up — because the promised date moved either way.
+
+    Saves only the stamp. Returns True when it stamped.
+    """
+    if (previous is None or order.original_completion_date is not None
+            or order.estimated_completion == previous):
+        return False
+    order.original_completion_date = previous
+    order.save(update_fields=['original_completion_date'])
+    return True

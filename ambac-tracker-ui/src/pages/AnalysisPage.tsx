@@ -26,6 +26,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { DateRangeToggle, rangeToDays, type DateRange } from "@/components/analytics";
+import { DowntimeParetoCard } from "@/components/analytics/DowntimeParetoCard";
 
 // Hooks
 import { useDashboardKpis } from "@/hooks/useDashboardKpis";
@@ -513,6 +514,8 @@ export default function AnalysisPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <DowntimeParetoCard days={days} />
 
             {/* Quick Links - Minimal */}
             <div className="flex flex-wrap gap-2 pt-2">

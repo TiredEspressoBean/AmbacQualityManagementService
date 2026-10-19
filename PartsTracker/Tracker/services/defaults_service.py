@@ -29,17 +29,23 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 DOCUMENT_TYPES = [
+    # SOP, WI, POL and CP carry an annual review so a new facility's review queue
+    # fills without anyone setting a period first.
     # Process Documentation
     {"code": "SOP", "name": "Standard Operating Procedure", "requires_approval": True,
-     "description": "Company-level procedures defining how processes are performed"},
+     "description": "Company-level procedures defining how processes are performed",
+     "default_review_period_days": 365},
     {"code": "WI", "name": "Work Instruction", "requires_approval": True,
-     "description": "Step-level instructions for specific manufacturing tasks"},
+     "description": "Step-level instructions for specific manufacturing tasks",
+     "default_review_period_days": 365},
     {"code": "POL", "name": "Policy", "requires_approval": True,
-     "description": "High-level organizational rules and guidelines"},
+     "description": "High-level organizational rules and guidelines",
+     "default_review_period_days": 365},
     {"code": "FRM", "name": "Form/Checklist", "requires_approval": True,
      "description": "Blank forms and checklist templates for quality records"},
     {"code": "CP", "name": "Control Plan", "requires_approval": True,
-     "description": "Process control plans per IATF 16949 requirements"},
+     "description": "Process control plans per IATF 16949 requirements",
+     "default_review_period_days": 365},
 
     # Technical Documentation
     {"code": "DWG", "name": "Drawing/Print", "requires_approval": True,

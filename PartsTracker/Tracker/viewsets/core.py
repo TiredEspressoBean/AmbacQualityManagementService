@@ -1898,7 +1898,37 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
         if not tenant:
             return LogEntry.objects.none()
 
-        return self.queryset.filter(actor__tenant=tenant)
+        qs = self.queryset.filter(actor__tenant=tenant)
+        if self.action == 'list':
+            # Row visibility follows the record: an entry about something the reader
+            # can't open is not theirs to read (services/core/audit_visibility.py).
+            from Tracker.services.core.audit_visibility import visible_entries
+            qs = visible_entries(qs, self.request.user,
+                                 content_type_id=self.request.query_params.get('content_type'))
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        # One record's history (content_type + object_pk — the History card, a detail
+        # page's audit trail) needs only view_logentry. Browsing changes across records
+        # is the audit trail itself, and needs view_auditlog.
+        from rest_framework.exceptions import PermissionDenied
+        from Tracker.services.core.audit_visibility import can_browse
+        params = request.query_params
+        one_record = bool(params.get('content_type') and params.get('object_pk'))
+        if not one_record and not can_browse(request.user):
+            raise PermissionDenied(
+                "Browsing the audit trail needs the audit-log permission. The history of "
+                "a record you can open is on that record.")
+        return super().list(request, *args, **kwargs)
+
+    def get_object(self):
+        from django.http import Http404
+        from Tracker.services.core.audit_visibility import visible_entries
+        obj = super().get_object()
+        if not visible_entries(LogEntry.objects.filter(pk=obj.pk), self.request.user,
+                               content_type_id=obj.content_type_id).exists():
+            raise Http404
+        return obj
 
 
 # ===== APPROVAL WORKFLOW VIEWSETS =====

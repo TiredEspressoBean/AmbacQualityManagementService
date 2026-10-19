@@ -49,6 +49,7 @@ from Tracker.serializers.qms import (
     QualityReportsSerializer, SamplePlanResponseSerializer,
 )
 from Tracker.services.mes import outside_process
+from Tracker.services.mes.lifecycle import override_summary
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ListMetadataMixin, VersionedLikeTheAPIImport, with_int_pk_schema
 from Tracker.serializers.csv_import import create_import_serializer_for_model
@@ -622,6 +623,25 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             # caller on the ordinary path.
             "decided_by": decider.get_full_name() or decider.username,
         })
+
+    @extend_schema(
+        responses=inline_serializer(name="PartSamplingDecision", many=True, fields={
+            "id": serializers.CharField(),
+            "timestamp": serializers.DateTimeField(),
+            "selected": serializers.BooleanField(),
+            "summary": serializers.CharField(),
+            "ruleset_type": serializers.CharField(),
+            "ruleset_name": serializers.CharField(allow_null=True),
+            "rule_type": serializers.CharField(allow_null=True),
+        }),
+        description=("Every sampling decision logged for this part, newest first, with why: "
+                     "the rule that selected or excluded it, or that no rule in the ruleset "
+                     "chose it. Visibility follows the part."))
+    @action(detail=True, methods=["get"], url_path="sampling-decisions", pagination_class=None,
+            filter_backends=[])
+    def sampling_decisions(self, request, pk=None):
+        from Tracker.services.mes.sampling import part_sampling_decisions
+        return Response(part_sampling_decisions(self.get_object()))
 
     @extend_schema(
         parameters=[
@@ -1508,6 +1528,13 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 'materials_used': materials_used,
                 'attachments': attachments,
                 'batch_cycles': batch_cycles,
+                # Supervisor overrides of the training gate, one per visit that had
+                # one — shown on the row itself, since it is the competence evidence.
+                'training_overrides': [
+                    o for o in (override_summary(ex) for ex in
+                                sorted(step_execs, key=lambda e: e.visit_number or 0))
+                    if o is not None
+                ],
             })
 
         return Response({
@@ -1600,6 +1627,11 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
     ordering = ["-created_at"]
     search_fields = ["name", "company__name", "customer__first_name", "customer__last_name"]
 
+    # Taking parts off an order changes the order — it fell back to the POST default,
+    # add_orders, which made it a creation right.
+    action_permissions = {'bulk_remove_parts': ['change_orders']}
+    crud_exempt_actions = {'bulk_remove_parts'}
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Orders.objects.none()
@@ -1669,10 +1701,10 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         serializer = BulkSoftDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        from Tracker.services.mes.orders import remove_parts_from_order
         order = self.get_object()
-        # Use model method for bulk removal
-        result = order.bulk_remove_parts(serializer.validated_data['ids'])
-        return Response(result, status=status.HTTP_200_OK)
+        removed = remove_parts_from_order(order, serializer.validated_data['ids'])
+        return Response({"removed": removed}, status=status.HTTP_200_OK)
 
     @extend_schema(request=inline_serializer(name="BulkAddPartsInput", fields={
         "part_type": TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all()),
@@ -2044,8 +2076,17 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # job. Exempt from the POST->add_workorder default, which every staff role
         # holds — without this an operator could cancel a work order.
         'cancel': ['cancel_workorder'],
+        # Holding and resuming change an existing order (and are now the only way to
+        # move it on or off hold — a status edit is refused). change_workorder is what
+        # the work order page's Hold / Resume needed when they were a PATCH.
+        'place_on_hold': ['change_workorder'],
+        'clear_hold': ['change_workorder'],
+        'bulk_place_on_hold': ['change_workorder'],
+        'bulk_clear_hold': ['change_workorder'],
     }
-    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel'}
+    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel',
+                           'place_on_hold', 'clear_hold',
+                           'bulk_place_on_hold', 'bulk_clear_hold'}
 
     def get_serializer_class(self):
         """Use lightweight serializer for list, full serializer for detail/create/update."""
@@ -2465,18 +2506,12 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     def cancel(self, request, pk=None):
         """Cancel this work order — it drops out of scheduling. Refused if any part has
         already shipped/completed (can't undo delivered work)."""
+        from Tracker.services.mes.work_order import cancel_work_order
         wo = self.get_object()
-        shipped = [
-            PartsStatus.SHIPPED, PartsStatus.COMPLETED, PartsStatus.IN_STOCK,
-            PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED,
-        ]
-        if wo.parts.filter(part_status__in=shipped).exists():
-            return Response(
-                {"detail": "Can't cancel — some parts have already shipped or completed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        wo.workorder_status = WorkOrderStatus.CANCELLED
-        wo.save(update_fields=["workorder_status"])
+        try:
+            cancel_work_order(wo)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": str(wo.id), "status": wo.workorder_status})
 
     # --- Release gate --------------------------------------------------------
@@ -2944,41 +2979,6 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"quantity": new_q, "added": added, "cancelled": cancelled})
 
-    @extend_schema(
-        request=inline_serializer(
-            name="WorkOrderBulkTransitionInput",
-            fields={
-                "ids": serializers.ListField(child=serializers.UUIDField()),
-                "status": serializers.ChoiceField(choices=WorkOrderStatus.choices),
-                "notes": serializers.CharField(required=False, allow_blank=True),
-            },
-        ),
-        responses={200: inline_serializer(
-            name="WorkOrderBulkTransitionResponse",
-            fields={"results": serializers.ListField(child=serializers.DictField())},
-        )},
-        description="Transition multiple work orders. Per-id errors captured.",
-    )
-    @action(detail=False, methods=["post"], url_path="bulk_transition")
-    def bulk_transition(self, request):
-        from Tracker.services.mes.work_order import bulk_transition as svc
-        ids = request.data.get("ids") or []
-        new_status = request.data.get("status")
-        if not isinstance(ids, list) or not new_status:
-            return Response({"detail": "ids (list) and status are required"},
-                            status=status.HTTP_400_BAD_REQUEST)
-        try:
-            results = svc(
-                tenant_id=self.tenant.id if self.tenant else None,
-                work_order_ids=ids,
-                new_status=new_status,
-                actor=request.user,
-                notes=request.data.get("notes"),
-            )
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"results": [r.to_dict() for r in results]})
-
 
 # ===== STEPS & PROCESS VIEWSETS =====
 
@@ -3356,6 +3356,9 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             if part is not None:
                 from Tracker.services.reman.core_steps import assert_workable
                 assert_workable(part)
+                if part.work_order_id:
+                    from Tracker.services.change_control.temporary import assert_in_date
+                    assert_in_date(part.work_order)
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
                 process = self._gate_process_for(request.data)

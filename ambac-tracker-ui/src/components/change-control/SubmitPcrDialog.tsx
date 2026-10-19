@@ -25,6 +25,10 @@ type Props = {
         risk_analysis?: string;
         priority?: string;
         customer_notification_required?: boolean;
+        is_temporary?: boolean;
+        temporary_until?: string | null;
+        customer_agreement?: string;
+        extends_request_number?: string | null;
     };
     onSubmitted?: () => void;
 };
@@ -36,6 +40,12 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
     const [riskAnalysis, setRiskAnalysis] = useState(pcr.risk_analysis ?? "");
     const [priority, setPriority] = useState<Priority>((pcr.priority as Priority) ?? "NORMAL");
     const [customerNotify, setCustomerNotify] = useState(pcr.customer_notification_required ?? false);
+    // A temporary change (deviation) applies only to the work orders named when it is
+    // implemented, and ends on this date unless another PCR extends it.
+    const isExtension = !!pcr.extends_request_number;
+    const [isTemporary, setIsTemporary] = useState(pcr.is_temporary ?? false);
+    const [temporaryUntil, setTemporaryUntil] = useState(pcr.temporary_until ?? "");
+    const [customerAgreement, setCustomerAgreement] = useState(pcr.customer_agreement ?? "");
 
     const submit = useSubmitProcessChangeRequest();
 
@@ -48,6 +58,10 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
             toast.error("Describe the proposed change");
             return;
         }
+        if (isTemporary && !isExtension && !temporaryUntil) {
+            toast.error("A temporary change needs the date it ends");
+            return;
+        }
         try {
             await submit.mutateAsync({
                 pcrId: pcr.id,
@@ -58,6 +72,12 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
                     risk_analysis: riskAnalysis,
                     priority,
                     customer_notification_required: customerNotify,
+                    customer_agreement: customerAgreement,
+                    // An extension's date is fixed when it is raised.
+                    ...(isExtension ? {} : {
+                        is_temporary: isTemporary,
+                        temporary_until: isTemporary ? temporaryUntil : null,
+                    }),
                 },
             });
             toast.success(`${pcr.artifact_number ?? "PCR"} submitted for approval`);
@@ -149,6 +169,51 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
                             </Label>
                         </div>
                     </div>
+
+                    {isExtension ? (
+                        <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                            Extends temporary change <span className="font-medium">{pcr.extends_request_number}</span>
+                            {pcr.temporary_until ? ` to ${pcr.temporary_until}` : ""}. No process edit.
+                        </p>
+                    ) : (
+                        <div className="space-y-3 rounded-md border p-3">
+                            <div className="flex items-center gap-3">
+                                <Switch id="pcr-temporary" checked={isTemporary} onCheckedChange={setIsTemporary} />
+                                <Label htmlFor="pcr-temporary" className="text-sm">Temporary change (deviation)</Label>
+                            </div>
+                            {isTemporary && (
+                                <>
+                                    <p className="text-xs text-muted-foreground">
+                                        Applies only to the work orders you name when it is implemented. The current
+                                        version stays in force for everything else. After the end date its work can't
+                                        proceed until another change extends it, or the work order goes back.
+                                    </p>
+                                    <div>
+                                        <Label htmlFor="pcr-temporary-until">Ends on</Label>
+                                        <Input
+                                            id="pcr-temporary-until"
+                                            type="date"
+                                            value={temporaryUntil}
+                                            onChange={(e) => setTemporaryUntil(e.target.value)}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {customerNotify && (
+                        <div>
+                            <Label htmlFor="pcr-customer-agreement">Customer agreement</Label>
+                            <Textarea
+                                id="pcr-customer-agreement"
+                                value={customerAgreement}
+                                onChange={(e) => setCustomerAgreement(e.target.value)}
+                                placeholder="The customer's answer — who agreed, when, and their reference (or attach it to the request)"
+                                rows={2}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter>

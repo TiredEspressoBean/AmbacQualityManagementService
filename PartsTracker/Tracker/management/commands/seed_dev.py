@@ -317,7 +317,7 @@ class Command(BaseCommand):
             (FPIRecord, "FPI records", {'tenant': tenant}),
             # Sampling: SamplingAuditLog cleared via raw SQL above
             (SamplingAnalytics, "Sampling analytics", {'ruleset__tenant': tenant}),
-            (SamplingAuditLog, "Sampling audit logs", {'rule__ruleset__tenant': tenant}),
+            (SamplingAuditLog, "Sampling audit logs", {'tenant': tenant}),
             (SamplingTriggerState, "Sampling trigger states", {'ruleset__tenant': tenant}),
             # Life tracking
             (LifeTracking, "Life tracking records", {'tenant': tenant}),

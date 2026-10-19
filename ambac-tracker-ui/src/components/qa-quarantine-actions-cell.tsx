@@ -26,7 +26,7 @@ export function QaQuarantineActionsCell({ part }: PartActionsCellProps) {
 
     // Wait for the lookup before offering an action. Rendering the "create"
     // button while the query is still in flight (data === undefined) would let
-    // someone open /dispositions/create for a part that ALREADY has an open
+    // someone open /production/dispositions/new for a part that ALREADY has an open
     // disposition — a duplicate NCR. Show a spinner until we actually know.
     if (isLoading) {
         return (
@@ -55,14 +55,14 @@ export function QaQuarantineActionsCell({ part }: PartActionsCellProps) {
     return (
         <div className="flex flex-wrap gap-2">
             {activeDisposition ? (
-                <Link to="/dispositions/edit/$id" params={{ id: String(activeDisposition.id) }}>
+                <Link to="/production/dispositions/$id/edit" params={{ id: String(activeDisposition.id) }}>
                     <Button size="sm" className="gap-2">
                         <ExternalLink className="h-3 w-3" />
                         Edit Disposition
                     </Button>
                 </Link>
             ) : (
-                <Link to="/dispositions/create" search={{ partId: String(part.id) }}>
+                <Link to="/production/dispositions/new" search={{ partId: String(part.id) }}>
                     <Button size="sm" variant="outline" className="gap-2">
                         <ExternalLink className="h-3 w-3" />
                         Disposition

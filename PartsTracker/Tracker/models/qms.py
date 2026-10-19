@@ -1482,10 +1482,22 @@ class CAPA(SecureModel):
         return initiated_date + timedelta(days=days)
 
     def rca_complete(self):
-        """Check if RCA analysis is complete"""
+        """The RCA has a root cause written down. A blank summary is not one — this
+        used to check `is not None`, so an empty string counted as complete."""
         if not hasattr(self, 'rca_records') or not self.rca_records.exists():
             return False
-        return self.rca_records.first().root_cause_summary is not None
+        return bool((self.rca_records.first().root_cause_summary or '').strip())
+
+    def rca_verified(self):
+        """The root cause is complete AND verified (approved under the independence
+        rule). The 8D order — verify the cause (D4) before choosing and checking
+        actions — is how ISO 9001 10.2.1(b) / IATF 10.2.3 are read: effectiveness
+        can't be checked against a cause nobody confirmed. Containment and tasks are
+        deliberately not gated on it."""
+        if not self.rca_complete():
+            return False
+        return (self.rca_records.first().root_cause_verification_status
+                == RootCauseVerificationStatus.VERIFIED)
 
     def all_tasks_completed(self):
         """Check if all tasks are completed"""
@@ -1514,7 +1526,7 @@ class CAPA(SecureModel):
             return CapaStatus.CLOSED
 
         # Check if ready for verification
-        if self.all_tasks_completed() and self.rca_complete():
+        if self.all_tasks_completed() and self.rca_verified():
             # Has tasks and they're all done, plus RCA is complete
             if hasattr(self, 'tasks') and self.tasks.exists():
                 return CapaStatus.PENDING_VERIFICATION
@@ -1559,8 +1571,10 @@ class CAPA(SecureModel):
         any_task = CapaTasks.objects.filter(capa=OuterRef('pk'))
         open_task = CapaTasks.objects.filter(capa=OuterRef('pk')).exclude(
             status=CapaTaskStatus.COMPLETED)
+        # Mirrors rca_verified(): a non-blank summary AND a verified root cause.
         rca_done = RcaRecord.objects.filter(
-            capa=OuterRef('pk'), root_cause_summary__isnull=False)
+            capa=OuterRef('pk'), root_cause_summary__regex=r'\S',
+            root_cause_verification_status=RootCauseVerificationStatus.VERIFIED)
         any_rca = RcaRecord.objects.filter(capa=OuterRef('pk'))
 
         return Case(
@@ -1609,6 +1623,8 @@ class CAPA(SecureModel):
 
         if not self.rca_complete():
             blockers.append("RCA not completed")
+        elif not self.rca_verified():
+            blockers.append("Root cause not verified")
 
         if hasattr(self, 'tasks'):
             incomplete_tasks = self.tasks.exclude(status='COMPLETED')
@@ -2217,6 +2233,13 @@ class HeatMapAnnotations(SecureModel):
     class Meta:
         verbose_name = 'Heatmap Annotation'
         verbose_name_plural = 'Heatmap Annotations'
+        permissions = [
+            # Deleting an annotation on a finished quality report removes evidence a
+            # disposition gate reads. Draft ones (all linked reports PENDING) go with
+            # plain delete — see services/qms/annotations.py.
+            ("delete_submitted_heatmapannotations",
+             "Can delete an annotation on a finished quality report"),
+        ]
         indexes = [
             models.Index(fields=['model', 'part']),
             # created_at index inherited from SecureModel via ['tenant', 'created_at']
@@ -3002,6 +3025,14 @@ class FPIRecord(SecureModel):
                   "(distinct from inspected_by, the attester). Null for a direct "
                   "QA sign-off."
     )
+    # The co-signer's drawn signature (base64 PNG, as ApprovalResponse.signature_data).
+    # Stored only on the co-sign path, after their email and password verified: the
+    # drawing accompanies a proven identity, it never establishes one. Null on a
+    # direct sign-off, where nothing is drawn.
+    signature_data = models.TextField(
+        null=True, blank=True,
+        help_text="Co-signer's drawn signature (base64 PNG). Null on a direct sign-off.",
+    )
 
     # The visible waiting-state loop: a machine and an operator may be idle
     # behind a pending FPI, so "did QA see this?" must be answerable from the
@@ -3067,24 +3098,27 @@ class FPIRecord(SecureModel):
     def __str__(self):
         return f"FPI for WO-{self.work_order.ERP_id} @ {self.step.name}"
 
-    def pass_inspection(self, user, notes='', performed_by=None, **assurance):
+    def pass_inspection(self, user, notes='', performed_by=None, signature_data=None, **assurance):
         """Thin wrapper — delegates to `services.qms.fpi.pass_fpi`.
 
         `**assurance` carries `password` / `ip_address` / `identity_verified` through
         to the service when the step's author asked for a verified signature."""
         from Tracker.services.qms.fpi import pass_fpi
-        return pass_fpi(self, user, notes=notes, performed_by=performed_by, **assurance)
+        return pass_fpi(self, user, notes=notes, performed_by=performed_by,
+                        signature_data=signature_data, **assurance)
 
-    def fail_inspection(self, user, notes='', performed_by=None):
+    def fail_inspection(self, user, notes='', performed_by=None, signature_data=None):
         """Thin wrapper — delegates to `services.qms.fpi.fail_fpi`."""
         from Tracker.services.qms.fpi import fail_fpi
-        return fail_fpi(self, user, notes=notes, performed_by=performed_by)
+        return fail_fpi(self, user, notes=notes, performed_by=performed_by,
+                        signature_data=signature_data)
 
-    def waive(self, user, reason, performed_by=None, **assurance):
+    def waive(self, user, reason, performed_by=None, signature_data=None, **assurance):
         """Thin wrapper — delegates to `services.qms.fpi.waive_fpi`. See
         `pass_inspection` for `**assurance`."""
         from Tracker.services.qms.fpi import waive_fpi
-        return waive_fpi(self, user, reason, performed_by=performed_by, **assurance)
+        return waive_fpi(self, user, reason, performed_by=performed_by,
+                         signature_data=signature_data, **assurance)
 
 
 class BlockType(models.TextChoices):

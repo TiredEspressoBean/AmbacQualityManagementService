@@ -179,7 +179,7 @@ export function AppSidebar({
         // needs it without holding user-admin perms.
         ...(isPlatformStaff || hasAny(...DATA_MANAGEMENT_VIEW_PERMS)
             ? [{ name: "Data Management", url: "/Edit", icon: Database }] : []),
-        ...(isPlatformStaff || hasAny('view_auditlog', 'view_logentry')
+        ...(isPlatformStaff || hasAny('view_auditlog')
             ? [{ name: "Audit Log", url: "/admin/audit-log", icon: History }] : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps -- hasAny is stable per permission load
     ], [isUserAdmin, isPlatformStaff, permissionsLoading])

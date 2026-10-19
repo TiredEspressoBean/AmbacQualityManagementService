@@ -6,6 +6,9 @@ export function useDeleteHeatMapAnnotation() {
     const queryClient = useQueryClient();
 
     return useMutation({
+        // The annotator toasts the server's reason itself (a finished report's
+        // annotation is refused to non-quality roles).
+        meta: { suppressGlobalError: true },
         mutationFn: (id: string) =>
             api.api_HeatMapAnnotation_destroy(undefined, {
                 params: { id },

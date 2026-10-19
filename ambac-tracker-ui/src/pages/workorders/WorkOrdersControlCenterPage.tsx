@@ -63,13 +63,12 @@ import {
     type ExceptionItem,
 } from "./mockData";
 import { WO_PRIORITY_LABELS, HOLD_REASONS, type HoldReason } from "./constants";
-import { ReportExceptionDialog, type ReportExceptionPayload } from "./ReportExceptionDialog";
+import { ReportExceptionDialog } from "./ReportExceptionDialog";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
-import type { WorkOrderStatusEnum } from "@/lib/api/generated";
 import type { Schema } from "@/lib/api/types";
 type WorkOrderList = Schema<"WorkOrderList">;
 import { useExceptions } from "./useExceptions";
-import { useBulkTransitionWorkOrders } from "@/hooks/useBulkTransitionWorkOrders";
 import { useBulkPlaceOnHoldWorkOrders } from "@/hooks/useBulkPlaceOnHoldWorkOrders";
 import { useBulkClearHoldWorkOrders } from "@/hooks/useBulkClearHoldWorkOrders";
 import { BulkAddPartsDialog } from "./BulkAddPartsDialog";
@@ -177,16 +176,14 @@ export function WorkOrdersControlCenterPage() {
         resolveException: resolveExceptionMutation,
     } = useExceptions();
     const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
-    const [draftExceptions, setDraftExceptions] = useState<ExceptionItem[]>([]);
     const [reportOpen, setReportOpen] = useState(false);
     const exceptions = useMemo<ExceptionItem[]>(() => {
         const now = new Date().toISOString();
-        const merged = [...draftExceptions, ...exceptionsData];
-        if (resolvedIds.size === 0) return merged;
-        return merged.map((e) =>
+        if (resolvedIds.size === 0) return exceptionsData;
+        return exceptionsData.map((e) =>
             resolvedIds.has(e.id) && !e.closed_at ? { ...e, state: "RESOLVED", closed_at: now } : e,
         );
-    }, [exceptionsData, draftExceptions, resolvedIds]);
+    }, [exceptionsData, resolvedIds]);
 
     function resolveExceptions(ids: string[]) {
         setResolvedIds((prev) => {
@@ -201,28 +198,6 @@ export function WorkOrdersControlCenterPage() {
         });
     }
 
-    function reportException(payload: ReportExceptionPayload) {
-        const erpToId = new Map(workOrders.map((w) => [w.erp_id, w.id]));
-        const work_order_ids = payload.work_order_ids
-            .map((v) => erpToId.get(v) ?? v)
-            .filter((id) => workOrders.some((w) => w.id === id));
-        const id = `exc-${Date.now()}`;
-        const now = new Date().toISOString();
-        setDraftExceptions((prev) => [
-            {
-                ...payload,
-                id,
-                state: "OPEN",
-                opened_at: now,
-                closed_at: null,
-                work_order_ids,
-                source_ref: `${payload.kind === "DOWNTIME" ? "DowntimeEvent" : payload.kind === "QUARANTINE" ? "QuarantineDisposition" : "CAPA"}/${id}`,
-            },
-            ...prev,
-        ]);
-    }
-
-    const bulkTransition = useBulkTransitionWorkOrders();
     const bulkPlaceOnHold = useBulkPlaceOnHoldWorkOrders();
     const bulkClearHold = useBulkClearHoldWorkOrders();
 
@@ -247,18 +222,6 @@ export function WorkOrdersControlCenterPage() {
                 if (d.results.every((r) => r.ok)) setOverrideReason("");
             },
         });
-    }
-
-    function handleBulkTransition(ids: string[], status: WorkOrderStatusEnum, notes?: string) {
-        const real = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
-        if (real.length === 0) return;
-        setBulkError(null);
-        bulkTransition.mutate(
-            { ids: real, status, notes },
-            {
-                onError: (err) => setBulkError(String(err)),
-            },
-        );
     }
 
     function handleBulkPlaceOnHold(ids: string[], reason: string, notes?: string) {
@@ -834,7 +797,6 @@ export function WorkOrdersControlCenterPage() {
                         onRelease={(ids) => handleBulkRelease(ids)}
                         onHold={(ids, reason, notes) => handleBulkPlaceOnHold(ids, reason, notes)}
                         onClearHold={(ids) => handleBulkClearHold(ids)}
-                        onChangeStatus={(ids, status) => handleBulkTransition(ids, status)}
                         onSplit={(id) => navigate({ to: `/workorder/${id}/control` })}
                         onAddParts={() => setAddPartsOpen(true)}
                         onReport={() => setReportOpen(true)}
@@ -859,7 +821,7 @@ export function WorkOrdersControlCenterPage() {
                 <ReportExceptionDialog
                     open={reportOpen}
                     onOpenChange={setReportOpen}
-                    onSubmit={reportException}
+                    workOrders={workOrders}
                 />
             </div>
         </TooltipProvider>
@@ -872,7 +834,6 @@ function FleetBulkBar({
     onRelease,
     onHold,
     onClearHold,
-    onChangeStatus,
     onSplit,
     onAddParts,
     onReport,
@@ -883,24 +844,26 @@ function FleetBulkBar({
     onRelease: (ids: string[]) => void;
     onHold: (ids: string[], reason: string, notes?: string) => void;
     onClearHold: (ids: string[]) => void;
-    onChangeStatus: (ids: string[], status: WorkOrderStatusEnum) => void;
     onSplit: (id: string) => void;
     onAddParts: () => void;
     onReport: () => void;
     onClear: () => void;
 }) {
-    const [changeOpen, setChangeOpen] = useState(false);
     const [holdOpen, setHoldOpen] = useState(false);
-    const [targetStatus, setTargetStatus] = useState<WorkOrderStatusEnum>("IN_PROGRESS");
     const [holdReason, setHoldReason] = useState<HoldReason>("MATERIAL");
     const [holdNotes, setHoldNotes] = useState("");
 
+    // Release, hold and clear hold change the orders: the server gates each on
+    // change_workorder, so without it none is offered.
+    const canChange = usePermissionSet().has("change_workorder");
     const selectedWOs = workOrders.filter((w) => selectedIds.includes(w.id));
-    const releasable = selectedWOs.filter((w) => w.status === "PENDING").map((w) => w.id);
-    const holdable = selectedWOs
-        .filter((w) => w.status === "IN_PROGRESS" || w.status === "PENDING")
-        .map((w) => w.id);
-    const holdcleared = selectedWOs.filter((w) => w.status === "ON_HOLD").map((w) => w.id);
+    const releasable = canChange
+        ? selectedWOs.filter((w) => w.status === "PENDING").map((w) => w.id) : [];
+    const holdable = canChange
+        ? selectedWOs.filter((w) => w.status === "IN_PROGRESS" || w.status === "PENDING").map((w) => w.id)
+        : [];
+    const holdcleared = canChange
+        ? selectedWOs.filter((w) => w.status === "ON_HOLD").map((w) => w.id) : [];
 
     return (
         <>
@@ -925,22 +888,24 @@ function FleetBulkBar({
                                 <TooltipContent>Only PENDING work orders</TooltipContent>
                             </Tooltip>
                         )}
+                        {canChange && (
                         <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={holdable.length === 0}
-                                        onClick={() => holdable.length > 0 && setHoldOpen(true)}
-                                    >
-                                        <Pause className="mr-1 h-4 w-4" />
-                                        Hold {holdable.length > 0 ? `(${holdable.length})` : ""}
-                                    </Button>
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>PENDING or IN_PROGRESS only</TooltipContent>
-                        </Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={holdable.length === 0}
+                                            onClick={() => holdable.length > 0 && setHoldOpen(true)}
+                                        >
+                                            <Pause className="mr-1 h-4 w-4" />
+                                            Hold {holdable.length > 0 ? `(${holdable.length})` : ""}
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent>PENDING or IN_PROGRESS only</TooltipContent>
+                            </Tooltip>
+                        )}
                         {holdcleared.length > 0 && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -955,9 +920,6 @@ function FleetBulkBar({
                                 <TooltipContent>Only ON_HOLD work orders</TooltipContent>
                             </Tooltip>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => setChangeOpen(true)}>
-                            Change status…
-                        </Button>
                         <Button size="sm" variant="outline" onClick={onReport}>
                             <CircleAlert className="mr-1 h-4 w-4" />
                             Report exception
@@ -993,43 +955,6 @@ function FleetBulkBar({
                     </CardContent>
                 </Card>
             </div>
-
-            <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Change status for {selectedIds.length} WOs</DialogTitle>
-                    </DialogHeader>
-                    <Select
-                        value={targetStatus}
-                        onValueChange={(v) => setTargetStatus(v as WorkOrderStatusEnum)}
-                    >
-                        <SelectTrigger>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="PENDING">Pending</SelectItem>
-                            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                            <SelectItem value="WAITING_FOR_OPERATOR">Waiting for Operator</SelectItem>
-                            <SelectItem value="ON_HOLD">On Hold</SelectItem>
-                            <SelectItem value="COMPLETED">Completed</SelectItem>
-                            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setChangeOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                onChangeStatus(selectedIds, targetStatus);
-                                setChangeOpen(false);
-                            }}
-                        >
-                            Apply to {selectedIds.length}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
 
             <Dialog open={holdOpen} onOpenChange={setHoldOpen}>
                 <DialogContent>
@@ -1164,7 +1089,7 @@ function ExceptionRowAction({
                 size="sm"
                 variant="outline"
                 className="w-full"
-                onClick={() => navigate({ to: `/dispositions/edit/${exc.id}` })}
+                onClick={() => navigate({ to: `/production/dispositions/${exc.id}/edit` })}
             >
                 Open disposition
             </Button>

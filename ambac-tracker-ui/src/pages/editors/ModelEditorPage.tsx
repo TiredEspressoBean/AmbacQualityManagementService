@@ -324,6 +324,16 @@ export function ModelEditorPage<T extends { id: string | number }>({
         const filters: Record<string, string> = {};
         params.forEach((value, key) => {
             if (["offset", "limit", "ordering", "search", "new"].includes(key)) return;
+            // A router <Link search={{ x: "true" }}> writes the string JSON-quoted
+            // (`x=%22true%22`) so it reads back as a string; unwrap it to the value.
+            if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+                try {
+                    const parsed: unknown = JSON.parse(value);
+                    if (typeof parsed === "string") value = parsed;
+                } catch {
+                    // not JSON — keep the raw value
+                }
+            }
             filters[key] = value;
         });
         return filters;

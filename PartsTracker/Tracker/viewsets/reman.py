@@ -677,7 +677,15 @@ class HarvestedComponentViewSet(TenantScopedMixin, DataExportMixin, viewsets.Mod
     serializer_class = HarvestedComponentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     search_fields = ['position', 'original_part_number']
-    filterset_fields = ['core', 'component_type', 'condition_grade', 'is_scrapped']
+    # `component_part__isnull=true` is the pending-acceptance queue (the reman
+    # dashboard links to it): graded or not, but not yet accepted into inventory.
+    filterset_fields = {
+        'core': ['exact'],
+        'component_type': ['exact'],
+        'condition_grade': ['exact'],
+        'is_scrapped': ['exact'],
+        'component_part': ['isnull'],
+    }
     ordering_fields = ['disassembled_at', 'condition_grade']
     ordering = ['-disassembled_at']
 

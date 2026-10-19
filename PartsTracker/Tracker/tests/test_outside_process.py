@@ -279,3 +279,52 @@ class QualityReportSubjectConstraintTests(_OSPFixtureMixin, TenantTestCase):
                 QualityReports.objects.create(
                     tenant=self.tenant_a, step=self.osp_step,
                     material_lot=lot, osp_shipment=shipment, status="PENDING")
+
+
+class SpecialProcessQualificationAtSendOutTests(_OSPFixtureMixin, TenantTestCase):
+    """A step naming a special process can only send parts to a vendor qualified for
+    it. Receiving holds a lot from an unqualified supplier after the fact; at send-out
+    the parts haven't gone yet, so the send is refused."""
+
+    def setUp(self):
+        super().setUp()
+        self._build_fixtures(n_parts=2)
+        self.osp_step.outside_special_process = "Heat treat"
+        self.osp_step.save(update_fields=["outside_special_process"])
+
+    def _qualify(self, label="Heat treat", status="APPROVED", **extra):
+        from Tracker.models import SupplierQualification
+        return SupplierQualification.objects.create(
+            tenant=self.tenant_a, supplier=self.supplier,
+            scope_type=SupplierQualification.SCOPE_SPECIAL_PROCESS,
+            scope_label=label, status=status, **extra)
+
+    def _refused(self):
+        with self.assertRaisesRegex(ValueError, "no active qualification for Heat treat"):
+            osp.send_parts_out(step=self.osp_step, parts=self.parts, user=self.user_a)
+        self.assertFalse(OutsideProcessShipment.objects.exists())
+
+    def test_a_step_with_no_special_process_checks_nothing(self):
+        self.osp_step.outside_special_process = ""
+        self.osp_step.save(update_fields=["outside_special_process"])
+        osp.send_parts_out(step=self.osp_step, parts=self.parts, user=self.user_a)
+
+    def test_an_unqualified_vendor_is_refused(self):
+        self._refused()
+
+    def test_a_qualified_vendor_is_sent_the_parts(self):
+        self._qualify(label="HEAT TREAT")  # matched case-insensitively
+        shipment = osp.send_parts_out(step=self.osp_step, parts=self.parts, user=self.user_a)
+        self.assertEqual(shipment.supplier, self.supplier)
+
+    def test_a_qualification_for_another_process_does_not_count(self):
+        self._qualify(label="Plating")
+        self._refused()
+
+    def test_an_expired_qualification_does_not_count(self):
+        self._qualify(expiry_date=datetime.date.today() - datetime.timedelta(days=1))
+        self._refused()
+
+    def test_a_suspended_qualification_does_not_count(self):
+        self._qualify(status="SUSPENDED")
+        self._refused()

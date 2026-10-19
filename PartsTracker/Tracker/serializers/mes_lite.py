@@ -286,6 +286,13 @@ class OrdersSerializer(SecureModelMixin, BulkOperationsMixin):
             'order_number', 'created_at', 'updated_at', 'parts_summary', 'process_stages', 'gate_info', 'customer_info', 'company_info',
             'customer_first_name', 'customer_last_name', 'company_name', 'original_completion_date', 'latest_note', 'notes_timeline')
 
+    def update(self, instance, validated_data):
+        previous = instance.estimated_completion
+        instance = super().update(instance, validated_data)
+        from Tracker.services.mes.orders import note_completion_change
+        note_completion_change(instance, previous)
+        return instance
+
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_customer_info(self, obj):
         if obj.customer:
@@ -1054,6 +1061,26 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
             'released_at', 'released_by', 'release_override_reason',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count')
 
+    def validate_process(self, value):
+        # A temporary change's version runs only the work orders change control moved
+        # onto it (MIGRATE_SELECTED); it is never chosen for a work order by hand.
+        changing = self.instance is None or getattr(self.instance, 'process_id', None) != getattr(value, 'pk', None)
+        if value is not None and getattr(value, 'is_temporary', False) and changing:
+            raise serializers.ValidationError(
+                "That version is a temporary change, which applies only to the work orders "
+                "its change order named. Use the current version.")
+        return value
+
+    def validate_workorder_status(self, value):
+        # On an edit, status isn't a field you set: each move has its action
+        # (hold / clear hold / cancel) or follows the work. See manual_status_refusal.
+        if self.instance is not None:
+            from Tracker.services.mes.work_order import manual_status_refusal
+            refusal = manual_status_refusal(self.instance.workorder_status, value)
+            if refusal:
+                raise serializers.ValidationError(refusal)
+        return value
+
     @extend_schema_field(serializers.IntegerField())
     def get_child_count(self, obj):
         if hasattr(obj, '_child_count'):
@@ -1232,6 +1259,17 @@ class TravelerBatchCycleSerializer(serializers.Serializer):
     measurements = TravelerBatchMeasurementSerializer(many=True)
 
 
+class TravelerTrainingOverrideSerializer(serializers.Serializer):
+    """A supervisor pushing an operator who wasn't qualified through the training gate —
+    the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit."""
+    visit_number = serializers.IntegerField()
+    worker_name = serializers.CharField(allow_blank=True)
+    authorized_by_name = serializers.CharField(allow_blank=True)
+    reason = serializers.CharField(allow_blank=True)
+    at = serializers.DateTimeField(allow_null=True)
+    missing_training = serializers.ListField(child=serializers.CharField())
+
+
 class TravelerStepEntrySerializer(serializers.Serializer):
     """Full step entry in the part traveler history"""
     step_id = serializers.UUIDField()
@@ -1263,6 +1301,7 @@ class TravelerStepEntrySerializer(serializers.Serializer):
     materials_used = TravelerMaterialSerializer(many=True)
     attachments = TravelerAttachmentSerializer(many=True)
     batch_cycles = TravelerBatchCycleSerializer(many=True)
+    training_overrides = TravelerTrainingOverrideSerializer(many=True)
 
 
 class PartTravelerResponseSerializer(serializers.Serializer):
@@ -1355,7 +1394,8 @@ class StepsSerializer(SecureModelMixin):
             # Repair node (reman): the repair code this step carries out
             'repair_code',
             # Outside processing (subcontract op — Flow B)
-            'is_outside_process', 'outside_supplier', 'outside_process_lead_days',
+            'is_outside_process', 'outside_supplier', 'outside_special_process',
+            'outside_process_lead_days',
             # Workflow engine - branching type (edges defined separately in StepEdge)
             'is_decision_point', 'decision_type',
             # Workflow engine - terminal
@@ -1720,7 +1760,7 @@ class StepSerializer(SecureModelMixin):
             "repair_code", "repair_code_code", "repair_code_name",
             # Outside processing (subcontract op — Flow B)
             "is_outside_process", "outside_supplier", "outside_supplier_name",
-            "outside_process_lead_days",
+            "outside_special_process", "outside_process_lead_days",
             # Workflow engine - terminal
             "is_terminal", "terminal_status",
             # Workflow engine - cycle control
@@ -1854,10 +1894,13 @@ class ProcessesSerializer(SecureModelMixin):
             'name', 'is_remanufactured', 'is_disassembly', 'part_type',
             'status', 'category', 'change_description', 'approved_at', 'approved_by',
             'default_scrap_rate',
+            # A temporary change (deviation): set by change control, never by hand.
+            'is_temporary', 'temporary_until',
             # Serializer-specific fields
             'part_type_name', 'process_steps', 'step_edges', 'num_steps',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'approved_at', 'approved_by']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'approved_at', 'approved_by',
+                            'is_temporary', 'temporary_until']
 
     @extend_schema_field(serializers.IntegerField())
     def get_num_steps(self, obj):
@@ -1906,8 +1949,11 @@ class ProcessWithStepsSerializer(SecureModelMixin):
             "status", "change_description", "approved_at", "approved_by",
             # Versioning
             "version", "previous_version", "is_current_version",
+            # A temporary change (deviation): set by change control, never by hand.
+            "is_temporary", "temporary_until",
         ]
-        read_only_fields = ["approved_at", "approved_by", "version", "previous_version", "is_current_version"]
+        read_only_fields = ["approved_at", "approved_by", "version", "previous_version", "is_current_version",
+                            "is_temporary", "temporary_until"]
 
     def create(self, validated_data):
         from Tracker.services.mes.processes import create_process_with_steps

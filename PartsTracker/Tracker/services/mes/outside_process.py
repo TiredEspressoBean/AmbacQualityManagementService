@@ -152,6 +152,17 @@ def send_parts_out(*, step, parts, supplier=None, reference="", user=None):
     if supplier is None:
         raise ValueError("No subcontract supplier given and the step has no default vendor.")
 
+    # A special process (heat treat, plating) is only done by a vendor qualified for
+    # it. Refused here rather than held on return as receiving does: once the parts
+    # have gone, the unqualified work is already done to them.
+    special_process = (step.outside_special_process or "").strip()
+    if special_process:
+        from Tracker.services.qms.supplier_qualification import is_supplier_qualified
+        if not is_supplier_qualified(supplier=supplier, special_process=special_process):
+            raise ValueError(
+                f"{supplier.name} has no active qualification for {special_process}. "
+                f"Qualify them for it, or send the parts to a vendor who is.")
+
     work_order = next((p.work_order for p in parts if p.work_order_id), None)
 
     with transaction.atomic():

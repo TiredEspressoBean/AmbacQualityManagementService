@@ -32,6 +32,7 @@ import { useDuplicateProcess } from '@/hooks/useDuplicateProcess';
 import { useProposeProcessChange } from '@/hooks/useProposeProcessChange';
 import { usePcrForDraftProcess } from '@/hooks/usePcrForDraftProcess';
 import { SubmitPcrDialog } from '@/components/change-control/SubmitPcrDialog';
+import { parseDateOnly } from '@/lib/date-only';
 import { usePermissionSet } from '@/hooks/useMyPermissions';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
@@ -176,6 +177,8 @@ export default function ProcessFlowPage() {
         is_outside_process: step.is_outside_process as boolean | undefined,
         outside_supplier: step.outside_supplier as string | null,
         outside_supplier_name: step.outside_supplier_name as string | null,
+        outside_special_process: step.outside_special_process as string | undefined,
+        outside_process_lead_days: step.outside_process_lead_days as number | null,
         repair_code: step.repair_code as string | null,
         repair_code_code: step.repair_code_code as string | null,
         repair_code_name: step.repair_code_name as string | null,
@@ -401,6 +404,8 @@ export default function ProcessFlowPage() {
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
+          outsideSpecialProcess: updatedStep.outside_special_process,
+          outsideProcessLeadDays: updatedStep.outside_process_lead_days,
           repairCode: updatedStep.repair_code_code ?? null,
           repairCodeName: updatedStep.repair_code_name ?? null,
         },
@@ -473,6 +478,10 @@ export default function ProcessFlowPage() {
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,
+        // Blank = no special process, so no qualification is checked at send-out.
+        outside_special_process: (step.outside_special_process ?? '').trim(),
+        // Null = inherit the vendor's, then the tenant's, default turnaround.
+        outside_process_lead_days: step.outside_process_lead_days ?? null,
         // A Repair node's code (null on every other step).
         repair_code_id: step.repair_code || null,
         // Null means "inherit the tenant default"; 'off' means this step needs nobody.
@@ -1254,10 +1263,17 @@ export default function ProcessFlowPage() {
               <div className="flex items-center gap-2 text-sm">
                 <FileEdit className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <span>
-                  Working draft for{' '}
+                  {processWithSteps?.is_temporary ? 'Temporary change' : 'Working draft for'}{' '}
                   <span className="font-mono font-medium">
                     {(linkedPcr as { artifact_number?: string }).artifact_number}
                   </span>
+                  {processWithSteps?.is_temporary && (
+                    <span className="text-muted-foreground">
+                      {' '}— in force{processWithSteps.temporary_until
+                        ? ` until ${parseDateOnly(processWithSteps.temporary_until).toLocaleDateString()}`
+                        : ''} for the work orders it names only. New work uses the current version.
+                    </span>
+                  )}
                   {(linkedPcr as { status?: string }).status && (
                     <Badge variant="outline" className="ml-2">
                       {(linkedPcr as { status: string }).status}

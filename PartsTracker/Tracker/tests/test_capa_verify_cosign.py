@@ -60,6 +60,12 @@ class CapaVerifyCosignTests(TenantContextMixin, TestCase):
             capa_type=CapaType.CORRECTIVE, severity=CapaSeverity.MAJOR,
             initiated_by=self.owner, assigned_to=self.owner, status=CapaStatus.IN_PROGRESS,
         )
+        # Effectiveness is checked against a verified root cause.
+        from Tracker.models import RcaRecord
+        RcaRecord.objects.create(
+            tenant=self.tenant, capa=self.capa, rca_method='FIVE_WHYS',
+            problem_description='scoring', root_cause_summary='Worn tooling',
+            root_cause_verification_status='VERIFIED')
         self.verification = CapaVerification.objects.create(
             tenant=self.tenant, capa=self.capa,
             verification_method="Monitor 30 days.", verification_criteria="Zero defects.",

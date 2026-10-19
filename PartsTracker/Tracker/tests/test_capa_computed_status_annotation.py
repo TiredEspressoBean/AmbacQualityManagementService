@@ -50,11 +50,12 @@ class CapaComputedStatusAnnotationTests(TenantContextMixin, VectorTestCase):
             description=f'task-{status}', status=status,
         )
 
-    def _rca(self, capa, summary):
+    def _rca(self, capa, summary, verified=True):
         return RcaRecord.objects.create(
             tenant=self.tenant, capa=capa, rca_method='FIVE_WHYS',
             problem_description='desc', root_cause_summary=summary,
             conducted_by=self.user,
+            root_cause_verification_status='VERIFIED' if verified else 'UNVERIFIED',
         )
 
     def _annotated(self, capa):
@@ -102,6 +103,20 @@ class CapaComputedStatusAnnotationTests(TenantContextMixin, VectorTestCase):
         self._task(c, CapaTaskStatus.COMPLETED)
         self._rca(c, 'a cause')
         self._assert_agree(c, CapaStatus.PENDING_VERIFICATION)
+
+    def test_an_unverified_root_cause_keeps_it_in_progress(self):
+        """Pending verification needs the cause verified, in both the property and
+        the SQL mirror."""
+        c = self._capa('C-UNVER')
+        self._task(c, CapaTaskStatus.COMPLETED)
+        self._rca(c, 'a cause', verified=False)
+        self._assert_agree(c, CapaStatus.IN_PROGRESS)
+
+    def test_a_blank_summary_is_not_a_root_cause(self):
+        c = self._capa('C-BLANK')
+        self._task(c, CapaTaskStatus.COMPLETED)
+        self._rca(c, '   ')
+        self._assert_agree(c, CapaStatus.IN_PROGRESS)
 
     def test_one_open_task_blocks_pending_verification(self):
         """The exact shape that broke CAPA-2024-002 — a single unstarted

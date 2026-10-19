@@ -147,6 +147,7 @@ type StepNodeData = {
   isOutsideProcess?: boolean;
   outsideSupplier?: string;
   outsideSupplierName?: string;
+  outsideSpecialProcess?: string;
   outsideProcessLeadDays?: number | string;
   // Repair node
   repairCode?: string | null;
@@ -264,9 +265,10 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   });
   const machineCount = stepIdIsUuid ? (affinitiesResponse?.count ?? 0) : 0;
 
-  // Vendor options for an outside-process (subcontract) receiving node.
+  // Vendor options for an outside-process (subcontract) node — loaded whenever the
+  // outside-process section below is shown.
   const { data: companiesData } = useRetrieveCompanies(
-    { limit: 200 }, undefined, { enabled: isReceivingType },
+    { limit: 200 }, undefined, { enabled: isReceivingType || !!data.isOutsideProcess },
   );
   const companies = (companiesData?.results ?? []) as { id: string; name: string }[];
 
@@ -762,8 +764,11 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
 
         {/* RECEIVING step: an outside-process (subcontract) node owns the whole
             step — send parts out to a vendor, receive them back, inspect on return.
-            The flag + vendor turn this receiving node into that OSP operation. */}
-        {isReceivingType && (
+            The flag + vendor turn this receiving node into that OSP operation. A step
+            already flagged outside-process shows it whatever its type — the server
+            sends out from any flagged step, so its vendor and special process must be
+            visible there too. */}
+        {(isReceivingType || data.isOutsideProcess) && (
           <>
             <Separator />
             <div className="space-y-3">
@@ -807,6 +812,23 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                   )}
                   <p className="text-xs text-muted-foreground">
                     Overridable per shipment when parts are sent out.
+                  </p>
+
+                  <Label htmlFor="osp-special-process" className="text-sm font-normal">Special process</Label>
+                  {editable ? (
+                    <Input
+                      id="osp-special-process"
+                      maxLength={120}
+                      value={data.outsideSpecialProcess ?? ''}
+                      placeholder="e.g. Heat treat"
+                      onChange={(e) => onUpdate(node.id, { outside_special_process: e.target.value })}
+                    />
+                  ) : (
+                    <Badge variant="outline">{data.outsideSpecialProcess || 'None'}</Badge>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    When set, parts can only be sent to a vendor with an active special-process
+                    qualification of the same name. Blank checks nothing.
                   </p>
 
                   <Label className="text-sm font-normal">Turnaround (calendar days)</Label>

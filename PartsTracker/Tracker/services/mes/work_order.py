@@ -285,7 +285,7 @@ def mark_started(work_order: WorkOrder) -> bool:
     """A work order is IN_PROGRESS once someone actually starts work on it.
 
     Nothing used to make this transition. Work ran perfectly well on a PENDING order
-    (`try_advance_lot` accepts PENDING, IN_PROGRESS and WAITING_FOR_OPERATOR), so a job
+    (`try_advance_lot` accepts PENDING and IN_PROGRESS), so a job
     could be half-built and still read "Pending" on every board — and the only thing
     that moved it was a Control Center button mislabelled "Release", which flipped the
     status instead of authorizing the order.
@@ -520,7 +520,62 @@ def clear_hold(work_order: WorkOrder, cleared_by) -> WorkOrderHold | None:
     hold.cleared_at = timezone.now()
     hold.cleared_by = cleared_by
     hold.save(update_fields=['cleared_at', 'cleared_by', 'updated_at'])
+    # Back to what the order was doing. Clearing a hold used to leave the status at
+    # ON_HOLD, so a cleared order still read "On hold" everywhere.
+    if work_order.workorder_status == WorkOrderStatus.ON_HOLD:
+        work_order.workorder_status = (WorkOrderStatus.IN_PROGRESS if _work_started(work_order)
+                                       else WorkOrderStatus.PENDING)
+        work_order.save(update_fields=['workorder_status', 'updated_at'])
     return hold
+
+
+def _work_started(work_order: WorkOrder) -> bool:
+    """Has work begun on any of the order's parts? (What `mark_started` records.)"""
+    from Tracker.models import StepExecution
+    return StepExecution.objects.filter(part__work_order=work_order).exists()  # tenant-safe: FK-scoped to the work order
+
+
+def cancel_work_order(work_order: WorkOrder) -> WorkOrder:
+    """Cancel a work order — it drops out of scheduling.
+
+    Refused once any part has shipped or completed: delivered work can't be undone.
+    Cascades to the parent order, which completes once all its work orders are
+    terminal (the cancel action used to skip this).
+    """
+    from Tracker.models import PartsStatus
+    if work_order.workorder_status in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED):
+        raise ValueError(f"The work order is already {work_order.get_workorder_status_display().lower()}.")
+    delivered = [PartsStatus.SHIPPED, PartsStatus.COMPLETED, PartsStatus.IN_STOCK,
+                 PartsStatus.AWAITING_PICKUP, PartsStatus.CORE_BANKED]
+    if work_order.parts.filter(part_status__in=delivered).exists():
+        raise ValueError("Can't cancel — some parts have already shipped or completed.")
+    work_order.workorder_status = WorkOrderStatus.CANCELLED
+    work_order.save(update_fields=['workorder_status', 'updated_at'])
+    cascade_order_status(work_order)
+    return work_order
+
+
+def manual_status_refusal(current: str, new: str) -> str | None:
+    """Why `current` → `new` can't be written as a plain field edit, or None if it can.
+
+    None of the moves can. Each has an action that does what the move means:
+    a hold carries a reason (place_on_hold), resuming restores the right status
+    (clear_hold), cancelling checks nothing has shipped and cascades to the order
+    (cancel). In progress and Completed are facts the product derives — work started,
+    every part finished — not choices. A plain PATCH used to write any of them.
+    """
+    if new == current:
+        return None
+    label = dict(WorkOrderStatus.choices)
+    move = f"{label.get(current, current)} → {label.get(new, new)}"
+    if new == WorkOrderStatus.ON_HOLD:
+        return f"{move}: place the work order on hold, with a reason, instead of setting the status."
+    if current == WorkOrderStatus.ON_HOLD:
+        return f"{move}: clear the hold instead; the status returns to where the work is."
+    if new == WorkOrderStatus.CANCELLED:
+        return f"{move}: use Cancel, which checks nothing has shipped."
+    return (f"{move} isn't a status you set: In progress follows the first work started, "
+            f"and Completed follows every part finishing.")
 
 
 def bulk_place_on_hold(
@@ -769,43 +824,3 @@ def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
         child_wo.save(update_fields=['archived', 'updated_at'])
 
     return parent_wo
-
-
-def bulk_transition(
-    tenant_id,
-    work_order_ids: list,
-    new_status: str,
-    actor,
-    notes: str | None = None,
-) -> list[BulkResult]:
-    """Transition each listed WorkOrder to `new_status`. Matches single-WO behavior (no legality gate)."""
-    if new_status not in WorkOrderStatus.values:
-        raise ValueError(f"Invalid work order status: {new_status}")
-
-    results: list[BulkResult] = []
-    wos = {
-        wo.id: wo for wo in WorkOrder.unscoped.filter(
-            tenant_id=tenant_id, id__in=work_order_ids,
-        )
-    }
-    with transaction.atomic():
-        for wo_id in work_order_ids:
-            wo = wos.get(wo_id)
-            if wo is None:
-                results.append(BulkResult(id=wo_id, ok=False, error="Work order not found"))
-                continue
-            sid = transaction.savepoint()
-            try:
-                wo.workorder_status = new_status
-                update_fields = ['workorder_status', 'updated_at']
-                if notes:
-                    existing = wo.notes or ""
-                    wo.notes = f"{existing}\n{notes}".strip()[:500]
-                    update_fields.append('notes')
-                wo.save(update_fields=update_fields)
-                transaction.savepoint_commit(sid)
-                results.append(BulkResult(id=wo_id, ok=True))
-            except Exception as exc:
-                transaction.savepoint_rollback(sid)
-                results.append(BulkResult(id=wo_id, ok=False, error=str(exc)))
-    return results

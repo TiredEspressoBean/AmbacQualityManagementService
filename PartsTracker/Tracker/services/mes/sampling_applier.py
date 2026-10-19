@@ -56,7 +56,7 @@ class SamplingFallbackApplier:
 
         for rule in applicable_rules:
             if self._should_sample(rule):
-                self._log_sampling_decision(rule, True, ruleset_type)
+                self._log_sampling_decision(rule, True, ruleset_type, ruleset)
                 return {
                     "requires_sampling": True,
                     "rule": rule,
@@ -65,7 +65,7 @@ class SamplingFallbackApplier:
                 }
 
             if rule.rule_type in ["FIRST_N_PARTS", "LAST_N_PARTS"]:
-                self._log_sampling_decision(rule, False, ruleset_type)
+                self._log_sampling_decision(rule, False, ruleset_type, ruleset)
                 return {
                     "requires_sampling": False,
                     "rule": None,
@@ -73,8 +73,10 @@ class SamplingFallbackApplier:
                     "context": {"reason": f"{context_info} - excluded by {rule.rule_type}"}
                 }
 
+        # Every rule was evaluated and none selected the part. No single rule decided
+        # that, so the skip is logged against the ruleset with no rule.
         if applicable_rules.exists():
-            self._log_sampling_decision(applicable_rules.first(), False, ruleset_type)
+            self._log_sampling_decision(None, False, ruleset_type, ruleset)
 
         return {
             "requires_sampling": False,
@@ -150,12 +152,13 @@ class SamplingFallbackApplier:
         selected_parts = all_parts[:rule.value]
         return self.part in selected_parts
 
-    def _log_sampling_decision(self, rule, decision, ruleset_type):
+    def _log_sampling_decision(self, rule, decision, ruleset_type, ruleset):
         from Tracker.models import SamplingAuditLog
 
         SamplingAuditLog.objects.create(
             part=self.part,
             rule=rule,
+            ruleset=ruleset,
             sampling_decision=decision,
             ruleset_type=ruleset_type
         )

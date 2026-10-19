@@ -215,6 +215,10 @@ class DemoScenario(BaseSeeder):
         nagged = self._link_gauge_nag()
         self.log(f"\nLinked {nagged} inspector gauge(s) for the home calibration nag")
 
+        # Same reason to run last: it links a gauge to the reports already filed.
+        exposed = self._seed_found_out_calibration()
+        self.log(f"Found a gauge out at calibration — {exposed} report(s) in its exposure window")
+
         self.log("\n" + "=" * 60)
         self.log("DEMO SCENARIO: Complete")
         self.log("=" * 60)
@@ -232,6 +236,12 @@ class DemoScenario(BaseSeeder):
         seeder = DemoQualitySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         return seeder.link_inspector_gauge()
+
+    def _seed_found_out_calibration(self):
+        """A gauge found out of tolerance and adjusted, so calibration exposure has a list."""
+        seeder = DemoQualitySeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        return seeder.seed_found_out_calibration()
 
     def _seed_companies(self):
         """Create demo companies."""

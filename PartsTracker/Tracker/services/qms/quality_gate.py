@@ -301,9 +301,9 @@ def _default_capa_owner(tenant):
     returns early when `assigned_to_id` is unset, so nothing emits
     `capa.assigned`. The only other notification path is
     `trigger_approval_for_critical_capa`, which fires solely for
-    MAJOR/CRITICAL and then only when the tenant has a current
-    CAPA_APPROVAL ApprovalTemplate. A MINOR gate on a tenant without that
-    template would create the record and tell nobody.
+    MAJOR/CRITICAL and then only when the tenant has a current CAPA approval
+    template (CAPA_CRITICAL / CAPA_MAJOR, falling back to CAPA_APPROVAL). A
+    MINOR gate would otherwise create the record and tell nobody.
 
     Mirrors the QA-owner lookup the FAIL-QR auto-disposition signal already
     uses (Tracker/signals.py), but prefers QA Manager over QA Inspector

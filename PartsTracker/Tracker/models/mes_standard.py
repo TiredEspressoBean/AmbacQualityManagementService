@@ -830,7 +830,14 @@ class SamplingAuditLog(SecureModel):
     Logs which rule was applied to which part and whether it triggered sampling.
     """
     part = models.ForeignKey('Tracker.Parts', on_delete=models.CASCADE)
-    rule = models.ForeignKey(SamplingRule, on_delete=models.CASCADE)
+    # The rule that decided. Null when no rule in the ruleset selected the part — a
+    # skip nothing in particular caused, which is an answer in itself (it used to be
+    # credited to the ruleset's first rule, which had not made that decision).
+    rule = models.ForeignKey(SamplingRule, on_delete=models.CASCADE, null=True, blank=True)
+    # The ruleset evaluated, so a no-rule skip still says what was consulted. Null only
+    # on rows written before it was recorded.
+    ruleset = models.ForeignKey('Tracker.SamplingRuleSet', on_delete=models.CASCADE,
+                                null=True, blank=True, related_name='audit_logs')
     sampling_decision = models.BooleanField()
     timestamp = models.DateTimeField(auto_now_add=True)
     ruleset_type = models.CharField(

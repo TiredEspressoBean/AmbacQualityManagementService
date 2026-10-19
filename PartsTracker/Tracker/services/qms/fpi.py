@@ -110,7 +110,8 @@ def _ensure_qa_approval(fpi: FPIRecord, user, *, password_proven: bool = False,
 
 
 def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
-             password: str = '', ip_address=None, identity_verified: bool = False) -> FPIRecord:
+             password: str = '', ip_address=None, identity_verified: bool = False,
+             signature_data: str | None = None) -> FPIRecord:
     """Mark FPI as passed.
 
     Also creates the step-level QaApproval that `can_advance_from_step`
@@ -121,6 +122,8 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     `user` is the attester (recorded as `inspected_by` and on the QaApproval).
     `performed_by` is the operator at whose station a co-signature happened;
     pass it only on the co-sign path, leave None for a direct QA sign-off.
+    `signature_data` is the co-signer's drawing, likewise co-sign only; the caller
+    passes it after the co-signer's identity has been verified.
 
     Raises:
         ValueError: user already signed the first piece's substeps.
@@ -132,6 +135,7 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
     fpi.performed_by = performed_by
+    fpi.signature_data = signature_data or None
     if notes:
         fpi.notes = notes
     fpi.save()
@@ -140,7 +144,8 @@ def pass_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     return fpi
 
 
-def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRecord:
+def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
+             signature_data: str | None = None) -> FPIRecord:
     """Mark FPI as failed.
 
     Blocks self-signoff (same SOD principle as `pass_fpi`). Does NOT create
@@ -157,6 +162,7 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRec
     fpi.inspected_by = user
     fpi.inspected_at = timezone.now()
     fpi.performed_by = performed_by
+    fpi.signature_data = signature_data or None
     if notes:
         fpi.notes = notes
     fpi.save()
@@ -165,7 +171,8 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None) -> FPIRec
 
 
 def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
-              password: str = '', ip_address=None, identity_verified: bool = False) -> FPIRecord:
+              password: str = '', ip_address=None, identity_verified: bool = False,
+              signature_data: str | None = None) -> FPIRecord:
     """Waive the FPI requirement.
 
     Creates the step-level QaApproval — a documented waive with reason IS
@@ -188,6 +195,7 @@ def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
     fpi.waived_by = user
     fpi.waive_reason = reason
     fpi.performed_by = performed_by
+    fpi.signature_data = signature_data or None
     fpi.save()
     _ensure_qa_approval(fpi, user, password_proven=proven, ip_address=ip_address)
     notify_fpi_decided(fpi)

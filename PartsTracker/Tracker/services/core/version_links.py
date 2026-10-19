@@ -166,6 +166,8 @@ LINKS = {
     # --- SamplingRuleSet (own supersede mechanism; records stay) -----------------------
     'Parts.sampling_ruleset': STAYS,
     'SamplingAnalytics.ruleset': STAYS,
+    # A decision taken under a ruleset version is history against that version.
+    'SamplingAuditLog.ruleset': STAYS,
     'SamplingRule.ruleset': MODEL,
     'SamplingRuleSet.fallback_ruleset': MODEL,
     'SamplingRuleSet.supersedes': MODEL,

@@ -20,6 +20,7 @@ from Tracker.models import (
     FiveWhys,
     RcaMethod,
     RcaRecord,
+    RcaReviewStatus,
     RootCauseVerificationStatus,
 )
 
@@ -55,7 +56,24 @@ def verify_root_cause(rca: RcaRecord, user, verification_notes: str | None = Non
     rca.root_cause_verified_at = timezone.now()
     rca.self_verified = is_self_verification
     rca.verification_notes = (verification_notes or '').strip()
+    # Verifying is the review a REQUIRED status asked for (a "not effective" CAPA
+    # verification sets REQUIRED, capa.py) — nothing used to complete it, so a
+    # re-reviewed RCA read "review required" forever.
+    if rca.rca_review_status == RcaReviewStatus.REQUIRED:
+        rca.rca_review_status = RcaReviewStatus.COMPLETED
     rca.save()
+    return rca
+
+
+def request_rca_review(rca: RcaRecord) -> RcaRecord:
+    """Ask for the RCA to be reviewed — the `submit-for-review` action.
+
+    Sets REQUIRED, which approving (verifying) turns into COMPLETED. It used to write
+    'PENDING', which is not a review status at all.
+    """
+    if rca.rca_review_status != RcaReviewStatus.REQUIRED:
+        rca.rca_review_status = RcaReviewStatus.REQUIRED
+        rca.save(update_fields=['rca_review_status', 'updated_at'])
     return rca
 
 

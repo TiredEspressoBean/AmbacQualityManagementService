@@ -129,6 +129,55 @@ class SamplingSystemTestCase(TenantTestCase):
         expected_erp_ids = [f"TEST-WO-001-TW{i:04d}" for i in range(5, 101, 5)]
         self.assertEqual([p['erp_id'] for p in selected], expected_erp_ids)
 
+    def test_the_audit_log_credits_the_rule_that_decided(self):
+        """A selection is logged against the rule that selected; a skip no rule
+        caused is logged against no rule — it used to be credited to the ruleset's
+        first rule, which had not decided it."""
+        from Tracker.models import SamplingAuditLog
+        every_5th = SamplingRule.objects.create(
+            ruleset=self.ruleset, rule_type='EVERY_NTH_PART', value=5, order=1)
+        SamplingRule.objects.create(
+            ruleset=self.ruleset, rule_type='EVERY_NTH_PART', value=7, order=2)
+        parts = self.create_test_parts(5)
+        # Creating a part already evaluates it; read only the evaluation under test
+        # (this delete archives, hence archived=False below).
+        SamplingAuditLog.objects.filter(part__in=parts).delete()
+        self.evaluate_parts_sampling(parts)
+
+        selected = SamplingAuditLog.objects.get(archived=False, part=parts[4])
+        self.assertTrue(selected.sampling_decision)
+        self.assertEqual(selected.rule, every_5th)
+        self.assertEqual(selected.ruleset, self.ruleset)
+
+        skipped = SamplingAuditLog.objects.get(archived=False, part=parts[0])
+        self.assertFalse(skipped.sampling_decision)
+        self.assertIsNone(skipped.rule)
+        self.assertEqual(skipped.ruleset, self.ruleset)
+
+    def test_the_part_endpoint_says_why_in_words(self):
+        """The decisions are read on the part's traveler: what an auditor asks of an
+        uninspected part."""
+        from Tracker.models import SamplingAuditLog
+        from Tracker.services.mes.sampling import part_sampling_decisions
+        SamplingRule.objects.create(ruleset=self.ruleset, rule_type='EVERY_NTH_PART', value=5, order=1)
+        parts = self.create_test_parts(5)
+        SamplingAuditLog.objects.filter(part__in=parts).delete()
+        self.evaluate_parts_sampling(parts)
+        self.assertEqual(part_sampling_decisions(parts[4])[0]['summary'], "Selected by every 5th part")
+        self.assertEqual(part_sampling_decisions(parts[0])[0]['summary'],
+                         f"Not selected — no rule in {self.ruleset.name} chose it")
+
+    def test_an_exclusion_is_credited_to_the_excluding_rule(self):
+        from Tracker.models import SamplingAuditLog
+        first_2 = SamplingRule.objects.create(
+            ruleset=self.ruleset, rule_type='FIRST_N_PARTS', value=2, order=1)
+        parts = self.create_test_parts(3)
+        SamplingAuditLog.objects.filter(part__in=parts).delete()
+        self.evaluate_parts_sampling(parts)
+        excluded = SamplingAuditLog.objects.get(archived=False, part=parts[2])
+        self.assertFalse(excluded.sampling_decision)
+        self.assertEqual(excluded.rule, first_2)
+
     def test_percentage_sampling(self):
         SamplingRule.objects.create(
             ruleset=self.ruleset,

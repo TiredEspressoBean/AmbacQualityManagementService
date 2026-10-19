@@ -13,6 +13,8 @@ SecureService-style base class is a Phase 5 decision.
 """
 from __future__ import annotations
 
+import logging
+
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from Tracker.services.core.clock import tenant_today
@@ -32,6 +34,9 @@ from Tracker.models import (
     EffectivenessResult,
     RcaReviewStatus,
 )
+
+# Refusal when effectiveness is checked against a root cause nobody verified.
+ROOT_CAUSE_UNVERIFIED = "The root cause must be verified before effectiveness can be checked"
 
 
 def transition_capa(capa: CAPA, new_status, user, notes: str | None = None) -> CAPA:
@@ -86,6 +91,8 @@ def transition_capa(capa: CAPA, new_status, user, notes: str | None = None) -> C
     if new_status == CapaStatus.PENDING_VERIFICATION:
         if not capa.rca_complete():
             raise ValueError("Cannot move to PENDING_VERIFICATION: RCA not completed")
+        if not capa.rca_verified():
+            raise ValueError(ROOT_CAUSE_UNVERIFIED)
 
     if new_status == CapaStatus.CLOSED:
         blockers = capa.get_blocking_items()
@@ -208,6 +215,12 @@ def verify_capa_effectiveness(
     """
     capa = verification.capa
 
+    # Effectiveness is checked against a verified cause — recording it here closed or
+    # reopened the CAPA whatever its RCA said, so the transition gate alone was
+    # walkable-around.
+    if not capa.rca_verified():
+        raise ValidationError(ROOT_CAUSE_UNVERIFIED)
+
     # Self-verification check
     is_self_verification = (user == capa.initiated_by or user == capa.assigned_to)
     if is_self_verification:
@@ -276,23 +289,50 @@ def verify_capa_effectiveness(
     return verification
 
 
+logger = logging.getLogger(__name__)
+
+# A severity's own template, if the tenant keeps one. Either way CAPA_APPROVAL is the
+# fallback, so a tenant that only keeps the generic template is routed exactly as before.
+_SEVERITY_TEMPLATE_TYPE = {
+    'CRITICAL': 'CAPA_CRITICAL',
+    'MAJOR': 'CAPA_MAJOR',
+}
+
+
+def capa_approval_template(capa: CAPA) -> ApprovalTemplate | None:
+    """The approval template for this CAPA: its severity's own (CAPA_CRITICAL /
+    CAPA_MAJOR) when the tenant has a current one, else the generic CAPA_APPROVAL.
+    None when the tenant keeps neither."""
+    types = [_SEVERITY_TEMPLATE_TYPE[capa.severity]] if capa.severity in _SEVERITY_TEMPLATE_TYPE else []
+    types.append('CAPA_APPROVAL')
+    for approval_type in types:
+        # tenant-safe: SecureManager .objects auto-scopes to the current tenant
+        template = (ApprovalTemplate.objects
+                    .filter(approval_type=approval_type, is_current_version=True, archived=False)
+                    .order_by('-created_at').first())
+        if template is not None:
+            return template
+    return None
+
+
 def auto_request_capa_approval(capa: CAPA) -> ApprovalRequest | None:
     """Create an approval request for a Critical/Major CAPA at creation time.
 
-    Looks up the tenant's CAPA_APPROVAL template; returns None (silently)
-    when no template is configured. Used by the post_save signal so the
-    signal body stays thin.
+    The template follows severity (see `capa_approval_template`). A tenant with no
+    CAPA approval template has chosen not to approve CAPA plans, so the CAPA goes
+    ahead without one and this returns None — logged, not refused. Used by the
+    post_save signal so the signal body stays thin.
 
     Sets approval_required=True and approval_status='PENDING' on the CAPA
     after creating the request.
     """
-    try:
-        template = ApprovalTemplate.objects.get(
-            approval_type='CAPA_APPROVAL',
-            is_current_version=True,
-            archived=False,
+    template = capa_approval_template(capa)
+    if template is None:
+        logger.warning(
+            "No CAPA approval template configured for tenant %s; %s (%s) proceeds "
+            "without an approval request.",
+            capa.tenant_id, capa.capa_number, capa.severity,
         )
-    except ApprovalTemplate.DoesNotExist:
         return None
 
     approval_request = ApprovalRequest.create_from_template(
@@ -312,9 +352,9 @@ def auto_request_capa_approval(capa: CAPA) -> ApprovalRequest | None:
 def request_capa_approval(capa: CAPA, user) -> ApprovalRequest:
     """Create an ApprovalRequest for a CAPA.
 
-    Looks up the tenant's CAPA_APPROVAL template, spins up an approval
-    request via `ApprovalRequest.create_from_template`, and flips the
-    CAPA's approval fields to PENDING.
+    Uses the template for the CAPA's severity (see `capa_approval_template`),
+    spins up an approval request via `ApprovalRequest.create_from_template`,
+    and flips the CAPA's approval fields to PENDING.
 
     Raises:
         ValueError: CAPA already approved / approval already pending /
@@ -325,16 +365,10 @@ def request_capa_approval(capa: CAPA, user) -> ApprovalRequest:
     if capa.approval_status == 'PENDING':
         raise ValueError("CAPA approval is already pending")
 
-    try:
-        # tenant-safe: SecureManager .objects auto-scopes to the request tenant
-        template = ApprovalTemplate.objects.get(
-            approval_type='CAPA_APPROVAL',
-            is_current_version=True,
-            archived=False,
-        )
-    except ApprovalTemplate.DoesNotExist:
+    template = capa_approval_template(capa)
+    if template is None:
         raise ValueError(
-            "CAPA_APPROVAL template not found. Please configure approval templates."
+            "No CAPA approval template is configured. Add one in approval templates."
         )
 
     approval_request = ApprovalRequest.create_from_template(

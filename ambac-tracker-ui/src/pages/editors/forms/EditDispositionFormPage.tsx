@@ -353,7 +353,7 @@ export default function EditDispositionFormPage() {
                 })
                 toast.success("Disposition created")
                 // Navigate to edit page for the new disposition
-                navigate({ to: "/dispositions/edit/$id", params: { id: String(result.id) } })
+                navigate({ to: "/production/dispositions/$id/edit", params: { id: String(result.id) } })
             }
         } catch (err: any) {
             console.error("API Error:", err)

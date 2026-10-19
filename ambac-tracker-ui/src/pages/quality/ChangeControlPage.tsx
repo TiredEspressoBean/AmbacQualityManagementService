@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Badge } from "@/components/ui/badge";
+import { parseDateOnly } from "@/lib/date-only";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     useProcessChangeRequests,
@@ -48,6 +49,30 @@ function statusVariant(status: string | undefined): "default" | "secondary" | "d
         default:
             return "outline";
     }
+}
+
+/** A temporary change (deviation) shows as one in the register: its end date, how many
+ *  work orders run it, and whether it has ended. An extension names what it extends. */
+function TemporaryBadge({ row }: { row: Row }) {
+    const info = row.temporary_info as
+        | { until?: string | null; expired?: boolean; work_orders?: unknown[] } | null | undefined;
+    if (row.extends_request_number) {
+        return <Badge variant="outline" className="ml-2 text-[10px]">Extends {String(row.extends_request_number)}</Badge>;
+    }
+    if (!row.is_temporary) return null;
+    const until = (info?.until ?? row.temporary_until) as string | null | undefined;
+    const label = until ? parseDateOnly(until).toLocaleDateString() : null;
+    const count = info?.work_orders?.length;
+    return (
+        <Badge
+            variant={info?.expired ? "destructive" : "outline"}
+            className="ml-2 text-[10px] border-amber-500/60"
+        >
+            {info?.expired ? "Temporary · ended" : "Temporary"}
+            {label ? ` ${label}` : ""}
+            {typeof count === "number" ? ` · ${count} WO${count === 1 ? "" : "s"}` : ""}
+        </Badge>
+    );
 }
 
 function ArtifactTable({
@@ -93,7 +118,10 @@ function ArtifactTable({
                         onClick={() => { navigate({ to: `${detailPathPrefix}/${r.id}` }); }}
                     >
                         <td className="px-3 py-2 font-mono text-xs">{r.artifact_number ?? r.id}</td>
-                        <td className="px-3 py-2">{r.title ?? "—"}</td>
+                        <td className="px-3 py-2">
+                            {r.title ?? "—"}
+                            <TemporaryBadge row={r} />
+                        </td>
                         <td className="px-3 py-2">
                             <Badge variant={statusVariant(r.status)} className="text-[10px]">
                                 {r.status ?? "—"}
@@ -185,9 +213,10 @@ export function ChangeControlPage() {
                 </TabsContent>
             </Tabs>
 
-            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground font-mono whitespace-pre-line">
-                {`This page reads existing PCR / PCO / PCN rows for the tenant. Creating a new PCR, approving, implementing, and releasing/closing are all backend-built but not yet exposed in the UI. Coming next.`}
-            </div>
+            <p className="text-xs text-muted-foreground">
+                Raise a change from the process editor with <span className="font-medium">Propose Change</span>.
+                Open a record to approve, implement or release it.
+            </p>
         </div>
     );
 }

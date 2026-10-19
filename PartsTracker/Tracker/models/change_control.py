@@ -393,6 +393,27 @@ class ProcessChangeRequest(BaseChangeRequest):
                   'Forked at PCR creation; PCO inherits this at approval.',
     )
 
+    # --- Temporary change (deviation) -----------------------------------------------
+    # A temporary change applies to the work orders named at implementation (migrated
+    # with MIGRATE_SELECTED); its version is approved but never current, and the
+    # baseline stays in force for everything else. It ends when those work orders
+    # finish, with `temporary_until` as the backstop. Extending it is itself a change:
+    # a PCR whose `extends_request` names it, carrying the new date and no process edit.
+    is_temporary = models.BooleanField(
+        default=False,
+        help_text='A deviation for named work orders, not a new baseline.')
+    temporary_until = models.DateField(
+        null=True, blank=True,
+        help_text='Last day the temporary change may be worked (or, on an extension, '
+                  'the new last day).')
+    extends_request = models.ForeignKey(
+        'self', on_delete=models.PROTECT, null=True, blank=True, related_name='extensions',
+        help_text='On an extension PCR: the temporary change it extends.')
+    customer_agreement = models.TextField(
+        blank=True, default='',
+        help_text="The customer's answer, when customer_notification_required - recorded "
+                  "here or as an attached document. Not an approval gate.")
+
     # Structured JSON diff between target_process (the APPROVED baseline)
     # and draft_process_version (the engineer's edits). Computed and
     # stored at PCR submission so approvers see a tangible diff rather

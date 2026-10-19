@@ -44,13 +44,22 @@ export const prefetchHarvestedComponents = (queryClient: QueryClient) => {
     queryClient.prefetchQuery(harvestedComponentsListOptions());
 };
 
+const BOOLEAN_FILTERS = ["is_scrapped", "component_part__isnull"] as const;
+
 // Custom wrapper hook
 function useComponentsList({
     offset, limit, ordering, search, filters,
 }: {
     offset: number; limit: number; ordering?: string; search?: string; filters?: Record<string, string>;
 }) {
-    const queries: Parameters<typeof useRetrieveHarvestedComponents>[0] = { offset, limit, ...filters };
+    // The list has no metadata endpoint to type its filters, so the two boolean ones
+    // arrive from a deep link as "true"/"false" text — which the API client refuses.
+    const typed: Record<string, string | boolean> = { ...filters };
+    for (const key of BOOLEAN_FILTERS) {
+        if (typed[key] === "true") typed[key] = true;
+        else if (typed[key] === "false") typed[key] = false;
+    }
+    const queries: Parameters<typeof useRetrieveHarvestedComponents>[0] = { offset, limit, ...typed };
     if (ordering !== undefined) queries.ordering = ordering;
     if (search !== undefined) queries.search = search;
     return useRetrieveHarvestedComponents(queries);

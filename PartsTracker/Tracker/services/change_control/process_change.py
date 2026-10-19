@@ -69,6 +69,8 @@ class ChangeControlMode:
 PCR_EDITABLE_FIELDS = frozenset({
     'title', 'proposed_change', 'justification', 'risk_analysis', 'priority',
     'customer_notification_required',
+    # A temporary change (deviation) and the customer's answer to it.
+    'is_temporary', 'temporary_until', 'customer_agreement',
 })
 
 
@@ -129,6 +131,9 @@ def submit_pcr(
         )
 
     _require_text(pcr, ('title', 'proposed_change', 'justification', 'risk_analysis'))
+
+    from Tracker.services.change_control.temporary import validate_temporary_request
+    validate_temporary_request(pcr)
 
     if pcr.target_process_id is None:
         raise ValueError("PCR must reference a target process.")
@@ -431,6 +436,9 @@ def create_pco_from_approved_pcr(
         # retry / double-approve replay is idempotent.
         if pcr.draft_process_version_id is not None:
             draft_version = pcr.draft_process_version
+        elif pcr.extends_request_id is not None:
+            # An extension changes a temporary change's end date, not the process.
+            draft_version = None
         else:
             draft_version = create_new_process_version(
                 pcr.target_process,
@@ -440,6 +448,10 @@ def create_pco_from_approved_pcr(
                     f"{pcr.proposed_change}\n\n"
                     f"Justification: {pcr.justification}"
                 ),
+                # A temporary change must leave its baseline current - the fork must
+                # not supersede it, as the Propose Change flow already doesn't.
+                **({'supersede_source': False, 'allow_multiple_drafts': True}
+                   if pcr.is_temporary else {}),
             )
             pcr.draft_process_version = draft_version
             pcr.save(update_fields=['draft_process_version', 'updated_at'])
@@ -628,6 +640,10 @@ def implement_pco(
             f"Cannot implement PCO with status {pco.status}. Must be APPROVED."
         )
 
+    pcr = pco.request
+    if pcr.extends_request_id is not None:
+        return _implement_extension(pco, user=user, mode=mode)
+
     if pco.draft_process_version_id is None:
         raise ValueError("PCO has no linked draft_process_version to implement.")
 
@@ -648,13 +664,21 @@ def implement_pco(
                 "migration_disposition=MIGRATE_SELECTED."
             )
 
-    pcr = pco.request
+    # A temporary change applies only to the work orders it names: the baseline stays
+    # current, so "keep all" would put nothing on it and "migrate all" would make it
+    # the baseline in all but name.
+    if pcr.is_temporary and migration_disposition != ProcessChangeMigrationDisposition.MIGRATE_SELECTED:
+        raise ValueError(
+            "A temporary change applies to the work orders it names - choose them "
+            "(MIGRATE_SELECTED).")
 
     with transaction.atomic():
         pco.status = ProcessChangeOrder.Status.IN_IMPLEMENTATION
         pco.save(update_fields=['status', 'updated_at'])
 
-        new_version = approve_process(pco.draft_process_version, user=user)
+        new_version = approve_process(
+            pco.draft_process_version, user=user,
+            temporary_until=pcr.temporary_until if pcr.is_temporary else None)
 
         migrated_ids = _apply_workorder_migrations(
             old_version=pcr.target_process,
@@ -683,6 +707,57 @@ def implement_pco(
         pcn = create_pcn_from_implemented_pco(pco, user=user, mode=mode)
 
     return pcn
+
+
+def _implement_extension(pco: ProcessChangeOrder, *, user, mode) -> ProcessChangeNotice:
+    """Implement an extension PCR: move its temporary change's end date. No process
+    edit and no migration - the work orders already on the temporary version stay."""
+    from Tracker.services.change_control.temporary import temporary_version_of
+    pcr = pco.request
+    version = temporary_version_of(pcr.extends_request)
+    if version is None:
+        raise ValueError(
+            f"{pcr.extends_request.artifact_number} isn't a temporary change in force.")
+    with transaction.atomic():
+        version.temporary_until = pcr.temporary_until
+        version.save(update_fields=['temporary_until', 'updated_at'])
+        pco.migration_disposition = ProcessChangeMigrationDisposition.KEEP_ALL
+        pco.status = ProcessChangeOrder.Status.IMPLEMENTED
+        pco.implemented_at = timezone.now()
+        pco.implemented_by = user
+        pco.save(update_fields=['migration_disposition', 'status', 'implemented_at',
+                                'implemented_by', 'updated_at'])
+        return create_pcn_from_implemented_pco(pco, user=user, mode=mode)
+
+
+def propose_temporary_extension(temporary_pcr: ProcessChangeRequest, *, user,
+                                temporary_until, justification: str = '') -> ProcessChangeRequest:
+    """Raise the PCR that extends a temporary change. It goes through the normal
+    submit -> approve -> implement path; implementing it moves the end date."""
+    from Tracker.services.change_control.temporary import temporary_version_of
+    version = temporary_version_of(temporary_pcr)
+    if version is None:
+        raise ValueError(
+            f"{temporary_pcr.artifact_number} isn't a temporary change in force, so there "
+            f"is nothing to extend.")
+    number = next_artifact_number(tenant_id=temporary_pcr.tenant_id, artifact_type='PCR')
+    return ProcessChangeRequest.objects.create(
+        tenant=temporary_pcr.tenant,
+        artifact_number=number,
+        target_process=version,
+        extends_request=temporary_pcr,
+        temporary_until=temporary_until,
+        title=f"Extend {temporary_pcr.artifact_number} to {temporary_until:%Y-%m-%d}",
+        proposed_change=(f"Extend temporary change {temporary_pcr.artifact_number} "
+                         f"(now ending {version.temporary_until:%Y-%m-%d}) to "
+                         f"{temporary_until:%Y-%m-%d}. No change to the process."),
+        justification=justification,
+        risk_analysis="No process edit: the deviation already approved continues, for the "
+                      "same work orders, until the new date.",
+        customer_notification_required=temporary_pcr.customer_notification_required,
+        status=ProcessChangeRequest.Status.DRAFT,
+        created_by=user,
+    )
 
 
 def cancel_pco(
@@ -874,7 +949,13 @@ def _default_notice_content(
         f"Authorizing PCO: {pco.artifact_number}\n"
         f"Effective: {pco.effective_date or 'on release'}\n\n"
         f"Summary of change:\n{pcr.proposed_change}"
+        + _temporary_notice_lines(pcr, pco)
     )
+
+
+def _temporary_notice_lines(pcr, pco) -> str:
+    from Tracker.services.change_control.temporary import notice_lines
+    return notice_lines(pcr, pco)
 
 
 def _apply_workorder_migrations(
@@ -968,6 +1049,10 @@ def propose_process_change(
             f"Cannot propose change against process in status "
             f"{target_process.status}. Must be APPROVED."
         )
+    if target_process.is_temporary:
+        raise ValueError(
+            "A temporary change can't be the base of another change. Extend it, or change "
+            "the baseline it deviates from.")
 
     with transaction.atomic():
         # Fork the DRAFT first — `create_new_process_version` handles

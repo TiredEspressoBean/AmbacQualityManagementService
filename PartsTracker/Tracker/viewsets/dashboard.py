@@ -1130,7 +1130,17 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         responses={200: inline_serializer(
             name='RepeatDefectsResponse',
             fields={
-                'data': serializers.ListField(child=serializers.DictField()),
+                'data': inline_serializer(
+                    name='RepeatDefectItem',
+                    fields={
+                        'error_type': serializers.CharField(),
+                        'count': serializers.IntegerField(),
+                        'part_types_affected': serializers.ListField(child=serializers.CharField()),
+                        # Step names, despite the key.
+                        'processes_affected': serializers.ListField(child=serializers.CharField()),
+                    },
+                    many=True,
+                ),
                 'total_repeat_count': serializers.IntegerField(),
             }
         )}

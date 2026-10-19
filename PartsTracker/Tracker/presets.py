@@ -138,11 +138,10 @@ STAFF_VIEW_PERMISSIONS = [
     # including the customer contacts a rule sends to, so the recipient list on a
     # rule staff can open isn't a 403. Managing contacts stays manager-tier.)
     'view_notificationrule', 'view_notificationschedule', 'view_externalcontact',
-    # Audit & traceability (viewing is universal; exporting is compliance-gated)
-    # `view_logentry` is the django-auditlog perm the /api/auditlog/ endpoint
-    # actually enforces (TenantModelPermissions derives it from the LogEntry
-    # model); `view_auditlog` is the Tracker-side marker. Grant both.
-    'view_auditlog', 'view_logentry', 'view_recordedit', 'view_permissionchangelog',
+    # Audit & traceability. `view_logentry` (the django-auditlog perm the endpoint
+    # derives from LogEntry) lets anyone read the history of a record they can open.
+    # Browsing the trail across records is AUDIT_TRAIL_BROWSE_PERMISSIONS below.
+    'view_logentry', 'view_recordedit', 'view_permissionchangelog',
     # Admin/Config (view only) — group/role *membership* is readable by all
     # staff (the endpoints already allow it); managing it stays admin-only.
     'view_facility', 'view_archivereason', 'view_user', 'view_userinvitation',
@@ -515,6 +514,15 @@ VOID_COMPLETION_PERMISSIONS = [
     'void_substepcompletion',
 ]
 
+# Deleting a 3D annotation once its quality report is finished: the annotation is then
+# the evidence the "Requires 3D Annotation" disposition gate reads. Same holders as
+# voiding a completion, for the same reason. A draft annotation (every linked report
+# still PENDING) goes with plain `delete_heatmapannotations`, which line roles keep so
+# an inspector can remove a mis-placed marker mid-inspection.
+SUBMITTED_ANNOTATION_DELETE_PERMISSIONS = [
+    'delete_submitted_heatmapannotations',
+]
+
 # Record retention: deleting operational records is manager-tier only. Line
 # roles void / supersede / archive, never delete. (Authoring artifacts delete
 # via AUTHORING_PERMISSIONS; soft-delete-only models grant no delete at all —
@@ -561,6 +569,16 @@ TEAM_ACCESS_ADMIN_PERMISSIONS = [
 # (re)classify export-controlled technical data or pull the audit log.
 COMPLIANCE_PERMISSIONS = [
     'verify_export_control', 'change_export_classification', 'export_auditlog',
+]
+
+# Browsing the tenant's audit trail — every change, across records. It used to ride
+# with view_logentry on every staff role, so an Operator could read any record's
+# field history (password hashes included). Per-record history needs only
+# view_logentry and visibility of the record (services/core/audit_visibility.py).
+# Holders: Tenant Admin, Document Controller, QA Manager, Auditor (user decision
+# 2026-10-19).
+AUDIT_TRAIL_BROWSE_PERMISSIONS = [
+    'view_auditlog',
 ]
 
 # Notification rule/schedule management = tenant configuration. Tenant Admin +
@@ -656,6 +674,7 @@ GROUP_PRESETS = {
             'apply_cyclecount',
             'cancel_workorder',
             *STAFF_VIEW_PERMISSIONS,
+            *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
@@ -686,6 +705,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion (quality-record judgement)
             *VOID_COMPLETION_PERMISSIONS,
+            *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
@@ -707,6 +727,7 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             *STAFF_VIEW_PERMISSIONS,
+            *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
@@ -730,6 +751,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion
             *VOID_COMPLETION_PERMISSIONS,
+            *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
             # Override the training gate to start unqualified work (logged)
             *TRAINING_GATE_OVERRIDE_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
@@ -765,6 +787,7 @@ GROUP_PRESETS = {
             *COMPONENT_DISPOSITION_PERMISSIONS,
             # Void an erroneous substep completion
             *VOID_COMPLETION_PERMISSIONS,
+            *SUBMITTED_ANNOTATION_DELETE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Formally raise a CAPA
@@ -876,6 +899,7 @@ GROUP_PRESETS = {
         'description': 'Manage controlled documents, revisions, and approvals',
         'permissions': [
             *STAFF_VIEW_PERMISSIONS,
+            *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
@@ -1088,6 +1112,7 @@ GROUP_PRESETS = {
                        'nothing, and is not granted the classified document tiers',
         'permissions': [
             *STAFF_VIEW_PERMISSIONS,
+            *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
         ],

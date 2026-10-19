@@ -1233,19 +1233,11 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
     )
     @action(detail=True, methods=['post'], url_path='submit-for-review')
     def submit_for_review(self, request, pk=None):
-        """Submit RCA for review"""
-        rca = self.get_object()
-
-        try:
-            rca.rca_review_status = 'PENDING'
-            rca.save(update_fields=['rca_review_status'])
-            return Response(RcaRecordSerializer(rca).data)
-
-        except Exception as e:
-            return Response(
-                {'detail': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        """Ask for the RCA to be reviewed: its review status becomes REQUIRED, and
+        approving it (review_rca) completes the review."""
+        from Tracker.services.qms.rca import request_rca_review
+        rca = request_rca_review(self.get_object())
+        return Response(RcaRecordSerializer(rca).data)
 
     @extend_schema(
         request=inline_serializer(name="RcaApproveInput", fields={
@@ -1568,6 +1560,15 @@ class HeatMapAnnotationsViewSet(TenantScopedMixin, ListMetadataMixin, DataExport
             return HeatMapAnnotations.objects.none()
         qs = super().get_queryset()
         return qs.select_related('model', 'part', 'created_by')
+
+    def perform_destroy(self, instance):
+        from rest_framework.exceptions import PermissionDenied
+        from Tracker.services.qms.annotations import can_delete
+        if not can_delete(instance, self.request.user):
+            raise PermissionDenied(
+                "This annotation is on a finished quality report, so it is inspection "
+                "evidence. Only the quality team can delete it.")
+        super().perform_destroy(instance)
 
     @extend_schema(
         parameters=[
@@ -1904,6 +1905,19 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         return f"{notes}\n{stamp}".strip() if notes else stamp
 
     @staticmethod
+    def _cosign_signature(signer, request):
+        """The co-signer's drawn signature, or None.
+
+        Taken only on the co-sign path — by the time this is read `_resolve_signer`
+        has verified their email and password, so the drawing accompanies a proven
+        identity rather than standing in for one. A direct sign-off draws nothing.
+        """
+        if signer.id == request.user.id:
+            return None
+        data = request.data.get('cosign_signature') or ''
+        return data if isinstance(data, str) and data.startswith('data:image/') else None
+
+    @staticmethod
     def _performed_by(signer, request):
         """The operator at whose station a co-signature happened, or None.
 
@@ -1972,7 +1986,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "notes": {"type": "string", "description": "Optional inspection notes"},
             "password": {"type": "string", "description": "The signer's OWN password, when the step's author set its QA assurance to signature + password and they are signing from their own session. The co-sign path proves identity below instead and is not asked twice."},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
-            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."},
+            "cosign_signature": {"type": "string", "description": "That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies."}
         }}},
         responses={200: dict}
     )
@@ -2065,6 +2080,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # substeps they signed themselves. It used to escape as a 500.
         try:
             fpi.pass_inspection(signer, notes, performed_by=self._performed_by(signer, request),
+                                signature_data=self._cosign_signature(signer, request),
                                 **self._assurance(request, signer))
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
@@ -2083,7 +2099,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         request={"application/json": {"type": "object", "properties": {
             "notes": {"type": "string", "description": "Required failure notes"},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
-            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."},
+            "cosign_signature": {"type": "string", "description": "That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies."}
         }}},
         responses={200: dict}
     )
@@ -2105,7 +2122,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
 
         notes = self._cosign_note(signer, request, request.data.get('notes', ''))
         try:
-            fpi.fail_inspection(signer, notes, performed_by=self._performed_by(signer, request))
+            fpi.fail_inspection(signer, notes, performed_by=self._performed_by(signer, request),
+                                signature_data=self._cosign_signature(signer, request))
         except ValueError as e:
             return Response({"detail": str(e), "code": "fpi_sod_violation"},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -2122,7 +2140,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "reason": {"type": "string", "description": "Required waive reason (min 10 chars)"},
             "password": {"type": "string", "description": "The signer's OWN password, when the step's author set its QA assurance to signature + password. A waive releases the step as surely as a pass does, so it meets the same bar."},
             "cosign_email": {"type": "string", "description": "Email of an authorized QA person co-signing at this station (when the caller lacks sign_off_fpi)"},
-            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."}
+            "cosign_password": {"type": "string", "description": "That person's password. Verified inline; they are never logged in, and the verdict is attributed to them."},
+            "cosign_signature": {"type": "string", "description": "That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies."}
         }}},
         responses={200: dict}
     )
@@ -2145,6 +2164,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         reason = request.data.get('reason', '')
         try:
             fpi.waive(signer, reason, performed_by=self._performed_by(signer, request),
+                      signature_data=self._cosign_signature(signer, request),
                       **self._assurance(request, signer))
             if signer.id != request.user.id:
                 # waive() doesn't take notes, so record the station separately.
@@ -2295,10 +2315,18 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             'part_type': step.part_type,
             'status': FPIStatus.PENDING,
         }
-        # Designate the first piece — the part the buy-off is made against.
+        # Designate the first piece — the part the buy-off is made against. An FPI with
+        # none can't be inspected, and its fail / waive skipped the segregation-of-
+        # duties check (that check reads the first piece's substep signers), so it is
+        # not created. Raised from the operator runtime a part is always at the step.
         designated = self._designate_first_piece(tenant, work_order, step)
-        if designated is not None:
-            create_data['designated_part'] = designated
+        if designated is None:
+            return Response(
+                {"detail": "No part has reached this step yet — start the FPI from a part "
+                           "at the step.",
+                 "code": "fpi_no_first_piece"},
+                status=status.HTTP_400_BAD_REQUEST)
+        create_data['designated_part'] = designated
 
         if fpi_scope == 'PER_SHIFT':
             create_data['shift_date'] = lookup.get('shift_date', tenant_today(self.tenant))

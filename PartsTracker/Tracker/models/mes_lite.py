@@ -385,6 +385,17 @@ class Processes(SecureModel):
     )
     """User who approved this process."""
 
+    # A temporary change (deviation): approved for NAMED work orders only, so it is
+    # never the current version - the baseline stays current and new work keeps using
+    # it. Past `temporary_until` its work orders can't proceed until a PCR extends it
+    # (services/change_control/temporary.py) or they are moved back to the baseline.
+    is_temporary = models.BooleanField(
+        default=False,
+        help_text="Approved for named work orders only; never the current version.")
+    temporary_until = models.DateField(
+        null=True, blank=True,
+        help_text="Last day a temporary version may be worked. Extended only by an approved PCR.")
+
     class Meta:
         verbose_name_plural = 'Processes'
         verbose_name = 'Process'
@@ -850,6 +861,15 @@ class Steps(SecureModel):
         related_name='outside_process_steps',
         help_text="Default subcontract vendor for this outside-process op (overridable per shipment).",
     )
+    outside_special_process = models.CharField(
+        max_length=120, blank=True, default='',
+        help_text=(
+            "The special process this outside op performs (e.g. 'Heat treat', 'Nadcap "
+            "plating'). When set, parts can only be sent to a vendor holding an active "
+            "SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank "
+            "means no qualification is checked at send-out."
+        ),
+    )
     outside_process_lead_days = models.PositiveIntegerField(
         null=True, blank=True,
         help_text=(
@@ -1233,6 +1253,13 @@ class Steps(SecureModel):
 
         blockers = []
         part = step_execution.part  # May be None for Core (teardown) executions.
+
+        # 0. An expired temporary change (deviation) stops its work orders until change
+        #    control extends it or they return to the baseline.
+        from Tracker.services.change_control.temporary import refusal as temporary_refusal
+        expired = temporary_refusal(work_order) if work_order is not None else None
+        if expired:
+            blockers.append(expired)
 
         # 1. Check quarantine status (Parts-only — Cores don't carry quarantine state).
         if part is not None and part.part_status == PartsStatus.QUARANTINED:
@@ -2365,7 +2392,10 @@ class Orders(SecureModel):
     estimated_completion = models.DateField(null=True, blank=True)
     """Optional expected date of completion for this order."""
 
-    original_completion_date = models.DateTimeField(null=True, blank=True)
+    # The first promised date, kept once the date first moves (a DateField, like
+    # estimated_completion, so the two compare as dates). Stamped by
+    # services/mes/orders.note_completion_change, never set by hand.
+    original_completion_date = models.DateField(null=True, blank=True)
 
     order_status = models.CharField(max_length=50, choices=OrdersStatus.choices, default=OrdersStatus.PENDING)
     """Current status of the order used to track its lifecycle."""
@@ -2641,10 +2671,9 @@ class Orders(SecureModel):
         return {"created": len(created_parts), "parts": created_parts}
 
     def bulk_remove_parts(self, part_ids):
-        """Remove parts from this order by setting order to None"""
-        parts = Parts.objects.filter(id__in=part_ids, order=self)
-        count = parts.update(order=None)
-        return {"removed": count}
+        """Thin wrapper — delegates to `services.mes.orders.remove_parts_from_order`."""
+        from Tracker.services.mes.orders import remove_parts_from_order
+        return {"removed": remove_parts_from_order(self, part_ids)}
 
     def get_process_stages(self):
         """
@@ -2834,7 +2863,6 @@ class WorkOrderStatus(models.TextChoices):
     COMPLETED = 'COMPLETED', "Completed"
     ON_HOLD = 'ON_HOLD', "On hold"
     CANCELLED = 'CANCELLED', "Cancelled"
-    WAITING_FOR_OPERATOR = 'WAITING_FOR_OPERATOR', "Waiting for operator"
 
     def __str__(self):
         """Returns the order name for human-readable use in admin or logs."""
@@ -3165,6 +3193,8 @@ class WorkOrder(SecureModel):
             if self.related_order.estimated_completion != new_completion:
                 self.related_order.estimated_completion = new_completion
                 self.related_order.save(update_fields=['estimated_completion'])
+                from Tracker.services.mes.orders import note_completion_change
+                note_completion_change(self.related_order, current_order_completion)
 
         # Handle status transitions
         if old_status != self.workorder_status:

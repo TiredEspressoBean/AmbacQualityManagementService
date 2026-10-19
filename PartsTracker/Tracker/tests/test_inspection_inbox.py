@@ -145,6 +145,11 @@ class InspectionInboxTests(TenantTestCase):
     def test_endpoint_returns_payload(self):
         from rest_framework.test import APIClient
         self._lot()
+        # The inbox is gated by the views its rows are drawn from (see
+        # test_inspection_queue_permissions); any staff role holds them.
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, [
+            'view_materiallot', 'view_outsideprocessshipment', 'view_fpirecord',
+            'view_stepexecution', 'full_tenant_access'])
         client = APIClient()
         client.force_authenticate(user=self.user_a)
         client.credentials(HTTP_X_TENANT_ID=str(self.tenant_a.id))

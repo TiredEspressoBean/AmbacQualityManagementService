@@ -7,7 +7,12 @@ import { useProcessChangeRequest } from "@/hooks/useProcessChangeRequest";
 import { PcrDiffViewer, type ProcessDiff } from "@/components/change-control/PcrDiffViewer";
 import { PcrActions } from "@/components/change-control/PcrActions";
 import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
-import { FileEdit } from "lucide-react";
+import { FileEdit, Send } from "lucide-react";
+import { useState } from "react";
+import { SubmitPcrDialog } from "@/components/change-control/SubmitPcrDialog";
+import { TemporaryChangeCard, type TemporaryInfo } from "@/components/change-control/TemporaryChangeCard";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { parseDateOnly } from "@/lib/date-only";
 
 type PcrRow = {
     id: string;
@@ -29,6 +34,12 @@ type PcrRow = {
     customer_notification_required?: boolean;
     rejected_reason?: string;
     affected_workorders_count?: number;
+    is_temporary?: boolean;
+    temporary_until?: string | null;
+    extends_request?: string | null;
+    extends_request_number?: string | null;
+    customer_agreement?: string;
+    temporary_info?: TemporaryInfo | null;
 };
 
 const STATUS_VARIANTS: Record<string, "default" | "outline" | "secondary" | "destructive"> = {
@@ -44,6 +55,8 @@ export function PcrDetailPage() {
     const { id } = useParams({ strict: false }) as { id: string };
     const navigate = useNavigate();
     const { data, isLoading, error } = useProcessChangeRequest(id);
+    const { has } = usePermissionSet();
+    const [submitOpen, setSubmitOpen] = useState(false);
 
     if (isLoading) {
         return (
@@ -78,6 +91,8 @@ export function PcrDetailPage() {
                                 {pcr.priority && pcr.priority !== "NORMAL" && (
                                     <Badge variant="outline">{pcr.priority}</Badge>
                                 )}
+                                {pcr.is_temporary && <Badge variant="outline" className="border-amber-500/60">Temporary</Badge>}
+                                {pcr.extends_request_number && <Badge variant="outline">Extension</Badge>}
                             </div>
                             <CardDescription>
                                 {pcr.title || <span className="italic">No title</span>}
@@ -92,6 +107,12 @@ export function PcrDetailPage() {
                                 >
                                     <FileEdit className="h-4 w-4 mr-2" />
                                     Open draft
+                                </Button>
+                            )}
+                            {pcr.status === "DRAFT" && has("change_processchangerequest") && (
+                                <Button size="sm" onClick={() => setSubmitOpen(true)}>
+                                    <Send className="h-4 w-4 mr-2" />
+                                    Submit for approval
                                 </Button>
                             )}
                             <PcrActions pcrId={pcr.id} status={pcr.status ?? ""} />
@@ -120,6 +141,26 @@ export function PcrDetailPage() {
                                 </div>
                             </div>
                         )}
+                        {(pcr.is_temporary || pcr.extends_request_number) && pcr.temporary_until && (
+                            <div>
+                                <div className="text-xs text-muted-foreground">
+                                    {pcr.extends_request_number ? "Extends to" : "Temporary until"}
+                                </div>
+                                <div>{parseDateOnly(pcr.temporary_until).toLocaleDateString()}</div>
+                            </div>
+                        )}
+                        {pcr.extends_request && pcr.extends_request_number && (
+                            <div>
+                                <div className="text-xs text-muted-foreground">Extends</div>
+                                <Button
+                                    variant="link"
+                                    className="h-auto p-0 font-mono"
+                                    onClick={() => navigate({ to: "/quality/change-control/pcrs/$id", params: { id: pcr.extends_request! } })}
+                                >
+                                    {pcr.extends_request_number}
+                                </Button>
+                            </div>
+                        )}
                         {typeof pcr.affected_workorders_count === "number" && (
                             <div>
                                 <div className="text-xs text-muted-foreground">Affected in-flight WOs</div>
@@ -146,6 +187,12 @@ export function PcrDetailPage() {
                             <div className="whitespace-pre-wrap rounded-md bg-muted/30 p-3">{pcr.risk_analysis}</div>
                         </div>
                     )}
+                    {pcr.customer_agreement && (
+                        <div>
+                            <div className="text-xs text-muted-foreground mb-1">Customer agreement</div>
+                            <div className="whitespace-pre-wrap rounded-md bg-muted/30 p-3">{pcr.customer_agreement}</div>
+                        </div>
+                    )}
                     {pcr.rejected_reason && (
                         <div>
                             <div className="text-xs text-muted-foreground mb-1">Rejection reason</div>
@@ -154,6 +201,22 @@ export function PcrDetailPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {pcr.temporary_info && (
+                <TemporaryChangeCard
+                    pcrId={pcr.id}
+                    artifactNumber={pcr.artifact_number ?? ""}
+                    info={pcr.temporary_info}
+                />
+            )}
+
+            {submitOpen && (
+                <SubmitPcrDialog
+                    open={submitOpen}
+                    onOpenChange={setSubmitOpen}
+                    pcr={pcr as Parameters<typeof SubmitPcrDialog>[0]["pcr"]}
+                />
+            )}
 
             {/* Signature collection — renders only when an ApprovalRequest
                 exists for this PCR (i.e. it has been submitted). Drives the

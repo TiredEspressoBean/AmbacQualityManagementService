@@ -32,9 +32,13 @@ type Props = {
     status: string;
     implementationPlan?: string;
     effectiveDate?: string | null;
+    /** The PCR is a temporary change: it implements onto named work orders only. */
+    temporary?: boolean;
+    /** The PCR extends a temporary change: implementing moves its end date only. */
+    extension?: boolean;
 };
 
-export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }: Props) {
+export function PcoActions({ pcoId, status, implementationPlan, effectiveDate, temporary, extension }: Props) {
     const [authorOpen, setAuthorOpen] = useState(false);
     const [implementOpen, setImplementOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
@@ -156,6 +160,8 @@ export function PcoActions({ pcoId, status, implementationPlan, effectiveDate }:
                 onOpenChange={setImplementOpen}
                 pcoId={pcoId}
                 pending={implement.isPending}
+                temporary={temporary}
+                extension={extension}
                 onSubmit={async (disposition, reason, selectedIds, resolutions) => {
                     try {
                         await implement.mutateAsync({
@@ -247,12 +253,14 @@ function AuthorPlanDialog({
 type Resolution = { action: string; target_step_id?: string };
 
 function ImplementDialog({
-    open, onOpenChange, pcoId, pending, onSubmit,
+    open, onOpenChange, pcoId, pending, onSubmit, temporary, extension,
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
     pcoId: string;
     pending: boolean;
+    temporary?: boolean;
+    extension?: boolean;
     onSubmit: (
         disposition: MigrationDisposition,
         reason: string,
@@ -264,14 +272,18 @@ function ImplementDialog({
     const [reason, setReason] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [resolutions, setResolutions] = useState<Record<string, Resolution>>({});
+    // A temporary change only ever applies to the work orders it names; an extension
+    // moves no work orders at all.
+    const fixedDisposition: MigrationDisposition | null =
+        extension ? "KEEP_ALL" : temporary ? "MIGRATE_SELECTED" : null;
     useEffect(() => {
         if (open) {
-            setDisposition("KEEP_ALL");
+            setDisposition(fixedDisposition ?? "KEEP_ALL");
             setReason("");
             setSelectedIds(new Set());
             setResolutions({});
         }
-    }, [open]);
+    }, [open, fixedDisposition]);
 
     const migrating = disposition === "MIGRATE_ALL" || disposition === "MIGRATE_SELECTED";
     const needsPicker = disposition === "MIGRATE_SELECTED";
@@ -326,6 +338,17 @@ function ImplementDialog({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
+                    {extension ? (
+                        <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                            This extends a temporary change: implementing it moves the end date. No work
+                            orders move.
+                        </p>
+                    ) : temporary ? (
+                        <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                            A temporary change applies only to the work orders you choose below. The current
+                            version stays in force for everything else.
+                        </p>
+                    ) : (
                     <div>
                         <Label htmlFor="pco-disposition">Migration disposition</Label>
                         <Select value={disposition} onValueChange={(v) => setDisposition(v as MigrationDisposition)}>
@@ -337,6 +360,7 @@ function ImplementDialog({
                             </SelectContent>
                         </Select>
                     </div>
+                    )}
 
                     {needsPicker && (
                         <WorkorderPicker

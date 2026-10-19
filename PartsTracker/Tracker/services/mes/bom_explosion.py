@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # MaterialLot statuses that count as on-hand, consumable supply.
 _AVAILABLE_LOT_STATUSES = ('ACCEPTED', 'IN_USE')
 # WorkOrder statuses that count as live (in-flight supply, not cancelled / shipped out).
-_LIVE_WO_STATUSES = ('PENDING', 'IN_PROGRESS', 'ON_HOLD', 'WAITING_FOR_OPERATOR')
+_LIVE_WO_STATUSES = ('PENDING', 'IN_PROGRESS', 'ON_HOLD')
 # Guard against pathological / self-referential BOMs.
 _MAX_DEPTH = 12
 

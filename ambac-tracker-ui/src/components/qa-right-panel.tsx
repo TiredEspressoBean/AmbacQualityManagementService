@@ -20,9 +20,12 @@ type Props = {
 export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart }: Props) {
     // Memoize queries to prevent unnecessary refetches when parent rerenders
     const partTypeId = selectedPart?.part_type;
+    // All of the part type's models, not `limit: 1`: the list is ordered by name, so
+    // the first one could be a model still converting (or failed), or one tied to a
+    // single step. The pick happens below.
     const threeDModelQueries = useMemo(() => ({
         part_type: partTypeId,
-        limit: 1,
+        limit: 50,
     }), [partTypeId]);
 
     // Fetch 3D models for the selected part's part type (non-archived only)
@@ -36,11 +39,11 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
         { enabled: !!selectedPart?.id }
     );
 
-    // Check count field from paginated response to see if any 3D models exist
-    const has3DModel = !modelsLoading && modelsData && modelsData.count > 0;
-
-    // Get the first model if available
-    const model3D = has3DModel ? modelsData.results[0] : null;
+    // Annotate on a model that finished converting, preferring the part type's
+    // general model over one attached to a specific step.
+    const readyModels = (modelsData?.results ?? []).filter((m) => m.processing_status === "COMPLETED");
+    const model3D = readyModels.find((m) => !m.step) ?? readyModels[0] ?? null;
+    const has3DModel = !modelsLoading && model3D !== null;
 
     const traveler = travelerData?.traveler || [];
 

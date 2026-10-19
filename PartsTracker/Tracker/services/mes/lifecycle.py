@@ -159,6 +159,25 @@ def authorization_snapshot(result, *, override: SupervisorOverride | None = None
     return snap
 
 
+def override_summary(execution) -> dict | None:
+    """The supervisor override recorded on a step execution's training snapshot, flat
+    for display (who worked it, who authorized it, why, when, and the training that was
+    missing), or None when the operator was qualified or the step never started."""
+    snap = execution.training_authorization or {}
+    override = snap.get('override')
+    if not override:
+        return None
+    return {
+        'visit_number': execution.visit_number or 1,
+        'worker_name': override.get('worker_name') or '',
+        'authorized_by_name': override.get('authorized_by_name') or '',
+        'reason': override.get('reason') or '',
+        'at': override.get('at'),
+        'missing_training': [m.get('training', '') for m in snap.get('missing') or []
+                             if isinstance(m, dict)],
+    }
+
+
 def authorize_start(operator, step, process, *, authorizer=None, reason=None):
     """Competence rule for starting a step.
 
@@ -194,6 +213,11 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     if execution.part_id:
         from Tracker.services.reman.core_steps import assert_workable
         assert_workable(execution.part)
+    # An expired temporary change stops work until change control extends it — not a
+    # start-gate refusal, so no supervisor override reaches past it.
+    from Tracker.services.change_control.temporary import assert_in_date
+    if execution.subject_work_order is not None:
+        assert_in_date(execution.subject_work_order)
 
     reassignment = None
     if execution.assigned_to_id and execution.assigned_to_id != operator.id:

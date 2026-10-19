@@ -79,7 +79,7 @@ def work_order_material_requirements(work_order) -> dict:
     sched = _active_schedule_starts(tenant)
     wo_need = sched.get((work_order.id, None)) or work_order.expected_start or h_date
 
-    live_wo = ('PENDING', 'IN_PROGRESS', 'ON_HOLD', 'WAITING_FOR_OPERATOR')
+    live_wo = ('PENDING', 'IN_PROGRESS', 'ON_HOLD')
     # Recovered stock may only go into units that take pooled parts — exchange
     # rebuilds. See `usable_stock_parts` and services/reman/demand.py.
     takes_pool = takes_pooled_parts(work_order)

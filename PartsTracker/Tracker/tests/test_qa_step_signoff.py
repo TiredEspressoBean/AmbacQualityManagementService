@@ -88,7 +88,7 @@ class QaStepSignoffTests(TestCase):
     def test_the_endpoint_needs_sign_off_authority(self):
         self._submit()
         body = {"work_order": str(self.wo.id), "step": str(self.step_a.id)}
-        operator = self._client(self.operator)
+        operator = self._client(self.operator, "view_stepexecution")  # as the Operator preset
         refused = operator.post("/api/InspectionInbox/sign-off-step/", body, format="json")
         self.assertEqual(refused.status_code, 403)
         ok = self._client(self.inspector, "sign_off_fpi").post("/api/InspectionInbox/sign-off-step/", body,

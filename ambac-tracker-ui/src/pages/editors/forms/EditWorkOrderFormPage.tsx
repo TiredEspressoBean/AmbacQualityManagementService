@@ -187,7 +187,10 @@ export default function WorkOrderFormPage() {
                         render={({field}) => (
                             <FormItem>
                                 <FormLabel required={required.workorder_status}>Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                {/* On an edit the server refuses a status change: holds, resumes
+                                    and cancels have their own actions, and In progress /
+                                    Completed follow the work. */}
+                                <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={mode === "edit"}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select status"/>
@@ -201,7 +204,11 @@ export default function WorkOrderFormPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <FormDescription>Current status of the work order</FormDescription>
+                                <FormDescription>
+                                    {mode === "edit"
+                                        ? "Hold, resume or cancel from the work order's page; In progress and Completed follow the work."
+                                        : "Current status of the work order"}
+                                </FormDescription>
                                 <FormMessage/>
                             </FormItem>
                         )}

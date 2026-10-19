@@ -163,7 +163,7 @@ export function WorkOrderDetailPage() {
                     <WorkOrderStatusActions
                         workOrderId={workOrderId}
                         currentStatus={currentStatus}
-                        currentNotes={workOrder.notes}
+                        releasedAt={workOrder.released_at}
                         onStatusChange={() => refetchWorkOrder()}
                     />
                 </div>

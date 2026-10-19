@@ -83,6 +83,15 @@ class FpiFirstPieceTests(TenantTestCase):
         self.assertEqual(resp.status_code, 201, resp.data)
         self.assertEqual(resp.data["fpi"]["designated_part"], self.p1.id)
 
+    def test_no_fpi_is_created_before_a_part_reaches_the_step(self):
+        """An FPI with no first piece can't be inspected, and its fail / waive skipped
+        the segregation-of-duties check — so none is created."""
+        Parts.objects.filter(work_order=self.wo).update(step=None)
+        resp = self._get_or_create()
+        self.assertEqual(resp.status_code, 400, resp.data)
+        self.assertEqual(resp.data["code"], "fpi_no_first_piece")
+        self.assertFalse(FPIRecord.objects.filter(work_order=self.wo).exists())
+
     def test_designates_first_to_enter_step(self):
         # p2 enters first → it is the first piece even though p1 has a lower ERP.
         self._start(self.p2)

@@ -118,7 +118,6 @@ class Command(BaseCommand):
             'RFI', 'AWAITING_QA',  # OrdersStatus, PartsStatus
             'CORRECTIVE', 'PREVENTIVE', 'CUSTOMER_COMPLAINT',  # CapaType
             'CRITICAL', 'MAJOR', 'MINOR',  # Severity fields
-            'WAITING_FOR_OPERATOR',  # WorkOrderStatus
         ]
 
         pattern_found = False

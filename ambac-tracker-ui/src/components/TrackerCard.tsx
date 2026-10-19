@@ -15,7 +15,9 @@ import {
     MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatDistanceToNow, format, differenceInDays } from "date-fns"
+import { parseDateOnly } from "@/lib/date-only"
+import { deliveryCountdown } from "@/lib/delivery-countdown"
+import { formatDistanceToNow, format } from "date-fns"
 import { Link } from "@tanstack/react-router"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -71,6 +73,8 @@ type OrderTrackerProps = {
     companyName?: string
     stages: OrderStage[]
     estimatedCompletion?: string | null
+    /** Order status code — a completed or cancelled order shows no countdown */
+    orderStatus?: string | null
     gateInfo?: GateInfo | null
     latestNote?: NoteEntry | null
     shipments?: TrackerShipment[]
@@ -97,6 +101,7 @@ export function ExpandableOrderTracker({
     companyName,
     stages,
     estimatedCompletion,
+    orderStatus,
     gateInfo,
     latestNote,
     shipments = [],
@@ -111,10 +116,7 @@ export function ExpandableOrderTracker({
     const progress = total > 0 ? (completed / total) * 100 : 0
     const currentStage = stages.find(s => s.is_current)?.name || ""
 
-    // Calculate days until delivery
-    const daysUntilDelivery = estimatedCompletion
-        ? differenceInDays(new Date(estimatedCompletion), new Date())
-        : null
+    const countdown = deliveryCountdown(estimatedCompletion, orderStatus)
 
     const displayName = orderName || `Order #${orderId}`
 
@@ -160,12 +162,19 @@ export function ExpandableOrderTracker({
                         <div className="text-right shrink-0">
                             <p className="text-xs text-muted-foreground mb-1">Delivery</p>
                             <p className="text-sm font-semibold">
-                                {format(new Date(estimatedCompletion), "MMM d, yyyy")}
+                                {format(parseDateOnly(estimatedCompletion), "MMM d, yyyy")}
                             </p>
-                            {daysUntilDelivery !== null && daysUntilDelivery >= 0 && (
-                                <Badge variant="outline" className="mt-1 text-xs">
+                            {countdown && (
+                                <Badge
+                                    variant={countdown.kind === "overdue" ? "destructive" : "outline"}
+                                    className="mt-1 text-xs"
+                                >
                                     <Timer className="h-3 w-3 mr-1" />
-                                    {daysUntilDelivery === 0 ? "Today" : `${daysUntilDelivery}d`}
+                                    {countdown.kind === "today"
+                                        ? "Today"
+                                        : countdown.kind === "overdue"
+                                          ? `Overdue · ${countdown.days}d`
+                                          : `${countdown.days}d`}
                                 </Badge>
                             )}
                         </div>

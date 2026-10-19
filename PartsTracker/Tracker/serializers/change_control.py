@@ -6,6 +6,7 @@ arrive in Phase 2 reusing the same shape.
 """
 from __future__ import annotations
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from Tracker.models import (
@@ -19,6 +20,20 @@ from Tracker.serializers.core import SecureModelMixin
 # ---------------------------------------------------------------------------
 # Process Change Request
 # ---------------------------------------------------------------------------
+
+class TemporaryWorkOrderSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    erp_id = serializers.CharField()
+    status = serializers.CharField()
+
+
+class TemporaryChangeInfoSerializer(serializers.Serializer):
+    version_id = serializers.CharField()
+    version = serializers.IntegerField()
+    until = serializers.DateField(allow_null=True)
+    expired = serializers.BooleanField()
+    work_orders = TemporaryWorkOrderSerializer(many=True)
+
 
 class ProcessChangeRequestSerializer(SecureModelMixin):
     """Read/write serializer for PCRs.
@@ -54,6 +69,33 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
         read_only=True,
         allow_null=True,
     )
+    extends_request_number = serializers.CharField(
+        source='extends_request.artifact_number', read_only=True, allow_null=True)
+    temporary_info = serializers.SerializerMethodField()
+
+    @extend_schema_field(TemporaryChangeInfoSerializer(allow_null=True))
+    def get_temporary_info(self, obj):
+        """For an implemented temporary change: its version, end date, and the work
+        orders on it. Null for anything else."""
+        from Tracker.models import WorkOrder
+        from Tracker.services.change_control.temporary import temporary_version_of
+        from Tracker.services.core.clock import tenant_today
+        if not obj.is_temporary or obj.extends_request_id is not None:
+            return None
+        version = temporary_version_of(obj)
+        if version is None:
+            return None
+        work_orders = (WorkOrder.objects.filter(process=version)  # tenant-safe: .objects auto-scopes
+                       .order_by('ERP_id').values('id', 'ERP_id', 'workorder_status'))
+        return {
+            'version_id': str(version.id),
+            'version': version.version,
+            'until': version.temporary_until,
+            'expired': bool(version.temporary_until
+                            and version.temporary_until < tenant_today(obj.tenant_id)),
+            'work_orders': [{'id': str(w['id']), 'erp_id': w['ERP_id'],
+                             'status': w['workorder_status']} for w in work_orders],
+        }
 
     class Meta:
         model = ProcessChangeRequest
@@ -86,8 +128,15 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
             'data_origin',
             'draft_process_version',
             'proposed_change_diff',
+            'is_temporary',
+            'temporary_until',
+            'extends_request',
+            'extends_request_number',
+            'customer_agreement',
+            'temporary_info',
         ]
         read_only_fields = [
+            'extends_request',
             'id',
             'tenant',
             'artifact_number',
@@ -127,6 +176,17 @@ class ProcessChangeOrderSerializer(SecureModelMixin):
         source='request.title',
         read_only=True,
     )
+    # A temporary change implements onto named work orders only; an extension moves a
+    # temporary change's end date and migrates nothing. The implement dialog reads these.
+    request_is_temporary = serializers.BooleanField(source='request.is_temporary', read_only=True)
+    request_is_extension = serializers.SerializerMethodField()
+    request_temporary_until = serializers.DateField(
+        source='request.temporary_until', read_only=True, allow_null=True)
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_request_is_extension(self, obj):
+        return obj.request.extends_request_id is not None
+
     target_process_name = serializers.CharField(
         source='request.target_process.name',
         read_only=True,
@@ -162,6 +222,9 @@ class ProcessChangeOrderSerializer(SecureModelMixin):
             'request',
             'request_artifact_number',
             'request_title',
+            'request_is_temporary',
+            'request_is_extension',
+            'request_temporary_until',
             'target_process_name',
             'draft_process_version_id',
             'implementation_plan',

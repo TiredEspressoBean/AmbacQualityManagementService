@@ -8,7 +8,7 @@ import {
     CalendarClock, Users, File, Download, Image, FileSpreadsheet,
     MessageSquare, Eye, EyeOff
 } from "lucide-react";
-import { formatDistanceToNow, format, differenceInDays } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useOrderDetails } from "@/hooks/useOrderDetails";
@@ -28,6 +28,9 @@ import { OrderLinesPanel } from "@/components/orders/OrderLinesPanel";
 import { OrderShippingCard } from "@/components/orders/OrderShippingCard";
 import { QuickComposer } from "@/components/QuickComposer";
 import { parseDateOnly } from "@/lib/date-only";
+import { deliveryCountdown } from "@/lib/delivery-countdown";
+import { OrderPartsCard } from "@/components/orders/OrderPartsCard";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 function getStatusIcon(stage: any, size: "sm" | "md" = "md") {
     const sizeClass = size === "sm" ? "w-4 h-4" : "w-5 h-5";
@@ -176,6 +179,7 @@ export function OrderDetailsPage() {
     const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
 
     const { data, isLoading, error, refetch } = useOrderDetails(orderNumber);
+    const canChangeOrders = usePermissionSet().has("change_orders");
 
     // Mutation for adding notes
     const addNoteMutation = useMutation({
@@ -287,6 +291,7 @@ export function OrderDetailsPage() {
         estimated_completion,
         original_completion_date,
         order_status,
+        order_status_code,
         company_name,
         latest_note,
         notes_timeline,
@@ -303,14 +308,12 @@ export function OrderDetailsPage() {
     const totalStages = process_stages?.length || 1;
     const progress = (completedStages / totalStages) * 100;
 
-    // Calculate days until delivery
-    const daysUntilDelivery = estimated_completion
-        ? differenceInDays(parseDateOnly(estimated_completion), new Date())
-        : null;
+    // The code, not `order_status` — that is the display label ("Completed").
+    const countdown = deliveryCountdown(estimated_completion, order_status_code);
 
     // Check if delivery date changed
     const deliveryDateChanged = original_completion_date && estimated_completion &&
-        new Date(original_completion_date).getTime() !== parseDateOnly(estimated_completion).getTime();
+        parseDateOnly(original_completion_date).getTime() !== parseDateOnly(estimated_completion).getTime();
 
     return (
         <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -370,15 +373,22 @@ export function OrderDetailsPage() {
                                         <p className="text-sm text-muted-foreground">
                                             {format(parseDateOnly(estimated_completion), "yyyy")}
                                         </p>
-                                        {daysUntilDelivery !== null && daysUntilDelivery >= 0 && (
-                                            <Badge variant="outline" className="mt-2">
+                                        {countdown && (
+                                            <Badge
+                                                variant={countdown.kind === "overdue" ? "destructive" : "outline"}
+                                                className="mt-2"
+                                            >
                                                 <Timer className="h-3 w-3 mr-1" />
-                                                {daysUntilDelivery === 0 ? "Today" : `${daysUntilDelivery} days`}
+                                                {countdown.kind === "today"
+                                                    ? "Today"
+                                                    : countdown.kind === "overdue"
+                                                      ? `Overdue · ${countdown.days} ${countdown.days === 1 ? "day" : "days"}`
+                                                      : `${countdown.days} ${countdown.days === 1 ? "day" : "days"}`}
                                             </Badge>
                                         )}
                                         {deliveryDateChanged && (
                                             <p className="text-xs text-muted-foreground mt-2 line-through">
-                                                Originally {format(new Date(original_completion_date), "MMM d, yyyy")}
+                                                Originally {format(parseDateOnly(original_completion_date), "MMM d, yyyy")}
                                             </p>
                                         )}
                                     </>
@@ -722,6 +732,10 @@ export function OrderDetailsPage() {
                 onOpenChange={setInviteModalOpen}
                 orderId={orderNumber}
             />
+
+            {/* Staff who maintain orders see — and can trim — the parts on it. The page
+                is also the customer's; they don't get this card. */}
+            {canChangeOrders && <OrderPartsCard orderId={orderNumber} />}
 
             {/* Documents Modal */}
             <OrderDocumentsModal

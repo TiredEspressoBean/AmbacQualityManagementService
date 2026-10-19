@@ -219,6 +219,30 @@ class FpiCosignTests(TenantContextMixin, TestCase):
         self.assertIsNone(self.fpi.performed_by_id)
         self.assertEqual(self.fpi.inspected_by_id, self.qa.id)
 
+    SIGNATURE = "data:image/png;base64,iVBORw0KGgo="
+
+    def test_cosign_keeps_the_drawn_signature(self):
+        """The dialog requires a drawing; it used to be discarded on the way in."""
+        resp = self._pass(self.operator, notes="ok", cosign_email="qa@cs.test",
+                          cosign_password="qapass", cosign_signature=self.SIGNATURE)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.fpi.refresh_from_db()
+        self.assertEqual(self.fpi.signature_data, self.SIGNATURE)
+
+    def test_a_signature_is_not_kept_on_a_direct_signoff(self):
+        """Only the co-sign path draws, and only after the co-signer verified — a
+        signature sent on a direct sign-off is ignored rather than attached to it."""
+        self._pass(self.qa, notes="direct", cosign_signature=self.SIGNATURE)
+        self.fpi.refresh_from_db()
+        self.assertIsNone(self.fpi.signature_data)
+
+    def test_a_failed_cosign_stores_nothing(self):
+        self._pass(self.operator, notes="ok", cosign_email="qa@cs.test",
+                   cosign_password="wrong", cosign_signature=self.SIGNATURE)
+        self.fpi.refresh_from_db()
+        self.assertIsNone(self.fpi.signature_data)
+        self.assertEqual(self.fpi.status, FPIStatus.PENDING)
+
     def test_qa_approval_is_created_for_the_cosigner(self):
         """The FPI pass IS the step-level QA signoff; the QaApproval must name
         the QA person, or the step stays blocked on 'QA signoff required'."""

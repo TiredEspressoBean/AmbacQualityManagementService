@@ -27,7 +27,6 @@
 #let status-color(s) = {
   if s == "IN_PROGRESS"         { ok   }
   else if s == "ON_HOLD"        { warn }
-  else if s == "WAITING_FOR_OPERATOR" { warn }
   else                          { muted }
 }
 
@@ -36,7 +35,6 @@
   if s == "IN_PROGRESS"               { "In Progress" }
   else if s == "PENDING"              { "Pending" }
   else if s == "ON_HOLD"              { "On Hold" }
-  else if s == "WAITING_FOR_OPERATOR" { "Waiting" }
   else                                { s }
 }
 

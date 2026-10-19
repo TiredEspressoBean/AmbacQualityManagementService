@@ -134,7 +134,9 @@ export default function EditLandingPage() {
         [counts],
     );
 
-    const canSeeAudit = allows("view_logentry") || allows("view_auditlog");
+    // Browsing changes across records is the audit trail — view_auditlog. (view_logentry
+    // only reads the history of a record you can open.)
+    const canSeeAudit = allows("view_auditlog");
     const { data: recent } = useRetrieveAuditLogEntries(
         { limit: 8, ordering: "-timestamp" }, undefined, { enabled: !permsLoading && canSeeAudit },
     );

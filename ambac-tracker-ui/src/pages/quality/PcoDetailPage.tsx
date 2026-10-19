@@ -8,8 +8,12 @@ import { PcrDiffViewer, type ProcessDiff } from "@/components/change-control/Pcr
 import { PcoActions } from "@/components/change-control/PcoActions";
 import { ApprovalSignaturePanel } from "@/components/approval/ApprovalSignaturePanel";
 import { FileEdit, FileText } from "lucide-react";
+import { parseDateOnly } from "@/lib/date-only";
 
 type PcoRow = {
+    request_is_temporary?: boolean;
+    request_is_extension?: boolean;
+    request_temporary_until?: string | null;
     id: string;
     artifact_number?: string;
     status?: string;
@@ -99,6 +103,8 @@ export function PcoDetailPage() {
                                 status={pco.status ?? ""}
                                 implementationPlan={pco.implementation_plan}
                                 effectiveDate={pco.effective_date}
+                                temporary={pco.request_is_temporary}
+                                extension={pco.request_is_extension}
                             />
                         </div>
                     </div>
@@ -116,7 +122,7 @@ export function PcoDetailPage() {
                         {pco.effective_date && (
                             <div>
                                 <div className="text-xs text-muted-foreground">Effective date</div>
-                                <div>{new Date(pco.effective_date).toLocaleDateString()}</div>
+                                <div>{parseDateOnly(pco.effective_date).toLocaleDateString()}</div>
                             </div>
                         )}
                         {pco.approved_at && (

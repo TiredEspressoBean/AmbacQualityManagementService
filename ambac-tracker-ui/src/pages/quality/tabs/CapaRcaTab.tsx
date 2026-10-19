@@ -11,9 +11,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Plus, Pencil } from "lucide-react"
+import { Plus, ShieldCheck } from "lucide-react"
 import { useCreateRcaRecord } from "@/hooks/useCreateRcaRecord"
-import { useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { api } from "@/lib/api/generated"
+import { getCookie } from "@/lib/utils"
+import { apiErrorMessage } from "@/lib/api/describeApiError"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
+import { useAuthUser } from "@/hooks/useAuthUser"
 import { toast } from "sonner"
 import { matchKey } from "@/lib/query-filters";
 
@@ -78,6 +83,28 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
     const [formData, setFormData] = useState<RcaFormData>(initialFormData)
     const createRcaMutation = useCreateRcaRecord()
     const queryClient = useQueryClient()
+    const { has: hasPerm } = usePermissionSet()
+    const { data: authUser } = useAuthUser()
+    // Approving an RCA verifies its root cause (services/qms/rca.approve_rca), under
+    // the independence rule: its conductor may approve it only where the CAPA allows
+    // self-verification, and then with a justification on record.
+    const [approving, setApproving] = useState<any | null>(null)
+    const [approvalNotes, setApprovalNotes] = useState("")
+    const [approvalError, setApprovalError] = useState<string | null>(null)
+    const approveRca = useMutation({
+        meta: { suppressGlobalError: true },  // the dialog shows the server's reason
+        mutationFn: ({ id, verification_notes }: { id: string; verification_notes: string }) =>
+            api.api_RcaRecords_approve_create({ verification_notes }, {
+                params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries(matchKey(["capa", capa?.id]))
+            toast.success("RCA approved — root cause verified")
+            setApproving(null)
+        },
+        onError: (err) => setApprovalError(apiErrorMessage(err) ?? "Could not approve the RCA"),
+    })
 
     if (!capa) {
         return null
@@ -371,9 +398,22 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                                     </CardDescription>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon">
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
+                                    {hasPerm("review_rca")
+                                        && (rca.root_cause_verification_status === "UNVERIFIED"
+                                            || rca.root_cause_verification_status === "DISPUTED") && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setApprovalNotes("")
+                                                setApprovalError(null)
+                                                setApproving(rca)
+                                            }}
+                                        >
+                                            <ShieldCheck className="h-4 w-4 mr-2" />
+                                            Approve
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </CardHeader>
@@ -495,6 +535,64 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                 ))}
             </div>
             {rcaDialog}
+            {approving && (() => {
+                const isConductor = authUser?.pk != null && approving.conducted_by === authUser.pk
+                const selfAllowed = !!capa.allow_self_verification
+                const needsNotes = isConductor && selfAllowed
+                const blocked = isConductor && !selfAllowed
+                return (
+                    <Dialog open onOpenChange={(open) => !open && setApproving(null)}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Approve root cause analysis</DialogTitle>
+                                <DialogDescription>
+                                    Approving verifies this RCA's root cause and records you as the verifier.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {blocked ? (
+                                <p className="text-sm text-muted-foreground">
+                                    You conducted this RCA, and this CAPA does not allow self-verification,
+                                    so someone else with review authority has to approve it.
+                                </p>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label htmlFor="rca-verification-notes">
+                                        Verification notes{needsNotes ? " (required)" : ""}
+                                    </Label>
+                                    <Textarea
+                                        id="rca-verification-notes"
+                                        value={approvalNotes}
+                                        onChange={(e) => setApprovalNotes(e.target.value)}
+                                        placeholder={needsNotes
+                                            ? "You conducted this RCA — say why approving it yourself is justified (10+ characters)"
+                                            : "What you checked (optional)"}
+                                    />
+                                    {needsNotes && (
+                                        <p className="text-xs text-muted-foreground">
+                                            This CAPA allows self-verification; the justification is kept on the record.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {approvalError && <p className="text-sm text-destructive">{approvalError}</p>}
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setApproving(null)}>Cancel</Button>
+                                {!blocked && (
+                                    <Button
+                                        disabled={approveRca.isPending || (needsNotes && approvalNotes.trim().length < 10)}
+                                        onClick={() => {
+                                            setApprovalError(null)
+                                            approveRca.mutate({ id: approving.id, verification_notes: approvalNotes.trim() })
+                                        }}
+                                    >
+                                        Approve
+                                    </Button>
+                                )}
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                )
+            })()}
         </>
     )
 }

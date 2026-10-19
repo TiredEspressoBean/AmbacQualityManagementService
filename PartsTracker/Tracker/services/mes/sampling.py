@@ -85,3 +85,53 @@ def _deactivate_and_restore(active_state, primary):
         active_state.save(update_fields=['active'])
         if primary:
             _reevaluate_active_parts_for_ruleset(primary)
+
+
+def _describe_rule(rule) -> str:
+    """A sampling rule in words: "every 5th part", "the first 15 parts"."""
+    n = rule.value
+    if n is None:
+        return rule.get_rule_type_display().lower()
+    return {
+        'EVERY_NTH_PART': f"every {n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')} part",
+        'PERCENTAGE': f"{n}% of parts",
+        'RANDOM': f"a random {n}% of parts",
+        'FIRST_N_PARTS': f"the first {n} parts",
+        'LAST_N_PARTS': f"the last {n} parts",
+        'EXACT_COUNT': f"exactly {n} parts",
+    }.get(rule.rule_type, f"{rule.get_rule_type_display().lower()} ({n})")
+
+
+def part_sampling_decisions(part) -> list[dict]:
+    """Every sampling decision logged for `part`, newest first, each with the sentence
+    an auditor asks for — why was this one inspected, or why not?"""
+    from Tracker.models import SamplingAuditLog
+    out = []
+    logs = (SamplingAuditLog.objects  # tenant-safe: FK-scoped to the part
+            .filter(part=part, archived=False)
+            .select_related('rule', 'ruleset', 'rule__ruleset')
+            .order_by('-timestamp'))
+    for log in logs:
+        rule = log.rule
+        ruleset = log.ruleset or (rule.ruleset if rule is not None else None)
+        if log.sampling_decision and rule is not None:
+            summary = f"Selected by {_describe_rule(rule)}"
+        elif rule is not None and rule.rule_type in ('FIRST_N_PARTS', 'LAST_N_PARTS'):
+            summary = f"Excluded by {_describe_rule(rule)}"
+        elif rule is None:
+            summary = (f"Not selected — no rule in {ruleset.name} chose it" if ruleset
+                       else "Not selected — no rule chose it")
+        else:
+            # Written before a no-rule skip was recorded as such: the rule named here
+            # is the ruleset's first, not necessarily the one that decided.
+            summary = "Not selected"
+        out.append({
+            'id': str(log.id),
+            'timestamp': log.timestamp,
+            'selected': log.sampling_decision,
+            'summary': summary,
+            'ruleset_type': log.ruleset_type,
+            'ruleset_name': ruleset.name if ruleset else None,
+            'rule_type': rule.rule_type if rule else None,
+        })
+    return out

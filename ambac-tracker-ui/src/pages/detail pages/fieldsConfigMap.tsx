@@ -1330,7 +1330,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                     {
                         label: 'Edit Disposition',
                         variant: 'default',
-                        getUrl: (d) => `/dispositions/edit/${d.id}`,
+                        getUrl: (d) => `/production/dispositions/${d.id}/edit`,
                     },
                 ],
             });

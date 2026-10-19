@@ -91,7 +91,7 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         {row.designated_part_info?.erp_id
-                                            ?? "first piece not yet designated"}
+                                            ?? "first piece designated at sign-off"}
                                         {row.equipment_info?.name
                                             ? ` · ${row.equipment_info.name}`
                                             : ""}

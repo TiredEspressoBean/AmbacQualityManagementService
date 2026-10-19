@@ -3000,6 +3000,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/DowntimeEvents/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Downtime over the last `days` days by category and by machine, largest first. Events are clipped to the period; an open event counts up to now. Lost time, not OEE. */
+        get: operations["api_DowntimeEvents_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Employees-Options/": {
         parameters: {
             query?: never;
@@ -8635,6 +8652,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Parts/{id}/sampling-decisions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every sampling decision logged for this part, newest first, with why: the rule that selected or excluded it, or that no rule in the ruleset chose it. Visibility follows the part. */
+        get: operations["api_Parts_sampling_decisions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Parts/{id}/split_from_lot/": {
         parameters: {
             query?: never;
@@ -10198,7 +10232,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Submit RCA for review */
+        /**
+         * @description Ask for the RCA to be reviewed: its review status becomes REQUIRED, and
+         *     approving it (review_rca) completes the review.
+         */
         post: operations["api_RcaRecords_submit_for_review_create"];
         delete?: never;
         options?: never;
@@ -16805,23 +16842,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/WorkOrders/bulk_transition/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Transition multiple work orders. Per-id errors captured. */
-        post: operations["api_WorkOrders_bulk_transition_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/WorkOrders/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -19268,6 +19288,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/process-change-requests/{id}/extend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Raise the PCR that extends this temporary change to a new end date. It is a DRAFT; submit and approve it like any other change. */
+        post: operations["api_process_change_requests_extend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/process-change-requests/{id}/reject/": {
         parameters: {
             query?: never;
@@ -19287,6 +19324,23 @@ export interface paths {
          *         POST /api/process-change-requests/{id}/cancel/   {reason?}
          */
         post: operations["api_process_change_requests_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/process-change-requests/{id}/return-to-baseline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Move one of this temporary change's work orders back to the baseline, re-pointing its parts by step identity. A part at a step the baseline lacks needs a resolution (the same shape as PCO implementation). */
+        post: operations["api_process_change_requests_return_to_baseline_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22350,7 +22404,7 @@ export interface components {
             readonly order_status_code: string;
             /** Format: date */
             readonly estimated_completion: string | null;
-            /** Format: date-time */
+            /** Format: date */
             readonly original_completion_date: string | null;
             readonly process_stages: {
                 name: string;
@@ -23217,6 +23271,13 @@ export interface components {
          * @enum {string}
          */
         DocumentsStatusEnum: "DRAFT" | "UNDER_REVIEW" | "APPROVED" | "RELEASED" | "OBSOLETE";
+        DowntimeBucket: {
+            key: string;
+            label: string;
+            /** Format: double */
+            hours: number;
+            events: number;
+        };
         /**
          * @description * `PLANNED` - Planned Maintenance
          *     * `UNPLANNED` - Unplanned/Breakdown
@@ -23277,6 +23338,19 @@ export interface components {
             /** Format: uuid */
             work_order?: string | null;
             archived?: boolean;
+        };
+        /** @description Downtime over a period, by category and by machine, largest first. */
+        DowntimeSummary: {
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+            /** Format: double */
+            total_hours: number;
+            total_events: number;
+            open_events: number;
+            by_category: components["schemas"]["DowntimeBucket"][];
+            by_equipment: components["schemas"]["DowntimeBucket"][];
         };
         DraftStepRequestRequest: {
             /** Format: uuid */
@@ -23750,6 +23824,7 @@ export interface components {
             /** @description Operator at whose station a QA person co-signed this buy-off (distinct from inspected_by, the attester). Null for a direct QA sign-off. */
             readonly performed_by: number | null;
             readonly performed_by_info: components["schemas"]["UserSelect"] | null;
+            readonly has_signature: boolean;
             /** @description Whether FPI requirement was waived */
             readonly waived: boolean;
             /** @description User who waived the FPI */
@@ -24260,6 +24335,7 @@ export interface components {
             archived?: boolean;
             /** Format: date-time */
             readonly deleted_at: string | null;
+            readonly is_submitted: boolean;
         };
         /** @description Serializer for heatmap annotations */
         HeatMapAnnotationsRequest: {
@@ -26244,7 +26320,7 @@ export interface components {
             } | null;
             /** Format: date */
             estimated_completion?: string | null;
-            /** Format: date-time */
+            /** Format: date */
             readonly original_completion_date: string | null;
             order_status: components["schemas"]["OrdersStatusEnum"];
             /** Format: uuid */
@@ -28291,6 +28367,16 @@ export interface components {
             requires_approval: boolean;
             previous_step_name: string | null;
         };
+        PartSamplingDecision: {
+            id: string;
+            /** Format: date-time */
+            timestamp: string;
+            selected: boolean;
+            summary: string;
+            ruleset_type: string;
+            ruleset_name: string | null;
+            rule_type: string | null;
+        };
         /** @description Lightweight part serializer for dropdown/combobox selections */
         PartSelect: {
             /** Format: uuid */
@@ -30182,6 +30268,15 @@ export interface components {
             draft_process_version?: string | null;
             /** @description Structured diff between target_process and draft_process_version, populated at submit time. */
             proposed_change_diff?: unknown;
+            /** @description A deviation for named work orders, not a new baseline. */
+            is_temporary?: boolean;
+            /**
+             * Format: date
+             * @description Last day the temporary change may be worked (or, on an extension, the new last day).
+             */
+            temporary_until?: string | null;
+            /** @description The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate. */
+            customer_agreement?: string;
         };
         /**
          * @description Process with steps serializer for creation/updates.
@@ -30824,6 +30919,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out. */
+            outside_special_process?: string;
             /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
             outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
@@ -31559,8 +31656,20 @@ export interface components {
             /** @default  */
             reason: string;
         };
+        PcrExtendInputRequest: {
+            /** Format: date */
+            temporary_until: string;
+            justification?: string;
+        };
         PcrRejectPayloadRequest: {
             reason: string;
+        };
+        PcrReturnToBaselineInputRequest: {
+            /** Format: uuid */
+            work_order: string;
+            stranded_resolutions?: {
+                [key: string]: unknown;
+            };
         };
         /** @description A QA-gated step on a work order whose submitted work waits for a sign-off. */
         PendingQaSignoff: {
@@ -31897,6 +32006,10 @@ export interface components {
             readonly request: string;
             readonly request_artifact_number: string;
             readonly request_title: string;
+            readonly request_is_temporary: boolean;
+            readonly request_is_extension: boolean;
+            /** Format: date */
+            readonly request_temporary_until: string | null;
             readonly target_process_name: string;
             /** Format: uuid */
             readonly draft_process_version_id: string;
@@ -32022,6 +32135,22 @@ export interface components {
             draft_process_version?: string | null;
             /** @description Structured diff between target_process and draft_process_version, populated at submit time. */
             proposed_change_diff?: unknown;
+            /** @description A deviation for named work orders, not a new baseline. */
+            is_temporary?: boolean;
+            /**
+             * Format: date
+             * @description Last day the temporary change may be worked (or, on an extension, the new last day).
+             */
+            temporary_until?: string | null;
+            /**
+             * Format: uuid
+             * @description On an extension PCR: the temporary change it extends.
+             */
+            readonly extends_request: string | null;
+            readonly extends_request_number: string | null;
+            /** @description The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate. */
+            customer_agreement?: string;
+            readonly temporary_info: components["schemas"]["TemporaryChangeInfo"] | null;
         };
         /**
          * @description Read/write serializer for PCRs.
@@ -32049,6 +32178,15 @@ export interface components {
             draft_process_version?: string | null;
             /** @description Structured diff between target_process and draft_process_version, populated at submit time. */
             proposed_change_diff?: unknown;
+            /** @description A deviation for named work orders, not a new baseline. */
+            is_temporary?: boolean;
+            /**
+             * Format: date
+             * @description Last day the temporary change may be worked (or, on an extension, the new last day).
+             */
+            temporary_until?: string | null;
+            /** @description The customer's answer, when customer_notification_required - recorded here or as an attached document. Not an approval gate. */
+            customer_agreement?: string;
         };
         /**
          * @description * `DRAFT` - Draft
@@ -32159,6 +32297,13 @@ export interface components {
             /** Format: uuid */
             readonly previous_version: string | null;
             readonly is_current_version: boolean;
+            /** @description Approved for named work orders only; never the current version. */
+            readonly is_temporary: boolean;
+            /**
+             * Format: date
+             * @description Last day a temporary version may be worked. Extended only by an approved PCR.
+             */
+            readonly temporary_until: string | null;
         };
         /**
          * @description Process with steps serializer for creation/updates.
@@ -32255,6 +32400,13 @@ export interface components {
              * @description Default expected scrap fraction (0–1) applied to steps of this process that don't set their own `Steps.scrap_rate`. Used to gross up the started quantity so a work order still finishes the requested number of good parts (release-11-to-ship-10).
              */
             default_scrap_rate?: string;
+            /** @description Approved for named work orders only; never the current version. */
+            readonly is_temporary: boolean;
+            /**
+             * Format: date
+             * @description Last day a temporary version may be worked. Extended only by an approved PCR.
+             */
+            readonly temporary_until: string | null;
             readonly part_type_name: string | null;
             readonly process_steps: components["schemas"]["ProcessStep"][];
             readonly step_edges: components["schemas"]["StepEdge"][];
@@ -33579,10 +33731,14 @@ export interface components {
             notes?: string;
             archived?: boolean;
         };
+        RepeatDefectItem: {
+            error_type: string;
+            count: number;
+            part_types_affected: string[];
+            processes_affected: string[];
+        };
         RepeatDefectsResponse: {
-            data: {
-                [key: string]: unknown;
-            }[];
+            data: components["schemas"]["RepeatDefectItem"][];
             total_repeat_count: number;
         };
         ResendEmailVerificationRequest: {
@@ -34866,6 +35022,8 @@ export interface components {
              */
             outside_supplier?: string | null;
             readonly outside_supplier_name: string | null;
+            /** @description The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out. */
+            outside_special_process?: string;
             /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
             outside_process_lead_days?: number | null;
             is_terminal?: boolean;
@@ -35454,6 +35612,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out. */
+            outside_special_process?: string;
             /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
             outside_process_lead_days?: number | null;
             is_terminal?: boolean;
@@ -35828,6 +35988,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out. */
+            outside_special_process?: string;
             /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
             outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
@@ -35928,6 +36090,8 @@ export interface components {
              * @description Default subcontract vendor for this outside-process op (overridable per shipment).
              */
             outside_supplier?: string | null;
+            /** @description The special process this outside op performs (e.g. 'Heat treat', 'Nadcap plating'). When set, parts can only be sent to a vendor holding an active SPECIAL_PROCESS qualification whose label matches (case-insensitive). Blank means no qualification is checked at send-out. */
+            outside_special_process?: string;
             /** @description Planned vendor turnaround for this outside-process step, in CALENDAR days (ship-out → return). The scheduler reserves this as an elapsed, no-capacity interval that gates downstream ops. Overrides the supplier's default; if unset, the supplier default then the tenant OptimizationConfig default is used. Once a part is actually shipped, its OutsideProcessShipment.promised_return overrides. */
             outside_process_lead_days?: number | null;
             is_decision_point?: boolean;
@@ -36767,6 +36931,19 @@ export interface components {
          * @enum {string}
          */
         TechContinuityEnum: "ANY" | "SAME" | "DIFFERENT";
+        TemporaryChangeInfo: {
+            version_id: string;
+            version: number;
+            /** Format: date */
+            until: string | null;
+            expired: boolean;
+            work_orders: components["schemas"]["TemporaryWorkOrder"][];
+        };
+        TemporaryWorkOrder: {
+            id: string;
+            erp_id: string;
+            status: string;
+        };
         /** @description Serializer for Tenant model. */
         Tenant: {
             /** Format: uuid */
@@ -37935,6 +38112,7 @@ export interface components {
             materials_used: components["schemas"]["TravelerMaterial"][];
             attachments: components["schemas"]["TravelerAttachment"][];
             batch_cycles: components["schemas"]["TravelerBatchCycle"][];
+            training_overrides: components["schemas"]["TravelerTrainingOverride"][];
         };
         /**
          * @description * `PASS` - PASS
@@ -37951,6 +38129,19 @@ export interface components {
          * @enum {string}
          */
         TravelerStepStatusEnum: "COMPLETED" | "IN_PROGRESS" | "PENDING" | "SKIPPED";
+        /**
+         * @description A supervisor pushing an operator who wasn't qualified through the training gate —
+         *     the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit.
+         */
+        TravelerTrainingOverride: {
+            visit_number: number;
+            worker_name: string;
+            authorized_by_name: string;
+            reason: string;
+            /** Format: date-time */
+            at: string | null;
+            missing_training: string[];
+        };
         /**
          * @description * `RECONDITION` - When the recovered component needs work before it goes back
          *     * `REPLACE_POOL` - When the slot is filled from recovered stock
@@ -38593,16 +38784,6 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        WorkOrderBulkTransitionInputRequest: {
-            ids: string[];
-            status: components["schemas"]["WorkOrderStatusEnum"];
-            notes?: string;
-        };
-        WorkOrderBulkTransitionResponse: {
-            results: {
-                [key: string]: unknown;
-            }[];
-        };
         /**
          * @description A core on a teardown work order, for the control surface.
          *
@@ -38833,10 +39014,9 @@ export interface components {
          *     * `COMPLETED` - Completed
          *     * `ON_HOLD` - On hold
          *     * `CANCELLED` - Cancelled
-         *     * `WAITING_FOR_OPERATOR` - Waiting for operator
          * @enum {string}
          */
-        WorkOrderStatusEnum: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED" | "WAITING_FOR_OPERATOR";
+        WorkOrderStatusEnum: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ON_HOLD" | "CANCELLED";
         /** @description Response for GET /api/WorkOrders/{id}/step_history/ */
         WorkOrderStepHistoryResponse: {
             /** Format: uuid */
@@ -45619,6 +45799,28 @@ export interface operations {
             };
         };
     };
+    api_DowntimeEvents_summary_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Period length ending now (default 30, max 366). */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DowntimeSummary"];
+                };
+            };
+        };
+    };
     api_Employees_Options_list: {
         parameters: {
             query?: {
@@ -47020,6 +47222,8 @@ export interface operations {
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
                     cosign_password?: string;
+                    /** @description That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies. */
+                    cosign_signature?: string;
                 };
             };
         };
@@ -47057,6 +47261,8 @@ export interface operations {
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
                     cosign_password?: string;
+                    /** @description That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies. */
+                    cosign_signature?: string;
                 };
             };
         };
@@ -47094,6 +47300,8 @@ export interface operations {
                     cosign_email?: string;
                     /** @description That person's password. Verified inline; they are never logged in, and the verdict is attributed to them. */
                     cosign_password?: string;
+                    /** @description That person's drawn signature as a data URL (data:image/png;base64,…). Stored on the record once their password verifies. */
+                    cosign_signature?: string;
                 };
             };
         };
@@ -47957,6 +48165,7 @@ export interface operations {
     api_HarvestedComponents_list: {
         parameters: {
             query?: {
+                component_part__isnull?: boolean;
                 component_type?: string;
                 /**
                  * @description * `A` - Grade A - Excellent
@@ -55282,6 +55491,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    api_Parts_sampling_decisions_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartSamplingDecision"][];
                 };
             };
         };
@@ -68927,9 +69161,8 @@ export interface operations {
                  *     * `COMPLETED` - Completed
                  *     * `ON_HOLD` - On hold
                  *     * `CANCELLED` - Cancelled
-                 *     * `WAITING_FOR_OPERATOR` - Waiting for operator
                  */
-                workorder_status?: "CANCELLED" | "COMPLETED" | "IN_PROGRESS" | "ON_HOLD" | "PENDING" | "WAITING_FOR_OPERATOR";
+                workorder_status?: "CANCELLED" | "COMPLETED" | "IN_PROGRESS" | "ON_HOLD" | "PENDING";
             };
             header?: never;
             path?: never;
@@ -69570,31 +69803,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    api_WorkOrders_bulk_transition_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WorkOrderBulkTransitionInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderBulkTransitionInputRequest"];
-                "multipart/form-data": components["schemas"]["WorkOrderBulkTransitionInputRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkOrderBulkTransitionResponse"];
                 };
             };
         };
@@ -73179,6 +73387,44 @@ export interface operations {
             };
         };
     };
+    api_process_change_requests_extend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PcrExtendInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcrExtendInputRequest"];
+                "multipart/form-data": components["schemas"]["PcrExtendInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_process_change_requests_reject_create: {
         parameters: {
             query?: never;
@@ -73203,6 +73449,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProcessChangeRequest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_process_change_requests_return_to_baseline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Process Change Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PcrReturnToBaselineInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PcrReturnToBaselineInputRequest"];
+                "multipart/form-data": components["schemas"]["PcrReturnToBaselineInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             400: {

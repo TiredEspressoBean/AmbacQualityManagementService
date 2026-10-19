@@ -147,7 +147,7 @@ function transformDisposition(disp: MyDisposition): InboxItem {
         title: disp.description || "Quarantine disposition",
         subtitle: disp.severity_display || disp.severity || undefined,
         reference: disp.disposition_number ?? "",
-        referenceUrl: `/dispositions/edit/${disp.id}`,
+        referenceUrl: `/production/dispositions/${disp.id}/edit`,
         dueDate,
         status: disp.current_state ?? "OPEN",
         statusDisplay: disp.current_state === "IN_PROGRESS" ? "In Progress" : "Open",
