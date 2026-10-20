@@ -80,7 +80,7 @@ export function CoresBulkActionsBar({ selected, onClear }: CoresBulkActionsBarPr
             ? {
                 part_type: sharedCoreType,
                 is_disassembly: true,
-                status: "APPROVED",
+                for_new_work: true,
                 limit: 50,
             }
             : undefined,

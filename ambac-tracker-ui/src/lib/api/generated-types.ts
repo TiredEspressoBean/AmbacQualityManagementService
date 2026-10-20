@@ -7206,30 +7206,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/Orders/{id}/parts/bulk-add/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * @description Orders CRUD with CSV import/export support.
-         *
-         *     Import/Export endpoints (auto-configured from model):
-         *     - GET /import-template/ - Download import template (CSV or Excel)
-         *     - POST /import/ - Import data from CSV/Excel file
-         *     - GET /export/ - Export filtered data to CSV/Excel
-         */
-        post: operations["api_Orders_parts_bulk_add_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/Orders/{id}/parts/bulk-remove/": {
         parameters: {
             query?: never;
@@ -8444,6 +8420,23 @@ export interface paths {
          *     - GET /export/ - Export filtered data to CSV/Excel
          */
         patch: operations["api_Parts_partial_update"];
+        trace?: never;
+    };
+    "/api/Parts/{id}/blockers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What holds the part at its current step, each blocker with the bypass that could clear it (block_type, null if none can) and any request made. */
+        get: operations["api_Parts_blockers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/Parts/{id}/can-rollback/": {
@@ -10398,6 +10391,50 @@ export interface paths {
         put?: never;
         /** @description Record that these deliveries were keyed into the ERP, with the numbers posted. Ones still awaiting a decision are skipped. */
         post: operations["api_Receipts_mark_posted_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RecordEdits/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Correction reasons on one record: each field someone corrected, old -> new, and
+         *     why. Read like the record's audit history — `view_recordedit` plus being able to
+         *     open the record (services/core/audit_visibility.can_open_record). There is no
+         *     cross-record listing; that is the audit trail's job.
+         */
+        get: operations["api_RecordEdits_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RecordEdits/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Correction reasons on one record: each field someone corrected, old -> new, and
+         *     why. Read like the record's audit history — `view_recordedit` plus being able to
+         *     open the record (services/core/audit_visibility.can_open_record). There is no
+         *     cross-record listing; that is the audit trail's job.
+         */
+        get: operations["api_RecordEdits_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -12604,6 +12641,26 @@ export interface paths {
         };
         /** @description Get visit history for a part at a specific step */
         get: operations["api_StepExecutions_part_step_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepExecutions/training-overrides/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Every step a supervisor let someone work without the required training, across
+         *     parts, newest first: who authorised it, for whom, on which step and part, why.
+         */
+        get: operations["api_StepExecutions_training_overrides_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -16663,6 +16720,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkOrders/{id}/short_close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Complete this work order with fewer built than planned. Each unfinished unit
+         *     is scrapped or moved to another open work order on the same process; the order
+         *     reads Completed, short-closed, with the reason. Same permission as Cancel.
+         */
+        post: operations["api_WorkOrders_short_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/short_close_targets/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Where each unfinished unit may move at a short-close: open work orders on the
+         *     same process, for the same customer or on no order; a customer's own unit only to
+         *     that customer's work. `allowed` maps part id -> target ids.
+         */
+        get: operations["api_WorkOrders_short_close_targets_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/{id}/split/": {
         parameters: {
             query?: never;
@@ -20345,14 +20444,6 @@ export interface components {
             part_id: string;
             part_erp_id: string;
         };
-        /**
-         * @description * `0` - create
-         *     * `1` - update
-         *     * `2` - delete
-         *     * `3` - access
-         * @enum {integer}
-         */
-        ActionEnum: 0 | 1 | 2 | 3;
         AddNoteInputRequest: {
             message: string;
             /** @default VISIBLE */
@@ -20780,11 +20871,19 @@ export interface components {
             remote_addr?: string | null;
             /** Format: date-time */
             readonly timestamp: string;
-            action: components["schemas"]["ActionEnum"];
+            action: components["schemas"]["AuditLogActionEnum"];
             /** Change message */
             changes?: unknown;
             readonly changes_display: components["schemas"]["AuditChange"][];
         };
+        /**
+         * @description * `0` - create
+         *     * `1` - update
+         *     * `2` - delete
+         *     * `3` - access
+         * @enum {integer}
+         */
+        AuditLogActionEnum: 0 | 1 | 2 | 3;
         AuthUserCompany: {
             /** Format: uuid */
             id: string;
@@ -21125,19 +21224,6 @@ export interface components {
          * @enum {string}
          */
         BlockTypeEnum: "QA_SIGNOFF" | "FPI_REQUIRED" | "MEASUREMENT_FAILED" | "QUARANTINE" | "SAMPLING_REQUIRED" | "BATCH_INCOMPLETE" | "TRAINING_EXPIRED" | "CALIBRATION_EXPIRED" | "REGULATORY_HOLD" | "ROLLBACK" | "OTHER";
-        BulkAddPartsInputRequest: {
-            /** Format: uuid */
-            part_type: string;
-            /** Format: uuid */
-            step: string;
-            quantity: number;
-            /** @default PENDING */
-            part_status: components["schemas"]["PartsStatusEnum"];
-            /** Format: uuid */
-            work_order?: string;
-            /** @default 1 */
-            erp_id_start: number;
-        };
         BulkCompanyAssignmentInputRequest: {
             user_ids: number[];
             /** Format: uuid */
@@ -26226,6 +26312,7 @@ export interface components {
             quantity: number;
             readonly planned_quantity: number;
             readonly remaining_quantity: number;
+            readonly short_closed_shortfall: number;
             /** Format: date */
             due_date?: string | null;
             status?: components["schemas"]["OrderLineStatusEnum"];
@@ -28325,6 +28412,21 @@ export interface components {
          * @enum {string}
          */
         PartApprovalTypeEnum: "PPAP" | "FAI";
+        PartBlocker: {
+            message: string;
+            block_type: string | null;
+            bypassed: boolean;
+            /** Format: uuid */
+            request_id: string | null;
+            request_status: string | null;
+            request_reason: string | null;
+        };
+        PartBlockers: {
+            /** Format: uuid */
+            step_execution: string | null;
+            step_name: string | null;
+            blockers: components["schemas"]["PartBlocker"][];
+        };
         PartHistoryChange: {
             field: string;
             old: string | null;
@@ -31373,7 +31475,6 @@ export interface components {
             work_center?: string | null;
             notes?: string;
             downtime_reason?: string;
-            approved?: boolean;
             archived?: boolean;
         };
         /**
@@ -33469,6 +33570,34 @@ export interface components {
         RecordCountRequest: {
             entries: components["schemas"]["CountEntryRequest"][];
         };
+        /** @description A field correction and the reason given for it (RecordEdit): read-only. */
+        RecordEdit: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Type of the edited record */
+            readonly content_type: number;
+            /**
+             * Format: uuid
+             * @description ID of the edited record
+             */
+            readonly object_id: string;
+            /** @description Name of the field that was edited */
+            readonly field_name: string;
+            /** @description Previous value (serialized) */
+            readonly old_value: string;
+            /** @description New value (serialized) */
+            readonly new_value: string;
+            /** @description Reason for the edit */
+            readonly reason: string;
+            /** @description User who made the edit */
+            readonly edited_by: number;
+            readonly edited_by_name: string;
+            /**
+             * Format: date-time
+             * @description When the edit was made
+             */
+            readonly edited_at: string;
+        };
         /** @description Request body for recording receiving-inspection measurement results. */
         RecordInspectionRequestRequest: {
             measurements: components["schemas"]["ReceivingMeasurementInputRequest"][];
@@ -34855,6 +34984,45 @@ export interface components {
             readonly part_type_name: string | null;
             readonly work_order_number: string | null;
             readonly order_number: string | null;
+        };
+        /**
+         * @description * `SCRAP` - SCRAP
+         *     * `MOVE` - MOVE
+         * @enum {string}
+         */
+        ShortCloseDispositionActionEnum: "SCRAP" | "MOVE";
+        ShortCloseDispositionRequest: {
+            /** Format: uuid */
+            part: string;
+            action: components["schemas"]["ShortCloseDispositionActionEnum"];
+            /** Format: uuid */
+            target_work_order?: string | null;
+        };
+        ShortCloseRaiseTargetRequest: {
+            /** Format: uuid */
+            work_order: string;
+            raise_quantity: boolean;
+        };
+        ShortCloseTarget: {
+            /** Format: uuid */
+            id: string;
+            ERP_id: string;
+            quantity: number;
+            /** Format: uuid */
+            order_line: string | null;
+            customer_name: string | null;
+        };
+        ShortCloseTargets: {
+            targets: components["schemas"]["ShortCloseTarget"][];
+            allowed: {
+                [key: string]: string[];
+            };
+        };
+        ShortCloseWorkOrderRequestRequest: {
+            reason: string;
+            dispositions: components["schemas"]["ShortCloseDispositionRequest"][];
+            return_shortfall?: boolean | null;
+            raise_targets?: components["schemas"]["ShortCloseRaiseTargetRequest"][];
         };
         /**
          * @description * `BACKORDERED` - More coming
@@ -37615,7 +37783,7 @@ export interface components {
             work_center?: string | null;
             notes?: string;
             downtime_reason?: string;
-            approved?: boolean;
+            readonly approved: boolean;
             readonly approved_by: number | null;
             /** Format: date-time */
             readonly approved_at: string | null;
@@ -37644,7 +37812,6 @@ export interface components {
             work_center?: string | null;
             notes?: string;
             downtime_reason?: string;
-            approved?: boolean;
             archived?: boolean;
         };
         /**
@@ -37769,6 +37936,22 @@ export interface components {
             required_count: number;
             gap_count: number;
             cells: components["schemas"]["TrainingMatrixCell"][];
+        };
+        TrainingOverrideRow: {
+            /** Format: uuid */
+            execution_id: string;
+            /** Format: uuid */
+            part_id: string;
+            part_erp_id: string;
+            work_order_erp_id: string | null;
+            step_name: string;
+            visit_number: number;
+            worker_name: string;
+            authorized_by_name: string;
+            reason: string;
+            /** Format: date-time */
+            at: string | null;
+            missing_training: string[];
         };
         /**
          * @description Serializer for TrainingRecord model.
@@ -38743,6 +38926,13 @@ export interface components {
             readonly child_count: number;
             readonly cores: components["schemas"]["WorkOrderCore"][];
             readonly priority_changes: components["schemas"]["WorkOrderPriorityChange"][];
+            readonly short_closed: boolean;
+            readonly short_close_reason: string;
+            readonly short_closed_by: number | null;
+            /** Format: date-time */
+            readonly short_closed_at: string | null;
+            readonly short_close_returned_quantity: number;
+            readonly start_refusal: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -38875,6 +39065,8 @@ export interface components {
             /** Format: date-time */
             readonly split_at: string | null;
             readonly child_count: number;
+            short_closed?: boolean;
+            short_close_reason?: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -52941,36 +53133,6 @@ export interface operations {
             };
         };
     };
-    api_Orders_parts_bulk_add_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Order. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BulkAddPartsInputRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["BulkAddPartsInputRequest"];
-                "multipart/form-data": components["schemas"]["BulkAddPartsInputRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
     api_Orders_parts_bulk_remove_create: {
         parameters: {
             query?: never;
@@ -55216,6 +55378,31 @@ export interface operations {
             };
         };
     };
+    api_Parts_blockers_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Filter by multiple status values. */
+                status__in?: string[];
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Part. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartBlockers"];
+                };
+            };
+        };
+    };
     api_Parts_can_rollback_retrieve: {
         parameters: {
             query?: {
@@ -56287,6 +56474,8 @@ export interface operations {
     api_Processes_list: {
         parameters: {
             query?: {
+                /** @description Only processes new work may run: approved, in force, not a temporary change. */
+                for_new_work?: boolean;
                 is_disassembly?: boolean;
                 is_remanufactured?: boolean;
                 /** @description Number of results to return per page. */
@@ -58093,6 +58282,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MarkReceiptsPostedResult"];
+                };
+            };
+        };
+    };
+    api_RecordEdits_list: {
+        parameters: {
+            query: {
+                content_type: number;
+                object_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordEdit"][];
+                };
+            };
+        };
+    };
+    api_RecordEdits_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Record Edit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordEdit"];
                 };
             };
         };
@@ -61905,6 +62138,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedStepExecutionList"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_training_overrides_list: {
+        parameters: {
+            query?: {
+                assigned_to?: number;
+                assigned_to__isnull?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part?: string;
+                part__isnull?: boolean;
+                /** @description A search term. */
+                search?: string;
+                /** @description Overrides on or after this date */
+                since?: string;
+                /**
+                 * @description * `PENDING` - Pending
+                 *     * `CLAIMED` - Claimed
+                 *     * `IN_PROGRESS` - In Progress
+                 *     * `COMPLETED` - Completed
+                 *     * `SKIPPED` - Skipped
+                 *     * `CANCELLED` - Cancelled
+                 *     * `ROLLED_BACK` - Rolled Back
+                 */
+                status?: "CANCELLED" | "CLAIMED" | "COMPLETED" | "IN_PROGRESS" | "PENDING" | "ROLLED_BACK" | "SKIPPED";
+                /** @description Multiple values may be separated by commas. */
+                status__in?: string[];
+                step?: string;
+                step__process_memberships__process?: string;
+                step__work_center?: string;
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__in?: string[];
+                step__work_center__isnull?: boolean;
+                /**
+                 * @description * `PRODUCTION` - Production
+                 *     * `INSPECTION` - Inspection
+                 *     * `RECEIVING` - Receiving
+                 *     * `OSP` - Outside Process
+                 */
+                step__work_center__kind?: "INSPECTION" | "OSP" | "PRODUCTION" | "RECEIVING";
+                /** @description Multiple values may be separated by commas. */
+                step__work_center__kind__in?: string[];
+                /** @description Overrides on or before this date */
+                until?: string;
+                visit_number?: number;
+                visit_number__gte?: number;
+                visit_number__lte?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingOverrideRow"][];
                 };
             };
         };
@@ -65838,6 +66133,8 @@ export interface operations {
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                start_time__gte?: string;
+                start_time__lt?: string;
                 user?: number;
                 work_order?: string;
             };
@@ -69606,6 +69903,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderSetQuantityResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_short_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShortCloseWorkOrderRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ShortCloseWorkOrderRequestRequest"];
+                "multipart/form-data": components["schemas"]["ShortCloseWorkOrderRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_WorkOrders_short_close_targets_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShortCloseTargets"];
                 };
             };
         };

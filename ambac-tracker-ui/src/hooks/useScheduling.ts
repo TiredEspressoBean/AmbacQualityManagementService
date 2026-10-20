@@ -1073,7 +1073,7 @@ export const processesForPlanningOptions = () =>
   queryOptions({
     queryKey: ["processes", "for-planning"],
     queryFn: () =>
-      api.api_Processes_list({ queries: { limit: 500, status: "APPROVED" } }),
+      api.api_Processes_list({ queries: { limit: 500, for_new_work: true } }),
   });
 
 export function useProcesses() {

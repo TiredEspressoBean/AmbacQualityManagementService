@@ -1,3 +1,5 @@
+import { TimeApprovalCard } from "@/components/scheduling/TimeApprovalCard";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 /** Operator Hours (/production/labor-hours).
  *
  * Shop hours worked per operator over a date range, from TimeEntry:
@@ -22,6 +24,7 @@ export function LaborHoursPage() {
   const [start, setStart] = useState(iso(new Date(Date.now() - 7 * 86_400_000)));
   const [end, setEnd] = useState(iso(new Date()));
   const { data, isLoading } = useOperatorHours(start, end);
+  const canApproveTime = usePermissionSet().has("approve_timeentry");
   const rows = Array.isArray(data) ? data : [];
   const totalShift = rows.reduce((a, r) => a + r.on_shift_hours, 0);
   const totalDirect = rows.reduce((a, r) => a + r.direct_hours, 0);
@@ -129,6 +132,8 @@ export function LaborHoursPage() {
           )}
         </table>
       </div>
+
+      {canApproveTime && <TimeApprovalCard start={start} end={end} />}
 
       <p className="text-xs text-muted-foreground">
         On-shift = clock-in→out attendance (breaks excluded); direct = time clocked onto jobs.

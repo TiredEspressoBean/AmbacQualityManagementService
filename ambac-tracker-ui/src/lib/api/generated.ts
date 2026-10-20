@@ -538,11 +538,11 @@ export type AuditLog = {
    * @minimum 0
    * @maximum 32767
    */
-  action: ActionEnum;
+  action: AuditLogActionEnum;
   changes?: unknown | undefined;
   changes_display: Array<AuditChange>;
 };
-export type ActionEnum =
+export type AuditLogActionEnum =
   /**
    * * `0` - create
    * `1` - update
@@ -759,61 +759,6 @@ export type BOMRequest = {
   description?: string | undefined;
   archived?: boolean | undefined;
 };
-export type BulkAddPartsInputRequest = {
-  part_type: string;
-  step: string;
-  quantity: number;
-  part_status?: /**
-   * @default "PENDING"
-   */
-  PartsStatusEnum | undefined;
-  work_order?: string | undefined;
-  erp_id_start?: /**
-   * @default 1
-   */
-  number | undefined;
-};
-export type PartsStatusEnum =
-  /**
-   * * `PENDING` - Pending
-   * `IN_PROGRESS` - In Progress
-   * `AT_OUTSIDE_PROCESS` - At Outside Process
-   * `AWAITING_QA` - Awaiting QA
-   * `READY_FOR_NEXT_STEP` - Ready for next step
-   * `COMPLETED` - Completed
-   * `QUARANTINED` - Quarantined
-   * `REWORK_NEEDED` - Rework Needed
-   * `REWORK_IN_PROGRESS` - Rework In Progress
-   * `ON_HOLD` - On Hold
-   * `SCRAPPED` - Scrapped
-   * `CANCELLED` - Cancelled
-   * `SHIPPED` - Shipped
-   * `IN_STOCK` - In Stock
-   * `AWAITING_PICKUP` - Awaiting Pickup
-   * `CORE_BANKED` - Core Banked
-   * `RMA_CLOSED` - RMA Closed
-   * `DISMANTLED` - Dismantled
-   *
-   * @enum PENDING, IN_PROGRESS, AT_OUTSIDE_PROCESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, ON_HOLD, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED, DISMANTLED
-   */
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "AT_OUTSIDE_PROCESS"
-  | "AWAITING_QA"
-  | "READY_FOR_NEXT_STEP"
-  | "COMPLETED"
-  | "QUARANTINED"
-  | "REWORK_NEEDED"
-  | "REWORK_IN_PROGRESS"
-  | "ON_HOLD"
-  | "SCRAPPED"
-  | "CANCELLED"
-  | "SHIPPED"
-  | "IN_STOCK"
-  | "AWAITING_PICKUP"
-  | "CORE_BANKED"
-  | "RMA_CLOSED"
-  | "DISMANTLED";
 export type BulkExpectedReceiptRequest = {
   receipts: Array<ExpectedReceiptRequest>;
 };
@@ -5188,6 +5133,7 @@ export type OrderLine = {
   quantity: number;
   planned_quantity: number;
   remaining_quantity: number;
+  short_closed_shortfall: number;
   due_date?: (string | null) | undefined;
   status?: OrderLineStatusEnum | undefined;
   notes?: string | undefined;
@@ -7087,6 +7033,47 @@ export type Parts = {
    */
   storage_location: string;
 };
+export type PartsStatusEnum =
+  /**
+   * * `PENDING` - Pending
+   * `IN_PROGRESS` - In Progress
+   * `AT_OUTSIDE_PROCESS` - At Outside Process
+   * `AWAITING_QA` - Awaiting QA
+   * `READY_FOR_NEXT_STEP` - Ready for next step
+   * `COMPLETED` - Completed
+   * `QUARANTINED` - Quarantined
+   * `REWORK_NEEDED` - Rework Needed
+   * `REWORK_IN_PROGRESS` - Rework In Progress
+   * `ON_HOLD` - On Hold
+   * `SCRAPPED` - Scrapped
+   * `CANCELLED` - Cancelled
+   * `SHIPPED` - Shipped
+   * `IN_STOCK` - In Stock
+   * `AWAITING_PICKUP` - Awaiting Pickup
+   * `CORE_BANKED` - Core Banked
+   * `RMA_CLOSED` - RMA Closed
+   * `DISMANTLED` - Dismantled
+   *
+   * @enum PENDING, IN_PROGRESS, AT_OUTSIDE_PROCESS, AWAITING_QA, READY_FOR_NEXT_STEP, COMPLETED, QUARANTINED, REWORK_NEEDED, REWORK_IN_PROGRESS, ON_HOLD, SCRAPPED, CANCELLED, SHIPPED, IN_STOCK, AWAITING_PICKUP, CORE_BANKED, RMA_CLOSED, DISMANTLED
+   */
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "AT_OUTSIDE_PROCESS"
+  | "AWAITING_QA"
+  | "READY_FOR_NEXT_STEP"
+  | "COMPLETED"
+  | "QUARANTINED"
+  | "REWORK_NEEDED"
+  | "REWORK_IN_PROGRESS"
+  | "ON_HOLD"
+  | "SCRAPPED"
+  | "CANCELLED"
+  | "SHIPPED"
+  | "IN_STOCK"
+  | "AWAITING_PICKUP"
+  | "CORE_BANKED"
+  | "RMA_CLOSED"
+  | "DISMANTLED";
 export type PaginatedPersonalRuleList = {
   /**
    * @example 123
@@ -11258,7 +11245,7 @@ export type TimeEntry = {
    * @maxLength 100
    */
   string | undefined;
-  approved?: boolean | undefined;
+  approved: boolean;
   approved_by: number | null;
   approved_at: string | null;
   created_at: string;
@@ -11840,6 +11827,8 @@ export type WorkOrderList = {
   split_reason: SplitReasonEnum | NullEnum | null;
   split_at: string | null;
   child_count: number;
+  short_closed?: boolean | undefined;
+  short_close_reason?: string | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -11925,6 +11914,19 @@ export type PartApprovalRequest = {
   expiry_date?: (string | null) | undefined;
   notes?: string | undefined;
   archived?: boolean | undefined;
+};
+export type PartBlockers = {
+  step_execution: string | null;
+  step_name: string | null;
+  blockers: Array<PartBlocker>;
+};
+export type PartBlocker = {
+  message: string;
+  block_type: string | null;
+  bypassed: boolean;
+  request_id: string | null;
+  request_status: string | null;
+  request_reason: string | null;
 };
 export type PartHistoryEntry = {
   id: number;
@@ -14882,7 +14884,6 @@ export type PatchedTimeEntryRequest = Partial<{
    * @maxLength 100
    */
   downtime_reason: string;
-  approved: boolean;
   archived: boolean;
 }>;
 export type PatchedTrainingRecordRequest = Partial<{
@@ -16610,6 +16611,43 @@ export type ShipLotRequestRequest = {
     (string | null)
     | undefined;
 };
+export type ShortCloseDispositionRequest = {
+  part: string;
+  action: ShortCloseDispositionActionEnum;
+  target_work_order?: (string | null) | undefined;
+};
+export type ShortCloseDispositionActionEnum =
+  /**
+   * * `SCRAP` - SCRAP
+   * `MOVE` - MOVE
+   *
+   * @enum SCRAP, MOVE
+   */
+  "SCRAP" | "MOVE";
+export type ShortCloseTargets = {
+  targets: Array<ShortCloseTarget>;
+  allowed: {};
+};
+export type ShortCloseTarget = {
+  id: string;
+  ERP_id: string;
+  quantity: number;
+  order_line: string | null;
+  customer_name: string | null;
+};
+export type ShortCloseWorkOrderRequestRequest = {
+  /**
+   * @minLength 1
+   */
+  reason: string;
+  dispositions: Array<ShortCloseDispositionRequest>;
+  return_shortfall?: (boolean | null) | undefined;
+  raise_targets?: Array<ShortCloseRaiseTargetRequest> | undefined;
+};
+export type ShortCloseRaiseTargetRequest = {
+  work_order: string;
+  raise_quantity: boolean;
+};
 export type SourceRequirement = {
   material: string;
   buy_kind: string;
@@ -17742,7 +17780,6 @@ export type TimeEntryRequest = {
    * @maxLength 100
    */
   string | undefined;
-  approved?: boolean | undefined;
   archived?: boolean | undefined;
 };
 export type TrainingMatrix = {
@@ -18078,6 +18115,12 @@ export type WorkOrder = {
   child_count: number;
   cores: Array<WorkOrderCore>;
   priority_changes: Array<WorkOrderPriorityChange>;
+  short_closed: boolean;
+  short_close_reason: string;
+  short_closed_by: number | null;
+  short_closed_at: string | null;
+  short_close_returned_quantity: number;
+  start_refusal: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -21951,6 +21994,7 @@ const OrderLine = z.object({
   quantity: z.number().int().gte(0).lte(2147483647),
   planned_quantity: z.number().int(),
   remaining_quantity: z.number().int(),
+  short_closed_shortfall: z.number().int(),
   due_date: z.string().nullish(),
   status: OrderLineStatusEnum.optional(),
   notes: z.string().optional(),
@@ -22125,34 +22169,6 @@ const StepIncrementInputRequest = z.object({ step_id: z.string().uuid() });
 const StepIncrementResponse = z.object({
   advanced: z.number().int(),
   total: z.number().int(),
-});
-const PartsStatusEnum = z.enum([
-  "PENDING",
-  "IN_PROGRESS",
-  "AT_OUTSIDE_PROCESS",
-  "AWAITING_QA",
-  "READY_FOR_NEXT_STEP",
-  "COMPLETED",
-  "QUARANTINED",
-  "REWORK_NEEDED",
-  "REWORK_IN_PROGRESS",
-  "ON_HOLD",
-  "SCRAPPED",
-  "CANCELLED",
-  "SHIPPED",
-  "IN_STOCK",
-  "AWAITING_PICKUP",
-  "CORE_BANKED",
-  "RMA_CLOSED",
-  "DISMANTLED",
-]);
-const BulkAddPartsInputRequest = z.object({
-  part_type: z.string().uuid(),
-  step: z.string().uuid(),
-  quantity: z.number().int(),
-  part_status: PartsStatusEnum.optional().default("PENDING"),
-  work_order: z.string().uuid().optional(),
-  erp_id_start: z.number().int().optional().default(1),
 });
 const BulkRemovePartsInputRequest = z.object({
   ids: z.array(z.string().uuid()),
@@ -22520,6 +22536,26 @@ const PartTypeSelect = z.object({
   name: z.string().max(50),
   ID_prefix: z.string().max(50).nullish(),
 });
+const PartsStatusEnum = z.enum([
+  "PENDING",
+  "IN_PROGRESS",
+  "AT_OUTSIDE_PROCESS",
+  "AWAITING_QA",
+  "READY_FOR_NEXT_STEP",
+  "COMPLETED",
+  "QUARANTINED",
+  "REWORK_NEEDED",
+  "REWORK_IN_PROGRESS",
+  "ON_HOLD",
+  "SCRAPPED",
+  "CANCELLED",
+  "SHIPPED",
+  "IN_STOCK",
+  "AWAITING_PICKUP",
+  "CORE_BANKED",
+  "RMA_CLOSED",
+  "DISMANTLED",
+]);
 const Parts = z.object({
   id: z.string().uuid(),
   ERP_id: z.string().max(50),
@@ -22607,6 +22643,19 @@ const PatchedPartsRequest = z
     archived: z.boolean(),
   })
   .partial();
+const PartBlocker = z.object({
+  message: z.string(),
+  block_type: z.string().nullable(),
+  bypassed: z.boolean(),
+  request_id: z.string().uuid().nullable(),
+  request_status: z.string().nullable(),
+  request_reason: z.string().nullable(),
+});
+const PartBlockers = z.object({
+  step_execution: z.string().uuid().nullable(),
+  step_name: z.string().nullable(),
+  blockers: z.array(PartBlocker),
+});
 const CompleteStepResponse = z.object({
   status: z.string(),
   reason: z.string().optional(),
@@ -23545,6 +23594,18 @@ const MarkReceiptsPostedRequest = z.object({
   lot_ids: z.array(z.string().uuid()),
 });
 const MarkReceiptsPostedResult = z.object({ marked: z.number().int() });
+const RecordEdit = z.object({
+  id: z.string().uuid(),
+  content_type: z.number().int(),
+  object_id: z.string().uuid(),
+  field_name: z.string(),
+  old_value: z.string(),
+  new_value: z.string(),
+  reason: z.string(),
+  edited_by: z.number().int(),
+  edited_by_name: z.string(),
+  edited_at: z.string().datetime({ offset: true }),
+});
 const TriggerEnum = z.enum([
   "RECONDITION",
   "REPLACE_POOL",
@@ -24631,6 +24692,19 @@ const PaginatedStepExecutionList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(StepExecution),
+});
+const TrainingOverrideRow = z.object({
+  execution_id: z.string().uuid(),
+  part_id: z.string().uuid(),
+  part_erp_id: z.string(),
+  work_order_erp_id: z.string().nullable(),
+  step_name: z.string(),
+  visit_number: z.number().int(),
+  worker_name: z.string(),
+  authorized_by_name: z.string(),
+  reason: z.string(),
+  at: z.string().datetime({ offset: true }).nullable(),
+  missing_training: z.array(z.string()),
 });
 const WIPSummary = z.object({
   step_id: z.string().uuid(),
@@ -25939,7 +26013,7 @@ const TimeEntry = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional(),
   downtime_reason: z.string().max(100).optional(),
-  approved: z.boolean().optional(),
+  approved: z.boolean(),
   approved_by: z.number().int().nullable(),
   approved_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
@@ -25963,7 +26037,6 @@ const TimeEntryRequest = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional(),
   downtime_reason: z.string().max(100).optional(),
-  approved: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedTimeEntryRequest = z
@@ -25978,7 +26051,6 @@ const PatchedTimeEntryRequest = z
     work_center: z.string().uuid().nullable(),
     notes: z.string(),
     downtime_reason: z.string().max(100),
-    approved: z.boolean(),
     archived: z.boolean(),
   })
   .partial();
@@ -26629,6 +26701,8 @@ const WorkOrderList = z.object({
   split_reason: z.union([SplitReasonEnum, NullEnum]).nullable(),
   split_at: z.string().datetime({ offset: true }).nullable(),
   child_count: z.number().int(),
+  short_closed: z.boolean().optional(),
+  short_close_reason: z.string().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -26712,6 +26786,12 @@ const WorkOrder = z.object({
   child_count: z.number().int(),
   cores: z.array(WorkOrderCore),
   priority_changes: z.array(WorkOrderPriorityChange),
+  short_closed: z.boolean(),
+  short_close_reason: z.string(),
+  short_closed_by: z.number().int().nullable(),
+  short_closed_at: z.string().datetime({ offset: true }).nullable(),
+  short_close_returned_quantity: z.number().int(),
+  start_refusal: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -26815,6 +26895,33 @@ const WorkOrderSetQuantityResponse = z.object({
   quantity: z.number().int(),
   added: z.number().int(),
   cancelled: z.number().int(),
+});
+const ShortCloseDispositionActionEnum = z.enum(["SCRAP", "MOVE"]);
+const ShortCloseDispositionRequest = z.object({
+  part: z.string().uuid(),
+  action: ShortCloseDispositionActionEnum,
+  target_work_order: z.string().uuid().nullish(),
+});
+const ShortCloseRaiseTargetRequest = z.object({
+  work_order: z.string().uuid(),
+  raise_quantity: z.boolean(),
+});
+const ShortCloseWorkOrderRequestRequest = z.object({
+  reason: z.string().min(1),
+  dispositions: z.array(ShortCloseDispositionRequest),
+  return_shortfall: z.boolean().nullish(),
+  raise_targets: z.array(ShortCloseRaiseTargetRequest).optional(),
+});
+const ShortCloseTarget = z.object({
+  id: z.string().uuid(),
+  ERP_id: z.string(),
+  quantity: z.number().int(),
+  order_line: z.string().uuid().nullable(),
+  customer_name: z.string().nullable(),
+});
+const ShortCloseTargets = z.object({
+  targets: z.array(ShortCloseTarget),
+  allowed: z.record(z.array(z.string().uuid())),
 });
 const WorkOrderSplitInputRequest = z.object({
   reason: z.string().min(1),
@@ -26989,7 +27096,7 @@ const VectorSearchRequestRequest = z.object({
   doc_ids: z.array(z.string().uuid()).optional(),
 });
 const VectorSearchResponse = z.object({ results: z.array(z.unknown()) });
-const ActionEnum = z.union([
+const AuditLogActionEnum = z.union([
   z.literal(0),
   z.literal(1),
   z.literal(2),
@@ -27010,7 +27117,7 @@ const AuditLog = z.object({
   actor_info: UserSelect.nullable(),
   remote_addr: z.string().nullish(),
   timestamp: z.string().datetime({ offset: true }),
-  action: ActionEnum,
+  action: AuditLogActionEnum,
   changes: z.unknown().nullish(),
   changes_display: z.array(AuditChange),
 });
@@ -28926,8 +29033,6 @@ export const schemas = {
   AddNoteInputRequest,
   StepIncrementInputRequest,
   StepIncrementResponse,
-  PartsStatusEnum,
-  BulkAddPartsInputRequest,
   BulkRemovePartsInputRequest,
   PatchedSetMilestoneInputRequest,
   StepDistributionResponse,
@@ -28966,10 +29071,13 @@ export const schemas = {
   PartTypeQualitySummary,
   PatchedPartTypeSourcingRequest,
   PartTypeSelect,
+  PartsStatusEnum,
   Parts,
   PaginatedPartsList,
   PartsRequest,
   PatchedPartsRequest,
+  PartBlocker,
+  PartBlockers,
   CompleteStepResponse,
   DecisionBranch,
   DecisionAlternateBranch,
@@ -29082,6 +29190,7 @@ export const schemas = {
   ReceiptRow,
   MarkReceiptsPostedRequest,
   MarkReceiptsPostedResult,
+  RecordEdit,
   TriggerEnum,
   RepairCode,
   PaginatedRepairCodeList,
@@ -29198,6 +29307,7 @@ export const schemas = {
   CaptureDraftError,
   StepDurationStats,
   PaginatedStepExecutionList,
+  TrainingOverrideRow,
   WIPSummary,
   PaginatedWIPSummaryList,
   WorkAuthorizationRow,
@@ -29415,6 +29525,12 @@ export const schemas = {
   WorkOrderReleaseReadiness,
   WorkOrderSetQuantityInputRequest,
   WorkOrderSetQuantityResponse,
+  ShortCloseDispositionActionEnum,
+  ShortCloseDispositionRequest,
+  ShortCloseRaiseTargetRequest,
+  ShortCloseWorkOrderRequestRequest,
+  ShortCloseTarget,
+  ShortCloseTargets,
   WorkOrderSplitInputRequest,
   WorkOrderSplitResponse,
   StepSummary,
@@ -29444,7 +29560,7 @@ export const schemas = {
   KeywordSearchResponse,
   VectorSearchRequestRequest,
   VectorSearchResponse,
-  ActionEnum,
+  AuditLogActionEnum,
   AuditChange,
   AuditLog,
   PaginatedAuditLogList,
@@ -43810,31 +43926,6 @@ Import/Export endpoints (auto-configured from model):
   },
   {
     method: "post",
-    path: "/api/Orders/:id/parts/bulk-add/",
-    alias: "api_Orders_parts_bulk_add_create",
-    description: `Orders CRUD with CSV import/export support.
-
-Import/Export endpoints (auto-configured from model):
-- GET /import-template/ - Download import template (CSV or Excel)
-- POST /import/ - Import data from CSV/Excel file
-- GET /export/ - Export filtered data to CSV/Excel`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: BulkAddPartsInputRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.object({}).partial().passthrough(),
-  },
-  {
-    method: "post",
     path: "/api/Orders/:id/parts/bulk-remove/",
     alias: "api_Orders_parts_bulk_remove_create",
     description: `Orders CRUD with CSV import/export support.
@@ -43923,10 +44014,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedStepDistributionResponseList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/orders/:order_id/parts/",
@@ -43955,7 +44043,10 @@ const endpoints3 = makeApi([
       },
     ],
     response: PaginatedPartsList,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -45170,6 +45261,26 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/Parts/:id/blockers/",
+    alias: "api_Parts_blockers_retrieve",
+    description: `What holds the part at its current step, each blocker with the bypass that could clear it (block_type, null if none can) and any request made.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+    ],
+    response: PartBlockers,
   },
   {
     method: "get",
@@ -48225,6 +48336,11 @@ Usage:
     requestFormat: "json",
     parameters: [
       {
+        name: "for_new_work",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
         name: "is_disassembly",
         type: "Query",
         schema: z.boolean().optional(),
@@ -49855,6 +49971,47 @@ const endpoints4 = makeApi([
       },
     ],
     response: z.object({ marked: z.number().int() }),
+  },
+  {
+    method: "get",
+    path: "/api/RecordEdits/",
+    alias: "api_RecordEdits_list",
+    description: `Correction reasons on one record: each field someone corrected, old -&gt; new, and
+why. Read like the record&#x27;s audit history — &#x60;view_recordedit&#x60; plus being able to
+open the record (services/core/audit_visibility.can_open_record). There is no
+cross-record listing; that is the audit trail&#x27;s job.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "content_type",
+        type: "Query",
+        schema: z.number().int(),
+      },
+      {
+        name: "object_id",
+        type: "Query",
+        schema: z.string(),
+      },
+    ],
+    response: z.array(RecordEdit),
+  },
+  {
+    method: "get",
+    path: "/api/RecordEdits/:id/",
+    alias: "api_RecordEdits_retrieve",
+    description: `Correction reasons on one record: each field someone corrected, old -&gt; new, and
+why. Read like the record&#x27;s audit history — &#x60;view_recordedit&#x60; plus being able to
+open the record (services/core/audit_visibility.can_open_record). There is no
+cross-record listing; that is the audit trail&#x27;s job.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RecordEdit,
   },
   {
     method: "get",
@@ -53846,6 +54003,129 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
   },
   {
     method: "get",
+    path: "/api/StepExecutions/training-overrides/",
+    alias: "api_StepExecutions_training_overrides_list",
+    description: `Every step a supervisor let someone work without the required training, across
+parts, newest first: who authorised it, for whom, on which step and part, why.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "assigned_to",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "part__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "since",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "CANCELLED",
+            "CLAIMED",
+            "COMPLETED",
+            "IN_PROGRESS",
+            "PENDING",
+            "ROLLED_BACK",
+            "SKIPPED",
+          ])
+          .optional(),
+      },
+      {
+        name: "status__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__process_memberships__process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "step__work_center__in",
+        type: "Query",
+        schema: z.array(z.string().uuid()).optional(),
+      },
+      {
+        name: "step__work_center__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "step__work_center__kind",
+        type: "Query",
+        schema: z
+          .enum(["INSPECTION", "OSP", "PRODUCTION", "RECEIVING"])
+          .optional(),
+      },
+      {
+        name: "step__work_center__kind__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
+        name: "until",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "visit_number",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__gte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "visit_number__lte",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.array(TrainingOverrideRow),
+  },
+  {
+    method: "get",
     path: "/api/StepExecutions/wip_at_step/",
     alias: "api_StepExecutions_wip_at_step_list",
     description: `Get all active WIP at a specific step`,
@@ -54979,7 +55259,10 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "delete",
     path: "/api/StepTimings/:id/",
@@ -55046,10 +55329,7 @@ from. One row per step (the step is the key).`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepTimings/import-status/:task_id/",
@@ -57876,6 +58156,16 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
         schema: z.string().optional(),
       },
       {
+        name: "start_time__gte",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
+        name: "start_time__lt",
+        type: "Query",
+        schema: z.string().datetime({ offset: true }).optional(),
+      },
+      {
         name: "user",
         type: "Query",
         schema: z.number().int().optional(),
@@ -59749,7 +60039,10 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "delete",
     path: "/api/UserInvitations/:id/",
@@ -59800,10 +60093,7 @@ Provides endpoints for:
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/UserInvitations/validate-token/",
@@ -61044,6 +61334,45 @@ re-POST with a reason to release anyway (the reason is recorded).`,
       },
     ],
     response: WorkOrderSetQuantityResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/short_close_targets/",
+    alias: "api_WorkOrders_short_close_targets_retrieve",
+    description: `Where each unfinished unit may move at a short-close: open work orders on the
+same process, for the same customer or on no order; a customer&#x27;s own unit only to
+that customer&#x27;s work. &#x60;allowed&#x60; maps part id -&gt; target ids.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ShortCloseTargets,
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/short_close/",
+    alias: "api_WorkOrders_short_close_create",
+    description: `Complete this work order with fewer built than planned. Each unfinished unit
+is scrapped or moved to another open work order on the same process; the order
+reads Completed, short-closed, with the reason. Same permission as Cancel.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: ShortCloseWorkOrderRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "post",

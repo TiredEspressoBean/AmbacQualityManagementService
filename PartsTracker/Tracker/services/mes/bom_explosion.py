@@ -102,7 +102,10 @@ def _build_process(component_type):
     from Tracker.models import Processes
     procs = list(
         Processes.objects.filter(archived=False,   # tenant-safe: .objects auto-scopes to the request tenant
-            part_type=component_type, status='APPROVED', is_disassembly=False)[:2]
+            part_type=component_type, status='APPROVED', is_disassembly=False,
+            # A temporary change's version is approved and in force too, but only for
+            # the work orders its change order named — never a second build routing.
+            is_temporary=False)[:2]
     )
     if not procs:
         return None, "no approved build process for this component"

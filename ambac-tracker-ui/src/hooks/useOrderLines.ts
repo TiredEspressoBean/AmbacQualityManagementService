@@ -23,6 +23,8 @@ export type OrderLine = {
   /** Demand not yet turned into work. Derived, never stored — a counter would have to
    *  stay correct across work-order create, cancel, split and quantity change. */
   remaining_quantity: number;
+  /** Units planned on this line's short-closed work orders that were never built. */
+  short_closed_shortfall: number;
   due_date: string | null;
   status: "OPEN" | "CANCELLED";
   notes: string;

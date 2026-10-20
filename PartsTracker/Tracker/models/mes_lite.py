@@ -480,8 +480,10 @@ class Processes(SecureModel):
 
     @classmethod
     def get_available(cls, part_type=None):
-        """Get processes available for new work orders (APPROVED only, current versions)."""
-        qs = cls.objects.filter(status=ProcessStatus.APPROVED, is_current_version=True)
+        """Processes new work may run: approved and in force, never a temporary change's
+        version. "In force" is not archived, NOT `is_current_version` — opening a draft
+        revision clears that on the approved row that is still the routing in force."""
+        qs = cls.objects.filter(status=ProcessStatus.APPROVED, archived=False, is_temporary=False)
         if part_type:
             qs = qs.filter(part_type=part_type)
         return qs.order_by('name')
@@ -1225,7 +1227,7 @@ class Steps(SecureModel):
                 'inspection_completion': (inspected_parts / sampled_parts * 100) if sampled_parts > 0 else 0,
                 'meets_minimum': self.validate_sampling_coverage(work_order)}
 
-    def can_advance_from_step(self, step_execution, work_order):
+    def can_advance_from_step(self, step_execution, work_order, apply_overrides=True):
         """
         Comprehensive gating function for step advancement.
 
@@ -1245,11 +1247,13 @@ class Steps(SecureModel):
         Args:
             step_execution: StepExecution instance for the part at this step
             work_order: WorkOrder instance
+            apply_overrides: False returns the blockers before approved bypasses clear
+                them — for showing what blocks a part and what a bypass covers.
 
         Returns:
             tuple: (can_advance: bool, blockers: list of str)
         """
-        from .qms import QaApproval, QualityReports, FPIRecord, StepOverride
+        from .qms import QaApproval, QualityReports, FPIRecord
 
         blockers = []
         part = step_execution.part  # May be None for Core (teardown) executions.
@@ -1371,44 +1375,11 @@ class Steps(SecureModel):
                     who = worker.get_full_name() or worker.get_username()
                     blockers.append(f"Operator {who} is not qualified for this step")
 
-        # 8. Check for valid overrides that could clear blocks
-        if blockers:
-            valid_overrides = StepOverride.objects.filter(
-                step_execution=step_execution,
-                status='APPROVED',
-                used=False
-            )
-            # Check each blocker against overrides
-            # `block_type` is a TextChoices field storing UPPERCASE enum
-            # values (QA_SIGNOFF, QUARANTINE, …) — lower-case the set so
-            # the human-readable blocker-message matching below works.
-            # (Prior to this fix the comparison always failed and approved
-            # overrides never cleared blockers.)
-            override_types = {
-                bt.lower()
-                for bt in valid_overrides.values_list('block_type', flat=True)
-                if bt
-            }
-            remaining_blockers = []
-
-            for blocker in blockers:
-                # Map blocker message to block type
-                can_override = False
-                if 'quarantine' in blocker.lower() and 'quarantine' in override_types:
-                    can_override = True
-                elif 'qa signoff' in blocker.lower() and 'qa_signoff' in override_types:
-                    can_override = True
-                elif 'first piece' in blocker.lower() and 'fpi_required' in override_types:
-                    can_override = True
-                elif 'sampling' in blocker.lower() and 'sampling_required' in override_types:
-                    can_override = True
-                elif 'measurement' in blocker.lower() and 'measurement_failed' in override_types:
-                    can_override = True
-
-                if not can_override:
-                    remaining_blockers.append(blocker)
-
-            blockers = remaining_blockers
+        # 8. An approved, unexpired bypass clears the blocker it names
+        #    (services/mes/step_override.py holds the blocker -> block type map).
+        if blockers and apply_overrides:
+            from Tracker.services.mes.step_override import clear_bypassed
+            blockers = clear_bypassed(step_execution, blockers)
 
         return (len(blockers) == 0, blockers)
 
@@ -2638,38 +2609,6 @@ class Orders(SecureModel):
 
         return {"advanced": advanced, "total": parts_to_advance.count()}
 
-    def bulk_add_parts(self, part_type, step, quantity, part_status=PartsStatus.PENDING, work_order=None,
-                       erp_id_start=1):
-        """Add multiple parts to this order efficiently"""
-        # Create parts without sampling evaluation
-        parts = []
-        for i in range(quantity):
-            erp_id = f"{part_type.ID_prefix or 'P'}{erp_id_start + i:04d}"
-            part = Parts(part_status=part_status, order=self, part_type=part_type, step=step, work_order=work_order,
-                         archived=False, ERP_id=erp_id)
-            parts.append(part)
-
-        # Bulk create for efficiency
-        created_parts = Parts.objects.bulk_create(parts)
-
-        # Evaluate sampling for all new parts
-        updates = []
-        for part in created_parts:
-            evaluator = SamplingFallbackApplier(part=part)
-            result = evaluator.evaluate()
-
-            part.requires_sampling = result.get("requires_sampling", False)
-            part.sampling_rule = result.get("rule")
-            part.sampling_ruleset = result.get("ruleset")
-            part.sampling_context = result.get("context", {})
-            updates.append(part)
-
-        # Bulk update sampling fields
-        Parts.objects.bulk_update(updates,
-                                  ["requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context"])
-
-        return {"created": len(created_parts), "parts": created_parts}
-
     def bulk_remove_parts(self, part_ids):
         """Thin wrapper — delegates to `services.mes.orders.remove_parts_from_order`."""
         from Tracker.services.mes.orders import remove_parts_from_order
@@ -2941,13 +2880,15 @@ class OrderLine(SecureModel):
 
         Cancelled work orders don't count — they cover nothing — so cancelling a job
         returns its units to the line's remaining demand rather than leaving the line
-        looking satisfied by work that will never run.
+        looking satisfied by work that will never run. A short-closed work order counts
+        less the units its closer chose to give back.
         """
         from django.db.models import Sum
         # tenant-safe: reverse FK from an in-tenant OrderLine row.
-        return self.work_orders.exclude(
+        agg = self.work_orders.exclude(
             workorder_status=WorkOrderStatus.CANCELLED
-        ).aggregate(q=Sum('quantity'))['q'] or 0
+        ).aggregate(q=Sum('quantity'), back=Sum('short_close_returned_quantity'))
+        return max(0, (agg['q'] or 0) - (agg['back'] or 0))
 
     @property
     def remaining_quantity(self) -> int:
@@ -3065,6 +3006,19 @@ class WorkOrder(SecureModel):
 
     true_duration = models.DurationField(null=True, blank=True)
     """Measured time taken to complete the work order."""
+
+    # Short-close: COMPLETED with fewer built than planned, on purpose. Each unfinished
+    # unit was scrapped or moved to another work order at the time
+    # (services/mes/work_order.short_close_work_order).
+    short_closed = models.BooleanField(default=False)
+    short_close_reason = models.TextField(blank=True, default='')
+    short_closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT,
+        related_name='short_closed_work_orders')
+    short_closed_at = models.DateTimeField(null=True, blank=True)
+    # Unbuilt units the closer chose to give back to the order line as demand still to
+    # plan. Fixed at close; the line's planned quantity subtracts it.
+    short_close_returned_quantity = models.PositiveIntegerField(default=0)
 
     notes = models.TextField(null=True, blank=True)
     """Optional notes or remarks logged during execution or review.

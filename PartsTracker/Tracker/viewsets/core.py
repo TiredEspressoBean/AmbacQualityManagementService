@@ -27,7 +27,7 @@ from Tracker.serializers.core import (
     UserSerializer, UserSelectSerializer, UserDetailSerializer,
     TenantAwareUserDetailsSerializer,
     CompanySerializer, UserInvitationSerializer,
-    ContentTypeSerializer, AuditLogSerializer,
+    ContentTypeSerializer, AuditLogSerializer, RecordEditSerializer,
     ApprovalTemplateSerializer, ApprovalRequestSerializer, ApprovalResponseSerializer
 )
 from Tracker.serializers.dms import DocumentsSerializer, DocumentTypeSerializer
@@ -1927,6 +1927,45 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
         obj = super().get_object()
         if not visible_entries(LogEntry.objects.filter(pk=obj.pk), self.request.user,
                                content_type_id=obj.content_type_id).exists():
+            raise Http404
+        return obj
+
+
+class RecordEditViewSet(viewsets.ReadOnlyModelViewSet):
+    """Correction reasons on one record: each field someone corrected, old -> new, and
+    why. Read like the record's audit history — `view_recordedit` plus being able to
+    open the record (services/core/audit_visibility.can_open_record). There is no
+    cross-record listing; that is the audit trail's job."""
+    serializer_class = RecordEditSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['content_type', 'object_id']
+    pagination_class = None
+
+    def get_queryset(self):
+        from Tracker.models import RecordEdit
+        if getattr(self, 'swagger_fake_view', False):
+            return RecordEdit.unscoped.none()
+        return RecordEdit.objects.select_related('edited_by').order_by('-edited_at')
+
+    @extend_schema(parameters=[
+        OpenApiParameter('content_type', int, required=True),
+        OpenApiParameter('object_id', str, required=True),
+    ])
+    def list(self, request, *args, **kwargs):
+        from rest_framework.exceptions import ValidationError, PermissionDenied
+        from Tracker.services.core.audit_visibility import can_open_record
+        ct, oid = request.query_params.get('content_type'), request.query_params.get('object_id')
+        if not (ct and oid):
+            raise ValidationError("Corrections are read per record: pass content_type and object_id.")
+        if not can_open_record(ct, oid, request.user):
+            raise PermissionDenied("You can't open this record, so its corrections aren't yours to read.")
+        return super().list(request, *args, **kwargs)
+
+    def get_object(self):
+        from django.http import Http404
+        from Tracker.services.core.audit_visibility import can_open_record
+        obj = super().get_object()
+        if not can_open_record(obj.content_type_id, obj.object_id, self.request.user):
             raise Http404
         return obj
 

@@ -127,6 +127,15 @@ function LineRow({ line, orderId, canPlan, readOnly }: {
         <>
           <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
             {line.planned_quantity}
+            {/* A short-closed work order still counts as planned; say what it didn't build. */}
+            {line.short_closed_shortfall > 0 && (
+              <span
+                className="block text-[11px] text-amber-600 dark:text-amber-400"
+                title="Work orders on this line were short-closed: completed with fewer built than planned"
+              >
+                {line.short_closed_shortfall} short-closed
+              </span>
+            )}
           </td>
           <td className="px-3 py-2 text-right tabular-nums">
             {/* The one number that drives a decision, so it gets the colour. */}

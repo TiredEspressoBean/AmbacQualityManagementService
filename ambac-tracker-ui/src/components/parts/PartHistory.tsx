@@ -12,6 +12,8 @@ import { format, formatDistanceToNow } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/generated";
+import { useContentTypeMapping } from "@/hooks/useContentTypes";
+import { CorrectionReasons } from "@/components/audit/CorrectionReasons";
 
 const PAGE = 25;
 
@@ -35,6 +37,8 @@ export function PartHistory({ objectId }: Props) {
         ...partHistoryOptions(String(objectId), limit),
         placeholderData: (prev) => prev,
     });
+    const partContentType = useContentTypeMapping().getContentTypeId("parts");
+    const corrections = <CorrectionReasons contentType={partContentType} objectId={String(objectId)} />;
 
     if (isLoading) return <p className="text-sm text-muted-foreground">Loading history…</p>;
     if (error) return <p className="text-sm text-destructive">Couldn&rsquo;t load this part&rsquo;s history.</p>;
@@ -42,15 +46,19 @@ export function PartHistory({ objectId }: Props) {
     const entries = data?.results ?? [];
     if (entries.length === 0) {
         return (
-            <p className="text-sm text-muted-foreground">
-                No recorded history. The audit log records changes as work happens, so records
-                loaded in their final state (an import, the demo data) start with none.
-            </p>
+            <div className="space-y-4">
+                {corrections}
+                <p className="text-sm text-muted-foreground">
+                    No recorded history. The audit log records changes as work happens, so records
+                    loaded in their final state (an import, the demo data) start with none.
+                </p>
+            </div>
         );
     }
 
     return (
         <div className="space-y-4">
+            {corrections}
             <ol className="space-y-4">
                 {entries.map((e, i) => (
                     <li key={e.id} className="flex gap-3">

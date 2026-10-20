@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { Badge } from "@/components/ui/badge"
 import type { QueryClient } from "@tanstack/react-query"
 import { parseDateOnly } from "@/lib/date-only";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 // Prefetch function for route loader
 export const prefetchTrainingDashboard = (queryClient: QueryClient) => {
@@ -17,6 +18,7 @@ export const prefetchTrainingDashboard = (queryClient: QueryClient) => {
 };
 
 export function TrainingDashboardPage() {
+    const canReviewOverrides = usePermissionSet().has("view_auditlog")
     const { data: stats, isLoading: statsLoading } = useTrainingStats()
     const { data: expiringData, isLoading: expiringLoading } = useExpiringTraining()
     const { data: myTrainingData, isLoading: myTrainingLoading } = useMyTraining()
@@ -117,6 +119,15 @@ export function TrainingDashboardPage() {
                             <div className="font-medium">Job Roles</div>
                             <div className="text-sm text-muted-foreground">Define roles &amp; required competencies</div>
                         </Link>
+                        {canReviewOverrides && (
+                            <Link
+                                to="/quality/training/overrides"
+                                className="block p-3 rounded-lg border hover:bg-accent transition-colors"
+                            >
+                                <div className="font-medium">Training Overrides</div>
+                                <div className="text-sm text-muted-foreground">Steps worked without the training, on a supervisor&rsquo;s say-so</div>
+                            </Link>
+                        )}
                         <Link
                             to="/quality/training/records/new"
                             className="block p-3 rounded-lg border hover:bg-accent transition-colors"

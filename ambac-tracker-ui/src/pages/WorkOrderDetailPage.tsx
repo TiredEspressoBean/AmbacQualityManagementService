@@ -128,6 +128,11 @@ export function WorkOrderDetailPage() {
                             {workOrder.ERP_id}
                         </h1>
                         <StatusBadge status={currentStatus} />
+                        {workOrder.short_closed && (
+                            <Badge variant="outline" className="text-xs" title={workOrder.short_close_reason || undefined}>
+                                Short-closed
+                            </Badge>
+                        )}
                         <Badge className={cn("text-xs", priorityConfig.className)}>
                             {priorityConfig.label}
                         </Badge>
@@ -159,7 +164,7 @@ export function WorkOrderDetailPage() {
                         label="Traveler"
                         params={{ id: workOrderId }}
                     />
-                    <StartWorkDialog workOrderId={workOrderId} />
+                    <StartWorkDialog workOrderId={workOrderId} blockedReason={workOrder.start_refusal} />
                     <WorkOrderStatusActions
                         workOrderId={workOrderId}
                         currentStatus={currentStatus}

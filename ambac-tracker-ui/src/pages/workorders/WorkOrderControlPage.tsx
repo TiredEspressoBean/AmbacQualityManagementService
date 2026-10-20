@@ -1236,7 +1236,7 @@ export function WorkOrderControlPage() {
     // Rework-split targets: real, tenant-scoped remanufacturing processes
     // (replaces the old hardcoded MOCK_REWORK_PROCESSES). The backend requires a
     // valid target_process_id for a REWORK split, so the picker must be real.
-    const { data: reworkProcessesData } = useRetrieveProcesses({ is_remanufactured: true });
+    const { data: reworkProcessesData } = useRetrieveProcesses({ is_remanufactured: true, for_new_work: true });
     const reworkProcesses = reworkProcessesData?.results ?? [];
     // In-process rework steps for the "send to rework" picker (2c).
     const reworkSteps = (wo?.steps ?? []).filter((s) => s.node_type === "REWORK");

@@ -11,6 +11,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
+from Tracker.models.qms import RecordEdit
 from Tracker.models.core import (
     User, Companies, UserInvitation, TenantGroup,
     # Approval workflow models
@@ -639,6 +640,21 @@ class _AuditLogListSerializer(serializers.ListSerializer):
         items = list(data.all() if hasattr(data, 'all') else data)
         self.child.context['audit_fk_names'] = resolve_fk_names(items)
         return super().to_representation(items)
+
+
+class RecordEditSerializer(serializers.ModelSerializer):
+    """A field correction and the reason given for it (RecordEdit): read-only."""
+    edited_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecordEdit
+        fields = ('id', 'content_type', 'object_id', 'field_name', 'old_value', 'new_value',
+                  'reason', 'edited_by', 'edited_by_name', 'edited_at')
+        read_only_fields = fields
+
+    def get_edited_by_name(self, obj) -> str:
+        u = obj.edited_by
+        return (u.get_full_name() or u.username) if u else ''
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

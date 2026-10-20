@@ -336,21 +336,11 @@ class GetAvailableAfterVersioningTestCase(TenantTestCase):
             self.process, user=self.user_a, change_description='Rev',
         )
         # After versioning: v1 is APPROVED + is_current_version=False.
-        # v2 is DRAFT + is_current_version=True.
-        # `get_available()` queries `status=APPROVED AND is_current_version=True` —
-        # neither version matches. This is the known conflation trap.
-        # The correct behavior for the business (effective production spec)
-        # is "v1 stays effective until v2 is approved."
-        #
-        # This test documents the CURRENT known-limitation behavior: the
-        # filter returns nothing, and the business expectation is that
-        # callers use the supersession-aware query once we unify those
-        # semantics. Marking as a known gap for the versioning-doc
-        # `is_current_version` conflation issue.
+        # v2 is DRAFT + is_current_version=True. v1 stays the routing in force until
+        # v2 is approved, so it stays available: `get_available()` reads "approved and
+        # not archived", not `is_current_version`.
         available = Processes.get_available(part_type=self.part_type)
-        # This assertion pins the CURRENT observable behavior — update
-        # when the conflation is resolved.
-        self.assertEqual(available.count(), 0)
+        self.assertEqual(list(available), [self.process])
 
 
 class RevisionSignalTestCase(TenantTestCase):

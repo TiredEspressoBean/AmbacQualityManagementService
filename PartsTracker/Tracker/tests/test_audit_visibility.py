@@ -92,3 +92,42 @@ class AuditVisibilityTests(TenantTestCase):
                   .order_by("-timestamp").first())
         if latest is not None:
             self.assertNotIn("password", latest.changes_dict or {})
+
+
+class CorrectionReasonVisibilityTests(TenantTestCase):
+    """Correction reasons (RecordEdit) are read per record, under the record's own
+    visibility — the same rule as its audit history."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import RecordEdit
+        part_type = PartTypes.objects.create(tenant=self.tenant_a, name="Body")
+        self.part = Parts.objects.create(tenant=self.tenant_a, ERP_id="COR-1", part_type=part_type)
+        self.part_ct = ContentType.objects.get_for_model(Parts)
+        self.edit = RecordEdit.objects.create(
+            tenant=self.tenant_a, content_type=self.part_ct, object_id=self.part.id,
+            field_name="customer_shipment", old_value="SHP-1", new_value="",
+            reason="Shipped against the wrong order", edited_by=self.user_a)
+
+    def _get(self, perms, url):
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, perms)
+        self.authenticate_as(self.user_a)
+        return self.client.get(url)
+
+    def _url(self):
+        return f"/api/RecordEdits/?content_type={self.part_ct.pk}&object_id={self.part.pk}"
+
+    def test_a_reader_who_can_open_the_record_sees_why_it_was_corrected(self):
+        resp = self._get(['view_recordedit', 'view_parts', 'full_tenant_access'], self._url())
+        self.assertEqual(resp.status_code, 200, resp.content)
+        row, = resp.json()
+        self.assertEqual(row["reason"], "Shipped against the wrong order")
+        self.assertEqual(row["field_name"], "customer_shipment")
+
+    def test_a_record_the_reader_cannot_open_is_refused(self):
+        resp = self._get(['view_recordedit', 'view_parts'], self._url())
+        self.assertEqual(resp.status_code, 403, resp.content)
+
+    def test_there_is_no_listing_across_records(self):
+        resp = self._get(['view_recordedit', 'view_parts', 'full_tenant_access'], "/api/RecordEdits/")
+        self.assertEqual(resp.status_code, 400, resp.content)

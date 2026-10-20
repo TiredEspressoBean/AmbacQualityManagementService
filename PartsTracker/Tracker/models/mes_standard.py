@@ -2254,6 +2254,11 @@ class TimeEntry(SecureModel):
     approved_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        permissions = [
+            # Signing off labour hours: Shift Lead and Production Manager, never their
+            # own (services/mes/time_entries.approve_time_entry).
+            ("approve_timeentry", "Can approve labour time entries"),
+        ]
         verbose_name = 'Time Entry'
         verbose_name_plural = 'Time Entries'
         ordering = ['-start_time']

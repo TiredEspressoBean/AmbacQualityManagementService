@@ -18227,49 +18227,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/StepIncrementResponse'
           description: ''
-  /api/Orders/{id}/parts/bulk-add/:
-    post:
-      operationId: api_Orders_parts_bulk_add_create
-      description: |-
-        Orders CRUD with CSV import/export support.
-
-        Import/Export endpoints (auto-configured from model):
-        - GET /import-template/ - Download import template (CSV or Excel)
-        - POST /import/ - Import data from CSV/Excel file
-        - GET /export/ - Export filtered data to CSV/Excel
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Order.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BulkAddPartsInputRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BulkAddPartsInputRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BulkAddPartsInputRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: {}
-          description: ''
   /api/Orders/{id}/parts/bulk-remove/:
     post:
       operationId: api_Orders_parts_bulk_remove_create
@@ -21297,6 +21254,41 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Parts/{id}/blockers/:
+    get:
+      operationId: api_Parts_blockers_retrieve
+      description: What holds the part at its current step, each blocker with the
+        bypass that could clear it (block_type, null if none can) and any request
+        made.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Part.
+        required: true
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Filter by multiple status values.
+        explode: true
+        style: form
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartBlockers'
+          description: ''
   /api/Parts/{id}/can-rollback/:
     get:
       operationId: api_Parts_can_rollback_retrieve
@@ -22812,6 +22804,12 @@ paths:
                 queryset = Order.objects.all()
                 serializer_class = OrderSerializer
       parameters:
+      - in: query
+        name: for_new_work
+        schema:
+          type: boolean
+        description: 'Only processes new work may run: approved, in force, not a temporary
+          change.'
       - in: query
         name: is_disassembly
         schema:
@@ -25722,6 +25720,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MarkReceiptsPostedResult'
+          description: ''
+  /api/RecordEdits/:
+    get:
+      operationId: api_RecordEdits_list
+      description: |-
+        Correction reasons on one record: each field someone corrected, old -> new, and
+        why. Read like the record's audit history — `view_recordedit` plus being able to
+        open the record (services/core/audit_visibility.can_open_record). There is no
+        cross-record listing; that is the audit trail's job.
+      parameters:
+      - in: query
+        name: content_type
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: object_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecordEdit'
+          description: ''
+  /api/RecordEdits/{id}/:
+    get:
+      operationId: api_RecordEdits_retrieve
+      description: |-
+        Correction reasons on one record: each field someone corrected, old -> new, and
+        why. Read like the record's audit history — `view_recordedit` plus being able to
+        open the record (services/core/audit_visibility.can_open_record). There is no
+        cross-record listing; that is the audit trail's job.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Record Edit.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordEdit'
           description: ''
   /api/RepairCodes/:
     get:
@@ -30842,6 +30901,161 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedStepExecutionList'
+          description: ''
+  /api/StepExecutions/training-overrides/:
+    get:
+      operationId: api_StepExecutions_training_overrides_list
+      description: |-
+        Every step a supervisor let someone work without the required training, across
+        parts, newest first: who authorised it, for whom, on which step and part, why.
+      parameters:
+      - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - in: query
+        name: assigned_to__isnull
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: part__isnull
+        schema:
+          type: boolean
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: since
+        schema:
+          type: string
+          format: date
+        description: Overrides on or after this date
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - CLAIMED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+          - ROLLED_BACK
+          - SKIPPED
+        description: |-
+          * `PENDING` - Pending
+          * `CLAIMED` - Claimed
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `SKIPPED` - Skipped
+          * `CANCELLED` - Cancelled
+          * `ROLLED_BACK` - Rolled Back
+      - in: query
+        name: status__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__process_memberships__process
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: step__work_center__in
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: step__work_center__isnull
+        schema:
+          type: boolean
+      - in: query
+        name: step__work_center__kind
+        schema:
+          type: string
+          enum:
+          - INSPECTION
+          - OSP
+          - PRODUCTION
+          - RECEIVING
+        description: |-
+          * `PRODUCTION` - Production
+          * `INSPECTION` - Inspection
+          * `RECEIVING` - Receiving
+          * `OSP` - Outside Process
+      - in: query
+        name: step__work_center__kind__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
+      - in: query
+        name: until
+        schema:
+          type: string
+          format: date
+        description: Overrides on or before this date
+      - in: query
+        name: visit_number
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__gte
+        schema:
+          type: integer
+      - in: query
+        name: visit_number__lte
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingOverrideRow'
           description: ''
   /api/StepExecutions/wip_at_step/:
     get:
@@ -36503,6 +36717,16 @@ paths:
         schema:
           type: string
       - in: query
+        name: start_time__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: start_time__lt
+        schema:
+          type: string
+          format: date-time
+      - in: query
         name: user
         schema:
           type: integer
@@ -41313,6 +41537,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderSetQuantityResponse'
+          description: ''
+  /api/WorkOrders/{id}/short_close/:
+    post:
+      operationId: api_WorkOrders_short_close_create
+      description: |-
+        Complete this work order with fewer built than planned. Each unfinished unit
+        is scrapped or moved to another open work order on the same process; the order
+        reads Completed, short-closed, with the reason. Same permission as Cancel.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShortCloseWorkOrderRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShortCloseWorkOrderRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShortCloseWorkOrderRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/WorkOrders/{id}/short_close_targets/:
+    get:
+      operationId: api_WorkOrders_short_close_targets_retrieve
+      description: |-
+        Where each unfinished unit may move at a short-close: open work orders on the
+        same process, for the same customer or on no order; a customer's own unit only to
+        that customer's work. `allowed` maps part id -> target ids.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortCloseTargets'
           description: ''
   /api/WorkOrders/{id}/split/:
     post:
@@ -48239,18 +48530,6 @@ components:
       - component
       - part_erp_id
       - part_id
-    ActionEnum:
-      enum:
-      - 0
-      - 1
-      - 2
-      - 3
-      type: integer
-      description: |-
-        * `0` - create
-        * `1` - update
-        * `2` - delete
-        * `3` - access
     AddNoteInputRequest:
       type: object
       properties:
@@ -49213,7 +49492,7 @@ components:
           readOnly: true
         action:
           allOf:
-          - $ref: '#/components/schemas/ActionEnum'
+          - $ref: '#/components/schemas/AuditLogActionEnum'
           minimum: 0
           maximum: 32767
         changes:
@@ -49234,6 +49513,18 @@ components:
       - object_pk
       - object_repr
       - timestamp
+    AuditLogActionEnum:
+      enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      type: integer
+      description: |-
+        * `0` - create
+        * `1` - update
+        * `2` - delete
+        * `3` - access
     AuthUserCompany:
       type: object
       properties:
@@ -49844,31 +50135,6 @@ components:
         * `REGULATORY_HOLD` - Regulatory Hold
         * `ROLLBACK` - Step Rollback
         * `OTHER` - Other
-    BulkAddPartsInputRequest:
-      type: object
-      properties:
-        part_type:
-          type: string
-          format: uuid
-        step:
-          type: string
-          format: uuid
-        quantity:
-          type: integer
-        part_status:
-          allOf:
-          - $ref: '#/components/schemas/PartsStatusEnum'
-          default: PENDING
-        work_order:
-          type: string
-          format: uuid
-        erp_id_start:
-          type: integer
-          default: 1
-      required:
-      - part_type
-      - quantity
-      - step
     BulkCompanyAssignmentInputRequest:
       type: object
       properties:
@@ -60700,6 +60966,9 @@ components:
         remaining_quantity:
           type: integer
           readOnly: true
+        short_closed_shortfall:
+          type: integer
+          readOnly: true
         due_date:
           type: string
           format: date
@@ -60728,6 +60997,7 @@ components:
       - planned_quantity
       - quantity
       - remaining_quantity
+      - short_closed_shortfall
       - updated_at
     OrderLineRequest:
       type: object
@@ -64145,6 +64415,51 @@ components:
       description: |-
         * `PPAP` - PPAP
         * `FAI` - First Article (FAI / AS9102)
+    PartBlocker:
+      type: object
+      properties:
+        message:
+          type: string
+        block_type:
+          type: string
+          nullable: true
+        bypassed:
+          type: boolean
+        request_id:
+          type: string
+          format: uuid
+          nullable: true
+        request_status:
+          type: string
+          nullable: true
+        request_reason:
+          type: string
+          nullable: true
+      required:
+      - block_type
+      - bypassed
+      - message
+      - request_id
+      - request_reason
+      - request_status
+    PartBlockers:
+      type: object
+      properties:
+        step_execution:
+          type: string
+          format: uuid
+          nullable: true
+        step_name:
+          type: string
+          nullable: true
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartBlocker'
+      required:
+      - blockers
+      - step_execution
+      - step_name
     PartHistoryChange:
       type: object
       properties:
@@ -69504,8 +69819,6 @@ components:
         downtime_reason:
           type: string
           maxLength: 100
-        approved:
-          type: boolean
         archived:
           type: boolean
     PatchedTrainingRecordRequest:
@@ -73717,6 +74030,62 @@ components:
             $ref: '#/components/schemas/CountEntryRequest'
       required:
       - entries
+    RecordEdit:
+      type: object
+      description: 'A field correction and the reason given for it (RecordEdit): read-only.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        content_type:
+          type: integer
+          readOnly: true
+          description: Type of the edited record
+        object_id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: ID of the edited record
+        field_name:
+          type: string
+          readOnly: true
+          description: Name of the field that was edited
+        old_value:
+          type: string
+          readOnly: true
+          description: Previous value (serialized)
+        new_value:
+          type: string
+          readOnly: true
+          description: New value (serialized)
+        reason:
+          type: string
+          readOnly: true
+          description: Reason for the edit
+        edited_by:
+          type: integer
+          readOnly: true
+          description: User who made the edit
+        edited_by_name:
+          type: string
+          readOnly: true
+        edited_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the edit was made
+      required:
+      - content_type
+      - edited_at
+      - edited_by
+      - edited_by_name
+      - field_name
+      - id
+      - new_value
+      - object_id
+      - old_value
+      - reason
     RecordInspectionRequestRequest:
       type: object
       description: Request body for recording receiving-inspection measurement results.
@@ -76562,6 +76931,100 @@ components:
       - order_number
       - part_type_name
       - work_order_number
+    ShortCloseDispositionActionEnum:
+      enum:
+      - SCRAP
+      - MOVE
+      type: string
+      description: |-
+        * `SCRAP` - SCRAP
+        * `MOVE` - MOVE
+    ShortCloseDispositionRequest:
+      type: object
+      properties:
+        part:
+          type: string
+          format: uuid
+        action:
+          $ref: '#/components/schemas/ShortCloseDispositionActionEnum'
+        target_work_order:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - action
+      - part
+    ShortCloseRaiseTargetRequest:
+      type: object
+      properties:
+        work_order:
+          type: string
+          format: uuid
+        raise_quantity:
+          type: boolean
+      required:
+      - raise_quantity
+      - work_order
+    ShortCloseTarget:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ERP_id:
+          type: string
+        quantity:
+          type: integer
+        order_line:
+          type: string
+          format: uuid
+          nullable: true
+        customer_name:
+          type: string
+          nullable: true
+      required:
+      - ERP_id
+      - customer_name
+      - id
+      - order_line
+      - quantity
+    ShortCloseTargets:
+      type: object
+      properties:
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShortCloseTarget'
+        allowed:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              format: uuid
+      required:
+      - allowed
+      - targets
+    ShortCloseWorkOrderRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+        dispositions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShortCloseDispositionRequest'
+        return_shortfall:
+          type: boolean
+          nullable: true
+        raise_targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShortCloseRaiseTargetRequest'
+      required:
+      - dispositions
+      - reason
     ShortReceiptEnum:
       enum:
       - BACKORDERED
@@ -81835,6 +82298,7 @@ components:
           maxLength: 100
         approved:
           type: boolean
+          readOnly: true
         approved_by:
           type: integer
           readOnly: true
@@ -81855,6 +82319,7 @@ components:
         archived:
           type: boolean
       required:
+      - approved
       - approved_at
       - approved_by
       - created_at
@@ -81905,8 +82370,6 @@ components:
         downtime_reason:
           type: string
           maxLength: 100
-        approved:
-          type: boolean
         archived:
           type: boolean
       required:
@@ -82245,6 +82708,50 @@ components:
       - job_role_name
       - name
       - required_count
+    TrainingOverrideRow:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        part_id:
+          type: string
+          format: uuid
+        part_erp_id:
+          type: string
+        work_order_erp_id:
+          type: string
+          nullable: true
+        step_name:
+          type: string
+        visit_number:
+          type: integer
+        worker_name:
+          type: string
+        authorized_by_name:
+          type: string
+        reason:
+          type: string
+        at:
+          type: string
+          format: date-time
+          nullable: true
+        missing_training:
+          type: array
+          items:
+            type: string
+      required:
+      - at
+      - authorized_by_name
+      - execution_id
+      - missing_training
+      - part_erp_id
+      - part_id
+      - reason
+      - step_name
+      - visit_number
+      - work_order_erp_id
+      - worker_name
     TrainingRecord:
       type: object
       description: |-
@@ -84327,6 +84834,28 @@ components:
           items:
             $ref: '#/components/schemas/WorkOrderPriorityChange'
           readOnly: true
+        short_closed:
+          type: boolean
+          readOnly: true
+        short_close_reason:
+          type: string
+          readOnly: true
+        short_closed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        short_closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        short_close_returned_quantity:
+          type: integer
+          readOnly: true
+        start_refusal:
+          type: string
+          nullable: true
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -84353,8 +84882,14 @@ components:
       - release_override_reason
       - released_at
       - released_by
+      - short_close_reason
+      - short_close_returned_quantity
+      - short_closed
+      - short_closed_at
+      - short_closed_by
       - split_at
       - split_reason
+      - start_refusal
       - updated_at
     WorkOrderBulkAddPartsInputRequest:
       type: object
@@ -84651,6 +85186,10 @@ components:
         child_count:
           type: integer
           readOnly: true
+        short_closed:
+          type: boolean
+        short_close_reason:
+          type: string
         created_at:
           type: string
           format: date-time

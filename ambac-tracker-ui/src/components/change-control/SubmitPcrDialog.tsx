@@ -58,6 +58,14 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
             toast.error("Describe the proposed change");
             return;
         }
+        if (!justification.trim()) {
+            toast.error("Say why the change is needed");
+            return;
+        }
+        if (!riskAnalysis.trim()) {
+            toast.error("Describe the risks and how they're handled");
+            return;
+        }
         if (isTemporary && !isExtension && !temporaryUntil) {
             toast.error("A temporary change needs the date it ends");
             return;
@@ -124,7 +132,7 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
                     </div>
 
                     <div>
-                        <Label htmlFor="pcr-justification">Justification</Label>
+                        <Label htmlFor="pcr-justification">Justification <span className="text-destructive">*</span></Label>
                         <Textarea
                             id="pcr-justification"
                             value={justification}
@@ -135,7 +143,7 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
                     </div>
 
                     <div>
-                        <Label htmlFor="pcr-risk">Risk analysis</Label>
+                        <Label htmlFor="pcr-risk">Risk analysis <span className="text-destructive">*</span></Label>
                         <Textarea
                             id="pcr-risk"
                             value={riskAnalysis}

@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { auditLogOptions } from "@/hooks/useRetrieveAuditLogEntries";
 import { useContentTypeMapping } from "@/hooks/useContentTypes";
 import { endpointFn } from "@/lib/api/endpoint-fn";
+import { CorrectionReasons } from "@/components/audit/CorrectionReasons";
 import type { components } from "@/lib/api/generated-types";
 
 type Version = components["schemas"]["VersionSummary"];
@@ -138,7 +139,8 @@ export function RecordHistoryCard({ endpoint, id, model }: {
                         : "Every change to this record, newest first."}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+                <CorrectionReasons contentType={contentType} objectId={id} />
                 {events.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No recorded changes.</p>
                 ) : (

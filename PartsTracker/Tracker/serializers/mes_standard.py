@@ -944,7 +944,10 @@ class TimeEntrySerializer(SecureModelMixin):
             'approved', 'approved_by', 'approved_at',
             'created_at', 'updated_at', 'archived'
         )
-        read_only_fields = ('created_at', 'updated_at', 'duration_hours', 'user', 'approved_by', 'approved_at')
+        # `approved` too: approval is the approve action (approve_timeentry, never your
+        # own), not a field anyone who can edit an entry may set.
+        read_only_fields = ('created_at', 'updated_at', 'duration_hours', 'user', 'approved',
+                            'approved_by', 'approved_at')
 
     @extend_schema_field(serializers.CharField())
     def get_user_name(self, obj):

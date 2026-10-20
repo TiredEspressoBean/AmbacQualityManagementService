@@ -34,6 +34,7 @@ import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { HOLD_REASONS, type HoldReason } from "@/pages/workorders/constants";
 import { useCancelWorkOrder, useReleaseForScheduling, useUnreleaseForScheduling } from "@/hooks/useScheduling";
+import { ShortCloseDialog } from "@/components/workorders/ShortCloseDialog";
 import { apiErrorBlockers } from "@/lib/api/describeApiError";
 import { apiErrorStatus } from "@/lib/api-error";
 import { toast } from "sonner";
@@ -62,6 +63,7 @@ export function WorkOrderStatusActions({
 }: Props) {
     const [holdDialogOpen, setHoldDialogOpen] = useState(false);
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [shortCloseOpen, setShortCloseOpen] = useState(false);
     const [holdReason, setHoldReason] = useState<HoldReason | "">("");
     const [holdDetails, setHoldDetails] = useState("");
     const [releaseBlockers, setReleaseBlockers] = useState<string[]>([]);
@@ -308,6 +310,21 @@ export function WorkOrderStatusActions({
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Resume
                 </Button>
+            )}
+
+            {/* Short-close: complete with fewer built than planned (same gate as Cancel). */}
+            {canCancel && currentStatus !== "ON_HOLD" && (
+                <>
+                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => setShortCloseOpen(true)}>
+                        Short-close
+                    </Button>
+                    <ShortCloseDialog
+                        workOrderId={workOrderId}
+                        open={shortCloseOpen}
+                        onOpenChange={setShortCloseOpen}
+                        onDone={() => onStatusChange?.()}
+                    />
+                </>
             )}
 
             {/* Cancel Button */}

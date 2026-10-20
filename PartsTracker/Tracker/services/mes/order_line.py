@@ -77,3 +77,18 @@ def plan_order_line(line, *, user=None, quantity: int | None = None,
             order_line=line, related_order_id=line.order_id)
         wo.refresh_from_db()
     return wo
+
+
+def short_closed_shortfall(line) -> int:
+    """Units on this line's short-closed work orders that were never built and were
+    not given back to the line — planned, and not coming. Units given back show in the
+    remaining quantity instead.
+    """
+    from Tracker.models import Parts
+    from Tracker.models.mes_lite import PROGRESS_DONE_STATUSES
+    short = 0
+    # tenant-safe: reverse FK from an in-tenant OrderLine row.
+    for wo in line.work_orders.filter(short_closed=True):
+        built = Parts.objects.filter(work_order=wo, part_status__in=PROGRESS_DONE_STATUSES).count()
+        short += max(0, (wo.quantity or 0) - built - wo.short_close_returned_quantity)
+    return short

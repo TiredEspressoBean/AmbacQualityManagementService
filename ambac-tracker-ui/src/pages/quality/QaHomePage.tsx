@@ -15,6 +15,8 @@
  *  - Personal gauge-calibration nag pre-empts the point-of-use gate.
  *  - Deliberately absent: batch-approve, throughput-vs-goal, MRU lists.
  */
+import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -419,6 +421,7 @@ export function QaHomeRoute() {
 }
 
 export function QaHomePage({ user }: { user: AuthUser }) {
+    const canDecideBypass = usePermissionSet().has("approve_stepoverride");
     return (
         <div className="mx-auto max-w-5xl space-y-3 p-4">
             <div className="flex items-center gap-3">
@@ -438,6 +441,7 @@ export function QaHomePage({ user }: { user: AuthUser }) {
                 operator landing uses (ScanBox's default dest="work"). */}
             <ScanBox autoFocus={false} />
             <FpiBanner />
+            {canDecideBypass && <BypassRequestsCard />}
             <InboxList />
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <MyActionsPanel user={user} />

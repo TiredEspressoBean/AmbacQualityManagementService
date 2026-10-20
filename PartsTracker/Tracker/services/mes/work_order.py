@@ -94,6 +94,46 @@ def create_parts_batch(
     return fresh_parts
 
 
+def start_refusal(work_order) -> str | None:
+    """Why work can't start on `work_order` now, naming the hold or how it ended, or
+    None if it can. A held order waits for its hold to clear; an ended one takes no
+    more work."""
+    if work_order is None:
+        return None
+    status_ = work_order.workorder_status
+    if status_ == WorkOrderStatus.ON_HOLD:
+        hold = (WorkOrderHold.objects.filter(work_order=work_order, cleared_at__isnull=True,
+                                             is_voided=False).first())
+        why = ''
+        if hold is not None:
+            why = f" ({hold.get_reason_display()}" + (f": {hold.notes}" if hold.notes else '') + ")"
+        return f"{work_order.ERP_id} is on hold{why} — clear the hold before starting work."
+    if status_ == WorkOrderStatus.CANCELLED:
+        return f"{work_order.ERP_id} was cancelled — it takes no more work."
+    if status_ == WorkOrderStatus.COMPLETED:
+        if work_order.short_closed:
+            return (f"{work_order.ERP_id} was short-closed ({work_order.short_close_reason}) "
+                    f"— it takes no more work.")
+        return f"{work_order.ERP_id} is completed — it takes no more work."
+    return None
+
+
+def new_work_refusal(process) -> str | None:
+    """Why new work can't be put on `process`, or None if it can (Processes.get_available
+    is the same rule as a query)."""
+    if process is None:
+        return None
+    if process.status != 'APPROVED':
+        return (f"Process '{process.name}' is {process.get_status_display().upper()}, not "
+                f"approved — approve it before releasing work against it.")
+    if process.archived:
+        return f"Process '{process.name}' v{process.version} has been superseded — use the version in force."
+    if getattr(process, 'is_temporary', False):
+        return ("That version is a temporary change, which applies only to the work orders "
+                "its change order named. Use the current version.")
+    return None
+
+
 def plan_work_order(
     *,
     tenant,
@@ -131,11 +171,9 @@ def plan_work_order(
     # `bom_explosion._build_process` already holds child components to this standard;
     # the top-level process had no such check, so the stricter rule applied to the
     # components of a job but not to the job itself.
-    if process.status != 'APPROVED':
-        raise ValueError(
-            f"Process '{process.name}' is {process.get_status_display().upper()}, not "
-            f"approved — approve it before releasing work against it."
-        )
+    refusal = new_work_refusal(process)
+    if refusal:
+        raise ValueError(refusal)
     part_type = process.part_type
     if part_type is None:
         raise ValueError("process has no part type")
@@ -555,6 +593,227 @@ def cancel_work_order(work_order: WorkOrder) -> WorkOrder:
     return work_order
 
 
+SHORT_CLOSE_SCRAP = 'SCRAP'
+SHORT_CLOSE_MOVE = 'MOVE'
+
+
+def _customer_key(work_order):
+    """Whose work `work_order` is: its order's company, else the order's customer user;
+    None for a work order on no order (stock work)."""
+    order = work_order.related_order if work_order is not None else None
+    if order is None:
+        return None
+    if order.company_id:
+        return ('company', order.company_id)
+    if order.customer_id:
+        return ('user', order.customer_id)
+    return None
+
+
+def move_refusal(part, source, target) -> str | None:
+    """Why `part` can't move from work order `source` to `target` at a short-close, or
+    None. A customer's own unit (a repair-and-return core) moves only to work for that
+    customer — customer property stays ringfenced (ISO 9001 8.5.3). Any other unit moves
+    to work for the same customer, or to work on no order (stock); never to another
+    customer's job (user decision 2026-10-19)."""
+    from Tracker.services.reman.core_steps import core_of
+    core = core_of(part)
+    if core is not None and core.returns_to_customer:
+        owner = ('company', core.customer_id) if core.customer_id else _customer_key(source)
+        if owner is not None and _customer_key(target) != owner:
+            return (f"{part.ERP_id} is the customer's own unit (repair & return) — it can only "
+                    f"move to a work order for that customer.")
+        return None
+    src, dst = _customer_key(source), _customer_key(target)
+    if src is not None and dst is not None and src != dst:
+        return (f"{target.ERP_id} is for a different customer — {part.ERP_id} can only move to a "
+                f"work order for the same customer, or one on no order.")
+    return None
+
+
+def short_close_targets(work_order) -> dict:
+    """Where each unfinished unit of `work_order` may move at a short-close: open work
+    orders on the same process, narrowed per unit by `move_refusal`."""
+    from Tracker.services.mes.parts import _part_has_ended
+    targets = list(
+        WorkOrder.objects.filter(process_id=work_order.process_id, tenant=work_order.tenant)
+        .exclude(pk=work_order.pk)
+        .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED])
+        .select_related('related_order', 'related_order__company', 'related_order__customer')
+        .order_by('ERP_id')
+    ) if work_order.process_id else []
+    allowed = {}
+    for p in Parts.objects.filter(work_order=work_order):
+        if _part_has_ended(p):
+            continue
+        allowed[str(p.id)] = [str(t.id) for t in targets if move_refusal(p, work_order, t) is None]
+
+    def customer_name(wo):
+        order = wo.related_order
+        if order is None:
+            return None
+        if order.company_id:
+            return order.company.name
+        if order.customer_id:
+            return order.customer.get_full_name() or order.customer.username
+        return None
+
+    return {
+        'targets': [{'id': str(t.id), 'ERP_id': t.ERP_id, 'quantity': t.quantity or 0,
+                     'order_line': str(t.order_line_id) if t.order_line_id else None,
+                     'customer_name': customer_name(t)} for t in targets],
+        'allowed': allowed,
+    }
+
+
+def short_close_work_order(work_order: WorkOrder, *, reason: str, user,
+                           dispositions: dict, return_shortfall: bool | None = None,
+                           raise_targets: dict | None = None) -> WorkOrder:
+    """Close a work order with fewer built than planned, on purpose.
+
+    Every unit that hasn't ended is dispositioned: scrapped, or moved to another open
+    work order running the same process (it keeps its step and carries on there).
+    `dispositions` maps part id -> {'action': 'SCRAP' | 'MOVE', 'target_work_order': id}.
+    The order reads COMPLETED with `short_closed` and the reason, and its customer
+    order completes once its other work orders are terminal.
+
+    Two consequences are the closer's to decide, never defaulted:
+    - `return_shortfall` (asked when the work order is on an order line and closes
+      short): give the unbuilt units back to the line as unplanned demand. Units moved
+      to a work order on the same line whose quantity is raised are already planned
+      there, so they aren't given back twice.
+    - `raise_targets` maps each receiving work order id -> bool: raise its quantity by
+      the units moved in, or leave it.
+
+    Refused: an order already ended or on hold; one where nothing finished (that is a
+    cancel); a unit left without a disposition; a decision left unanswered; scrapping
+    a unit that's quarantined (that's a disposition decision) or out at a vendor.
+
+    Raises:
+        ValueError: naming why.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import RecordEdit
+    from Tracker.models.mes_lite import PROGRESS_DONE_STATUSES
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.services.mes.parts import _part_has_ended
+    from Tracker.services.reman.core_part import scrap_if_core
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Short-closing needs a reason.")
+    if work_order.workorder_status in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED):
+        raise ValueError(f"The work order is already {work_order.get_workorder_status_display().lower()}.")
+    if work_order.workorder_status == WorkOrderStatus.ON_HOLD:
+        raise ValueError("The work order is on hold — clear the hold first.")
+
+    with transaction.atomic():
+        parts = list(Parts.objects.select_for_update().filter(work_order=work_order))
+        open_parts = [p for p in parts if not _part_has_ended(p)]
+        built = [p for p in parts if p.part_status in PROGRESS_DONE_STATUSES]
+        if not built:
+            raise ValueError("Nothing on this work order has finished — cancel it instead.")
+        missing = [p.ERP_id for p in open_parts if str(p.id) not in dispositions]
+        if missing:
+            raise ValueError(f"Choose scrap or move for every unfinished unit: {', '.join(missing[:5])}"
+                             + (f" and {len(missing) - 5} more." if len(missing) > 5 else "."))
+
+        targets = {}
+        for p in open_parts:
+            d = dispositions[str(p.id)] or {}
+            action = (d.get('action') or '').upper()
+            if action == SHORT_CLOSE_SCRAP:
+                if p.part_status == PartsStatus.QUARANTINED:
+                    raise ValueError(f"{p.ERP_id} is quarantined — disposition it, or move it, rather than scrap it here.")
+                if p.part_status == PartsStatus.AT_OUTSIDE_PROCESS:
+                    raise ValueError(f"{p.ERP_id} is out at a vendor — it can be moved, not scrapped, until it's back.")
+            elif action == SHORT_CLOSE_MOVE:
+                tid = str(d.get('target_work_order') or '')
+                if tid not in targets:
+                    target = WorkOrder.objects.filter(pk=tid, tenant=work_order.tenant).first() if tid else None
+                    if target is None or target.pk == work_order.pk:
+                        raise ValueError(f"Choose another work order to move {p.ERP_id} to.")
+                    if target.workorder_status in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED):
+                        raise ValueError(f"{target.ERP_id} has ended — move units to an open work order.")
+                    if target.process_id != work_order.process_id:
+                        raise ValueError(f"{target.ERP_id} runs a different process — a unit can only move "
+                                         f"to a work order on the same process, where its step exists.")
+                    targets[tid] = target
+                crossing = move_refusal(p, work_order, targets[tid])
+                if crossing:
+                    raise ValueError(crossing)
+            else:
+                raise ValueError(f"Unknown choice for {p.ERP_id}: scrap or move.")
+
+        # The two decisions: answered, not assumed.
+        raise_targets = {str(k): v for k, v in (raise_targets or {}).items()}
+        moved_into = {tid: sum(1 for p in open_parts
+                               if str(dispositions[str(p.id)].get('target_work_order') or '') == tid
+                               and dispositions[str(p.id)]['action'].upper() == SHORT_CLOSE_MOVE)
+                      for tid in targets}
+        unanswered = [t.ERP_id for tid, t in targets.items() if not isinstance(raise_targets.get(tid), bool)]
+        if unanswered:
+            raise ValueError(f"Say whether to raise the quantity of {', '.join(unanswered)} "
+                             f"for the units moved onto it.")
+        shortfall = max(0, (work_order.quantity or 0) - len(built))
+        covered = sum(n for tid, n in moved_into.items()
+                      if raise_targets[tid] and work_order.order_line_id
+                      and targets[tid].order_line_id == work_order.order_line_id)
+        returnable = max(0, shortfall - covered)
+        if work_order.order_line_id and returnable and not isinstance(return_shortfall, bool):
+            raise ValueError("Say whether the units it didn't build go back to the order line "
+                             "as demand still to plan.")
+
+        part_ct = ContentType.objects.get_for_model(Parts)
+        wo_ct = ContentType.objects.get_for_model(WorkOrder)
+        for tid, target in targets.items():
+            if raise_targets[tid] and moved_into[tid]:
+                old_qty = target.quantity or 0
+                target.quantity = old_qty + moved_into[tid]
+                target.save(update_fields=['quantity', 'updated_at'])
+                RecordEdit.objects.create(
+                    tenant=target.tenant, content_type=wo_ct, object_id=target.id, field_name='quantity',
+                    old_value=str(old_qty), new_value=str(target.quantity),
+                    reason=f"{moved_into[tid]} unit(s) moved in from the short-close of {work_order.ERP_id}: {reason}",
+                    edited_by=user)
+        for p in open_parts:
+            d = dispositions[str(p.id)]
+            if d['action'].upper() == SHORT_CLOSE_SCRAP:
+                old = p.part_status
+                if not scrap_if_core(p, reason=f"short-close: {reason}"):
+                    p.part_status = PartsStatus.SCRAPPED
+                    p.step = None
+                    p.save(update_fields=['part_status', 'step', 'updated_at'])
+                RecordEdit.objects.create(
+                    tenant=p.tenant, content_type=part_ct, object_id=p.id, field_name='part_status',
+                    old_value=old, new_value=PartsStatus.SCRAPPED,
+                    reason=f"Short-close of {work_order.ERP_id}: {reason}", edited_by=user)
+            else:
+                target = targets[str(d['target_work_order'])]
+                p.work_order = target
+                p.order = target.related_order
+                p.save(update_fields=['work_order', 'order', 'updated_at'])
+                RecordEdit.objects.create(
+                    tenant=p.tenant, content_type=part_ct, object_id=p.id, field_name='work_order',
+                    old_value=work_order.ERP_id, new_value=target.ERP_id,
+                    reason=f"Short-close of {work_order.ERP_id}: {reason}", edited_by=user)
+
+        work_order.workorder_status = WorkOrderStatus.COMPLETED
+        work_order.short_closed = True
+        work_order.short_close_reason = reason
+        work_order.short_closed_by = user
+        work_order.short_closed_at = timezone.now()
+        work_order.short_close_returned_quantity = (
+            returnable if (work_order.order_line_id and return_shortfall) else 0)
+        work_order.true_completion = tenant_today(work_order.tenant)
+        work_order.save(update_fields=[
+            'workorder_status', 'short_closed', 'short_close_reason', 'short_closed_by',
+            'short_closed_at', 'short_close_returned_quantity', 'true_completion', 'updated_at'])
+        cascade_order_status(work_order)
+    return work_order
+
+
 def manual_status_refusal(current: str, new: str) -> str | None:
     """Why `current` → `new` can't be written as a plain field edit, or None if it can.
 
@@ -715,6 +974,9 @@ def split_work_order(
         ).first()
         if target_process is None:
             raise ValueError("target_process_id not found in tenant")
+        refusal = new_work_refusal(target_process)
+        if refusal:
+            raise ValueError(refusal)
 
     with transaction.atomic():
         parts = _select_parts_for_split(parent_wo, reason, part_ids, quantity)

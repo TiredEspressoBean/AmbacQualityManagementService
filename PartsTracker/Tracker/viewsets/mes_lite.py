@@ -644,6 +644,28 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         return Response(part_sampling_decisions(self.get_object()))
 
     @extend_schema(
+        responses=inline_serializer('PartBlockers', fields={
+            'step_execution': serializers.UUIDField(allow_null=True),
+            'step_name': serializers.CharField(allow_null=True),
+            'blockers': inline_serializer('PartBlocker', many=True, fields={
+                'message': serializers.CharField(),
+                'block_type': serializers.CharField(allow_null=True),
+                'bypassed': serializers.BooleanField(),
+                'request_id': serializers.UUIDField(allow_null=True),
+                'request_status': serializers.CharField(allow_null=True),
+                'request_reason': serializers.CharField(allow_null=True),
+            }),
+        }),
+        description=("What holds the part at its current step, each blocker with the bypass "
+                     "that could clear it (block_type, null if none can) and any request made."))
+    @action(detail=True, methods=["get"], url_path="blockers", pagination_class=None,
+            filter_backends=[])
+    def blockers(self, request, pk=None):
+        from Tracker.services.mes.step_override import part_blockers
+        result = part_blockers(self.get_object())
+        return Response(result or {'step_execution': None, 'step_name': None, 'blockers': []})
+
+    @extend_schema(
         parameters=[
             OpenApiParameter(name='limit', type=int, required=False),
             OpenApiParameter(name='offset', type=int, required=False),
@@ -1706,45 +1728,6 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
         removed = remove_parts_from_order(order, serializer.validated_data['ids'])
         return Response({"removed": removed}, status=status.HTTP_200_OK)
 
-    @extend_schema(request=inline_serializer(name="BulkAddPartsInput", fields={
-        "part_type": TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all()),
-        "step": TenantScopedPrimaryKeyRelatedField(queryset=Steps.unscoped.all()),
-        "quantity": serializers.IntegerField(),
-        "part_status": serializers.ChoiceField(choices=PartsStatus.choices, default=PartsStatus.PENDING),
-        "work_order": TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False),
-        "erp_id_start": serializers.IntegerField(default=1)}), responses={201: dict})
-    @action(detail=True, methods=["post"], url_path="parts/bulk-add")
-    def bulk_add_parts(self, request, pk=None):
-        order = self.get_object()
-
-        # Validate input data
-        part_type_id = request.data.get('part_type')
-        step_id = request.data.get('step')
-        quantity = request.data.get('quantity')
-        part_status = request.data.get('part_status', PartsStatus.PENDING)
-        work_order_id = request.data.get('work_order')
-        erp_id_start = request.data.get('erp_id_start', 1)
-
-        if not all([part_type_id, step_id, quantity]):
-            return Response({"detail": "Missing required fields: part_type, step, quantity"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            part_type = PartTypes.objects.get(id=part_type_id)
-            step = Steps.objects.get(id=step_id)
-            work_order = WorkOrder.objects.get(id=work_order_id) if work_order_id else None
-
-            # Use model method for bulk creation
-            result = order.bulk_add_parts(part_type=part_type, step=step, quantity=int(quantity),
-                                          part_status=part_status, work_order=work_order,
-                                          erp_id_start=int(erp_id_start))
-            return Response(result, status=status.HTTP_201_CREATED)
-
-        except (PartTypes.DoesNotExist, Steps.DoesNotExist, WorkOrder.DoesNotExist) as e:
-            return Response({"detail": f"Invalid reference: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-        except ValueError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
     @extend_schema(
         request=inline_serializer(
             name="AddNoteInput",
@@ -2076,6 +2059,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # job. Exempt from the POST->add_workorder default, which every staff role
         # holds — without this an operator could cancel a work order.
         'cancel': ['cancel_workorder'],
+        'short_close': ['cancel_workorder'],
         # Holding and resuming change an existing order (and are now the only way to
         # move it on or off hold — a status edit is refused). change_workorder is what
         # the work order page's Hold / Resume needed when they were a PATCH.
@@ -2084,7 +2068,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         'bulk_place_on_hold': ['change_workorder'],
         'bulk_clear_hold': ['change_workorder'],
     }
-    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel',
+    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel', 'short_close',
                            'place_on_hold', 'clear_hold',
                            'bulk_place_on_hold', 'bulk_clear_hold'}
 
@@ -2513,6 +2497,60 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": str(wo.id), "status": wo.workorder_status})
+
+    @extend_schema(responses={200: inline_serializer(name="ShortCloseTargets", fields={
+        "targets": inline_serializer(name="ShortCloseTarget", many=True, fields={
+            "id": serializers.UUIDField(),
+            "ERP_id": serializers.CharField(),
+            "quantity": serializers.IntegerField(),
+            "order_line": serializers.UUIDField(allow_null=True),
+            "customer_name": serializers.CharField(allow_null=True),
+        }),
+        "allowed": serializers.DictField(child=serializers.ListField(child=serializers.UUIDField())),
+    })})
+    @action(detail=True, methods=["get"], url_path="short_close_targets", pagination_class=None,
+            filter_backends=[])
+    def short_close_targets(self, request, pk=None):
+        """Where each unfinished unit may move at a short-close: open work orders on the
+        same process, for the same customer or on no order; a customer's own unit only to
+        that customer's work. `allowed` maps part id -> target ids."""
+        from Tracker.services.mes.work_order import short_close_targets
+        return Response(short_close_targets(self.get_object()))
+
+    @extend_schema(
+        request=inline_serializer(name="ShortCloseWorkOrderRequest", fields={
+            "reason": serializers.CharField(),
+            "dispositions": inline_serializer(name="ShortCloseDisposition", many=True, fields={
+                "part": serializers.UUIDField(),
+                "action": serializers.ChoiceField(choices=['SCRAP', 'MOVE']),
+                "target_work_order": serializers.UUIDField(required=False, allow_null=True),
+            }),
+            "return_shortfall": serializers.BooleanField(required=False, allow_null=True),
+            "raise_targets": inline_serializer(name="ShortCloseRaiseTarget", many=True, required=False, fields={
+                "work_order": serializers.UUIDField(),
+                "raise_quantity": serializers.BooleanField(),
+            }),
+        }),
+        responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["post"], url_path="short_close")
+    def short_close(self, request, pk=None):
+        """Complete this work order with fewer built than planned. Each unfinished unit
+        is scrapped or moved to another open work order on the same process; the order
+        reads Completed, short-closed, with the reason. Same permission as Cancel."""
+        from Tracker.services.mes.work_order import short_close_work_order
+        wo = self.get_object()
+        rows = request.data.get("dispositions") or []
+        dispositions = {str(r.get("part")): r for r in rows if isinstance(r, dict)}
+        try:
+            short_close_work_order(
+                wo, reason=request.data.get("reason", ""), user=request.user,
+                dispositions=dispositions,
+                return_shortfall=request.data.get("return_shortfall"),
+                raise_targets={str(r.get("work_order")): r.get("raise_quantity")
+                               for r in (request.data.get("raise_targets") or []) if isinstance(r, dict)})
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"id": str(wo.id), "status": wo.workorder_status, "short_closed": True})
 
     # --- Release gate --------------------------------------------------------
 
@@ -3195,7 +3233,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     # Saving work in progress is gated like committing it (substep submit), not as
     # creating an execution — POST would otherwise demand add_stepexecution.
     crud_exempt_actions = {'save_draft'}
-    action_permissions = {'save_draft': ['add_substepcompletion']}
+    # Reviewing training overrides across parts is browsing the trail across records
+    # (Tenant Admin, Document Controller, QA Manager, Auditor).
+    action_permissions = {'save_draft': ['add_substepcompletion'],
+                          'training_overrides': ['view_auditlog']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'part': ['exact', 'isnull'],
@@ -3227,6 +3268,39 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         if self.action == 'list':
             return StepExecutionListSerializer
         return StepExecutionSerializer
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('since', OpenApiTypes.DATE, description='Overrides on or after this date'),
+            OpenApiParameter('until', OpenApiTypes.DATE, description='Overrides on or before this date'),
+        ],
+        responses=inline_serializer('TrainingOverrideRow', many=True, fields={
+            'execution_id': serializers.UUIDField(),
+            'part_id': serializers.UUIDField(),
+            'part_erp_id': serializers.CharField(),
+            'work_order_erp_id': serializers.CharField(allow_null=True),
+            'step_name': serializers.CharField(),
+            'visit_number': serializers.IntegerField(),
+            'worker_name': serializers.CharField(),
+            'authorized_by_name': serializers.CharField(),
+            'reason': serializers.CharField(),
+            'at': serializers.DateTimeField(allow_null=True),
+            'missing_training': serializers.ListField(child=serializers.CharField()),
+        }),
+    )
+    @action(detail=False, methods=['get'], url_path='training-overrides', pagination_class=None)
+    def training_overrides(self, request):
+        """Every step a supervisor let someone work without the required training, across
+        parts, newest first: who authorised it, for whom, on which step and part, why."""
+        from Tracker.services.mes.lifecycle import training_override_rows
+        try:
+            rows = training_override_rows(
+                self.get_queryset(),
+                since=request.query_params.get('since'), until=request.query_params.get('until'))
+        except ValueError:
+            return Response({'detail': 'since and until are dates (YYYY-MM-DD).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(rows)
 
     # ------------------------------------------------------------------
     # Training authorization gate (warn + supervisor override)
@@ -3803,7 +3877,17 @@ class ProcessViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, view
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
+        if self.request.query_params.get('for_new_work') in ('true', '1'):
+            # Pickers that create work: approved, in force, not a temporary change's
+            # version (the same rule as Processes.get_available / new_work_refusal).
+            qs = qs.filter(status='APPROVED', archived=False, is_temporary=False)
         return qs.select_related("part_type").prefetch_related("process_steps__step")
+
+    @extend_schema(parameters=[OpenApiParameter(
+        'for_new_work', bool, required=False,
+        description='Only processes new work may run: approved, in force, not a temporary change.')])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     def _include_archived(self):
         # See ProcessWithStepsViewSet._include_archived — a retrieve-by-pk

@@ -12,9 +12,10 @@ import {
     AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const orderPartsOptions = (orderId: string) =>
+const orderPartsCardOptions = (orderId: string) =>
     queryOptions({
-        queryKey: ["order-parts", orderId] as const,
+        // Not "order-parts": that key is the order page's infinite query (hooks/useOrderParts).
+        queryKey: ["order-parts-card", orderId] as const,
         queryFn: () => api.api_Parts_list({ queries: { order: orderId, limit: 500 } }),
     });
 
@@ -25,7 +26,7 @@ const orderPartsOptions = (orderId: string) =>
  */
 export function OrderPartsCard({ orderId }: { orderId: string }) {
     const queryClient = useQueryClient();
-    const { data, isLoading } = useQuery(orderPartsOptions(orderId));
+    const { data, isLoading } = useQuery(orderPartsCardOptions(orderId));
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmOpen, setConfirmOpen] = useState(false);
     const parts = data?.results ?? [];

@@ -136,6 +136,7 @@ router.register("SamplingSeverityStates", SamplingSeverityStateViewSet, basename
 router.register("MeasurementDefinitions", MeasurementsDefinitionViewSet)
 router.register("content-types", ContentTypeViewSet, basename="contenttype")
 router.register("auditlog", LogEntryViewSet, basename="auditlog")
+router.register("RecordEdits", RecordEditViewSet, basename="RecordEdits")
 router.register("User", UserViewSet, basename="User")
 router.register("TenantGroups", TenantGroupViewSet, basename="TenantGroups")
 router.register("Tenants", TenantViewSet, basename="Tenants")

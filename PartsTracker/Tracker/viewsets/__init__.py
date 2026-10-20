@@ -28,6 +28,7 @@ from .core import (
 
     # Audit Logs & Content Types
     LogEntryViewSet,
+    RecordEditViewSet,
     ContentTypeViewSet,
 
     # Document ViewSets (universal infrastructure)
@@ -296,6 +297,7 @@ __all__ = [
 
     # Core - Audit Logs
     'LogEntryViewSet',
+    'RecordEditViewSet',
     'ContentTypeViewSet',
 
     # Core - Documents (universal infrastructure)

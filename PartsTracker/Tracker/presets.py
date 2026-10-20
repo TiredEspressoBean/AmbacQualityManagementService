@@ -514,6 +514,12 @@ VOID_COMPLETION_PERMISSIONS = [
     'void_substepcompletion',
 ]
 
+# Signing off labour hours (time entries). Shift Lead and Production Manager, who run
+# the floor, plus Tenant Admin; never one's own time (services/mes/time_entries.py).
+TIME_APPROVAL_PERMISSIONS = [
+    'approve_timeentry',
+]
+
 # Deleting a 3D annotation once its quality report is finished: the annotation is then
 # the evidence the "Requires 3D Annotation" disposition gate reads. Same holders as
 # voiding a completion, for the same reason. A draft annotation (every linked report
@@ -674,6 +680,7 @@ GROUP_PRESETS = {
             'apply_cyclecount',
             'cancel_workorder',
             *STAFF_VIEW_PERMISSIONS,
+            *TIME_APPROVAL_PERMISSIONS,
             *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -806,6 +813,7 @@ GROUP_PRESETS = {
             'cancel_workorder',
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
+            *TIME_APPROVAL_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,
@@ -864,6 +872,7 @@ GROUP_PRESETS = {
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
+            *TIME_APPROVAL_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
             *CALIBRATION_RECORD_WRITE,

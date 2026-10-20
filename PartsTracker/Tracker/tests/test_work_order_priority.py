@@ -13,7 +13,7 @@ class WorkOrderPriorityTests(TenantTestCase):
         super().setUp()
         t = self.tenant_a
         pt = PartTypes.objects.create(tenant=t, name="Injector")
-        process = Processes.objects.create(tenant=t, name="P", part_type=pt)
+        process = Processes.objects.create(tenant=t, name="P", part_type=pt, status="APPROVED")
         self.wo = WorkOrder.objects.create(
             tenant=t, ERP_id="WO-PRI", workorder_status=WorkOrderStatus.IN_PROGRESS,
             quantity=1, process=process, priority=3)

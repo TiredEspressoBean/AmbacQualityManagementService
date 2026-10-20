@@ -1684,6 +1684,13 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     http_method_names = ['get', 'post', 'head', 'options']
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
+        from Tracker.services.mes.step_override import validate_bypass_request
+        try:
+            validate_bypass_request(serializer.validated_data['step_execution'],
+                                    serializer.validated_data['block_type'])
+        except ValueError as e:
+            raise ValidationError({'detail': str(e)})
         serializer.save(requested_by=self.request.user)
 
     def get_serializer_class(self):

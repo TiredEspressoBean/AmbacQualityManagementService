@@ -1506,9 +1506,13 @@ class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet
         'work_order': ['exact'],
         'approved': ['exact'],
         'end_time': ['isnull'],
+        # The approval queue reads a pay period.
+        'start_time': ['gte', 'lt'],
     }
     ordering_fields = ['start_time', 'end_time', 'entry_type']
     ordering = ['-start_time']
+    action_permissions = {'approve': ['approve_timeentry']}
+    crud_exempt_actions = {'approve'}
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -1558,13 +1562,12 @@ class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """Approve a time entry"""
+        from Tracker.services.mes.time_entries import approve_time_entry
         entry = self.get_object()
-        if entry.approved:
-            return Response({'detail': 'Time entry already approved'}, status=status.HTTP_400_BAD_REQUEST)
-        entry.approved = True
-        entry.approved_by = request.user
-        entry.approved_at = timezone.now()
-        entry.save()
+        try:
+            approve_time_entry(entry, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(TimeEntrySerializer(entry, context={'request': request}).data)
 
 

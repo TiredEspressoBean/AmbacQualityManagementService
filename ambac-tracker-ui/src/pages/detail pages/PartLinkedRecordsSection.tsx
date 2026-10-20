@@ -3,6 +3,7 @@ import { useQualityReports } from "@/hooks/useQualityReports";
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { PartBlockersCard } from "@/components/parts/PartBlockersCard";
 
 // Compact list of QRs + Dispositions filtered by part id, rendered under the
 // info sections on the part-detail page. Each row deep-links into the
@@ -11,6 +12,16 @@ import { Separator } from "@/components/ui/separator";
 // The whole section stays hidden when the part has neither — clean parts stay
 // clean.
 export function PartLinkedRecordsSection({ modelData }: { modelData: { id?: string | number } }) {
+    return (
+        <>
+            {/* What holds the part at its step, and a way past the blocks that allow one. */}
+            {modelData?.id != null && <PartBlockersCard partId={String(modelData.id)} />}
+            <LinkedRecords modelData={modelData} />
+        </>
+    );
+}
+
+function LinkedRecords({ modelData }: { modelData: { id?: string | number } }) {
     const partId = modelData?.id ? String(modelData.id) : undefined;
 
     const { data: qrData, isLoading: qrLoading } = useQualityReports(

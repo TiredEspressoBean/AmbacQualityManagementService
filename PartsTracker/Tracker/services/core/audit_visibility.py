@@ -88,3 +88,21 @@ def visible_entries(qs, user, *, content_type_id=None):
         if q is not None:
             rule |= q
     return qs.filter(rule)
+
+
+def can_open_record(content_type_id, object_id, user) -> bool:
+    """True when `user` may open the record `(content_type_id, object_id)` — the rule a
+    per-record history (audit entries, correction reasons) is read under."""
+    if user.is_superuser:
+        return True
+    ct = ContentType.objects.filter(pk=content_type_id).first()
+    q = _rule_for(ct, user) if ct else None
+    if q is None:
+        return False
+    model = ct.model_class()
+    manager = getattr(model, 'objects', None)
+    if manager is None or not hasattr(manager, 'for_user'):
+        return True
+    if _sees_whole_table(model, user):
+        return manager.filter(pk=object_id).exists() if hasattr(manager, 'filter') else True
+    return manager.for_user(user, include_archived=True).filter(pk=object_id).exists()

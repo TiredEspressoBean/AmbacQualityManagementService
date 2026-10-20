@@ -88,7 +88,8 @@ export default function WorkOrderFormPage() {
     const [search, setSearch] = useState("")
     const [processSearch, setProcessSearch] = useState("")
     const { data: orders } = useRetrieveOrders({ search })
-    const { data: processes } = useRetrieveProcesses({ search: processSearch })
+    // Only processes new work may run: approved, in force, not a temporary change's version.
+    const { data: processes } = useRetrieveProcesses({ search: processSearch, for_new_work: true })
 
     const { data: workOrder } = useRetrieveWorkOrder(workOrderId!, { enabled: mode === "edit" && !!workOrderId })
 

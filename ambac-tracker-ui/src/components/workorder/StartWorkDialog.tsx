@@ -46,6 +46,9 @@ import { useWorkAuthorization, type WorkAuthRow } from "@/hooks/useWorkAuthoriza
 
 type StartWorkDialogProps = {
     workOrderId: string;
+    /** Why work can't start now (held, cancelled, completed). When set the button is
+     *  disabled and says why; the server refuses the start regardless. */
+    blockedReason?: string | null;
 };
 
 /** Actionability tier for a part's status — 0 = workable right now, 1 = already
@@ -72,7 +75,7 @@ const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
     return typeof raw === "number" ? raw : Number.MAX_SAFE_INTEGER;
 };
 
-export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
+export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogProps) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     // Insertion-ordered: the order an operator checks parts is the order
@@ -294,6 +297,18 @@ export function StartWorkDialog({ workOrderId }: StartWorkDialogProps) {
             setOverriding(false);
         }
     };
+
+    if (blockedReason) {
+        // A disabled button fires no hover, so the reason rides on a wrapper.
+        return (
+            <span title={blockedReason} className="inline-flex cursor-not-allowed">
+                <Button className="gap-2" disabled aria-label={`Start Work — ${blockedReason}`}>
+                    <Play className="h-4 w-4" />
+                    Start Work
+                </Button>
+            </span>
+        );
+    }
 
     return (
         <Dialog open={open} onOpenChange={(v) => !submitting && setOpen(v)}>

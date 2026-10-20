@@ -178,6 +178,39 @@ def override_summary(execution) -> dict | None:
     }
 
 
+def training_override_rows(executions, *, since=None, until=None, limit=500) -> list[dict]:
+    """Supervisor training overrides across `executions` (already narrowed to what the
+    reader may see), newest first, for review. `since`/`until` are ISO dates and bound
+    the override's own time; the part's arrival at the step pre-filters (an override
+    is given at start, which is never before arrival)."""
+    from datetime import date, datetime, time, timedelta
+    qs = executions.filter(training_authorization__has_key='override')
+    lo = date.fromisoformat(since) if since else None
+    hi = date.fromisoformat(until) if until else None
+    if hi:
+        qs = qs.filter(entered_at__lt=timezone.make_aware(datetime.combine(hi + timedelta(days=1), time.min)))
+    rows = []
+    for ex in qs.select_related('part', 'part__work_order', 'step').order_by('-entered_at')[:limit * 2]:
+        summary = override_summary(ex)
+        if summary is None:
+            continue
+        at = summary['at']
+        day = datetime.fromisoformat(at).date() if at else None
+        if day and ((lo and day < lo) or (hi and day > hi)):
+            continue
+        wo = ex.part.work_order if ex.part_id else None
+        rows.append({
+            'execution_id': ex.id,
+            'part_id': ex.part_id,
+            'part_erp_id': ex.part.ERP_id if ex.part_id else '',
+            'work_order_erp_id': wo.ERP_id if wo else None,
+            'step_name': ex.step.name if ex.step_id else '',
+            **summary,
+        })
+    rows.sort(key=lambda r: r['at'] or '', reverse=True)
+    return rows[:limit]
+
+
 def authorize_start(operator, step, process, *, authorizer=None, reason=None):
     """Competence rule for starting a step.
 
@@ -218,6 +251,13 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     from Tracker.services.change_control.temporary import assert_in_date
     if execution.subject_work_order is not None:
         assert_in_date(execution.subject_work_order)
+    # A held or ended work order takes no new work — not a start-gate refusal either:
+    # the hold is cleared (or the order ended) by its own action, not overridden here.
+    from django.core.exceptions import ValidationError
+    from Tracker.services.mes.work_order import start_refusal
+    held_or_ended = start_refusal(execution.subject_work_order)
+    if held_or_ended:
+        raise ValidationError(held_or_ended)
 
     reassignment = None
     if execution.assigned_to_id and execution.assigned_to_id != operator.id:

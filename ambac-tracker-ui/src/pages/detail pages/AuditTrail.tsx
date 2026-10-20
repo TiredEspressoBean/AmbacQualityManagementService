@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useRetrieveAuditLogEntries } from "@/hooks/useRetrieveAuditLogEntries";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { format, formatDistanceToNow } from "date-fns";
+import { CorrectionReasons } from "@/components/audit/CorrectionReasons";
 
 type Props = {
     objectId: string | number;
@@ -43,13 +44,20 @@ const AuditTrailComponent: React.FC<Props> = ({ objectId, modelType }) => {
         return <p className="text-sm text-destructive">Failed to load audit log.</p>;
 
     const entries = data?.results ?? [];
+    const corrections = <CorrectionReasons contentType={contentTypeId} objectId={String(objectId)} />;
 
     if (entries.length === 0) {
-        return <p className="text-sm text-muted-foreground">No audit history.</p>;
+        return (
+            <div className="space-y-4">
+                {corrections}
+                <p className="text-sm text-muted-foreground">No audit history.</p>
+            </div>
+        );
     }
 
     return (
         <div className="space-y-6">
+            {corrections}
             {entries.map((entry, index) => (
                 <div key={entry.id} className="relative">
                     {/* Timeline indicator */}

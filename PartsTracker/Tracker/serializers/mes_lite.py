@@ -222,16 +222,22 @@ class OrderLineSerializer(SecureModelMixin):
     part_type_name = serializers.SerializerMethodField()
     planned_quantity = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
+    short_closed_shortfall = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderLine
         fields = (
             'id', 'order', 'line_number', 'part_type', 'part_type_name',
-            'quantity', 'planned_quantity', 'remaining_quantity',
+            'quantity', 'planned_quantity', 'remaining_quantity', 'short_closed_shortfall',
             'due_date', 'status', 'notes', 'created_at', 'updated_at', 'archived',
         )
         read_only_fields = ('created_at', 'updated_at', 'part_type_name',
-                            'planned_quantity', 'remaining_quantity')
+                            'planned_quantity', 'remaining_quantity', 'short_closed_shortfall')
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_short_closed_shortfall(self, obj):
+        from Tracker.services.mes.order_line import short_closed_shortfall
+        return short_closed_shortfall(obj)
 
     @extend_schema_field(serializers.CharField())
     def get_part_type_name(self, obj):
@@ -873,6 +879,7 @@ class WorkOrderListSerializer(SecureModelMixin):
             'expected_duration', 'true_duration', 'notes', 'parts_count', 'qa_progress',
             'completed_parts_count', 'current_hold', 'released_at',
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
+            'short_closed', 'short_close_reason',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -985,6 +992,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     """Full work order serializer for detail views"""
     # Changing priority (expediting is setting it to Urgent) takes a reason, like hold,
     # scrap and reject do; it's recorded with the change. Not needed on create.
+    start_refusal = serializers.SerializerMethodField()
     priority_reason = serializers.CharField(
         write_only=True, required=False, allow_blank=True,
         help_text="Why the priority is changing. Required when an edit changes it.")
@@ -1052,6 +1060,8 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'released_at', 'released_by', 'release_override_reason',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count', 'cores',
         'priority_reason', 'priority_changes',
+        'short_closed', 'short_close_reason', 'short_closed_by', 'short_closed_at',
+        'short_close_returned_quantity', 'start_refusal',
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
@@ -1059,16 +1069,26 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
             # Release is an authorization act with its own gated endpoints — never a
             # plain PATCH, or the readiness check and the override record are bypassed.
             'released_at', 'released_by', 'release_override_reason',
-            'parent_workorder_id', 'split_reason', 'split_at', 'child_count')
+            'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
+            # Short-close is its own action (scrap or move every unfinished unit).
+            'short_closed', 'short_close_reason', 'short_closed_by', 'short_closed_at',
+            'short_close_returned_quantity', 'start_refusal')
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_start_refusal(self, obj):
+        """Why work can't start on this order now (held, cancelled, completed), or null."""
+        from Tracker.services.mes.work_order import start_refusal
+        return start_refusal(obj)
 
     def validate_process(self, value):
-        # A temporary change's version runs only the work orders change control moved
-        # onto it (MIGRATE_SELECTED); it is never chosen for a work order by hand.
+        # New work runs only an approved process in force — never a draft, a superseded
+        # version, or a temporary change's version (that runs only the work orders change
+        # control moved onto it). A work order already on one keeps it.
+        from Tracker.services.mes.work_order import new_work_refusal
         changing = self.instance is None or getattr(self.instance, 'process_id', None) != getattr(value, 'pk', None)
-        if value is not None and getattr(value, 'is_temporary', False) and changing:
-            raise serializers.ValidationError(
-                "That version is a temporary change, which applies only to the work orders "
-                "its change order named. Use the current version.")
+        refusal = new_work_refusal(value) if changing else None
+        if refusal:
+            raise serializers.ValidationError(refusal)
         return value
 
     def validate_workorder_status(self, value):
