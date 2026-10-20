@@ -27,6 +27,7 @@ _BY_STAGE = {
     'REBUILT': PartsStatus.COMPLETED,
     # An exchange unit rebuilt to stock is finished goods on the shelf.
     'REBUILT_TO_STOCK': PartsStatus.IN_STOCK,
+    'SHIPPED': PartsStatus.SHIPPED,
     'DECLINED': PartsStatus.AWAITING_PICKUP,
     'RETURNED': PartsStatus.SHIPPED,
     'RETURNED_UNREPAIRED': PartsStatus.SHIPPED,
@@ -45,7 +46,7 @@ _BY_STAGE = {
 # DISASSEMBLED and AWAITING_AUTHORISATION do NOT — a decision is outstanding, and an
 # open order is how that stays visible.
 ENDED_STAGES = frozenset({
-    'REBUILT', 'REBUILT_TO_STOCK', 'DECLINED', 'RETURNED', 'RETURNED_UNREPAIRED',
+    'REBUILT', 'REBUILT_TO_STOCK', 'SHIPPED', 'DECLINED', 'RETURNED', 'RETURNED_UNREPAIRED',
     'HARVESTED', 'SCRAPPED',
 })
 

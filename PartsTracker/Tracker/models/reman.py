@@ -65,6 +65,8 @@ class Core(SecureModel):
         # Exchange path, rebuilt: finished reman stock, ready to go out against the next
         # exchange. Same unit, same core number — identity is kept (decided 2026-09-24).
         ('REBUILT_TO_STOCK', 'Rebuilt to stock'),
+        # ...and gone out to a customer against an exchange, on a shipment.
+        ('SHIPPED', 'Shipped on exchange'),
         # Work paused while the customer decides on scope beyond what was sold. The
         # conversation happens elsewhere (§3.2); this is where the unit waits for it.
         ('AWAITING_AUTHORISATION', 'Awaiting customer authorisation'),
@@ -76,9 +78,10 @@ class Core(SecureModel):
         ('SCRAPPED', 'Scrapped'),
     ]
 
-    # Dispatch back to the customer. Fields rather than a shipment model: UQMES records
-    # that the unit left and when, so someone can trace it. Booking freight, rating and
-    # labelling belong to whatever owns shipping (§3.2).
+    # Dispatch back to the customer. A unit leaves on a CustomerShipment like any part
+    # (`part.customer_shipment`, services/mes/shipping) so it has a packing list and CoC;
+    # these stamp the return on the core itself, `return_reference` being the shipment
+    # number. An exchange unit that ships is not a return, and leaves them blank.
     returned_at = models.DateTimeField(null=True, blank=True)
     returned_by = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL,

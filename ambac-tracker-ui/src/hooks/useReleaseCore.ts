@@ -64,7 +64,6 @@ export function useCoreLifecycleAction() {
             contact?: string; method?: string; reference?: string;
         }
         | { id: string; action: "approve_repair"; code: string; note?: string }
-        | { id: string; action: "return"; reference?: string }
     >({
         mutationFn: (v) => {
             const headers = { "X-CSRFToken": getCookie("csrftoken") };
@@ -87,14 +86,9 @@ export function useCoreLifecycleAction() {
                     { params: { id: v.id }, headers },
                 );
             }
-            if (v.action === "approve_repair") {
-                return api.api_Cores_approve_repair_create(
-                    { code: v.code, note: v.note ?? "" },
-                    { params: { id: v.id }, headers },
-                );
-            }
-            return api.api_Cores_return_to_customer_create(
-                { reference: v.reference ?? "" },
+            // A return to the customer is a shipment: see ShipDialog.
+            return api.api_Cores_approve_repair_create(
+                { code: v.code, note: v.note ?? "" },
                 { params: { id: v.id }, headers },
             );
         },

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ShipDialog } from "@/components/shipping/ShipDialog";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 import type { Schema } from "@/lib/api/types";
@@ -42,6 +43,7 @@ export function WorkOrderCoresCard(
     const [pending, setPending] = useState<string | null>(null);
     // The customer's answer, recorded by staff: who answered, how, and the reference.
     const [answering, setAnswering] = useState<{ core: WorkOrderCore; approved: boolean } | null>(null);
+    const [returning, setReturning] = useState<WorkOrderCore | null>(null);
     const release = useReleaseCore();
     const lifecycle = useCoreLifecycleAction();
     // Teardown and rebuild are worked in the DWI operator runtime, at the step the unit
@@ -240,12 +242,11 @@ export function WorkOrderCoresCard(
                                                         </Button>
                                                     </span>
                                                 ) : core.status === "REBUILT" || core.status === "DECLINED" ? (
+                                                    // A return is a shipment like any other, so
+                                                    // the packing list and CoC print for it.
                                                     <Button
                                                         size="sm" disabled={busy}
-                                                        onClick={() => act(core, { id, action: "return" },
-                                                            core.status === "REBUILT"
-                                                                ? "returned to customer"
-                                                                : "returned unrepaired")}
+                                                        onClick={() => setReturning(core)}
                                                     >
                                                         <Truck className="mr-1 h-4 w-4" />
                                                         Return
@@ -338,6 +339,19 @@ export function WorkOrderCoresCard(
                             answering.approved ? "approved — rebuild resumed" : "declined");
                         setAnswering(null);
                     }}
+                />
+            )}
+            {returning && (
+                <ShipDialog
+                    group={{
+                        order_id: null, order_number: null,
+                        customer_id: returning.customer ?? null,
+                        customer_name: returning.customer_name ?? null,
+                        requires_coc: false, parts: [], lots: [],
+                    }}
+                    partIds={[String(returning.part)]} initialLots={[]} open
+                    onOpenChange={(o) => { if (!o) setReturning(null); }}
+                    onShipped={() => setReturning(null)}
                 />
             )}
         </TooltipProvider>

@@ -1842,13 +1842,14 @@ export type CoreStatusEnum =
    * `REBUILT` - Rebuilt — ready to return
    * `RETURNED` - Returned to customer
    * `REBUILT_TO_STOCK` - Rebuilt to stock
+   * `SHIPPED` - Shipped on exchange
    * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
    * `DECLINED` - Scope declined — to be returned unrepaired
    * `RETURNED_UNREPAIRED` - Returned unrepaired
    * `HARVESTED` - Harvested to inventory
    * `SCRAPPED` - Scrapped
    *
-   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, RETURNED, REBUILT_TO_STOCK, AWAITING_AUTHORISATION, DECLINED, RETURNED_UNREPAIRED, HARVESTED, SCRAPPED
+   * @enum RECEIVED, IN_DISASSEMBLY, DISASSEMBLED, IN_REBUILD, REBUILT, RETURNED, REBUILT_TO_STOCK, SHIPPED, AWAITING_AUTHORISATION, DECLINED, RETURNED_UNREPAIRED, HARVESTED, SCRAPPED
    */
   | "RECEIVED"
   | "IN_DISASSEMBLY"
@@ -1857,6 +1858,7 @@ export type CoreStatusEnum =
   | "REBUILT"
   | "RETURNED"
   | "REBUILT_TO_STOCK"
+  | "SHIPPED"
   | "AWAITING_AUTHORISATION"
   | "DECLINED"
   | "RETURNED_UNREPAIRED"
@@ -15599,10 +15601,11 @@ export type ReadyPartSourceEnum =
   /**
    * * `SHIP_STEP` - At the Ship step
    * `STOCK` - From stock
+   * `REMAN` - A finished reman unit
    *
-   * @enum SHIP_STEP, STOCK
+   * @enum SHIP_STEP, STOCK, REMAN
    */
-  "SHIP_STEP" | "STOCK";
+  "SHIP_STEP" | "STOCK" | "REMAN";
 export type ReadyToShipOrder = {
   order_id: string | null;
   order_number: string | null;
@@ -18131,6 +18134,7 @@ export type WorkOrderCore = {
   serial_number: string;
   status: string;
   condition_grade: string;
+  customer: string | null;
   customer_name: string | null;
   fulfilment_mode: string;
   returns_to_customer: boolean;
@@ -19398,6 +19402,7 @@ const CoreStatusEnum = z.enum([
   "REBUILT",
   "RETURNED",
   "REBUILT_TO_STOCK",
+  "SHIPPED",
   "AWAITING_AUTHORISATION",
   "DECLINED",
   "RETURNED_UNREPAIRED",
@@ -19626,7 +19631,14 @@ const CoreRequestAuthorisation = z.object({
   over_and_above: z.array(z.string()),
 });
 const CoreRequestAuthorisationError = z.object({ detail: z.string() });
-const CoreReturnInputRequest = z.object({ reference: z.string() }).partial();
+const CoreReturnInputRequest = z
+  .object({
+    reference: z.string(),
+    carrier: z.string(),
+    tracking_number: z.string(),
+    notes: z.string(),
+  })
+  .partial();
 const CoreReturnError = z.object({ detail: z.string() });
 const CoreScrapRequest = z.object({ reason: z.string().default("") }).partial();
 const CoreAssignIdentityRequest = z.object({
@@ -19775,7 +19787,7 @@ const OrderShipping = z.object({
   order_id: z.string().uuid(),
   lines: z.array(OrderLineShipping),
 });
-const ReadyPartSourceEnum = z.enum(["SHIP_STEP", "STOCK"]);
+const ReadyPartSourceEnum = z.enum(["SHIP_STEP", "STOCK", "REMAN"]);
 const ReadyPart = z.object({
   id: z.string().uuid(),
   erp_id: z.string(),
@@ -26736,6 +26748,7 @@ const WorkOrderCore = z.object({
   serial_number: z.string(),
   status: z.string(),
   condition_grade: z.string(),
+  customer: z.string().uuid().nullable(),
   customer_name: z.string().nullable(),
   fulfilment_mode: z.string(),
   returns_to_customer: z.boolean(),
@@ -33489,6 +33502,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
             "RETURNED",
             "RETURNED_UNREPAIRED",
             "SCRAPPED",
+            "SHIPPED",
           ])
           .optional(),
       },
@@ -33732,6 +33746,7 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
             "RETURNED",
             "RETURNED_UNREPAIRED",
             "SCRAPPED",
+            "SHIPPED",
           ])
           .optional(),
       },
@@ -33865,13 +33880,13 @@ committed to rebuilding — which is also what lets the same call answer
     method: "post",
     path: "/api/Cores/:id/return_to_customer/",
     alias: "api_Cores_return_to_customer_create",
-    description: `Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope.`,
+    description: `Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope — on a shipment of its own, so its packing list and CoC print. &#x60;reference&#x60; is the ERP&#x27;s paperwork number.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reference: z.string() }).partial(),
+        schema: CoreReturnInputRequest,
       },
       {
         name: "id",

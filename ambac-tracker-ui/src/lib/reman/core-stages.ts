@@ -15,6 +15,7 @@ export const CORE_STAGE_LABEL: Record<string, string> = {
     REBUILT: "Rebuilt — ready to return",
     RETURNED: "Returned to customer",
     REBUILT_TO_STOCK: "Rebuilt to stock",
+    SHIPPED: "Shipped on exchange",
     AWAITING_AUTHORISATION: "Awaiting customer authorisation",
     DECLINED: "Scope declined — to be returned unrepaired",
     RETURNED_UNREPAIRED: "Returned unrepaired",

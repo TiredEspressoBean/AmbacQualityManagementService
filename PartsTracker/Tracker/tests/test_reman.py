@@ -1862,9 +1862,11 @@ class RebuildLifecycleTests(TenantTestCase):
         self.core_type = PartTypes.objects.create(tenant=self.tenant_a, name='Injector')
         self.component_type = PartTypes.objects.create(
             tenant=self.tenant_a, name='Nozzle', can_recover=True)
+        from Tracker.models import Companies
+        self.customer = Companies.objects.create(tenant=self.tenant_a, name='Fleet Co')
         self.core = create_core(
             tenant=self.tenant_a, core_number='CORE-LIFE-1', core_type=self.core_type,
-            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD',
+            fulfilment_mode='REPAIR_RETURN', status='IN_REBUILD', customer=self.customer,
             received_date=date.today(), received_by=self.user_a)
         self.hc = HarvestedComponent.objects.create(
             tenant=self.tenant_a, core=self.core, component_type=self.component_type,
@@ -1915,10 +1917,28 @@ class RebuildLifecycleTests(TenantTestCase):
         from Tracker.services.reman.rebuild_execution import complete_rebuild
         from Tracker.services.reman.release import return_core_to_customer
         complete_rebuild(self.core, self.user_a)
-        core = return_core_to_customer(self.core, self.user_a, reference='CN-99')
+        core = return_core_to_customer(self.core, self.user_a, reference='CN-99',
+                                       carrier='UPS', tracking_number='1Z9')
         self.assertEqual(core.status, 'RETURNED')
-        self.assertEqual(core.return_reference, 'CN-99')
         self.assertIsNotNone(core.returned_at)
+        # It left on a shipment of its own, so its packing list and CoC print.
+        shipment = core.part.customer_shipment
+        self.assertIsNotNone(shipment)
+        self.assertEqual(shipment.customer_id, self.customer.id)
+        self.assertEqual((shipment.reference, shipment.carrier, shipment.tracking_number),
+                         ('CN-99', 'UPS', '1Z9'))
+        self.assertEqual(core.return_reference, shipment.shipment_number)
+        self.assertEqual(core.part.part_status, 'SHIPPED')
+
+    def test_a_unit_with_no_customer_recorded_cannot_be_returned(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.rebuild_execution import complete_rebuild
+        from Tracker.services.reman.release import return_core_to_customer
+        complete_rebuild(self.core, self.user_a)
+        self.core.customer = None
+        self.core.save(update_fields=['customer'])
+        with self.assertRaises(ValidationError):
+            return_core_to_customer(self.core, self.user_a)
 
     def test_an_exchange_unit_has_no_owner_to_return_to(self):
         from django.core.exceptions import ValidationError
@@ -1949,6 +1969,7 @@ class RebuildLifecycleTests(TenantTestCase):
         self.assertEqual(core.status, 'DECLINED')
         core = return_core_to_customer(core, self.user_a, reference='CN-100')
         self.assertEqual(core.status, 'RETURNED_UNREPAIRED')
+        self.assertIsNotNone(core.part.customer_shipment)
 
     def test_approval_resumes_the_rebuild(self):
         from Tracker.services.reman.release import record_authorisation

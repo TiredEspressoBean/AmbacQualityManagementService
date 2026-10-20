@@ -116,7 +116,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         # than inventing codenames for each transition.
         'request_authorisation_action': ['change_core'],
         'record_authorisation_action': ['change_core'],
-        'return_to_customer': ['change_core'],
+        # A return is a shipment, so it also takes the perm the Shipping board does.
+        'return_to_customer': ['change_core', 'add_customershipment'],
         # Approving a repair the process doesn't pre-approve decides what work goes into
         # the unit — the same lead/QA tier as deciding a finding (accept_component).
         'approve_repair': ['accept_component'],
@@ -351,11 +352,15 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
 
     @extend_schema(
         request=inline_serializer(name="CoreReturnInput", fields={
-            "reference": serializers.CharField(required=False, allow_blank=True)}),
+            "reference": serializers.CharField(required=False, allow_blank=True),
+            "carrier": serializers.CharField(required=False, allow_blank=True),
+            "tracking_number": serializers.CharField(required=False, allow_blank=True),
+            "notes": serializers.CharField(required=False, allow_blank=True)}),
         responses={200: CoreSerializer, 400: inline_serializer(
             name="CoreReturnError", fields={"detail": serializers.CharField()})},
         description="Dispatch a unit back to its customer — repaired, or unrepaired "
-                    "after a declined scope.",
+                    "after a declined scope — on a shipment of its own, so its packing "
+                    "list and CoC print. `reference` is the ERP's paperwork number.",
     )
     @action(detail=True, methods=['post'], url_path='return_to_customer')
     def return_to_customer(self, request, pk=None):
@@ -365,7 +370,10 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         core = self.get_object()
         try:
             core = return_core_to_customer(
-                core, request.user, reference=request.data.get('reference', ''))
+                core, request.user, reference=request.data.get('reference', ''),
+                carrier=request.data.get('carrier', ''),
+                tracking_number=request.data.get('tracking_number', ''),
+                notes=request.data.get('notes', ''))
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)},
                             status=status.HTTP_400_BAD_REQUEST)

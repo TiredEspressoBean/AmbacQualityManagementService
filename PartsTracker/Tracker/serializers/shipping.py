@@ -97,7 +97,8 @@ class ReadyPartSerializer(serializers.Serializer):
     work_order = serializers.CharField(allow_null=True)
     order_line = serializers.IntegerField(allow_null=True)
     due_date = serializers.DateField(allow_null=True)
-    source = serializers.ChoiceField(choices=[('SHIP_STEP', 'At the Ship step'), ('STOCK', 'From stock')])
+    source = serializers.ChoiceField(choices=[('SHIP_STEP', 'At the Ship step'), ('STOCK', 'From stock'),
+                                              ('REMAN', 'A finished reman unit')])
     status = serializers.CharField()
 
 

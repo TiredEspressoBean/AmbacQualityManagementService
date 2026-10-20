@@ -261,3 +261,90 @@ class DeliveryPerformanceTests(_Fixture):
         self._deliver(("D-5", self.other_wo), ("D-6", third))
         perf = delivery_performance(self.tenant)
         self.assertEqual(perf["deliveries"], 2, "two work orders collapsed into one delivery")
+
+
+class RemanShippingTests(_Fixture):
+    """A finished reman unit leaves on a shipment like any part (2026-10-20), so it has a
+    packing list and CoC. Before this a customer's unit went back with a status change
+    and no paperwork, and rebuilt exchange stock had no way out at all."""
+
+    def _core(self, number, status, mode="REPAIR_RETURN", customer=None, wo=None):
+        from Tracker.services.reman.core_part import create_core
+        return create_core(tenant=self.tenant, core_number=number, core_type=self.pt,
+                           fulfilment_mode=mode, status=status, work_order=wo,
+                           customer=customer if customer is not None else self.other,
+                           received_date=self.today, received_by=self.user)
+
+    def test_a_customers_finished_unit_is_on_the_board_under_them(self):
+        self._core("C-R1", "REBUILT")
+        self._core("C-D1", "DECLINED")
+        self._core("C-W1", "IN_REBUILD")              # not finished
+        self._core("C-X1", "REBUILT_TO_STOCK", mode="EXCHANGE")  # stock on no order
+        rows = self.client.get("/api/CustomerShipments/ready/").json()
+        theirs = [g for g in rows if g["customer_name"] == "Other Co"]
+        self.assertEqual(len(theirs), 1, rows)
+        self.assertIsNone(theirs[0]["order_id"])
+        self.assertEqual(sorted((p["erp_id"], p["source"], p["status"]) for p in theirs[0]["parts"]),
+                         [("C-D1", "REMAN", "Scope declined — to be returned unrepaired"),
+                          ("C-R1", "REMAN", "Rebuilt — ready to return")])
+
+    def test_a_unit_on_another_customers_order_still_goes_to_its_owner(self):
+        core = self._core("C-R2", "REBUILT", wo=self.wo)   # the WO is Fleet Co's order
+        s = self._ship([core.part]).json()
+        self.assertEqual(s["customer_name"], "Other Co", s)
+
+    def test_shipping_returns_the_unit_and_prints_it(self):
+        from Tracker.models import Core, CustomerShipment
+        from Tracker.reports.adapters.shipment_documents import build_shipment_document_context
+        core = self._core("C-R3", "REBUILT")
+        resp = self._ship([core.part], reference="SHPR-R")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        core = Core.objects.get(pk=core.pk)
+        self.assertEqual((core.status, core.part.part_status), ("RETURNED", "SHIPPED"))
+        self.assertEqual(core.return_reference, resp.json()["shipment_number"])
+        ctx = build_shipment_document_context(
+            CustomerShipment.objects.get(pk=resp.json()["id"]), self.tenant, self.user)
+        self.assertEqual([i.serials for i in ctx.items], [["C-R3"]])
+
+    def test_exchange_stock_on_an_order_ships_and_ends_shipped(self):
+        from Tracker.models import Core
+        core = self._core("C-X2", "REBUILT_TO_STOCK", mode="EXCHANGE", wo=self.wo)
+        rows = self.client.get("/api/CustomerShipments/ready/").json()
+        fleet = next(g for g in rows if g["order_id"] == str(self.order.id))
+        self.assertIn(("C-X2", "REMAN"), [(p["erp_id"], p["source"]) for p in fleet["parts"]])
+        resp = self._ship([core.part])
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.json()["customer_name"], "Fleet Co")
+        core = Core.objects.get(pk=core.pk)
+        self.assertEqual((core.status, core.part.part_status, core.return_reference),
+                         ("SHIPPED", "SHIPPED", ""))
+
+    def test_an_unfinished_or_unready_unit_is_refused(self):
+        wip = self._core("C-W2", "IN_REBUILD")
+        self.assertIn("not finished", self._ship([wip.part]).json()["detail"])
+        # An exchange unit is shop stock once rebuilt to stock, never "REBUILT".
+        odd = self._core("C-X3", "REBUILT", mode="EXCHANGE")
+        self.assertIn("exchange unit", self._ship([odd.part], customer=str(self.other.id)).json()["detail"])
+
+    def test_void_puts_the_unit_back_at_the_stage_it_left_from(self):
+        from Tracker.models import Core
+        core = self._core("C-R4", "REBUILT")
+        s = self._ship([core.part]).json()
+        resp = self.client.post(f"/api/CustomerShipments/{s['id']}/void/", {"reason": "wrong unit"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual([p["ERP_id"] for p in resp.json()["parts"]], ["C-R4"])
+        core = Core.objects.get(pk=core.pk)
+        self.assertEqual((core.status, core.return_reference, core.returned_at), ("REBUILT", "", None))
+        self.assertIsNone(core.part.customer_shipment_id)
+        self.assertEqual(self._ship([core.part]).status_code, 201)  # and it can go again
+
+    def test_the_core_return_endpoint_ships_it(self):
+        core = self._core("C-R5", "DECLINED")
+        resp = self.client.post(f"/api/Cores/{core.id}/return_to_customer/",
+                                {"reference": "SHPR-5", "carrier": "Pickup"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["status"], "RETURNED_UNREPAIRED")
+        core.part.refresh_from_db()
+        shipment = core.part.customer_shipment
+        self.assertEqual((shipment.customer_id, shipment.reference, shipment.carrier),
+                         (self.other.id, "SHPR-5", "Pickup"))

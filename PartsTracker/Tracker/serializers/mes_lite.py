@@ -569,6 +569,7 @@ class WorkOrderCoreSerializer(serializers.Serializer):
     serial_number = serializers.CharField(read_only=True, allow_blank=True)
     status = serializers.CharField(read_only=True)
     condition_grade = serializers.CharField(read_only=True, allow_blank=True)
+    customer = serializers.UUIDField(source='customer_id', read_only=True, allow_null=True)
     customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
     fulfilment_mode = serializers.CharField(read_only=True)
     returns_to_customer = serializers.BooleanField(read_only=True)

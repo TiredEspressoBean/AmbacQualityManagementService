@@ -1929,7 +1929,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope. */
+        /** @description Dispatch a unit back to its customer — repaired, or unrepaired after a declined scope — on a shipment of its own, so its packing list and CoC print. `reference` is the ERP's paperwork number. */
         post: operations["api_Cores_return_to_customer_create"];
         delete?: never;
         options?: never;
@@ -22372,6 +22372,9 @@ export interface components {
         };
         CoreReturnInputRequest: {
             reference?: string;
+            carrier?: string;
+            tracking_number?: string;
+            notes?: string;
         };
         /** @description Serializer for scrapping a core */
         CoreScrapRequest: {
@@ -22397,6 +22400,7 @@ export interface components {
          *     * `REBUILT` - Rebuilt — ready to return
          *     * `RETURNED` - Returned to customer
          *     * `REBUILT_TO_STOCK` - Rebuilt to stock
+         *     * `SHIPPED` - Shipped on exchange
          *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
          *     * `DECLINED` - Scope declined — to be returned unrepaired
          *     * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -22404,7 +22408,7 @@ export interface components {
          *     * `SCRAPPED` - Scrapped
          * @enum {string}
          */
-        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "SHIPPED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
         CountEntryRequest: {
             kind: components["schemas"]["CycleCountLineKindEnum"];
             /** Format: uuid */
@@ -33235,9 +33239,10 @@ export interface components {
         /**
          * @description * `SHIP_STEP` - At the Ship step
          *     * `STOCK` - From stock
+         *     * `REMAN` - A finished reman unit
          * @enum {string}
          */
-        ReadyPartSourceEnum: "SHIP_STEP" | "STOCK";
+        ReadyPartSourceEnum: "SHIP_STEP" | "STOCK" | "REMAN";
         /**
          * @description One dispatchable group on the shipper board: parts staged at an outside-process
          *     step (the dispatch unit), across work orders. See outside_process.build_ready_to_ship_groups.
@@ -38988,6 +38993,8 @@ export interface components {
             readonly serial_number: string;
             readonly status: string;
             readonly condition_grade: string;
+            /** Format: uuid */
+            readonly customer: string | null;
             readonly customer_name: string | null;
             readonly fulfilment_mode: string;
             readonly returns_to_customer: boolean;
@@ -43356,13 +43363,14 @@ export interface operations {
                  *     * `REBUILT` - Rebuilt — ready to return
                  *     * `RETURNED` - Returned to customer
                  *     * `REBUILT_TO_STOCK` - Rebuilt to stock
+                 *     * `SHIPPED` - Shipped on exchange
                  *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
                  *     * `DECLINED` - Scope declined — to be returned unrepaired
                  *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED" | "SHIPPED";
             };
             header?: never;
             path?: never;
@@ -43599,13 +43607,14 @@ export interface operations {
                  *     * `REBUILT` - Rebuilt — ready to return
                  *     * `RETURNED` - Returned to customer
                  *     * `REBUILT_TO_STOCK` - Rebuilt to stock
+                 *     * `SHIPPED` - Shipped on exchange
                  *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
                  *     * `DECLINED` - Scope declined — to be returned unrepaired
                  *     * `RETURNED_UNREPAIRED` - Returned unrepaired
                  *     * `HARVESTED` - Harvested to inventory
                  *     * `SCRAPPED` - Scrapped
                  */
-                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED";
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED" | "SHIPPED";
             };
             header?: never;
             path: {

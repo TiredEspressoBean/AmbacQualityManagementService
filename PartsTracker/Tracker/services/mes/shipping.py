@@ -14,6 +14,10 @@ ordinary path. Finished stock (IN_STOCK, AWAITING_PICKUP) ships too, for routes 
 in the stockroom. Completing one part's Ship step by hand still works; it just leaves
 no shipment behind.
 
+A **reman unit** ships here too, once it is finished: a customer's own unit, rebuilt or
+declined, goes back to them; exchange stock goes out like any stock. Its route is not
+what moves it — the reman stage is (`services.reman.release.dispatch_core`).
+
 Pricing, invoicing and the bill of lading's commercial side belong to the ERP. A
 shipment carries the ERP's paperwork number (`reference`) so the two can be matched.
 """
@@ -41,6 +45,12 @@ def _order_of(part):
 
 
 def _customer_of(part):
+    """Who ``part`` belongs to. A customer's own reman unit is theirs whatever order it
+    sits on; anything else is the customer of its order."""
+    from Tracker.services.reman.core_steps import core_of
+    core = core_of(part)
+    if core is not None and core.returns_to_customer and core.customer_id:
+        return core.customer
     order = _order_of(part)
     return order.company if order is not None and order.company_id else None
 
@@ -50,12 +60,13 @@ def shippable(part) -> str | None:
     from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
     if part.archived:
         return "archived"
-    from Tracker.services.reman.core_steps import core_of
-    if core_of(part) is not None:
-        # A core goes back to its owner through Remanufacturing (its RETURNED stage).
-        return "a core — return it from Remanufacturing"
     if part.part_status in NOT_SHIPPABLE:
         return f"on hold ({part.get_part_status_display()})"
+    from Tracker.services.reman.core_steps import core_of
+    from Tracker.services.reman.release import core_shippable
+    if (core := core_of(part)) is not None:
+        # A reman unit's readiness is its stage, not its route.
+        return core_shippable(core)
     if part.part_status in FROM_STOCK:
         return None
     if part.part_status in TERMINAL_PART_STATUSES:
@@ -71,18 +82,24 @@ def _ready_parts(tenant):
     ship_steps = list(Steps.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, is_terminal=True, terminal_status__iexact=SHIP_TERMINAL)
         .values_list("id", flat=True))
+    on_order = Q(order__isnull=False) | Q(work_order__related_order__isnull=False)
     return (Parts.objects.filter(tenant=tenant, archived=False)  # tenant-safe: explicit tenant filter
+            .exclude(part_status__in=NOT_SHIPPABLE)
             # Stock is offered only when it is someone's — on an order. Unclaimed stock
             # (harvested components, build-to-stock) still ships when named, but it
-            # isn't a queue anyone is waiting on. Cores return through Remanufacturing.
-            .filter(core_role__isnull=True)
-            .filter((Q(part_status__in=FROM_STOCK)
-                     & (Q(order__isnull=False) | Q(work_order__related_order__isnull=False)))
-                    | (Q(step_id__in=ship_steps)
-                       & ~Q(part_status__in=list(NOT_SHIPPABLE) + [
-                           "COMPLETED", "SCRAPPED", "CANCELLED", "SHIPPED", "IN_STOCK",
-                           "AWAITING_PICKUP", "CORE_BANKED", "RMA_CLOSED", "DISMANTLED"])))
-            .select_related("part_type", "step", "order__company",
+            # isn't a queue anyone is waiting on.
+            .filter((Q(core_role__isnull=True)
+                     & ((Q(part_status__in=FROM_STOCK) & on_order)
+                        | (Q(step_id__in=ship_steps)
+                           & ~Q(part_status__in=[
+                               "COMPLETED", "SCRAPPED", "CANCELLED", "SHIPPED", "IN_STOCK",
+                               "AWAITING_PICKUP", "CORE_BANKED", "RMA_CLOSED", "DISMANTLED"]))))
+                    # A customer's own reman unit, finished: always someone's.
+                    | Q(core_role__fulfilment_mode="REPAIR_RETURN",
+                        core_role__status__in=("REBUILT", "DECLINED"))
+                    # Exchange stock, on the same terms as any other stock.
+                    | (Q(core_role__status="REBUILT_TO_STOCK") & on_order))
+            .select_related("part_type", "step", "order__company", "core_role__customer",
                             "work_order__related_order__company", "work_order__order_line"))
 
 
@@ -90,14 +107,21 @@ def ready_to_ship(tenant) -> list[dict]:
     """Parts that can go now, grouped by order — the shipping clerk's board.
 
     A group is one order (one customer); parts with no order are grouped together with
-    no customer, and the clerk names who they go to when shipping."""
+    no customer, and the clerk names who they go to when shipping. A customer's own
+    reman unit not on an order of theirs is grouped under them, with their material."""
     groups: dict = {}
+    from Tracker.services.reman.core_steps import core_of
     for p in _ready_parts(tenant):
         order = _order_of(p)
-        key = str(order.id) if order is not None else ""
+        core = core_of(p)
+        company = _customer_of(p)
+        # A customer's unit on no order of theirs groups under them, with their lots.
+        if order is not None and company is not None and order.company_id != company.id:
+            order = None
+        key = (str(order.id) if order is not None
+               else f"owner:{company.id}" if core is not None and company is not None else "")
         g = groups.get(key)
         if g is None:
-            company = order.company if order is not None and order.company_id else None
             g = groups[key] = {
                 "order_id": str(order.id) if order is not None else None,
                 "order_number": (order.order_number or order.name) if order is not None else None,
@@ -116,8 +140,9 @@ def ready_to_ship(tenant) -> list[dict]:
             "work_order": wo.ERP_id if wo is not None else None,
             "order_line": line.line_number if line is not None else None,
             "due_date": line.due_date if line is not None else None,
-            "source": "STOCK" if p.part_status in FROM_STOCK else "SHIP_STEP",
-            "status": p.get_part_status_display(),
+            "source": ("REMAN" if core is not None
+                       else "STOCK" if p.part_status in FROM_STOCK else "SHIP_STEP"),
+            "status": core.get_status_display() if core is not None else p.get_part_status_display(),
         })
     # A customer's own material, still here: it can go back to them, grouped under them.
     from Tracker.models import MaterialLot
@@ -162,6 +187,8 @@ def ship(*, tenant, user, parts=(), lots=(), customer=None, carrier: str = "",
     from Tracker.services.mes import inventory
     from Tracker.services.mes.material_lot import split_material_lot
     from Tracker.services.mes.parts import _cascade_work_order_completion, advance_part_step
+    from Tracker.services.reman.core_steps import core_of
+    from Tracker.services.reman.release import dispatch_core
 
     ids = [p.id for p in parts]
     lot_reqs = list(lots)
@@ -212,6 +239,12 @@ def ship(*, tenant, user, parts=(), lots=(), customer=None, carrier: str = "",
             reference=reference.strip(), notes=notes, expected_delivery=expected_delivery)
 
         for p in locked:
+            if (core := core_of(p)) is not None:
+                # The reman stage moves the unit, and derives its part status.
+                p.customer_shipment = shipment
+                p.save(update_fields=["customer_shipment"])
+                dispatch_core(core, shipment, user)
+                continue
             if p.part_status in FROM_STOCK:
                 p.part_status = PartsStatus.SHIPPED
                 p.customer_shipment = shipment
@@ -281,6 +314,8 @@ def void_shipment(shipment, *, user, reason: str) -> None:
         MaterialLot, OrdersStatus, Parts, PartsStatus, RecordEdit, StepExecution, WorkOrderStatus,
     )
     from Tracker.services.mes import inventory
+    from Tracker.services.reman.core_steps import core_of
+    from Tracker.services.reman.release import undispatch_core
     part_ct = ContentType.objects.get_for_model(Parts)
 
     if shipment.is_voided:
@@ -290,6 +325,16 @@ def void_shipment(shipment, *, user, reason: str) -> None:
     with transaction.atomic():
         for p in shipment.parts.select_for_update(of=("self",)).select_related(  # tenant-safe: reverse FK from a scoped shipment
                 "step", "work_order__related_order"):
+            if (core := core_of(p)) is not None:
+                # Back to the stage it left from. Its work order closed when the work
+                # ended, not when it shipped, so nothing reopens.
+                RecordEdit.objects.create(
+                    tenant=p.tenant, content_type=part_ct, object_id=p.id, field_name="customer_shipment",
+                    old_value=str(shipment.id), new_value="", reason=reason.strip(), edited_by=user)
+                p.customer_shipment = None
+                p.save(update_fields=["customer_shipment"])
+                undispatch_core(core)
+                continue
             if is_ship_step(p.step):
                 p.part_status = PartsStatus.IN_PROGRESS
                 StepExecution.objects.create(

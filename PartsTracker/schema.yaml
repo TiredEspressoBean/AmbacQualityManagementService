@@ -5348,6 +5348,7 @@ paths:
           - RETURNED
           - RETURNED_UNREPAIRED
           - SCRAPPED
+          - SHIPPED
         description: |-
           * `RECEIVED` - Received
           * `IN_DISASSEMBLY` - In Disassembly
@@ -5356,6 +5357,7 @@ paths:
           * `REBUILT` - Rebuilt — ready to return
           * `RETURNED` - Returned to customer
           * `REBUILT_TO_STOCK` - Rebuilt to stock
+          * `SHIPPED` - Shipped on exchange
           * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
           * `DECLINED` - Scope declined — to be returned unrepaired
           * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -5718,6 +5720,7 @@ paths:
           - RETURNED
           - RETURNED_UNREPAIRED
           - SCRAPPED
+          - SHIPPED
         description: |-
           * `RECEIVED` - Received
           * `IN_DISASSEMBLY` - In Disassembly
@@ -5726,6 +5729,7 @@ paths:
           * `REBUILT` - Rebuilt — ready to return
           * `RETURNED` - Returned to customer
           * `REBUILT_TO_STOCK` - Rebuilt to stock
+          * `SHIPPED` - Shipped on exchange
           * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
           * `DECLINED` - Scope declined — to be returned unrepaired
           * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -5937,7 +5941,8 @@ paths:
     post:
       operationId: api_Cores_return_to_customer_create
       description: Dispatch a unit back to its customer — repaired, or unrepaired
-        after a declined scope.
+        after a declined scope — on a shipment of its own, so its packing list and
+        CoC print. `reference` is the ERP's paperwork number.
       parameters:
       - in: path
         name: id
@@ -52581,6 +52586,12 @@ components:
       properties:
         reference:
           type: string
+        carrier:
+          type: string
+        tracking_number:
+          type: string
+        notes:
+          type: string
     CoreScrapRequest:
       type: object
       description: Serializer for scrapping a core
@@ -52627,6 +52638,7 @@ components:
       - REBUILT
       - RETURNED
       - REBUILT_TO_STOCK
+      - SHIPPED
       - AWAITING_AUTHORISATION
       - DECLINED
       - RETURNED_UNREPAIRED
@@ -52641,6 +52653,7 @@ components:
         * `REBUILT` - Rebuilt — ready to return
         * `RETURNED` - Returned to customer
         * `REBUILT_TO_STOCK` - Rebuilt to stock
+        * `SHIPPED` - Shipped on exchange
         * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
         * `DECLINED` - Scope declined — to be returned unrepaired
         * `RETURNED_UNREPAIRED` - Returned unrepaired
@@ -73307,10 +73320,12 @@ components:
       enum:
       - SHIP_STEP
       - STOCK
+      - REMAN
       type: string
       description: |-
         * `SHIP_STEP` - At the Ship step
         * `STOCK` - From stock
+        * `REMAN` - A finished reman unit
     ReadyToShipGroup:
       type: object
       description: |-
@@ -85003,6 +85018,11 @@ components:
         condition_grade:
           type: string
           readOnly: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         customer_name:
           type: string
           readOnly: true
@@ -85030,6 +85050,7 @@ components:
       required:
       - condition_grade
       - core_number
+      - customer
       - customer_name
       - fulfilment_mode
       - harvested_component_count

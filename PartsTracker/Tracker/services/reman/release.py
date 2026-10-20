@@ -200,17 +200,78 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
     return core
 
 
-@transaction.atomic
-def return_core_to_customer(core, user=None, reference: str = ''):
-    """Dispatch a unit back to the customer it came from.
+# A finished unit's stage when it leaves on a shipment, keyed by the stage it left from.
+# REBUILT and DECLINED are a customer's own unit going back; REBUILT_TO_STOCK is exchange
+# stock going out. `undispatch_core` reads it backwards when a shipment is voided.
+DISPATCH_STAGE = {
+    'REBUILT': 'RETURNED',
+    'DECLINED': 'RETURNED_UNREPAIRED',
+    'REBUILT_TO_STOCK': 'SHIPPED',
+}
+
+
+def core_shippable(core) -> str | None:
+    """Why this unit can't leave on a shipment now, or None when it can."""
+    if core.status not in DISPATCH_STAGE:
+        return f"{core.get_status_display().lower()} — not finished, so not ready to go"
+    if core.status in ('REBUILT', 'DECLINED') and not core.returns_to_customer:
+        return "an exchange unit — rebuild it to stock before it ships"
+    return None
+
+
+def dispatch_core(core, shipment, user=None):
+    """Move a unit that has just gone on ``shipment`` to the stage that says it left.
+
+    Called by `services.mes.shipping.ship`, inside its transaction, after the part has
+    been put on the shipment. A customer's own unit is stamped as returned, with the
+    shipment number as its reference.
+    """
+    if (why := core_shippable(core)) is not None:
+        raise ValidationError(f"{core.core_number} can't ship: {why}.")
+    fields = ['status', 'updated_at']
+    if core.status in ('REBUILT', 'DECLINED'):
+        core.returned_at = shipment.shipped_at
+        core.returned_by = user if getattr(user, 'is_authenticated', False) else None
+        core.return_reference = shipment.shipment_number
+        fields += ['returned_at', 'returned_by', 'return_reference']
+    core.status = DISPATCH_STAGE[core.status]
+    core.save(update_fields=fields)
+    sync_part_status(core)
+    return core
+
+
+def undispatch_core(core):
+    """A shipment recorded by mistake: the unit is back at the stage it left from."""
+    back = {v: k for k, v in DISPATCH_STAGE.items()}
+    if core.status not in back:
+        raise ValidationError(
+            f"{core.core_number} is {core.get_status_display()} — it isn't on a shipment.")
+    core.status = back[core.status]
+    core.returned_at = None
+    core.returned_by = None
+    core.return_reference = ''
+    core.save(update_fields=['status', 'returned_at', 'returned_by', 'return_reference',
+                             'updated_at'])
+    sync_part_status(core)
+    return core
+
+
+def return_core_to_customer(core, user=None, reference: str = '', *, carrier: str = '',
+                            tracking_number: str = '', notes: str = ''):
+    """Dispatch a unit back to the customer it came from, on a shipment of its own.
 
     Serves both endings of the repair-and-return path: a REBUILT unit goes back
     repaired, a DECLINED one goes back unrepaired — physically the same act, and the
     distinction is kept in the terminal status rather than in two services.
 
-    Records that it left and how to trace it. Booking freight, rating and labelling
-    belong to whatever owns shipping (§3.2).
+    It is a `CustomerShipment` like any other, so the packing list and CoC print for
+    it; `reference` is the ERP's paperwork number, as on any shipment. Units going back
+    together go from the Shipping board, which ships several at once.
+
+    Returns the core.
     """
+    from Tracker.services.mes.shipping import ship
+
     if core.status not in ('REBUILT', 'DECLINED'):
         raise ValidationError(
             f"{core.core_number} is {core.get_status_display()} — only a rebuilt unit or "
@@ -220,12 +281,15 @@ def return_core_to_customer(core, user=None, reference: str = ''):
         raise ValidationError(
             f"{core.core_number} is an exchange unit — it has no owner to go back to."
         )
-
-    core.status = 'RETURNED' if core.status == 'REBUILT' else 'RETURNED_UNREPAIRED'
-    core.returned_at = timezone.now()
-    core.returned_by = user
-    core.return_reference = reference
-    core.save(update_fields=[
-        'status', 'returned_at', 'returned_by', 'return_reference', 'updated_at'])
-    sync_part_status(core)
+    if core.customer_id is None:
+        raise ValidationError(
+            f"{core.core_number} has no customer recorded, so there is no one to return it to."
+        )
+    try:
+        ship(tenant=core.tenant, user=user, parts=[core.part], customer=core.customer,
+             carrier=carrier, tracking_number=tracking_number, reference=reference,
+             notes=notes)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
+    core.refresh_from_db()
     return core
