@@ -2,21 +2,9 @@
 
 Sampling allows inspecting a subset of parts rather than 100%, based on statistical rules. This guide covers sampling configuration and use.
 
-!!! example "Demo: Flow Testing Sampling"
-    In demo mode, Flow Testing uses **Every 5th Part** sampling (20%):
-
-    - Order ORD-2024-0042 with 24 parts: 5 parts sampled for inspection
-    - QA Inspector Sarah Chen sees which parts require inspection
-    - Parts INJ-0042-018 and INJ-0042-021 are currently awaiting sample inspection
-
-    Flow Testing's quality gate tightens after **3 consecutive fails**, swapping in
-    the *Enhanced Inspection* fallback: First 5 Parts **and then** Every 3rd Part.
-    It takes 10 good parts to revert. Nozzle Inspection tightens sooner — after
-    **2 consecutive fails** — and its fallback is 100% inspection, reverting after
-    15 good parts.
-
-    Note that rule sets are scoped by **step and part type**, not by supplier:
-    tightening follows the operation, and applies to everything running through it.
+!!! note "Rule sets follow the operation"
+    A rule set is scoped by **step and part type**, not by supplier: tightening
+    follows the operation, and applies to everything running through it.
 
 ## What is Sampling?
 

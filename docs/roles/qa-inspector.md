@@ -2,15 +2,9 @@
 
 This guide is for Quality Assurance Inspectors who perform inspections, record measurements, create quality reports, and manage sampling in uqmes.
 
-!!! tip "Demo Account"
-    In demo mode, log in as **Sarah Chen** (sarah.qa@demo.ambac.com) to work the
-    QA Inspector surface. Home gives you the live picture: first pieces waiting,
-    the incoming queue split by source, your dispositions and CAPA tasks, and the
-    gauges you have used that are coming due for calibration.
-
-    Which serials and reports are waiting changes with every reseed and with
-    anyone else's walkthrough, so follow what Home shows rather than looking for
-    a particular part number.
+!!! tip "Learning the role"
+    The [QA Inspector training track](../training/tracks/qa-inspector.md) walks
+    every workflow on this page on a training instance, with exercises.
 
 ## Your Role
 
@@ -65,7 +59,10 @@ the inspection work waiting on you rather than a generic dashboard:
 - **Incoming queue**, segmented into **Receiving**, **OSP returns**, and
   **In-process**, with counts and age
 - Counters for **Approvals**, **CAPA tasks**, and **My dispositions**
-- **Review calibrations** for equipment coming due
+- **Unassigned dispositions** — ones a failure opened that nobody has taken yet,
+  each with **Take it**
+- **Your gauges** — gauges you used in the last 7 days that are due for
+  calibration, with **Review calibrations**
 
 Work the oldest and most urgent items first — each segment shows its age.
 
@@ -91,24 +88,12 @@ are met, they advance automatically.
 
 When problems are found:
 
-1. Create the quality report **with status FAIL** — that is what quarantines the
-   part, raises its disposition and alerts the step
+1. A failure on an inspection does it for you: a reading out of spec, or your
+   **Fail** on the inspection's result. On a report you raise yourself, set it to
+   **FAIL**, either when you create it or by editing a Pending one. Either way the
+   part is quarantined, the step is alerted, and a disposition opens, unassigned
 2. Add annotations (if 3D model available)
 3. Notify appropriate parties
-
-!!! warning "Create it as FAIL — failing it afterwards does only half the job"
-    A FAIL triggers two different things, and they fire at different times:
-
-    - **Quarantining the part** happens **only when the report is created**, and
-      only when it names a part.
-    - **Opening the disposition** happens on **any** save at FAIL.
-
-    So editing a PENDING report to FAIL afterwards leaves a **disposition open
-    against a part nobody quarantined** — somebody is asked to decide it while
-    the part carries on down the line.
-
-    If you are not ready to call it, leave the report uncreated rather than
-    creating a placeholder you mean to change later.
 
 ## Performing Inspections
 
@@ -136,9 +121,6 @@ the receiving inspection queue and use **Record Measurements** there.
     There is no per-part measurement button. For parts,
     the step player is the recording surface. See [Recording
     Measurements](../workflows/tracking/measurements.md).
-
-!!! example "Demo: Flow Testing Measurement"
-    At Flow Testing step, record Flow Rate @ 1000 bar. Spec: 105-135 mL/min. If you measure 142 mL/min (like INJ-0042-017), system shows FAIL and part routes to quarantine.
 
 ### Measurement Best Practices
 
@@ -239,7 +221,14 @@ An annotation belongs to a **quality report**, so choose the report first:
 
 !!! note "Two severity scales"
     An annotation's severity is **Low, Medium, High or Critical** — a different
-    scale from the defect's Minor / Major / Critical on the report itself.
+    scale from the defect's Minor / Major / Critical on the report itself. A
+    marker rates one finding where it sits on the part; the report and the
+    disposition rate the nonconformance the findings add up to.
+
+!!! info "Some defects must be marked before the disposition can close"
+    A defect type can require a 3D annotation. Its disposition then shows **3D
+    Annotations Required**, and **Go to Annotator** opens with the report already
+    selected.
 
 !!! important "Delete misplaced markers before you finish the report"
     While the report is still Pending you can delete an annotation and place it
@@ -257,18 +246,23 @@ An annotation belongs to a **quality report**, so choose the report first:
 
 ## Managing Quarantine
 
-### Parts You've Quarantined
+### Taking a disposition
 
-1. Navigate to **Quality** > **Dispositions**
-2. See parts awaiting disposition
-3. Provide additional information as needed
-4. Await disposition decision
+A failure's disposition opens **unassigned**. It waits on your Home page under
+*Unassigned dispositions* until someone presses **Take it**; it then moves to
+that person's **My dispositions**.
 
-### Your Role in Disposition
+While it waits, the part can't be started: the start is refused, naming the
+disposition. Rework reaches the part through the disposition.
 
-- Provide inspection data
-- Answer questions about findings
-- Verify rework completion (if assigned)
+### Working it
+
+1. Record the **containment action**
+2. Mark the defect on the model, if the disposition asks for it
+3. Choose the decision; an approver co-signs on your screen if you don't hold
+   `approve_disposition`
+4. After rework, re-inspect the part; close the disposition once the work is
+   done. See [Dispositions](../workflows/quality/dispositions.md)
 
 ## First Piece Inspection (FPI)
 
@@ -291,12 +285,18 @@ first piece, with the step, work order, part and a waiting-age timer — offerin
 | Route | What you get |
 |-------|--------------|
 | **The runtime** — work order → Start Work → tick the part → Start | **Sign off & pass · Fail · Waive** |
-| **The control page** — *First piece waiting on QA* card → **Sign off** | **Sign off only** |
+| **The control page** — *First piece waiting on QA* card | **Sign off · Fail · Waive** |
 
-!!! warning "The quick route cannot fail or waive"
-    The control page's **Sign off** is a shortcut to the pass outcome. If the
-    first piece is **not** acceptable, go through the runtime, where Fail and
-    Waive exist.
+Both routes use the same dialog, which lists the first piece's readings — each
+characteristic, reading, limits, and who took it when. Both offer the co-sign when
+you don't hold `sign_off_fpi`. **Waive** asks for a reason of at least 10
+characters. Sign off and Waive meet the step's password assurance; Fail does not
+need it.
+
+**Fail** asks for the reason. The first piece is quarantined with a FAIL report
+carrying your reason, and its disposition opens, unassigned. The run stays held:
+the control page shows **First piece failed — run held**, with **Start a new first
+piece** for after the setup is corrected.
 
 ### Signing off
 
@@ -312,8 +312,10 @@ the run is released.
 
 !!! important "Separation of duties"
     The operator signed the inspection substeps; **you** sign the buy-off. They
-    must be different people — if you signed *any* substep on the first piece's
-    current step execution, the verdict is refused with a message saying so.
+    must be different people. If you signed *any* substep on the first piece's
+    current step execution, the dialog says so before you can confirm, and
+    switches to a second inspector's sign-in at your screen; the verdict is then
+    recorded under their name.
 
     That applies to **all three outcomes**, not just the pass: Fail and Waive are
     blocked for the same person too. A waive additionally needs a reason of at
@@ -430,10 +432,11 @@ Escalate to QA Manager as needed.
 
 The two are handled differently, and the system tells you which you have:
 
-- **Failed** calibration, or out of service — the capture is **refused**. Pick a
-  different gauge; this one cannot be used until a passing calibration is
-  recorded.
-- **Overdue** — the reading **is accepted**, with a warning. An overdue check is
+- **Failed** calibration, or out of service — the gauge is greyed in the picker
+  and the capture is **refused**. Pick a different gauge; this one cannot be used
+  until a passing calibration is recorded.
+- **Overdue** — marked *calibration overdue* in the picker, and the reading **is
+  accepted**, with a warning. An overdue check is
   a scheduling lapse, not evidence the gauge is wrong. Record the work, then
   get it calibrated.
 

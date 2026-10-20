@@ -48,16 +48,9 @@ uqmes helps manufacturing teams:
 
 ## Training
 
-New users should complete role-specific training:
-
-| Training | Duration | Description |
-|----------|----------|-------------|
-| [Operator Training](training/operator.md) | 2-4 hours | Parts tracking and measurements |
-| [QA Inspector Training](training/qa-inspector.md) | 4-6 hours | Inspections and quality reports |
-| [QA Manager Training](training/qa-manager.md) | 4-6 hours | Approvals and CAPA management |
-| [Production Manager Training](training/production-manager.md) | 3-5 hours | Order and work order management |
-| [Document Controller Training](training/document-controller.md) | 3-4 hours | Document control |
-| [Administrator Training](training/administrator.md) | 6-8 hours | System administration |
+Each role has a hands-on track built around one working day at a training shop,
+run on a separate training instance and never on your live system. Start at the
+[Training Program](training/index.md).
 
 ## Need Help?
 

@@ -77,7 +77,9 @@ Standard error type categories:
 Your administrator configures available error types.
 
 !!! example "Diesel Injector Example"
-    For a fuel injector failing Flow Testing: Error Type = **Functional**, Description = "Flow rate 142 mL/min (spec: 105-135 mL/min)", Severity = **Major**.
+    For a fuel injector failing its flow test, against an example spec of
+    100–140 mL/min: Error Type = **Functional**, Description = "Flow rate 142 mL/min
+    (spec 100–140 mL/min)", Severity = **Major**.
 
 ## Severity Levels
 
@@ -103,24 +105,12 @@ action is recorded on it. See [Dispositions](dispositions.md).
 | **Pass** | Part passed inspection | Continue production |
 | **Fail** | Part failed inspection | Decide the disposition |
 
-!!! danger "Create it as Fail — failing it afterwards does only half the job"
-    A FAIL sets off two different things, and they do **not** fire at the same
-    time:
+!!! info "What a Fail sets off"
+    A report reaching **Fail** quarantines the part, alerts the step, updates
+    sampling and opens the disposition. It does this once, on the move into Fail,
+    whether the report was created as Fail or edited to Fail from Pending.
 
-    | Effect | When |
-    |--------|------|
-    | **Quarantine the part**, alert the step, update sampling | **Only on create** |
-    | **Open the disposition** | **On any save** where the status is Fail |
-
-    So a report saved as Pending and changed to Fail afterwards leaves you with
-    **a disposition open against a part that was never quarantined** — the
-    record says FAIL, somebody is being asked to decide it, and the part is
-    still moving down the line.
-
-    Set the result when you create the report. If you are not ready to call it,
-    don't save a placeholder you mean to change later.
-
-    *(Quarantine also needs the report to name a part. Receiving-inspection and
+    *(Quarantine needs the report to name a part. Receiving-inspection and
     batch-cycle failures take their own routes — a lot reject opens a populated
     disposition itself, and a failed batch cycle contains the whole load.)*
 

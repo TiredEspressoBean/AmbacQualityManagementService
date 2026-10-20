@@ -78,12 +78,9 @@ A process can be in control but not capable (or vice versa).
 
 Use the dropdowns at the top to select:
 
-1. **Process** - The manufacturing process (e.g., "Common Rail Injector Remanufacturing")
-2. **Step** - The specific step within the process (e.g., "Flow Testing")
-3. **Measurement** - The measurement definition to analyze (e.g., "Flow Rate @ 1000 bar")
-
-!!! example "Flow Rate Monitoring"
-    For diesel injector flow rate monitoring: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar. Spec: 105-135 mL/min, Nominal: 120 mL/min.
+1. **Process** - The manufacturing process (e.g., "Injector Build")
+2. **Step** - The specific step within the process (e.g., "Flow Calibration")
+3. **Measurement** - The measurement definition to analyze (e.g., "Flow Rate")
 
 ### Chart Settings
 
@@ -259,7 +256,7 @@ current selection.
 ## Next Steps
 
 - [SPC Practitioner Guide](spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
-- [SPC Fundamentals Training](../training/spc-fundamentals.md) - Role-based training module
+- [SPC Fundamentals Training](../training/tracks/spc-fundamentals.md) - Role-based training module
 - [Dashboard Overview](dashboard.md) - Overall metrics
 - [Defect Analysis](defects.md) - Quality analysis
 - [Recording Measurements](../workflows/tracking/measurements.md) - Data collection

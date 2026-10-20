@@ -19,7 +19,7 @@ REST API for integrating uqmes with other systems.
 
     The record ids in these examples come from the **demo data set**, which
     exists only if your deployment was seeded with it — see
-    [Training Data Setup](../training/training-data-setup.md). On a system with
+    [Training Data Setup](../training/running-training/training-data-setup.md). On a system with
     your own data, the shapes hold but the identifiers will not.
 
     API tokens are issued by an administrator — there is no self-service

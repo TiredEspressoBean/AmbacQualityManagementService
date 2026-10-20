@@ -1,5 +1,10 @@
 # Customer Portal Orientation
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 30 minutes
 **Prerequisites:** None
 **Goal:** Track your orders, find your documents, invite a colleague, and
@@ -72,7 +77,7 @@ date. A part-level view shows each unit's status.
 Ask your supplier to walk you through their stage names once — they come from
 that shop's own process, so "Nozzle Inspection" means what it means there.
 
-See [Order Status](../workflows/orders/order-status.md).
+See [Order Status](../../workflows/orders/order-status.md).
 
 ### 2.3 What shipped
 
@@ -115,7 +120,7 @@ against the order with your name and the date.
     normally have it. The portal records **what you decided**, so it is attached
     to the job rather than living in an email thread.
 
-See [Approvals Overview](../workflows/approvals/overview.md).
+See [Approvals Overview](../../workflows/approvals/overview.md).
 
 ---
 
@@ -132,6 +137,6 @@ See [Approvals Overview](../workflows/approvals/overview.md).
 
 ## Next Steps
 
-- [Customer Portal guide](../roles/customer.md) — the full reference
-- [Order Status](../workflows/orders/order-status.md)
-- [Approvals Overview](../workflows/approvals/overview.md)
+- [Customer Portal guide](../../roles/customer.md) — the full reference
+- [Order Status](../../workflows/orders/order-status.md)
+- [Approvals Overview](../../workflows/approvals/overview.md)

@@ -53,7 +53,13 @@ class DemoSupplierQualitySeeder(BaseSeeder):
         part_type = part_types[0]
 
         employees = users.get("employees", []) if isinstance(users, dict) else []
-        user = employees[0] if employees else None
+        # The QA Manager grants a qualification; someone else raises it (there's no
+        # purchasing user in the cast). Not employees[0], the Tenant Admin.
+        by_email = users.get("by_email", {}) if isinstance(users, dict) else {}
+        user = users.get("qa_manager") if isinstance(users, dict) else None
+        user = user or (employees[0] if employees else None)
+        raiser = by_email.get("jennifer.mgr@demo.ambac.com") or user
+        receiver = by_email.get("sarah.qa@demo.ambac.com") or user
 
         company_map = companies.get("by_name", {}) if isinstance(companies, dict) else {}
         great_lakes = company_map.get("Great Lakes Diesel")
@@ -81,7 +87,7 @@ class DemoSupplierQualitySeeder(BaseSeeder):
                                 part_type=part_type).first())
             if existing:
                 return existing
-            q = sq.open_qualification(supplier=supp, part_type=part_type, basis=basis, user=user)
+            q = sq.open_qualification(supplier=supp, part_type=part_type, basis=basis, user=raiser)
             if status in ("APPROVED", "CONDITIONAL"):
                 sq.grant(q, user=user, conditional=(status == "CONDITIONAL"),
                          expiry_date=today + timedelta(days=expiry_days))
@@ -112,7 +118,7 @@ class DemoSupplierQualitySeeder(BaseSeeder):
             if existing:
                 return existing
             a = pa.open_approval(part_type=part_type, supplier=supp, approval_type=approval_type,
-                                 reference=reference, user=user)
+                                 reference=reference, user=raiser)
             if status in ("APPROVED", "CONDITIONAL"):
                 pa.grant(a, user=user, conditional=(status == "CONDITIONAL"),
                          expiry_date=today + timedelta(days=expiry_days))
@@ -171,14 +177,14 @@ class DemoSupplierQualitySeeder(BaseSeeder):
                     "material_type": part_type, "supplier": bargain,
                     "supplier_lot_number": "SUP-HOLD-001",
                     "erp_po_number": "PO-2026-HOLD",
-                    "received_date": today, "received_by": user,
+                    "received_date": today, "received_by": receiver,
                     "quantity": Decimal("30"), "quantity_remaining": Decimal("30"),
                     "unit_of_measure": "EA", "status": "RECEIVED",
                     "location": seed_location(self.tenant, "Receiving Dock", kind="DOCK", receiving_dock=True),
                 },
             )
             if created or held.status == "RECEIVED":
-                receiving_inspection.route_received_lot(held, user)
+                receiving_inspection.route_received_lot(held, receiver)
             held.refresh_from_db()
             result["held_lot"] = held
             if not held.hold_reason:

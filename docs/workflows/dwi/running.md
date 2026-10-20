@@ -144,40 +144,11 @@ for a fresh signature.
 You can't complete a substep while one of its signature blocks is unsigned — it
 tells you which one.
 
-## Marking a substep N/A
+## A substep you can't do
 
-If a substep genuinely does not apply to the part in front of you:
-
-1. Tap **Mark N/A**
-2. Choose a reason code
-
-The reason code is required — the dialog will not submit without one — and it stays
-in the part's record.
-
-!!! important "Mark N/A only appears where the author allowed it"
-    N/A is not a general escape. The person who wrote the instruction marks a
-    substep **optional** to permit it; on everything else the button is simply
-    not there.
-
-    So its absence is the author saying *this one is not skippable*, not a
-    permissions problem and not a fault. If a substep you genuinely cannot
-    perform offers no N/A, that is a conversation with your supervisor or with
-    whoever authored the step — not something to work around.
-
-!!! tip "Add a note if the reason code doesn't tell the whole story"
-    Notes are optional and the N/A dialog does not ask for one, so if the *why*
-    matters beyond the code, put it in the step's notes or a shift note. Nothing
-    will prompt you for it.
-
-!!! warning "Safety-critical substeps can never be N/A, even if marked optional"
-    A substep flagged **safety-critical** by its author refuses N/A outright —
-    and that beats everything else. Even if the same substep is also marked
-    optional, N/A is rejected, and it is rejected **again at the gate** when the
-    step is completed, so it cannot slip through by a different route.
-
-    Typical examples are torque on safety-critical fasteners, witnessed
-    sign-offs and final dimensional verification. If you cannot complete one,
-    raise it with your supervisor rather than working around it.
+Every substep you're shown is one the author requires, unless it's marked
+**optional**. If you genuinely can't perform a required one, stop and raise it
+with your supervisor or whoever authored the step. There is no skip.
 
 ## Finishing the step
 

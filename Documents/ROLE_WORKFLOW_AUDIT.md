@@ -122,21 +122,21 @@ button: *the spec is the judge.*
 
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | Read the home page | ✅ | ✅ | ✅ | ? | 2026-10-06 | FPI banner · inbox chips (Receiving / OSP returns / In-process / QA sign-off) · My quality actions · Your gauges. |
-| 2 | Scan to navigate | ✅ | ✅ | ✅ | ? | 2026-10-06 | Every scan resolves to the parent work order. |
-| 3 | Receiving inspection, and clear the paperwork holds | ✅ | ✅ | ✅ | ? | 2026-10-06 | *Accept lot / Reject lot*. Paperwork holds clear inline; judgement holds need a quality manager. `RCV-MAT-HOLD` is the exhibit. |
-| 4 | First-piece buy-off | ✅ | ✅ | 🚧 | ? | 2026-10-19 | A batch gate with separation of duties: whoever signed the first piece's substeps can't buy it off. An FPI can't be started before a part reaches the step. **The WO Control page's *Sign off* only passes**; fail and waive are on the runtime banner. **Demo 🚧:** both seeded FPIs can't be signed (arc). |
-| 5 | A sampled in-process inspection | ✅ | ✅ | ✅ | ? | 2026-10-06 | Answers *"why this part?"*. The plan is generated, and each part's history lists its **Sampling decisions**. `INJ-QA-INSPECT-002`: *Post-repair verification*. |
-| 6 | OSP return inspection | ✅ | ✅ | ✅ | ? | 2026-10-06 | One queue for purchased lots and OSP returns, with a **Source** column and one runtime. |
-| 7 | An out-of-spec reading quarantines the part and raises its disposition | ✅ | ⚠️ | ✅ | ? | 2026-10-19 | **⚠️ The two side effects of a FAIL run on different triggers.** Quarantine runs on create (and on a DWI transition to FAIL). `signals.auto_create_disposition` fires on any save at FAIL. So a report **edited** from PENDING to FAIL opens a disposition against a part that was never quarantined. Open. |
-| 8 | Work the disposition — **the decision needs a co-sign** | ✅ | ✅ | ✅ | ? | 2026-10-06 | An approver authenticates **on the inspector's screen**, and the decision commits under their name (`decision_authorized_by`). The best screen in the product. |
-| 9 | Close the disposition — this one is yours | ✅ | ✅ | ✅ | ? | 2026-10-07 | The refusal names everything missing in one message: no decision, and containment needed on CRITICAL/MAJOR. |
-| 10 | Re-inspect after rework, history first | ✅ | ✅ | ✅ | ? | 2026-10-07 | `INJ-QA-INSPECT-004` runs FAIL → REWORK → AWAITING_QA. **Unconfirmed:** whether the part shows in the grouped inbox row. That needs a UI expand. |
-| 11 | Work a CAPA task; author a verification plan; initiate one for a pattern | ✅ | ✅ | ✅ | ? | 2026-10-06 | **Add Verification** records a *plan*; **Complete Verification** records the *outcome*, which needs `verify_capa`. |
-| 12 | Check a gauge's calibration before using it | ✅ | ✅ | ✅ | ? | 2026-10-06 | *Your gauges*: a gauge used in the last 7 days that is due within 7. An out-of-service or failed gauge is refused at capture. |
-| 13 | Read a finished record and narrate it backward | ✅ | ✅ | ✅ | ? | 2026-10-15 | The per-serial **Traveler**. Red flag to teach: QUARANTINED or SCRAPPED with no report or disposition behind it. |
-| 14 | Mark where a defect is on the 3D model | ✅ | ? | ? | ? | ? | **Not walked.** The annotator now prefers a completed model with no step. |
-| R1 | Accept or reject a harvested component into stock | ✅ | ✅ | ✅ | ? | 2026-10-07 | `/reman/components`. Accepting reserves a part for its customer's core. No success toast. |
+| 1 | Read the home page | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | First pieces waiting · inbox chips (Receiving / OSP returns / In-process / QA sign-off) · My quality actions · **Unassigned dispositions** with *Take it* · Your gauges. |
+| 2 | Scan to navigate | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | A serial opens its work order with **Start work on parts** open and that part ticked (a quarantined or held part opens unticked). Work order, lot and location scans open those. |
+| 3 | Receiving inspection, and clear the paperwork holds | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | *Accept lot / Reject lot*. Paperwork holds clear inline; judgement holds need a quality manager. `RCV-MAT-HOLD` is the exhibit. A partial reject (`RCV-MAT-0004`) splits the bad pieces into a rejected child lot with a disposition and accepts the rest; an inspector's whole-lot reject (`RCV-MAT-0003`) becomes a request that holds the lot until a QA manager confirms or declines. The verdict counts the inspector's own failing readings; Accept is disabled on REJECT. |
+| 4 | First-piece buy-off | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | Both routes (runtime banner, WO Control *First piece waiting on QA*) offer **Sign off / Fail / Waive** through one dialog that shows the first piece's readings. Separation of duties: whoever signed the first piece's substeps is refused. Exhibits: `WO-QA-INSPECT-01` (pass), `-03` (Sarah ran it: her buy-off is refused), `-04` (fail), `-05` (waive). A fail quarantines the first piece and opens an unassigned disposition with the reason; WO Control then shows *First piece failed — run held* with **Start a new first piece**. When the logged-in inspector signed the first piece, the dialog says so up front and takes a second inspector's sign-in; the buy-off is recorded under the co-signer (`inspected_by`) with the caller as `performed_by`. |
+| 5 | A sampled in-process inspection | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | Answers *"why this part?"*. The plan is generated, and each part's history lists its **Sampling decisions**. `INJ-QA-INSPECT-004`: *Selected by every 4th part*, with a **Sample** badge in Start Work. |
+| 6 | OSP return inspection | ✅ | ✅ | ✅ | ✅ | 2026-10-06 | One queue for purchased lots and OSP returns, with a **Source** column and one runtime. |
+| 7 | An out-of-spec reading quarantines the part and raises its disposition | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | An inspector's explicit FAIL on the result field runs the same consequences (fixed 2026-10-20; walked on `INJ-QA-INSPECT-015`). One handler (`quality_report.on_report_failed`) runs the FAIL consequences on the move into FAIL: created at FAIL, edited to FAIL, or resolved to FAIL by DWI findings. Each quarantine writes the part's history with the actor. Not walked. |
+| 8 | Work the disposition — **the decision needs a co-sign** | ✅ | ✅ | ✅ | ✅ | 2026-10-06 | An approver authenticates **on the inspector's screen**, and the decision commits under their name (`decision_authorized_by`). The best screen in the product. |
+| 9 | Close the disposition — this one is yours | ✅ | ✅ | ✅ | ✅ | 2026-10-07 | The refusal names everything missing in one message: no decision, and containment needed on CRITICAL/MAJOR. |
+| 10 | Re-inspect after rework, history first | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | `INJ-QA-INSPECT-013` failed Flow Calibration, was decided REWORK on Maria's co-sign and split to Rework. Completing the Rework step's own inspection closes the disposition, and the part re-enters Body Inspection. |
+| 11 | Work a CAPA task; author a verification plan; initiate one for a pattern | ✅ | ✅ | ✅ | ✅ | 2026-10-06 | **Add Verification** records a *plan*; **Complete Verification** records the *outcome*, which needs `verify_capa`. |
+| 12 | Check a gauge's calibration before using it | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | *Your gauges*: a gauge used in the last 7 days that is due within 7. An out-of-service or failed gauge is refused at capture and greyed in the picker (`Micrometer MIC-2`). An overdue one is recorded with a warning to tell QA (`Micrometer MIC-1`, Machining's Body OD). |
+| 13 | Read a finished record and narrate it backward | ✅ | ✅ | ✅ | ✅ | 2026-10-15 | The per-serial **Traveler**. Red flag to teach: QUARANTINED or SCRAPPED with no report or disposition behind it. |
+| 14 | Mark where a defect is on the 3D model | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | Every annotation carries a quality report. A defect type that needs one blocks closing the disposition, and **Go to Annotator** opens scoped to its reports. Exhibit: `INJ-QA-INSPECT-015` (Hole blockage, quarantined, disposition unassigned). Walked by hand: markers on the report clear the annotation blocker. The severity picker shows a saved annotation's `LOW` raw beside *Low* (with -4f). |
+| R1 | Accept or reject a harvested component into stock | ✅ | ✅ | ✅ | ✅ | 2026-10-07 | `/reman/components`. Accepting reserves a part for its customer's core. No success toast. |
 
 Rows removed on purpose: *know the sample size* (generated, so part of 5);
 *record measurements* and *confirm calibration* (steps inside an inspection);
@@ -205,7 +205,7 @@ grants the view, not the permissions.
 | 9 | Know whether we are on time | ✅ | ✅ | 🚧 | ? | 2026-10-15 | On-time %, falling back to the WO's expected completion, with "N not measurable" shown. **Demo 🚧:** the fallback never fires on seeded data. |
 | 10 | Send parts out to a subcontract vendor, and record them back | ✅ | ✅ | ✅ | ? | 2026-10-19 | `OutsideProcessPanel`. The return inspection is a step execution, and **Accept return** advances the parts. A step naming a **Special process** refuses an unqualified vendor. |
 | R1 | Return a rejected core to its owner | ✅ | ✅ | 🚧 | ? | 2026-10-13 | `return_core_to_customer` needs REBUILT or DECLINED and refuses an exchange unit. **Demo 🚧:** `CORE-240210-0007` hasn't been walked to REBUILT. |
-| R2 | Ship a rebuilt unit with a cert describing what was replaced | ❌ | ❌ | — | ? | 2026-10-19 | **The sharpest product gap in this file.** The as-built record is captured (`AssemblyUsage`) and the CoC exists, but a return creates no `CustomerShipment`. So a repair-and-return unit goes back with no packing list, no CoC and no as-built list. **Open.** |
+| R2 | Ship a rebuilt unit with the paperwork | ✅ | ✅ | ? | ? | 2026-10-20 | A return is a `CustomerShipment` (`ac85a3e`): **Return** on the Cores card opens the ship dialog, and the Shipping board lists finished reman units under their owner. Packing list always; CoC when the customer wants one with every shipment. Exchange stock on an order ends *Shipped on exchange*. No printed as-built sheet, by decision: it stays an in-system record. Not walked. |
 | C1 | Export-control screening before anything leaves | ✅ | — | — | ? | 2026-10-14 | **Not a target.** Export control is vestigial. The machinery is kept accurate in case it's revived. Don't build on it, and don't create non-US accounts. |
 
 ## Scheduler
@@ -217,7 +217,7 @@ grants the view, not the permissions.
 | 3 | Dispatch people | ✅ | ✅ | ✅ | ? | 2026-10-08 | Dispatch reports coverage (*"259/265 covered"*). Uncovered work becomes a standing chip. |
 | 4 | Adjust by hand | ✅ | ✅ | ✅ | ? | 2026-10-08 | The task panel: Reassign, Pin, Merge into batch, Edit WO. |
 | 5 | React to a disruption | ✅ | ✅ | ✅ | ? | 2026-10-08 | Staleness flags trip on demand, part and capacity changes, not on routine step advances. It's a hint, not an auto-solve. |
-| 6 | Test a change before committing | ✅ | ⚠️ | ✅ | ? | 2026-10-08 | **What-if** solves a draft and states trade-offs in both directions. **⚠️ Solves stop at a 66–99.6% optimality gap**, so two runs on identical inputs differ widely. The comparison shows those differences as the change's effect with no gap label. Open. |
+| 6 | Test a change before committing | ✅ | ✅ | ✅ | ? | 2026-10-20 | **What-if** solves a draft and states trade-offs in both directions. Solves stop at a 66–99.6% optimality gap; the compare bar now shows each side's **solver gap** and warns when a difference is within it. Not walked. |
 | 7 | Get the plan to the floor | ✅ | ✅ | ✅ | ? | 2026-10-08 | Dispatch is the hand-off. The **Dispatch List** is a printable report, not an assignment surface. |
 | 8 | See whether the floor followed it | ✅ | ⚠️ | 🚧 | ? | 2026-10-19 | Actuals are capture-only by design and don't re-time the plan. There is no adherence view. Needs a solve followed by movement. |
 | 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | ✅ | ? | 2026-10-08 | Calendar exceptions and labour blocks. The solve honours them. |
@@ -239,7 +239,7 @@ legend or the weight should change. Open.
 | 6 | Close out a nonconformance decision, and know who decides a deviation | ✅ | ✅ | ✅ | ? | 2026-10-19 | Accepting nonconforming product (*Use As Is* / *Repair*) is a disposition: QA decides it (`approve_disposition`), and the PM closes it (`close_disposition`). A **planned** departure is a temporary change — see Engineering 8. |
 | 7 | Review OTD and throughput | ✅ | ✅ | ✅ | ? | 2026-10-07 | FPY on the hero, customer OTD on Shipping, supplier OTD on the scorecard. No single throughput view. |
 | 8 | Maintain the data planning depends on | ✅ | ✅ | ✅ | ? | 2026-10-08 | **Master Workbook**: validate, then commit, all or nothing. |
-| 9 | Top up a job after scrap outruns the gross-up | ✅ | ⚠️ | ✅ | ? | 2026-10-08 | Planner-confirmed by design. **⚠️ The only door is the scheduling page's work-order dialog**, not the work order page. A Pending WO with no parts reports its whole quantity as shortfall. |
+| 9 | Top up a job after scrap outruns the gross-up | ✅ | ✅ | ✅ | ? | 2026-10-20 | Planner-confirmed by design. A **Make-up** card on the work order page when the job is short; always on the scheduling dialog. A WO with no parts, or ended, reports no shortfall. Not walked. |
 | 10 | Take in a customer order and turn it into work orders | ✅ | ? | ? | ? | ? | **Not walked.** The order page lists its parts (staff only) and keeps the original delivery date once it moves. |
 | 11 | See where machine time is lost | ✅ | ✅ | ❌ | ? | 2026-10-19 | Walked with one recorded event. The **Downtime** card on Analytics: hours lost by cause and machine, as a share of calendar time. No OEE, by design. **The seed records no downtime** (arc). |
 | R1 | Authorise over-and-above and record the customer's answer | ✅ | ✅ | ✅ | ? | 2026-10-07 | Approved resumes the rebuild; Declined routes to DECLINED. *"The conversation happened elsewhere; these record what the customer said."* No price anywhere. |
@@ -258,7 +258,7 @@ Built from the gates the QA Inspector pass hit: this is their other side.
 | 5 | Release a judgement hold at receiving | ✅ | ✅ | ✅ | ? | 2026-10-06 | Unqualified supplier or unapproved part. |
 | 6 | Decide which NCRs become a CAPA, and justify the ones that don't | ✅ | ✅ | ✅ | ? | 2026-10-15 | **Create CAPA** on a FAIL report. `NOT_REQUIRED` and `DEFERRED` need a reason (ISO 9001 10.2.1(b)). The **Repeat defects** card lists candidates. |
 | 7 | Work the approvals centre | ✅ | ✅ | ✅ | ? | 2026-10-06 | The queue isn't scoped by type. Assignment comes from the template, matched to group names exactly. |
-| 8 | Qualify someone for a process, and find whose qualification lapses this month | ✅ | ✅ | ✅ | ? | 2026-10-06 | The matrix shows coverage and single-point risk. Writing a training record is withheld from Operator and QA Inspector. |
+| 8 | Qualify someone for a process, and find whose qualification lapses this month | 📄 | ✅ | ✅ | ? | 2026-10-20 | The matrix shows coverage and single-point risk. Writing a training record is withheld from Operator and QA Inspector. **Docs 📄 (corrected 2026-10-20):** no help page explains writing the record. The Training Matrix page only reads it. The how-to is in the old QA Inspector track (*Recording the qualification*), and moves to the Training Matrix page. |
 | 9 | Raise a SCAR, track the response, change the supplier's standing | ✅ | ✅ | ✅ | ? | 2026-10-06 | A SCAR is a CAPA with `capa_type='SUPPLIER'`. The scorecard recommends an action. |
 | 10 | Find everything measured by a gauge that just failed its check | ✅ | ✅ | ✅ | ? | 2026-10-19 | `/quality/calibrations/records/$id/exposure` (7.1.5.2). "Found unfit" includes found-out-of-tolerance-then-adjusted. It lists, but doesn't act. |
 | 11 | Pull the complete record for one serial, on demand | ✅ | ✅ | 🚧 | ? | 2026-10-15 | The per-serial **Traveler**: who did each step, what was measured, the lots used. **Demo 🚧:** seeded parts are staged, so their histories are thin (arc). |
@@ -308,7 +308,7 @@ role can reach.
 | 5 | Track the lifecycle | ✅ | ✅ | ✅ | ? | 2026-10-12 | Draft → Under Review → Released. **Obsoleting is a deliberate act.** |
 | 6 | Find what is due for review | ✅ | ✅ | ✅ | ? | 2026-10-12 | Nothing notifies you; the tile is the signal. A type with no review period never prompts one. |
 | 7 | Classify, and hold the secret tier | ✅ | ✅ | 🚧 | ? | 2026-10-12 | `classify_documents` and `view_secret_documents` belong to this role and QA Manager. **Demo 🚧:** nothing above Confidential is exercised (arc). |
-| 8 | Write training records | ✅ | ✅ | ✅ | ? | 2026-10-12 | `TRAINING_RECORD_WRITE`. |
+| 8 | Write training records | 📄 | ✅ | ✅ | ? | 2026-10-20 | `TRAINING_RECORD_WRITE`. **Docs 📄:** see QA Manager 8. |
 | C1 | Delete a document | ✅ | ✅ | ✅ | ? | 2026-10-12 | Deletion is a soft delete. Obsolete documents stay listed; status is a filter. |
 
 ---
@@ -319,22 +319,15 @@ role can reach.
 
 | Finding | Where | Note |
 |---|---|---|
-| **A returned reman unit has no paperwork route** | Shipping R2 | `return_core_to_customer` sets status only and creates no shipment, so there's no CoC and no as-built list. The paperwork is scoped to shipments, and a return isn't one. |
-| **A FAIL reached by editing a report opens a disposition without a quarantine** | QA Inspector 7 | `auto_create_disposition` fires on any save at FAIL; quarantine runs only on create or on a DWI transition. |
-| **A quarantine leaves no audit entry** | `batch_disposition.py:55`, `quality_gate.py:226` | `bulk_update` / `.update()` bypass auditlog. Both mark the schedule stale but write no history. |
-| **`disposition_type` is silently ignored on PATCH** | `serializers/qms.py:845` | Returns 200 with the type unchanged, while create refuses a type without `approve_disposition`. An inspector can "save" a type that never took. |
-| **The two inspection aggregation endpoints don't filter rows by user** | `IncomingInspectionViewSet`, `InspectionInboxViewSet` | Their permissions are now the default stack, but `build_incoming_rows()` / `build_inbox_rows()` take no user. So any role that can reach them sees every row. Tenant isolation holds. It's latent for the portal, because no customers exist in production. |
 | **The customer sidebar shows internal sections** | `app-sidebar.tsx:160-166` | Sections are gated per permission; the Customer preset's view perms turn on Production, Scheduling and CAPAs. The destinations refuse them. |
-| **What-if compares runs that differ by solver noise** | Scheduler 6 | Label the gap on the comparison, or close it. |
 | **The frozen fence is presented as a lock** | Scheduler | It's a soft penalty. See the note under Scheduler. |
-| **Make-up is reachable only from the scheduling page** | Production Manager 9 | The shortfall belongs to the work order, but the work order page has no door. |
-| **The WO Control page's FPI sign-off only passes** | QA Inspector 4 | Fail and waive exist only on the runtime banner. |
 | **Priority changed by import has no reason** | Shift Lead C1 | CSV import and the master workbook bypass `change_priority`. |
 | **In Simplified mode one person can carry a process change alone** | Change control | The default mode for every tenant. **Approve** needs only the authoring permissions, nothing stops the submitter approving, no signature is collected, and the PCO is created already approved. By design, but a decision to make knowingly: Regulated mode enforces the signed, independent path. Docs now say so (`change-control/overview.md`) |
-| **The order edit form shows status RFI for a PENDING order** | Production Manager 10 | Display only: saving left the status PENDING |
-| **An on-order lot reads "On hand 300 EA"** | Receiving 1 | `RCV-EXP-0103`, not yet received |
 | **`/orders/<order number>` errors** | | Only `/orders/<uuid>` loads, although the route parameter is named `$orderNumber` |
 | **Change-control loose ends** | Engineering C1 / 8 | A PCR with an empty diff can be submitted and approved. *Affected in-flight WOs* counts every WO on the process even for a temporary change. After a Simplified approval the signatures panel reads *Cancelled* while the approver's row still reads *Pending*. **Move back to baseline** has no confirmation |
+| **The over-and-above scope has no document** | Shift Lead R2, Production Manager R1 | The customer's answer is recorded (`viewsets/reman.py:279`), but nothing produces the scope to send the customer: what work, what parts, and the finding behind each. The product boundary says UQMES exports it. Found by the documents session 2026-10-20 |
+| **The Pick Sheet has no button** | Receiving 11 | `pick_sheet` is registered, but no screen offers it. Found by the documents session 2026-10-20 |
+| **Every report is gated by one permission** | | All reports sit behind `export_data` (`reports/viewsets.py`, `CanExportReports`), so who can print a CoC is the same as who can print a training record. Worth deciding whether any documents need narrower gates |
 | **Small copy and accessibility** | | `OperatorSubstepRuntimePage.tsx:1271` and `completion-adapters.tsx:261` show developer copy (*"Add `?execution=<id>`…"*); the measurement input's accessible name is `—`; the receiving hold panel hedges (*"If the part type requires qualification, the lot was held"*); part Activity History dumps a raw `Capture Draft: {…}` field and prints `Expires At` as a raw UTC timestamp; CAPA **Related Items** shows raw UUIDs for the step and work order; the CAPA prefill chip shows the report's UUID, not its number; the FPI incomplete message says *"finish the step's captures"* when it means the first piece's. |
 
 ### Walked 2026-10-19 — the day's builds
@@ -411,6 +404,12 @@ or gets wrong. The fix is in the seed or the training material, not the product.
 - **Cores are seeded `DISASSEMBLED` off any work order,** where nothing can act on
   them. `CORE-240210-0007` needs walking to REBUILT for Shipping R1 and Shift
   Lead R3.
+- **No reman unit has walked past Nozzle Inspection.** `d0ef5f9` moved the three
+  customer orders to Injector Build so shipping could be shown, and nothing replaced
+  them on the reman route. Reassembly (with its components-fitted capture), Final
+  Test and Packaging have no reman history; the WO-TRAIN/ASSESS reman parts sitting
+  there were placed with no executions. Needs one services-walked rebuild: a
+  teardown-released core through Reassembly to Final Test. Reman track's to build.
 - **The rework step has no inspection substep** (Operator C1).
 - **The Component Grading substeps** say reuse / rework / scrap but capture only
   Pass / Fail / Pending (Operator R1).
@@ -420,6 +419,16 @@ or gets wrong. The fix is in the seed or the training material, not the product.
 - The demo tenant has 4 document types; a new tenant gets 39.
 - It has no `PROCESS_APPROVAL`, `CAPA_CRITICAL` or `TRAINING_CERT` template.
   Without `PROCESS_APPROVAL`, Engineering 3 refuses.
+
+**The shop day's cast** (`docs/training/shop-day.md`, recast 2026-10-20 onto the seed's
+own world)
+
+- No logins for Engineering, Purchasing, Receiving, Shipping or Auditor. Jennifer
+  (Production Manager) plans, and Casey (Shift Lead and inspector) runs the floor.
+- The internal company is named *AMBAC Manufacturing* and the logins are
+  `@demo.ambac.com`, so the training shop names the reference customer. Deferred
+  with the seed mechanics (user, 2026-10-20); the shop day avoids the company name.
+- Each moment is an outline until its role's track is built and walked.
 
 **Missing subjects** (the mechanism works, but there's nothing to point it at)
 
@@ -457,14 +466,9 @@ Walk residue, 2026-10-19:
   Manager's name. Don't use it as an approval exhibit.
 - Probe rows that can't be removed: a `SubstepGateCompletion` (`audit-probe`)
   and a PENDING `StepOverride` (*AUDIT PROBE*).
-- `OSP-DEMO-005` / `-006` are stranded at Nitride Coating.
+- `OSP-DEMO-005` / `-006` wait at Nitride Coating for their return inspection, as designed: **Accept return** advances them once the inspection is done on the shipment (SEED: they were read as stranded because nobody had inspected them).
 - Seeded time entries start at 03:00 local: written in UTC without the shop's timezone.
 - Parts the seed staged have no active step execution, so they show no blockers and can't demonstrate a bypass. `TRAIN-BOTTLE-001` and `INJ-0042-017` can.
-- Both seeded FPIs can't be signed: one has no first piece, and the other's is
-  quarantined.
-- `DISP-QAI-006-OPEN` has no disposition type. Check how the form shows it.
-- `INJ-QA-INSPECT-001` is QUARANTINED; its reference says IN_PROGRESS with an FPI
-  pending.
 - `RCV-MAT-0006` was rejected through the primitive, so it has no disposition.
   The seeder is fixed; a reseed clears it.
 
@@ -477,7 +481,7 @@ known specifics)
 - The script teaches one FPI route of two.
 - `training/operator.md` and `training/shift-lead.md` describe the old Report
   dialog.
-- Help docs still cite demo users and IDs on 24 pages. Pull those out role by role
+- Help docs still cite demo users and IDs on 13 pages (the QA Inspector's pages are clear). Pull those out role by role
   as each track is built.
 
 **Not walked yet: walk these.** Rows marked *Not walked* above, plus capabilities
@@ -571,6 +575,10 @@ finding before it was written down.
     finished but unmentioned. Writing a help page from the code finds capability
     built to the edge of visibility and stopped there, because the page forces
     the question *"where do you go to see it?"* Neither substitutes for the other.
+17. **A training page is not a help page.** Docs ✅ means a help page explains it.
+    Writing a training record was marked ✅ while its only how-to sat in a
+    training track, which teaches on demo data and is being rebuilt. When a row's
+    only page is under `training/`, Docs is 📄.
 
 ---
 
@@ -580,6 +588,16 @@ One line each, newest first. The full write-ups are in git history.
 
 | Finding | Resolution |
 |---|---|
+| A returned reman unit had no paperwork route | Returns ship as a `CustomerShipment` with packing list and CoC; exchange stock ships on an order (`ac85a3e`, 2026-10-20, not walked) |
+| A FAIL reached by editing a report opened a disposition without a quarantine | `on_report_failed` runs the FAIL consequences on the move into FAIL, from PATCH and from DWI findings (2026-10-20, not walked) |
+| A quarantine left no audit entry | Quality-gate hold and failed-batch containment save each part, so its history carries the change and actor (2026-10-20) |
+| `disposition_type` was silently ignored on PATCH | Refused with 400, naming Decide; re-sending the same value passes (2026-10-20) |
+| The inspection aggregation endpoints didn't filter rows by user | Incoming queue and inbox rows follow `for_user` (2026-10-20) |
+| What-if compared runs that differ by solver noise | Compare bar shows each side's solver gap and warns within it (2026-10-20, not walked) |
+| Make-up was reachable only from the scheduling page | Make-up card on the work order page when short; no false shortfall on empty or ended WOs (2026-10-20, not walked) |
+| The WO Control page's FPI sign-off only passed | Sign off / Fail / Waive on both routes, one dialog (2026-10-20, not walked) |
+| The order edit form showed RFI for a PENDING order | Select shows the real status; new orders default to Pending (2026-10-20, not walked) |
+| An on-order lot read "On hand" | Reads "On hand 0 · N expected" (2026-10-20, not walked) |
 | New-work process pickers offered the temporary version and drafts | One rule for new work: approved, in force, not temporary; the server refuses the rest (2026-10-19, re-walked) |
 | Start Work offered on held and ended work orders, and the server didn't check | Disabled with the reason; the server refuses with no override (2026-10-19, re-walked) |
 | Short-close could move a customer's unit to another customer's work | Same-customer or no-order targets only; a customer's own unit only to theirs (2026-10-19, re-walked) |

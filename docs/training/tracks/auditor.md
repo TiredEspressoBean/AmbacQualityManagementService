@@ -1,5 +1,10 @@
 # Auditor Orientation
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 1 hour
 **Prerequisites:** None
 **Goal:** Find the evidence you need without needing anyone to fetch it for you
@@ -45,7 +50,7 @@ system here, not a promise.**
     If your deployment uses the ITAR/EAR filtering at all, it keys off two
     flags on the **user record** — *US person* and *ITAR authorized* — not off
     group membership. So the Auditor group is not what decides it either way.
-    See [Export Controls](../compliance/export-controls.md).
+    See [Export Controls](../../compliance/export-controls.md).
 
 !!! note "An invisible document is the control working"
     Ask your host for a reader with the right clearance rather than asking to be
@@ -57,14 +62,14 @@ system here, not a promise.**
 
 | Question | Where |
 |----------|-------|
-| Who did what, when, to which record | [Audit Trails](../compliance/audit-trails.md) |
-| Was the person qualified | [Training Matrix](../workflows/tracking/training-matrix.md) |
+| Who did what, when, to which record | [Audit Trails](../../compliance/audit-trails.md) |
+| Was the person qualified | [Training Matrix](../../workflows/tracking/training-matrix.md) |
 | Was the equipment in calibration | Quality → Calibrations |
-| What happened to this nonconformance | [Dispositions](../workflows/quality/dispositions.md) |
-| Was the corrective action effective | [CAPA Verification](../workflows/capa/verification.md) |
-| What was this unit actually built to | [Part History](../workflows/tracking/part-history.md) |
-| Which revision was in force then | [Document Revisions](../workflows/documents/revisions.md) |
-| Who signed, and was it really them | [Signatures](../compliance/signatures.md) |
+| What happened to this nonconformance | [Dispositions](../../workflows/quality/dispositions.md) |
+| Was the corrective action effective | [CAPA Verification](../../workflows/capa/verification.md) |
+| What was this unit actually built to | [Part History](../../workflows/tracking/part-history.md) |
+| Which revision was in force then | [Document Revisions](../../workflows/documents/revisions.md) |
+| Who signed, and was it really them | [Signatures](../../compliance/signatures.md) |
 
 ---
 
@@ -115,7 +120,7 @@ The pattern worth checking, because it is what the design is built around:
 - Engineering authors a specification — **Document Controller** releases the
   document that carries it
 
-See [Role Comparison](../roles/index.md#what-tells-the-roles-apart) for the full
+See [Role Comparison](../../roles/index.md#what-tells-the-roles-apart) for the full
 matrix, generated from the permission presets.
 
 ---
@@ -125,10 +130,10 @@ matrix, generated from the permission presets.
 uqmes is built against **ISO 9001** today, with IATF 16949 as a later target once
 PPAP support is complete.
 
-- [ISO 9001](../compliance/iso9001.md)
-- [Compliance Overview](../compliance/overview.md)
-- [Compliance Reports](../compliance/reports.md)
-- [Audit Trails](../compliance/audit-trails.md)
+- [ISO 9001](../../compliance/iso9001.md)
+- [Compliance Overview](../../compliance/overview.md)
+- [Compliance Reports](../../compliance/reports.md)
+- [Audit Trails](../../compliance/audit-trails.md)
 
 ---
 
@@ -146,7 +151,7 @@ PPAP support is complete.
 
 ## Next Steps
 
-- [Auditor role guide](../roles/auditor.md)
-- [Audit Trails](../compliance/audit-trails.md)
-- [Signatures](../compliance/signatures.md)
-- [Exporting](../analysis/exporting.md) — taking evidence with you
+- [Auditor role guide](../../roles/auditor.md)
+- [Audit Trails](../../compliance/audit-trails.md)
+- [Signatures](../../compliance/signatures.md)
+- [Exporting](../../analysis/exporting.md) — taking evidence with you

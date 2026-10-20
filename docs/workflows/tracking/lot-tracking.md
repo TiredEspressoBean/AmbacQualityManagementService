@@ -234,7 +234,7 @@ In the order they appear:
 
 | Section | Answers |
 |---------|---------|
-| **The lot** | On hand of total, how it was counted, received date, location, use-by, CoC |
+| **The lot** | On hand of total, how it was counted, received date, location, use-by, CoC. A lot still on order reads *"On hand 0 <unit> · <qty> expected"* |
 | **Came from** | Supplier, their lot, heat, bought from, ERP PO/line, and **split from / split into** as links |
 | **Reached** | The customers this lot reached |
 | **Where it went** | Quantity used, at which step, on which part, **built into** the assembly chain up to the top, work order · order, customer |

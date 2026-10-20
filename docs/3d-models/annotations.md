@@ -21,7 +21,10 @@ Create annotations when:
 - Building quality history
 
 !!! example "Diesel Injector Annotation"
-    When inspecting a Common Rail Injector, an inspector clicks on the nozzle tip area of the 3D model to mark erosion damage. This annotation links to quality report QR-2024-0187, contributing to the heat map that later revealed a systemic nozzle tip issue.
+    Inspecting an injector body, an inspector marks a burr where a fuel passage
+    breaks into the bore. The marker belongs to that inspection's quality report,
+    and every marker like it adds to the heat map, where a repeat location shows up
+    as a pattern.
 
 ## Creating an Annotation
 

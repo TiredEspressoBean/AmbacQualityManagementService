@@ -19,14 +19,14 @@ All demo accounts use password: `demo123`
 
 | Role | Email | Name | Training Guide |
 |------|-------|------|----------------|
-| Administrator | admin@demo.ambac.com | Alex Demo | [Administrator Guide](administrator.md) |
-| QA Manager | maria.qa@demo.ambac.com | Maria Santos | [QA Manager Guide](qa-manager.md) |
-| QA Inspector | sarah.qa@demo.ambac.com | Sarah Chen | [QA Inspector Guide](qa-inspector.md) |
-| Production Manager | jennifer.mgr@demo.ambac.com | Jennifer Walsh | [Production Manager Guide](production-manager.md) |
-| Operator | mike.ops@demo.ambac.com | Mike Rodriguez | [Operator Guide](operator.md) |
+| Administrator | admin@demo.ambac.com | Alex Demo | [Administrator Guide](../tracks/administrator.md) |
+| QA Manager | maria.qa@demo.ambac.com | Maria Santos | [QA Manager Guide](../tracks/qa-manager.md) |
+| QA Inspector | sarah.qa@demo.ambac.com | Sarah Chen | [QA Inspector Guide](../tracks/qa-inspector.md) |
+| Production Manager | jennifer.mgr@demo.ambac.com | Jennifer Walsh | [Production Manager Guide](../tracks/production-manager.md) |
+| Operator | mike.ops@demo.ambac.com | Mike Rodriguez | [Operator Guide](../tracks/operator.md) |
 | Operator (Expired Training) | dave.wilson@demo.ambac.com | Dave Wilson | Training compliance demo |
-| Document Controller | lisa.docs@demo.ambac.com | Lisa Park | [Document Controller Guide](document-controller.md) |
-| Customer Portal | tom.bradley@midwestfleet.com | Tom Bradley | [Customer Guide](../roles/customer.md) |
+| Document Controller | lisa.docs@demo.ambac.com | Lisa Park | [Document Controller Guide](../tracks/document-controller.md) |
+| Customer Portal | tom.bradley@midwestfleet.com | Tom Bradley | [Customer Guide](../../roles/customer.md) |
 
 ### Demo Data Included
 
@@ -34,9 +34,9 @@ All demo accounts use password: `demo123`
 |----------|----------|
 | **Orders** | ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending) |
 | **Parts** | INJ-0042-001 through INJ-0042-024 (various statuses) |
-| **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 (the QA inspector walkthrough) |
+| **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 and -02 (the QA Inspector exhibits) |
 | **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — numbered `QR-{order}-{part}-{step}`, where `FT` is Flow Testing and `NI` is Nozzle Inspection |
-| **Dispositions** | DISP-QAI-004-REW (Rework, closed), DISP-QAI-006-OPEN (raised but untriaged), DISP-TRAIN-001 and -002 (training exercises) |
+| **Dispositions** | The QA Inspector exhibits' rework on INJ-QA-INSPECT-013, plus the history the quality seeder writes |
 | **CAPA** | CAPA-2024-003 (nozzle defect investigation) |
 | **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration) |
 | **Customers** | Midwest Fleet (Tom Bradley), Northern Trucking Co |
@@ -204,10 +204,8 @@ Navigate to **Production > Work Orders**:
 - [ ] Measurement definitions with specs
 - [ ] Quality report examples
 
-**Exercise support:**
-- Parts ready for measurement recording
-- Sample NCR to review
-- Disposition pending for recommendation
+**Exercise support:** WO-QA-INSPECT-01 and -02 — see the
+[shop day](../shop-day.md). The QA Inspector track is being rebuilt against them.
 
 ### QA Manager Training
 
@@ -267,7 +265,6 @@ This matrix lists all specific training records referenced in exercise instructi
 | TRAIN-PM-001 | Production manager exercise order | Production Manager | Pending, 5 parts ready to process |
 | TRAIN-BOTTLE | Bottleneck scenario | Production Manager | In progress, 8 parts stuck at one step |
 | TRAIN-HOLD | Quality hold scenario | Production Manager | On hold for QA issue, 6 parts |
-| TRAIN-FPI-001 | FPI training exercise | QA Inspector | In progress, 15 parts awaiting FPI |
 
 ### Assessment Orders
 
@@ -276,43 +273,19 @@ This matrix lists all specific training records referenced in exercise instructi
 | ASSESS-001 | Operator assessment - find and track order | Operator | In progress, 6 parts distributed |
 | ASSESS-003 | Operator assessment - specific part lookup | Operator | In progress, 5 parts distributed |
 | ASSESS-004 | Operator assessment - search exercise | Operator | Pending, 4 parts |
-| ASSESS-QA-001 | QA Inspector assessment - FPI completion | QA Inspector | In progress, 10 parts for FPI |
-| ASSESS-QA-002 | QA Inspector assessment - sampling inspection | QA Inspector | In progress, 12 parts for sampling |
 | ASSESS-PM-001 | Production manager assessment - order management | Production Manager | Pending, 8 parts |
 
 ### Work Orders
 
 | ID | Description | Used By | State |
 |----|-------------|---------|-------|
-| TRAIN-FPI-001 | FPI training work order | QA Inspector | In progress, first piece awaiting inspection |
-| ASSESS-QA-001 | QA Inspector assessment - FPI completion | QA Inspector | In progress, 10 parts for FPI exercise |
-| ASSESS-QA-002 | QA Inspector assessment - sampling inspection | QA Inspector | In progress, 12 parts for sampling exercise |
 
 ### Parts
 
 | ID | Description | Used By | State |
 |----|-------------|---------|-------|
-| TRAIN-101-003 | Part for quality report exercise (surface scratch) | QA Inspector | At inspection step with defect |
-| TRAIN-101-005 | Part for quality report exercise (flow test failure) | QA Inspector | At inspection step with defect |
 | TRAIN-001-* | Parts in TRAIN-001 order (10 total) | Operator | Distributed across process steps |
 | ASSESS-003-002 | Part for operator assessment lookup exercise | Operator | At inspection step |
-
-### Quality Reports
-
-| ID | Description | Used By | State |
-|----|-------------|---------|-------|
-| QR-TRAIN-001 | Review exercise quality report | QA Inspector | Open, pending review |
-| QR-TRAIN-002 | Disposition recommendation exercise | QA Inspector | Open, needs disposition |
-| QR-ASSESS-001 | Assessment - dimensional out of tolerance | QA Inspector | Failed, for assessment exercise |
-| QR-ASSESS-002 | Assessment - visual defect found | QA Inspector | Failed, for assessment exercise |
-
-### Dispositions
-
-| ID | Description | Used By | State |
-|----|-------------|---------|-------|
-| DISP-TRAIN-001 | Pending approval exercise | QA Manager | Pending approval (rework) |
-| DISP-TRAIN-002 | Rejection exercise | QA Manager | Pending (should be rejected - incomplete info) |
-| DISP-ASSESS-001 | Assessment disposition - rework recommendation | QA Manager | In progress, ready for approval |
 
 ### CAPAs
 

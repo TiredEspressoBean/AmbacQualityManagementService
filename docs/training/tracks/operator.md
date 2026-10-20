@@ -1,5 +1,10 @@
 # Production Operator Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 2-4 hours
 **Prerequisites:** None
 **Goal:** Learn to track parts through production steps and record measurements
@@ -159,7 +164,7 @@ automatically, so you can work a batch without returning to the work order.
 
 ### 2.3 Working a Step
 
-Reference: [Running Work Instructions](../workflows/dwi/running.md).
+Reference: [Running Work Instructions](../../workflows/dwi/running.md).
 
 The player shows **one substep at a time**, with a progress rail along the top.
 
@@ -356,7 +361,7 @@ By the end of this module, you will:
 ### 4.2 How to Raise an Issue
 
 Where a problem goes depends on where you find it. Full detail:
-[Flagging Issues](../workflows/tracking/flagging-issues.md).
+[Flagging Issues](../../workflows/tracking/flagging-issues.md).
 
 | Where you are | What to do |
 |---------------|------------|
@@ -556,7 +561,7 @@ operational, not clerical: training requirements gate who may start a step, so
 until the record exists the person is still refused the work they were just
 signed off to do. That refusal surfaces downstream as a part nobody can pick
 up — see [Parts stuck at a
-step](../troubleshooting/common-issues.md).
+step](../../troubleshooting/common-issues.md).
 
 To close it out, create a **Training Record** for the trainee under **Quality**
 > **Training**:

@@ -1,5 +1,10 @@
 # SPC Fundamentals Training
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 1-2 hours
 **Prerequisites:** Basic understanding of your role (Operator, QA Inspector, or QA Manager)
 **Goal:** Understand how to read and respond to SPC charts in your daily work
@@ -388,7 +393,7 @@ You are reviewing the SPC chart for Spray Pattern Angle. You notice:
 - Practice reading SPC charts in demo mode
 - Know where to find SPC in your daily workflow
 - Understand your escalation path
-- **For QA Managers/Engineers**: Review the [SPC Practitioner Guide](../analysis/spc-practitioner-guide.md) for investigation workflows and CAPA criteria
+- **For QA Managers/Engineers**: Review the [SPC Practitioner Guide](../../analysis/spc-practitioner-guide.md) for investigation workflows and CAPA criteria
 
 ---
 

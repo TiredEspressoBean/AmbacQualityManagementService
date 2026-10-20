@@ -1,661 +1,571 @@
 """
-Demo seeder for the QA Inspector Onboarding Walkthrough (WO-QA-INSPECT-01).
+QA Inspector training exhibits, walked through the real services.
 
-Stands up a dedicated work order with parts pre-staged in the exact states
-`Documents/UQMES_ONBOARDING_WALKTHROUGH.md` walks against, so every section
-has a live exhibit without the walker having to drive earlier parts into
-those states themselves.
+Two Injector Build work orders for Midwest Fleet Services on ORD-2024-QA-INSPECT.
+Every part gets where it is by being run there — start_execution, submit_substep,
+seal_batch, advance_part_step, pass_fpi, decide_disposition — so its traveler,
+sampling decisions, training override and first-piece readings are the ones the
+product writes, not a picture of them.
 
-Runs LATE in the phase order (after OSP + Quality + DWI) so it can:
-  - use `outside_process.send_parts_out` / `receive_parts_back` to open a
-    RETURNED shipment on part 005,
-  - reference the seeded FPIRecord + QualityReports + Disposition models,
-  - piggy-back on the DWI substep authoring so the FPI banner renders.
+WO-QA-INSPECT-01, today (the shop day's 08:00-09:00):
+  Mike runs four bodies through Machining, Precision Grinding and Wash to Body
+  Inspection. The training gate refuses Mike at Body Inspection and Casey (Shift Lead)
+  authorises each start with a reason. Mike completes the first piece's inspection,
+  INJ-QA-INSPECT-001, and the run holds for its buy-off (PENDING FPI). The other
+  three wait behind it; the Body Inspection sampling rule (every 4th part) flags one.
 
-Parts on WO-QA-INSPECT-01 (all `INJ-QA-INSPECT-###`, Common Rail Injector,
-Midwest Fleet Services customer):
+WO-QA-INSPECT-02, yesterday (the shop day's 10:00 and 11:30):
+  The same route earlier, out to the plater for nitriding and back, its first pieces
+  at Body Inspection and Flow Calibration bought off by Sarah. INJ-QA-INSPECT-012
+  waits at Flow Calibration, ready to be failed live. INJ-QA-INSPECT-013 failed there
+  (flow below its lower limit), its disposition was decided REWORK with Maria's
+  authority, and the decision split it to the Rework step, where it waits for
+  re-inspection. INJ-QA-INSPECT-015 failed its visual inspection at Body Inspection
+  (a burr in the bore, which needs a 3D annotation): it sits quarantined, its
+  disposition unassigned in the QA queue.
 
-  001 — Nozzle Inspection, IN_PROGRESS. First-piece complete, awaiting Sarah's
-        buy-off. FPIRecord.status=PENDING, designated_part=001.
-  002 — Nozzle Inspection, AWAITING_QA. Sampled with reason
-        'Post-repair verification' (earlier rework history at Assembly).
-  003 — Flow Testing, IN_PROGRESS. Fresh — ready for Sarah to fail live in
-        Section 5 of the walk.
-  004 — Flow Testing, AWAITING_QA, visit_number=2. Full trail: original FAIL
-        QR at 98 mL/min + CLOSED REWORK disposition.
-  005 — Nitride Coating, AT_OUTSIDE_PROCESS. On a RETURNED shipment from Apex
-        Plating; return inspection awaiting Sarah.
-  006 — Assembly, QUARANTINED. Bare OPEN disposition assigned to Sarah as
-        background 'my dispositions: 1' noise.
-  007 — Cleaning, IN_PROGRESS.  (filler)
-  008 — Disassembly, IN_PROGRESS. (filler)
+WO-QA-INSPECT-03/-04/-05, today: first-piece drills, one PENDING FPI each (see
+DRILL_WOS).
+
+Runs after the training phase, so the training gate has requirements to refuse on.
 """
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
 
 from Tracker.models import (
-    Companies, FPIRecord, FPIStatus, Orders, OrdersStatus, Parts, PartsStatus,
-    QaApproval, QualityReports, QuarantineDisposition, StepExecution, Steps,
-    Substep, SubstepCompletion, WorkOrder, WorkOrderPriority, WorkOrderStatus,
+    BatchExecution, Equipments, FPIRecord, FPIStatus, Orders, OrdersStatus, Parts,
+    PartsStatus, Processes, ProcessStep, QualityReports, QuarantineDisposition,
+    StepExecution, StepExecutionMeasurement, Substep, SubstepCompletion, SubstepResponse,
+    WorkOrder, WorkOrderPriority, WorkOrderStatus,
 )
-from Tracker.services.mes import outside_process
 
 from ..base import BaseSeeder
 
 
 ORDER_NUMBER = 'ORD-2024-QA-INSPECT'
-WO_ERP_ID = 'WO-QA-INSPECT-01'
 CUSTOMER_NAME = 'Midwest Fleet Services'
+PROCESS_NAME = 'Injector Build'
 
-PART_PLAN = [
-    # (suffix, step_name, part_status, extra_kwargs)
-    ('001', 'Nozzle Inspection', PartsStatus.IN_PROGRESS, {'is_fpi_candidate': True}),
-    ('002', 'Nozzle Inspection', PartsStatus.AWAITING_QA, {
-        'requires_sampling': True,
-        'sampling_context': {'trigger_reason': 'POST_REPAIR_VERIFICATION',
-                             'reason_label': 'Post-repair verification'},
-        'total_rework_count': 1,
-    }),
-    ('003', 'Flow Testing', PartsStatus.IN_PROGRESS, {}),
-    ('004', 'Flow Testing', PartsStatus.AWAITING_QA, {
-        'total_rework_count': 1,
-    }),
-    ('005', 'Nitride Coating', PartsStatus.IN_PROGRESS, {}),  # flipped to AT_OSP by send_parts_out
-    ('006', 'Assembly', PartsStatus.QUARANTINED, {}),
-    ('007', 'Cleaning', PartsStatus.IN_PROGRESS, {}),
-    ('008', 'Disassembly', PartsStatus.IN_PROGRESS, {}),
-]
+TODAY_WO = 'WO-QA-INSPECT-01'
+TODAY_PARTS = ['INJ-QA-INSPECT-001', 'INJ-QA-INSPECT-002',
+               'INJ-QA-INSPECT-003', 'INJ-QA-INSPECT-004']
+YESTERDAY_WO = 'WO-QA-INSPECT-02'
+YESTERDAY_PARTS = ['INJ-QA-INSPECT-011', 'INJ-QA-INSPECT-012',
+                   'INJ-QA-INSPECT-013', 'INJ-QA-INSPECT-014', 'INJ-QA-INSPECT-015']
+
+# First-piece drills, today: each work order holds one PENDING FPI at Body Inspection
+# (an FPI is one per work order and step, so each drill needs its own).
+#   -03: Sarah ran the first piece's inspection, so Sarah's own buy-off is refused
+#        (segregation of duties); a second inspector buys it off.
+#   -04: the first piece to fail.  -05: the first piece to waive.
+DRILL_WOS = {
+    'WO-QA-INSPECT-03': ['INJ-QA-INSPECT-021', 'INJ-QA-INSPECT-022'],
+    'WO-QA-INSPECT-04': ['INJ-QA-INSPECT-031', 'INJ-QA-INSPECT-032'],
+    'WO-QA-INSPECT-05': ['INJ-QA-INSPECT-041', 'INJ-QA-INSPECT-042'],
+}
+SELF_BUYOFF_WO = 'WO-QA-INSPECT-03'
+
+# The visual defect 015 is failed with: an error type that needs a 3D annotation, so
+# its disposition can't close until the inspector marks it on the model.
+BODY_DEFECT = 'Burr in bore'
+
+# Working minutes per visit, and the gap between visits, for a traveler that reads as a shift.
+# Nitride Coating is the plater's turnaround, two days.
+STEP_MINUTES = {'Machining': 40, 'Precision Grinding': 25, 'Wash': 25, 'Body Inspection': 12,
+                'Nitride Coating': 2 * 24 * 60, 'Assembly': 30, 'Flow Calibration': 15,
+                'Final Test': 20, 'Rework': 30}
+GAP_MINUTES = 10
+
+# Fails its calibration in the seed, so naming it at capture is refused. Used by no other exhibit.
+FAILED_GAUGE = 'Micrometer MIC-2'
+
+OVERRIDE_REASON = 'Only operator free for the cell; first-piece run on my authority pending nozzle re-certification.'
 
 
 class DemoQaWalkSeeder(BaseSeeder):
-    """Stands up WO-QA-INSPECT-01 for the QA onboarding walkthrough."""
+    """Walks the QA Inspector exhibits through the production services."""
 
     def __init__(self, stdout, style, tenant, scale='small'):
         super().__init__(stdout, style, scale=scale)
         self.tenant = tenant
         self.today = timezone.now()
 
+    # ---- entry point -------------------------------------------------------
+
     def seed(self, companies, users, manufacturing):
-        """Create the WO, parts, and every exhibit the walkthrough references.
+        self.log("Walking the QA Inspector exhibits through the services...")
+        result = {'order': None, 'work_orders': [], 'parts': [], 'fpi': None,
+                  'fail_report': None, 'rework_disposition': None, 'override_count': 0}
 
-        Args:
-            companies: list of Companies objects (from company seeder).
-            users: dict with user lists (from user seeder).
-            manufacturing: dict with part_types + processes (from mfg seeder).
-
-        Returns:
-            dict with created order, work_order, parts, and exhibit records.
-        """
-        self.log("Creating QA-inspector onboarding walkthrough data...")
-
-        result = {'order': None, 'work_order': None, 'parts': [],
-                  'fpi': None, 'fail_qr': None, 'rework_disposition': None,
-                  'shipment': None, 'quarantine_disposition': None}
-
-        part_types = manufacturing.get('part_types', []) if manufacturing else []
-        processes = manufacturing.get('processes', []) if manufacturing else []
-        if not part_types or not processes:
-            self.log("  Warning: missing part types / process; skipping.", warning=True)
-            return result
-        part_type = part_types[0]
-        process = processes[0]
-
-        # Roles we need: Sarah (QA Inspector, assigned to dispositions & FPI ack),
-        # Maria (QA Manager, alternate approver), Mike (Operator, step executor).
-        qa_users = users.get('qa_staff', []) if users else []
-        employees = users.get('employees', []) if users else []
-        sarah = self._pick_user(qa_users, email_contains='sarah.qa')
-        maria = self._pick_user(qa_users, email_contains='maria.qa')
-        mike = self._pick_user(employees, email_contains='mike.ops')
-        managers = users.get('managers', []) if users else []
-        jennifer = self._pick_user(managers, email_contains='jennifer.mgr')
-        operator = mike or (employees[0] if employees else None)
-        approver = sarah or maria or operator
-        # Supervisor who authorized the operator to run the first piece despite
-        # the lapsing nozzle cert (see _create_pending_fpi). Any manager works;
-        # fall back to the QA approver if the manager seed is absent.
-        supervisor = jennifer or maria or approver
-        if approver is None:
-            self.log("  Warning: no users available; skipping.", warning=True)
+        by_email = (users or {}).get('by_email', {})
+        self.mike = by_email.get('mike.ops@demo.ambac.com')
+        self.casey = by_email.get('casey.dual@demo.ambac.com')
+        self.sarah = by_email.get('sarah.qa@demo.ambac.com')
+        self.maria = by_email.get('maria.qa@demo.ambac.com')
+        if not all((self.mike, self.casey, self.sarah, self.maria)):
+            self.log("  Warning: a QA walk user is missing; skipping.", warning=True)
             return result
 
-        # Customer for the demo WO — reuse Midwest Fleet.
-        company_map = {c.name: c for c in (companies or [])}
-        customer = company_map.get(CUSTOMER_NAME)
-        if customer is None:
-            self.log(f"  Warning: {CUSTOMER_NAME} not found; skipping.", warning=True)
+        process = (Processes.objects.filter(tenant=self.tenant, name=PROCESS_NAME)
+                   .order_by('-created_at').first())
+        customer = next((c for c in (companies or []) if c.name == CUSTOMER_NAME), None)
+        if process is None or customer is None:
+            self.log(f"  Warning: {PROCESS_NAME} process or {CUSTOMER_NAME} missing; skipping.",
+                     warning=True)
             return result
+        self.route = [ps.step for ps in
+                      ProcessStep.objects.filter(process=process).select_related('step').order_by('order')]
+        self.step = {s.name: s for s in self.route}
+        part_type = self.route[0].part_type
 
-        step_map = {s.name: s for s in Steps.objects.filter(tenant=self.tenant)}
+        self.equipment = self._operational_equipment()
+
+        order = self._order(customer)
+        result['order'] = order
+
+        # Yesterday's work order first: its history is shifted a day back afterwards.
+        with transaction.atomic():
+            wo2 = self._work_order(order, process, YESTERDAY_WO, len(YESTERDAY_PARTS))
+            parts2 = self._parts(wo2, part_type, YESTERDAY_PARTS)
+            self._walk_yesterday(wo2, parts2, result)
+        self._shift_back(wo2, timedelta(days=1))
+        self._space_out(wo2, self.today - timedelta(days=1, hours=-2))
 
         with transaction.atomic():
-            order = self._create_order(customer)
-            result['order'] = order
+            wo1 = self._work_order(order, process, TODAY_WO, len(TODAY_PARTS))
+            parts1 = self._parts(wo1, part_type, TODAY_PARTS)
+            self._walk_today(wo1, parts1, result)
+        self._space_out(wo1, self.today - timedelta(minutes=20))
 
-            work_order = self._create_work_order(order, process)
-            result['work_order'] = work_order
+        drills = []
+        for i, (erp_id, serials) in enumerate(DRILL_WOS.items()):
+            with transaction.atomic():
+                wo = self._work_order(order, process, erp_id, len(serials))
+                parts = self._parts(wo, part_type, serials)
+                runner = self.sarah if erp_id == SELF_BUYOFF_WO else self.mike
+                self._walk_drill(wo, parts, runner, result)
+            self._space_out(wo, self.today - timedelta(minutes=50 + 15 * i))
+            drills.append(wo)
 
-            parts = self._create_parts(order, work_order, part_type, step_map)
-            result['parts'] = parts
-            part_by_suffix = {p.ERP_id.split('-')[-1]: p for p in parts}
+        result['failed_gauge'] = self._fail_gauge()
 
-            # 001 — PENDING FPI at Nozzle Inspection, first piece complete,
-            #       awaiting buy-off. The operator (Mike) has pre-signed the
-            #       inspection substeps so the walker (Sarah, playing QA) can
-            #       go straight to the buy-off. This mirrors real practice and
-            #       lets the SOD check on pass_fpi succeed: the substep signer
-            #       (Mike) is different from the FPI buy-off signer (Sarah).
-            fpi = self._create_pending_fpi(
-                work_order, part_by_suffix.get('001'),
-                step_map.get('Nozzle Inspection'), part_type, operator,
-                supervisor=supervisor)
-            result['fpi'] = fpi
-
-            # Downstream FPI gates need to already be PASSED so Sections 5, 7
-            # and 8 don't get blocked by a "First Piece Inspection Required"
-            # banner the walker didn't cause. Otherwise entering an out-of-spec
-            # value on part 003 at Flow Testing would FAIL the FPI (halting the
-            # batch), not just log a single-part fail. Designate a filler part
-            # (007 / 008) as the historical first piece for each step.
-            for step_name, designated_key in (
-                ('Flow Testing', '007'),
-                ('Final Test', '008'),
-            ):
-                self._create_passed_fpi(
-                    work_order, part_by_suffix.get(designated_key),
-                    step_map.get(step_name), part_type, approver)
-
-            # 004 — original FAIL QR + CLOSED REWORK disposition.
-            fail_qr = self._create_fail_qr(part_by_suffix.get('004'),
-                                           step_map.get('Flow Testing'), approver)
-            result['fail_qr'] = fail_qr
-            if fail_qr is not None:
-                rework_dispo = self._create_rework_disposition(
-                    part_by_suffix.get('004'), fail_qr,
-                    step_map.get('Flow Testing'), approver)
-                result['rework_disposition'] = rework_dispo
-
-            # 005 — send out to Apex Plating, then receive back → RETURNED shipment.
-            shipment = self._stage_returned_shipment(
-                part_by_suffix.get('005'), step_map.get('Nitride Coating'), operator)
-            result['shipment'] = shipment
-
-            # 006 — untriaged OPEN disposition assigned to Sarah, with its failed QR.
-            quarantine_dispo = self._create_open_disposition(
-                part_by_suffix.get('006'), approver)
-            result['quarantine_disposition'] = quarantine_dispo
-
-        self.log(f"  Created {ORDER_NUMBER} / {WO_ERP_ID} with {len(parts)} parts")
-        self.log(f"  Exhibits: FPI={'yes' if fpi else 'no'}, "
-                 f"FAIL QR={'yes' if result['fail_qr'] else 'no'}, "
-                 f"OSP shipment={'yes' if shipment else 'no'}, "
-                 f"OPEN dispo={'yes' if quarantine_dispo else 'no'}")
+        result['work_orders'] = [wo1, wo2] + drills
+        result['parts'] = parts1 + parts2
+        sampled = [p.ERP_id for p in parts1 if p.requires_sampling]
+        self.log(f"  {TODAY_WO}: first piece {TODAY_PARTS[0]} awaiting buy-off; "
+                 f"sampled at Body Inspection: {', '.join(sampled) or 'none'}")
+        self.log(f"  {YESTERDAY_WO}: {YESTERDAY_PARTS[1]} at Flow Calibration; "
+                 f"{YESTERDAY_PARTS[2]} at Rework "
+                 f"({result['rework_disposition'].disposition_number if result['rework_disposition'] else 'no disposition'})")
+        annotation = result.get('annotation_disposition')
+        self.log(f"  {YESTERDAY_PARTS[4]} quarantined at Body Inspection "
+                 f"({annotation.disposition_number if annotation else 'no disposition'}, unassigned)")
+        self.log(f"  First-piece drills: {', '.join(DRILL_WOS)} "
+                 f"({SELF_BUYOFF_WO}'s first piece run by Sarah)")
+        self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
 
-    # ---- entity creation helpers ------------------------------------------
+    # ---- the two days ------------------------------------------------------
 
-    def _pick_user(self, users, email_contains):
-        for u in users or []:
-            if email_contains in (getattr(u, 'email', '') or ''):
-                return u
-        return None
+    def _walk_yesterday(self, wo, parts, result):
+        first, fresh, failing, spare, blocked = parts
+        self._make_bodies(wo, parts, result)
 
-    def _create_order(self, customer):
+        # Body Inspection: first piece, Sarah buys it off, the rest follow.
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        self._run_step_for([fresh, failing, spare], 'Body Inspection', result)
+        # 015 fails its visual inspection: a FAIL report, the part quarantined, its
+        # disposition opened unassigned, left for QA to take and annotate.
+        self._run_step_for([blocked], 'Body Inspection', result, advance=False,
+                           defect=self._defect(BODY_DEFECT))
+        result['annotation_disposition'] = (QuarantineDisposition.objects
+                                            .filter(part=blocked, current_state='OPEN').first())
+        parts = [first, fresh, failing, spare]
+
+        self._nitride(parts)
+        self._run_step_for(parts, 'Assembly', result)
+
+        # Flow Calibration: first piece bought off; the failing part fails for real.
+        self._run_step_for([first], 'Flow Calibration', result, advance=False)
+        self._buy_off(wo, 'Flow Calibration', first)
+        self._advance(first, 'PASS')
+        # 012 and 014 wait at Flow Calibration unclaimed (PENDING, nobody assigned), so
+        # the operator who runs 012 live at 10:00 picks it up without a reassignment.
+        report = self._run_step_for([failing], 'Flow Calibration', result, advance=False,
+                                    out_of_spec='Flow Rate')
+        result['fail_report'] = report
+        result['rework_disposition'] = self._rework(failing, report)
+
+    def _walk_today(self, wo, parts, result):
+        first = parts[0]
+        self._make_bodies(wo, parts, result)
+        # The first piece's inspection is completed and the run holds for its buy-off.
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        result['fpi'] = self._raise_fpi(wo, 'Body Inspection', first)
+        # The rest wait behind the first piece unclaimed (PENDING, nobody assigned): the
+        # sampled one is inspected by whoever picks it up after the buy-off.
+        for p in parts:
+            p.refresh_from_db()
+
+    def _walk_drill(self, wo, parts, runner, result):
+        """The bodies made by Mike, then the first piece's inspection by `runner`,
+        holding for its buy-off (PENDING FPI); the second part waits."""
+        first = parts[0]
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False,
+                           operator=runner)
+        self._raise_fpi(wo, 'Body Inspection', first)
+
+    def _make_bodies(self, wo, parts, result):
+        """Machining, grinding and the wash: a body made, up to its inspection."""
+        self._run_step_for(parts, 'Machining', result)
+        self._run_step_for(parts, 'Precision Grinding', result)
+        self._run_batch_step(wo, parts, 'Wash', result)
+
+    def _nitride(self, parts):
+        """Out to the plater and back: sent, returned, inspected on the shipment's own
+        execution (coating thickness at nominal), accepted, and the parts advanced to
+        Assembly through the outside-process service."""
+        from Tracker.services.mes import outside_process
+        step = self.step['Nitride Coating']
+        shipment = outside_process.send_parts_out(step=step, parts=parts, user=self.mike,
+                                                  reference=f"{parts[0].work_order.ERP_id}-NITRIDE")
+        report = outside_process.receive_parts_back(shipment, user=self.sarah)
+        # The return inspection is the shipment's, done once for the parts that rode it.
+        inspection = outside_process._return_execution(shipment)
+        for ss in self._substeps(step, scope='sampled'):
+            self._submit(ss, step_execution=inspection, signer=self.sarah)
+        outside_process.accept_return(report, user=self.sarah)
+        for p in parts:
+            p.refresh_from_db()
+
+    # ---- building blocks ---------------------------------------------------
+
+    def _order(self, customer):
         return Orders.objects.update_or_create(
             tenant=self.tenant, order_number=ORDER_NUMBER,
-            defaults={
-                'name': 'QA Inspector Onboarding Walkthrough',
-                'company': customer,
-                'order_status': OrdersStatus.IN_PROGRESS,
-                'estimated_completion': self.today + timedelta(days=8),
-            },
+            defaults={'name': 'Midwest Fleet injector build', 'company': customer,
+                      'order_status': OrdersStatus.IN_PROGRESS,
+                      'estimated_completion': (self.today + timedelta(days=8)).date()},
         )[0]
 
-    def _create_work_order(self, order, process):
-        wo, _ = WorkOrder.objects.update_or_create(
-            tenant=self.tenant, ERP_id=WO_ERP_ID,
-            defaults={
-                'related_order': order,
-                'process': process,
-                'priority': WorkOrderPriority.NORMAL,
-                'workorder_status': WorkOrderStatus.IN_PROGRESS,
-                'expected_completion': self.today + timedelta(days=8),
-                'quantity': 8,
-                'notes': 'Onboarding walkthrough exhibit — pre-staged for QA training.',
-            },
-        )
-        WorkOrder.objects.filter(pk=wo.pk).update(
-            created_at=self.today - timedelta(days=2))
-        return wo
+    def _work_order(self, order, process, erp_id, quantity):
+        return WorkOrder.objects.update_or_create(
+            tenant=self.tenant, ERP_id=erp_id,
+            defaults={'related_order': order, 'process': process,
+                      'priority': WorkOrderPriority.NORMAL,
+                      'workorder_status': WorkOrderStatus.PENDING,
+                      'expected_completion': (self.today + timedelta(days=8)).date(),
+                      'quantity': quantity},
+        )[0]
 
-    def _create_parts(self, order, work_order, part_type, step_map):
-        """Create the 8 demo parts.
-
-        `Parts.save()` runs `_evaluate_initial_sampling()` on new parts and
-        overrides `requires_sampling` / `sampling_context` via a follow-up
-        `.update()`. For seeded exhibits we then re-force our desired sampling
-        values with another `.update()` — bypassing save() so the evaluator
-        can't clobber them again. Same pattern the existing orders seeder uses
-        to backfill REWORK_NEEDED status.
-        """
+    def _parts(self, wo, part_type, erp_ids):
+        first_step = self.route[0]
         parts = []
-        for suffix, step_name, part_status, extra in PART_PLAN:
-            step = step_map.get(step_name)
-            # Separate "post-save overrides" (fields the app resets in save())
-            # from normal defaults.
-            sampling_override = {}
-            for k in ('requires_sampling', 'sampling_context', 'sampling_rule',
-                      'sampling_ruleset'):
-                if k in extra:
-                    sampling_override[k] = extra.pop(k)
-
-            defaults = {
-                'part_type': part_type, 'order': order, 'work_order': work_order,
-                'step': step, 'part_status': part_status,
-                'requires_sampling': False, 'sampling_rule': None,
-                'sampling_ruleset': None, 'sampling_context': {},
-                'total_rework_count': 0,
-                'itar_controlled': False, 'eccn': '',
-                'export_license_required': False, 'country_of_origin': '',
-                'is_fpi_candidate': False, 'fpi_override_reason': '',
-            }
-            defaults.update(extra)
+        for erp_id in erp_ids:
             part, _ = Parts.objects.update_or_create(
-                tenant=self.tenant, ERP_id=f'INJ-QA-INSPECT-{suffix}',
-                defaults=defaults,
+                tenant=self.tenant, ERP_id=erp_id,
+                defaults={'part_type': part_type, 'order': wo.related_order, 'work_order': wo,
+                          'step': first_step, 'part_status': PartsStatus.PENDING},
             )
-            # Force our sampling values after save() ran its evaluator.
-            if sampling_override:
-                Parts.objects.filter(pk=part.pk).update(**sampling_override)
-                part.refresh_from_db()
             parts.append(part)
         return parts
 
-    def _create_pending_fpi(self, work_order, part, step, part_type, operator,
-                            supervisor=None):
-        """PENDING FPI with the first-piece's inspection substeps *already
-        signed by the operator*, so the walker (playing QA) can go straight
-        to the buy-off surface. Sets up:
+    def _operational_equipment(self):
+        """Equipment a capture accepts: in service and in calibration. A gauge that is
+        out of service or failed is refused at capture."""
+        for e in Equipments.objects.filter(tenant=self.tenant).order_by('name'):
+            if e.is_operational:
+                return e
+        return None
 
-        - The FPIRecord (PENDING, designated_part = the first piece)
-        - A StepExecution IN_PROGRESS for the first piece at this step
-        - SubstepCompletion rows for every substep on the step, signed by
-          the operator (a user distinct from the walker who plays QA — so
-          the FPI-pass SOD check succeeds)
-
-        Without the pre-signed substeps the walker would have to run the
-        DWI themselves; and if they signed a substep, the SOD check would
-        then block them from passing the FPI on their own work.
-        """
-        if not (work_order and part and step and operator):
-            return None
-        fpi, _ = FPIRecord.objects.update_or_create(
-            tenant=self.tenant, work_order=work_order, step=step,
-            defaults={
-                'part_type': part_type,
-                'designated_part': part,
-                'status': FPIStatus.PENDING,
-                'shift_date': (self.today - timedelta(hours=4)).date(),
-            },
-        )
-        FPIRecord.objects.filter(pk=fpi.pk).update(
-            created_at=self.today - timedelta(hours=6))
-
-        # Operator's step-execution on the first piece (unadvanced — the
-        # walker's FPI Pass is what will finalize it in the walk).
-        #
-        # `training_authorization` carries a REAL supervisor-override snapshot,
-        # not a fabricated one. The demo's own training story makes Mike
-        # deliberately under-qualified for this step (NOZ-CERT level 1, expiring
-        # in 7 days; the step requires level 3 — see training_records.py and
-        # scenario.py's "Mike Rodriguez: NOZ-CERT expiring in 7 days"). So the
-        # honest exhibit is not "pretend Mike is qualified" but "a supervisor
-        # authorized Mike to run the first piece anyway" — exactly the snapshot
-        # `authorize_start` writes when given an authorizer + reason, and the
-        # same shape the real start-gate override produces. This keeps the
-        # competence gate satisfied through legitimate means (the snapshot is
-        # present and trusted at advancement) while preserving the narrative,
-        # and drops the `_source: demo_seed_bypass` tell.
-        #
-        # NOTE: `assigned_to` is deliberately left unset (see a7ed2b7). Setting
-        # it to the operator made the old QA-opens-the-runtime walk impossible:
-        # `start_execution` raises NeedsReassignment when `assigned_to` is
-        # another user. The buy-off now happens via the WO Control pending-FPI
-        # panel (or an inline co-signature), neither of which claims this
-        # execution, so leaving it unset is both safe and unchanged.
-        #
-        # Segregation of duties does not depend on this field — it is checked
-        # against who signed the SubstepCompletion rows below (see
-        # services/qms/fpi._reject_self_signoff). Mike still signs the
-        # substeps, so a self-signoff by Mike is still refused; Sarah buys off.
-        # Built to match the shape `services.mes.lifecycle.authorize_start`
-        # writes for an override, but constructed here rather than by calling
-        # it: this seeder runs BEFORE the training phase, so at this point the
-        # NOZ-CERT requirement does not exist yet and authorize_start would see
-        # Mike as trivially qualified — recording an honest-looking but
-        # meaningless `authorized: True`. The demo's finished state (after the
-        # training phase runs) is that Mike is NOT nozzle-qualified, so the
-        # truthful snapshot is an explicit supervisor override, phrased the same
-        # way the real start-gate override is.
-        # Build the honest not-qualified result explicitly and route it through
-        # the SAME assembler the live start gate uses (authorization_snapshot),
-        # rather than hand-writing the JSON — this is what keeps the seed's shape
-        # from drifting from production (it had: the old hand-built dict used a
-        # list-of-lists `missing`, while the gate emits list-of-dicts). We build
-        # the result by hand because this seeder runs BEFORE the training phase,
-        # so a live check would see no requirement rows and wrongly say
-        # "qualified".
-        from Tracker.services.training import TrainingAuthorizationResult
-        from Tracker.services.mes.lifecycle import (
-            authorization_snapshot, build_supervisor_override,
-        )
-        result = TrainingAuthorizationResult(
-            authorized=False,
-            missing=[('Nozzle Inspection Certification', 'Level 1, needs Level 3')],
-            verified=[],
-        )
-        override = build_supervisor_override(
-            worker=operator, authorizer=supervisor,
-            reason='First-piece run authorized pending nozzle re-certification.',
-            at=self.today - timedelta(hours=6),
-        ) if supervisor is not None else None
-        # No supervisor in this seed run → honest not-qualified snapshot with no
-        # override. Never a fabricated pass.
-        snapshot = authorization_snapshot(result, override=override)
-        se, _ = StepExecution.objects.update_or_create(
-            tenant=self.tenant, part=part, step=step,
-            defaults={
-                'visit_number': 1,
-                'status': 'IN_PROGRESS',
-                'training_authorization': snapshot,
-            },
-        )
-        # Sign every substep on the step as the operator so the walker
-        # doesn't have to. Substeps are per-Step; SubstepCompletion is
-        # per-(substep, step_execution).
-        substeps = list(Substep.objects.filter(tenant=self.tenant, step=step))
-        for ss in substeps:
-            SubstepCompletion.objects.update_or_create(
-                tenant=self.tenant, step_execution=se, substep=ss,
-                defaults={'completed_by': operator},
-            )
-        # Capture real values for the first-piece substeps (the operator's
-        # inspection readings), so the FPI exhibit shows measured/attested data
-        # instead of "0 of N confirmed / N required fields missing". Drives the
-        # SAME capture service the operator runtime uses, so the seeded exhibit
-        # can't drift from the production capture shapes.
-        self._capture_first_piece_values(se, substeps, operator)
-        return fpi
-
-    def _capture_first_piece_values(self, se, substeps, operator):
-        """Walk each substep's DWI body_blocks and submit a value for every
-        capture node through `submit_substep` — the production path that writes
-        `SubstepResponse` + `StepExecutionMeasurement` (+ the inspection
-        QualityReport). Values are dead-on / passing so the first piece reads as
-        a clean buy-off (no FAIL, so no auto-disposition)."""
-        from Tracker.services.dwi.operator_capture import submit_substep
-        from Tracker.models import EquipmentRole, Equipments
-
-        equipment = Equipments.objects.filter(tenant=self.tenant).first()
-        equip_role = next(iter(EquipmentRole)).value
-
-        def _collect(node, out):
-            if isinstance(node, dict):
-                attrs = node.get('attrs') or {}
-                if node.get('type') and attrs.get('node_id'):
-                    out.append((node['type'], attrs))
-                for v in node.values():
-                    _collect(v, out)
-            elif isinstance(node, list):
-                for v in node:
-                    _collect(v, out)
-
-        for ss in substeps:
-            nodes = []
-            _collect(ss.body_blocks, nodes)
-            caps = []
-            for node_type, attrs in nodes:
-                node_id = attrs['node_id']
-                if node_type == 'measurementInput':
-                    nominal = attrs.get('nominal')
-                    caps.append({
-                        'node_id': node_id, 'kind': 'measurement',
-                        'measurement_definition_id': attrs.get('measurement_definition_id'),
-                        'value_numeric': nominal if nominal is not None else None,
-                        'value_string': '' if nominal is not None else 'PASS',
-                    })
-                elif node_type == 'attestationCheckpoint':
-                    if attrs.get('kind') == 'signature':
-                        caps.append({
-                            'node_id': node_id, 'kind': 'attestation',
-                            'signature': {'user_id': str(operator.id),
-                                          'signed_at': self.today.isoformat()},
-                            'meaning': attrs.get('label') or 'Signed',
-                        })
-                    else:
-                        caps.append({
-                            'node_id': node_id, 'kind': 'attestation',
-                            'confirm': True, 'meaning': attrs.get('label') or 'Confirmed',
-                        })
-                elif node_type == 'qualityStatusField':
-                    caps.append({'node_id': node_id, 'kind': 'status', 'status': 'PASS'})
-                elif node_type == 'equipmentRolesField' and equipment is not None:
-                    caps.append({
-                        'node_id': node_id, 'kind': 'equipment_roles',
-                        'rows': [{'equipment_id': str(equipment.id), 'role': equip_role}],
-                    })
-                elif node_type == 'partAnnotation':
-                    caps.append({'node_id': node_id, 'kind': 'annotation', 'annotations': []})
-                elif node_type == 'inspectionSignatures':
-                    # The operator's detected-by signature (require_detected). The
-                    # verified-by slot is QA's — left for the buy-off.
-                    caps.append({
-                        'node_id': node_id, 'kind': 'signatures',
-                        'detected': {'user_id': str(operator.id),
-                                     'signed_at': self.today.isoformat()},
-                    })
-            if caps:
-                # preverified: seeded history, recorded as not password-verified.
-                submit_substep(substep=ss, step_execution=se, user=operator, captures=caps,
-                               preverified=True)
-
-    def _create_passed_fpi(self, work_order, designated_part, step, part_type, inspector):
-        """PASSED FPI so the substep runtime's FpiStatusBanner shows
-        satisfied (green) and doesn't block the walker with a Start FPI
-        prompt on downstream steps.
-
-        Real user flow through the FPI Pass viewset (services.qms.fpi.pass_fpi)
-        also creates a `QaApproval` for (step, WO), since the FPI Pass IS the
-        step-level QA signoff for the first-piece run — without that record
-        `can_advance_from_step` raises "QA signoff required but not received".
-        We shortcut through the ORM here (matching the seed's convention of
-        writing state directly), so we must also write the QaApproval or
-        every downstream step-execution would be stuck.
-        """
-        if not (work_order and designated_part and step and part_type and inspector):
-            return None
-        fpi, _ = FPIRecord.objects.update_or_create(
-            tenant=self.tenant, work_order=work_order, step=step,
-            defaults={
-                'part_type': part_type,
-                'designated_part': designated_part,
-                'status': FPIStatus.PASSED,
-                'result': 'PASS',
-                'inspected_by': inspector,
-                'inspected_at': self.today - timedelta(days=1, hours=12),
-                'shift_date': (self.today - timedelta(days=1, hours=12)).date(),
-            },
-        )
-        FPIRecord.objects.filter(pk=fpi.pk).update(
-            created_at=self.today - timedelta(days=1, hours=14))
-        # Mirror the pass_fpi service's side effect: create the QaApproval
-        # so `Steps.can_advance_from_step` sees the step-level signoff as
-        # satisfied. Without this the seeded exhibit is inconsistent with
-        # what the real Pass flow would produce.
-        QaApproval.objects.update_or_create(
-            tenant=self.tenant, step=step, work_order=work_order,
-            defaults={'qa_staff': inspector},
-        )
-        return fpi
-
-    def _create_fail_qr(self, part, step, inspector):
-        if not (part and step and inspector):
-            return None
-        qr, _ = QualityReports.objects.update_or_create(
-            tenant=self.tenant, report_number='QR-QA-INSPECT-004-FT',
-            defaults={
-                'part': part, 'step': step, 'status': 'FAIL',
-                'description': 'Flow rate 98 mL/min - below LSL of 100 mL/min. '
-                               'Reworked and returned for re-inspection.',
-                'detected_by': inspector, 'verified_by': None,
-                'sampling_method': 'manual', 'is_first_piece': False,
-                'file': None, 'sampling_audit_log': None,
-            },
-        )
-        QualityReports.objects.filter(pk=qr.pk).update(
-            created_at=self.today - timedelta(days=1, hours=8))
-        return qr
-
-    def _create_rework_disposition(self, part, quality_report, step, approver):
-        if not (part and quality_report and step and approver):
-            return None
-        created_at = self.today - timedelta(days=1, hours=6)
-        resolved_at = self.today - timedelta(hours=6)
-        disp, _ = QuarantineDisposition.objects.update_or_create(
-            tenant=self.tenant,
-            disposition_number='DISP-QAI-004-REW',
-            defaults={
-                'part': part,
-                'disposition_type': 'REWORK',
-                'current_state': 'CLOSED',
-                'severity': 'MAJOR',
-                'description': quality_report.description,
-                'resolution_notes': 'Flow-tested nozzle replaced; retested at bench. '
-                                    'Returned to Flow Testing for re-inspection.',
-                'assigned_to': approver,
-                'step': step,
-                'containment_action': 'Part quarantined pending rework decision.',
-                'containment_completed_at': created_at + timedelta(hours=2),
-                'containment_completed_by': approver,
-                'requires_customer_approval': False,
-                'customer_approval_received': False,
-                'customer_approval_reference': '',
-                'customer_approval_date': None,
-                'scrap_verified': False,
-                'scrap_verification_method': '',
-                'scrap_verified_by': None,
-                'scrap_verified_at': None,
-                'resolution_completed': True,
-                'resolution_completed_by': approver,
-                'resolution_completed_at': resolved_at,
-                'rework_attempt_at_step': 1,
-            },
-        )
-        disp.quality_reports.add(quality_report)
-        QuarantineDisposition.objects.filter(pk=disp.pk).update(created_at=created_at)
-        # apply_disposition_to_part guards loop-back cascades to
-        # QUARANTINED/PENDING parts, so this CLOSED REWORK dispo on an
-        # AWAITING_QA part is treated as a paper record — part stays put.
-        self._drop_tag_along_dispositions(disp, quality_report)
-        return disp
-
-    def _drop_tag_along_dispositions(self, intentional_disp, quality_report):
-        """The FAIL-QR post_save signal (Tracker/signals.py) auto-creates a
-        bare disposition per FAIL QR. When we author an intentional
-        disposition here and link the same QR to it, the tag-along is
-        redundant paperwork — a walker opening the part detail sees two
-        dispositions where only one is meaningful.
-
-        The QR-to-Disposition relation is legitimately 1:many in QMS
-        practice (a single QR can spawn multiple disposition lines for
-        different portions of nonconforming material), so we do NOT touch
-        the signal itself. This cleanup is scoped to the seed exhibit only:
-        drop tag-alongs on the SAME QR that carry the auto-created
-        description prefix and aren't the intentional record we just
-        authored."""
-        QuarantineDisposition.objects.filter(
-            tenant=self.tenant,
-            quality_reports=quality_report,
-            description__startswith='Auto-created for failed quality report',
-        ).exclude(pk=intentional_disp.pk).delete()
-
-    def _stage_returned_shipment(self, part, osp_step, user):
-        """Send part out and receive back → RETURNED shipment awaiting return
-        inspection. Uses the outside_process service so the shipment lifecycle
-        (SENT → RETURNED) and part_status transitions match production paths.
-        """
-        if not (part and osp_step and user):
-            return None
-        if not osp_step.is_outside_process or osp_step.outside_supplier_id is None:
-            self.log("  Nitride Coating step is not flagged as OSP; skipping shipment.",
-                     warning=True)
-            return None
+    def _start(self, part, result, operator=None):
+        """Start the part's current step as `operator` (Mike unless told) — through the
+        competence gate, with Casey's override where the gate refuses them."""
+        from Tracker.services.mes.lifecycle import NotQualified, start_execution
+        operator = operator or self.mike
+        part.refresh_from_db()
+        se = StepExecution.get_current_execution(part)
+        if se is None:
+            # A fresh part's first execution, as the runtime creates it on first start.
+            se = StepExecution.objects.create(tenant=self.tenant, part=part, step=part.step,
+                                              visit_number=1, status='PENDING')
+        if se.status == 'IN_PROGRESS' and se.assigned_to_id == operator.id:
+            return se
         try:
-            shipped = outside_process.send_parts_out(
-                step=osp_step, parts=[part],
-                supplier=osp_step.outside_supplier,
-                reference='OSP-QA-INSPECT-01', user=user)
-            outside_process.receive_parts_back(shipped, user=user)
-        except ValueError as e:
-            self.log(f"  Skipped OSP send/receive: {e}", warning=True)
-            return None
-        return shipped
+            start_execution(se, operator)
+        except NotQualified:
+            start_execution(se, operator, authorizer=self.casey, reason=OVERRIDE_REASON)
+            result['override_count'] += 1
+        return se
 
-    def _create_open_disposition(self, part, assigned_user):
-        """Untriaged OPEN disposition assigned to Sarah, linked to the failed
-        torque-check report it came from. This is the background 'you already have
-        work waiting' exhibit. It used to have no linked QR — but a disposition always
-        stems from a failed report and the API requires one, so its edit form could
-        never be saved (found walking the QA Inspector onboarding, 2026-10-07)."""
-        if not (part and assigned_user):
+    def _run_step_for(self, parts, step_name, result, *, advance=True, out_of_spec=False,
+                      operator=None, defect=None):
+        """Run the named step on each part: start, submit every per-part substep, then
+        advance (PASS) unless told to stop. Returns the last inspection report written."""
+        report = None
+        for part in parts:
+            part.refresh_from_db()
+            if part.step is None or part.step.name != step_name:
+                self.log(f"  Warning: {part.ERP_id} is at "
+                         f"{part.step.name if part.step else 'no step'}, not {step_name}.",
+                         warning=True)
+                continue
+            se = self._start(part, result, operator)
+            for ss in self._substeps(part.step, scope='sampled'):
+                self._submit(ss, step_execution=se, out_of_spec=out_of_spec,
+                             signer=operator, defect=defect)
+            report = (QualityReports.objects.filter(part=part, step=part.step)
+                      .order_by('-created_at').first()) or report
+            if advance:
+                self._advance(part, 'PASS' if part.step.is_decision_point else None)
+        return report
+
+    def _run_batch_step(self, wo, parts, step_name, result):
+        """A batch step: each part's own substeps, then one load for the batch
+        substeps, sealed — sealing advances the load."""
+        from Tracker.services.dwi.batch_lifecycle import seal_batch
+        for part in parts:
+            se = self._start(part, result)
+            for ss in self._substeps(part.step, scope='sampled'):
+                self._submit(ss, step_execution=se)
+        step = self.step[step_name]
+        batch = BatchExecution.objects.create(tenant=self.tenant, work_order=wo, step=step,
+                                              started_by=self.mike, started_at=timezone.now())
+        batch.parts.set(parts)
+        for ss in self._substeps(step, scope='batch'):
+            self._submit(ss, batch_execution=batch)
+        seal_batch(batch=batch, user=self.mike)
+        for part in parts:
+            part.refresh_from_db()
+
+    def _advance(self, part, decision):
+        from Tracker.services.mes.parts import advance_part_step
+        part.refresh_from_db()
+        advance_part_step(part, operator=self.mike, decision_result=decision)
+        part.refresh_from_db()
+
+    def _raise_fpi(self, wo, step_name, first_piece):
+        """The first piece is at the step: raise its FPI, as the runtime does
+        (viewsets.qms FPIRecord get_or_create designates the part at the step)."""
+        step = self.step[step_name]
+        fpi, _ = FPIRecord.objects.get_or_create(
+            tenant=self.tenant, work_order=wo, step=step, status=FPIStatus.PENDING,
+            defaults={'part_type': step.part_type, 'designated_part': first_piece},
+        )
+        return fpi
+
+    def _buy_off(self, wo, step_name, first_piece):
+        """Sarah buys off the first piece. She signed none of its substeps (Mike did),
+        so segregation of duties holds; identity is taken as verified for seeded
+        history, the way submit_substep takes `preverified`."""
+        from Tracker.services.qms.fpi import pass_fpi
+        fpi = self._raise_fpi(wo, step_name, first_piece)
+        pass_fpi(fpi, self.sarah, notes='First piece checked against the drawing; conforms.',
+                 identity_verified=True)
+        return fpi
+
+    def _rework(self, part, report):
+        """The FAIL opened a disposition. Maria decides REWORK, which splits the part
+        to the Rework step for re-inspection."""
+        from Tracker.services.qms.disposition import (
+            decide_disposition, record_containment_complete, route_part_to_rework_if_needed,
+        )
+        disposition = (QuarantineDisposition.objects
+                       .filter(part=part, current_state__in=['OPEN', 'IN_PROGRESS'])
+                       .order_by('-created_at').first())
+        if disposition is None:
+            self.log(f"  Warning: no disposition opened for {part.ERP_id}.", warning=True)
             return None
-        created_at = self.today - timedelta(hours=10)
-        disp, _ = QuarantineDisposition.objects.update_or_create(
-            tenant=self.tenant,
-            disposition_number='DISP-QAI-006-OPEN',
+        disposition.assigned_to = self.sarah
+        disposition.containment_action = (
+            'Remaining parts at Flow Calibration re-checked on the second flow bench; '
+            'none below the lower limit.')
+        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
+        record_containment_complete(disposition, self.sarah)
+        disposition = decide_disposition(
+            disposition, disposition_type='REWORK', authorized_by=self.maria,
+            notes='Low flow traced to a partly blocked spray hole; clean and re-test.')
+        # Maria co-signs at Sarah's terminal: the decision is Maria's, the act Sarah's,
+        # so the split (and the rework visit it assigns) is Sarah's — not left on Maria's
+        # name, where Sarah's re-inspection would need a supervisor to reassign it.
+        route_part_to_rework_if_needed(disposition, self.sarah)
+        part.refresh_from_db()
+        return disposition
+
+    def _defect(self, name):
+        from Tracker.models import QualityErrorsList
+        defect = QualityErrorsList.objects.filter(tenant=self.tenant, error_name=name).first()
+        if defect is None:
+            self.log(f"  Warning: error type {name!r} not found.", warning=True)
+        return defect
+
+    def _substeps(self, step, *, scope):
+        return [ss for ss in Substep.objects.filter(tenant=self.tenant, step=step).order_by('order')
+                if (getattr(ss, 'scope', 'sampled') or 'sampled').lower() == scope]
+
+    def _submit(self, substep, *, step_execution=None, batch_execution=None, out_of_spec=False,
+                signer=None, defect=None):
+        """Submit a value for every capture node through submit_substep, the path the
+        runtime uses. Readings are at nominal; `out_of_spec` (a measurement label) puts that
+        reading below its lower limit; `defect` (an error type) fails the visual result and
+        records the defect, with readings left in spec."""
+        from Tracker.models import EquipmentRole
+        from Tracker.services.dwi.operator_capture import submit_substep
+
+        signer = signer or self.mike
+        stamp = timezone.now().isoformat()
+        nodes = _capture_nodes(substep.body_blocks)
+        # A result field on the same substep as the failing reading says FAIL too.
+        fails_here = bool(defect) or any(t == 'measurementInput' and a.get('label') == out_of_spec
+                                         for t, a in nodes)
+        captures = []
+        for node_type, attrs in nodes:
+            node_id = attrs['node_id']
+            if node_type == 'measurementInput':
+                nominal = attrs.get('nominal')
+                value = nominal
+                if out_of_spec and out_of_spec == attrs.get('label') and nominal is not None:
+                    low = Decimal(str(attrs.get('lower_tol') or 0))
+                    value = float(Decimal(str(nominal)) - low - Decimal('2'))
+                captures.append({'node_id': node_id, 'kind': 'measurement',
+                                 'measurement_definition_id': attrs.get('measurement_definition_id'),
+                                 'value_numeric': value,
+                                 'value_string': '' if nominal is not None else 'PASS'})
+            elif node_type == 'attestationCheckpoint':
+                if attrs.get('kind') == 'signature':
+                    captures.append({'node_id': node_id, 'kind': 'attestation',
+                                     'signature': {'user_id': str(signer.id), 'signed_at': stamp},
+                                     'meaning': attrs.get('label') or 'Signed'})
+                else:
+                    captures.append({'node_id': node_id, 'kind': 'attestation', 'confirm': True,
+                                     'meaning': attrs.get('label') or 'Confirmed'})
+            elif node_type == 'qualityStatusField':
+                captures.append({'node_id': node_id, 'kind': 'status',
+                                 'status': 'FAIL' if fails_here else 'PASS'})
+            elif node_type == 'errorTypesField' and defect is not None:
+                captures.append({'node_id': node_id, 'kind': 'defects',
+                                 'rows': [{'error_type_id': str(defect.id), 'severity': 'MAJOR',
+                                           'location': 'Fuel passage breakout', 'count': 1,
+                                           'notes': 'Burr where the cross-drilling breaks into the bore.'}]})
+            elif node_type == 'equipmentRolesField' and self.equipment is not None:
+                captures.append({'node_id': node_id, 'kind': 'equipment_roles',
+                                 'rows': [{'equipment_id': str(self.equipment.id),
+                                           'role': next(iter(EquipmentRole)).value}]})
+            elif node_type == 'partAnnotation':
+                captures.append({'node_id': node_id, 'kind': 'annotation', 'annotations': []})
+            elif node_type == 'inspectionSignatures':
+                captures.append({'node_id': node_id, 'kind': 'signatures',
+                                 'detected': {'user_id': str(signer.id), 'signed_at': stamp}})
+            elif node_type == 'scanInput' and step_execution is not None:
+                captures.append({'node_id': node_id, 'kind': 'scan',
+                                 'value_text': step_execution.part.ERP_id})
+        # A substep with nothing to capture is still submitted, as the runtime does
+        # ("Nothing captured — you can still continue"): its completion is what the
+        # advancement gate reads.
+        submit_substep(substep=substep, step_execution=step_execution,
+                       batch_execution=batch_execution, user=signer, captures=captures,
+                       preverified=True)
+
+    def _fail_gauge(self):
+        """A gauge that failed its calibration this morning, so a capture that names it
+        is refused — the other half of the gauge check (an overdue gauge is accepted
+        with a warning; MIC-1 and TW-25 are overdue). Recorded as a calibration result
+        and applied through the service, which takes the gauge out of service."""
+        from Tracker.models import CalibrationRecord
+        from Tracker.services.mes.work_order import apply_calibration_result_to_equipment
+        gauge = Equipments.objects.filter(tenant=self.tenant, name=FAILED_GAUGE).first()
+        if gauge is None:
+            self.log(f"  Warning: {FAILED_GAUGE} not found; no failed gauge.", warning=True)
+            return None
+        record, _ = CalibrationRecord.objects.update_or_create(
+            tenant=self.tenant, equipment=gauge, calibration_date=self.today.date(),
             defaults={
-                'part': part,
-                'disposition_type': '',  # untriaged
-                'current_state': 'OPEN',
-                'severity': 'MAJOR',
-                'description': 'Torque check failed on assembly bolt at Assembly '
-                               'station. Pending disposition.',
-                'resolution_notes': '',
-                'assigned_to': assigned_user,
-                'step': None,
-                'containment_action': '',
-                'containment_completed_at': None,
-                'containment_completed_by': None,
-                'requires_customer_approval': False,
-                'customer_approval_received': False,
-                'customer_approval_reference': '',
-                'customer_approval_date': None,
-                'scrap_verified': False,
-                'scrap_verification_method': '',
-                'scrap_verified_by': None,
-                'scrap_verified_at': None,
-                'resolution_completed': False,
-                'resolution_completed_by': None,
-                'resolution_completed_at': None,
-                'rework_attempt_at_step': 1,
+                'due_date': self.today.date(),
+                'result': CalibrationRecord.CalibrationResult.FAIL,
+                'calibration_type': CalibrationRecord.CalibrationType.SCHEDULED,
+                'performed_by': 'Demo Calibration Services',
+                'external_lab': 'Demo Calibration Services',
+                'certificate_number': 'CAL-MIC-002-FAIL',
+                'standards_used': 'NIST-traceable gauge blocks',
+                'as_found_in_tolerance': False,
+                'adjustments_made': False,
+                'notes': 'Reads 0.012 mm high across the range; spindle worn. Sent for repair.',
             },
         )
-        QuarantineDisposition.objects.filter(pk=disp.pk).update(created_at=created_at)
-        qr, _ = QualityReports.objects.update_or_create(
-            tenant=self.tenant, report_number='QR-QA-INSPECT-006-TQ',
-            defaults={
-                'part': part, 'step': None, 'status': 'FAIL',
-                'description': 'Torque check failed on assembly bolt at Assembly station.',
-                'detected_by': assigned_user, 'verified_by': None,
-                'sampling_method': 'manual', 'is_first_piece': False,
-                'file': None, 'sampling_audit_log': None,
-            },
-        )
-        QualityReports.objects.filter(pk=qr.pk).update(created_at=created_at - timedelta(hours=1))
-        disp.quality_reports.add(qr)
-        self._drop_tag_along_dispositions(disp, qr)
-        return disp
+        apply_calibration_result_to_equipment(record)
+        gauge.refresh_from_db()
+        return gauge
+
+    def _space_out(self, wo, end_at):
+        """Re-date each part's executions as a shift: the walk runs in seconds, so
+        without this every step reads as started and ended in the same second. Visits
+        keep their order and get a working duration each, the last ending at `end_at`."""
+        for part in Parts.objects.filter(work_order=wo):
+            visits = list(StepExecution.objects.filter(part=part).order_by('entered_at', 'id'))
+            span = sum((STEP_MINUTES.get(v.step.name, 20) + GAP_MINUTES) for v in visits)
+            cursor = end_at - timedelta(minutes=span)
+            for v in visits:
+                minutes = STEP_MINUTES.get(v.step.name, 20)
+                fields = {'entered_at': cursor, 'started_at': cursor + timedelta(minutes=2)}
+                if v.exited_at is not None:
+                    fields['exited_at'] = cursor + timedelta(minutes=minutes)
+                StepExecution.objects.filter(pk=v.pk).update(**fields)
+                # What was captured during the visit moves with it, stamped near its
+                # end, so a reading or a report doesn't carry the seed's run time.
+                captured_at = cursor + timedelta(minutes=max(minutes - 3, 3))
+                StepExecutionMeasurement.objects.filter(step_execution=v).update(
+                    recorded_at=captured_at)
+                SubstepResponse.objects.filter(step_execution=v).update(responded_at=captured_at)
+                SubstepCompletion.objects.filter(step_execution=v).update(completed_at=captured_at)
+                QualityReports.objects.filter(part=part, step=v.step,
+                                              created_at__gte=v.entered_at).update(
+                    created_at=captured_at)
+                cursor += timedelta(minutes=minutes + GAP_MINUTES)
+
+    def _shift_back(self, wo, delta):
+        """Move a work order's walked history back in time. The services stamp now();
+        this is yesterday's run, so its rows are re-dated as a block."""
+        from django.db.models import F
+        StepExecution.objects.filter(part__work_order=wo).update(
+            entered_at=F('entered_at') - delta)
+        StepExecution.objects.filter(part__work_order=wo, started_at__isnull=False).update(
+            started_at=F('started_at') - delta)
+        StepExecution.objects.filter(part__work_order=wo, exited_at__isnull=False).update(
+            exited_at=F('exited_at') - delta)
+        QualityReports.objects.filter(part__work_order=wo).update(created_at=F('created_at') - delta)
+        QuarantineDisposition.objects.filter(part__work_order=wo).update(
+            created_at=F('created_at') - delta)
+        FPIRecord.objects.filter(work_order=wo).update(created_at=F('created_at') - delta)
+        FPIRecord.objects.filter(work_order=wo, inspected_at__isnull=False).update(
+            inspected_at=F('inspected_at') - delta)
+        BatchExecution.objects.filter(work_order=wo).update(started_at=F('started_at') - delta)
+        BatchExecution.objects.filter(work_order=wo, sealed_at__isnull=False).update(
+            sealed_at=F('sealed_at') - delta)
+
+
+
+def _capture_nodes(body):
+    """(node type, attrs) for every capture node in a substep body."""
+    out = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            attrs = node.get('attrs') or {}
+            if node.get('type') and attrs.get('node_id'):
+                out.append((node['type'], attrs))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(body)
+    return out

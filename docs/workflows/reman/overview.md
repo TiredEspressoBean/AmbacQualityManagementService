@@ -79,7 +79,8 @@ the two cannot disagree — with one deliberate exception, below.
 | **Rebuilt — ready to return** | Completed | Rebuilt for its owner |
 | **Rebuilt to stock** | In Stock | Finished goods on the shelf |
 | **Scope declined** | Awaiting Pickup | Going back unrepaired |
-| **Returned to customer** / **Returned unrepaired** | Shipped | Gone back to the customer |
+| **Returned to customer** / **Returned unrepaired** | Shipped | Gone back to the customer on a shipment |
+| **Shipped on exchange** | Shipped | Rebuilt exchange stock shipped against an order |
 | **Harvested to inventory** | Dismantled | Taken apart; its components are parts now |
 | **Scrapped** | Scrapped | |
 

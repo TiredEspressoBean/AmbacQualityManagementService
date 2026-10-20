@@ -102,20 +102,23 @@ Leave a per-part substep's sampling rule empty for a 100% check. Attach a
 sampling rule to check only the parts that rule selects. See
 [Sampling Rules](../quality/sampling.md).
 
-### Optional, N/A, and safety-critical
+### Optional and safety-critical
 
 | Setting | Effect | Use when |
 |---------|--------|----------|
-| **Optional** | Skippable, nothing recorded | The substep genuinely may not be needed and you don't need to know |
-| **Allow N/A** | Skippable with a reason code | You need a recorded reason why it didn't apply |
-| **Safety-critical** | Can never be marked N/A | "Didn't apply" is never acceptable |
+| **Optional** | May be skipped; nothing is recorded | The substep genuinely may not be needed and you don't need to know |
+| **Safety-critical** | Shown to the operator as critical | Torque on safety-critical fasteners, witnessed sign-offs, final dimensional verification |
 
-Mark a substep **safety-critical** for torque on safety-critical fasteners,
-witnessed signoffs, and final dimensional verification.
+There is no "not applicable" setting. If a substep only applies to some of the
+parts that run the step, either the step is wrong for the others (give them their
+own step), or the substep is optional, or what the operator finds is a choice to
+capture ("Seal present: yes / no"), not a skip.
 
-!!! warning "Safety-critical and N/A are mutually exclusive"
-    A safety-critical substep cannot be marked N/A by anyone. The advancement
-    gate rejects the attempt.
+!!! warning "A required reman capture can't go on a step new builds also run"
+    Recording harvested components, a rebuild finding or the components fitted
+    needs a core, and a new build has none. A required substep carrying one of
+    these is refused on any step a non-reman process uses: put it on a
+    reman-only step. An optional one is allowed.
 
 ### Sign-off blocks
 

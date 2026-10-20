@@ -182,10 +182,11 @@ DEMO_CORES = [
         'core_credit_issued': True,
         'components': [
             {
+                # QA reman-addition exhibit: a good body waiting to be accepted to stock.
                 'component_name': 'Injector Body',
-                'condition_grade': 'B',
-                'disposition': 'REFURBISH',
-                'condition_notes': 'Standard wear patterns. Suitable for rework.',
+                'condition_grade': 'A',
+                'disposition': 'PENDING',
+                'condition_notes': 'Light wear, within new-part limits. Ready for acceptance.',
                 'position': '',
                 'original_part_number': '',
                 'is_scrapped': False,
@@ -193,13 +194,14 @@ DEMO_CORES = [
             },
             {
                 'component_name': 'Injector Nozzle Assembly',
+                # Graded scrap at teardown, not yet scrapped: the inspector scraps it.
                 'condition_grade': 'SCRAP',
                 'disposition': 'SCRAP',
                 'condition_notes': 'Exceeded maximum wear limits.',
                 'position': '',
                 'original_part_number': '',
-                'is_scrapped': True,
-                'scrap_reason': 'Nozzle tip wear beyond tolerance',
+                'is_scrapped': False,
+                'scrap_reason': '',
             },
             {
                 'component_name': 'Control Valve Assembly',
@@ -264,6 +266,64 @@ DEMO_CORES = [
                 'condition_grade': 'A',
                 'disposition': 'REUSE',
                 'condition_notes': 'Pristine condition. Passes all dimensional checks.',
+                'position': '',
+                'original_part_number': '',
+                'is_scrapped': False,
+                'scrap_reason': '',
+            },
+        ],
+    },
+    {
+        # QA Manager R1 exhibit: a customer's own unit, in rebuild, waiting on their
+        # answer. The bench found the nozzle cracked after teardown passed it; a
+        # replacement is not pre-approved at Nozzle Inspection and not part of the
+        # standard rebuild they bought, so the unit is sent for authorisation
+        # (release.request_authorisation). The QA Manager records the answer.
+        'core_number': 'CORE-240212-0009',
+        'serial_number': 'SN-CRI-J52B18C4',
+        'received_days_ago': 15,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 14,
+        'disassembly_completed_days_ago': 13,
+        'condition_grade': 'B',
+        'condition_notes': 'Good condition. Normal wear on the nozzle tip.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-45912',
+        'customer_name': 'Great Lakes Diesel',
+        'fulfilment_mode': 'REPAIR_RETURN',
+        'core_credit_value': None,
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'finding': {'component': 'Injector Nozzle Assembly', 'grade': 'SCRAP',
+                    'finding': 'Hairline crack at the needle guide, found under '
+                               'magnification after cleaning.',
+                    'apply': True, 'authorise': True},
+        'components': [
+            {
+                'component_name': 'Injector Body',
+                'condition_grade': 'A',
+                'disposition': 'REUSE',
+                'condition_notes': 'Within new-part limits.',
+                'position': '',
+                'original_part_number': '',
+                'is_scrapped': False,
+                'scrap_reason': '',
+            },
+            {
+                'component_name': 'Injector Nozzle Assembly',
+                'condition_grade': 'B',
+                'disposition': 'REUSE',
+                'condition_notes': 'Normal tip wear at teardown.',
+                'position': '',
+                'original_part_number': '',
+                'is_scrapped': False,
+                'scrap_reason': '',
+            },
+            {
+                'component_name': 'Control Valve Assembly',
+                'condition_grade': 'A',
+                'disposition': 'REUSE',
+                'condition_notes': 'Passes all dimensional checks.',
                 'position': '',
                 'original_part_number': '',
                 'is_scrapped': False,
@@ -433,6 +493,12 @@ class DemoRemanSeeder(BaseSeeder):
         employees = users.get('employees', []) if isinstance(users, dict) else []
         if not employees:
             return 0
+        # Releasing a unit, deciding a finding and sending it for the customer's
+        # answer are a shift lead's acts; the bench finding is an operator's. Not
+        # employees[0] (the Tenant Admin) or employees[-1] (the document controller).
+        by_email = users.get('by_email', {})
+        lead = by_email.get('casey.dual@demo.ambac.com') or employees[0]
+        operator = (users.get('operators') or employees)[0]
         released = 0
         for data in DEMO_CORES:
             release = data.get('release')
@@ -441,12 +507,19 @@ class DemoRemanSeeder(BaseSeeder):
             if core is None or release is None:
                 continue
             if release == 'INVENTORY':
-                release_core_to_inventory(core, employees[0])
+                release_core_to_inventory(core, lead)
             elif release == 'REBUILD':
-                release_core_to_rebuild(core, employees[0])
+                release_core_to_rebuild(core, lead)
             released += 1
             if data.get('finding'):
-                self._raise_finding(core, data['finding'], employees[-1])
+                target = self._raise_finding(core, data['finding'], operator)
+                if target is not None and data['finding'].get('apply'):
+                    from Tracker.services.reman.findings import apply_finding
+                    apply_finding(target, user=lead)
+                if target is not None and data['finding'].get('authorise'):
+                    from Tracker.services.reman.release import request_authorisation
+                    core.refresh_from_db()
+                    request_authorisation(core, lead)
         self.log(f"  Released {released} torn-down core(s)")
         return released
 

@@ -20,6 +20,7 @@ from Tracker.models import (
 )
 
 from ..base import BaseSeeder
+from .routes import build_steps
 
 
 # Demo CAPAs matching DEMO_DATA_SYSTEM.md
@@ -129,8 +130,11 @@ DEMO_CAPAS = [
         'due_days': 14,
         'approval_required': True,
         'approval_status': 'PENDING',
+        # Work is under way, so the go-ahead was given: Maria approves it through
+        # the approval service once the template exists (documents seeder).
+        'go_ahead': {'approver': 'maria.qa@demo.ambac.com', 'days_ago': 6},
         'immediate_action': 'Quarantine remaining nozzle inventory from batch NZ-2024-0315',
-        'step': 'Nozzle Inspection',
+        'step': 'Flow Calibration',
         'work_order': 'WO-2024-0038-A',
         'link_quality_reports': True,  # Link QRs from Great Lakes order
         'rca': {
@@ -283,9 +287,8 @@ class DemoCapaSeeder(BaseSeeder):
         # Get user lookup
         user_map = users.get('by_email', {})
 
-        # Get step and work order lookups
-        steps = Steps.objects.filter(tenant=self.tenant)
-        step_map = {s.name: s for s in steps}
+        # The CAPAs are about new-build work orders: their steps are that route's.
+        step_map = build_steps(self.tenant)
 
         work_orders = WorkOrder.objects.filter(tenant=self.tenant)
         wo_map = {wo.ERP_id: wo for wo in work_orders}

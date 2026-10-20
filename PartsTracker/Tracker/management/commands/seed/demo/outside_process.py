@@ -21,6 +21,7 @@ from Tracker.models import (
 from Tracker.services.mes import outside_process
 
 from ..base import BaseSeeder
+from .routes import BUILD, REMAN, process_named, route_steps, step_key
 
 
 class DemoOutsideProcessSeeder(BaseSeeder):
@@ -95,38 +96,13 @@ class DemoOutsideProcessSeeder(BaseSeeder):
         for pos, sid in enumerate(ordered, start=1):
             ProcessStep.objects.filter(process=process, step_id=sid).update(order=pos)
 
-    def seed(self, companies, users, manufacturing, orders):
-        self.log("Creating demo outside-processing data...")
-        result = {"step": None, "shipments": [], "ready_parts": []}
-
-        part_types = manufacturing.get("part_types", []) if isinstance(manufacturing, dict) else []
-        processes = manufacturing.get("processes", []) if isinstance(manufacturing, dict) else []
-        if not part_types:
-            self.log("  Warning: no part types, skipping OSP seed", warning=True)
-            return result
-        part_type = part_types[0]
-        process = processes[0] if processes else None
-
-        employees = users.get("employees", []) if isinstance(users, dict) else []
-        user = employees[0] if employees else None
-
-        work_orders = orders.get("work_orders", []) if isinstance(orders, dict) else []
-        work_order = work_orders[0] if work_orders else None
-        order = getattr(work_order, "related_order", None) if work_order else None
-        if work_order is None or order is None or user is None:
-            self.log("  Warning: no work order / user, skipping OSP seed", warning=True)
-            return result
-
-        # Plating subcontractor as the default vendor (ties to the SQM seeder's Apex).
-        vendor, _ = Companies.objects.update_or_create(
-            tenant=self.tenant, name="Apex Plating Co",
-            defaults={"description": "Plating subcontractor - outside-process vendor."},
-        )
-
-        # --- OSP step: a subcontract node with a default vendor ---
+    def _osp_step(self, process, part_type, vendor, route, *, after, before):
+        """The route's Nitride Coating step: an outside-process node with Apex as its
+        vendor, spliced into the route between `after` and `before`."""
         osp_step, _ = Steps.objects.update_or_create(
-            tenant=self.tenant, part_type=part_type, name="Nitride Coating",
+            tenant=self.tenant, part_type=part_type, external_id=step_key(route, "Nitride Coating"),
             defaults={
+                "name": "Nitride Coating",
                 "step_type": "TASK",
                 "description": "Send injector bodies out for nitride coating, then inspect on return.",
                 "is_outside_process": True,
@@ -141,17 +117,6 @@ class DemoOutsideProcessSeeder(BaseSeeder):
                 "labor_model": "off",
             },
         )
-        # Ensure the flag/vendor/turnaround/labor stick even if the step pre-existed.
-        if (not osp_step.is_outside_process or osp_step.outside_supplier_id != vendor.id
-                or osp_step.outside_process_lead_days != 2 or osp_step.labor_model != "off"):
-            osp_step.is_outside_process = True
-            osp_step.outside_supplier = vendor
-            osp_step.outside_process_lead_days = 2
-            osp_step.labor_model = "off"
-            osp_step.save(update_fields=["is_outside_process", "outside_supplier",
-                                         "outside_process_lead_days", "labor_model"])
-        result["step"] = osp_step
-
         # Return-inspection characteristic (measured when parts come back).
         thickness, _ = MeasurementDefinition.objects.update_or_create(
             tenant=self.tenant, step=osp_step, label="Coating Thickness",
@@ -161,31 +126,69 @@ class DemoOutsideProcessSeeder(BaseSeeder):
         )
         StepMeasurementRequirement.objects.get_or_create(step=osp_step, measurement=thickness)
 
-        if process is not None:
-            # Put the OSP step on the process. The order here is a placeholder —
-            # `_sync_process_order` below fixes every step's order to match the
-            # routing. (The old `max(order)+1` append put Nitride *last* in order
-            # while the edge splice puts it *mid-flow* — order and edges disagreed.)
-            ProcessStep.objects.get_or_create(
-                process=process, step=osp_step,
-                defaults={"order": ProcessStep.objects.filter(process=process).count() + 1})
-            # Splice the OSP step into the routing chain (Assembly → Nitride →
-            # Final Test) so it isn't an unreachable dangling node in the flow
-            # editor — and returned parts have a real next step after acceptance.
-            assembly = Steps.objects.filter(part_type=part_type, name="Assembly").first()
-            final_test = Steps.objects.filter(part_type=part_type, name="Final Test").first()
-            if assembly is not None and final_test is not None:
-                StepEdge.objects.filter(process=process, from_step=assembly,
-                                        to_step=final_test, edge_type=EdgeType.DEFAULT).delete()
-                for frm, to in ((assembly, osp_step), (osp_step, final_test)):
-                    StepEdge.objects.update_or_create(
-                        process=process, from_step=frm, to_step=to, edge_type=EdgeType.DEFAULT,
-                        defaults={"condition_measurement": None, "condition_operator": "",
-                                  "condition_value": None},
-                    )
-            # Order must agree with the routing: renumber by the DEFAULT-edge
-            # forward spine so Nitride lands between Assembly and Final Test.
-            self._sync_process_order(process)
+        # Put the OSP step on the process. The order here is a placeholder —
+        # `_sync_process_order` below fixes every step's order to match the routing.
+        ProcessStep.objects.get_or_create(
+            process=process, step=osp_step,
+            defaults={"order": ProcessStep.objects.filter(process=process).count() + 1})
+        # Splice it into the routing chain so it isn't an unreachable dangling node in
+        # the flow editor, and returned parts have a real next step after acceptance.
+        steps = route_steps(process)
+        frm, to = steps.get(after), steps.get(before)
+        if frm is not None and to is not None:
+            StepEdge.objects.filter(process=process, from_step=frm,
+                                    to_step=to, edge_type=EdgeType.DEFAULT).delete()
+            for a, b in ((frm, osp_step), (osp_step, to)):
+                StepEdge.objects.update_or_create(
+                    process=process, from_step=a, to_step=b, edge_type=EdgeType.DEFAULT,
+                    defaults={"condition_measurement": None, "condition_operator": "",
+                              "condition_value": None},
+                )
+        # Order must agree with the routing: renumber by the DEFAULT-edge forward spine.
+        self._sync_process_order(process)
+        return osp_step
+
+    def seed(self, companies, users, manufacturing, orders):
+        self.log("Creating demo outside-processing data...")
+        result = {"step": None, "reman_step": None, "shipments": [], "ready_parts": []}
+
+        part_types = manufacturing.get("part_types", []) if isinstance(manufacturing, dict) else []
+        if not part_types:
+            self.log("  Warning: no part types, skipping OSP seed", warning=True)
+            return result
+        part_type = part_types[0]
+
+        employees = users.get("employees", []) if isinstance(users, dict) else []
+        # The return inspection is the QA inspector's — not employees[0] (the admin).
+        inspectors = [u for u in (users.get("qa_staff") or []) if u != users.get("qa_manager")] \
+            if isinstance(users, dict) else []
+        user = (inspectors or employees or [None])[0]
+
+        work_orders = orders.get("work_orders", []) if isinstance(orders, dict) else []
+        # The exhibit parts ride a new-build work order: nitriding the machined body
+        # is new-manufacture work.
+        work_order = next((wo for wo in work_orders
+                           if wo.process and wo.process.name == BUILD), None)
+        order = getattr(work_order, "related_order", None) if work_order else None
+        if work_order is None or order is None or user is None:
+            self.log("  Warning: no new-build work order / user, skipping OSP seed", warning=True)
+            return result
+
+        # Plating subcontractor as the default vendor (ties to the SQM seeder's Apex).
+        vendor, _ = Companies.objects.update_or_create(
+            tenant=self.tenant, name="Apex Plating Co",
+            defaults={"description": "Plating subcontractor - outside-process vendor."},
+        )
+
+        # Each route nitrides at its own point, on its own step: a new body before it is
+        # assembled, a rebuilt unit after reassembly.
+        osp_step = self._osp_step(work_order.process, part_type, vendor, "build",
+                                  after="Body Inspection", before="Assembly")
+        reman = process_named(self.tenant, REMAN)
+        if reman is not None:
+            result["reman_step"] = self._osp_step(reman, part_type, vendor, "reman",
+                                                  after="Reassembly", before="Final Test")
+        result["step"] = osp_step
 
         # --- Parts staged at the OSP step (dedicated, so other narratives are untouched) ---
         def make_part(suffix):

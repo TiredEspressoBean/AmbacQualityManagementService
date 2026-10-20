@@ -1,5 +1,10 @@
 # Receiving Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 3-4 hours
 **Prerequisites:** None
 **Goal:** Learn to take in a delivery, inspect it, deal with holds, send back
@@ -36,7 +41,7 @@ what's wrong, and put away stock you can find again
 | What just arrived? | **Receive**, or batch receive for a lorry-load |
 | What is stuck? | **Materials → Held**, and incoming inspection |
 | What goes back? | **Materials → Rejected** |
-| Where did I put it? | [Locations](../workflows/supply/locations.md) |
+| Where did I put it? | [Locations](../../workflows/supply/locations.md) |
 
 ### 1.2 Receiving is not Purchasing
 
@@ -129,7 +134,7 @@ receiving twenty lines one at a time.
 ### 3.4 Lot numbers are issued here
 
 The lot number is created at receipt. See [Lot numbers are issued
-here](../workflows/supply/overview.md#lot-numbers-are-issued-here).
+here](../../workflows/supply/overview.md#lot-numbers-are-issued-here).
 
 ### Knowledge Check: Module 3
 
@@ -163,7 +168,7 @@ number, unqualified supplier, expired shelf life. **Review hold** opens them.
 
 You can fix the first kind. The second needs QA.
 
-See [Held at receiving](../workflows/supply/overview.md#held-at-receiving).
+See [Held at receiving](../../workflows/supply/overview.md#held-at-receiving).
 
 ### Knowledge Check: Module 4
 
@@ -185,7 +190,7 @@ Receiving inspection plans decide what gets checked and how much. Some checks ar
 **once per lot**; others are proportionate to quantity.
 
 See [Receiving Inspection
-Plans](../workflows/supply/overview.md#receiving-inspection-plans).
+Plans](../../workflows/supply/overview.md#receiving-inspection-plans).
 
 ### 5.2 Rejecting
 
@@ -195,7 +200,7 @@ permission QA holds.
 A rejection can raise a **SCAR** against the supplier — a CAPA they are
 answerable to.
 
-See [Rejecting](../workflows/supply/overview.md#rejecting).
+See [Rejecting](../../workflows/supply/overview.md#rejecting).
 
 ### Knowledge Check: Module 5
 
@@ -222,7 +227,7 @@ Print the **RTV sheet** to travel with the goods.
 !!! tip "Saying replacements are coming is not admin"
     It is the only thing that tells the planner the shortage has an end date.
 
-See [Sending it back](../workflows/supply/overview.md#sending-it-back).
+See [Sending it back](../../workflows/supply/overview.md#sending-it-back).
 
 ### Knowledge Check: Module 6
 
@@ -254,7 +259,7 @@ Count one location at a time, **blind if you want an honest number**.
     Submitting is the counter's job. **Applying** needs `apply_cyclecount` — a
     lead. The differences export as a spreadsheet for keying into the ERP.
 
-See [Locations & Cycle Counts](../workflows/supply/locations.md).
+See [Locations & Cycle Counts](../../workflows/supply/locations.md).
 
 ### Knowledge Check: Module 7
 
@@ -498,8 +503,8 @@ training](operator.md#recording-the-qualification).
 
 ## Next Steps
 
-- [Receiving role guide](../roles/receiving.md)
-- [Supply Overview](../workflows/supply/overview.md) — the full reference
-- [Locations & Cycle Counts](../workflows/supply/locations.md)
+- [Receiving role guide](../../roles/receiving.md)
+- [Supply Overview](../../workflows/supply/overview.md) — the full reference
+- [Locations & Cycle Counts](../../workflows/supply/locations.md)
 - [Shipping Training](shipping.md) — the other direction
 - [Purchasing Training](purchasing.md) — who owns the order

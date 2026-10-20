@@ -1,5 +1,10 @@
 # Planner Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 4-5 hours
 **Prerequisites:** None, though familiarity with the shop's routings helps
 **Goal:** Learn to release work against measured load, promise dates you can
@@ -93,7 +98,7 @@ Releasing stamps **who** released it and **when**, and an override carries a
 reason. That is ISO 9001 §8.5.1 evidence, separate from whether work has
 actually started.
 
-See [Releasing Work](../workflows/scheduling/releasing.md).
+See [Releasing Work](../../workflows/scheduling/releasing.md).
 
 ### Knowledge Check: Module 2
 
@@ -359,7 +364,7 @@ you are offered depends on how it is being fulfilled:
     the master data: repair codes and rebuild levels have nothing to do with it,
     and a core type with neither releases perfectly well.
 
-See [Remanufacturing Overview](../workflows/reman/overview.md).
+See [Remanufacturing Overview](../../workflows/reman/overview.md).
 
 ### Knowledge Check: Module 8
 
@@ -455,9 +460,9 @@ Solve → read Not scheduled → Dispatch → adjust by hand → re-solve
 
 ## Next Steps
 
-- [Planner role guide](../roles/planner.md)
-- [Releasing Work](../workflows/scheduling/releasing.md)
-- [Capacity Planning](../workflows/scheduling/capacity.md)
-- [Schedule (Gantt)](../workflows/scheduling/gantt.md)
-- [Scheduling Setup](../workflows/scheduling/setup.md) — what the solver believes
+- [Planner role guide](../../roles/planner.md)
+- [Releasing Work](../../workflows/scheduling/releasing.md)
+- [Capacity Planning](../../workflows/scheduling/capacity.md)
+- [Schedule (Gantt)](../../workflows/scheduling/gantt.md)
+- [Scheduling Setup](../../workflows/scheduling/setup.md) — what the solver believes
 - [Production Manager Training](production-manager.md) — the role that usually also holds this

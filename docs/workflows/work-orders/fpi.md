@@ -68,13 +68,21 @@ banner and the same four states everywhere.
 ### Signing off
 
 **Sign off & pass** opens a dialog that states what you are attesting to: the
-setup is correct, the first piece conforms, and this releases the run.
+setup is correct, the first piece conforms, and this releases the run. Above the
+notes it lists the **first piece's readings**: each characteristic, the reading,
+its limits, and who took it and when. Those readings are what you are signing.
 
 - **Notes** are optional — gauges used, observations.
 - If the step is authored to need a **verified** signature, you re-enter **your
   own** password.
-- You cannot buy off a first piece whose work you signed yourself. The server
-  refuses it: the buy-off is a second person's judgement.
+
+!!! warning "You can't buy off a first piece you signed"
+    The buy-off is a second person's judgement. If you signed any of the first
+    piece's inspection, the dialog says so before you can confirm, and switches
+    to a second inspector's sign-in: they enter their email, signature and
+    password at your screen. The buy-off is recorded under **their** name, with
+    you as the person at the station. The same applies to **Fail** and
+    **Waive**.
 
 !!! tip "An operator does not have to go and find QA"
     If you lack `sign_off_fpi`, the button reads **Get QA sign-off** and opens
@@ -82,8 +90,15 @@ setup is correct, the first piece conforms, and this releases the run.
     **email and password at your station** — you stay logged in, and the record
     carries **their** name as the authority, not yours.
 
-**Fail** holds the run, and the first piece goes into the quality workflow.
-Adjust the setup, produce a new first piece, and the inspection repeats.
+**Fail** needs a reason, and does three things:
+
+- The first piece gets a FAIL quality report, with your reason as its
+  description. It is **quarantined**, and a disposition opens for it, unassigned,
+  in the QA queue (see [Dispositions](../quality/dispositions.md#where-a-disposition-comes-from)).
+- The run stays held. The work order's control page shows **First piece failed
+  at *step* — run held**, with who failed it and the reason.
+- **Start a new first piece** on that card raises the next inspection. Correct
+  the setup first; the new first piece is bought off like the first.
 
 **Waive** releases the run without a first-piece verification. It needs a reason
 of at least 10 characters, and the waiver records who, when and why.

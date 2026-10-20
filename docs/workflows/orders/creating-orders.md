@@ -53,10 +53,9 @@ Use the **Order Name** field to enter your own reference number such as the cust
 
 ## Order Status
 
-An order created through the form starts in **RFI** — the form always submits
-the first status in the list, whatever the model's own default (**Pending**)
-says. An order created another way, such as by import or through the API
-without a status, starts **Pending**.
+A new order starts **Pending** unless you choose another status on the form. An
+order created by import, or through the API without a status, also starts
+**Pending**.
 
 Status progresses as work is performed:
 

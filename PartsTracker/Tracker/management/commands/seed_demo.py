@@ -186,8 +186,8 @@ class Command(BaseCommand):
         self.stdout.write("    - CAPA-2024-004 (field return investigation, open)")
         self.stdout.write("    - CAPA-2024-005 (calibration procedure, closed)")
         self.stdout.write("\n  Training Exercises:")
-        self.stdout.write("    - TRAIN-001, TRAIN-FPI-001, TRAIN-PM-001 etc.")
-        self.stdout.write("    - ASSESS-001, ASSESS-QA-001, ASSESS-PM-001 etc.")
+        self.stdout.write("    - TRAIN-001, TRAIN-PM-001, TRAIN-BOTTLE, TRAIN-HOLD")
+        self.stdout.write("    - ASSESS-001, ASSESS-003, ASSESS-004, ASSESS-PM-001")
 
     def _clear_tenant_data(self):
         """Clear existing demo tenant data in dependency order.

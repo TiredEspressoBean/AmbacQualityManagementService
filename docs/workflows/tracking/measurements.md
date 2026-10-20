@@ -109,7 +109,7 @@ Measurements may require calibrated equipment:
     | Gauge state | What happens |
     |-------------|--------------|
     | **Out of service**, or its last calibration **failed** | The capture is **refused**: *"Equipment 'X' is OUT_OF_SERVICE (failed or missing calibration). Recalibrate or pick a different gauge."* |
-    | Calibration **overdue** | The reading **is recorded**, and you are told |
+    | Calibration **overdue** | Marked *calibration overdue* in the picker; the reading **is recorded**, and you are told |
 
     A failed check is evidence the gauge was wrong, so anything it measures is
     suspect at the moment of writing — the refusal happens at the source rather

@@ -31,7 +31,7 @@ from Tracker.services.mes.locations import seed_location
 from Tracker.models import (
     Orders, Parts, WorkOrder, Steps, Processes,
     OrdersStatus, WorkOrderStatus, WorkOrderPriority, PartsStatus,
-    StepExecution, QualityReports, QualityErrorsList,
+    StepExecution, QualityReports, QualityErrorsList, QualityReportPersonnel, PersonnelRole,
 )
 from Tracker.models.mes_lite import ProcessStatus
 from Tracker.services.mes.processes import duplicate_process
@@ -94,7 +94,8 @@ class DemoShowcaseSeeder(BaseSeeder):
         )
 
         # --- 4) FAIL quality report wired to a 3D-annotation error type ----
-        result["quality_report"] = self._fail_quality_report(hero_part, nozzle_step, inspector_user)
+        result["quality_report"] = self._fail_quality_report(hero_part, nozzle_step, inspector_user,
+                                                             operator_user)
 
         # --- 5) Controlled engineering drawing on the injector part type ---
         #        so the WO traveler resolves a real drawing number + revision.
@@ -258,7 +259,7 @@ class DemoShowcaseSeeder(BaseSeeder):
         )
         return execution
 
-    def _fail_quality_report(self, hero_part, nozzle_step, inspector_user):
+    def _fail_quality_report(self, hero_part, nozzle_step, inspector_user, operator_user=None):
         error_type = self._annotation_error_type()
 
         qr, _ = QualityReports.objects.update_or_create(
@@ -278,6 +279,11 @@ class DemoShowcaseSeeder(BaseSeeder):
             },
         )
 
+        # The operator whose work the inspection found the defect in, as on the floor
+        # (a personnel role — the flat `operators` M2M is deprecated).
+        if operator_user is not None:
+            QualityReportPersonnel.objects.get_or_create(
+                quality_report=qr, user=operator_user, role=PersonnelRole.OPERATOR)
         if error_type:
             qr.errors.set([error_type])
         else:
@@ -285,6 +291,14 @@ class DemoShowcaseSeeder(BaseSeeder):
                 "  No requires_3d_annotation ErrorType found - QR created without a defect link",
                 warning=True,
             )
+
+        # The FAIL opens an unassigned disposition. The inspector who found it has
+        # taken it ("Take it" sets assigned_to), so it's theirs to annotate and decide —
+        # not one more item in the QA queue the training's own exhibits sit in.
+        if inspector_user is not None:
+            from Tracker.models import QuarantineDisposition
+            QuarantineDisposition.objects.filter(
+                quality_reports=qr, assigned_to__isnull=True).update(assigned_to=inspector_user)
 
         return qr
 
@@ -398,7 +412,7 @@ class DemoShowcaseSeeder(BaseSeeder):
             StepExecution.objects.filter(pk=execution.pk).update(entered_at=entered)
 
             if getattr(step, "requires_qa_signoff", False):
-                QualityReports.objects.update_or_create(
+                sc_report, _ = QualityReports.objects.update_or_create(
                     tenant=self.tenant,
                     report_number=f"QR-SC-{ps.order}",
                     defaults={
@@ -414,6 +428,12 @@ class DemoShowcaseSeeder(BaseSeeder):
                         "sampling_audit_log": None,
                     },
                 )
+                # A report carries the operator whose work it inspected, as the floor's do
+                # (a personnel role — the flat `operators` M2M is deprecated).
+                if operator_user is not None:
+                    QualityReportPersonnel.objects.get_or_create(
+                        quality_report=sc_report, user=operator_user,
+                        role=PersonnelRole.OPERATOR)
 
         self.log(f"  Created upstream as-built history for {count} step(s)")
         return count
@@ -543,26 +563,12 @@ class DemoShowcaseSeeder(BaseSeeder):
     def _consumption_steps(self, part_type):
         """Which step each purchased component goes in at, by component name.
 
-        Matched on step NAME rather than an id map so a re-seeded or renamed process
-        degrades to "unmapped" (which the staging list reports) instead of pointing a
-        BOM line at the wrong operation.
+        A BOM line is consumed at one step: the new-build Assembly, where the seal kit,
+        solenoid and spring go into a new injector. (Reman fits its components at
+        Reassembly against the rebuild plan, not from this BOM's lines.)
         """
-        from Tracker.models import Steps
-
-        steps = {
-            s.name.lower(): s
-            for s in Steps.objects.filter(
-                tenant=self.tenant, part_type=part_type, is_current_version=True)
-        }
-
-        def pick(*names):
-            for n in names:
-                hit = steps.get(n.lower())
-                if hit is not None:
-                    return hit
-            return None
-
-        assembly = pick("Assembly")
+        from .routes import build_steps
+        assembly = build_steps(self.tenant).get("Assembly")
         return {
             "Seal & O-Ring Kit": assembly,
             "Solenoid Coil": assembly,

@@ -2,21 +2,9 @@
 
 Common questions about using uqmes.
 
-!!! tip "Worked examples, on the demo dataset"
-    These examples use record numbers from the **demo dataset**, which exists
-    only if your system was seeded with it. On your own data the questions still
-    apply; the identifiers will not. See
-    [Training Data Setup](../training/training-data-setup.md) for how to load it.
-
-    - **Find an order**: `ORD-2024-0042` (Midwest Fleet, 24 injectors)
-    - **View part history**: INJ-0042-017 — a Flow Testing failure and its disposition
-    - **Create a CAPA**: CAPA-2024-003, a complete nozzle defect investigation
-    - **Explore permissions**: sign in as different demo users to see how
-      role-based access changes what you can reach
-
-    Demo accounts — all with the password **`demo123`**:
-    `mike.ops@demo.ambac.com` (Operator), `sarah.qa@demo.ambac.com` (QA
-    Inspector), `jennifer.mgr@demo.ambac.com` (Production Manager).
+!!! tip "Practising on example records"
+    The [training program](../training/index.md) walks each role's workflows on a
+    training instance, with records made for practising.
 
 ## General
 

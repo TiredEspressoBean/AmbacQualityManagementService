@@ -38,6 +38,7 @@ _INJECTOR_PART_TYPE = "Common Rail Injector"
 # it's calibration-overdue, so is_operational already excludes it; TW-26 covers it.)
 _SCHEDULABLE = [
     "Ultrasonic Cleaner UC-1", "Flow Test Stand #1", "Flow Test Stand #2",
+    "Cylindrical Grinder GR-1",
     "Torque Wrench TW-26", "Final Test Bench FTB-1", "CNC Lathe HL-1",
     "Disassembly Press DP-1", "Grading Bench GB-1", "Rework Station RW-1",
     "Packaging Station PK-1",
@@ -46,6 +47,12 @@ _SCHEDULABLE = [
 # step name -> [(equipment name, affinity)]
 _AFFINITIES = {
     "Machining":         [("CNC Lathe HL-1", "dialed_in")],
+    # New manufacture
+    "Precision Grinding": [("Cylindrical Grinder GR-1", "dialed_in")],
+    "Wash":              [("Ultrasonic Cleaner UC-1", "dialed_in")],
+    "Flow Calibration":  [("Flow Test Stand #1", "preferred"),
+                          ("Flow Test Stand #2", "eligible")],
+    "Marking & Packaging": [("Packaging Station PK-1", "dialed_in")],
     "Disassembly":       [("Disassembly Press DP-1", "dialed_in")],
     "Component Grading": [("Grading Bench GB-1", "dialed_in")],
     "Cleaning":          [("Ultrasonic Cleaner UC-1", "dialed_in")],
@@ -53,18 +60,26 @@ _AFFINITIES = {
     "Flow Testing":      [("Flow Test Stand #1", "preferred"),
                           ("Flow Test Stand #2", "eligible")],
     "Assembly":          [("Torque Wrench TW-26", "preferred")],
+    "Reassembly":        [("Torque Wrench TW-26", "preferred")],
     "Final Test":        [("Final Test Bench FTB-1", "dialed_in")],
     "Packaging":         [("Packaging Station PK-1", "dialed_in")],
     "Rework":            [("Rework Station RW-1", "dialed_in")],
+    "Nozzle Recondition": [("Rework Station RW-1", "dialed_in")],
+    "Nozzle Replacement": [("Rework Station RW-1", "dialed_in")],
 }
 
 # step name -> (setup, cycle, load_unload, attention)
 # step name -> (setup, cycle, load_unload, attention). Every scheduled in-house step
 # gets an honest duration (machine-less steps included). Omitted on purpose:
-# "Nitride Coating" (OSP — its time is vendor lead time, not in-house work) and
+# "Nitride Coating" on either route (OSP — its time is vendor lead time) and
 # "Complete" / "Ship" (terminal, not scheduled).
 _TIMINGS = {
     "Machining":         (30, 25, 2, AttentionType.LOAD_UNLOAD),  # bar stock → body (new build)
+    "Precision Grinding": (20, 15, 2, AttentionType.LOAD_UNLOAD), # bore + seat finish grind
+    "Wash":              (15, 30, 2, AttentionType.LOAD_UNLOAD),  # unattended wash
+    "Body Inspection":   (5, 12, 1, AttentionType.FULL),          # CMM + visual
+    "Flow Calibration":  (10, 20, 1, AttentionType.FULL),         # set + verify delivery
+    "Marking & Packaging": (5, 8, 1, AttentionType.LOAD_UNLOAD),  # laser mark + box
     "Core Receiving":    (5, 10, 1, AttentionType.FULL),          # receive + grade cores
     "Disassembly":       (10, 40, 2, AttentionType.FULL),         # teardown
     "Component Grading": (5, 20, 1, AttentionType.FULL),          # grade/sort components
@@ -72,9 +87,12 @@ _TIMINGS = {
     "Nozzle Inspection": (5, 15, 1, AttentionType.FULL),
     "Flow Testing":      (10, 20, 1, AttentionType.FULL),
     "Assembly":          (20, 45, 3, AttentionType.FULL),
+    "Reassembly":        (20, 45, 3, AttentionType.FULL),
     "Final Test":        (10, 25, 1, AttentionType.FULL),
     "Packaging":         (5, 10, 1, AttentionType.LOAD_UNLOAD),   # box + label
     "Rework":            (10, 30, 2, AttentionType.FULL),         # rework station
+    "Nozzle Recondition": (10, 25, 1, AttentionType.FULL),        # lap seat, clear holes
+    "Nozzle Replacement": (10, 20, 1, AttentionType.FULL),        # fit a new nozzle
 }
 
 # Measuring devices used at a step (MeasurementDefinition.default_equipment). A
@@ -86,7 +104,15 @@ _GAUGE_MEASUREMENTS = [
     ("Component Grading", "Body Bore Diameter",  "NUMERIC",   "CMM Zeiss-1"),              # specific station → secondary resource
     ("Nozzle Inspection", "Spray Angle",         "NUMERIC",   "Keyence Vision IM-7020"),   # specific station → secondary resource
     ("Assembly",          "Thread Fit Go/No-Go", "PASS_FAIL", "Go/No-Go Thread Gauge M8x1"),  # plentiful → not scheduled
+    ("Reassembly",        "Thread Fit Go/No-Go", "PASS_FAIL", "Go/No-Go Thread Gauge M8x1"),
     ("Cleaning",          "Post-Clean Bore Dia", "NUMERIC",   "Digital Caliper CAL-1"),    # handheld → not scheduled
+    # MIC-1 is seeded past its calibration due date: a Body OD reading on it is recorded
+    # with the overdue warning ("tell QA so the gauge gets recalibrated").
+    ("Machining",         "Body OD",             "NUMERIC",   "Micrometer MIC-1"),         # handheld → not scheduled
+    # New manufacture
+    ("Precision Grinding", "Seat Bore Diameter", "NUMERIC",   "Digital Caliper CAL-2"),    # handheld → not scheduled
+    ("Body Inspection",   "Bore Diameter",       "NUMERIC",   "CMM Zeiss-1"),              # specific station → secondary resource
+    ("Flow Calibration",  "Spray Angle",         "NUMERIC",   "Keyence Vision IM-7020"),   # specific station → secondary resource
 ]
 
 

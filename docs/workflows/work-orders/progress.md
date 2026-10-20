@@ -53,13 +53,20 @@ Planning a work order grosses the started quantity up for **expected** scrap. Wh
 count and the job will finish short.
 
 **Make-up planning tops it back up.** It reports the gap, and creating the
-replacements is an explicit action:
+replacements is an explicit action. On the work order page a **Make-up** card
+appears only when the job is short. It reads *"<good>/<target> good · <alive>
+alive · <scrapped> scrapped"* and *"<N> short of <target> good"*, with the button
+**Create N make-up part(s)**. The scheduling board's work order dialog shows the
+same card at all times.
 
 | Figure | Means |
 |--------|-------|
 | **Target good** | What the order owes |
 | **Alive** | Units not scrapped or cancelled |
 | **Shortfall** | What make-up would create |
+
+A work order with no parts yet, or one that has completed or been cancelled,
+reports no shortfall. Creating make-up needs `add_workorder`.
 
 Replacements are created at the route's **first step**, flagged as make-up, and
 the schedule is marked stale so the next solve picks them up.

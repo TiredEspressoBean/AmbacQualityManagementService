@@ -7,7 +7,8 @@ Creates:
 - ORD-2024-0048: Northern Trucking (pending, 8 parts)
 """
 
-from datetime import timedelta
+import zlib
+from datetime import datetime, time, timedelta
 from django.utils import timezone
 
 from Tracker.models import (
@@ -19,6 +20,7 @@ from Tracker.models import (
 )
 
 from ..base import BaseSeeder
+from .routes import build_steps, route_steps
 
 
 # Demo orders config matching DEMO_DATA_SYSTEM.md
@@ -61,14 +63,14 @@ DEMO_ORDERS = [
             {'serial': 'INJ-0042-015', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
             {'serial': 'INJ-0042-016', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS},
             # 2 quarantined
-            {'serial': 'INJ-0042-017', 'step': 'Flow Testing', 'part_status': PartsStatus.QUARANTINED},
+            {'serial': 'INJ-0042-017', 'step': 'Flow Calibration', 'part_status': PartsStatus.QUARANTINED},
             # 1 in rework
             {'serial': 'INJ-0042-019', 'step': 'Rework', 'part_status': PartsStatus.REWORK_IN_PROGRESS},
             # In progress at various steps
             {'serial': 'INJ-0042-018', 'step': 'Final Test', 'part_status': PartsStatus.IN_PROGRESS},
             {'serial': 'INJ-0042-020', 'step': 'Assembly', 'part_status': PartsStatus.IN_PROGRESS},
-            {'serial': 'INJ-0042-021', 'step': 'Flow Testing', 'part_status': PartsStatus.IN_PROGRESS},
-            {'serial': 'INJ-0042-022', 'step': 'Cleaning', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-021', 'step': 'Flow Calibration', 'part_status': PartsStatus.IN_PROGRESS},
+            {'serial': 'INJ-0042-022', 'step': 'Wash', 'part_status': PartsStatus.IN_PROGRESS},
             # 1 scrapped
             {'serial': 'INJ-0042-023', 'step': None, 'part_status': PartsStatus.SCRAPPED},
             # 1 early stage
@@ -103,7 +105,7 @@ DEMO_ORDERS = [
             {'serial': 'INJ-0038-007', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
             {'serial': 'INJ-0038-008', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
             {'serial': 'INJ-0038-009', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
-            # Scrapped at Nozzle Inspection (QR-0038-010-NI, SCRAP disposition) — never shipped.
+            # Scrapped at Flow Calibration (QR-0038-010-NI, SCRAP disposition) — never shipped.
             {'serial': 'INJ-0038-010', 'step': None, 'part_status': PartsStatus.SCRAPPED},
             {'serial': 'INJ-0038-011', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': True},
             {'serial': 'INJ-0038-012', 'step': 'Ship', 'part_status': PartsStatus.IN_PROGRESS, 'ship': True, 'reworked': False},
@@ -173,9 +175,8 @@ class DemoOrdersSeeder(BaseSeeder):
         # Get part type (default to first one)
         part_type = part_types[0] if part_types else None
 
-        # Get step lookup
-        steps = Steps.objects.filter(tenant=self.tenant)
-        step_map = {s.name: s for s in steps}
+        # A part's step is found in its own work order's route: names repeat.
+        route_maps = {}
 
         for order_data in DEMO_ORDERS:
             # Get company by name
@@ -200,7 +201,10 @@ class DemoOrdersSeeder(BaseSeeder):
                 # Create parts
                 parts_list = order_data.get('parts', [])
                 for part_index, part_data in enumerate(parts_list):
-                    part = self._create_part(part_data, order, work_order, part_type, step_map, part_index)
+                    if work_order.process_id not in route_maps:
+                        route_maps[work_order.process_id] = route_steps(work_order.process)
+                    part = self._create_part(part_data, order, work_order, part_type,
+                                             route_maps[work_order.process_id], part_index)
                     if part:
                         result['parts'].append(part)
 
@@ -298,7 +302,8 @@ class DemoOrdersSeeder(BaseSeeder):
         part_status = part_data['part_status']
 
         # Determine sampling requirement (every 5th part at QA steps)
-        qa_steps = {'Flow Testing', 'Nozzle Inspection', 'Final Test'}
+        qa_steps = {'Body Inspection', 'Flow Calibration', 'Final Test',
+                    'Flow Testing', 'Nozzle Inspection'}
         step_name = part_data.get('step')
         requires_sampling = (
             step_name in qa_steps and
@@ -397,14 +402,20 @@ class DemoOrdersSeeder(BaseSeeder):
         # Map steps to equipment
         step_equipment_map = {
             'Machining': ['CNC Lathe HL-1'],
+            'Precision Grinding': ['Cylindrical Grinder GR-1'],
+            'Wash': ['Ultrasonic Cleaner UC-1'],
+            'Body Inspection': ['CMM Zeiss-1'],
+            'Flow Calibration': ['Flow Test Stand #1', 'Flow Test Stand #2'],
             'Flow Testing': ['Flow Test Stand #1', 'Flow Test Stand #2'],
             'Assembly': ['Torque Wrench TW-25', 'Torque Wrench TW-26'],
+            'Reassembly': ['Torque Wrench TW-25', 'Torque Wrench TW-26'],
             'Cleaning': ['Ultrasonic Cleaner UC-1'],
             'Final Test': ['Final Test Bench FTB-1'],
+            'Marking & Packaging': ['Packaging Station PK-1'],
         }
 
-        # Get operators
-        operators = users.get('employees', [])
+        # Get operators: floor staff, not every employee
+        operators = users.get('operators') or users.get('employees', [])
         if not operators:
             operators = [None]
 
@@ -415,9 +426,10 @@ class DemoOrdersSeeder(BaseSeeder):
             # Determine which steps the part has completed
             current_step = part.step
             if current_step is not None and current_step.step_type == 'REWORK':
-                # In rework after failing Flow Testing: the main line up to and including
+                # In rework after failing the flow test: the main line up to and including
                 # that test is history, and Rework is where it is now.
-                ft = next((i for i, s in enumerate(ordered_steps) if s.name == 'Flow Testing'), None)
+                ft = next((i for i, s in enumerate(ordered_steps)
+                           if s.name in ('Flow Calibration', 'Flow Testing')), None)
                 if ft is not None:
                     ordered_steps = ordered_steps[:ft + 1] + [current_step]
 
@@ -440,10 +452,6 @@ class DemoOrdersSeeder(BaseSeeder):
             if current_step_idx is None:
                 continue
 
-            # Create execution history for all completed steps
-            part_created_at = part.created_at or (self.today - timedelta(days=20))
-            current_time = part_created_at
-
             # Check if part was reworked (from DEMO_ORDERS data)
             part_reworked = False
             for order_data in DEMO_ORDERS:
@@ -451,6 +459,21 @@ class DemoOrdersSeeder(BaseSeeder):
                     if part_data['serial'] == part.ERP_id and part_data.get('reworked'):
                         part_reworked = True
                         break
+
+            # The history has to END in the past, before the work order's due date when
+            # that has passed: part.created_at is the seed's own run time (auto_now_add),
+            # and starting from it put a shipped order's work tomorrow, with the open
+            # last step exiting before it entered. Count back from the end instead —
+            # each visit takes ~2h15m (record + gap), and a rework adds two more visits.
+            visits = current_step_idx + 1 + (2 if part_reworked else 0)
+            history_end = self.today - timedelta(hours=2)
+            due = getattr(part.work_order, 'expected_completion', None) if part.work_order_id else None
+            if due is not None:
+                due_at = due if hasattr(due, 'hour') else timezone.make_aware(
+                    datetime.combine(due, time(17, 0)))
+                if due_at < history_end:
+                    history_end = due_at - timedelta(days=1)
+            current_time = history_end - timedelta(hours=2, minutes=15) * (visits + 1)
 
             # Create executions for completed steps
             for idx in range(current_step_idx + 1):
@@ -460,7 +483,7 @@ class DemoOrdersSeeder(BaseSeeder):
                 visit_number = 1
                 if part_reworked and step.name == 'Rework':
                     visit_number = 1
-                elif part_reworked and step.name in ['Flow Testing', 'Assembly']:
+                elif part_reworked and step.name in ['Flow Calibration', 'Flow Testing', 'Assembly', 'Reassembly']:
                     # These steps were visited twice due to rework
                     # Create first visit
                     self._create_step_execution_record(
@@ -510,7 +533,9 @@ class DemoOrdersSeeder(BaseSeeder):
             result = {'step_executions': 0, 'step_transitions': 0, 'equipment_usage': 0}
 
         # Pick an operator (deterministic based on part serial and step)
-        operator_idx = (hash(f"{part.ERP_id}-{step.name}-{visit_number}") % len(operators))
+        # (crc32, not hash(): str hashing is salted per process, so hash() reassigned
+        # every reseed.)
+        operator_idx = zlib.crc32(f"{part.ERP_id}-{step.name}-{visit_number}".encode()) % len(operators)
         operator = operators[operator_idx]
 
         # Calculate timing
@@ -610,7 +635,7 @@ class DemoOrdersSeeder(BaseSeeder):
             from Tracker.models.qms import EquipmentRole, StepExecutionEquipment
             eq_name = equipment_names[0]
             if len(equipment_names) > 1:
-                eq_idx = hash(f"{part.ERP_id}-{step.name}") % len(equipment_names)
+                eq_idx = zlib.crc32(f"{part.ERP_id}-{step.name}".encode()) % len(equipment_names)
                 eq_name = equipment_names[eq_idx]
             equipment_obj = equipment_map.get(eq_name)
             if equipment_obj:
@@ -665,22 +690,21 @@ class DemoOrdersSeeder(BaseSeeder):
         # Demo FPI configurations - deterministic data
         demo_fpi_configs = {
             'WO-2024-0042-A': [
-                {'step': 'Nozzle Inspection', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
-                {'step': 'Flow Testing', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
+                {'step': 'Body Inspection', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
+                {'step': 'Flow Calibration', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
                 {'step': 'Final Test', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
             ],
             'WO-2024-0038-A': [
-                {'step': 'Nozzle Inspection', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
-                {'step': 'Flow Testing', 'status': FPIStatus.FAILED, 'result': FPIResult.FAIL},  # Failed - led to CAPA
+                {'step': 'Body Inspection', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
+                {'step': 'Flow Calibration', 'status': FPIStatus.FAILED, 'result': FPIResult.FAIL},  # Failed - led to CAPA
                 {'step': 'Final Test', 'status': FPIStatus.PASSED, 'result': FPIResult.PASS},
             ],
             'WO-2024-0048-A': [
-                {'step': 'Nozzle Inspection', 'status': FPIStatus.PENDING, 'result': ''},  # Pending - new order
+                {'step': 'Body Inspection', 'status': FPIStatus.PENDING, 'result': ''},  # Pending - new order
             ],
         }
 
         equipment_map = {e.name: e for e in equipment} if equipment else {}
-        steps = {s.name: s for s in Steps.objects.filter(tenant=self.tenant)}
 
         # Get part type for FPI records
         part_type = part_types[0] if part_types else None
@@ -693,6 +717,7 @@ class DemoOrdersSeeder(BaseSeeder):
             # Get first part as designated FPI part
             first_part = work_order.parts.order_by('ERP_id').first()
 
+            steps = route_steps(work_order.process)
             for fpi_data in fpi_config:
                 step = steps.get(fpi_data['step'])
                 if not step:
@@ -712,6 +737,12 @@ class DemoOrdersSeeder(BaseSeeder):
                 elif 'Test' in fpi_data['step']:
                     step_equipment = equipment_map.get('Test Bench #1')
 
+                # No first piece, no FPI: a PENDING record on a work order with no parts
+                # is a "First piece waiting" banner that sign-off can only refuse ("No
+                # first piece has reached this step yet - nothing to inspect."). The real
+                # path (FPIRecord get_or_create) refuses it too.
+                if first_part is None:
+                    continue
                 fpi, created = FPIRecord.objects.update_or_create(
                     tenant=self.tenant,
                     work_order=work_order,
@@ -734,12 +765,12 @@ class DemoOrdersSeeder(BaseSeeder):
         self.log(f"  Created {fpi_count} FPI records")
 
     def seed_batch_executions(self, process, users):
-        """Seed batch-execution history at the Cleaning step.
+        """Seed batch-execution history at the new-build Wash step.
 
-        Cleaning is a batch step (requires_batch_completion + a BATCH-scope
-        substep): parts are cleaned together in loads. Parts already past
-        Cleaning get sealed historical loads; one work order with parts still
-        at Cleaning gets an open (unsealed) load, so the batch list/detail and
+        Wash is a batch step (requires_batch_completion + a BATCH-scope
+        substep): bodies are washed together in loads. Parts already past
+        Wash get sealed historical loads; one work order with parts still
+        at Wash gets an open (unsealed) load, so the batch list/detail and
         the operator batch panel have real data to show.
         """
         from collections import defaultdict
@@ -747,24 +778,20 @@ class DemoOrdersSeeder(BaseSeeder):
         from django.utils import timezone
         from Tracker.models import BatchExecution, ProcessStep, Parts
 
-        self.log("Creating batch execution history (Cleaning loads)...")
+        self.log("Creating batch execution history (Wash loads)...")
 
-        process_steps = list(
-            ProcessStep.objects.filter(process=process).select_related('step').order_by('order')
-        )
-        cleaning = next((ps.step for ps in process_steps if ps.step.name == 'Cleaning'), None)
+        # The seeded orders are new builds: their wash loads are at Build's Wash.
+        cleaning = build_steps(self.tenant).get('Wash')
         if cleaning is None:
-            self.log("  No Cleaning step found; skipping batch executions", warning=True)
+            self.log("  No Wash step found; skipping batch executions", warning=True)
             return {'batch_executions': 0}
 
-        # Cleaning is shared by the reman and new-build routes; each part is measured
-        # against its own work order's route.
         route_ps = ProcessStep.objects.filter(
             process__in=ProcessStep.objects.filter(step=cleaning).values('process'))
         order_of = {(ps.process_id, ps.step_id): ps.order for ps in route_ps}
 
         # A real user for started_by (non-null PROTECT FK).
-        operator = (users.get('employees') or users.get('managers') or [None])[0]
+        operator = (users.get('operators') or users.get('employees') or users.get('managers') or [None])[0]
         if operator is None:
             operator = get_user_model().objects.filter(tenant=self.tenant, is_active=True).first()
         if operator is None:
@@ -839,21 +866,22 @@ class DemoOrdersSeeder(BaseSeeder):
         )
         from Tracker.services.dwi.operator_capture import submit_substep
 
-        self.log("Backfilling batch cycle readings (Cleaning loads)...")
+        self.log("Backfilling batch cycle readings (Wash loads)...")
 
+        wash = build_steps(self.tenant).get('Wash')
         substep = Substep.objects.filter(
-            tenant=self.tenant, step__name='Cleaning',
+            tenant=self.tenant, step=wash,
             title='Run ultrasonic wash cycle', is_inspection_point=True,
         ).first()
         md = MeasurementDefinition.objects.filter(
-            tenant=self.tenant, label='Bath Temperature', step__name='Cleaning',
+            tenant=self.tenant, label='Bath Temperature', step=wash,
         ).first()
         if substep is None or md is None:
             self.log("  Wash inspection substep / Bath Temperature def missing; "
                      "skipping batch captures", warning=True)
             return {'batch_captures': 0}
 
-        operator = (users.get('employees') or users.get('managers') or [None])[0]
+        operator = (users.get('operators') or users.get('employees') or users.get('managers') or [None])[0]
 
         # Collect the substep's schema nodes once (the wash cycle also carries a
         # required "Cycle complete" attestation alongside the bath-temp reading);
@@ -875,7 +903,7 @@ class DemoOrdersSeeder(BaseSeeder):
         _collect(substep.body_blocks)
 
         batches = list(BatchExecution.objects.filter(
-            tenant=self.tenant, step__name='Cleaning', sealed_at__isnull=False,
+            tenant=self.tenant, step=wash, sealed_at__isnull=False,
         ).order_by('started_at'))
 
         count = 0
@@ -926,7 +954,43 @@ class DemoOrdersSeeder(BaseSeeder):
                 StepExecutionMeasurement.objects.filter(batch_execution=be).update(recorded_at=when)
                 QualityReports.objects.filter(batch_execution=be).update(created_at=when, updated_at=when)
             count += 1
+            if hot and when:
+                self._close_hot_load(be, users, when)
 
         self.log(f"  Backfilled {count} batch cycle readings"
                  f"{' (incl. 1 FAIL)' if len(batches) > 1 else ''}")
         return {'batch_captures': count}
+
+    def _close_hot_load(self, be, users, when):
+        """Decide the hot load's disposition the way QA would have at the time.
+
+        The FAIL cycle opens an unassigned batch disposition. This load is history
+        (its parts moved on long ago), so it can't sit in today's QA queue: the QA
+        manager takes it, contains it, and accepts the load on an engineering
+        concession — bath temperature is a cleaning-efficacy limit, not geometry.
+        """
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.qms.disposition import (
+            complete_disposition_resolution, decide_disposition, record_containment_complete)
+
+        qa = users.get('qa_manager') or (users.get('qa_staff') or [None])[0]
+        disp = QuarantineDisposition.objects.filter(
+            quality_reports__batch_execution=be, current_state='OPEN').first()
+        if qa is None or disp is None:
+            return
+        disp.assigned_to = qa
+        disp.containment_action = "Load held at Wash; bodies checked for residue."
+        disp.save(update_fields=['assigned_to', 'containment_action'])
+        record_containment_complete(disp, qa)
+        decide_disposition(
+            disp, disposition_type='USE_AS_IS', authorized_by=qa,
+            notes="Bath ran 71 °C against a 65 °C limit. Residue check clean; load accepted.",
+            customer_approval={'reference': 'ENG-CONC-0038'},
+        )
+        complete_disposition_resolution(disp, qa)
+        QuarantineDisposition.objects.filter(pk=disp.pk).update(
+            created_at=when,
+            containment_completed_at=when + timedelta(minutes=40),
+            decision_authorized_at=when + timedelta(hours=3),
+            resolution_completed_at=when + timedelta(hours=3, minutes=10),
+        )

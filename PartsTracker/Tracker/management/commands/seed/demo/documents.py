@@ -61,18 +61,6 @@ DEMO_APPROVAL_TEMPLATES = [
     # The enum member stays: removing it is a migration, and PPAP's ECN/ECO
     # report hooks it. Process change is PCR -> PCO -> PCN, below.
     {
-        'template_name': 'CAPA Closure',
-        'approval_type': 'CAPA_MAJOR',
-        'approval_flow_type': 'THRESHOLD',
-        'delegation_policy': 'OPTIONAL',
-        'approval_sequence': 'PARALLEL',
-        'allow_self_approval': False,
-        'default_due_days': 3,
-        'escalation_days': 2,
-        'default_threshold': 2,
-        'auto_assign_by_role': 'QA Manager',
-    },
-    {
         # The template `auto_request_capa_approval` looks up for the
         # MAJOR/CRITICAL-CAPA management-approval gate. Routed to QA_Manager so
         # a pending request lands in Maria's approvals queue.
@@ -256,6 +244,7 @@ class DemoDocumentsSeeder(BaseSeeder):
         # and no-ops — this makes the gate actually actionable in Maria's queue.
         capa_requests = self._backfill_capa_approval_requests()
         result['approval_requests'].extend(capa_requests)
+        self._give_capa_go_aheads(user_map)
 
         self.log(f"  Created {len(result['approval_templates'])} approval templates")
         self.log(f"  Created {len(result['documents'])} documents")
@@ -268,18 +257,24 @@ class DemoDocumentsSeeder(BaseSeeder):
         """Create the pending CAPA management-approval request for MAJOR/CRITICAL
         CAPAs that are awaiting approval but have none (the CAPA seed runs before
         the approval template exists, so the auto-request signal no-ops). Idempotent:
-        skips any CAPA that already has a live CAPA_APPROVAL request."""
+        skips any CAPA that already has a live approval request, whichever
+        template (CAPA_CRITICAL / CAPA_MAJOR / CAPA_APPROVAL) raised it."""
         from Tracker.models import CAPA, CapaSeverity
         from Tracker.services.qms.capa import auto_request_capa_approval
 
         created = []
+        # NOT_REQUIRED too: a Major/Critical CAPA raised by an earlier seeder (the SCAR
+        # receiving raises) found no template and proceeded without one, which a
+        # tenant with the templates never does.
         pending = CAPA.objects.filter(
-            approval_status='PENDING',
+            approval_status__in=['PENDING', 'NOT_REQUIRED'],
             severity__in=[CapaSeverity.MAJOR, CapaSeverity.CRITICAL],
-        )
+            is_current_version=True,
+        ).exclude(status__in=['CLOSED', 'CANCELLED'])
         for capa in pending:
             already = ApprovalRequest.objects.filter(
-                approval_type=Approval_Type.CAPA_APPROVAL,
+                approval_type__in=[Approval_Type.CAPA_APPROVAL, Approval_Type.CAPA_MAJOR,
+                                   Approval_Type.CAPA_CRITICAL],
                 object_id=str(capa.id),
                 status='PENDING',
             ).exists()
@@ -291,6 +286,35 @@ class DemoDocumentsSeeder(BaseSeeder):
         if created:
             self.log(f"  Back-filled {len(created)} CAPA approval request(s)")
         return created
+
+    def _give_capa_go_aheads(self, user_map):
+        """A CAPA whose work is under way had its go-ahead approved first. Approve it
+        through the approval service, as its approver, so the request, the response
+        and the CAPA's approved_by agree, then date them to before the work began."""
+        from Tracker.models import CAPA
+        from Tracker.services.core.approval import submit_approval_response
+        from .capa import DEMO_CAPAS
+
+        for capa_data in DEMO_CAPAS:
+            go_ahead = capa_data.get('go_ahead')
+            if not go_ahead:
+                continue
+            capa = CAPA.objects.filter(capa_number=capa_data['capa_number'],
+                                       is_current_version=True).first()
+            approver = user_map.get(go_ahead['approver'])
+            request = ApprovalRequest.objects.filter(
+                object_id=str(capa.id), status='PENDING').first() if capa else None
+            if request is None or approver is None:
+                continue
+            response = submit_approval_response(
+                request, approver, ApprovalDecision.APPROVED,
+                comments='Plan and containment are adequate; proceed.',
+                signature_meaning='Approved',
+            )
+            when = self.today - timedelta(days=go_ahead['days_ago'])
+            ApprovalResponse.objects.filter(pk=response.pk).update(decision_date=when, created_at=when)
+            ApprovalRequest.objects.filter(pk=request.pk).update(completed_at=when)
+            CAPA.objects.filter(pk=capa.pk).update(approved_at=when)
 
     def _create_document_types(self):
         """Create document types.
@@ -390,6 +414,15 @@ class DemoDocumentsSeeder(BaseSeeder):
                 }
             )
             templates.append(template)
+
+        # Every type the demo doesn't define comes from the product defaults, so the
+        # demo routes approvals the way a real tenant does: CAPA_CRITICAL and
+        # CAPA_MAJOR by severity, PROCESS_APPROVAL for a routing. Types defined
+        # above are skipped, not overwritten.
+        from Tracker.services.defaults_service import seed_approval_templates
+        seed_approval_templates(tenant=self.tenant)
+        templates.extend(ApprovalTemplate.objects.filter(tenant=self.tenant)
+                         .exclude(id__in=[t.id for t in templates]))
 
         return templates
 

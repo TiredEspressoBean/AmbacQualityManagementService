@@ -17,6 +17,7 @@ IMPORTANT: All enum values must be UPPERCASE to match model choices:
 - MeasurementResult.value_pass_fail: 'PASS', 'FAIL'
 """
 
+import zlib
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
@@ -29,6 +30,7 @@ from Tracker.models import (
 )
 
 from ..base import BaseSeeder
+from .routes import build_steps
 
 
 # Demo quality reports matching DEMO_DATA_SYSTEM.md
@@ -37,35 +39,35 @@ from ..base import BaseSeeder
 DEMO_QUALITY_REPORTS = [
     # PASSING inspections - completed parts that passed inspection
     # From ORD-2024-0042 (Midwest Fleet) - completed parts
-    {'id': 'QR-0042-001-FT', 'part': 'INJ-0042-001', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 5},
-    {'id': 'QR-0042-002-FT', 'part': 'INJ-0042-002', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 5},
-    {'id': 'QR-0042-003-FT', 'part': 'INJ-0042-003', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 5},
-    {'id': 'QR-0042-004-FT', 'part': 'INJ-0042-004', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 4},
-    {'id': 'QR-0042-005-FT', 'part': 'INJ-0042-005', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 4},
-    {'id': 'QR-0042-006-FT', 'part': 'INJ-0042-006', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 4},
-    {'id': 'QR-0042-007-FT', 'part': 'INJ-0042-007', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 123 mL/min - within spec', 'days_ago': 3},
-    {'id': 'QR-0042-008-FT', 'part': 'INJ-0042-008', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 3},
-    {'id': 'QR-0042-009-FT', 'part': 'INJ-0042-009', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 3},
-    {'id': 'QR-0042-010-FT', 'part': 'INJ-0042-010', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 2},
-    {'id': 'QR-0042-011-FT', 'part': 'INJ-0042-011', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 2},
-    {'id': 'QR-0042-012-FT', 'part': 'INJ-0042-012', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 2},
-    {'id': 'QR-0042-013-FT', 'part': 'INJ-0042-013', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 1},
-    {'id': 'QR-0042-014-FT', 'part': 'INJ-0042-014', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 1},
-    {'id': 'QR-0042-015-FT', 'part': 'INJ-0042-015', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 1},
-    {'id': 'QR-0042-016-FT', 'part': 'INJ-0042-016', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 1},
+    {'id': 'QR-0042-001-FT', 'part': 'INJ-0042-001', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-002-FT', 'part': 'INJ-0042-002', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-003-FT', 'part': 'INJ-0042-003', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 5},
+    {'id': 'QR-0042-004-FT', 'part': 'INJ-0042-004', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 4},
+    {'id': 'QR-0042-005-FT', 'part': 'INJ-0042-005', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 4},
+    {'id': 'QR-0042-006-FT', 'part': 'INJ-0042-006', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 4},
+    {'id': 'QR-0042-007-FT', 'part': 'INJ-0042-007', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 123 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-008-FT', 'part': 'INJ-0042-008', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-009-FT', 'part': 'INJ-0042-009', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 3},
+    {'id': 'QR-0042-010-FT', 'part': 'INJ-0042-010', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 2},
+    {'id': 'QR-0042-011-FT', 'part': 'INJ-0042-011', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 2},
+    {'id': 'QR-0042-012-FT', 'part': 'INJ-0042-012', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 2},
+    {'id': 'QR-0042-013-FT', 'part': 'INJ-0042-013', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 1},
+    {'id': 'QR-0042-014-FT', 'part': 'INJ-0042-014', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 1},
+    {'id': 'QR-0042-015-FT', 'part': 'INJ-0042-015', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 1},
+    {'id': 'QR-0042-016-FT', 'part': 'INJ-0042-016', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 117 mL/min - within spec', 'days_ago': 1},
     # From ORD-2024-0038 (Great Lakes) - completed parts that passed
-    {'id': 'QR-0038-001-FT', 'part': 'INJ-0038-001', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 20},
-    {'id': 'QR-0038-002-FT', 'part': 'INJ-0038-002', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 19},
-    {'id': 'QR-0038-004-FT', 'part': 'INJ-0038-004', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 19},
-    {'id': 'QR-0038-005-FT', 'part': 'INJ-0038-005', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 18},
-    {'id': 'QR-0038-006-FT', 'part': 'INJ-0038-006', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 17},
-    {'id': 'QR-0038-009-FT', 'part': 'INJ-0038-009', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 15},
-    {'id': 'QR-0038-012-FT', 'part': 'INJ-0038-012', 'step': 'Flow Testing', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 13},
+    {'id': 'QR-0038-001-FT', 'part': 'INJ-0038-001', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 20},
+    {'id': 'QR-0038-002-FT', 'part': 'INJ-0038-002', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 121 mL/min - within spec', 'days_ago': 19},
+    {'id': 'QR-0038-004-FT', 'part': 'INJ-0038-004', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 19},
+    {'id': 'QR-0038-005-FT', 'part': 'INJ-0038-005', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 118 mL/min - within spec', 'days_ago': 18},
+    {'id': 'QR-0038-006-FT', 'part': 'INJ-0038-006', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 122 mL/min - within spec', 'days_ago': 17},
+    {'id': 'QR-0038-009-FT', 'part': 'INJ-0038-009', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 119 mL/min - within spec', 'days_ago': 15},
+    {'id': 'QR-0038-012-FT', 'part': 'INJ-0038-012', 'step': 'Flow Calibration', 'status': 'PASS', 'description': 'Flow rate 120 mL/min - nominal', 'days_ago': 13},
     # FAILING inspections - From ORD-2024-0038 (Great Lakes) - these triggered CAPA-2024-003
     {
         'id': 'QR-0038-003-NI',
         'part': 'INJ-0038-003',
-        'step': 'Nozzle Inspection',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Asymmetric spray pattern',
         'description': 'Spray pattern shows uneven distribution - 2 holes partially blocked',
@@ -75,17 +77,17 @@ DEMO_QUALITY_REPORTS = [
     {
         'id': 'QR-0038-007-NI',
         'part': 'INJ-0038-007',
-        'step': 'Nozzle Inspection',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Hole blockage',
-        'description': 'Carbon deposits blocking spray holes',
+        'description': 'Debris blocking two spray holes - traced to the purchased nozzle lot',
         'days_ago': 17,
         'linked_to_capa': True,
     },
     {
         'id': 'QR-0038-008-FT',
         'part': 'INJ-0038-008',
-        'step': 'Flow Testing',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Flow rate out of spec',
         'description': 'Flow rate 145 mL/min exceeds USL of 140 mL/min',
@@ -95,7 +97,7 @@ DEMO_QUALITY_REPORTS = [
     {
         'id': 'QR-0038-010-NI',
         'part': 'INJ-0038-010',
-        'step': 'Nozzle Inspection',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Spray angle drift',
         'description': 'Spray angle 20 degrees - outside 12-18 specification',
@@ -105,7 +107,7 @@ DEMO_QUALITY_REPORTS = [
     {
         'id': 'QR-0038-011-FT',
         'part': 'INJ-0038-011',
-        'step': 'Flow Testing',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Flow rate out of spec',
         'description': 'Flow rate 138 mL/min - SPC rule violation detected',
@@ -116,7 +118,7 @@ DEMO_QUALITY_REPORTS = [
     {
         'id': 'QR-0042-017-FT',
         'part': 'INJ-0042-017',
-        'step': 'Flow Testing',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Flow rate out of spec',
         'description': 'Flow rate 98 mL/min - below LSL of 100 mL/min. Awaiting disposition.',
@@ -127,7 +129,7 @@ DEMO_QUALITY_REPORTS = [
     {
         'id': 'QR-0042-019-NI',
         'part': 'INJ-0042-019',
-        'step': 'Nozzle Inspection',
+        'step': 'Flow Calibration',
         'status': 'FAIL',  # UPPERCASE enum value
         'defect': 'Spray pattern failure',
         'description': 'Irregular spray pattern - approved for rework',
@@ -144,7 +146,7 @@ DEMO_QUALITY_REPORTS = [
         'step': 'Final Test',
         'status': 'FAIL',
         'defect': 'Surface porosity',
-        'description': 'Nozzle tip shows visible porosity at seat face; failed hold pressure at 2450 psi (min 2800). Casting defect, not reworkable.',
+        'description': 'Body shows visible porosity at the seat face; failed hold pressure at 2450 psi (min 2800). Bar-stock inclusion, not reworkable.',
         'days_ago': 6,
         'linked_to_capa': False,
         'disposition': 'SCRAP',
@@ -238,7 +240,7 @@ DEMO_QUALITY_ERRORS = [
     },
     {
         'error_name': 'Surface porosity',
-        'error_example': 'Visible pores in nozzle tip indicating casting defect',
+        'error_example': 'Visible pores in the body surface or seat, from an inclusion in the bar stock',
         'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
     },
@@ -247,6 +249,80 @@ DEMO_QUALITY_ERRORS = [
         'error_example': 'Irregular or asymmetric spray pattern not meeting specification',
         'part_type': 'Common Rail Injector',
         'requires_3d_annotation': True,
+    },
+    # Remanufacture: what a used unit is found with.
+    {
+        'error_name': 'Wear beyond limits',
+        'error_example': 'Bore or seat worn past the reman wear allowance at grading',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Corrosion pitting',
+        'error_example': 'Pitting on the body or seat that cleaning does not remove',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Seal damage',
+        'error_example': 'Seal groove damaged on teardown, or a reused seal found cut',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Control valve leak-back',
+        'error_example': 'Return flow above limit at flow test, traced to the control valve',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': False,
+    },
+    # New manufacture: what goes wrong making a body.
+    {
+        'error_name': 'Bore oversize',
+        'error_example': 'Seat bore above 4.005 mm after grinding',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': False,
+    },
+    {
+        'error_name': 'Seat chatter marks',
+        'error_example': 'Chatter or lobing on the ground valve seat',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Burr in bore',
+        'error_example': 'Burr left at a cross-drilled fuel passage where it breaks into the bore',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Tool marks',
+        'error_example': 'Visible tool marks or a step on the turned body diameter',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Coating thickness out of spec',
+        'error_example': 'Nitride layer outside 10-15 µm on return from the plater',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': False,
+    },
+    {
+        'error_name': 'Thread damage',
+        'error_example': 'Damaged or cross-threaded retaining nut thread',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': True,
+    },
+    {
+        'error_name': 'Leak at seat',
+        'error_example': 'Pressure decay during the hold at final test, traced to the seat',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': False,
+    },
+    {
+        'error_name': 'Mis-marked serial',
+        'error_example': 'Laser mark missing, illegible or not matching the traveler',
+        'part_type': 'Common Rail Injector',
+        'requires_3d_annotation': False,
     },
 ]
 
@@ -336,23 +412,24 @@ class DemoQualitySeeder(BaseSeeder):
         parts = Parts.objects.filter(tenant=self.tenant)
         part_map = {p.ERP_id: p for p in parts}
 
-        # Get step lookup
-        steps = Steps.objects.filter(tenant=self.tenant)
-        step_map = {s.name: s for s in steps}
+        # Every report here is on a new-build part: resolve its step in that route.
+        step_map = build_steps(self.tenant)
 
         # Build equipment lookup by step type
         equipment_map = {}
         if equipment:
             for eq in equipment:
                 if 'Flow' in eq.name:
-                    equipment_map['Flow Testing'] = eq
+                    equipment_map['Flow Calibration'] = eq
                 elif 'Final' in eq.name or 'Test Bench' in eq.name:
                     equipment_map['Final Test'] = eq
 
         # Get QA staff and operators
         qa_users = users.get('qa_staff', [])
         qa_inspector = qa_users[0] if qa_users else None
-        operators = users.get('employees', [])[:2]  # First 2 employees as operators
+        # The floor's own people: `employees` starts with the Tenant Admin, who runs
+        # no steps and decides no dispositions.
+        operators = users.get('operators', [])[:2] or users.get('employees', [])[:2]
 
         # Create quality error lists first
         error_lists = self._create_quality_error_lists(part_types)
@@ -395,7 +472,8 @@ class DemoQualitySeeder(BaseSeeder):
         # pass below would dress it up into a contradictory decision (a
         # USE_AS_IS tag-along on a scrapped part). Mirrors qa_walk's
         # _drop_tag_along_dispositions, across the older exhibits.
-        dropped = self._drop_redundant_auto_dispositions()
+        dropped = self._drop_redundant_auto_dispositions(
+            explicit_ids=[d.pk for d in result['dispositions']])
         if dropped:
             self.log(f"  Dropped {dropped} redundant auto-created tag-along dispositions")
 
@@ -571,7 +649,7 @@ class DemoQualitySeeder(BaseSeeder):
         'REPAIR': 'Repaired per approved repair traveler (AS9100); verified.',
     }
 
-    def _drop_redundant_auto_dispositions(self):
+    def _drop_redundant_auto_dispositions(self, explicit_ids):
         """Drop FAIL-QR auto-created tag-alongs on QRs that ALSO carry an
         explicitly-authored disposition.
 
@@ -587,30 +665,21 @@ class DemoQualitySeeder(BaseSeeder):
         """
         from Tracker.models import QuarantineDisposition
 
+        # The seed's own dispositions are known by id. Matching the signal's
+        # description text instead broke silently when its wording changed, and
+        # every scenario disposition kept a contradictory twin.
+        explicit_qr_ids = set(
+            QuarantineDisposition.quality_reports.through.objects
+            .filter(quarantinedisposition_id__in=explicit_ids)
+            .values_list('qualityreports_id', flat=True))
         autos = list(
-            QuarantineDisposition.objects.filter(
-                tenant=self.tenant,
-                description__startswith='Auto-created for failed quality report',
-            ).prefetch_related('quality_reports')
+            QuarantineDisposition.objects.filter(tenant=self.tenant)
+            .exclude(pk__in=explicit_ids)
+            .filter(quality_reports__in=explicit_qr_ids).distinct()
         )
-        dropped = 0
         for auto in autos:
-            qr_ids = list(auto.quality_reports.values_list('pk', flat=True))
-            if not qr_ids:
-                continue
-            # An explicitly-authored sibling = a disposition on the same QR that
-            # is NOT itself auto-created.
-            has_explicit = (
-                QuarantineDisposition.objects
-                .filter(tenant=self.tenant, quality_reports__in=qr_ids)
-                .exclude(pk=auto.pk)
-                .exclude(description__startswith='Auto-created for failed quality report')
-                .exists()
-            )
-            if has_explicit:
-                auto.delete()
-                dropped += 1
-        return dropped
+            auto.delete()
+        return len(autos)
 
     def link_inspector_gauge(self):
         """Put an out-of-cal gauge on the inspector's home page.
@@ -671,7 +740,7 @@ class DemoQualitySeeder(BaseSeeder):
         return linked
 
     FOUND_OUT_GAUGE = "Keyence Vision IM-7020"
-    FOUND_OUT_STEP = "Nozzle Inspection"
+    FOUND_OUT_STEP = "Flow Calibration"
 
     def seed_found_out_calibration(self):
         """Give the calibration exposure page something to show.
@@ -685,8 +754,8 @@ class DemoQualitySeeder(BaseSeeder):
         That is "found unfit" (`as_found_in_tolerance=False`) but leaves the gauge
         in service — a FAIL would set it OUT_OF_SERVICE and disturb other exhibits.
         It is the named gauge for Spray Angle, so the reports it is linked to are
-        the Nozzle Inspection reports since its previous calibration (every one
-        of them carries a part, which the Cleaning reports mostly do not).
+        the Flow Calibration reports since its previous calibration (every one
+        of them carries a part, which the Wash reports mostly do not).
 
         Must run after the reports exist. Idempotent: the record is keyed on its
         date, and the gauge links are replaced on re-run.
@@ -758,7 +827,8 @@ class DemoQualitySeeder(BaseSeeder):
 
         approver = qa_users[0] if qa_users else (operators[0] if operators else None)
         resolver = (qa_users[1] if len(qa_users) > 1 else None) or approver
-        assignees = [u for u in (qa_users + list(operators)) if u] or [approver]
+        # A disposition is a QA decision: it is assigned to QA staff only.
+        assignees = [u for u in qa_users if u] or [approver]
 
         # active() only — a tag-along the drop pass just soft-deleted is still
         # bare (OPEN, no type), and `.objects` includes archived rows, so
@@ -780,13 +850,22 @@ class DemoQualitySeeder(BaseSeeder):
             dtype = types[i % len(types)]
             sev = severities[i % len(severities)]
             created_at = self.today - timedelta(days=12 - (i % 10))
+            outcome = i % 3  # 0 = triaged (stays OPEN), 1 = IN_PROGRESS, 2 = CLOSED
+            # A part that has already left decides the outcome: a shipped part's
+            # disposition was closed, and it can only have been reworked or accepted;
+            # a scrapped part's was closed as scrap.
+            part_status = d.part.part_status if d.part_id else ''
+            if part_status in ('SHIPPED', 'COMPLETED'):
+                dtype = dtype if dtype in ('REWORK', 'USE_AS_IS') else 'REWORK'
+                outcome = 2
+            elif part_status == 'SCRAPPED':
+                dtype, outcome = 'SCRAP', 2
             fields = {
                 'disposition_type': dtype,
                 'severity': sev,
                 'assigned_to': assignees[i % len(assignees)],
             }
 
-            outcome = i % 3  # 0 = triaged (stays OPEN), 1 = IN_PROGRESS, 2 = CLOSED
             if outcome >= 1:
                 fields.update({
                     'containment_action': 'Part quarantined and segregated pending disposition',
@@ -845,7 +924,9 @@ class DemoQualitySeeder(BaseSeeder):
         """
         self.log("  Creating SPC measurement data...")
 
-        # Build measurement definition lookup by label
+        # The new-build route's measurements: labels repeat on the reman route.
+        build_ids = {st.id for st in build_steps(self.tenant).values()}
+        measurement_definitions = [md for md in measurement_definitions if md.step_id in build_ids]
         md_by_label = {md.label: md for md in measurement_definitions}
 
         # Get an inspector
@@ -872,7 +953,7 @@ class DemoQualitySeeder(BaseSeeder):
 
             # Create measurements for quality reports that have this step
             for i, qr in enumerate(quality_reports):
-                random.seed(hash(f"{md.label}-{i}"))  # Deterministic per definition+index
+                random.seed(zlib.crc32(f"{md.label}-{i}".encode()))  # Deterministic per definition+index
 
                 # Generate realistic values - mostly within spec
                 if i % 15 == 0:
@@ -1144,7 +1225,8 @@ class DemoQualitySeeder(BaseSeeder):
         qa_staff = qa_users[0] if qa_users else None
 
         # Get measurement definitions
-        measurement_defs = MeasurementDefinition.objects.filter(tenant=self.tenant)
+        measurement_defs = MeasurementDefinition.objects.filter(
+            tenant=self.tenant, step__in=list(build_steps(self.tenant).values()))
         measurement_map = {md.label: md for md in measurement_defs}
 
         for baseline_data in DEMO_SPC_BASELINES:

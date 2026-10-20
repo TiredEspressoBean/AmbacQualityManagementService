@@ -31,6 +31,9 @@ from ..base import BaseSeeder
 # Demo training types - keyed by name since TrainingType has no 'code' field
 DEMO_TRAINING_TYPES = [
     {'key': 'NOZ-CERT', 'name': 'Nozzle Inspection Certification', 'validity_days': 365},
+    {'key': 'DIM-CERT', 'name': 'Dimensional Inspection Certification', 'validity_days': 365},
+    {'key': 'TEARDOWN-CERT', 'name': 'Core Teardown Certification', 'validity_days': 365},
+    {'key': 'GRADING-CERT', 'name': 'Component Grading Certification', 'validity_days': 365},
     {'key': 'FLOW-CERT', 'name': 'Flow Testing Certification', 'validity_days': 365},
     {'key': 'ASSEMBLY-CERT', 'name': 'Assembly Certification', 'validity_days': 365},
     {'key': 'SAFETY-CERT', 'name': 'Safety Training', 'validity_days': 365},
@@ -39,6 +42,16 @@ DEMO_TRAINING_TYPES = [
 
 # Operation/equipment-scoped requirements (authorization gate).
 DEMO_TRAINING_REQUIREMENTS = [
+    # ---- New manufacture ----
+    # Level 2, so the training gate has something to refuse: mike.ops holds DIM-CERT at
+    # level 1 (refused -> second-person override by a shift lead); dave.wilson holds
+    # level 2, so the solver still has a qualified operator.
+    {'training_key': 'DIM-CERT', 'step_name': 'Body Inspection', 'notes': 'Required per WI-2004',
+     'min_level': 2},
+    {'training_key': 'FLOW-CERT', 'step_name': 'Flow Calibration', 'notes': 'Required per WI-2007'},
+    # ---- Remanufacture ----
+    {'training_key': 'TEARDOWN-CERT', 'step_name': 'Disassembly', 'notes': 'Required per WI-1005'},
+    {'training_key': 'GRADING-CERT', 'step_name': 'Component Grading', 'notes': 'Required per WI-1006'},
     {'training_key': 'FLOW-CERT', 'step_name': 'Flow Testing', 'notes': 'Required per WI-1003'},
     # Level 2, not the usual 1, so the training gate has something to refuse in the
     # demo: mike.ops holds NOZ-CERT at level 1 (refused -> second-person override by a
@@ -47,6 +60,8 @@ DEMO_TRAINING_REQUIREMENTS = [
      'min_level': 2},
     {'training_key': 'ASSEMBLY-CERT', 'step_name': 'Assembly', 'notes': 'Required per WI-1001'},
     {'training_key': 'TORQUE-CERT', 'step_name': 'Assembly', 'notes': 'Torque wrench operation required'},
+    {'training_key': 'ASSEMBLY-CERT', 'step_name': 'Reassembly', 'notes': 'Required per WI-1001'},
+    {'training_key': 'TORQUE-CERT', 'step_name': 'Reassembly', 'notes': 'Torque wrench operation required'},
     {'training_key': 'FLOW-CERT', 'equipment_type_name': 'Flow Bench', 'notes': 'Required for flow test equipment'},
     {'training_key': 'TORQUE-CERT', 'equipment_type_name': 'Torque Tool', 'notes': 'Required for torque wrenches'},
 ]
@@ -57,8 +72,8 @@ DEMO_JOB_ROLES = [
      'requirements': [('ASSEMBLY-CERT', 3), ('TORQUE-CERT', 3), ('SAFETY-CERT', 2)]},
     {'key': 'FLOW_TECH', 'name': 'Flow Test Technician',
      'requirements': [('FLOW-CERT', 3), ('SAFETY-CERT', 2)]},
-    {'key': 'NOZ_INSPECTOR', 'name': 'Nozzle Inspector',
-     'requirements': [('NOZ-CERT', 3), ('SAFETY-CERT', 2)]},
+    {'key': 'NOZ_INSPECTOR', 'name': 'Inspector',
+     'requirements': [('DIM-CERT', 3), ('NOZ-CERT', 3), ('SAFETY-CERT', 2)]},
     {'key': 'QUALITY_ENG', 'name': 'Quality Engineer',
      'requirements': [('NOZ-CERT', 4), ('FLOW-CERT', 3), ('ASSEMBLY-CERT', 2), ('SAFETY-CERT', 2)]},
 ]
@@ -80,24 +95,34 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 3, 'expires_days': 250, 'completed_days_ago': 115},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 180, 'completed_days_ago': 185},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
+    {'user': 'mike.ops@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
     # Dave Wilson (Flow Test Technician) — FLOW expired => role gap (and keeps Flow
     # as Mike's single-person skill). Cross-trained on Assembly + Torque so the
     # assembler pool isn't a single-point bottleneck.
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': -15, 'completed_days_ago': 380},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 2, 'expires_days': 100, 'completed_days_ago': 265},
+    {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 2, 'expires_days': 100, 'completed_days_ago': 265},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 3, 'expires_days': 200, 'completed_days_ago': 165},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'ASSEMBLY-CERT', 'level': 3, 'expires_days': 300, 'completed_days_ago': 60},
     {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'TORQUE-CERT', 'level': 3, 'expires_days': 120, 'completed_days_ago': 60},
+    {'user': 'dave.wilson@demo.ambac.com', 'training_type': 'TEARDOWN-CERT', 'level': 3, 'expires_days': 240, 'completed_days_ago': 125},
+    {'user': 'mike.ops@demo.ambac.com', 'training_type': 'TEARDOWN-CERT', 'level': 2, 'expires_days': 200, 'completed_days_ago': 165},
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'TEARDOWN-CERT', 'level': 3, 'expires_days': 300, 'completed_days_ago': 60},
     # Casey (dual-role floor operator) — Assembly + Torque + Safety, third assembler.
     {'user': 'casey.dual@demo.ambac.com', 'training_type': 'ASSEMBLY-CERT', 'level': 3, 'expires_days': 300, 'completed_days_ago': 60},
     {'user': 'casey.dual@demo.ambac.com', 'training_type': 'TORQUE-CERT', 'level': 3, 'expires_days': 120, 'completed_days_ago': 60},
     {'user': 'casey.dual@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 60},
     # Sarah Chen (Nozzle Inspector) — meets role, expert on NOZ
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 4, 'expires_days': 300, 'completed_days_ago': 65},
+    {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 4, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 280, 'completed_days_ago': 85},
     {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 2, 'expires_days': 320, 'completed_days_ago': 45},
+    {'user': 'sarah.qa@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 3, 'expires_days': 290, 'completed_days_ago': 75},
+    {'user': 'maria.qa@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 4, 'expires_days': 250, 'completed_days_ago': 115},
+    {'user': 'casey.dual@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 60},
     # Maria Santos (Quality Engineer) — NOZ below required L4 (gap)
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 3, 'expires_days': 260, 'completed_days_ago': 105},
+    {'user': 'maria.qa@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 3, 'expires_days': 260, 'completed_days_ago': 105},
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 240, 'completed_days_ago': 125},
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'ASSEMBLY-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'maria.qa@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 4, 'expires_days': 330, 'completed_days_ago': 35},
@@ -177,31 +202,33 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
     def _create_training_requirements(self):
         """Operation/equipment-scoped requirements (authorization gate)."""
         requirements = []
-        steps = {s.name: s for s in Steps.objects.filter(tenant=self.tenant)}
         eq_types = {e.name: e for e in EquipmentType.objects.filter(tenant=self.tenant)}
 
         for req_data in DEMO_TRAINING_REQUIREMENTS:
             training_type = self._training_type_keys.get(req_data['training_key'])
             if not training_type:
                 continue
-            step = steps.get(req_data.get('step_name'))
             eq_type = eq_types.get(req_data.get('equipment_type_name'))
-            if not step and not eq_type:
-                continue
-            req, _ = upsert_training_requirement(
-                tenant=self.tenant,
-                training_type=training_type,
-                step=step,
-                equipment_type=eq_type,
-                # min_level 1 — step/equipment gates mean "holds a current cert"
-                # (authorization per the WI), NOT "is a level-3 expert". Left at
-                # the model default (3), no dispatchable floor operator qualified
-                # for Assembly/Nozzle Inspection and the solver's labor preflight
-                # refused every solve (LaborInfeasible). The level-3 drama lives
-                # on the JOB-ROLE profiles (competency-matrix demo), not here.
-                defaults={'notes': req_data.get('notes', ''), 'min_level': req_data.get('min_level', 1)},
-            )
-            requirements.append(req)
+            # A step name may be on both routes; each route's step gets the requirement.
+            targets = (list(Steps.objects.filter(tenant=self.tenant, name=req_data['step_name']))
+                       if req_data.get('step_name') else [None])
+            for step in targets:
+                if not step and not eq_type:
+                    continue
+                req, _ = upsert_training_requirement(
+                    tenant=self.tenant,
+                    training_type=training_type,
+                    step=step,
+                    equipment_type=eq_type,
+                    # min_level 1 — step/equipment gates mean "holds a current cert"
+                    # (authorization per the WI), NOT "is a level-3 expert". Left at
+                    # the model default (3), no dispatchable floor operator qualified
+                    # for Assembly/Nozzle Inspection and the solver's labor preflight
+                    # refused every solve (LaborInfeasible). The level-3 drama lives
+                    # on the JOB-ROLE profiles (competency-matrix demo), not here.
+                    defaults={'notes': req_data.get('notes', ''), 'min_level': req_data.get('min_level', 1)},
+                )
+                requirements.append(req)
         return requirements
 
     def _create_job_roles(self):

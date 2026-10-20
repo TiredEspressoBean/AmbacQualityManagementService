@@ -8,7 +8,7 @@ Quarantine holds suspect or non-conforming parts for investigation and dispositi
 
 - **Holds** parts from production flow
 - **Segregates** them for investigation
-- **Prevents** advancement at steps with `block_on_quarantine` enabled
+- **Refuses** any start: work on the part comes through its disposition
 - **Requires** disposition workflow to release
 
 ## Quarantine Triggers
@@ -19,7 +19,7 @@ Parts enter quarantine when:
 |---------|-------------|
 | **Failed inspection** | Measurement out of tolerance |
 | **Visual defect** | Operator flags issue |
-| **Quality report** | NCR **created** with result FAIL — see below; failing it later does not |
+| **Quality report** | A report reaching FAIL, whether created as FAIL or edited to it |
 | **Customer complaint** | Return or field issue |
 | **Suspect material** | Material lot under investigation |
 | **Process deviation** | Unauthorized change occurred |
@@ -28,18 +28,14 @@ Parts enter quarantine when:
 
 ### Automatic Quarantine
 
-A part is quarantined when a quality report is **created** with its result already
-**FAIL**. A report created as PASS or PENDING leaves the part where it is.
+A part is quarantined when a quality report against it reaches **FAIL**: created
+as FAIL, edited to FAIL, a reading out of spec, an inspector's FAIL on an
+inspection, or a failed first piece. A report at PASS or PENDING leaves the part
+where it is. The part's history records the status change and who made it.
 
-!!! warning "Setting an existing report to FAIL does not quarantine the part"
-    The quarantine runs once, as the report is created. Editing a PENDING report
-    to FAIL afterwards does **not** move the part — but it *does* open a
-    disposition, because that runs from a different trigger that fires on every
-    save.
-
-    So a report failed after the fact leaves you with a disposition against a
-    part still sitting in progress. If you mean to quarantine, set the result
-    when you create the report.
+The failure also opens a disposition, **unassigned**. It waits on the QA home
+page under *Unassigned dispositions* until someone takes it with **Take it**. See
+[Dispositions](dispositions.md#where-a-disposition-comes-from).
 
 ### Manual Quarantine
 
@@ -73,19 +69,16 @@ Quarantined parts display:
 - **Appear in quarantine queue**
 - **Cannot ship** — always, from anywhere
 
-!!! warning "Quarantine does not stop a part advancing unless the step says so"
-    This is the one most people assume wrongly. Blocking is a **per-step
-    opt-in**: a step only refuses to let a quarantined part past when its
-    **Block on quarantine** flag is set, and that flag is **off by default**.
+!!! warning "A quarantined part can't be started"
+    Starting work on it is refused, naming its disposition: *"… is quarantined —
+    DISP-… decides what happens to it; work it from there."* Rework reaches the
+    part through the disposition, not through a fresh start.
 
-    On a routing where nobody armed it, a quarantined part keeps moving from
-    step to step. What quarantine always does is hold the part out of
-    **shipping** — it can never leave the building — and put it on the
-    dispositions queue.
-
-    If your procedure expects a quarantined part to stop dead at the next
-    operation, check the flag on the steps that matter. It is authored on the
-    step, so it is Engineering's to set.
+    A part quarantined **while its step was already under way** is the one
+    case a step's **Block on quarantine** flag still governs: with the flag off
+    (the default), completing that step can still move it on. If your procedure
+    expects such a part to stop dead, check the flag on the steps that matter.
+    It is authored on the step, so it is Engineering's to set.
 
 ## Quarantine Queue
 

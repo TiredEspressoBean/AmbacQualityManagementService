@@ -17,9 +17,6 @@ as the work is done, and people claim or are dispatched to steps — so one job
 routinely runs across several machines and several people. See [Assigning Work
 Orders](assigning.md).
 
-!!! example "Demo: Work Order"
-    Work Order `WO-2024-0042-A` processes 24 fuel injectors for order `ORD-2024-0042` (Midwest Fleet Services) using the "Common Rail Injector Remanufacturing" process. Parts are tracked from Core Receiving through Final Test and Packaging.
-
 ## Work Order vs Order
 
 | Concept | Purpose |

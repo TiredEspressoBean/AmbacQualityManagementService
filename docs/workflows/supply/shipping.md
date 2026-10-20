@@ -16,9 +16,11 @@ The page gathers two kinds of thing, grouped by order:
 A customer's own material appears under that customer — see [Customer
 property](overview.md#customer-property).
 
-!!! note "Cores are never here"
-    A reman core goes back to its owner through Remanufacturing, not through
-    Shipping. See [Remanufacturing Overview](../reman/overview.md).
+- **Finished reman units** — a customer's own unit at *Rebuilt — ready to return*
+  or *Scope declined*, listed under that customer, and rebuilt exchange stock once
+  it is on an order. The **Waiting at** column shows the unit's stage, such as
+  *"Rebuilt — ready to return"* or *"Scope declined — to be returned unrepaired"*.
+  See [Remanufacturing Overview](../reman/overview.md).
 
 ## Shipping something
 
@@ -51,7 +53,8 @@ number that arrives later goes on the existing record rather than needing a new
 one.
 
 **Void…** reverses a shipment, with a **required reason**, and puts the units and
-lots back where they were.
+lots back where they were. A reman unit goes back to the stage it left from
+(*Rebuilt*, *Scope declined* or *Rebuilt to stock*) and can ship again.
 
 !!! tip "Void rather than ship a correction"
     Voiding restores the record to what it was. Shipping a second time to fix a

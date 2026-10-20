@@ -122,8 +122,10 @@ Look for:
 | Consistent location | Fixture or tooling issue |
 | Random distribution | Multiple causes |
 
-!!! example "Demo: Nozzle Tip Defect Pattern"
-    In order ORD-2024-0038, the heat map revealed a cluster of defects on the nozzle tip area across multiple injectors. This visual pattern - invisible in tabular data - triggered CAPA-2024-003 and traced back to a supplier batch issue with nozzle tip geometry.
+!!! example "A cluster that points upstream"
+    Defects clustering at the same spot on the model across many parts, invisible
+    in a table of reports, usually share a cause upstream: a fixture, a tool, or a
+    supplier batch. That is the pattern to raise a CAPA on.
 
 ### Correlation
 

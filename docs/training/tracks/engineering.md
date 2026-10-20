@@ -1,5 +1,10 @@
 # Engineering Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 4-5 hours
 **Prerequisites:** None, though Operator training helps you see how your routings get run
 **Goal:** Learn to author part types, processes, routings, work instructions and
@@ -34,21 +39,21 @@ specifications — and to understand what each one does downstream
 
 | Master data | Where |
 |-------------|-------|
-| Part types and their specs | [Part Types](../admin/setup/part-types.md) |
-| Processes, steps and the routing graph | [Creating Processes](../admin/processes/creating.md) |
-| Measurement definitions and step requirements | [Measurements](../admin/processes/measurements.md) |
-| Digital work instructions (substeps) | [DWI Authoring](../workflows/dwi/authoring.md) |
-| Raw materials | [Supply](../workflows/supply/overview.md#materials) |
-| Work centres | [Equipment](../admin/setup/equipment.md) |
-| Life limits | [Life Tracking](../workflows/tracking/life-tracking.md) |
-| SPC control limits | [SPC](../analysis/spc.md) |
+| Part types and their specs | [Part Types](../../admin/setup/part-types.md) |
+| Processes, steps and the routing graph | [Creating Processes](../../admin/processes/creating.md) |
+| Measurement definitions and step requirements | [Measurements](../../admin/processes/measurements.md) |
+| Digital work instructions (substeps) | [DWI Authoring](../../workflows/dwi/authoring.md) |
+| Raw materials | [Supply](../../workflows/supply/overview.md#materials) |
+| Work centres | [Equipment](../../admin/setup/equipment.md) |
+| Life limits | [Life Tracking](../../workflows/tracking/life-tracking.md) |
+| SPC control limits | [SPC](../../analysis/spc.md) |
 
 ### 1.2 Authoring is not approving
 
 !!! note "You write the spec; document control releases it"
     You can write a process, a routing and a measurement requirement. Whether the
     controlled document describing it is *released* runs through
-    [Document Controller](../roles/document-controller.md) and QA Manager.
+    [Document Controller](../../roles/document-controller.md) and QA Manager.
 
     Separating those is most of what an auditor is checking.
 
@@ -122,7 +127,7 @@ Open an approved one and the header tells you plainly:
     to pin them. Doing so breaks historical resolution for every unit already
     built.
 
-See [Processes Overview](../admin/processes/overview.md).
+See [Processes Overview](../../admin/processes/overview.md).
 
 ### 2.5 Change control, and what it can do today
 
@@ -154,7 +159,7 @@ See [Processes Overview](../admin/processes/overview.md).
 
     The **Draft → Approved** lifecycle above is the other half, and it is what the
     software enforces regardless. See [Document
-    Control](../compliance/document-control.md).
+    Control](../../compliance/document-control.md).
 
 ### Knowledge Check: Module 2
 
@@ -190,9 +195,9 @@ that warning as addressed to you.
 
 | Symptom the planner sees | What you set |
 |--------------------------|--------------|
-| Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) |
-| The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) |
-| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) |
+| Work lands on the wrong machine | [Machine Eligibility](../../workflows/scheduling/setup.md#machine-eligibility) |
+| The solver interleaves similar jobs | [Changeovers](../../workflows/scheduling/setup.md#changeovers) |
+| Dates look too comfortable | [Step Timings](../../workflows/scheduling/setup.md#step-timings) |
 
 ### 3.3 Work centres re-route work
 
@@ -237,7 +242,7 @@ Defining one without requiring it means nobody is ever asked for the number.
     A characteristic named "Dim 3" tells the person at the bench nothing. Name it
     for the feature, not for its position on your drawing.
 
-See [Measurements](../admin/processes/measurements.md).
+See [Measurements](../../admin/processes/measurements.md).
 
 ### Knowledge Check: Module 4
 
@@ -269,7 +274,7 @@ So the link travels with the definition rather than being incidental to it.
 Removing a link from the part type page is a soft delete; linking the pair again
 revives it. Nothing is destroyed.
 
-See [Life Tracking](../workflows/tracking/life-tracking.md).
+See [Life Tracking](../../workflows/tracking/life-tracking.md).
 
 ### Knowledge Check: Module 5
 
@@ -302,7 +307,7 @@ resources (images, files) and translations.
 | Torque sequence, fixture setup | The drawing, the customer spec |
 | What "good" looks like at the bench | The quality plan |
 
-See [DWI Overview](../workflows/dwi/overview.md).
+See [DWI Overview](../../workflows/dwi/overview.md).
 
 ### Knowledge Check: Module 6
 
@@ -387,8 +392,8 @@ training](operator.md#recording-the-qualification).
 
 ## Next Steps
 
-- [Engineering role guide](../roles/engineering.md)
-- [Processes Overview](../admin/processes/overview.md)
-- [DWI Overview](../workflows/dwi/overview.md)
-- [Change Control](../workflows/change-control/overview.md)
-- [Scheduling Setup](../workflows/scheduling/setup.md) — what the solver believes
+- [Engineering role guide](../../roles/engineering.md)
+- [Processes Overview](../../admin/processes/overview.md)
+- [DWI Overview](../../workflows/dwi/overview.md)
+- [Change Control](../../workflows/change-control/overview.md)
+- [Scheduling Setup](../../workflows/scheduling/setup.md) — what the solver believes

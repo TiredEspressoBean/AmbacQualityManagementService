@@ -173,13 +173,6 @@ class DemoScenario(BaseSeeder):
         # which releases the assembly BOM a rebuild scope is resolved from.
         self._release_walked_cores(result['users'])
 
-        # Phase 4e: QA Inspector Onboarding Walkthrough exhibit
-        # (needs OSP step from Phase 3b, DWI substeps from Phase 4c;
-        #  runs before CAPAs since it doesn't depend on them.)
-        self.log("\n--- Phase 4e: QA Inspector Onboarding Walkthrough ---")
-        result['qa_walk'] = self._seed_qa_walk(
-            result['companies'], result['users'], result['manufacturing'])
-
         # Phase 5: CAPAs
         self.log("\n--- Phase 5: CAPAs ---")
         result['capas'] = self._seed_capas(result['users'])
@@ -187,6 +180,14 @@ class DemoScenario(BaseSeeder):
         # Phase 6: Training Records
         self.log("\n--- Phase 6: Training Records ---")
         result['training'] = self._seed_training(result['users'])
+
+        # Phase 6b: QA Inspector exhibits, walked through the services. After the
+        # training records, so the training gate has requirements to refuse on (Mike's
+        # start at Nozzle Inspection is authorised by Casey for real); needs the DWI
+        # substeps from Phase 4c.
+        self.log("\n--- Phase 6b: QA Inspector Exhibits ---")
+        result['qa_walk'] = self._seed_qa_walk(
+            result['companies'], result['users'], result['manufacturing'])
 
         # Phase 7: Documents and Approvals
         self.log("\n--- Phase 7: Documents and Approvals ---")
@@ -304,12 +305,8 @@ class DemoScenario(BaseSeeder):
         return seeder.seed(companies, users, manufacturing, orders)
 
     def _seed_qa_walk(self, companies, users, manufacturing):
-        """Seed WO-QA-INSPECT-01: a dedicated onboarding walkthrough WO with
-        parts pre-staged in every state the doc walks against (PENDING FPI,
-        sampled AWAITING_QA, in-progress fail-ready, reworked visit-2,
-        RETURNED OSP shipment, bare OPEN disposition).
-
-        See Documents/UQMES_ONBOARDING_WALKTHROUGH.md for the arc."""
+        """QA Inspector exhibits on WO-QA-INSPECT-01 (today) and -02 (yesterday),
+        walked through the services. See seed/demo/qa_walk.py."""
         seeder = DemoQaWalkSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         company_list = companies.get('customers', []) if isinstance(companies, dict) else []

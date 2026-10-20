@@ -3,7 +3,7 @@
 This guide provides decision-making workflows for acting on SPC data. It's intended for QA Managers, Quality Engineers, and Production Managers who need to investigate signals, trigger corrective actions, and manage process baselines.
 
 !!! tip "Prerequisites"
-    - Complete [SPC Fundamentals Training](../training/spc-fundamentals.md) first
+    - Complete [SPC Fundamentals Training](../training/tracks/spc-fundamentals.md) first
     - Understand [SPC Charts](spc.md) technical reference
 
 ## Application Pages Reference
@@ -84,22 +84,6 @@ When a signal appears, systematically check these factors:
 | **Man** | New operator? Different shift? | Check the part's activity history for who ran the step |
 | **Environment** | Temperature change? Humidity? | Check environmental logs if available |
 
-!!! example "Demo: Flow Rate Investigation"
-    In demo mode, the Flow Rate Rule 2 violation can be traced to:
-
-    1. Navigate to **Analytics**, then select **SPC** (or go directly to `/spc`)
-    2. Select: Process = Common Rail Injector Remanufacturing, Step = Flow Testing, Measurement = Flow Rate @ 1000 bar
-    3. Click on the red-flagged points to see timestamps
-    4. Cross-reference with parts INJ-0042-017 and INJ-0042-019 — open them from the scan box on **Home**, or the Parts list in **Data Management**; the Tracker has no search
-    5. Check part history for common factors (equipment, operator, material lot)
-
-    The demo data shows these parts share a common material lot from Delphi Fuel Systems.
-
-    **Connected pages:**
-
-    - `/quality/defects` - Shows nozzle defects trending up
-    - `/quality/capas` - Shows CAPA-2024-003 triggered by this pattern
-
 ### 1.3 Investigation Documentation
 
 Record findings in a structured format:
@@ -107,19 +91,19 @@ Record findings in a structured format:
 ```
 SIGNAL: Rule 2 violation - Flow Rate @ 1000 bar
 DATE DETECTED: 2024-01-15
-PARTS AFFECTED: INJ-0042-017, INJ-0042-019
+PARTS AFFECTED: INJ-0417, INJ-0419
 
 INVESTIGATION:
-☑ Material: Lot DFS-2024-0088 (Delphi) - DIFFERENT from prior lots
+☑ Material: Lot 2024-0088 (supplier A) - DIFFERENT from prior lots
 ☐ Machine: Flow Test Stand #1 - same as prior
 ☐ Method: WI-001-A Rev 3 - no changes
 ☐ Measurement: Same gauge, same calibration
-☐ Man: Sarah Chen - experienced operator
+☐ Man: same experienced operator as prior runs
 ☐ Environment: No noted changes
 
 ROOT CAUSE: Suspect material lot variation from supplier
 
-ACTION: Initiate CAPA, tighten incoming inspection for Delphi
+ACTION: Initiate CAPA, tighten incoming inspection for supplier A
 ```
 
 ---
@@ -164,20 +148,6 @@ When creating a CAPA from SPC data, include:
 4. **Investigation findings** from 6M analysis
 5. **Cpk trend** if capability is declining
 
-!!! example "Demo: CAPA-2024-003 SPC Connection"
-    CAPA-2024-003 (nozzle defect investigation) was triggered by:
-
-    - Flow Rate showing Rule 2 violation (2 of 3 points beyond 2σ)
-    - 5 of 12 parts (42%) from ORD-2024-0038 requiring rework
-    - Cpk dropped from 1.45 to 1.28 over 2 weeks
-
-    The 5-Whys traced root cause to supplier material lot variation.
-
-    **View in app:**
-
-    - CAPA detail: `/quality/capas` → click CAPA-2024-003
-    - Related SPC data: `/spc` → Flow Testing → Flow Rate
-    - Affected order: `/tracker` → search ORD-2024-0038
 
 ---
 
@@ -237,12 +207,12 @@ Previous Baseline: μ=120.5, σ=4.2, Cpk=1.32
 New Baseline: μ=120.2, σ=3.1, Cpk=1.58
 
 Reason for Update:
-- CAPA-2024-003 implemented new incoming inspection procedure
+- The CAPA's corrective action changed the incoming inspection procedure
 - Supplier quality improved after corrective action
 - 45 days of stable data collected post-improvement
 - New capability exceeds 1.33 threshold
 
-Approved by: Maria Santos (QA Manager)
+Approved by: QA Manager
 Date: 2024-03-01
 ```
 
@@ -281,17 +251,17 @@ Score each measurement (1-5 scale):
 - Score 20-35: Medium
 - Score < 20: Low
 
-### 4.3 Demo: Prioritized Measurements
+### 4.3 Example: Prioritized Measurements
 
-In the demo Common Rail Injector process:
+For a common rail injector:
 
 | Measurement | Step | Priority | Rationale |
 |-------------|------|----------|-----------|
-| Flow Rate @ 1000 bar | Flow Testing | **Critical** | Affects engine performance, customer CTQ |
-| Spray Angle | Flow Testing | **High** | Functional impact on combustion |
-| Return Flow Rate | Flow Testing | **High** | Indicates internal leakage |
+| Flow Rate @ 1000 bar | Flow test | **Critical** | Affects engine performance, customer CTQ |
+| Spray Angle | Flow test | **High** | Functional impact on combustion |
+| Return Flow Rate | Flow test | **High** | Indicates internal leakage |
 | Body Torque | Assembly | **Medium** | Reworkable if out of spec |
-| Cleaning Time | Cleaning | **Low** | Process parameter, not product spec |
+| Wash Time | Wash | **Low** | Process parameter, not product spec |
 
 ---
 
@@ -457,7 +427,7 @@ Monthly SPC summary for leadership:
 | Document | App Page | Route |
 |----------|----------|-------|
 | [SPC Charts](spc.md) | SPC Charts | `/spc` |
-| [SPC Fundamentals Training](../training/spc-fundamentals.md) | — | — |
+| [SPC Fundamentals Training](../training/tracks/spc-fundamentals.md) | — | — |
 | [Dashboard Overview](dashboard.md) | Analysis Dashboard | `/analysis` |
 | [Defect Analysis](defects.md) | Defect Analysis | `/quality/defects` |
 | [CAPA Overview](../workflows/capa/overview.md) | CAPA List | `/quality/capas` |

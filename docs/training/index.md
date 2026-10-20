@@ -1,188 +1,76 @@
 # Training Program
 
-Welcome to the uqmes training program. These guides provide structured onboarding for each role, with hands-on exercises and knowledge checks.
+Hands-on training for each role, built around one working day at a fictional
+shop. The help docs explain how each part of uqmes works; training is where you
+practise doing it, on data made for practising.
 
-## Training Philosophy
+!!! warning "Train on a training instance, never on your live system"
+    Training runs on a **separate uqmes instance** seeded with the training shop,
+    and no real company data goes into it. Every exercise writes real records:
+    a practice FAIL quarantines a part and opens a disposition, a practice PASS
+    clears a gate, notifications fire, and signatures can't be undone. On a live
+    system those records would be false, and in a tightly linked supply chain a
+    false pass or fail travels downstream.
 
-Our training is:
+## How it fits together
 
-- **Role-based**: Learn what you need for your job
-- **Hands-on**: Practice in a training environment
-- **Progressive**: Build skills step by step
-- **Validated**: Confirm understanding with exercises
+| Part | What it is |
+|---|---|
+| [The Shop Day](shop-day.md) | One working day at the training shop, with every role's moments and the handoffs between them. Every track is a slice of it |
+| **Role tracks** | One per role: exercises on the shop day, ending in a final task your trainer watches you do |
+| **Drills** | Short, repeatable rehearsals for rare, heavy jobs such as a disposition, a CAPA or a change request. Run one before you do the real thing |
+| **Running training** | For whoever runs training at your site: preparing super-users, observing the final task, and rehearsing your own kind of day |
 
-!!! info "Every track is a slice of one day"
-    [The Shop Day](shop-day.md) is a single working day at a fictional shop,
-    with every role's moments in it and the connections between them written
-    down. A role's track teaches that role's slice. Read it first if you are
-    setting training up, or if you want to see how the roles interlock before
-    picking one.
+Roles compose. Someone who is a QA Inspector by day and a Shift Lead when covering
+takes both tracks, and each teaches only what that role adds.
 
-## Available Training
+!!! info "If your organisation runs change control in Simplified mode"
+    Change control can run **Regulated** (signed approvals across roles) or
+    **Simplified** (one-click approval). See [Change
+    Control](../workflows/change-control/overview.md#simplified-or-regulated).
+    Where the two differ, a track gives both paths. Follow the one your
+    organisation uses.
 
-| Role | Duration | Prerequisites |
-|------|----------|---------------|
-| [Production Operator](operator.md) | 2-4 hours | None |
-| [Shift Lead](shift-lead.md) | 3-4 hours | Operator training |
-| [QA Inspector](qa-inspector.md) | 4-6 hours | None |
-| [QA Manager](qa-manager.md) | 4-6 hours | Inspector training recommended |
-| [Production Manager](production-manager.md) | 3-5 hours | None |
-| [Planner](planner.md) | 4-5 hours | None |
-| [Engineering](engineering.md) | 4-5 hours | None |
-| [Purchasing](purchasing.md) | 3-4 hours | None |
-| [Receiving](receiving.md) | 3-4 hours | None |
-| [Shipping](shipping.md) | 2-3 hours | None |
-| [Document Controller](document-controller.md) | 3-4 hours | None |
-| [Administrator](administrator.md) | 6-8 hours | Understanding of all roles |
+!!! info "If your shop remanufactures"
+    Each track is written for **new manufacture**. Where remanufacturing adds work
+    for a role (cores, teardown, harvested components, rebuilds), the track ends
+    with an *If your shop remanufactures* section. A shop that only builds new skips
+    it.
 
-### Orientation, not training
+## Role tracks
 
-Two roles need showing around rather than teaching. Neither has anything to
-practise — one cannot write at all, the other is external.
+!!! warning "The tracks are being rebuilt"
+    The tracks below predate the current product and are being rebuilt one role
+    at a time against the shop day. Until a track says it has been rebuilt, its
+    exercises may not match what you see. **QA Inspector** has been rebuilt.
 
-| Role | Duration | For |
-|------|----------|-----|
-| [Auditor](auditor.md) | 1 hour | Internal and external auditors |
-| [Customer Portal](customer.md) | 30 min | Hand this to your customer |
+| Role | Track |
+|---|---|
+| Operator | [Operator](tracks/operator.md) |
+| Shift Lead | [Shift Lead](tracks/shift-lead.md) |
+| QA Inspector | [QA Inspector](tracks/qa-inspector.md) |
+| QA Manager | [QA Manager](tracks/qa-manager.md) |
+| Production Manager | [Production Manager](tracks/production-manager.md) |
+| Planner | [Planner](tracks/planner.md) |
+| Engineering | [Engineering](tracks/engineering.md) |
+| Purchasing | [Purchasing](tracks/purchasing.md) |
+| Receiving | [Receiving](tracks/receiving.md) |
+| Shipping | [Shipping](tracks/shipping.md) |
+| Document Controller | [Document Controller](tracks/document-controller.md) |
+| Administrator | [Administrator](tracks/administrator.md) |
 
-!!! info "Roles compose, and so does their training"
-    Holding more than one group is normal. A QA Inspector who is also a Shift
-    Lead takes both tracks — Shift Lead assumes Operator and teaches only what is
-    added on top, rather than repeating it.
+**Orientation, not training:** [Auditor](tracks/auditor.md) (no write
+permissions to practise) and [Customer Portal](tracks/customer.md) (external).
 
-## Cross-Cutting Modules
+**Across roles:** [SPC Fundamentals](tracks/spc-fundamentals.md).
 
-These supplemental modules cover topics that apply across multiple roles:
+## Running training
 
-| Module | Duration | Recommended For |
-|--------|----------|-----------------|
-| [SPC Fundamentals](spc-fundamentals.md) | 1-2 hours | Operators, QA Inspectors, QA Managers, Production Managers |
-| [Training Data Setup](training-data-setup.md) | 30 min | Administrators setting up training environments |
+- [Training Data Setup](running-training/training-data-setup.md): loading the
+  training shop onto the training instance.
 
-## Specialized Workflows
+## Getting help during training
 
-The following workflows have dedicated documentation:
-
-| Workflow | Documentation | Description |
-|----------|--------------|-------------|
-| Remanufacturing | [Reman Overview](../workflows/reman/overview.md) | Core receiving, disassembly, and component harvesting |
-| Life Tracking | [Life Tracking Guide](../workflows/tracking/life-tracking.md) | Monitoring cycles, hours, shelf life, and limits |
-
-Remanufacturing is fully operational. **Life tracking has no screen anywhere in
-the application yet** — not on part details, and not as a list of parts
-approaching or past their limits. The data is recorded and readable through the
-API; the pages that would show it are planned.
-
-!!! tip "SPC Training"
-    All production floor staff should complete **SPC Fundamentals** to understand control charts and process capability. This is referenced throughout the role-specific training guides.
-
-!!! info "Every role group now has a track"
-    All 15 permission presets are covered. **System Admin** and **Tenant Admin**
-    are both served by [Administrator training](administrator.md); every other
-    group has its own page above.
-
-    There is **no "Supplier Quality" group**, despite older documentation saying
-    so. That work splits between [Purchasing](purchasing.md) and
-    [QA Manager](qa-manager.md), who holds the approval authority.
-
-!!! warning "Most tracks log in as a broader account"
-    The demo seeds accounts for Operator, Shift Lead, QA Inspector, QA Manager,
-    Production Manager, Document Controller, Tenant Admin and Customer only.
-
-    Planner, Engineering, Purchasing, Receiving, Shipping and Auditor training
-    therefore signs in as **Tenant Admin** or **Production Manager**, which hold
-    those permissions plus more. Everything in those guides works — but the
-    screen will show more than the guide describes, and the trainee will not
-    experience the role's real boundaries. Seed a dedicated account before
-    running them for real.
-
-## Training Environment
-
-Your organization should provide a training environment where you can:
-
-- Practice without affecting production data
-- Make mistakes safely
-- Explore features freely
-
-!!! warning "Training vs Production"
-    Always confirm you're in the training environment before practicing. Look for visual indicators like a banner or different color scheme.
-
-## How Training Works
-
-### 1. Read the Guide
-
-Each training guide covers:
-
-- Core concepts
-- Step-by-step procedures
-- Best practices
-- Common mistakes to avoid
-
-### 2. Complete Exercises
-
-Hands-on exercises let you practice:
-
-- [ ] Exercise has clear objectives
-- [ ] Step-by-step instructions provided
-- [ ] Expected results described
-
-### 3. Knowledge Check
-
-Each section includes questions to verify understanding.
-
-### 4. Competency Sign-Off
-
-After completing training:
-
-1. Demonstrate skills to supervisor
-2. Complete any required assessments
-3. Receive system access for your role
-
-## Training Records
-
-Your training completion is tracked in the system:
-
-- Training date
-- Modules completed
-- Supervisor sign-off
-- Retraining dates (if applicable)
-
-!!! example "Demo: Expired Training Alert"
-    In demo mode, operator **Dave Wilson** has an expired training record:
-
-    - Flow Testing Certification expired 45 days ago
-    - System blocks him from working at Flow Testing step
-    - Production Manager Jennifer Walsh sees the alert in her dashboard
-    - Dave must complete retraining before resuming Flow Testing work
-
-    This demonstrates how the system enforces training requirements at production steps.
-
-## Getting Help During Training
-
-- Ask your trainer or supervisor
-- Use the training environment to experiment
-- Refer to the [Role Guides](../roles/index.md) for reference
-- Check [Troubleshooting](../troubleshooting/common-issues.md) for common issues
-
-## Retraining
-
-Retraining may be required when:
-
-- System features change significantly
-- Processes are updated
-- After extended absence
-- Following quality issues
-- Per regulatory requirements
-- **Training certification expires** (see Dave Wilson example above)
-
-## For Trainers
-
-If you're conducting training:
-
-1. Ensure training environment is set up (see [Training Data Setup](training-data-setup.md))
-2. Review training guide beforehand
-3. Assign [SPC Fundamentals](spc-fundamentals.md) for production floor roles
-4. Allow time for questions and practice
-5. Document completion
-6. Verify competency before production access
-
+- Your super-user or trainer first
+- The [Role Guides](../roles/index.md) and help pages for how something works
+- [Troubleshooting](../troubleshooting/common-issues.md) for common problems

@@ -73,8 +73,12 @@ class DemoSeedFlowsTests(TestCase):
 
     def test_both_fulfilment_modes_leave_teardown_their_own_way(self):
         with tenant_context(self.tenant.id):
-            repair = Core.objects.get(fulfilment_mode="REPAIR_RETURN")
-            self.assertEqual((repair.core_number, repair.status), ("CORE-240210-0007", "IN_REBUILD"))
+            repair = Core.objects.get(core_number="CORE-240210-0007")
+            self.assertEqual((repair.fulfilment_mode, repair.status), ("REPAIR_RETURN", "IN_REBUILD"))
+            # The over-and-above exhibit: a repair unit whose finding needs the
+            # customer's answer, so it waits (release.request_authorisation).
+            self.assertEqual(Core.objects.get(core_number="CORE-240212-0009").status,
+                             "AWAITING_AUTHORISATION")
             self.assertEqual(Core.objects.get(core_number="CORE-240215-0005").status, "HARVESTED")
             # A bench finding waits on a lead, so the pending-findings card has a row.
             self.assertTrue(repair.harvested_components.exclude(proposed_grade="").exists())
@@ -84,6 +88,30 @@ class DemoSeedFlowsTests(TestCase):
             bodies = json.dumps(list(Substep.objects.values_list("body_blocks", flat=True)))
             for node in ("harvestedComponentCapture", "componentInstallCapture", "rebuildFindingCapture"):
                 self.assertIn(f'"{node}"', bodies, node)
+
+    def test_no_open_disposition_on_a_part_that_has_left(self):
+        # A shipped or scrapped part's nonconformance was decided before it left.
+        # The seed once left contradictory twins open on them (a Rework on a
+        # shipped part, a Use As Is on a scrapped one).
+        from Tracker.models import QuarantineDisposition
+        with tenant_context(self.tenant.id):
+            stray = (QuarantineDisposition.objects.active()
+                     .filter(is_current_version=True,
+                             part__part_status__in=("SHIPPED", "COMPLETED", "SCRAPPED"))
+                     .exclude(current_state="CLOSED")
+                     .values_list("disposition_number", "part__ERP_id"))
+            self.assertEqual(list(stray), [])
+
+    def test_major_capas_route_through_the_severity_template(self):
+        # The demo keeps a real tenant's approval templates, so a Major CAPA's go-ahead
+        # is a CAPA_MAJOR request, and work under way means it was approved.
+        from Tracker.models import ApprovalRequest, CAPA
+        with tenant_context(self.tenant.id):
+            capa = CAPA.objects.get(capa_number="CAPA-2024-003", is_current_version=True)
+            self.assertEqual(capa.approval_status, "APPROVED")
+            self.assertNotEqual(capa.approved_by_id, capa.initiated_by_id)
+            self.assertTrue(ApprovalRequest.objects.filter(
+                object_id=str(capa.id), approval_type="CAPA_MAJOR", status="APPROVED").exists())
 
 
 class DemoSeedDarkExhibitTests(TestCase):

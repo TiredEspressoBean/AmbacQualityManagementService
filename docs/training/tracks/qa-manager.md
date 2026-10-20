@@ -1,5 +1,10 @@
 # QA Manager Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 4-6 hours
 **Prerequisites:** QA Inspector training recommended
 **Goal:** Learn to oversee quality operations, approve dispositions, manage CAPAs, and analyze quality data
@@ -478,7 +483,7 @@ By the end of this module, you will:
 
 !!! tip "SPC Training Resources"
     - [SPC Fundamentals](spc-fundamentals.md) - Basic concepts (1-2 hours)
-    - [SPC Practitioner Guide](../analysis/spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
+    - [SPC Practitioner Guide](../../analysis/spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
 
 **QA Manager SPC responsibilities:**
 
@@ -683,7 +688,7 @@ operational, not clerical: training requirements gate who may start a step, so
 until the record exists the person is still refused the work they were just
 signed off to do. That refusal surfaces downstream as a part nobody can pick
 up — see [Parts stuck at a
-step](../troubleshooting/common-issues.md).
+step](../../troubleshooting/common-issues.md).
 
 To close it out, create a **Training Record** for the trainee under **Quality**
 > **Training**:

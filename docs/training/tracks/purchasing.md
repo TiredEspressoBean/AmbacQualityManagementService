@@ -1,5 +1,10 @@
 # Purchasing Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 3-4 hours
 **Prerequisites:** None
 **Goal:** Learn to manage supplier relationships, expected deliveries and
@@ -76,7 +81,7 @@ Expected deliveries are how uqmes knows something is coming. Until an item is
 expected, nothing downstream can tell you it is late or that work is waiting on
 it.
 
-See [Loading what is on order](../workflows/supply/overview.md#loading-what-is-on-order).
+See [Loading what is on order](../../workflows/supply/overview.md#loading-what-is-on-order).
 
 ### 2.2 Chasing a late delivery
 
@@ -97,12 +102,12 @@ holding up**. Each row carries the supplier's deliveries contact and their email
 A short delivery is not an assumption the system makes for you — you decide
 whether the balance is still coming or the line is closed. See [A short delivery
 is a decision, not an
-assumption](../workflows/supply/overview.md#a-short-delivery-is-a-decision-not-an-assumption).
+assumption](../../workflows/supply/overview.md#a-short-delivery-is-a-decision-not-an-assumption).
 
 ### 2.4 Cancelling
 
 See [Cancelling something you are no longer
-expecting](../workflows/supply/overview.md#cancelling-something-you-are-no-longer-expecting).
+expecting](../../workflows/supply/overview.md#cancelling-something-you-are-no-longer-expecting).
 
 ### Knowledge Check: Module 2
 
@@ -134,7 +139,7 @@ report nets against**.
 !!! note "You own where a part comes from, not what it is"
     You can change a bought part's supplier, lead time and safety stock. The
     part's **definition** — what it is, its drawing, its specs — stays with
-    [Engineering](../roles/engineering.md).
+    [Engineering](../../roles/engineering.md).
 
     Two different questions about the same record.
 
@@ -161,8 +166,8 @@ Editing sourcing on a part does **not** create a new version of it.
 You raise supplier qualifications and maintain the approved supplier list. There
 are two routes — qualifying for bulk stock, and qualifying on a certificate.
 
-See [Supplier Quality](../workflows/supply/overview.md#supplier-quality) and
-[Approved Suppliers](../workflows/supply/overview.md#approved-suppliers).
+See [Supplier Quality](../../workflows/supply/overview.md#supplier-quality) and
+[Approved Suppliers](../../workflows/supply/overview.md#approved-suppliers).
 
 !!! warning "You raise it; QA approves it"
     `approve_supplierqualification` is **QA Manager's**, not yours. That is
@@ -175,8 +180,8 @@ When a supplier sends you something wrong, raise a **SCAR** from the rejected
 lot. That creates a record the supplier is answerable to, rather than a phone
 call nobody can find later.
 
-See [Rejecting](../workflows/supply/overview.md#rejecting) and [Sending it
-back](../workflows/supply/overview.md#sending-it-back).
+See [Rejecting](../../workflows/supply/overview.md#rejecting) and [Sending it
+back](../../workflows/supply/overview.md#sending-it-back).
 
 ### 4.3 What you cannot settle
 
@@ -346,8 +351,8 @@ training](operator.md#recording-the-qualification).
 
 ## Next Steps
 
-- [Purchasing role guide](../roles/purchasing.md)
-- [Supply](../workflows/supply/overview.md) — the full reference
+- [Purchasing role guide](../../roles/purchasing.md)
+- [Supply](../../workflows/supply/overview.md) — the full reference
 - [Receiving](receiving.md) — the dock
-- [Part Approvals](../workflows/supply/part-approvals.md)
-- [Companies](../admin/setup/companies.md) — suppliers and their contacts
+- [Part Approvals](../../workflows/supply/part-approvals.md)
+- [Companies](../../admin/setup/companies.md) — suppliers and their contacts

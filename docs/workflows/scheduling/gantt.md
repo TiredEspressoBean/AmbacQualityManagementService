@@ -45,6 +45,12 @@ operator that have none).
 A task counts as *moved* when the draft gives it a different start or a
 different machine, or adds it outright.
 
+The bar also shows **solver gap** for each side, *"X% live · Y% draft"*: how far
+each solve could still be from the best possible schedule when it stopped (0%
+means proven optimal). When a makespan or lateness difference is no bigger than
+the larger gap, it warns *"Differences this small are within the solvers' gap —
+they may not be real."*
+
 !!! tip "When to look before committing, rather than just committing"
     Commit freely when lateness drops and the move count is small. Look harder
     when:

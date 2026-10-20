@@ -1,5 +1,10 @@
 # Administrator Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 6-8 hours
 **Prerequisites:** Understanding of all user roles
 **Goal:** Learn to configure the system, manage users, set up processes, and maintain system health
@@ -781,7 +786,7 @@ operational, not clerical: training requirements gate who may start a step, so
 until the record exists the person is still refused the work they were just
 signed off to do. That refusal surfaces downstream as a part nobody can pick
 up — see [Parts stuck at a
-step](../troubleshooting/common-issues.md).
+step](../../troubleshooting/common-issues.md).
 
 To close it out, create a **Training Record** for the trainee under **Quality**
 > **Training**:

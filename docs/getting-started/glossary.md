@@ -61,7 +61,7 @@ orders, quality records and user accounts — so the product can be explored and
 training exercises performed against realistic data. Record numbers quoted in
 the documentation (`ORD-2024-0042`, `INJ-0042-017`, `CAPA-2024-003`) come from
 it, and exist only where it has been loaded. See
-[Training Data Setup](../training/training-data-setup.md).
+[Training Data Setup](../training/running-training/training-data-setup.md).
 
 ### Digital Work Instructions (DWI)
 The substep layer beneath a step, providing rich work instructions and
@@ -155,8 +155,9 @@ Software that tracks and documents the transformation of raw materials into fini
 ## N
 
 ### N/A Reason Code
-The coded reason an operator gives when marking a substep not-applicable. Both
-the code and a note are required, and both stay in the part's record.
+On some older substep completions: the coded reason the substep was marked not
+applicable. Substeps can no longer be marked N/A; these records still read and
+count as they did.
 
 ### NCR (Non-Conformance Report)
 See **Quality Report**. A document recording that a part or material doesn't meet specifications.

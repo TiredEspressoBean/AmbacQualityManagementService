@@ -2,23 +2,9 @@
 
 Solutions for frequently encountered problems.
 
-!!! tip "Worked examples, on the demo dataset"
-    The record numbers below exist **only if your system was seeded with the
-    demo dataset** — if you search for them and find nothing, that is expected,
-    not a fault. See
-    [Training Data Setup](../training/training-data-setup.md) for how to load it
-    and what the demo logins are.
-
-    The problems themselves are real on any system; only the identifiers are
-    demo-specific.
-
-    - **Parts stuck at step**: INJ-0042-025 blocked at Assembly pending FPI approval
-    - **Permission restrictions**: Customer Tom Bradley can only see Midwest Fleet orders
-    - **Training block**: Dave Wilson can't work at Flow Testing (expired certification)
-    - **Calibration**: Torque Wrench TW-25 shows overdue — the reading is still
-      accepted, with a warning. A gauge whose calibration *failed* is refused
-      outright
-    - **Pending approval**: APR-2024-0015 awaiting Jennifer Walsh's sign-off
+!!! tip "Practising on example records"
+    The [training program](../training/index.md) walks each role's workflows on a
+    training instance, including the refusals described below.
 
 ## Login Issues
 
@@ -108,8 +94,9 @@ cause is by far the most common and the least obvious:
 **Solutions**:
 1. Verify the user has `change_parts` and `add_measurementresult`
 2. Complete any required captures — the review screen lists what's outstanding
-3. If a substep genuinely doesn't apply, use **Mark N/A** with a reason
-   (unless it's safety-critical, which can never be N/A)
+3. A required substep can't be skipped. If it genuinely doesn't apply to this
+   part, the step's instructions need changing: raise it with whoever authored
+   the step
 4. Resolve pending approvals and release hold points
 
 ### Order not showing on Tracker

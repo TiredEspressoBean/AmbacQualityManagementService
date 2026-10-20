@@ -10,6 +10,19 @@ Dispositions also surface where the nonconformance was found: the work order
 **control** page lists open ones under *Exceptions on this WO*, each with an
 **Open disposition** button.
 
+## Where a disposition comes from
+
+A failure opens one by itself: a reading out of spec, an inspector's FAIL, a
+report edited to FAIL, a failed first piece. Its description says what failed,
+for example *"Failed Nozzle Inspection: Hole blockage"*, or the report's own
+description when it has one.
+
+It opens **unassigned**. Nobody is picked for it; it waits on the QA home page,
+under *Unassigned dispositions*, until someone presses **Take it** (which needs
+`change_quarantinedisposition`). It then moves to their **My dispositions**. The part stays
+quarantined until the disposition acts on it: no one can start it in the
+meantime.
+
 ## The five decisions
 
 Choosing between these is the judgement the system asks you to make. They are
@@ -89,6 +102,11 @@ authorize this disposition decision"* tick, and their **password** — captioned
     decision commits, and the record carries **their** name as the authority with
     you as the caller.
 
+The disposition type is changed only through this decision. An edit to the record
+that tries to change the type is refused: *"The disposition is decided through
+Decide, which records who authorized it (a co-signer can authorize) — it can't be
+changed by editing the record."*
+
     Trainees routinely read this dialog as an error. It isn't — it is the gate
     doing its job, and it is how a routine decision keeps moving without
     misattributing who authorised it.
@@ -108,6 +126,12 @@ Either way the record stores **who authorized it and when** — that pair is wha
 | **Critical** | Safety or regulatory impact; needs special handling |
 | **Major** | Affects function, correctable (the default) |
 | **Minor** | Cosmetic, no functional impact |
+
+!!! note "Annotation severity is a different scale"
+    A marker on the part's 3D model carries its own severity, Low to Critical.
+    It rates that one finding where it sits on the part. The disposition's
+    severity rates the nonconformance the findings add up to, so the two
+    needn't match.
 
 ## Containment comes first
 
@@ -180,9 +204,15 @@ routinely sampled in audits.
 ## Closing a disposition
 
 Completing the resolution closes the record — but only once nothing is
-outstanding against it. If blockers remain (for example pending part
-annotations), the close is rejected and names what is in the way. Clear those
-first.
+outstanding against it. If blockers remain, the close is rejected and names
+everything in the way in one message. Clear those first.
+
+!!! info "Some defects must be marked on the 3D model"
+    When a report carries a defect type that needs a 3D annotation, the
+    disposition shows **3D Annotations Required** and can't close until the
+    defect is marked. **Go to Annotator** opens the annotator with that report
+    already selected. Every annotation belongs to a quality report, so each
+    marker on the model traces back to the inspection that found it.
 
 !!! warning "Critical and Major need containment recorded first"
     A disposition of **Critical** or **Major** severity cannot be closed until a

@@ -75,9 +75,8 @@ A step's substeps run in one of two modes:
 
 !!! note "An optional substep never holds up the one after it"
     Sequencing looks only at the required substeps ahead of the one being
-    completed. An **optional** earlier substep is skipped by the check whether or
-    not it was marked N/A — so a free-standing optional step cannot strand an
-    operator.
+    completed. An **optional** earlier substep is skipped by the check, so a
+    free-standing optional step cannot strand an operator.
 
 ### Per part or per batch
 
@@ -122,23 +121,17 @@ superseded by the resolved one, so the outcome is a record of both.
     a part with the substep still uncompleted simply becomes the next blocker the
     supervisor sees, which is the point: the check is deferred, never dropped.
 
-## Optional, N/A, and safety-critical
-
-Three authoring settings control whether a substep can be skipped:
+## Optional and safety-critical
 
 | Setting | Effect |
 |---------|--------|
 | **Optional** | May be skipped without recording anything |
-| **Allow N/A** | May be marked not-applicable, but the operator must pick a reason code |
-| **Safety-critical** | Can *never* be marked N/A — the gate rejects any attempt |
+| **Safety-critical** | Shown to the operator as critical: torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification |
 
-Optional and N/A are deliberately different. Optional means nothing needs to be
-recorded. N/A means the operator is making a recorded, reason-coded statement
-that this substep did not apply to this part — which stays in the audit trail.
-
-Safety-critical exists for things where "didn't apply" is never an acceptable
-answer: torque on a safety-critical fastener, a witnessed signoff, final
-dimensional verification.
+Everything else is required. There is no "not applicable": a substep that doesn't
+apply to some parts belongs on a step only the others run, or is optional, or
+records what the operator found as a choice. See
+[Authoring](authoring.md#optional-and-safety-critical).
 
 ## Inspection points
 

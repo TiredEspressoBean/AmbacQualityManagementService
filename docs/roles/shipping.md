@@ -36,18 +36,11 @@ right paperwork, and knowing afterwards whether it went on time.
     in part — you name them when you ship rather than finding them on the board.
     So an empty board does not mean there is nothing you could send.
 
-!!! warning "A returned core gets no shipment, and so no paperwork"
-    A reman core going back to its owner is not shipped from here — **Return**
-    in Remanufacturing sends it, and that does not create a shipment record.
-
-    The consequence is worth knowing before a customer asks: because the packing
-    list and the certificate of conformance are both built from a shipment, a
-    returned repair can have **neither**. The as-built record of what was
-    replaced does exist on the unit, but nothing joins it to a certificate.
-
-    If a customer needs a document describing what was done to their unit,
-    produce it outside the system for now. See
-    [Remanufacturing Overview](../workflows/reman/overview.md).
+!!! note "Reman units ship here too"
+    A customer's finished reman unit is listed under its owner, and rebuilt
+    exchange stock once it is on an order. A returned repair gets a packing list,
+    and a CoC when the customer asks for one with every shipment, like any other
+    shipment. Voiding the shipment puts the unit back at the stage it left from.
 
 ## Shipping it
 
@@ -66,7 +59,8 @@ complete order for one line.
 
     It is all or nothing: if anything on the list can't go, the whole shipment is
     refused and the reason names each item — *"not at a Ship step yet"*, *"on
-    hold (Quarantined)"*, *"a core — return it from Remanufacturing"*.
+    hold (Quarantined)"*, or for a reman unit not yet finished, *"… — not finished,
+    so not ready to go"*.
 
 ### The paperwork
 

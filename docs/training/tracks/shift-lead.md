@@ -1,5 +1,10 @@
 # Shift Lead Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 4-5 hours
 **Prerequisites:** [Operator training](operator.md), completed and signed off
 **Goal:** Run a shift — read its state, put people on jobs, triage what stops,
@@ -300,7 +305,7 @@ The **training matrix** shows who is qualified for what, and the home page
 summarises **current / expiring soon / expired**. Expiring is the one to work —
 expired is already costing you.
 
-See [Training Matrix](../workflows/tracking/training-matrix.md).
+See [Training Matrix](../../workflows/tracking/training-matrix.md).
 
 ### Knowledge Check: Module 4
 
@@ -378,13 +383,13 @@ shift actually read the thing that mattered.
     off" instead of raising an NCR hides the finding from every system that would
     otherwise act on it.
 
-See [Shift Notes](../workflows/tracking/shift-notes.md).
+See [Shift Notes](../../workflows/tracking/shift-notes.md).
 
 ### 6.2 Raising a CAPA
 
 When something needs more than a disposition — a recurring defect, a process
 producing the same finding repeatedly — you can **initiate a CAPA**. Initiating
-is not owning. See [CAPA Overview](../workflows/capa/overview.md).
+is not owning. See [CAPA Overview](../../workflows/capa/overview.md).
 
 ### Knowledge Check: Module 6
 
@@ -629,9 +634,9 @@ training](operator.md#recording-the-qualification).
 
 ## Next Steps
 
-- [Shift Lead role guide](../roles/shift-lead.md)
-- [Shift Notes](../workflows/tracking/shift-notes.md)
-- [First Piece Inspection](../workflows/work-orders/fpi.md)
-- [Training Matrix](../workflows/tracking/training-matrix.md)
-- [Schedule (Gantt)](../workflows/scheduling/gantt.md)
+- [Shift Lead role guide](../../roles/shift-lead.md)
+- [Shift Notes](../../workflows/tracking/shift-notes.md)
+- [First Piece Inspection](../../workflows/work-orders/fpi.md)
+- [Training Matrix](../../workflows/tracking/training-matrix.md)
+- [Schedule (Gantt)](../../workflows/scheduling/gantt.md)
 - [SPC Fundamentals](spc-fundamentals.md) — recommended for all floor supervision

@@ -323,10 +323,11 @@ of its route in the operator runtime and the stage moves on its own.
 
 Where a rebuilt unit goes depends on how it was being fulfilled:
 
-- **Repair and return** → *Rebuilt — ready to return*, then **Return** dispatches
-  it back to its customer
+- **Repair and return** → *Rebuilt — ready to return*, then **Return** ships it
+  back to its customer, from the Cores card or the Shipping board
 - **Exchange** → *Rebuilt to stock*, shelved as finished goods, keeping its own
-  identity
+  identity. Once it is on an order it ships from the Shipping board and ends at
+  *Shipped on exchange*
 
 See [Remanufacturing Overview](overview.md) for the full stage list.
 

@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from Tracker.models import (
     Orders, OrdersStatus, WorkOrder, WorkOrderStatus, Parts, PartsStatus,
-    ProcessStep, QualityReports, QuarantineDisposition, CAPA, CapaStatus,
+    ProcessStep, CAPA, CapaStatus,
     CapaType, CapaSeverity, CapaTasks, CapaTaskType, CapaTaskStatus,
     RcaRecord, RcaReviewStatus, RootCauseVerificationStatus,
 )
@@ -58,76 +58,6 @@ TRAINING_ORDERS = [
         'parts_prefix': 'TRAIN-HOLD',
         'customer_key': 'Great Lakes Diesel',
         'distribute_parts': False,
-    },
-    {
-        'name': 'TRAIN-FPI-001',
-        'description': 'FPI training exercise - first piece inspection',
-        'status': OrdersStatus.IN_PROGRESS,
-        'parts_count': 15,
-        'parts_prefix': 'TRAIN-FPI-001',
-        'customer_key': 'Midwest Fleet Services',
-        'distribute_parts': False,
-        'step_name': 'Final Test',  # Parts at inspection step for FPI training
-        'work_order_id': 'TRAIN-FPI-001',
-        'requires_sampling_count': 1,  # First part requires QA (FPI scenario)
-    },
-]
-
-# Training quality reports
-TRAINING_QUALITY_REPORTS = [
-    {
-        'number': 'QR-TRAIN-001',
-        'description': 'Surface scratch on housing - training exercise. Surface defect found during visual inspection.',
-        'status': 'FAIL',
-        'part_key': 'TRAIN-101-003',
-        'sampling_method': 'manual',
-        'is_first_piece': False,
-    },
-    {
-        'number': 'QR-TRAIN-002',
-        'description': 'Flow test out of spec - training exercise. Flow measurement 15% below specification.',
-        'status': 'FAIL',
-        'part_key': 'TRAIN-101-005',
-        'sampling_method': 'manual',
-        'is_first_piece': False,
-    },
-]
-
-# Training dispositions
-TRAINING_DISPOSITIONS = [
-    {
-        'number': 'DISP-TRAIN-001',
-        'current_state': 'IN_PROGRESS',  # Pending manager approval
-        'disposition_type': 'REWORK',
-        'severity': 'MINOR',
-        'qa_report_key': 'QR-TRAIN-001',
-        'description': 'Recommend rework - polish surface to remove scratch.',
-        'resolution_notes': '',
-        'containment_action': '',
-        'requires_customer_approval': False,
-        'customer_approval_received': False,
-        'customer_approval_reference': '',
-        'scrap_verified': False,
-        'scrap_verification_method': '',
-        'resolution_completed': False,
-        'rework_attempt_at_step': 1,
-    },
-    {
-        'number': 'DISP-TRAIN-002',
-        'current_state': 'OPEN',  # Incomplete, for rejection exercise
-        'disposition_type': '',  # Not yet decided
-        'severity': 'MAJOR',
-        'qa_report_key': 'QR-TRAIN-002',
-        'description': '',  # Missing info for rejection exercise
-        'resolution_notes': '',
-        'containment_action': '',
-        'requires_customer_approval': False,
-        'customer_approval_received': False,
-        'customer_approval_reference': '',
-        'scrap_verified': False,
-        'scrap_verification_method': '',
-        'resolution_completed': False,
-        'rework_attempt_at_step': 1,
     },
 ]
 
@@ -182,29 +112,6 @@ ASSESSMENT_ORDERS = [
         'distribute_parts': False,
     },
     {
-        'name': 'ASSESS-QA-001',
-        'description': 'QA Inspector assessment - FPI completion exercise',
-        'status': OrdersStatus.IN_PROGRESS,
-        'parts_count': 10,
-        'parts_prefix': 'ASSESS-QA-001',
-        'customer_key': 'Midwest Fleet Services',
-        'distribute_parts': False,
-        'step_name': 'Final Test',  # Parts at inspection step for FPI training
-        'work_order_id': 'ASSESS-QA-001',
-        'requires_sampling_count': 1,  # First part requires QA (FPI scenario)
-    },
-    {
-        'name': 'ASSESS-QA-002',
-        'description': 'QA Inspector assessment - sampling inspection exercise',
-        'status': OrdersStatus.IN_PROGRESS,
-        'parts_count': 12,
-        'parts_prefix': 'ASSESS-QA-002',
-        'customer_key': 'Northern Trucking Co',
-        'distribute_parts': True,  # Parts distributed across steps
-        'work_order_id': 'ASSESS-QA-002',
-        'requires_sampling_count': 4,  # Some parts require QA (sampling scenario)
-    },
-    {
         'name': 'ASSESS-PM-001',
         'description': 'Production manager assessment - order management',
         'status': OrdersStatus.PENDING,
@@ -212,47 +119,6 @@ ASSESSMENT_ORDERS = [
         'parts_prefix': 'ASSESS-PM-001',
         'customer_key': 'Midwest Fleet Services',
         'distribute_parts': False,
-    },
-]
-
-# Assessment quality reports
-ASSESSMENT_QUALITY_REPORTS = [
-    {
-        'number': 'QR-ASSESS-001',
-        'description': 'Assessment exercise - dimensional out of tolerance. Bore diameter measures 0.003" oversize.',
-        'status': 'FAIL',
-        'part_key': 'ASSESS-QA-PART-001',
-        'sampling_method': 'manual',
-        'is_first_piece': False,
-    },
-    {
-        'number': 'QR-ASSESS-002',
-        'description': 'Assessment exercise - visual defect found during inspection.',
-        'status': 'FAIL',
-        'part_key': 'ASSESS-QA-PART-002',
-        'sampling_method': 'manual',
-        'is_first_piece': False,
-    },
-]
-
-# Assessment dispositions
-ASSESSMENT_DISPOSITIONS = [
-    {
-        'number': 'DISP-ASSESS-001',
-        'current_state': 'IN_PROGRESS',  # Ready for QA Manager approval
-        'disposition_type': 'REWORK',
-        'severity': 'MAJOR',
-        'qa_report_key': 'QR-ASSESS-001',
-        'description': 'Recommend rework - re-hone bore to specification.',
-        'resolution_notes': '',
-        'containment_action': '',
-        'requires_customer_approval': False,
-        'customer_approval_received': False,
-        'customer_approval_reference': '',
-        'scrap_verified': False,
-        'scrap_verification_method': '',
-        'resolution_completed': False,
-        'rework_attempt_at_step': 1,
     },
 ]
 
@@ -330,23 +196,17 @@ class TrainingExercisesSeeder(BaseSeeder):
         # Create training data in order of dependencies
         self._create_training_orders()
         self._create_training_parts()
-        self._create_training_quality_reports()
-        self._create_training_dispositions()
         self._create_training_capas()
 
         # Create assessment data (for practical assessment sections)
         self._create_assessment_orders()
         self._create_assessment_parts()
-        self._create_assessment_quality_reports()
-        self._create_assessment_dispositions()
         self._create_assessment_capas()
 
         train_orders = len([k for k in self._orders if k.startswith('TRAIN')])
         assess_orders = len([k for k in self._orders if k.startswith('ASSESS')])
         self.log(f"  Created {train_orders} training orders, {assess_orders} assessment orders")
         self.log(f"  Created {len(self._parts)} parts")
-        self.log(f"  Created {len(self._quality_reports)} quality reports")
-        self.log(f"  Created {len(self._dispositions)} dispositions")
         self.log(f"  Created {len(self._capas)} CAPAs")
 
         return {
@@ -462,24 +322,6 @@ class TrainingExercisesSeeder(BaseSeeder):
 
                 self._parts[part_serial] = part
 
-        # Create special parts for quality report exercises (not tied to orders above)
-        for qr_config in TRAINING_QUALITY_REPORTS:
-            part_key = qr_config.get('part_key')
-            if part_key and part_key not in self._parts:
-                # Create a standalone part for the quality report
-                step = steps[len(steps) // 2] if steps else None  # Middle step
-
-                part, _ = Parts.objects.update_or_create(
-                    tenant=self.tenant,
-                    ERP_id=part_key,
-                    defaults={
-                        'part_type': self._default_part_type,
-                        'step': step,
-                        'part_status': PartsStatus.QUARANTINED,
-                    }
-                )
-                self._parts[part_key] = part
-
     def _determine_part_step(self, steps, part_index, config):
         """Determine which step a part should be at based on distribution config."""
         if not steps:
@@ -512,78 +354,6 @@ class TrainingExercisesSeeder(BaseSeeder):
             # Distribute evenly across steps
             step_idx = (part_index * len(steps)) // config['parts_count']
             return steps[min(step_idx, len(steps) - 1)]
-
-    def _create_training_quality_reports(self):
-        """Create training quality reports."""
-        qa_users = self._users.get('employees', [])
-        detected_by = None
-        for u in qa_users:
-            if hasattr(u, 'email') and 'qa' in u.email.lower():
-                detected_by = u
-                break
-        if not detected_by and qa_users:
-            detected_by = qa_users[0]
-
-        for qr_config in TRAINING_QUALITY_REPORTS:
-            part = self._parts.get(qr_config['part_key'])
-
-            qr, _ = QualityReports.objects.update_or_create(
-                tenant=self.tenant,
-                report_number=qr_config['number'],
-                defaults={
-                    'description': qr_config['description'],
-                    'status': qr_config['status'],
-                    'part': part,
-                    'detected_by': detected_by,
-                    'sampling_method': qr_config['sampling_method'],
-                    'is_first_piece': qr_config['is_first_piece'],
-                }
-            )
-
-            self._quality_reports[qr_config['number']] = qr
-
-    def _create_training_dispositions(self):
-        """Create training dispositions."""
-        qa_managers = [u for u in self._users.get('employees', [])
-                       if hasattr(u, 'email') and 'qa' in u.email.lower()]
-        assigned_to = qa_managers[0] if qa_managers else None
-
-        steps = [ps.step for ps in self._process_steps]
-        middle_step = steps[len(steps) // 2] if steps else None
-
-        for disp_config in TRAINING_DISPOSITIONS:
-            qr = self._quality_reports.get(disp_config['qa_report_key'])
-
-            defaults = {
-                'current_state': disp_config['current_state'],
-                'disposition_type': disp_config['disposition_type'],
-                'severity': disp_config['severity'],
-                'description': disp_config['description'],
-                'resolution_notes': disp_config['resolution_notes'],
-                'containment_action': disp_config['containment_action'],
-                'requires_customer_approval': disp_config['requires_customer_approval'],
-                'customer_approval_received': disp_config['customer_approval_received'],
-                'customer_approval_reference': disp_config['customer_approval_reference'],
-                'scrap_verified': disp_config['scrap_verified'],
-                'scrap_verification_method': disp_config['scrap_verification_method'],
-                'resolution_completed': disp_config['resolution_completed'],
-                'rework_attempt_at_step': disp_config['rework_attempt_at_step'],
-                'assigned_to': assigned_to,
-                'step': middle_step,
-            }
-
-            # Update or create the disposition
-            disp, created = QuarantineDisposition.objects.update_or_create(
-                tenant=self.tenant,
-                disposition_number=disp_config['number'],
-                defaults=defaults,
-            )
-
-            # Link to quality report via M2M
-            if qr and created:
-                disp.quality_reports.add(qr)
-
-            self._dispositions[disp_config['number']] = disp
 
     def _create_training_capas(self):
         """Create training CAPAs with tasks."""
@@ -723,92 +493,6 @@ class TrainingExercisesSeeder(BaseSeeder):
                     }
                 )
                 self._parts[part_serial] = part
-
-        # Create special parts for assessment quality reports
-        for qr_config in ASSESSMENT_QUALITY_REPORTS:
-            part_key = qr_config.get('part_key')
-            if part_key and part_key not in self._parts:
-                step = steps[len(steps) // 2] if steps else None
-
-                part, _ = Parts.objects.update_or_create(
-                    tenant=self.tenant,
-                    ERP_id=part_key,
-                    defaults={
-                        'part_type': self._default_part_type,
-                        'step': step,
-                        'part_status': PartsStatus.QUARANTINED,
-                    }
-                )
-                self._parts[part_key] = part
-
-    def _create_assessment_quality_reports(self):
-        """Create assessment quality reports."""
-        qa_users = self._users.get('employees', [])
-        detected_by = None
-        for u in qa_users:
-            if hasattr(u, 'email') and 'qa' in u.email.lower():
-                detected_by = u
-                break
-        if not detected_by and qa_users:
-            detected_by = qa_users[0]
-
-        for qr_config in ASSESSMENT_QUALITY_REPORTS:
-            part = self._parts.get(qr_config['part_key'])
-
-            qr, _ = QualityReports.objects.update_or_create(
-                tenant=self.tenant,
-                report_number=qr_config['number'],
-                defaults={
-                    'description': qr_config['description'],
-                    'status': qr_config['status'],
-                    'part': part,
-                    'detected_by': detected_by,
-                    'sampling_method': qr_config['sampling_method'],
-                    'is_first_piece': qr_config['is_first_piece'],
-                }
-            )
-            self._quality_reports[qr_config['number']] = qr
-
-    def _create_assessment_dispositions(self):
-        """Create assessment dispositions."""
-        qa_managers = [u for u in self._users.get('employees', [])
-                       if hasattr(u, 'email') and 'qa' in u.email.lower()]
-        assigned_to = qa_managers[0] if qa_managers else None
-
-        steps = [ps.step for ps in self._process_steps]
-        middle_step = steps[len(steps) // 2] if steps else None
-
-        for disp_config in ASSESSMENT_DISPOSITIONS:
-            qr = self._quality_reports.get(disp_config['qa_report_key'])
-
-            defaults = {
-                'current_state': disp_config['current_state'],
-                'disposition_type': disp_config['disposition_type'],
-                'severity': disp_config['severity'],
-                'description': disp_config['description'],
-                'resolution_notes': disp_config['resolution_notes'],
-                'containment_action': disp_config['containment_action'],
-                'requires_customer_approval': disp_config['requires_customer_approval'],
-                'customer_approval_received': disp_config['customer_approval_received'],
-                'customer_approval_reference': disp_config['customer_approval_reference'],
-                'scrap_verified': disp_config['scrap_verified'],
-                'scrap_verification_method': disp_config['scrap_verification_method'],
-                'resolution_completed': disp_config['resolution_completed'],
-                'rework_attempt_at_step': disp_config['rework_attempt_at_step'],
-                'assigned_to': assigned_to,
-                'step': middle_step,
-            }
-
-            disp, created = QuarantineDisposition.objects.update_or_create(
-                tenant=self.tenant,
-                disposition_number=disp_config['number'],
-                defaults=defaults,
-            )
-
-            if qr and created:
-                disp.quality_reports.add(qr)
-
-            self._dispositions[disp_config['number']] = disp
 
     def _ensure_rca_for_verification_ready(self, capa, capa_config, user):
         """Give a verification-ready preset the RCA record its status implies.

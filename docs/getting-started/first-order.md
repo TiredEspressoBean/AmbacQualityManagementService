@@ -148,10 +148,10 @@ If a part has a problem:
 3. Choose the error type, describe the issue, and set the result to **FAIL**
 4. The part enters quarantine, and a disposition is opened for it
 
-!!! warning "Set FAIL when you create the report"
-    The quarantine happens only as a report is **created** with result FAIL.
-    Saving a report as Pending and failing it later opens the disposition but
-    leaves the part where it is. See [Quarantine](../workflows/quality/quarantine.md).
+!!! note "Pending, then Fail, works the same"
+    The quarantine and the disposition happen when the report reaches FAIL,
+    whether it was created as FAIL or saved as Pending and failed later. See
+    [Quarantine](../workflows/quality/quarantine.md).
 
 Quality issues are tracked separately and require disposition (Use As Is, Rework, Scrap, etc.).
 

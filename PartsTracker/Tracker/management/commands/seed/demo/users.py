@@ -227,6 +227,9 @@ class DemoUserSeeder(BaseSeeder):
             'customers': [],
             'managers': [],
             'qa_staff': [],
+            # The people who run steps on the floor — seeded history is assigned to
+            # them, not to the admin, the planner or the document controller.
+            'operators': [],
             'by_email': {},
         }
 
@@ -244,6 +247,8 @@ class DemoUserSeeder(BaseSeeder):
             else:
                 result['employees'].append(user)
 
+                if roles & {'Operator', 'Shift Lead'}:
+                    result['operators'].append(user)
                 if roles & {'QA Manager', 'QA Inspector'}:
                     result['qa_staff'].append(user)
                 if 'QA Manager' in roles:

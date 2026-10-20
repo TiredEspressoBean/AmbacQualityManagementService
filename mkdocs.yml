@@ -58,22 +58,24 @@ nav:
   - Training:
     - Training Program: training/index.md
     - The Shop Day: training/shop-day.md
-    - Operator Training: training/operator.md
-    - Shift Lead Training: training/shift-lead.md
-    - QA Inspector Training: training/qa-inspector.md
-    - QA Manager Training: training/qa-manager.md
-    - Production Manager Training: training/production-manager.md
-    - Planner Training: training/planner.md
-    - Engineering Training: training/engineering.md
-    - Purchasing Training: training/purchasing.md
-    - Receiving Training: training/receiving.md
-    - Shipping Training: training/shipping.md
-    - Document Controller Training: training/document-controller.md
-    - Auditor Orientation: training/auditor.md
-    - Customer Portal Orientation: training/customer.md
-    - Administrator Training: training/administrator.md
-    - SPC Fundamentals: training/spc-fundamentals.md
-    - Training Data Setup: training/training-data-setup.md
+    - Role Tracks:
+      - Operator: training/tracks/operator.md
+      - Shift Lead: training/tracks/shift-lead.md
+      - QA Inspector: training/tracks/qa-inspector.md
+      - QA Manager: training/tracks/qa-manager.md
+      - Production Manager: training/tracks/production-manager.md
+      - Planner: training/tracks/planner.md
+      - Engineering: training/tracks/engineering.md
+      - Purchasing: training/tracks/purchasing.md
+      - Receiving: training/tracks/receiving.md
+      - Shipping: training/tracks/shipping.md
+      - Document Controller: training/tracks/document-controller.md
+      - Administrator: training/tracks/administrator.md
+      - Auditor Orientation: training/tracks/auditor.md
+      - Customer Portal Orientation: training/tracks/customer.md
+      - SPC Fundamentals: training/tracks/spc-fundamentals.md
+    - Running Training:
+      - Training Data Setup: training/running-training/training-data-setup.md
   - Core Workflows:
     - Overview: workflows/index.md
     - Orders & Parts:
@@ -122,6 +124,7 @@ nav:
       - Dispositions: workflows/quality/dispositions.md
       - Quarantine: workflows/quality/quarantine.md
       - Sampling Rules: workflows/quality/sampling.md
+      - Training Records: workflows/quality/training-records.md
     - CAPA:
       - CAPA Overview: workflows/capa/overview.md
       - Creating a CAPA: workflows/capa/creating.md

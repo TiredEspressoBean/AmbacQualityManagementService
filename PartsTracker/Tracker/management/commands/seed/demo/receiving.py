@@ -37,6 +37,14 @@ class DemoReceivingSeeder(BaseSeeder):
         if not part_types:
             self.log("  Warning: no part types available, skipping receiving seed", warning=True)
             return result
+        # TODO(training arc, realism, 2026-10-20): every purchased lot is the shop's own
+        # finished product ("Common Rail Injector", deliberately dual-sourced below to
+        # show make/buy) bought from Great Lakes Diesel, which the demo also uses as a
+        # customer. Works, but reads oddly to a trainee. A bought-in component (e.g.
+        # Injector Nozzle Assembly, with its own Receiving Inspection step and DWI) from a
+        # supplier-only company would read better; it ripples into supplier_quality.py
+        # (qualifications, approvals, RCV-MAT-HOLD), dwi.py and the expected receipts, so
+        # it is a decision for the user, not a fix.
         part_type = part_types[0]
         process = processes[0] if processes else None
 
@@ -47,7 +55,10 @@ class DemoReceivingSeeder(BaseSeeder):
             (c for c in company_map.values() if 'AMBAC' not in (c.name or '')), None)
 
         employees = users.get('employees', []) if isinstance(users, dict) else []
-        received_by = employees[0] if employees else None
+        # Receiving inspection is the QA inspector's work (no Receiving login is
+        # seeded) — not employees[0], which is the tenant admin.
+        inspectors = [u for u in (users.get('qa_staff') or []) if u != users.get('qa_manager')]             if isinstance(users, dict) else []
+        received_by = (inspectors or employees or [None])[0]
         if received_by is None:
             self.log("  Warning: no employees available, skipping receiving seed", warning=True)
             return result
@@ -185,6 +196,24 @@ class DemoReceivingSeeder(BaseSeeder):
             self.log(f"  Raised SCAR {scar.capa_number} for {supplier.name if supplier else 'supplier'}")
         except ValueError as e:
             self.log(f"  Skipped reject/SCAR flow: {e}", warning=True)
+
+        # A whole-lot reject an inspector requested, waiting on the QA Manager: the
+        # inspector lacks `reject_whole_lot`, so reject_lot holds the lot instead
+        # (WHOLE_LOT_REJECT_REQUESTED). The QA Manager confirms or declines it.
+        requested = make_lot('0007', '300', 1)
+        try:
+            from Tracker.services.qms.lot_reject import reject_lot
+            report = receiving_inspection.open_inspection(requested, received_by)
+            receiving_inspection.record_inspection(
+                report, [{'definition': str(visual.id), 'value_pass_fail': 'FAIL'}], received_by)
+            reject_lot(
+                report, received_by, disposition_type='RETURN_TO_SUPPLIER', whole_lot=True,
+                description='Corrosion spotting on every sampled piece; the lot was '
+                            'shipped wet.')
+            requested.refresh_from_db()
+            result['lots'].append(requested)
+        except ValueError as e:
+            self.log(f"  Skipped whole-lot reject request: {e}", warning=True)
 
         # --- Expected receipts: the half of the lifecycle that happens BEFORE the dock ---
         # Every lot above has already arrived, so nothing exercised `ON_ORDER` — "ordered

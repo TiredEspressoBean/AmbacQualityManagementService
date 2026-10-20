@@ -1,5 +1,10 @@
 # Shipping Training Guide
 
+!!! warning "This track is being rebuilt"
+    It predates the current product, and its exercises may not match what you
+    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+    [training program](../index.md).
+
 **Duration:** 2-3 hours
 **Prerequisites:** None
 **Goal:** Learn to ship finished work with the right paperwork, handle customer
@@ -46,7 +51,7 @@ property and subcontract send-out, and know whether you went out on time
 
 !!! note "Cores go back through Remanufacturing"
     A reman core returning to its owner is not shipped from this page. See
-    [Remanufacturing Overview](../workflows/reman/overview.md).
+    [Remanufacturing Overview](../../workflows/reman/overview.md).
 
 ### Knowledge Check: Module 1
 
@@ -159,7 +164,7 @@ Material belonging to a customer is tracked as theirs, labelled as theirs, and
 appears under that customer on the shipping page. ISO 9001 §8.5.3 requires you to
 identify, protect and safeguard it.
 
-See [Customer property](../workflows/supply/overview.md#customer-property).
+See [Customer property](../../workflows/supply/overview.md#customer-property).
 
 ### Knowledge Check: Module 5
 
@@ -177,7 +182,7 @@ Outside processing sends work to a subcontract vendor and books it back. The uni
 stays on its route — it has not left the shop in the sense that matters to the
 traveller.
 
-See [Outside Processing](../workflows/supply/outside-processing.md).
+See [Outside Processing](../../workflows/supply/outside-processing.md).
 
 ### Knowledge Check: Module 6
 
@@ -385,7 +390,7 @@ training](operator.md#recording-the-qualification).
 
 ## Next Steps
 
-- [Shipping role guide](../roles/shipping.md)
-- [Shipping workflow](../workflows/supply/shipping.md) — the full reference
-- [Outside Processing](../workflows/supply/outside-processing.md)
+- [Shipping role guide](../../roles/shipping.md)
+- [Shipping workflow](../../workflows/supply/shipping.md) — the full reference
+- [Outside Processing](../../workflows/supply/outside-processing.md)
 - [Receiving Training](receiving.md) — the other direction

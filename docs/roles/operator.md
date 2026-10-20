@@ -57,14 +57,14 @@ It takes more than work orders:
 | Scan or type | Opens |
 |--------------|-------|
 | A **work order** number | That work order |
-| A **serial** on a part or WIP tag | That unit |
+| A **serial** on a part or WIP tag | Its work order, with **Start work on parts** open and that unit ticked |
 | A **lot number** | That material lot |
 | A **location label** (the barcode reads `LOC:…`) | That location |
 | The **QR code** on any printed label | Whatever it points at |
 
 !!! tip "Scan the unit, not the paperwork"
-    Scanning the serial takes you to the exact unit, which is the one thing a
-    work-order number can't tell you. On a job with twenty units in flight it is
+    Scanning the serial ticks the exact unit in Start Work, which is the one
+    thing a work-order number can't tell you. On a job with twenty units in flight it is
     the difference between the right part and a plausible one.
 
 Or navigate by hand:
@@ -106,10 +106,9 @@ The step player shows **one substep at a time**:
 1. Open the step's substeps for your part
 2. Record what the substep asks for — a measurement, a check, a signature
 3. Tap **Confirm & next** to seal that substep and move to the next one
-4. If a substep genuinely does not apply, tap **Mark N/A** and pick a reason
-5. At the end you get a **review screen** showing everything you recorded —
+4. At the end you get a **review screen** showing everything you recorded —
    jump back to fix anything that looks wrong
-6. Tap **Complete step**
+5. Tap **Complete step**
 
 Once the step is complete and its requirements are satisfied, the parts move
 forward on their own.
@@ -128,7 +127,8 @@ forward on their own.
 ### Quick Tips
 
 - Complete steps promptly — a lot cannot advance until every part is done
-- Use **Mark N/A** rather than guessing a value when something doesn't apply
+- Never guess a value. If a required substep can't be done, stop and tell your
+  supervisor
 - Check the review screen before completing; it is the last easy place to fix
   a mistyped measurement
 
@@ -307,7 +307,7 @@ stopped — because nothing was ever held open in your name.
 |------|-------|
 | Move part forward | Complete the step — advancement is automatic |
 | Record measurement | Step player → measurement substep → enter value → **Confirm & next** |
-| Substep doesn't apply | Step player → **Mark N/A** → pick a reason |
+| Substep can't be done | Stop and tell your supervisor; required substeps can't be skipped |
 | Finish a step | Step player → review screen → **Complete step** |
 | Flag issue | In the player: record it on the inspection substep · Otherwise: tick the part → **Quarantine** |
 | Can't run the job | Step player → **Can't run this?** → pick the reason |

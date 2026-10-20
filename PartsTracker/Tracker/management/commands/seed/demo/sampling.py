@@ -17,6 +17,7 @@ from Tracker.models import (
 )
 
 from ..base import BaseSeeder
+from .routes import BUILD, REMAN, process_named, route_steps
 
 
 # Demo sampling rulesets
@@ -47,6 +48,7 @@ from ..base import BaseSeeder
 DEMO_SAMPLING_RULESETS = [
     # Standard inspection for Flow Testing
     {
+        'route': 'reman',
         'id': 'flow-standard',
         'name': 'Standard Inspection - Flow Testing',
         'step': 'Flow Testing',
@@ -70,6 +72,7 @@ DEMO_SAMPLING_RULESETS = [
     },
     # Enhanced inspection for Flow Testing (used as fallback)
     {
+        'route': 'reman',
         'id': 'flow-enhanced',
         'name': 'Enhanced Inspection - Flow Testing',
         'step': 'Flow Testing',
@@ -96,6 +99,7 @@ DEMO_SAMPLING_RULESETS = [
     },
     # Standard inspection for Nozzle Inspection
     {
+        'route': 'reman',
         'id': 'nozzle-standard',
         'name': 'Standard Inspection - Nozzle',
         'step': 'Nozzle Inspection',
@@ -119,6 +123,7 @@ DEMO_SAMPLING_RULESETS = [
     },
     # 100% inspection for Nozzle (used as fallback)
     {
+        'route': 'reman',
         'id': 'nozzle-100pct',
         'name': '100% Inspection - Nozzle',
         'step': 'Nozzle Inspection',
@@ -138,6 +143,7 @@ DEMO_SAMPLING_RULESETS = [
     },
     # Final test - combination of first/last and percentage
     {
+        'route': 'build',
         'id': 'final-standard',
         'name': 'Standard Inspection - Final Test',
         'step': 'Final Test',
@@ -183,6 +189,91 @@ DEMO_SAMPLING_RULESETS = [
                 'algorithm_description': 'SHA-256 hash modulo arithmetic',
                 'last_validated': None,
             },
+        ],
+    },
+    # ---- New manufacture ----
+    # Every 4th body at Body Inspection; tightens to 100% after two consecutive fails.
+    {
+        'route': 'build',
+        'id': 'body-standard',
+        'name': 'Standard Inspection - Body',
+        'step': 'Body Inspection',
+        'origin': 'QMS-SAMP-006 Rev A',
+        'active': True,
+        'is_fallback': False,
+        'gate_metric': 'CONSECUTIVE_FAILS',
+        'gate_threshold': 2,
+        'gate_actions': ['TIGHTEN_SAMPLING'],
+        'fallback_duration': 15,
+        'fallback': 'body-100pct',
+        'rules': [
+            {'rule_type': 'EVERY_NTH_PART', 'value': 4, 'order': 1,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+        ],
+    },
+    {
+        'route': 'build',
+        'id': 'body-100pct',
+        'name': '100% Inspection - Body',
+        'step': 'Body Inspection',
+        'origin': 'QMS-SAMP-007 Rev A',
+        'active': True,
+        'is_fallback': True,
+        'fallback_duration': None,
+        'rules': [
+            {'rule_type': 'EVERY_NTH_PART', 'value': 1, 'order': 1,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+        ],
+    },
+    {
+        'route': 'build',
+        'id': 'calibration-standard',
+        'name': 'Standard Inspection - Flow Calibration',
+        'step': 'Flow Calibration',
+        'origin': 'QMS-SAMP-008 Rev A',
+        'active': True,
+        'is_fallback': False,
+        'gate_metric': 'CONSECUTIVE_FAILS',
+        'gate_threshold': 3,
+        'gate_actions': ['TIGHTEN_SAMPLING'],
+        'fallback_duration': 10,
+        'fallback': 'calibration-enhanced',
+        'rules': [
+            {'rule_type': 'EVERY_NTH_PART', 'value': 5, 'order': 1,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+        ],
+    },
+    {
+        'route': 'build',
+        'id': 'calibration-enhanced',
+        'name': 'Enhanced Inspection - Flow Calibration',
+        'step': 'Flow Calibration',
+        'origin': 'QMS-SAMP-009 Rev A',
+        'active': True,
+        'is_fallback': True,
+        'fallback_duration': None,
+        'rules': [
+            {'rule_type': 'FIRST_N_PARTS', 'value': 5, 'order': 1,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+            {'rule_type': 'EVERY_NTH_PART', 'value': 3, 'order': 2,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+        ],
+    },
+    # ---- Remanufacture: its own Final Test ----
+    {
+        'route': 'reman',
+        'id': 'reman-final-standard',
+        'name': 'Standard Inspection - Final Test (Reman)',
+        'step': 'Final Test',
+        'origin': 'QMS-SAMP-010 Rev A',
+        'active': True,
+        'is_fallback': False,
+        'fallback_duration': None,
+        'rules': [
+            {'rule_type': 'FIRST_N_PARTS', 'value': 3, 'order': 1,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
+            {'rule_type': 'PERCENTAGE', 'value': 10, 'order': 2,
+             'algorithm_description': 'SHA-256 hash modulo arithmetic', 'last_validated': None},
         ],
     },
 ]
@@ -231,19 +322,21 @@ class DemoSamplingSeeder(BaseSeeder):
             qa_staff = users.get('qa_staff', [])
             qa_manager = qa_staff[0] if qa_staff else None
 
-        # Get step lookup
-        steps = Steps.objects.filter(tenant=self.tenant)
-        step_map = {s.name: s for s in steps}
+        # Each ruleset belongs to one route's step; names repeat across the routes.
+        processes = {'reman': process_named(self.tenant, REMAN),
+                     'build': process_named(self.tenant, BUILD)}
+        step_maps = {route: route_steps(proc) for route, proc in processes.items()}
 
         # Create rulesets and rules
         ruleset_map = {}  # For linking fallbacks
         for rs_data in DEMO_SAMPLING_RULESETS:
-            step = step_map.get(rs_data['step'])
+            route = rs_data['route']
+            step = step_maps[route].get(rs_data['step'])
             if not step:
-                self.log(f"  Warning: Step '{rs_data['step']}' not found", warning=True)
+                self.log(f"  Warning: {route} step '{rs_data['step']}' not found", warning=True)
                 continue
 
-            ruleset = self._create_ruleset(rs_data, part_type, process, step, qa_manager)
+            ruleset = self._create_ruleset(rs_data, part_type, processes[route], step, qa_manager)
             result['rulesets'].append(ruleset)
             ruleset_map[rs_data['id']] = ruleset
 
@@ -357,6 +450,12 @@ class DemoSamplingSeeder(BaseSeeder):
 
         This must be done after all rulesets are created.
         """
+        # Rulesets that name their fallback.
+        for rs_data in DEMO_SAMPLING_RULESETS:
+            fb = rs_data.get('fallback')
+            if fb and rs_data['id'] in ruleset_map and fb in ruleset_map:
+                ruleset_map[rs_data['id']].fallback_ruleset = ruleset_map[fb]
+                ruleset_map[rs_data['id']].save()
         # Flow Testing: standard -> enhanced
         if 'flow-standard' in ruleset_map and 'flow-enhanced' in ruleset_map:
             flow_standard = ruleset_map['flow-standard']

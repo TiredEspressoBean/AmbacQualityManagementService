@@ -3,7 +3,8 @@ Demo manufacturing seeder with preset part types, processes, and equipment.
 
 Creates deterministic manufacturing setup matching DEMO_DATA_SYSTEM.md:
 - Part types: Common Rail Injector (primary)
-- Process: Injector Reman with 12 steps including rework loop
+- Processes: Injector Reman (cores torn down and rebuilt) and Injector Build (new
+  manufacture from bar stock), each with its own steps
 - Equipment: Flow test stands, torque wrenches, with calibration status
 """
 
@@ -19,6 +20,7 @@ from Tracker.models import (
 from Tracker.models.mes_lite import ProcessStatus, EdgeType
 
 from ..base import BaseSeeder
+from .routes import step_key
 
 
 # Demo part types
@@ -121,7 +123,7 @@ DEMO_PROCESS = {
             'max_visits': 2, 'revisit_assignment': 'ROLE', 'revisit_role_name': 'QA Manager',
         },
         {
-            'name': 'Assembly', 'order': 7, 'description': 'Reassemble injector with new seals',
+            'name': 'Reassembly', 'order': 7, 'description': 'Reassemble injector with new seals',
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': False, 'requires_qa_signoff': False,
             'sampling_required': False, 'min_sampling_rate': 0.0,
@@ -216,44 +218,77 @@ DEMO_REPAIR_BRANCHES = [
     ('Nozzle Inspection', 'Nozzle Replacement', False, 'Flow Testing'),
 ]
 
-# New manufacture — the default kind of work. Raw stock is machined, then joins the
-# same downstream steps as reman (wash, inspect, assemble, test, pack) and ends at a
-# Ship step: terminal SHIPPED, which is what makes a unit appear in the shipping
-# queue. No core receiving, disassembly or component grading. Steps named in `route`
-# that aren't in `new_steps` are the shared steps DEMO_PROCESS defines.
+# New manufacture: a body machined from bar stock, ground, washed and inspected,
+# nitrided out at the plater, assembled with purchased nozzle and valve, calibrated,
+# tested, marked and shipped. Its own steps throughout — nothing here is shared with
+# the reman route, so a reman-only capture can never land on a new build.
+_BUILD_STEP = dict(
+    pass_threshold=1.0, expected_duration=None,
+    block_on_quarantine=False, requires_qa_signoff=False,
+    sampling_required=False, min_sampling_rate=0.0,
+    requires_first_piece_inspection=False, fpi_scope='PER_WORKORDER',
+    block_on_measurement_failure=False, block_on_spc_violation=False,
+    override_expiry_hours=24, undo_window_minutes=30, rollback_requires_approval=False,
+    requires_batch_completion=False,
+    max_visits=None, revisit_assignment='ANY', revisit_role_name=None,
+)
+_QA_GATE = dict(
+    block_on_quarantine=True, requires_qa_signoff=True,
+    requires_first_piece_inspection=True,
+    block_on_measurement_failure=True, block_on_spc_violation=True,
+    override_expiry_hours=8, undo_window_minutes=15, rollback_requires_approval=True,
+    part_advancement_mode='PER_PART',  # per-part QA gate; a failed part doesn't hold the batch
+    max_visits=2, revisit_assignment='ROLE', revisit_role_name='QA Manager',
+)
+
 DEMO_BUILD_PROCESS = {
     'name': 'Injector Build',
     'is_remanufactured': False,
-    'new_steps': [
-        {
-            'name': 'Machining', 'order': 1, 'description': 'Turn and bore the injector body from bar stock',
-            'pass_threshold': 1.0, 'expected_duration': None,
-            'block_on_quarantine': True, 'requires_qa_signoff': False,
-            'sampling_required': False, 'min_sampling_rate': 0.0,
-            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
-            'block_on_measurement_failure': True, 'block_on_spc_violation': False,
-            'override_expiry_hours': 24, 'undo_window_minutes': 30, 'rollback_requires_approval': False,
-            'requires_batch_completion': False,
-            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
-        },
-        {
-            'name': 'Ship', 'order': 99, 'description': 'Ship to the customer',
-            'terminal_status': 'SHIPPED',
-            'pass_threshold': 1.0, 'expected_duration': None,
-            'block_on_quarantine': False, 'requires_qa_signoff': False,
-            'sampling_required': False, 'min_sampling_rate': 0.0,
-            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
-            'block_on_measurement_failure': False, 'block_on_spc_violation': False,
-            'override_expiry_hours': 24, 'undo_window_minutes': 0, 'rollback_requires_approval': True,
-            'requires_batch_completion': False,
-            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
-        },
+    'steps': [
+        {**_BUILD_STEP, 'name': 'Machining', 'order': 1,
+         'description': 'Turn and bore the injector body from bar stock',
+         'block_on_quarantine': True, 'block_on_measurement_failure': True},
+        {**_BUILD_STEP, 'name': 'Precision Grinding', 'order': 2,
+         'description': 'Grind the bore and valve seat to finish size',
+         'block_on_quarantine': True, 'block_on_measurement_failure': True},
+        {**_BUILD_STEP, 'name': 'Wash', 'order': 3,
+         'description': 'Ultrasonic wash to remove grinding swarf and coolant',
+         'undo_window_minutes': 60,
+         'requires_batch_completion': True},  # one load washed together
+        {**_BUILD_STEP, **_QA_GATE, 'name': 'Body Inspection', 'order': 4,
+         'description': 'Dimensional and visual inspection of the finished body',
+         'sampling_required': True, 'min_sampling_rate': 25.0},
+        # Outside process: the outside-process seeder flags it and names Apex Plating
+        # as its vendor. It is on the route from the start, so seeded history passes
+        # through it like any other step.
+        {**_BUILD_STEP, 'name': 'Nitride Coating', 'order': 5,
+         'description': 'Send bodies out for nitride coating, then inspect on return'},
+        {**_BUILD_STEP, 'name': 'Assembly', 'order': 6,
+         'description': 'Assemble the body with the purchased nozzle, control valve and solenoid',
+         'block_on_measurement_failure': True},  # torque
+        {**_BUILD_STEP, **_QA_GATE, 'name': 'Flow Calibration', 'order': 7,
+         'description': 'Set and verify fuel delivery; check spray pattern and angle',
+         'sampling_required': True, 'min_sampling_rate': 20.0},
+        {**_BUILD_STEP, **_QA_GATE, 'name': 'Final Test', 'order': 8,
+         'description': 'Leak and pressure test of the finished injector',
+         'sampling_required': True, 'min_sampling_rate': 10.0,
+         'override_expiry_hours': 4},
+        {**_BUILD_STEP, 'name': 'Marking & Packaging', 'order': 9,
+         'description': 'Laser-mark the serial and pack for shipping',
+         'undo_window_minutes': 60},
+        {**_BUILD_STEP, 'name': 'Ship', 'order': 10, 'description': 'Ship to the customer',
+         'terminal_status': 'SHIPPED', 'undo_window_minutes': 0,
+         'rollback_requires_approval': True},
+        {**_BUILD_STEP, 'name': 'Rework', 'order': 11,
+         'description': 'Rework station for failed parts',
+         'rollback_requires_approval': True,
+         'max_visits': 3, 'revisit_assignment': 'DIFFERENT'},
     ],
-    'route': ['Machining', 'Cleaning', 'Nozzle Inspection', 'Assembly', 'Flow Testing',
-              'Final Test', 'Packaging', 'Ship'],
-    # Fail paths go to the shared Rework step; reworked parts re-enter inspection.
-    'rework_from': ['Nozzle Inspection', 'Flow Testing', 'Final Test'],
-    'rework_reentry': 'Nozzle Inspection',
+    'route': ['Machining', 'Precision Grinding', 'Wash', 'Body Inspection', 'Nitride Coating',
+              'Assembly', 'Flow Calibration', 'Final Test', 'Marking & Packaging', 'Ship'],
+    # Fail paths go to the route's own Rework step; reworked parts re-enter inspection.
+    'rework_from': ['Body Inspection', 'Flow Calibration', 'Final Test'],
+    'rework_reentry': 'Body Inspection',
 }
 
 # Demo equipment types
@@ -264,6 +299,14 @@ DEMO_EQUIPMENT_TYPES = [
     {
         'name': 'CNC Lathe',
         'description': 'CNC turning centre for injector bodies',
+        'requires_calibration': False,
+        'default_calibration_interval_days': None,
+        'is_portable': False,
+        'track_downtime': True,
+    },
+    {
+        'name': 'Grinder',
+        'description': 'Precision cylindrical grinder for bore and seat finishing',
         'requires_calibration': False,
         'default_calibration_interval_days': None,
         'is_portable': False,
@@ -363,6 +406,7 @@ DEMO_EQUIPMENT_TYPES = [
 DEMO_EQUIPMENT = [
     # Production machines — finite scheduled resources (schedulable=True).
     {'name': 'CNC Lathe HL-1', 'type': 'CNC Lathe', 'serial': 'HL-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},
+    {'name': 'Cylindrical Grinder GR-1', 'type': 'Grinder', 'serial': 'GR-001', 'calibration_days': None, 'location': 'Machine Shop', 'schedulable': True},
     {'name': 'Flow Test Stand #1', 'type': 'Flow Bench', 'serial': 'FTS-001', 'calibration_days': 30, 'location': 'QA Lab', 'schedulable': True},
     {'name': 'Flow Test Stand #2', 'type': 'Flow Bench', 'serial': 'FTS-002', 'calibration_days': 60, 'location': 'QA Lab', 'schedulable': True},
     {'name': 'Torque Wrench TW-25', 'type': 'Torque Tool', 'serial': 'TW-025', 'calibration_days': -15, 'location': 'Tool Crib', 'schedulable': True},  # OVERDUE → is_operational excludes from solve
@@ -396,81 +440,43 @@ DEMO_EQUIPMENT = [
 # Tolerances are relative to nominal (not absolute spec limits)
 # Numeric fields have precision 9, scale 6 - values must be < 1000
 DEMO_MEASUREMENTS = [
-    {
-        'label': 'Body OD',
-        'step': 'Machining',
-        'unit': 'mm',
-        'nominal': 6.000,
-        'lower_tol': 0.010,
-        'upper_tol': 0.010,
-        'type': 'NUMERIC',
-        'spc_enabled': True,
-    },
-    {
-        'label': 'Flow Rate',
-        'step': 'Flow Testing',
-        'unit': 'mL/min',
-        'nominal': 120.0,
-        'lower_tol': 20.0,  # LSL = 120 - 20 = 100
-        'upper_tol': 20.0,  # USL = 120 + 20 = 140
-        'type': 'NUMERIC',
-        'spc_enabled': True,
-    },
-    {
-        'label': 'Spray Angle',
-        'step': 'Nozzle Inspection',
-        'unit': 'degrees',
-        'nominal': 15.0,
-        'lower_tol': 3.0,   # LSL = 15 - 3 = 12
-        'upper_tol': 3.0,   # USL = 15 + 3 = 18
-        'type': 'NUMERIC',
-        'spc_enabled': True,
-    },
-    {
-        'label': 'Spray Pattern',
-        'step': 'Nozzle Inspection',
-        'unit': '',
-        'nominal': None,
-        'lower_tol': None,
-        'upper_tol': None,
-        'type': 'PASS_FAIL',
-        'spc_enabled': False,
-    },
-    {
-        'label': 'Leak Test Pressure',
-        'step': 'Final Test',
-        'unit': 'bar',
-        'nominal': 200.0,   # Scaled down from 2000 to fit decimal precision
-        'lower_tol': 5.0,   # LSL = 200 - 5 = 195
-        'upper_tol': 5.0,   # USL = 200 + 5 = 205
-        'type': 'NUMERIC',
-        'spc_enabled': True,
-    },
-    {
-        'label': 'Assembly Torque',
-        'step': 'Assembly',
-        'unit': 'Nm',
-        'nominal': 25.0,
-        'lower_tol': 2.0,   # LSL = 25 - 2 = 23
-        'upper_tol': 2.0,   # USL = 25 + 2 = 27
-        'type': 'NUMERIC',
-        'spc_enabled': False,
-    },
-    {
-        # A BATCH-scope process parameter: one bath temperature per wash cycle,
-        # shared by every part in the load. Feeds the batch inspection substep at
-        # Cleaning — the demo's example of a cycle reading that belongs to the
-        # load, not to any one part. spc_enabled so it can seed process-parameter
-        # SPC later.
-        'label': 'Bath Temperature',
-        'step': 'Cleaning',
-        'unit': 'C',
-        'nominal': 60.0,
-        'lower_tol': 5.0,   # LSL = 55
-        'upper_tol': 5.0,   # USL = 65
-        'type': 'NUMERIC',
-        'spc_enabled': True,
-    },
+    # ---- New manufacture ----
+    {'route': 'build', 'label': 'Body OD', 'step': 'Machining', 'unit': 'mm',
+     'nominal': 6.000, 'lower_tol': 0.010, 'upper_tol': 0.010, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'build', 'label': 'Seat Bore Diameter', 'step': 'Precision Grinding', 'unit': 'mm',
+     'nominal': 4.000, 'lower_tol': 0.005, 'upper_tol': 0.005, 'type': 'NUMERIC', 'spc_enabled': True},
+    # A BATCH-scope process parameter: one bath temperature per wash cycle, shared by
+    # every part in the load — the demo's cycle reading that belongs to the load.
+    {'route': 'build', 'label': 'Bath Temperature', 'step': 'Wash', 'unit': 'C',
+     'nominal': 60.0, 'lower_tol': 5.0, 'upper_tol': 5.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'build', 'label': 'Bore Diameter', 'step': 'Body Inspection', 'unit': 'mm',
+     'nominal': 4.000, 'lower_tol': 0.005, 'upper_tol': 0.005, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'build', 'label': 'Assembly Torque', 'step': 'Assembly', 'unit': 'Nm',
+     'nominal': 25.0, 'lower_tol': 2.0, 'upper_tol': 2.0, 'type': 'NUMERIC', 'spc_enabled': False},
+    {'route': 'build', 'label': 'Flow Rate', 'step': 'Flow Calibration', 'unit': 'mL/min',
+     'nominal': 120.0, 'lower_tol': 20.0, 'upper_tol': 20.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'build', 'label': 'Spray Angle', 'step': 'Flow Calibration', 'unit': 'degrees',
+     'nominal': 15.0, 'lower_tol': 3.0, 'upper_tol': 3.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'build', 'label': 'Leak Test Pressure', 'step': 'Final Test', 'unit': 'bar',
+     'nominal': 200.0, 'lower_tol': 5.0, 'upper_tol': 5.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    # ---- Remanufacture ----
+    # A used body is graded against a wear allowance, wider than new manufacture's.
+    {'route': 'reman', 'label': 'Body Bore Diameter', 'step': 'Component Grading', 'unit': 'mm',
+     'nominal': 4.000, 'lower_tol': 0.005, 'upper_tol': 0.012, 'type': 'NUMERIC', 'spc_enabled': False},
+    {'route': 'reman', 'label': 'Post-Clean Bore Dia', 'step': 'Cleaning', 'unit': 'mm',
+     'nominal': 4.000, 'lower_tol': 0.005, 'upper_tol': 0.012, 'type': 'NUMERIC', 'spc_enabled': False},
+    {'route': 'reman', 'label': 'Bath Temperature', 'step': 'Cleaning', 'unit': 'C',
+     'nominal': 60.0, 'lower_tol': 5.0, 'upper_tol': 5.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'reman', 'label': 'Spray Angle', 'step': 'Nozzle Inspection', 'unit': 'degrees',
+     'nominal': 15.0, 'lower_tol': 3.0, 'upper_tol': 3.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'reman', 'label': 'Spray Pattern', 'step': 'Nozzle Inspection', 'unit': '',
+     'nominal': None, 'lower_tol': None, 'upper_tol': None, 'type': 'PASS_FAIL', 'spc_enabled': False},
+    {'route': 'reman', 'label': 'Flow Rate', 'step': 'Flow Testing', 'unit': 'mL/min',
+     'nominal': 120.0, 'lower_tol': 20.0, 'upper_tol': 20.0, 'type': 'NUMERIC', 'spc_enabled': True},
+    {'route': 'reman', 'label': 'Reassembly Torque', 'step': 'Reassembly', 'unit': 'Nm',
+     'nominal': 25.0, 'lower_tol': 2.0, 'upper_tol': 2.0, 'type': 'NUMERIC', 'spc_enabled': False},
+    {'route': 'reman', 'label': 'Leak Test Pressure', 'step': 'Final Test', 'unit': 'bar',
+     'nominal': 200.0, 'lower_tol': 5.0, 'upper_tol': 5.0, 'type': 'NUMERIC', 'spc_enabled': True},
 ]
 
 
@@ -521,12 +527,17 @@ class DemoManufacturingSeeder(BaseSeeder):
         result['processes'] = [process, build_process]
         result['build_process'] = build_process
         result['steps'] = steps + build_steps
+        # Two routes, no shared steps; names repeat (Final Test, Rework), so callers
+        # look a step up in its route.
+        result['reman_steps'] = {s.name: s for s in steps}
+        result['build_steps'] = {s.name: s for s in build_steps}
 
         # Link part types back to process (circular dependency)
         self._link_part_types_to_process(result['part_types'], process)
 
         # Create measurement definitions
-        result['measurement_definitions'] = self._create_measurement_definitions(steps)
+        result['measurement_definitions'] = self._create_measurement_definitions(
+            {'reman': result['reman_steps'], 'build': result['build_steps']})
 
         self.log(f"  Created {len(result['part_types'])} part types")
         self.log(f"  Created {len(result['steps'])} steps in {len(result['processes'])} process")
@@ -681,9 +692,10 @@ class DemoManufacturingSeeder(BaseSeeder):
             # Create step with ALL model fields explicitly set from config
             step, _ = Steps.objects.update_or_create(
                 tenant=self.tenant,
-                name=step_name,
                 part_type=part_type,
+                external_id=step_key('reman', step_name),
                 defaults={
+                    'name': step_name,
                     # Basic fields
                     'description': step_data['description'],
                     'pass_threshold': step_data.get('pass_threshold', 1.0),
@@ -738,8 +750,7 @@ class DemoManufacturingSeeder(BaseSeeder):
         return process, steps
 
     def _create_build_process(self, part_type):
-        """The new-manufacture route (DEMO_BUILD_PROCESS). Its own steps are created the
-        same way as the reman ones; the shared steps are looked up by name."""
+        """The new-manufacture route (DEMO_BUILD_PROCESS), with its own steps."""
         cfg = DEMO_BUILD_PROCESS
         process, _ = Processes.objects.update_or_create(
             tenant=self.tenant, name=cfg['name'], part_type=part_type,
@@ -752,12 +763,28 @@ class DemoManufacturingSeeder(BaseSeeder):
                 'approved_by': None,
             },
         )
-        new_steps = {}
-        for step_data in cfg['new_steps']:
+        groups = {}
+        step_map = {}
+        for step_data in cfg['steps']:
+            name = step_data['name']
             is_terminal = bool(step_data.get('terminal_status'))
+            if step_data['order'] == 1:
+                step_type = 'START'
+            elif is_terminal:
+                step_type = 'TERMINAL'
+            elif name == 'Rework':
+                step_type = 'REWORK'
+            elif step_data.get('requires_qa_signoff'):
+                step_type = 'DECISION'
+            else:
+                step_type = 'TASK'
+            role_name = step_data.get('revisit_role_name')
+            if role_name and role_name not in groups:
+                groups[role_name] = TenantGroup.objects.filter(tenant=self.tenant, name=role_name).first()
             step, _ = Steps.objects.update_or_create(
-                tenant=self.tenant, name=step_data['name'], part_type=part_type,
+                tenant=self.tenant, part_type=part_type, external_id=step_key('build', name),
                 defaults={
+                    'name': name,
                     'description': step_data['description'],
                     'pass_threshold': step_data.get('pass_threshold', 1.0),
                     'expected_duration': step_data.get('expected_duration'),
@@ -774,18 +801,17 @@ class DemoManufacturingSeeder(BaseSeeder):
                     'rollback_requires_approval': step_data.get('rollback_requires_approval', True),
                     'requires_batch_completion': step_data.get('requires_batch_completion', False),
                     'part_advancement_mode': step_data.get('part_advancement_mode', 'COHORT'),
-                    'step_type': 'TERMINAL' if is_terminal else 'START',
-                    'is_decision_point': False,
-                    'decision_type': '',
+                    'step_type': step_type,
+                    'is_decision_point': step_data.get('requires_qa_signoff', False),
+                    'decision_type': 'QA_RESULT' if step_data.get('requires_qa_signoff') else '',
                     'is_terminal': is_terminal,
                     'terminal_status': step_data.get('terminal_status', ''),
                     'max_visits': step_data.get('max_visits'),
                     'revisit_assignment': step_data.get('revisit_assignment', 'ANY'),
-                    'revisit_role': None,
+                    'revisit_role': groups.get(role_name) if role_name else None,
                 },
             )
-            new_steps[step.name] = step
-        step_map = {s.name: s for s in Steps.objects.filter(tenant=self.tenant, part_type=part_type)}
+            step_map[name] = step
         route = cfg['route']
         for i, name in enumerate(route, start=1):
             ProcessStep.objects.update_or_create(
@@ -802,7 +828,7 @@ class DemoManufacturingSeeder(BaseSeeder):
             StepEdge.objects.update_or_create(
                 process=process, from_step=step_map[frm], to_step=step_map[to], edge_type=edge_type,
                 defaults={'condition_measurement': None, 'condition_operator': '', 'condition_value': None})
-        return process, list(new_steps.values())
+        return process, list(step_map.values())
 
     def _create_step_edges(self, process, step_map):
         """Create edges between steps including rework loops.
@@ -816,8 +842,8 @@ class DemoManufacturingSeeder(BaseSeeder):
             ('Component Grading', 'Cleaning', EdgeType.DEFAULT),
             ('Cleaning', 'Nozzle Inspection', EdgeType.DEFAULT),
             ('Nozzle Inspection', 'Flow Testing', EdgeType.DEFAULT),
-            ('Flow Testing', 'Assembly', EdgeType.DEFAULT),
-            ('Assembly', 'Final Test', EdgeType.DEFAULT),
+            ('Flow Testing', 'Reassembly', EdgeType.DEFAULT),
+            ('Reassembly', 'Final Test', EdgeType.DEFAULT),
             ('Final Test', 'Packaging', EdgeType.DEFAULT),
             ('Packaging', 'Complete', EdgeType.DEFAULT),
         ]
@@ -882,16 +908,15 @@ class DemoManufacturingSeeder(BaseSeeder):
         """
         pass
 
-    def _create_measurement_definitions(self, steps):
-        """Create measurement definitions linked to steps.
+    def _create_measurement_definitions(self, route_maps):
+        """Create measurement definitions on their route's step.
 
         All type values must be UPPERCASE ('NUMERIC', 'PASS_FAIL').
         """
-        step_map = {s.name: s for s in steps}
         definitions = []
 
         for md_data in DEMO_MEASUREMENTS:
-            step = step_map.get(md_data['step'])
+            step = route_maps.get(md_data['route'], {}).get(md_data['step'])
             if not step:
                 continue
 
