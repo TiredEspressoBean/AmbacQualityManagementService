@@ -93,6 +93,17 @@ onto a job.
 
 Exports to **CSV** and **PDF**.
 
+### Approving time
+
+The **Awaiting approval** card lists finished time entries in the page's date
+range that nobody has approved yet, with operator, type, work order, start and
+hours. **Approve** one at a time, or **Approve all (N)**.
+
+You can't approve your own time: your entries read *Your time*, with no button.
+An entry still running can't be approved until it ends. Approving needs
+`approve_timeentry`, held by default by **Shift Lead**, **Production Manager**
+and **Tenant Admin**. Without it the card isn't shown.
+
 ## Requirements
 
 **What open demand needs — material to buy, components to build, tooling to

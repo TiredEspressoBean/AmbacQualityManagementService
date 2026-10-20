@@ -51,6 +51,13 @@ throttled. You cannot clear your own competency gap.
     It shows on the **part's traveller** (work order control page → the part's
     history), as an amber line under the step it was used on.
 
+    To review every override over a period, open **Training Overrides** from the
+    Training dashboard's Quick Actions (`/quality/training/overrides`). It lists
+    when, who worked, who authorised, the step and part, the missing training
+    and the reason, for a date range (the last 30 days by default). It needs
+    `view_auditlog`, held by default by QA Manager, Document Controller, Auditor
+    and Tenant Admin.
+
 ### Taking over someone else's step
 
 The same shape applies if the step is already assigned to another operator:

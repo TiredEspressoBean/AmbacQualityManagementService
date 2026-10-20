@@ -24,6 +24,7 @@ An operator runs the work; you settle what the work runs into.
 | **Override the training gate** | At claim / work-start | Nobody clears their own competency gap |
 | **Clear somebody else's unsubmitted signature** | The substep they signed | Unblocks work when the signer has gone home |
 | **Apply a cycle count** | [Locations & Cycle Counts](../workflows/supply/locations.md) | Counting is the counter's job; changing stock on the strength of it isn't |
+| **Approve operators' time** | [Operator Hours](../workflows/scheduling/overview.md#approving-time) → *Awaiting approval* | Nobody approves their own hours |
 
 !!! note "Clearing a signature is narrower than it sounds"
     A signature inside a substep is **provisional until the substep is
@@ -123,7 +124,8 @@ not owning it; see [CAPA Overview](../workflows/capa/overview.md).
 | **Approve a disposition** | QA Manager |
 | **Solve / commit a schedule** | Planner, Production Manager, Tenant Admin |
 | **Author processes, BOMs, specs** | Engineering, QA Manager, Production Manager, Document Controller, Tenant Admin |
-| **Cancel a work order** | Production Manager, Tenant Admin |
+| **Cancel or short-close a work order** | Production Manager, Tenant Admin |
+| **Approve a gate bypass** | QA Manager, Tenant Admin — you can *request* one from the part's page |
 
 These are the default groups an organisation starts with. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
 

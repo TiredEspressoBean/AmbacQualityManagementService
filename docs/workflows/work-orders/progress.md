@@ -123,9 +123,10 @@ Guides](../../roles/index.md).
 |--------|--------------|--------|
 | **Release** | Not yet released, and not on hold | Releases the job — the readiness check runs, and if it refuses, *Not ready to release* lists the blockers and asks for a **reason to release anyway**. It does **not** change the status |
 | **Un-release** | Released | Withdraws the authorisation |
-| **Place on hold** | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
+| **Hold** (*Place on hold* on the control page) | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
 | **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending** |
 | **Cancel Work Order** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
+| **Short-close** | Not on hold, with something finished | Completes it short, deciding each unfinished unit — see [Short-closing](basics.md#short-closing-a-work-order) |
 
 !!! note "Status is not something you set"
     These buttons are the only way to change a work order's status by hand.

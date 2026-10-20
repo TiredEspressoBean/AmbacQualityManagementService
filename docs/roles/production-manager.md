@@ -347,6 +347,8 @@ material for one.
 | Create work order | Data Management > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
 | Change priority | Open work order → change priority → **give a reason** → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
+| Close a job short | Work order → **Short-close** → decide each unfinished unit, give a reason, answer the quantity questions |
+| Approve time | Operator Hours → **Awaiting approval** → **Approve** |
 
 ## Related Documentation
 

@@ -178,6 +178,39 @@ Work down these, commonest first:
 - **The operator isn't qualified** for the step, and nobody has authorised the
   override.
 
+The part's detail page lists what is holding it, under **Blocked at <step>**.
+
+### Requesting a bypass
+
+When a part is held, its detail page shows **Blocked at <step>** — *"The part
+can't move on until each of these clears."* Each blocker says whether it can
+be bypassed:
+
+- **Request bypass.** Give a reason (*"Why should the part move on anyway?"*).
+  Any staff role can ask (`add_stepoverride`).
+- **Bypass requested — awaiting QA**, **Bypass approved**, or **Bypass
+  refused**. You can ask again after a refusal.
+- **No bypass for this block.**
+
+Five kinds of block can be bypassed:
+
+- quarantine
+- QA sign-off
+- first-piece inspection
+- sampling
+- a missing or out-of-spec measurement
+
+These can't:
+
+- **Training.** Use the supervisor override when the work starts.
+- **Life limits.** These need a limit extension.
+
+Requests land in the QA inbox under **Bypass requests**. A holder of
+`approve_stepoverride` (by default QA Manager and Tenant Admin) **Approves** or
+**Refuses**; a refusal needs a reason. Nobody can decide their own request.
+Approving tries to advance the part straight away. An approved bypass clears
+its block only until the step's override expiry, 24 hours by default.
+
 ### "No parts at step"
 
 - All parts may have already been passed

@@ -41,7 +41,7 @@ Click an order to open it. The page carries:
   date, struck through
 - **Progress** through its stages, and the **Stages** list itself
 - **Notes**, as a timeline
-- **Line Items** — per part type, ordered, planned and remaining
+- **Line Items** — per part type, ordered, planned and remaining. *N short-closed* under Planned counts units a short-closed work order neither built nor gave back
 - **Parts on this order** — each part with its type, step and status. Staff only:
   it needs `change_orders`, and customers do not see it
 - **Shipping** — shipped against ordered per line, the shipments themselves, and

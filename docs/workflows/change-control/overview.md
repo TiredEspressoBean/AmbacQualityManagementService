@@ -15,6 +15,23 @@ happened to the jobs already running under the old version.
     opened against it. From then on each record has its own page and its own
     actions.
 
+## Simplified or regulated
+
+**Admin > Settings > Change control mode** decides how much a change needs
+before it takes effect. New organisations start in **Simplified**.
+
+| | Simplified | Regulated |
+|---|---|---|
+| Approving a PCR | **Approve** on the PCR page approves it at once. The signature request raised at submit is cancelled | The PCR's approval request must collect every required signature first. **Approve** only confirms what the signatures decided |
+| The PCO | Created already approved, ready to implement | Created as a draft for its author, then sent for its own signed approval |
+| Who approves | Anyone holding the authoring permissions, including whoever submitted the PCR | Whoever the PCR and PCO approval templates assign, under their self-approval rules |
+
+!!! warning "In Simplified mode one person can carry a change through alone"
+    Nothing in Simplified mode stops the person who raised a change from
+    approving and implementing it, and no signature is collected. If your
+    quality system needs an independent, signed authorisation of process
+    changes, switch to **Regulated**.
+
 !!! warning "A tenant needs its change-control approval templates"
     Submitting a PCR looks up the tenant's **`PCR_APPROVAL`** template, and
     approving the PCO needs **`PCO_APPROVAL`**. Without them the step refuses
@@ -148,7 +165,8 @@ differences:
 - **It applies to the work orders it names, and nothing else.** Implementing it
   approves the revised version and moves those work orders onto it. The
   baseline stays current, so new work and every other job keep using the
-  approved process. A temporary version is never offered for new work.
+  approved process. A temporary version is never offered for new work, and
+  neither is a draft or superseded one.
 - **It ends.** When you submit the PCR, switch on **Temporary change
   (deviation)** and give an **Ends on** date. The change is over when its work
   orders finish; the date is the backstop.

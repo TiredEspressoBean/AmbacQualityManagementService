@@ -118,6 +118,14 @@ Where your procedure wants more than one signature on an expensive scrap or a
 deviation the customer must accept, that is your procedure: record the customer's
 approval on the disposition, and document the rest in its justification.
 
+## Bypass requests
+
+A held part's owner can ask for a one-time bypass of a quality block. Requests
+arrive in your inbox under **Bypass requests**: the block, the part and step,
+the reason, and who asked. **Approve** or **Refuse**; a refusal needs a reason.
+Nobody decides their own. See [Requesting a
+bypass](../workflows/tracking/moving-parts.md#requesting-a-bypass).
+
 ## Managing CAPAs
 
 ### CAPA Overview

@@ -29,6 +29,26 @@ Each entry carries:
 An entry whose changes are all internal shows *"No significant changes"*, and a
 record with no entries yet shows *"No audit history."*
 
+### Corrections
+
+Some changes are made with a **reason**, and those reasons show in a
+**Corrections (N)** block beside the history. Each line gives *field: old →
+new*, the reason in quotes, and who made the change and when. They come from:
+
+- adjusting a lot's quantity
+- cancelling or chasing an expected delivery
+- shipping, and voiding a shipment
+- moving a lot
+- changing a work order's priority
+- a receiving hold
+- short-closing a work order
+
+The block appears on the **History** card of a Data Management record, in a
+part's history timeline, and in a detail page's audit trail. It's hidden when
+there are none. Reading it needs `view_recordedit`, which every staff role and
+the Auditor hold by default, and you must be able to open the record itself.
+There's no list of corrections across records.
+
 !!! note "Quality events are separate sections"
     Quality reports and dispositions are not entries in the activity history —
     they have their own **Quality Reports** and **Dispositions** sections on the

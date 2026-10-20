@@ -75,8 +75,11 @@ An order may have multiple work orders if:
 | **Completed** | All parts finished |
 | **Cancelled** | Work order cancelled |
 
-Statuses change through the work and through the work order page's **Place on
-hold**, **Resume** and **Cancel** — not by editing the field. See [Status
+Statuses change through the work and through the work order page's **Hold**,
+**Resume** and **Cancel** — not by editing the field. A work order on hold,
+completed, short-closed or cancelled takes no more work: **Start Work** is
+disabled and says why, and starting a step on it is refused. No supervisor
+override gets past that. See [Status
 Updates](progress.md#status-updates).
 
 ## Priority Levels
@@ -221,6 +224,43 @@ A work order already completed or cancelled cannot be cancelled again.
     Manager** only, and the button is hidden from anyone else. Abandoning a job
     breaks a commitment to a customer, so it is not an operator's call.
 
+## Short-closing a Work Order
+
+When a job will finish with fewer built than planned, **Short-close** it rather
+than cancelling it. The button sits beside Cancel, needs the same permission
+(`cancel_workorder`), and is hidden while the work order is on hold.
+
+The dialog — *"Complete it with fewer built than planned: X of Q built"* — asks:
+
+1. **For each unfinished unit,** **Scrap** it or **Move** it to another open
+   work order on the same process, where it keeps its step. A unit moves only
+   to work for the **same customer**, or to a work order on no order. A
+   customer's own unit (a repair-and-return core) moves only to that customer's
+   work. Each option names its customer. **Set all to…** offers only targets
+   every unit may take.
+2. **Why it is closing short.** A reason is required.
+3. **For each work order receiving units:** raise its quantity to cover them, or
+   leave it as it is.
+4. **If the job is on an order line and units are left over:** give them back to
+   the line as demand still to plan, or treat the line as done with them.
+
+Questions 3 and 4 have no default; you must answer them.
+
+The work order becomes **Completed**, with a **Short-closed** badge whose
+tooltip gives the reason. Every scrap, move and quantity change is recorded as a
+correction with that reason (see [Part History](../tracking/part-history.md#corrections)).
+On the order page, **Planned** notes *N short-closed*. Units given back reappear
+in **Remaining**.
+
+Short-close is refused:
+
+- without a reason
+- when nothing is finished: cancel it instead
+- with any unit left undecided, or a question unanswered
+- for a move to a work order on a different process, or for a different
+  customer
+- for scrapping a quarantined unit, or one out at a vendor. Moving them is fine.
+
 ## Work Order Permissions
 
 | Permission | Allows |
@@ -229,7 +269,7 @@ A work order already completed or cancelled cannot be cancelled again.
 | `add_workorder` | Create work orders |
 | `change_workorder` | Edit, release, place on hold and resume — one at a time or in bulk from the Control Center. By default every staff role holds it; without it those buttons are hidden |
 | `delete_workorder` | Delete work orders |
-| `cancel_workorder` | Cancel a work order — Tenant Admin and Production Manager |
+| `cancel_workorder` | Cancel or short-close a work order — Tenant Admin and Production Manager |
 
 ## Next Steps
 
