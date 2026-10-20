@@ -8,8 +8,7 @@
 //   3. Component table — Find # | Part Number | Description | Qty | UoM | Optional | Notes
 //   4. Footer note (shop reference document, not a quality record)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -30,23 +29,15 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Bill of Materials",
-  classification: "Internal — Shop Reference",
-)
-
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [BILL OF MATERIALS],
-  data.parent_part_name,
-  data.tenant_name,
-  trailing: [
+#show: doc-frame.with(
+  doc-type: "Bill of Materials",
+  title: data.parent_part_name,
+  kind: "shop",
+  status: [
     #status-badge(data.status)
   ],
+  org: data.tenant_name,
 )
-
-#v(14pt)
 
 // ── Header info ──────────────────────────────────────────────────────────────
 

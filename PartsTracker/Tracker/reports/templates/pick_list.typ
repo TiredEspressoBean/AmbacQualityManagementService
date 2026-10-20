@@ -21,8 +21,7 @@
 //      two-step verification that makes this a record of material issue
 //   6. Footer note
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -35,22 +34,15 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Material Requisition",
-  classification: "Internal — Shop Floor",
+#show: doc-frame.with(
+  doc-type: "Material Requisition",
+  title: data.part_name,
+  doc-id: data.wo_number,
+  id-in-title: false,   // the work order box below already carries it, with its barcode
+  kind: "shop",
+  uncontrolled: false,
+  org: data.tenant_name,
 )
-
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [PICK LIST / MATERIAL REQUISITION],
-  data.part_name,
-  data.tenant_name,
-  generated: data.generated_date,
-  title-size: 17pt,
-)
-
-#v(9pt)
 
 // ── Work order header ─────────────────────────────────────────────────────────
 
@@ -110,12 +102,12 @@
   #set par(justify: false)
 
   #report-table(
-    (0.5fr, 1.65fr, 1.9fr, 0.5fr, 0.85fr, 1.8fr, 1.15fr, 0.45fr, 0.5fr),
+    (0.5fr, auto, 1.9fr, 0.5fr, 0.85fr, 1.8fr, 1.15fr, 0.45fr, 0.5fr),
     ([Find \#], [Part Number], [Description], [Qty/Ea], [Qty Req'd],
      [Pull from], [Lot pulled], [Opt], [✓]),
     data.items.map(item => (
       text(fill: muted, font: mono-font)[#item.find_number],
-      text(font: mono-font)[#item.component_part_number],
+      box(text(font: mono-font)[#item.component_part_number]),
       text(font: sans-font)[#item.component_name],
       text(fill: muted)[#item.qty_per_assembly],
       // UoM rides with the number — "50 EA" reads as one fact and frees a column
@@ -176,16 +168,9 @@
 
 // No divider here: the table's own bottom rule already closes it, and
 // `footer-note` draws one below. Three rules in four inches is noise.
-#grid(
-  columns: (1fr, 1fr, 1fr),
-  column-gutter: 18pt,
-  ..("Picked by", "Checked by", "Issued to / Cell").map(role => [
-      #text(size: 8.5pt, fill: muted, font: sans-font)[#role]
-      #v(9pt)
-      #box(width: 100%, stroke: (bottom: 0.5pt + rule))[]
-      #v(2pt)
-      #text(size: 8pt, fill: muted, font: sans-font)[Date: #box(width: 1fr, stroke: (bottom: 0.5pt + rule))]
-    ])
+#signature-block(
+  ("Picked by", "Checked by", "Issued to / Cell").map(r => (role: r, caption: "Name · Date")),
+  heading: none, gap: 18pt,
 )
 
 #v(8pt)

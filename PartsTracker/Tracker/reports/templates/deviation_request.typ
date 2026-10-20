@@ -10,8 +10,7 @@
 //   5. Customer Approval section (conditional — only if requires_customer_approval)
 //   6. Signature block — Engineering + Quality (+ Customer if customer approval required)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -49,20 +48,12 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Deviation Request",
+#show: doc-frame.with(
+  doc-type: "Deviation Request",
+  title: data.disposition_number,
   doc-id: data.disposition_number,
-  classification: "Controlled Document — AS9100D / IATF 16949",
-)
-
-// ── Title block ───────────────────────────────────────────────────────────────
-
-#report-title(
-  [DEVIATION REQUEST / USE-AS-IS AUTHORIZATION],
-  data.disposition_number,
-  data.tenant_name,
-  title-size: 22pt,
-  trailing: [
+  kind: "record",
+  status: [
     #disposition-badge(data.disposition_type)
       #h(8pt)
       #severity-badge(data.severity)
@@ -73,9 +64,8 @@
         Date Opened: #str(data.created_at).slice(0, 10)
       ]
   ],
+  org: data.tenant_name,
 )
-
-#v(14pt)
 
 // ── Part Identification ───────────────────────────────────────────────────────
 
@@ -167,65 +157,16 @@
 
 #v(20pt)
 
-// ── Signature block ──────────────────────────────────────────────────────────
+#signature-block(
+  (
+    (role: "Engineering", hint: "Technical acceptability"),
+    (role: "Quality", hint: "QMS compliance"),
+    ..if data.requires_customer_approval { ((role: "Customer", hint: "Contractual approval"),) } else { () },
+  ),
+  intro: text(size: 9pt, fill: muted)[
+    Engineering sign-off is mandatory for all use-as-is and repair dispositions.
+    Quality cannot approve alone.
+  ],
+)
 
-= Signatures
-
-#text(size: 9pt, fill: muted)[
-  Engineering sign-off is mandatory for all use-as-is and repair
-  dispositions. Quality cannot approve alone.
-]
-#v(8pt)
-
-#if data.requires_customer_approval [
-  // 3-column: Engineering, Quality, Customer
-  #set par(justify: false)
-  #grid(
-    columns: (1fr, 1fr, 1fr),
-    column-gutter: 20pt,
-
-    [
-      *Engineering* \
-      #text(size: 8.5pt, fill: muted)[Technical acceptability] \
-      #v(28pt)
-      #line(length: 100%, stroke: 0.5pt + ink) \
-      #text(size: 9pt, fill: muted)[Name · Signature · Date]
-    ],
-    [
-      *Quality* \
-      #text(size: 8.5pt, fill: muted)[QMS compliance] \
-      #v(28pt)
-      #line(length: 100%, stroke: 0.5pt + ink) \
-      #text(size: 9pt, fill: muted)[Name · Signature · Date]
-    ],
-    [
-      *Customer* \
-      #text(size: 8.5pt, fill: muted)[Contractual approval] \
-      #v(28pt)
-      #line(length: 100%, stroke: 0.5pt + ink) \
-      #text(size: 9pt, fill: muted)[Name · Signature · Date]
-    ],
-  )
-] else [
-  // 2-column: Engineering, Quality
-  #set par(justify: false)
-  #grid(
-    columns: (1fr, 1fr),
-    column-gutter: 24pt,
-
-    [
-      *Engineering* \
-      #text(size: 8.5pt, fill: muted)[Technical acceptability] \
-      #v(28pt)
-      #line(length: 100%, stroke: 0.5pt + ink) \
-      #text(size: 9pt, fill: muted)[Name · Signature · Date]
-    ],
-    [
-      *Quality* \
-      #text(size: 8.5pt, fill: muted)[QMS compliance] \
-      #v(28pt)
-      #line(length: 100%, stroke: 0.5pt + ink) \
-      #text(size: 9pt, fill: muted)[Name · Signature · Date]
-    ],
-  )
-]
+#end-marker([End of Request — #data.disposition_number])

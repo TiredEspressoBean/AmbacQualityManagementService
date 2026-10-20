@@ -52,15 +52,22 @@
 // Typst's .with() partial application has a known issue (#916, #3329)
 // where mixing positional args with .with(name: value) causes
 // "missing argument: body" errors in #show: rules.
+//
+// `flipped` gives a real landscape page (same margins, header and footer).
+// `footer-lead` prints above the footer row on every page — the frame uses it for
+// the print date and the uncontrolled-copy notice (see frame.typ).
 #let page-setup(
   title: "",
   doc-id: none,
   classification: "Controlled Document",
+  flipped: false,
+  footer-lead: none,
   body,
 ) = {
   set document(title: title)
   set page(
     "us-letter",
+    flipped: flipped,
     margin: (top: 0.85in, bottom: 0.85in, left: 0.9in, right: 0.9in),
     header: context {
       if counter(page).get().first() > 1 [
@@ -74,6 +81,7 @@
     },
     footer: context {
       set text(size: 8pt, fill: muted, font: sans-font)
+      if footer-lead != none { footer-lead; v(-2pt) }
       line(length: 100%, stroke: 0.6pt + rule)
       v(2pt)
       grid(columns: (1fr, 1fr, 1fr),

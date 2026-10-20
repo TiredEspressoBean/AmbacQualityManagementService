@@ -27,6 +27,8 @@ no changes to the Celery task.
 from __future__ import annotations
 
 import logging
+import re
+from datetime import datetime
 from typing import Any
 
 from Tracker.reports.adapters.base import ReportAdapter
@@ -38,6 +40,70 @@ from Tracker.reports.services.registry import (
 from Tracker.reports.services.typst_generator import generate_typst_pdf
 
 logger = logging.getLogger(__name__)
+
+
+# Formats Typst can place, and a cap so a stray full-resolution scan doesn't bloat
+# every document's context (the logo travels as a JSON int array).
+_LOGO_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".svg")
+_LOGO_MAX_BYTES = 1_000_000
+
+
+# An ISO datetime that carries its offset — what pydantic emits for an aware datetime.
+# Naive datetimes and plain dates are left alone: there is no zone to convert from.
+_AWARE_ISO = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$")
+
+
+def localize_timestamps(value, tenant):
+    """Every aware ISO timestamp in a report context, moved onto the plant's clock."""
+    from Tracker.services.core.clock import plant_tz
+
+    if tenant is None:
+        return value
+    tz = plant_tz(tenant)
+
+    def walk(v):
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, str) and _AWARE_ISO.match(v):
+            return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(tz).isoformat()
+        return v
+
+    return walk(value)
+
+
+def document_meta(tenant) -> dict:
+    """What every document's frame prints: the organisation, its logo, and when the
+    copy was printed (in plant time)."""
+    from Tracker.services.core.clock import tenant_now
+
+    if tenant is None:
+        return {}
+    return {
+        "org_name": tenant.name,
+        "logo": _logo_bytes(tenant),
+        "printed_at": tenant_now(tenant).strftime("%Y-%m-%d %H:%M %Z").strip(),
+    }
+
+
+def _logo_bytes(tenant) -> list[int] | None:
+    logo = getattr(tenant, "logo", None)
+    if not logo or not logo.name.lower().endswith(_LOGO_EXTENSIONS):
+        return None
+    try:
+        with logo.open("rb") as f:
+            data = f.read(_LOGO_MAX_BYTES + 1)
+    except (OSError, ValueError):
+        # A missing file shouldn't stop a document printing; it prints unbranded.
+        logger.warning("Tenant %s logo %r could not be read", tenant.pk, logo.name)
+        return None
+    if len(data) > _LOGO_MAX_BYTES:
+        logger.warning("Tenant %s logo is over %d bytes; printing unbranded",
+                       tenant.pk, _LOGO_MAX_BYTES)
+        return None
+    return list(data)
 
 
 class ReportParamError(ValueError):
@@ -98,6 +164,12 @@ class PdfGenerator:
         context_model = adapter.build_context(validated_params, user, tenant)
 
         context_dict = context_model.model_dump(mode="json")
+        # Aware datetimes serialise as UTC ISO strings; a document is read on the plant
+        # floor, so they print in plant time — the same clock as the footer's stamp.
+        context_dict = localize_timestamps(context_dict, tenant)
+        # The document frame reads branding and the print stamp from here, so no
+        # adapter has to carry them (templates/_common/frame.typ).
+        context_dict["_meta"] = document_meta(tenant)
 
         return generate_typst_pdf(adapter.template_path, context_dict)
 

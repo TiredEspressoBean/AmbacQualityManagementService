@@ -16,7 +16,7 @@ import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
 import { WorkOrderMaterialsPanel } from "@/components/workorder/WorkOrderMaterialsPanel";
-import { ReportButton } from "@/components/reports/ReportButton";
+import { WorkOrderDocuments } from "@/components/reports/WorkOrderDocuments";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
 import type { WorkOrderStatusEnum } from "@/lib/api/generated";
@@ -160,11 +160,7 @@ export function WorkOrderDetailPage() {
 
                 {/* Status Actions */}
                 <div className="flex items-center gap-2">
-                    <ReportButton
-                        reportType="work_order_traveler"
-                        label="Traveler"
-                        params={{ id: workOrderId }}
-                    />
+                    <WorkOrderDocuments workOrderId={workOrderId} />
                     <StartWorkDialog workOrderId={workOrderId} blockedReason={workOrder.start_refusal} />
                     <WorkOrderStatusActions
                         workOrderId={workOrderId}

@@ -5,25 +5,18 @@
 // What is coming back and why, so the supplier can match it. No prices: credit for
 // returned goods is settled in the ERP.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-#show: page-setup.with(
-  title: "Return to Vendor",
+#show: doc-frame.with(
+  doc-type: "Return to Vendor",
+  title: data.lot_number,
   doc-id: data.lot_number,
-  classification: "Return to Vendor",
+  kind: "supplier",
+  subtitle: [Issued #data.issued_date],
+  org: data.our_org,
 )
-
-#report-title(
-  [RETURN TO VENDOR],
-  data.lot_number,
-  data.our_org,
-  generated: data.issued_date,
-)
-
-#v(10pt)
 
 = Returning to
 
@@ -73,18 +66,7 @@
 
 #v(18pt)
 
-#grid(
-  columns: (1fr, 1fr), column-gutter: 20pt,
-  [
-    *Shipped by (#data.our_org)* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date · Carrier / tracking]
-  ],
-  [
-    *Received by (supplier)* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date]
-  ],
-)
+#signature-block((
+  (role: [Shipped by (#data.our_org)], caption: "Name · Date · Carrier / tracking"),
+  (role: "Received by (supplier)", caption: "Name · Date"),
+), heading: none)

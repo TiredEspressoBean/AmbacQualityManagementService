@@ -4,26 +4,18 @@
 //
 // For keying into the stock register. Quantities only; no values.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 #let qty(v) = if v == none { text(fill: muted)[—] } else { str(v) }
 
-#show: page-setup.with(
-  title: "Count Differences",
+#show: doc-frame.with(
+  doc-type: "Count Differences",
+  title: data.count_number,
   doc-id: data.count_number,
-  classification: "Cycle Count",
+  kind: "record",
+  org: data.our_org,
 )
-
-#report-title(
-  [COUNT DIFFERENCES],
-  data.count_number,
-  data.our_org,
-  generated: data.issued_date,
-)
-
-#v(10pt)
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,

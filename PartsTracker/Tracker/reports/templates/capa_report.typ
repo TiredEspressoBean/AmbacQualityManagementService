@@ -16,8 +16,7 @@
 //   7. Approval section
 //   8. Signature block — Initiator | Quality Manager | Approver
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -69,7 +68,7 @@
 }
 
 // Format a date string or none → em-dash
-#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #d ]
+#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #fmt-dt(d) ]
 
 // Render human label for task type
 #let task-type-label(t) = {
@@ -102,27 +101,18 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "CAPA Report",
+#show: doc-frame.with(
+  doc-type: "Corrective & Preventive Action Report",
+  title: data.capa_number,
   doc-id: data.capa_number,
-  classification: "Controlled Document — Quality Management System",
-)
-
-// ── Title block ───────────────────────────────────────────────────────────────
-
-#report-title(
-  [CORRECTIVE & PREVENTIVE ACTION REPORT],
-  data.capa_number,
-  data.tenant_name,
-  title-size: 22pt,
-  trailing: [
+  kind: "record",
+  status: [
     #status-badge(data.status)
       #h(6pt)
       #severity-badge(data.severity)
   ],
+  org: data.tenant_name,
 )
-
-#v(12pt)
 
 // ── CAPA header ──────────────────────────────────────────────────────────────
 
@@ -203,7 +193,7 @@
     #set par(justify: false)
     #for (idx, pair) in data.rca.five_whys.whys.enumerate() [
       #block(
-        fill: if calc.rem(idx, 2) == 0 { rgb("#f8fafc") } else { white },
+        fill: if calc.rem(idx, 2) == 0 { panel } else { white },
         stroke: 0.7pt + rule,
         inset: (x: 8pt, y: 6pt),
         width: 100%,
@@ -225,7 +215,7 @@
     #if data.rca.five_whys.identified_root_cause != "" [
       #v(4pt)
       #block(
-        fill: rgb("#f0fdf4"),
+        fill: ok-tint,
         stroke: 0.5pt + ok,
         inset: (x: 8pt, y: 6pt),
         width: 100%,
@@ -262,7 +252,7 @@
       ..for (label, causes) in categories {
         (
           block(
-            fill: rgb("#f8fafc"),
+            fill: panel,
             stroke: 0.7pt + rule,
             inset: (x: 8pt, y: 6pt),
             width: 100%,
@@ -286,7 +276,7 @@
     #if fishbone.identified_root_cause != "" [
       #v(4pt)
       #block(
-        fill: rgb("#f0fdf4"),
+        fill: ok-tint,
         stroke: 0.5pt + ok,
         inset: (x: 8pt, y: 6pt),
         width: 100%,
@@ -432,45 +422,12 @@
 
 #v(20pt)
 
-// ── Signature block ───────────────────────────────────────────────────────────
+#signature-block((
+  (role: "Initiator", name: data.initiated_by),
+  "Quality Manager",
+  "Approver / QRB",
+))
 
-= Signatures
-
-#grid(
-  columns: (1fr, 1fr, 1fr),
-  column-gutter: 20pt,
-
-  [
-    *Initiator* \
-    #text(size: 9pt, fill: muted)[#if data.initiated_by != none [#data.initiated_by] else []] \
-    #v(24pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
-  ],
-  [
-    *Quality Manager* \
-    #v(34pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
-  ],
-  [
-    *Approver / QRB* \
-    #v(34pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
-  ],
-)
-
-#v(16pt)
-#align(center)[
-  #line(length: 60%, stroke: 0.5pt + rule)
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font, tracking: 1pt)[
-    END OF REPORT — #data.capa_number
-  ]
-  #v(2pt)
-  #text(size: 8pt, fill: muted)[
-    This CAPA may not be closed until effectiveness verification is documented
-    with evidence that the problem has not recurred over the monitoring period.
-  ]
-]
+#end-marker([End of Report — #data.capa_number],
+  note: [This CAPA may not be closed until effectiveness verification is documented
+    with evidence that the problem has not recurred over the monitoring period.])

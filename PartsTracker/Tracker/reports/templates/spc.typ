@@ -11,8 +11,7 @@
 //   6. Process capability (Cp/Cpk/Pp/Ppk + interpretation)
 //   7. Data points table (capped at 500 rows; flag when truncated)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -35,30 +34,22 @@
 
 #let fmt-int(v) = if v == none [ #text(fill: muted, style: "italic")[—] ] else [ #str(v) ]
 
-#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #d ]
+#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #fmt-dt(d) ]
 
 // ----------------------------------------------------------------------------
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "SPC Report",
+#show: doc-frame.with(
+  doc-type: "SPC Report",
+  title: data.measurement_label,
   doc-id: data.measurement_label,
-  classification: "Controlled Document — Quality Management System",
-)
-
-// ── Title block ───────────────────────────────────────────────────────────────
-
-#report-title(
-  [STATISTICAL PROCESS CONTROL REPORT],
-  data.measurement_label,
-  data.tenant_name,
-  trailing: [
+  kind: "record",
+  status: [
     #mode-badge(data.chart_mode)
   ],
+  org: data.tenant_name,
 )
-
-#v(12pt)
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
@@ -94,8 +85,10 @@
   row-gutter: 6pt,
 
   field("Nominal", fmt-num(data.spec.nominal, digits: 4, suffix: " " + data.spec.unit)),
-  field("Upper Tol", fmt-num(data.spec.upper_tol, digits: 4)),
-  field("Lower Tol", fmt-num(data.spec.lower_tol, digits: 4)),
+  // Stored as magnitudes either side of nominal; signed here so "20 / 20" can't be
+  // misread as a one-sided limit.
+  field("Upper Tol", if data.spec.upper_tol == none { fmt-num(none) } else [+#fmt-num(data.spec.upper_tol, digits: 4, suffix: " " + data.spec.unit)]),
+  field("Lower Tol", if data.spec.lower_tol == none { fmt-num(none) } else [#sym.minus#fmt-num(data.spec.lower_tol, digits: 4, suffix: " " + data.spec.unit)]),
 
   field("USL", fmt-num(data.spec.usl, digits: 4, suffix: " " + data.spec.unit)),
   field("LSL", fmt-num(data.spec.lsl, digits: 4, suffix: " " + data.spec.unit)),
@@ -114,7 +107,7 @@
     column-gutter: 16pt,
     row-gutter: 6pt,
 
-    field("Chart Type",     data.baseline.chart_type),
+    field("Chart Type",     data.baseline.chart_type.replace("_", "-")),
     field("Subgroup Size",  str(data.baseline.subgroup_size)),
 
     field("Frozen By",      data.baseline.frozen_by),
@@ -128,26 +121,19 @@
   #text(weight: "semibold", font: sans-font, size: 10pt)[Frozen Limits]
   #v(4pt)
 
-  #table(
-    columns: (1fr, 1fr, 1fr, 1fr),
-    align: (left, right, right, right),
-    stroke: 0.7pt + rule,
-    inset: 6pt,
-    table.header(
-      [*Series*], [*UCL*], [*CL*], [*LCL*],
+  #report-table(
+    (1fr, 1fr, 1fr, 1fr),
+    ("Series", "UCL", "CL", "LCL"),
+    (
+      ([X̄], fmt-num(data.baseline.xbar_ucl, digits: 4), fmt-num(data.baseline.xbar_cl, digits: 4),
+        fmt-num(data.baseline.xbar_lcl, digits: 4)),
+      ([Range], fmt-num(data.baseline.range_ucl, digits: 4), fmt-num(data.baseline.range_cl, digits: 4),
+        fmt-num(data.baseline.range_lcl, digits: 4)),
+      ([Individual], fmt-num(data.baseline.individual_ucl, digits: 4),
+        fmt-num(data.baseline.individual_cl, digits: 4), fmt-num(data.baseline.individual_lcl, digits: 4)),
+      ([MR], fmt-num(data.baseline.mr_ucl, digits: 4), fmt-num(data.baseline.mr_cl, digits: 4), [—]),
     ),
-    [X̄],         fmt-num(data.baseline.xbar_ucl, digits: 4),
-                 fmt-num(data.baseline.xbar_cl,  digits: 4),
-                 fmt-num(data.baseline.xbar_lcl, digits: 4),
-    [Range],     fmt-num(data.baseline.range_ucl, digits: 4),
-                 fmt-num(data.baseline.range_cl,  digits: 4),
-                 fmt-num(data.baseline.range_lcl, digits: 4),
-    [Individual], fmt-num(data.baseline.individual_ucl, digits: 4),
-                  fmt-num(data.baseline.individual_cl,  digits: 4),
-                  fmt-num(data.baseline.individual_lcl, digits: 4),
-    [MR],        fmt-num(data.baseline.mr_ucl, digits: 4),
-                 fmt-num(data.baseline.mr_cl,  digits: 4),
-                 [—],
+    aligns: (left, right, right, right),
   )
 
   #divider()
@@ -168,8 +154,7 @@
   field("Range",   if data.statistics.min == none or data.statistics.max == none [
     #text(fill: muted, style: "italic")[—]
   ] else [
-    #str(calc.round(data.statistics.min, digits: 4))#sym.dash.en
-    #str(calc.round(data.statistics.max, digits: 4))
+    #str(calc.round(data.statistics.min, digits: 4)) #sym.dash.en #str(calc.round(data.statistics.max, digits: 4))
   ]),
 
   field("In Spec",     fmt-int(data.statistics.within_spec_count)),
@@ -230,7 +215,7 @@
     (auto, 1fr, auto, auto, auto),
     ([Timestamp], [Part], [Value], [Spec], [Operator]),
     data.data_points.map(p => (
-      text(size: 9pt)[#p.timestamp],
+      text(size: 9pt)[#fmt-dt(p.timestamp)],
       text(size: 9pt)[#p.part_erp_id],
       text(size: 9pt, font: mono-font)[#str(calc.round(p.value, digits: 4))],
       if p.is_within_spec {

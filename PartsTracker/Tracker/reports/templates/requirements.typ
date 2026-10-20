@@ -1,14 +1,16 @@
 // Sourcing & Production Requirements template.
 // Context: Tracker/reports/adapters/requirements.py → RequirementsContext
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-#show: page-setup.with(
-  title: "Sourcing & Production Requirements",
-  classification: "Internal — Purchasing / Production",
+#show: doc-frame.with(
+  doc-type: "Sourcing & Production Requirements",
+  title: [What To Buy, Build & Procure],
+  kind: "shop",
+  subtitle: [As of #data.generated_date · red = order by now],
+  org: data.tenant_name,
 )
 
 // A date cell that turns red when it's on/before today (past due to act).
@@ -19,65 +21,43 @@
 }
 #let plain-date(d) = if d == none { text(fill: muted)[—] } else [#d]
 
-#let section-header(title, count) = {
-  v(8pt)
-  block(
-    fill: rgb("#1e40af"), inset: (x: 8pt, y: 5pt),
-    radius: (top-left: 4pt, top-right: 4pt), width: 100%,
-  )[
-    #grid(columns: (1fr, auto),
-      text(weight: "semibold", fill: white, font: sans-font, size: 10pt)[#title],
-      text(fill: rgb("#bfdbfe"), font: sans-font, size: 9pt)[#count item#if count != 1 [s]])
-  ]
+// One requirements section: its band, then its table — or one muted line when empty.
+#let section(title, rows, cols, header, aligns, empty) = {
+  group-band(title, count: [#rows.len() item#if rows.len() != 1 [s]])
+  if rows.len() == 0 {
+    block(stroke: (bottom: 0.75pt + rule), inset: (x: 6pt, y: 6pt), width: 100%, above: 0pt)[
+      #text(size: 9pt, fill: muted, style: "italic")[#empty]]
+  } else {
+    report-table(cols, header, rows, aligns: aligns)
+  }
 }
 
-#let hcell(body, a: left) = align(a)[#text(weight: "semibold", font: sans-font, size: 9pt)[#body]]
-#let hrow(cols, cells) = block(
-  fill: rgb("#f1f5f9"), stroke: (bottom: 0.5pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-  inset: (x: 6pt, y: 5pt), width: 100%,
-)[#grid(columns: cols, column-gutter: 6pt, ..cells)]
-#let drow(idx, cols, cells) = block(
-  fill: if calc.rem(idx, 2) == 0 { white } else { rgb("#f8fafc") },
-  stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-  inset: (x: 6pt, y: 5pt), width: 100%,
-)[#set text(size: 9pt); #grid(columns: cols, column-gutter: 6pt, ..cells)]
-
-#report-title(
-  [SOURCING & PRODUCTION REQUIREMENTS],
-  [What To Buy, Build & Procure],
-  data.tenant_name,
-  trailing-gap: 4pt,
-  trailing: [
-    #text(size: 9pt, fill: muted, font: sans-font)[Generated: #data.generated_date · red = order by now]
-  ],
-)
-
-#v(10pt)
+#set text(size: 9pt)
 
 // ── SOURCE (buy) ──────────────────────────────────────────────────────────────
-#let src-cols = (2.2fr, 0.7fr, 0.9fr, 0.8fr, 1fr, 1fr, 1.1fr)
-#section-header("Source — purchased materials to buy", data.source.len())
+#let src-cols = (2fr, 0.6fr, 1.1fr, 0.6fr, 1fr, 1fr, 1fr)
 // "Recoverable" is what the core bank could yield — a forecast, shown BESIDE the short
 // figure and never subtracted from it. Buying to the short column is always safe; the
 // recoverable column is what a planner may choose to wait on.
-#hrow(src-cols, (hcell[Material], hcell(a: right)[Short], hcell(a: right)[Recoverable], hcell[Lead], hcell[Need by], hcell[Order by], hcell[Incoming]))
-#if data.source.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to buy.],)) ] else [
-  #for (idx, r) in data.source.enumerate() [
-    #drow(idx, src-cols, (
-      align(horizon)[#text(font: sans-font)[#r.material]],
-      align(horizon + right)[#text(font: mono-font)[#r.qty_short]
-        #if r.forecast_short > 0 [#linebreak()#text(size: 7pt, fill: muted)[+#r.forecast_short forecast]]],
-      align(horizon + right)[#if r.recoverable <= 0 [#text(fill: muted)[—]] else [
-        #text(font: mono-font)[#r.recoverable]
-        #text(size: 7pt, fill: muted)[ (#r.recoverable_cores cores)]
-      ]],
-      align(horizon)[#if r.lead_time_days == none [#text(fill: muted)[—]] else [#r.lead_time_days d]],
-      align(horizon)[#plain-date(r.need_by)],
-      align(horizon)[#date-cell(r.order_by)],
-      align(horizon)[#text(fill: muted)[#plain-date(r.incoming_date)]],
-    ))
-  ]
-]
+#section("Source — purchased materials to buy",
+  data.source.map(r => (
+    r.material,
+    [#text(font: mono-font)[#r.qty_short]
+      #if r.forecast_short > 0 [#linebreak()#text(size: 7pt, fill: muted)[+#r.forecast_short forecast]]],
+    if r.recoverable <= 0 { text(fill: muted)[—] } else [
+      #text(font: mono-font)[#r.recoverable]
+      #text(size: 7pt, fill: muted)[ (#r.recoverable_cores cores)]
+    ],
+    if r.lead_time_days == none { text(fill: muted)[—] } else [#r.lead_time_days d],
+    plain-date(r.need_by),
+    date-cell(r.order_by),
+    text(fill: muted)[#plain-date(r.incoming_date)],
+  )),
+  src-cols,
+  ("Material", "Short", "Recoverable", "Lead", "Need by", "Order by", "Incoming"),
+  (left, right, right, left, left, left, left),
+  [Nothing to buy.],
+)
 
 // ── RECOVER (tear down) ────────────────────────────────────────────────────────
 // One row per CORE TYPE: one core yields several components, so a per-component list
@@ -85,55 +65,54 @@
 // — the only demand recovered stock may fill — after what is on the shelf and what
 // teardowns already committed will yield. A PROPOSAL — nothing here commits a core.
 #let rec-cols = (1.4fr, 0.8fr, 0.9fr, 2.6fr, 1fr)
-#section-header("Recover — teardown proposed to refill recovered stock", data.recover.len())
-#hrow(rec-cols, (hcell[Core type], hcell(a: right)[Tear down], hcell(a: right)[Committed], hcell[Covers], hcell[Start by]))
-#if data.recover.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to recover.],)) ] else [
-  #for (idx, r) in data.recover.enumerate() [
-    #drow(idx, rec-cols, (
-      align(horizon)[#text(font: sans-font)[#r.core_type]
-        #linebreak()#text(size: 7pt, fill: muted)[#r.cores_available in bank]],
-      align(horizon + right)[#text(font: mono-font)[#r.cores_to_tear_down]],
-      align(horizon + right)[#text(font: mono-font)[#r.cores_in_flight]],
-      align(horizon)[#for c in r.components [
-        #text(font: sans-font)[#c.component: #c.covered_by_teardown]
-        #if c.still_short > 0 [#text(size: 7pt, fill: muted)[ (#c.still_short still short)]]
-        #linebreak()
-      ]],
-      align(horizon)[#if r.start_by == none [#text(fill: muted)[—]] else [#date-cell(r.start_by)]],
-    ))
-  ]
-]
+#section("Recover — teardown proposed to refill recovered stock",
+  data.recover.map(r => (
+    [#r.core_type #linebreak()#text(size: 7pt, fill: muted)[#r.cores_available in bank]],
+    text(font: mono-font)[#r.cores_to_tear_down],
+    text(font: mono-font)[#r.cores_in_flight],
+    [#for c in r.components [
+      #c.component: #c.covered_by_teardown
+      #if c.still_short > 0 [#text(size: 7pt, fill: muted)[ (#c.still_short still short)]]
+      #linebreak()
+    ]],
+    if r.start_by == none { text(fill: muted)[—] } else { date-cell(r.start_by) },
+  )),
+  rec-cols,
+  ("Core type", "Tear down", "Committed", "Covers", "Start by"),
+  (left, right, right, left, left),
+  [Nothing to recover.],
+)
 
 // ── PRODUCE (build) ────────────────────────────────────────────────────────────
 #let prod-cols = (1.5fr, 1.8fr, 0.6fr, 1fr, 1.1fr)
-#section-header("Produce — in-house components to build", data.produce.len())
-#hrow(prod-cols, (hcell[Work order], hcell[Component], hcell(a: right)[Qty], hcell[Need by], hcell[Status]))
-#if data.produce.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing to build.],)) ] else [
-  #for (idx, r) in data.produce.enumerate() [
-    #drow(idx, prod-cols, (
-      align(horizon)[#text(font: mono-font)[#r.work_order]],
-      align(horizon)[#text(font: sans-font)[#r.component]],
-      align(horizon + right)[#text(font: mono-font)[#r.qty]],
-      align(horizon)[#plain-date(r.need_by)],
-      align(horizon)[#text(fill: muted, font: sans-font)[#r.status]],
-    ))
-  ]
-]
+#section("Produce — in-house components to build",
+  data.produce.map(r => (
+    text(font: mono-font)[#r.work_order],
+    r.component,
+    text(font: mono-font)[#r.qty],
+    plain-date(r.need_by),
+    text(fill: muted)[#humanize(r.status)],
+  )),
+  prod-cols,
+  ("Work order", "Component", "Qty", "Need by", "Status"),
+  (left, left, right, left, left),
+  [Nothing to build.],
+)
 
 // ── TOOLING ────────────────────────────────────────────────────────────────────
 #let tool-cols = (2.4fr, 1fr, 0.8fr, 1.1fr)
-#section-header("Tooling — resources not on hand", data.tooling.len())
-#hrow(tool-cols, (hcell[Resource], hcell[Kind], hcell[Lead], hcell[Order by]))
-#if data.tooling.len() == 0 [ #drow(0, (1fr,), (text(fill: muted, style: "italic")[Nothing outstanding.],)) ] else [
-  #for (idx, r) in data.tooling.enumerate() [
-    #drow(idx, tool-cols, (
-      align(horizon)[#text(font: sans-font)[#r.fixture]],
-      align(horizon)[#text(fill: muted)[#r.kind]],
-      align(horizon)[#if r.lead_time_days == none [#text(fill: muted)[—]] else [#r.lead_time_days d]],
-      align(horizon)[#date-cell(r.order_by)],
-    ))
-  ]
-]
+#section("Tooling — resources not on hand",
+  data.tooling.map(r => (
+    r.fixture,
+    text(fill: muted)[#humanize(r.kind)],
+    if r.lead_time_days == none { text(fill: muted)[—] } else [#r.lead_time_days d],
+    date-cell(r.order_by),
+  )),
+  tool-cols,
+  ("Resource", "Kind", "Lead", "Order by"),
+  (left, left, left, left),
+  [Nothing outstanding.],
+)
 
 #footer-note(
   lead: "Note",

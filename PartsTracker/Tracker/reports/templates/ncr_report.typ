@@ -14,8 +14,7 @@
 //   9. Scrap verification block (conditional)
 //  10. Closure signature block
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -37,46 +36,25 @@
   else { tone-badge(sev, "muted") }
 }
 
-// Format an ISO datetime string → "2026-04-13 14:22 UTC" (light touch).
-#let fmt-dt(iso) = {
-  if iso == none { return none }
-  // Typst doesn't parse ISO dates natively; show the string with T replaced.
-  let s = str(iso)
-  s.replace("T", " ").slice(0, calc.min(s.len(), 16))
-}
-
 // ----------------------------------------------------------------------------
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Non-Conformance Report",
+#show: doc-frame.with(
+  doc-type: "Non-Conformance Report",
+  title: data.disposition_number,
   doc-id: data.disposition_number,
-  classification: "Controlled Document",
-)
-
-// Title block
-#report-title(
-  [NON-CONFORMANCE REPORT],
-  data.disposition_number,
-  [Tenant: #data.tenant_name],
-  title-size: 22pt,
-  trailing-gap: 4pt,
-  trailing: [
+  kind: "record",
+  org: data.tenant_name,
+  status: [
     #state-badge(data.current_state) #h(6pt)
-      #severity-badge(data.severity)
-      #if data.disposition_type != none {
-        h(6pt)
-        badge(
-          data.disposition_type.replace("_", " "),
-          ink,
-          rgb("#f1f5f9"),
-        )
-      }
+    #severity-badge(data.severity)
+    #if data.disposition_type != none {
+      h(6pt)
+      tone-badge(data.disposition_type.replace("_", " "), "muted")
+    }
   ],
 )
-
-#v(10pt)
 
 // Identification grid
 #grid(
@@ -243,35 +221,13 @@
   )
 ] else [
   #text(fill: warn, style: "italic")[
-    Resolution pending. This NCR is in #data.current_state status and has
+    Resolution pending. This NCR is #lower(humanize(data.current_state)) and has
     not been formally closed.
   ]
 ]
 
-#v(28pt)
+#v(20pt)
 
-= Signatures
+#signature-block(("Originator", "Quality Manager", "Customer"))
 
-#grid(
-  columns: (1fr, 1fr, 1fr),
-  column-gutter: 20pt,
-
-  [
-    *Originator* \
-    #v(24pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date]
-  ],
-  [
-    *Quality Manager* \
-    #v(24pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date]
-  ],
-  [
-    *Customer* \
-    #v(24pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date]
-  ],
-)
+#end-marker([End of Report — #data.disposition_number])

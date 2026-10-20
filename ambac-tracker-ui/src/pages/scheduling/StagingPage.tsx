@@ -412,9 +412,15 @@ export function StagingPage() {
               ))}
             </SelectContent>
           </Select>
+          {/* The round's two sheets: one walk of the shelves, then the split into kits. */}
+          <ReportButton
+            reportType="pick_sheet"
+            label="Pick Sheet"
+            params={{ hours, ...(station === ALL ? {} : { work_center: station }) }}
+          />
           <ReportButton
             reportType="staging_list"
-            label="PDF"
+            label="Kit Sheet"
             params={{ hours, ...(station === ALL ? {} : { work_center: station }) }}
           />
           <Button variant="outline" size="sm" onClick={() => refetch()}

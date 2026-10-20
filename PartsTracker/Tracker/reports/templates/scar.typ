@@ -10,8 +10,7 @@
 //   4. Required supplier response — 8D blocks (blank, for the supplier to complete)
 //   5. Supplier sign-off + return instructions
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -32,7 +31,7 @@
   else { tone-badge(s, "muted") }
 }
 
-#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #d ]
+#let fmt-date(d) = if d == none or d == "" [ #text(fill: muted, style: "italic")[—] ] else [ #fmt-dt(d) ]
 
 // A labeled, empty box for the supplier to complete (the "request" half of a SCAR).
 #let response-box(code, label, hint, lines: 3) = {
@@ -52,27 +51,22 @@
 
 // ── Document ──────────────────────────────────────────────────────────────────
 
-#show: page-setup.with(
-  title: "Supplier Corrective Action Request",
+#show: doc-frame.with(
+  doc-type: "Supplier Corrective Action Request",
+  title: data.scar_number,
   doc-id: data.scar_number,
-  classification: "Confidential — Supplier Corrective Action Request",
+  kind: "supplier",
+  status: [
+    #severity-badge(data.severity)
+    #h(6pt)
+    #status-badge(data.status)
+  ],
+  org: data.issued_by_org,
 )
 
 // The issuing org takes the tenant slot: this is the one report that leaves the
 // building, and the supplier reading it needs to know who is asking. Same field
 // the "Issued By" row and the response instructions already use.
-#report-title(
-  [SUPPLIER CORRECTIVE ACTION REQUEST (SCAR)],
-  data.scar_number,
-  data.issued_by_org,
-  title-size: 22pt,
-  trailing: [
-    #severity-badge(data.severity)
-    #h(6pt)
-    #status-badge(data.status)
-  ],
-)
-
 #v(12pt)
 
 = Request Details
@@ -99,7 +93,7 @@
 )[
   #text(weight: "semibold", fill: warn, font: sans-font)[Response required] —
   please complete sections D3–D7 below and return this form by
-  #if data.response_due_date == none [ the agreed date ] else [ *#data.response_due_date* ].
+  #if data.response_due_date == none [the agreed date] else [*#fmt-dt(data.response_due_date)*].
 ]
 
 #divider()
@@ -134,33 +128,13 @@
 
 #v(14pt)
 
-= Supplier Sign-off
-
-#grid(
-  columns: (1fr, 1fr), column-gutter: 20pt,
-  [
-    *Prepared by (Supplier)* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Title · Date]
-  ],
-  [
-    *Accepted by (#data.issued_by_org)* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Quality · Signature · Date]
-  ],
+#signature-block(
+  (
+    (role: "Prepared by (Supplier)", caption: "Name · Title · Date"),
+    (role: [Accepted by (#data.issued_by_org)], caption: "Quality · Signature · Date"),
+  ),
+  heading: "Supplier Sign-off",
 )
 
-#v(16pt)
-#align(center)[
-  #line(length: 60%, stroke: 0.5pt + rule)
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font, tracking: 1pt)[
-    END OF SCAR — #data.scar_number
-  ]
-  #v(2pt)
-  #text(size: 8pt, fill: muted)[
-    Return the completed form to #data.issued_by_org Quality by the response-due date.
-  ]
-]
+#end-marker([End of SCAR — #data.scar_number],
+  note: [Return the completed form to #data.issued_by_org Quality by the response-due date.])

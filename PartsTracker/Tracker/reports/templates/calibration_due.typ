@@ -8,8 +8,7 @@
 //   3. Equipment table — sorted by due_date ascending (overdue first)
 //   4. Footer note (planning document, not a quality record)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -36,59 +35,18 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Calibration Due Report",
-  classification: "Internal — Quality Planning",
+#show: doc-frame.with(
+  doc-type: "Calibration Due Report",
+  title: [Calibration Status],
+  kind: "shop",
+  org: data.tenant_name,
 )
 
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [CALIBRATION DUE REPORT],
-  [Calibration Status],
-  data.tenant_name,
-  generated: data.generated_date,
-)
-
-#v(14pt)
-
-// ── Summary bar ──────────────────────────────────────────────────────────────
-
-#info-box[
-  #grid(
-    columns: (1fr, 1fr, 1fr),
-    column-gutter: 12pt,
-
-    // Total
-    align(center)[
-      #text(size: 22pt, weight: "bold", font: sans-font)[#data.total_equipment]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Total Equipment Tracked]
-    ],
-
-    // Overdue
-    align(center)[
-      #text(
-        size: 22pt, weight: "bold", font: sans-font,
-        fill: if data.overdue_count > 0 { bad } else { ok },
-      )[#data.overdue_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Overdue]
-    ],
-
-    // Due Soon
-    align(center)[
-      #text(
-        size: 22pt, weight: "bold", font: sans-font,
-        fill: if data.due_soon_count > 0 { warn } else { ok },
-      )[#data.due_soon_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Due Within 30 Days]
-    ],
-  )
-]
-
-#v(14pt)
+#stat-panel((
+  (value: data.total_equipment, label: "Total Equipment Tracked"),
+  (value: data.overdue_count, label: "Overdue", tone: if data.overdue_count > 0 { "bad" } else { "ok" }),
+  (value: data.due_soon_count, label: "Due Within 30 Days", tone: if data.due_soon_count > 0 { "warn" } else { "ok" }),
+))
 
 // ── Equipment table ──────────────────────────────────────────────────────────
 
@@ -103,11 +61,12 @@
   #set par(justify: false)
 
   #report-table(
-    (2.5fr, 1.8fr, 1.4fr, 1.1fr, 1.1fr, 0.7fr, 1fr),
+    // IDs and badges size to their content — a serial split at its hyphens reads as two.
+    (2.3fr, auto, 1.4fr, 1.1fr, 1.1fr, 0.6fr, auto),
     ([Equipment], [Serial], [Location], [Last Cal], [Due Date], [Days], [Status]),
     data.items.map(item => (
       text(font: sans-font)[#item.equipment_name],
-      text(fill: muted, font: mono-font)[#item.equipment_serial],
+      box(text(fill: muted, font: mono-font)[#item.equipment_serial]),
       text(fill: muted)[#item.location],
       text(fill: muted)[#item.last_cal_date],
       text(

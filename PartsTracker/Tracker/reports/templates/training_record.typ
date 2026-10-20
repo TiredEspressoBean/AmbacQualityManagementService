@@ -10,8 +10,7 @@
 //   5. ISO 9001 7.2 note (competence evidence, not just attendance)
 //   6. Signature block — Employee, Trainer, Supervisor (3-column)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -27,33 +26,16 @@
   else                          { tone-badge(status, "muted") }
 }
 
-// Signature line
-#let sig-line(role) = {
-  v(28pt)
-  line(length: 100%, stroke: 0.5pt + ink)
-  v(2pt)
-  text(size: 8.5pt, fill: muted, font: sans-font)[#role]
-}
-
 // ----------------------------------------------------------------------------
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Training Record",
-  classification: "Controlled Document — ISO 9001 §7.2",
+#show: doc-frame.with(
+  doc-type: "Training Record",
+  title: data.employee_name,
+  kind: "record",
+  org: data.tenant_name,
 )
-
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [TRAINING RECORD],
-  [Training History],
-  data.tenant_name,
-  generated: data.generated_date,
-)
-
-#v(14pt)
 
 // ── Employee info ─────────────────────────────────────────────────────────────
 
@@ -64,49 +46,18 @@
   #v(2pt)
   #kv("Email / ID:", data.employee_email)
   #v(2pt)
-  #kv("Record ID:", data.employee_id)
 ]
 
 #v(14pt)
 
-// ── Summary bar ──────────────────────────────────────────────────────────────
+// ── Summary ──────────────────────────────────────────────────────────────────
 
-#info-box[
-  #grid(
-    columns: (1fr, 1fr, 1fr, 1fr),
-    column-gutter: 12pt,
-
-    align(center)[
-      #text(size: 22pt, weight: "bold", font: sans-font)[#data.total_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Total]
-    ],
-
-    align(center)[
-      #text(
-        size: 22pt, weight: "bold", font: sans-font,
-        fill: if data.current_count > 0 { ok } else { muted },
-      )[#data.current_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Current]
-    ],
-
-    align(center)[
-      #text(
-        size: 22pt, weight: "bold", font: sans-font,
-        fill: if data.expired_count > 0 { bad } else { muted },
-      )[#data.expired_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Expired]
-    ],
-
-    align(center)[
-      #text(size: 22pt, weight: "bold", font: sans-font, fill: muted)[#data.no_expiry_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[No Expiry]
-    ],
-  )
-]
+#stat-panel((
+  (value: data.total_count, label: "Total"),
+  (value: data.current_count, label: "Current", tone: if data.current_count > 0 { "ok" } else { "plain" }),
+  (value: data.expired_count, label: "Expired", tone: if data.expired_count > 0 { "bad" } else { "plain" }),
+  (value: data.no_expiry_count, label: "No Expiry"),
+))
 
 #v(14pt)
 
@@ -172,42 +123,14 @@
 
 #v(20pt)
 
-// ── Signature block ───────────────────────────────────────────────────────────
-
-= Signatures
-
-#text(size: 9pt, fill: muted)[
-  Signatures below confirm attendance (Employee), training delivery (Trainer),
-  and verification of competency (Supervisor/Manager).
-]
-
-#v(8pt)
-
-#grid(
-  columns: (1fr, 1fr, 1fr),
-  column-gutter: 20pt,
-
-  [
-    #sig-line("Employee — Acknowledging Attendance")
-    #v(4pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Name: #data.employee_name]
-    #v(2pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Date: ________________]
-  ],
-
-  [
-    #sig-line("Trainer — Confirming Delivery")
-    #v(4pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Name: ________________]
-    #v(2pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Date: ________________]
-  ],
-
-  [
-    #sig-line("Supervisor — Confirming Competency")
-    #v(4pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Name: ________________]
-    #v(2pt)
-    #text(size: 8pt, fill: muted, font: sans-font)[Date: ________________]
+#signature-block(
+  (
+    (role: "Employee", hint: "Acknowledging attendance", name: data.employee_name),
+    (role: "Trainer", hint: "Confirming delivery"),
+    (role: "Supervisor", hint: "Confirming competency"),
+  ),
+  intro: text(size: 9pt, fill: muted)[
+    Signatures below confirm attendance (Employee), training delivery (Trainer),
+    and verification of competency (Supervisor/Manager).
   ],
 )

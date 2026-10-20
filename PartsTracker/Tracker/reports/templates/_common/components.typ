@@ -3,16 +3,14 @@
 // The house base is `page-setup.typ` (page geometry, palette, typography,
 // header/footer). This file adds the reusable *content* components that were,
 // historically, copy-pasted into every template (kv, badge, divider, info
-// box, table header/row, footer note). New reports should:
+// box, table header/row, footer note). New reports don't import it directly:
 //
-//   #import "_common/page-setup.typ": *
-//   #import "_common/components.typ": *
+//   #import "_common/frame.typ": *
 //
-// (import page-setup first — the components depend on its palette + fonts).
-//
-// Every letter-format template uses this kit. The two label templates
-// (part_id_label*.typ) deliberately don't: they print on label stock and skip
-// page-setup's page geometry entirely, so they import only the palette.
+// brings in page-setup, this kit and the document frame (title block, footer,
+// signature block, end marker — see frame.typ). The label templates print on label
+// stock and skip the page geometry entirely, so they import only the palette and
+// the primitives they need.
 //
 // Note that Typst shadows silently — a template that defines its own `#let
 // status-badge` after importing this file gets the local one with no warning.
@@ -31,6 +29,22 @@
 // Optional value — render the value, or a muted em dash when empty.
 #let opt(v) = if v == none or v == "" { text(fill: muted)[—] } else { v }
 
+// An ISO datetime as people read it: "2026-05-15T16:45:43.769111Z" → "2026-05-15 16:45".
+// Plain dates pass through. The adapters send ISO; nothing should print it raw.
+#let fmt-dt(v) = {
+  if v == none or v == "" { return none }
+  let s = str(v)
+  if s.len() <= 10 { s } else { s.replace("T", " ").slice(0, 16) }
+}
+
+// An enum code as words: "WAITING_FOR_OPERATOR" → "Waiting for operator". Codes leak
+// onto paper wherever a template prints a status it has no vocabulary for.
+#let humanize(v) = {
+  if v == none or v == "" { return none }
+  let s = lower(str(v).replace("_", " "))
+  upper(s.first()) + s.slice(1)
+}
+
 // Section divider rule.
 #let divider() = {
   v(6pt)
@@ -44,7 +58,9 @@
 
 // Boxed-grid style (pick_list / bom lineage): fixed label column, plain 9pt
 // label (caller includes the trailing colon), muted em-dash fallback.
-#let kv(key, value, label-width: 90pt) = grid(
+// Both key/value forms are ragged: a value justified across its column spreads
+// "Precision   Metrology   Services".
+#let kv(key, value, label-width: 90pt) = { set par(justify: false); grid(
   columns: (label-width, 1fr),
   column-gutter: 6pt,
   text(size: 9pt, fill: muted, font: sans-font)[#key],
@@ -53,18 +69,18 @@
   } else {
     text(size: 9pt, font: sans-font)[#value]
   },
-)
+)}
 
 // Field style (ncr / calibration / capa lineage): auto label width, bold muted
 // label (no colon), italic em-dash fallback.
-#let field(label, value) = grid(
+#let field(label, value) = if label == "" { [] } else { set par(justify: false); grid(
   columns: (auto, 1fr),
   column-gutter: 10pt,
   text(size: 9pt, fill: muted, font: sans-font)[*#label*],
   if value == none or value == "" {
     text(fill: muted, style: "italic")[—]
   } else { value },
-)
+)}
 
 // ---------------------------------------------------------------------------
 // Badges
@@ -175,6 +191,10 @@
   let ncols = columns.len()
   let halign = if aligns == none { (left,) * ncols } else { aligns }
   let c = table.cell.with(breakable: false)
+  // Narrow cells: justification spreads two words across the column ("Fleet    Diesel")
+  // and hyphenation splits ordinary words ("tol-erance"). Neither belongs in a table.
+  set par(justify: false)
+  set text(hyphenate: false)
   table(
     columns: columns,
     inset: (x, y) => (
@@ -228,30 +248,8 @@
 )[#body]
 
 // ---------------------------------------------------------------------------
-// Title & footer
+// Footer
 // ---------------------------------------------------------------------------
-
-// Centred report title block: letter-spaced eyebrow, bold title, tenant, and
-// an optional "Generated: <date>" line or a trailing badge (pass via `trailing`).
-// `trailing-gap` exists because templates historically used 4pt or 6pt before their
-// badge/date line; parameterising it let all of them adopt this helper without a
-// single pixel moving.
-#let report-title(eyebrow, title, tenant, generated: none, trailing: none,
-                  title-size: 20pt, trailing-gap: 6pt) = align(center)[
-  #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[#upper(eyebrow)]
-  #v(2pt)
-  #text(size: title-size, weight: "bold", font: sans-font)[#title]
-  #v(-4pt)
-  #text(size: 10pt, fill: muted)[#tenant]
-  #if generated != none {
-    v(4pt)
-    text(size: 9pt, fill: muted, font: sans-font)[Generated: #generated]
-  }
-  #if trailing != none {
-    v(trailing-gap)
-    trailing
-  }
-]
 
 // Small muted footer note preceded by a divider, with a bolded lead word.
 //

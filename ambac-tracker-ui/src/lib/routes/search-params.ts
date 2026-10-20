@@ -34,6 +34,20 @@ export const CreateCapaSearch = z.object({
 });
 export type CreateCapaSearchParams = z.infer<typeof CreateCapaSearch>;
 
+/** Work order control — `?step=` opens it filtered to one step's parts (how the QA
+ *  inbox's operation and first-piece rows land on the work, not the bare order). */
+export const WorkOrderControlSearch = z.object({
+    step: z.string().uuid().optional().catch(undefined),
+});
+export type WorkOrderControlSearchParams = z.infer<typeof WorkOrderControlSearch>;
+
+/** Annotator — `?reports=<id,id>` opens it scoped to those quality reports (how a
+ *  disposition's "Go to Annotator" lands on its own reports, not the tenant's). */
+export const AnnotatorSearch = z.object({
+    reports: z.string().optional().catch(undefined),
+});
+export type AnnotatorSearchParams = z.infer<typeof AnnotatorSearch>;
+
 /** Process flow viewer — `?id=` selects the process to render. */
 export const ProcessFlowSearch = z.object({
     id: z.string().uuid().optional(),

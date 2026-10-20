@@ -11,8 +11,7 @@
 //        Overdue rows shown in red/bold
 //   4. Footer note (planning document, not a quality record)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -32,10 +31,8 @@
 
 // Human-friendly status label
 #let status-label(s) = {
-  if s == "IN_PROGRESS"               { "In Progress" }
-  else if s == "PENDING"              { "Pending" }
-  else if s == "ON_HOLD"              { "On Hold" }
-  else                                { s }
+  let words = s.split("_").map(w => if w == "QA" { w } else { upper(w.first()) + lower(w.slice(1)) })
+  words.join(" ")
 }
 
 // Days cell — red/bold when negative (overdue), amber when <= 3, otherwise muted
@@ -55,176 +52,62 @@
 }
 
 // Column widths shared between header and data rows
-#let col-widths = (1.4fr, 2.2fr, 0.7fr, 1.1fr, 0.65fr, 1fr, 1.1fr)
+#let col-widths = (1.3fr, 2fr, 0.5fr, 1fr, 0.55fr, 0.9fr, 1.4fr)
 
 // ----------------------------------------------------------------------------
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Dispatch List",
-  classification: "Internal — Production Planning",
+#show: doc-frame.with(
+  doc-type: "Dispatch List",
+  title: [What's Running Today],
+  kind: "shop",
+  org: data.tenant_name,
 )
 
-// ── Title block ──────────────────────────────────────────────────────────────
 
-#report-title(
-  [DISPATCH LIST],
-  [What's Running Today],
-  data.tenant_name,
-  generated: data.generated_date,
-)
+// ── Summary ───────────────────────────────────────────────────────────────────
 
-#v(14pt)
-
-// ── Summary bar ──────────────────────────────────────────────────────────────
-
-#info-box[
-  #grid(
-    columns: (1fr, 1fr),
-    column-gutter: 12pt,
-
-    // Total open WOs
-    align(center)[
-      #text(size: 22pt, weight: "bold", font: sans-font)[#data.total_open_wos]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Total Open Work Orders]
-    ],
-
-    // Overdue
-    align(center)[
-      #text(
-        size: 22pt, weight: "bold", font: sans-font,
-        fill: if data.overdue_count > 0 { bad } else { ok },
-      )[#data.overdue_count]
-      #v(-4pt)
-      #text(size: 9pt, fill: muted, font: sans-font)[Overdue]
-    ],
-  )
-]
-
-#v(14pt)
+#stat-panel((
+  (value: data.total_open_wos, label: "Total Open Work Orders"),
+  (value: data.overdue_count, label: "Overdue", tone: if data.overdue_count > 0 { "bad" } else { "ok" }),
+))
 
 // ── Work center groups ────────────────────────────────────────────────────────
 
 #if data.groups.len() == 0 [
-  #text(fill: muted, style: "italic")[
-    No open work orders found for this tenant.
-  ]
+  #empty-state[No open work orders.]
 ] else [
+  #set par(justify: false)
+  #set text(size: 9pt)
   #for group in data.groups [
-    // ── Section heading ─────────────────────────────────────────────────────
-    #v(8pt)
-    #block(
-      fill: rgb("#1e40af"),
-      inset: (x: 8pt, y: 5pt),
-      radius: (top-left: 4pt, top-right: 4pt),
-      width: 100%,
-    )[
-      #grid(
-        columns: (1fr, auto),
-        text(weight: "semibold", fill: white, font: sans-font, size: 10pt)[
-          #group.step_name
-        ],
-        text(fill: rgb("#bfdbfe"), font: sans-font, size: 9pt)[
-          #group.wo_count WO#if group.wo_count != 1 [s]
-        ],
-      )
-    ]
-
-    // ── Table header ─────────────────────────────────────────────────────────
-    #set par(justify: false)
-    #block(
-      fill: rgb("#f1f5f9"),
-      stroke: (bottom: 0.5pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-      inset: (x: 6pt, y: 5pt),
-      width: 100%,
-    )[
-      #set text(size: 9pt)
-      #grid(
-        columns: col-widths,
-        column-gutter: 6pt,
-        text(weight: "semibold", font: sans-font)[WO \#],
-        text(weight: "semibold", font: sans-font)[Part],
-        align(right)[#text(weight: "semibold", font: sans-font)[Qty]],
-        text(weight: "semibold", font: sans-font)[Due Date],
-        align(right)[#text(weight: "semibold", font: sans-font)[Days]],
-        align(center)[#text(weight: "semibold", font: sans-font)[Priority]],
-        text(weight: "semibold", font: sans-font)[Status],
-      )
-    ]
-
-    // ── Table rows ───────────────────────────────────────────────────────────
-    #for (idx, item) in group.items.enumerate() [
-      #let is-overdue = item.days_until_due != none and int(item.days_until_due) < 0
-      #let row-fill = if is-overdue {
-        rgb("#fff5f5")
-      } else if calc.rem(idx, 2) == 0 {
-        white
-      } else {
-        rgb("#f8fafc")
-      }
-      #set par(justify: false)
-      #block(
-        fill: row-fill,
-        stroke: (bottom: 0.3pt + rule, left: 0.5pt + rule, right: 0.5pt + rule),
-        inset: (x: 6pt, y: 5pt),
-        width: 100%,
-      )[
-        #set text(size: 9pt)
-        #grid(
-          columns: col-widths,
-          column-gutter: 6pt,
-          // WO number — bold + red when overdue
-          align(horizon)[
-            #text(
-              font: mono-font,
-              fill: if is-overdue { bad } else { ink },
-              weight: if is-overdue { "semibold" } else { "regular" },
-            )[#item.wo_number]
-          ],
-          // Part name
-          align(horizon)[
-            #text(font: sans-font)[#item.part_name]
-          ],
-          // Qty remaining
-          align(horizon + right)[
-            #text(fill: muted)[#item.qty_remaining]
-          ],
-          // Due date — red when overdue
-          align(horizon)[
-            #text(
-              fill: if is-overdue { bad } else { muted },
-              weight: if is-overdue { "semibold" } else { "regular" },
-            )[#if item.due_date == none [—] else [#item.due_date]]
-          ],
-          // Days until due
-          align(horizon + right)[
-            #days-cell(item.days_until_due)
-          ],
-          // Priority badge
-          align(horizon + center)[
-            #wo-priority-badge(item.priority)
-          ],
-          // Status
-          align(horizon)[
-            #text(fill: status-color(item.status), font: sans-font)[
-              #status-label(item.status)
-            ]
-          ],
+    #group-band(group.step_name, count: [#group.wo_count WO#if group.wo_count != 1 [s]])
+    #report-table(
+      col-widths,
+      ([WO \#], "Part", "Qty", "Due Date", "Days", "Priority", "Status"),
+      group.items.map(item => {
+        let late = item.days_until_due != none and int(item.days_until_due) < 0
+        let flag(body) = text(fill: if late { bad } else { muted }, weight: if late { "semibold" } else { "regular" })[#body]
+        (
+          text(font: mono-font, fill: if late { bad } else { ink }, weight: if late { "semibold" } else { "regular" })[#item.wo_number],
+          item.part_name,
+          text(fill: muted)[#item.qty_remaining],
+          flag(if item.due_date == none [—] else [#item.due_date]),
+          days-cell(item.days_until_due),
+          wo-priority-badge(item.priority),
+          text(fill: status-color(item.status))[#status-label(item.status)],
         )
-      ]
-    ]
-
-    #v(16pt)
+      }),
+      aligns: (left, left, right, left, right, center, left),
+    )
   ]
 ]
 
 // ── Footer note ───────────────────────────────────────────────────────────────
 
 #footer-note([
-  This Dispatch List is a planning document generated from live production
-  data as of #data.generated_date. It is not a quality record or traveler. Work
+  Generated from live production data as of #data.generated_date — not a quality
+  record or traveler. Work
   centers are approximated by the current manufacturing step assigned to each part.
   Sort order: most urgent (earliest due date) first within each work center.
   Days column: negative values indicate the work order is past its due date.

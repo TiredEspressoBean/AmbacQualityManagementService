@@ -5,25 +5,17 @@
 // For an auditor or a recall. The forward trace is only as complete as consumption
 // recording, and says so.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-#show: page-setup.with(
-  title: "Lot Trace",
+#show: doc-frame.with(
+  doc-type: "Lot Trace",
+  title: data.lot_number,
   doc-id: data.lot_number,
-  classification: "Traceability",
+  kind: "record",
+  org: data.our_org,
 )
-
-#report-title(
-  [LOT TRACE],
-  data.lot_number,
-  data.our_org,
-  generated: data.issued_date,
-)
-
-#v(10pt)
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
@@ -59,7 +51,9 @@
   #info-box[Nothing has been drawn from this lot (or from lots split off it).]
 ] else [
   #report-table(
-    (auto, auto, 1fr, auto, auto, auto),
+    // Every text column takes a share: with one `1fr` among five `auto`s, the autos
+    // claimed the width and the part column collapsed to a word per line.
+    (auto, auto, 1.2fr, 1.1fr, 0.9fr, 1.3fr),
     ("Lot", "Used", "Part · built into", "Work order · order", "Customer", "Shipped"),
     data.uses.map(u => (
       text(font: mono-font, size: 8.5pt)[#u.lot_number],

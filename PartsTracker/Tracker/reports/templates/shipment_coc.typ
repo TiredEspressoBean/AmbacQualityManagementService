@@ -5,25 +5,18 @@
 // States that the listed items were made and inspected to the order's requirements,
 // with the serials so the customer can match each unit. Signed by whoever issues it.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-#show: page-setup.with(
-  title: "Certificate of Conformance",
+#show: doc-frame.with(
+  doc-type: "Certificate of Conformance",
+  title: data.shipment_number,
   doc-id: data.shipment_number,
-  classification: "Certificate of Conformance",
+  kind: "customer",
+  subtitle: [Issued #data.issued_date],
+  org: data.our_org,
 )
-
-#report-title(
-  [CERTIFICATE OF CONFORMANCE],
-  data.shipment_number,
-  data.our_org,
-  generated: data.issued_date,
-)
-
-#v(10pt)
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
@@ -61,13 +54,7 @@
 
 #v(22pt)
 
-#grid(
-  columns: (1fr, 1fr), column-gutter: 20pt,
-  [
-    *Authorized by (#data.our_org)* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[#if data.issued_by != none [#data.issued_by · ] Quality · Date]
-  ],
-  [],
+#signature-block(
+  ((role: [Authorized by (#data.our_org)], name: data.issued_by, caption: "Quality · Signature · Date"), none),
+  heading: none,
 )

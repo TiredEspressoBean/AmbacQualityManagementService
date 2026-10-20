@@ -15,69 +15,22 @@
 // Grouped by station because that is the delivery walk; the KIT is still the unit,
 // and two work orders at one bench are two kits with two labels.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/kitting.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-#let station-header(name, jobs, short) = {
-  v(8pt)
-  block(
-    fill: accent, inset: (x: 8pt, y: 5pt),
-    radius: (top-left: 4pt, top-right: 4pt), width: 100%,
-  )[
-    #grid(columns: (1fr, auto),
-      text(weight: "semibold", fill: white, font: sans-font, size: 10pt)[#name],
-      text(fill: accent-tint, font: sans-font, size: 9pt)[
-        #jobs job#if jobs != 1 [s]#if short > 0 [ · #short short]
-      ])
-  ]
-}
-
-// An empty box the handler ticks. Pre-ticked when the system already knows the job
-// was staged, so a reprint mid-shift doesn't lose what's already done.
-#let tick(done) = box(
-  width: 12pt, height: 12pt, stroke: 0.6pt + rule, radius: 2pt,
-)[#if done [#align(center + horizon)[#text(size: 9pt, weight: "bold")[✓]]]]
-
-#show: page-setup.with(
-  title: "Kit Sheet",
-  classification: "Internal — Shop Floor",
+#show: doc-frame.with(
+  doc-type: "Kit Sheet",
+  title: if data.station_filter != "" [#data.station_filter] else [All stations],
+  kind: "shop",
+  subtitle: window-line(data),
+  org: data.tenant_name,
 )
 
-#report-title(
-  [KIT SHEET],
-  if data.station_filter != "" [#data.station_filter] else [All stations],
-  data.tenant_name,
-  trailing-gap: 4pt,
-  trailing: [
-    #text(size: 9pt, fill: muted, font: sans-font)[
-        #data.window_from — #data.window_to (next #data.window_hours h) · printed #data.generated_date
-      ]
-  ],
-)
+#stale-notice(data, "staging")
+#round-empty(data, data.stations.len() > 0, [Nothing scheduled in this window.])
 
-#v(10pt)
-
-#if data.is_stale [
-  #block(fill: warn-tint, stroke: 0.5pt + warn, inset: 7pt,
-         radius: 3pt, width: 100%)[
-    #text(size: 9pt)[
-      *Schedule is stale* — these times may have moved. Confirm before staging to them.
-    ]
-  ]
-  #v(6pt)
-]
-
-#if data.note != "" [
-  #block(fill: panel, inset: 10pt, radius: 3pt, width: 100%)[
-    #text(size: 10pt)[#data.note]
-  ]
-] else if data.stations.len() == 0 [
-  #block(fill: panel, inset: 10pt, radius: 3pt, width: 100%)[
-    #text(size: 10pt)[Nothing scheduled in this window.]
-  ]
-] else [
+#if data.note == "" and data.stations.len() > 0 [
   #for station in data.stations [
     // A job that consumes nothing and needs no tooling has no kit. Printing a block
     // per such job pads the sheet with entries the handler can only skip — and worse,
@@ -90,13 +43,14 @@
     // A bench with no kits gets no block at all — a delivery sheet listing stations
     // you aren't delivering to is just more paper to page past.
     #if kits.len() > 0 [
-    #station-header(station.name, kits.len(), station.short_count)
+    #group-band(station.name,
+      count: [#kits.len() job#if kits.len() != 1 [s]#if station.short_count > 0 [ · #station.short_count short]])
 
     #for job in kits [
-      #block(stroke: (x: 0.5pt + rule, bottom: 0.5pt + rule), inset: (x: 8pt, y: 6pt),
-             width: 100%, breakable: false)[
+      #block(stroke: 0.5pt + rule, inset: (x: 8pt, y: 6pt), width: 100%,
+             breakable: false, above: 0pt, below: 0pt)[
         #grid(columns: (auto, 1fr, auto), column-gutter: 8pt,
-          align(horizon)[#tick(job.staged)],
+          align(horizon)[#tick(done: job.staged)],
           [
             #text(weight: "semibold", font: mono-font, size: 10pt)[#job.erp_id]
             #h(6pt)
@@ -182,37 +136,18 @@
   ]
 ]
 
-#if data.unmapped.len() > 0 [
-  #v(12pt)
-  #block(fill: accent-tint, stroke: 0.5pt + accent, inset: 8pt,
-         radius: 3pt, width: 100%)[
-    #text(size: 9pt, weight: "semibold")[Components not mapped to a step]
-    #v(2pt)
-    #text(size: 8.5pt, fill: muted)[
-      Needed, but the BOM doesn't say at which operation — so they can't be put on a
-      bench list. Set "consumed at step" on the BOM line.
-    ]
-    #v(3pt)
-    #for u in data.unmapped [
-      #text(size: 8.5pt, font: mono-font)[#u]
-      #linebreak()
-    ]
-  ]
-]
+#unmapped-box(data.unmapped)
 
-#v(14pt)
-#divider()
-#v(6pt)
-#grid(columns: (1fr, 1fr), column-gutter: 24pt,
-  text(size: 9pt, fill: muted)[
-    Staged by: #box(width: 120pt, stroke: (bottom: 0.5pt + rule))[]
-  ],
-  text(size: 9pt, fill: muted)[
-    Time: #box(width: 100pt, stroke: (bottom: 0.5pt + rule))[]
-  ],
+#v(10pt)
+#signature-block(
+  ((role: "Staged by", caption: "Name · Time"), none, none),
+  heading: none, gap: 18pt,
 )
-#v(4pt)
-#text(size: 8.5pt, fill: muted, style: "italic")[
-  #data.total_jobs job#if data.total_jobs != 1 [s] on this sheet#if data.total_short > 0 [, #data.total_short short].
+#v(8pt)
+#footer-note[
+  // Kits printed, not jobs scheduled: a job with nothing to stage has no block, and is
+  // counted under its station instead.
+  #let kits = data.stations.map(st => st.jobs.filter(j => j.materials.len() > 0 or j.fixtures != "").len()).sum(default: 0)
+  #kits kit#if kits != 1 [s] on this sheet#if data.total_short > 0 [, #data.total_short short].
   Lots listed are the ones the system will record as consumed — pull those.
 ]

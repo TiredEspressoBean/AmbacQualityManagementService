@@ -434,11 +434,15 @@ export default function EditDispositionFormPage() {
                                 label="NCR Report"
                                 params={{ id: dispositionId }}
                             />
-                            <ReportButton
-                                reportType="deviation_request"
-                                label="Deviation Request"
-                                params={{ id: dispositionId }}
-                            />
+                            {/* The report accepts only use-as-is and repair dispositions. */}
+                            {(disposition?.disposition_type === "USE_AS_IS" ||
+                              disposition?.disposition_type === "REPAIR") && (
+                                <ReportButton
+                                    reportType="deviation_request"
+                                    label="Deviation Request"
+                                    params={{ id: dispositionId }}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -466,7 +470,7 @@ export default function EditDispositionFormPage() {
                                                         {disposition.annotation_status.pending_count} quality report(s) require 3D annotations
                                                         before this disposition can be closed.
                                                     </p>
-                                                    <Link to="/annotator">
+                                                    <Link to="/annotator" search={{ reports: (disposition.quality_reports ?? []).map(String).join(",") || undefined }}>
                                                         <Button variant="outline" size="sm" className="gap-2">
                                                             <ExternalLink className="h-4 w-4" />
                                                             Go to Annotator
@@ -856,7 +860,7 @@ export default function EditDispositionFormPage() {
                                                         hideLabel
                                                         items={qualityReports.map((qr) => ({
                                                             id: qr.id,
-                                                            label: `Report #${qr.id}`,
+                                                            label: qr.report_number ?? "Report",
                                                             description: [
                                                                 `Part #${qr.part}`,
                                                                 qr.created_at ? format(new Date(qr.created_at), "MMM dd, yyyy") : null,
@@ -1014,7 +1018,7 @@ export default function EditDispositionFormPage() {
                                                 <AlertTriangle className="h-4 w-4" />
                                                 <span className="text-sm">{disposition.annotation_status.pending_count} pending</span>
                                             </div>
-                                            <Link to="/annotator">
+                                            <Link to="/annotator" search={{ reports: (disposition.quality_reports ?? []).map(String).join(",") || undefined }}>
                                                 <Button size="sm" variant="outline" className="w-full gap-2">
                                                     <ExternalLink className="h-4 w-4" />
                                                     Go to Annotator

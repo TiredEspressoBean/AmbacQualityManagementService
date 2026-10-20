@@ -11,8 +11,7 @@
 //   4. Results — measurements, then checklist answers
 //   5. Decision — accepted / rejected / holds released, by whom and when
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -28,21 +27,14 @@
 
 #let dt(v) = if v == none or v == "" { text(fill: muted)[—] } else { str(v).slice(0, calc.min(16, str(v).len())).replace("T", " ") }
 
-#show: page-setup.with(
-  title: "Receiving Inspection Record",
+#show: doc-frame.with(
+  doc-type: "Receiving Inspection Record",
+  title: data.lot_number,
   doc-id: data.lot_number,
-  classification: "Internal — Quality Record",
+  kind: "record",
+  status: verdict-badge(data.verdict),
+  org: data.tenant_name,
 )
-
-#report-title(
-  [RECEIVING INSPECTION RECORD],
-  data.lot_number,
-  data.tenant_name,
-  generated: data.generated_date,
-  trailing: verdict-badge(data.verdict),
-)
-
-#v(10pt)
 
 = Lot as received
 
@@ -131,12 +123,6 @@
   )
 ]
 
-#v(14pt)
-#align(center)[
-  #line(length: 60%, stroke: 0.5pt + rule)
-  #v(4pt)
-  #text(size: 8pt, fill: muted)[
-    Generated from live records on #data.generated_date — the lot, its inspection report and
-    its audit log are the record of source.
-  ]
-]
+#end-marker([End of Record — #data.lot_number],
+  note: [Generated from live records on #data.generated_date — the lot, its inspection report
+    and its audit log are the record of source.])

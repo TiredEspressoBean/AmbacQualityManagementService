@@ -13,61 +13,29 @@
 //   4. Unmapped components — BOM lines with no operation, so they can't be kitted
 //   5. Picked-by block
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/kitting.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
-// An empty box the picker ticks once the whole quantity is on the cart.
-#let tick() = box(width: 12pt, height: 12pt, stroke: 0.6pt + rule, radius: 2pt)[]
-
-#show: page-setup.with(
-  title: "Pick Sheet",
-  classification: "Internal — Shop Floor",
+#show: doc-frame.with(
+  doc-type: "Pick Sheet",
+  title: if data.station_filter != "" [#data.station_filter] else [All stations],
+  kind: "shop",
+  subtitle: window-line(data),
+  org: data.tenant_name,
 )
 
-#report-title(
-  [PICK SHEET],
-  if data.station_filter != "" [#data.station_filter] else [All stations],
-  data.tenant_name,
-  title-size: 17pt,
-  trailing-gap: 4pt,
-  trailing: [
-    #text(size: 9pt, fill: muted, font: sans-font)[
-      #data.window_from — #data.window_to (next #data.window_hours h) · printed #data.generated_date
-    ]
-  ],
-)
+#stale-notice(data, "pulling")
+#round-empty(data, data.rows.len() > 0, [Nothing to pull in this window.])
 
-#v(9pt)
-
-#if data.is_stale [
-  #block(fill: warn-tint, stroke: 0.5pt + warn, inset: 5pt, radius: 3pt, width: 100%)[
-    #text(size: 9pt)[
-      *Schedule is stale* — these times may have moved. Confirm before pulling to them.
-    ]
-  ]
-  #v(6pt)
-]
-
-#if data.note != "" [
-  #block(fill: panel, inset: 10pt, radius: 3pt, width: 100%)[
-    #text(size: 10pt)[#data.note]
-  ]
-] else if data.rows.len() == 0 [
-  #block(fill: panel, inset: 10pt, radius: 3pt, width: 100%)[
-    #text(size: 10pt)[Nothing to pull in this window.]
-  ]
-] else [
+#if data.note == "" and data.rows.len() > 0 [
   = #data.total_lines material#if data.total_lines != 1 [s] → #data.total_kits kit#if data.total_kits != 1 [s]
 
   #if data.total_short > 0 [
     #v(-2pt)
-    #block(fill: warn-tint, stroke: 0.5pt + warn, inset: 5pt, radius: 3pt, width: 100%)[
-      #text(size: 9pt)[
-        *#data.total_short of #data.total_lines lines are short.* Pull what exists and
-        flag the rest — the kits below will be incomplete.
-      ]
+    #notice[
+      *#data.total_short of #data.total_lines lines are short.* Pull what exists and
+      flag the rest — the kits below will be incomplete.
     ]
     #v(6pt)
   ]
@@ -123,35 +91,13 @@
   ]
 ]
 
-#if data.unmapped.len() > 0 [
-  #v(10pt)
-  #block(fill: accent-tint, stroke: 0.5pt + accent, inset: 7pt, radius: 3pt, width: 100%)[
-    #text(size: 9pt, weight: "semibold")[Not on this sheet — components with no operation]
-    #v(2pt)
-    #text(size: 8.5pt, fill: muted)[
-      These jobs need them, but the BOM doesn't say at which operation, so they can't be
-      assigned to a kit. Set "consumed at step" on the BOM line.
-    ]
-    #v(3pt)
-    #for u in data.unmapped [
-      #text(size: 8.5pt, font: mono-font)[#u]
-      #linebreak()
-    ]
-  ]
-]
+#unmapped-box(data.unmapped)
 
 #v(10pt)
 
-#grid(
-  columns: (1fr, 1fr),
-  column-gutter: 18pt,
-  ..("Pulled by", "Sorted to kits by").map(role => [
-      #text(size: 8.5pt, fill: muted, font: sans-font)[#role]
-      #v(9pt)
-      #box(width: 100%, stroke: (bottom: 0.5pt + rule))[]
-      #v(2pt)
-      #text(size: 8pt, fill: muted, font: sans-font)[Date: #box(width: 1fr, stroke: (bottom: 0.5pt + rule))]
-    ])
+#signature-block(
+  ((role: "Pulled by", caption: "Name · Date"), (role: "Sorted to kits by", caption: "Name · Date"), none),
+  heading: none, gap: 18pt,
 )
 
 #v(8pt)

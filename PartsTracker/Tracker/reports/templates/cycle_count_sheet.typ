@@ -4,26 +4,19 @@
 //
 // A blind count leaves "Expected" blank, so the counter counts rather than confirms.
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 #let qty(v) = if v == none { "" } else { str(v) }
 
-#show: page-setup.with(
-  title: "Count Sheet",
+#show: doc-frame.with(
+  doc-type: "Count Sheet",
+  title: data.count_number,
   doc-id: data.count_number,
-  classification: "Cycle Count",
+  kind: "shop",
+  uncontrolled: false,
+  org: data.our_org,
 )
-
-#report-title(
-  [COUNT SHEET],
-  data.count_number,
-  data.our_org,
-  generated: data.issued_date,
-)
-
-#v(10pt)
 
 #grid(
   columns: (1fr, 1fr), column-gutter: 16pt, row-gutter: 6pt,
@@ -41,24 +34,25 @@
   data.lines.map(l => (
     text(font: mono-font)[#l.label],
     opt(l.item),
-    [#qty(l.expected) #l.unit],
-    [],
+    // Blind: the expected quantity is withheld, so the unit moves to the count it
+    // qualifies rather than sitting alone under "Expected".
+    if l.expected == none [] else [#qty(l.expected) #l.unit],
+    align(right, text(fill: muted)[#l.unit]),
     [],
   )),
   aligns: (left, left, right, right, left),
+  inset-y: 10pt,   // tall enough to write a count by hand
 )
 
-#v(8pt)
+#v(10pt)
 #text(size: 9pt, fill: muted)[Anything here that isn't on this sheet: write its lot or serial below.]
-#v(70pt)
-
-#grid(
-  columns: (1fr, 1fr), column-gutter: 20pt,
-  [
-    *Counted by* \
-    #v(24pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Date]
-  ],
-  [],
+#v(4pt)
+#report-table(
+  (1fr, 2fr, 0.8fr, 1fr),
+  ("Lot / serial", "Item", "Counted", "Note"),
+  range(4).map(_ => ([], [], [], [])),
+  inset-y: 10pt,
 )
+#v(16pt)
+
+#signature-block(((role: "Counted by", caption: "Name · Date"), none, none), heading: none)

@@ -12,8 +12,7 @@
 //   7. Signature block — Calibration Technician + Reviewing Authority
 //   8. "End of Certificate" marker (ISO 17025 requirement)
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -45,25 +44,16 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Calibration Certificate",
+#show: doc-frame.with(
+  doc-type: "Calibration Certificate",
+  title: data.certificate_number,
   doc-id: data.certificate_number,
-  classification: "Controlled Document — ISO 17025",
-)
-
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [CALIBRATION CERTIFICATE],
-  data.certificate_number,
-  data.tenant_name,
-  title-size: 22pt,
-  trailing: [
+  kind: "record",
+  status: [
     #result-badge(data.result)
   ],
+  org: data.tenant_name,
 )
-
-#v(12pt)
 
 // ── Equipment under test ──────────────────────────────────────────────────────
 
@@ -165,41 +155,11 @@
 
 #v(20pt)
 
-// ── Signature block ──────────────────────────────────────────────────────────
-
-= Signatures
-
-#grid(
-  columns: (1fr, 1fr),
-  column-gutter: 24pt,
-
-  [
-    *Calibration Technician* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
-  ],
-  [
-    *Reviewing Authority* \
-    #v(28pt)
-    #line(length: 100%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
-  ],
-)
+#signature-block(("Calibration Technician", "Reviewing Authority"))
 
 #v(24pt)
 
-// ── End of Certificate marker (ISO 17025 requirement) ────────────────────────
-
-#align(center)[
-  #line(length: 60%, stroke: 0.5pt + rule)
-  #v(4pt)
-  #text(size: 9pt, fill: muted, font: sans-font, tracking: 1pt)[
-    END OF CERTIFICATE — #data.certificate_number
-  ]
-  #v(2pt)
-  #text(size: 8pt, fill: muted)[
-    This certificate may not be reproduced except in full without written approval
-    of the issuing laboratory.
-  ]
-]
+// End-of-certificate marker (ISO 17025 requirement).
+#end-marker([End of Certificate — #data.certificate_number],
+  note: [This certificate may not be reproduced except in full without written approval
+    of the issuing laboratory.])

@@ -21,8 +21,7 @@
 //      (sign-off / acc-rej / remarks cells are blank wet-ink, or as-built)
 //   5. Final-release footer — qty acc/rej/scrap, final sign-off, QA stamp
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -85,38 +84,14 @@
 // Document — landscape, no hyphenation (keeps IDs like ORD-SHOWCASE intact)
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Work Order Traveler",
+#show: doc-frame.with(
+  doc-type: "Work Order Traveler",
+  title: data.part_name,
   doc-id: data.wo_number,
-  classification: "Internal — Shop Floor",
-)
-#set page(flipped: true)
-#set text(hyphenate: false)
-#set par(justify: false)
-// Shop-floor legibility: a sans reads far better than a serif through scratched
-// or dirty safety glasses. Switch the body off the shared serif (body-font) to
-// the shared sans (headings/labels already use it). Noto Sans is the deployable
-// choice — the Docker image installs fonts-noto-core and Typst scans
-// /usr/share/fonts. (Locally, where Noto isn't installed, Typst falls back to
-// its default; production renders Noto Sans.)
-#set text(font: sans-font)
-
-// ── Header: title (left) + barcode (right) ──────────────────────────────────
-
-#grid(
-  columns: (1fr, auto),
-  column-gutter: 24pt,
-  align: (left + horizon, right + horizon),
-  [
-    #text(size: 9pt, fill: muted, tracking: 2pt, font: sans-font)[
-      WORK ORDER TRAVELER
-    ]
-    #v(2pt)
-    #text(size: 22pt, weight: "bold", font: sans-font)[#data.part_name]
-    #v(-4pt)
-    #text(size: 10pt, fill: muted)[#data.tenant_name]
-  ],
-  grid(
+  kind: "shop",
+  landscape: true,
+  org: data.tenant_name,
+  aside: grid(
     columns: (auto, auto),
     column-gutter: 12pt,
     align: (right + horizon, center + horizon),
@@ -136,8 +111,9 @@
     ],
   ),
 )
-
-#v(10pt)
+// No hyphenation: keeps IDs like ORD-SHOWCASE intact. (Sans body and ragged
+// paragraphs come from the frame, as on every shop sheet.)
+#set text(hyphenate: false)
 
 // ── Work-order info block (4 columns, wide values) ──────────────────────────
 
@@ -195,6 +171,9 @@
 
 // ── Routing table ───────────────────────────────────────────────────────────
 
+// Sticky: the heading and its key travel with the table, rather than stranding at
+// the foot of page 1 while the whole table starts overleaf.
+#block(sticky: true)[
 = Routing — #str(data.total_operations) operations
 
 #text(size: 8pt, fill: muted, font: sans-font)[
@@ -203,6 +182,7 @@
   work order as they complete. The write-in columns are a fallback — if a
   device isn't at hand or something needs a note, write it here to keep the job
   moving.
+]
 ]
 #v(6pt)
 
@@ -230,7 +210,7 @@
      [Operator / Date], [Inspector / Date],
      text(size: 7.5pt)[Acc], text(size: 7.5pt)[Rej], [Remarks]),
     data.operations.map(op => (
-      text(fill: ink, font: mono-font, weight: "medium", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
+      text(fill: ink, font: sans-font, weight: "semibold", size: 10pt)[#if op.op_number != none [#op.op_number] else [#op.seq]],
       {
         text(weight: "semibold", font: sans-font)[#op.step_name]
         if op.is_outside_process [ #h(4pt) #tone-badge("OSP", "warn") ]
@@ -273,7 +253,7 @@
         ]
         for o in op.at("overrides", default: ()) [
           #v(1pt)
-          #text(size: 7.5pt, font: sans-font, fill: rgb("#9a5b00"))[Override: #o]
+          #text(size: 7.5pt, font: sans-font, fill: warn)[Override: #o]
         ]
       },
       // Fill-in fields — tall bordered boxes for handwriting; as-built = chip.
@@ -322,6 +302,8 @@
 // ── Closeout — the sign-off key has one row per operation and flows after the
 // routing (a long routing's key may span pages); Final Release + footer are
 // glued together below so the footer never orphans. ─────────────────────────
+// Sticky, so the heading and its key never strand at a page foot apart from the table.
+#block(sticky: true)[
 = Sign-off Key
 
 #text(size: 8pt, fill: muted, font: sans-font)[
@@ -329,24 +311,23 @@
   initials — paper sign-offs are a fallback; the authoritative sign-off is
   captured on the digital work order.
 ]
-#v(5pt)
-
-#let keyhead(n) = text(size: 7.5pt, fill: muted, font: sans-font, weight: "semibold")[#n]
-#let keycell() = box(width: 100%, height: 22pt, stroke: (bottom: 0.5pt + rule))
+]
 
 // One row per operation, sized directly from the routing so the number of
 // sign-off rows matches the step count (floor of 3 for very short routings).
 #let keyrows = calc.max(3, data.operations.len())
 
-#grid(
-  columns: (2.6fr, 1fr, 1fr),
-  column-gutter: 14pt,
-  row-gutter: 6pt,
-  keyhead("Name"), keyhead("Badge / ID"), keyhead("Initials"),
-  ..range(keyrows).map(_ => (
-    keycell(), keycell(), keycell(),
-  )).flatten(),
-)
+// A table, so the column labels reprint wherever the key breaks across pages. Sized
+// like the routing table above it.
+#{
+  set text(size: 8pt)
+  report-table(
+    (2.6fr, 1fr, 1fr),
+    ("Name", "Badge / ID", "Initials"),
+    range(keyrows).map(_ => ([], [], [])),
+    inset-y: 7pt,
+  )
+}
 
 #v(6pt)
 
@@ -387,11 +368,5 @@
   release for shipment with any open control step or nonconformance.
 ])
 
-#v(6pt)
-
-// Document-control line — a printed copy is a snapshot, not the controlled master.
-#align(center, text(size: 7pt, fill: muted, font: sans-font)[
-  Uncontrolled printed snapshot as of #data.generated_date — verify the current revision before use.
-])
 
 ]  // end final-release + footer block

@@ -12,8 +12,7 @@
 //   3. Gage table: Gage ID | Description | Mfr / Model | Cal Interval | Cal Cert # | Cal Date
 //   4. Quality Manager signature block
 
-#import "_common/page-setup.typ": *
-#import "_common/components.typ": *
+#import "_common/frame.typ": *
 
 #let data = json.decode(sys.inputs.at("data"))
 
@@ -25,20 +24,12 @@
 // Document
 // ----------------------------------------------------------------------------
 
-#show: page-setup.with(
-  title: "Checking Aids",
-  classification: "PPAP — Element 16",
+#show: doc-frame.with(
+  doc-type: "Checking Aids",
+  title: [Checking Aids],
+  kind: "record",
+  subtitle: [PPAP Element 16 · Measurement Equipment List],
 )
-
-// ── Title block ──────────────────────────────────────────────────────────────
-
-#report-title(
-  [PPAP ELEMENT 16],
-  [Checking Aids],
-  [Measurement Equipment List],
-)
-
-#v(14pt)
 
 // ── Header info ──────────────────────────────────────────────────────────────
 
@@ -109,27 +100,15 @@
 
 #v(20pt)
 
-// ── Signature block ──────────────────────────────────────────────────────────
-
-= Attestation
-
-#text(size: 9.5pt)[
-  I certify that the measurement equipment listed above was used to verify
-  product conformance for the PPAP submission referenced herein, and that
-  each listed gage was in calibration at the time the measurements were taken.
-  Calibration traceability is maintained through the certificate numbers
-  listed; individual calibration certificates are available on request.
-]
-
-#v(24pt)
-
-#grid(
-  columns: (1fr,),
-  [
-    *Quality Manager* \
-    #v(28pt)
-    #line(length: 80%, stroke: 0.5pt + ink) \
-    #text(size: 9pt, fill: muted)[Name · Signature · Date]
+#signature-block(
+  ("Quality Manager", none, none),
+  heading: "Attestation",
+  intro: [
+    I certify that the measurement equipment listed above was used to verify
+    product conformance for the PPAP submission referenced herein, and that
+    each listed gage was in calibration at the time the measurements were taken.
+    Calibration traceability is maintained through the certificate numbers
+    listed; individual calibration certificates are available on request.
   ],
 )
 

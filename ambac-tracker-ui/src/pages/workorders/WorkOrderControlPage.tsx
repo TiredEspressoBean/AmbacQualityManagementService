@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useNavigate } from "@tanstack/react-router";
+import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
     Table,
     TableBody,
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { ReportButton } from "@/components/reports/ReportButton";
+import { WorkOrderDocuments } from "@/components/reports/WorkOrderDocuments";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -1058,7 +1058,9 @@ export function WorkOrderControlPage() {
     }, [realProcess]);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
-    const [stepFilter, setStepFilter] = useState<string | null>(null);
+    // `?step=` (from the QA inbox) opens the page filtered to that step's parts.
+    const initialStep = (useSearch({ strict: false }) as { step?: string }).step ?? null;
+    const [stepFilter, setStepFilter] = useState<string | null>(initialStep);
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [search, setSearch] = useState("");
 
@@ -1549,16 +1551,7 @@ export function WorkOrderControlPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ReportButton
-                        reportType="pick_list"
-                        label="Material Requisition"
-                        params={workOrderId ? { id: workOrderId } : null}
-                    />
-                    <ReportButton
-                        reportType="part_id_label_batch"
-                        label="Part Labels"
-                        params={{ work_order_id: workOrderId }}
-                    />
+                    <WorkOrderDocuments workOrderId={workOrderId} />
                     <Button
                         variant={splitMode ? "default" : "outline"}
                         onClick={() => (splitMode ? exitSplitMode() : enterSplitMode("QUANTITY"))}
