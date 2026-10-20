@@ -382,9 +382,12 @@ def submit_substep(
                 report.annotations.exists()
                 or QualityReportDefect.objects.filter(report=report).exists()
             )
-            QualityReports.objects.filter(pk=report.pk).update(
-                status="FAIL" if has_findings else "PASS",
-            )
+            # A real save, not a queryset .update(): the disposition signal and the
+            # FAIL consequences (quarantine, ncr.opened) must see the transition.
+            from Tracker.services.qms.quality_report import on_report_failed
+            report.status = "FAIL" if has_findings else "PASS"
+            report.save(update_fields=["status"])
+            on_report_failed(report, "PENDING")
 
         completion = _record_completion(
             substep=substep,

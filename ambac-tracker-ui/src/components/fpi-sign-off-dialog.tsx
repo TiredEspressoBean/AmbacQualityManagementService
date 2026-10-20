@@ -1,4 +1,9 @@
-/** The FPI buy-off attestation dialog, in both of its modes.
+/** The FPI buy-off dialog — pass, fail or waive — in both of its modes.
+ *
+ *  `verdict` picks what is recorded: a pass releases the run; a fail keeps it held
+ *  (the setup is corrected and a new first piece run); a waive releases it without
+ *  the inspection, with a reason. Pass and waive meet the step's authored assurance
+ *  (they release the step); a fail holds it, so it needs no password of its own.
  *
  *  Mode depends on who is at the keyboard:
  *
@@ -36,7 +41,7 @@ import {
     validateSignatureVerification,
     type SignatureVerificationData,
 } from "@/components/approval/SignatureVerification";
-import { useFpiPass } from "@/hooks/useFpiRecords";
+import { useFpiFail, useFpiPass, useFpiWaive } from "@/hooks/useFpiRecords";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type FpiSignOffDialogProps = {
@@ -56,8 +61,14 @@ type FpiSignOffDialogProps = {
     /** Designated part label, shown in the attestation so the signer knows
      *  exactly what they are attesting to. */
     partLabel?: string | null;
+    /** What is being recorded. Defaults to a pass. */
+    verdict?: FpiVerdict;
     onSigned?: () => void;
 };
+
+export type FpiVerdict = "PASS" | "FAIL" | "WAIVE";
+
+const WAIVE_MIN = 10;
 
 export function FpiSignOffDialog({
     open,
@@ -66,9 +77,11 @@ export function FpiSignOffDialog({
     canSignOff,
     assurance,
     partLabel,
+    verdict = "PASS",
     onSigned,
 }: FpiSignOffDialogProps) {
-    const needsOwnPassword = canSignOff && assurance === "PASSWORD";
+    // A fail holds the run, so it isn't held to the release bar; pass and waive are.
+    const needsOwnPassword = canSignOff && assurance === "PASSWORD" && verdict !== "FAIL";
     const [notes, setNotes] = useState("");
     const [ownPassword, setOwnPassword] = useState("");
     const [cosignEmail, setCosignEmail] = useState("");
@@ -80,6 +93,9 @@ export function FpiSignOffDialog({
     const [error, setError] = useState<string | null>(null);
 
     const passMutation = useFpiPass();
+    const failMutation = useFpiFail();
+    const waiveMutation = useFpiWaive();
+    const pending = passMutation.isPending || failMutation.isPending || waiveMutation.isPending;
 
     // SignatureVerification fires onChange from a useEffect on every state
     // change — an unmemoized handler re-renders it into a loop.
@@ -103,6 +119,14 @@ export function FpiSignOffDialog({
     const handleConfirm = () => {
         setError(null);
 
+        if (verdict === "FAIL" && !notes.trim()) {
+            setError("Say what was wrong, so the setup can be corrected.");
+            return;
+        }
+        if (verdict === "WAIVE" && notes.trim().length < WAIVE_MIN) {
+            setError(`Give the reason for waiving (at least ${WAIVE_MIN} characters).`);
+            return;
+        }
         if (needsOwnPassword && !ownPassword) {
             setError("This step is authored to need your password as well.");
             return;
@@ -123,23 +147,18 @@ export function FpiSignOffDialog({
             }
         }
 
-        passMutation.mutate(
-            {
-                id: fpiId,
-                notes,
-                ...(canSignOff
-                    ? (needsOwnPassword ? { password: ownPassword } : {})
-                    : {
-                        cosign_email: cosignEmail.trim(),
-                        cosign_password: signature.password,
-                        // Kept on the record once the password verifies (it used to
-                        // be required here and then thrown away).
-                        cosign_signature: signature.signature_data,
-                    }),
-            },
-            {
+        const signer = canSignOff
+            ? (needsOwnPassword ? { password: ownPassword } : {})
+            : {
+                cosign_email: cosignEmail.trim(),
+                cosign_password: signature.password,
+                // Kept on the record once the password verifies (it used to
+                // be required here and then thrown away).
+                cosign_signature: signature.signature_data,
+            };
+        const callbacks = {
                 onSuccess: () => {
-                    toast.success("FPI signed off — parts can now proceed.");
+                    toast.success(DONE[verdict]);
                     reset();
                     onOpenChange(false);
                     onSigned?.();
@@ -152,23 +171,40 @@ export function FpiSignOffDialog({
                     const resp = (err as { response?: { data?: Record<string, unknown> } })?.response;
                     const detail = apiErrorMessage(err)
                         || (resp?.data?.error as string)
-                        || "Could not sign off the FPI.";
+                        || "Could not record the FPI verdict.";
                     setError(detail);
                     toast.error(detail);
                 },
-            },
-        );
+            };
+        if (verdict === "FAIL") {
+            failMutation.mutate({ id: fpiId, notes: notes.trim(), ...signer }, callbacks);
+        } else if (verdict === "WAIVE") {
+            waiveMutation.mutate({ id: fpiId, reason: notes.trim(), ...signer }, callbacks);
+        } else {
+            passMutation.mutate({ id: fpiId, notes, ...signer }, callbacks);
+        }
     };
 
     return (
         <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Sign off First Piece Inspection</DialogTitle>
+                    <DialogTitle>{TITLE[verdict]}</DialogTitle>
                     <DialogDescription>
-                        By signing off you attest that the setup is correct and the first
-                        piece{partLabel ? ` (${partLabel})` : ""} conforms, and this
-                        releases the run.{" "}
+                        {verdict === "PASS" && <>
+                            By signing off you attest that the setup is correct and the first
+                            piece{partLabel ? ` (${partLabel})` : ""} conforms, and this
+                            releases the run.{" "}
+                        </>}
+                        {verdict === "FAIL" && <>
+                            The setup did not pass{partLabel ? ` (first piece ${partLabel})` : ""}. The
+                            run stays held; correct the setup and run a new first piece for
+                            re-inspection.{" "}
+                        </>}
+                        {verdict === "WAIVE" && <>
+                            Waiving releases the run without a first-piece buy-off. Say why — it
+                            stays on the record.{" "}
+                        </>}
                         {canSignOff
                             ? "It is recorded against your name."
                             : "It is recorded against the QA inspector's name — not the person logged in."}
@@ -177,11 +213,11 @@ export function FpiSignOffDialog({
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label>Notes (optional)</Label>
+                        <Label>{NOTES_LABEL[verdict]}</Label>
                         <Textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Inspection notes / gauges used / observations…"
+                            placeholder={NOTES_PLACEHOLDER[verdict]}
                             rows={3}
                         />
                     </div>
@@ -224,7 +260,7 @@ export function FpiSignOffDialog({
                             </div>
                             <SignatureVerification
                                 onChange={handleSignatureChange}
-                                confirmationText="I confirm this is my signature and I am authorized to buy off this first piece."
+                                confirmationText={`I confirm this is my signature and I am authorized to ${verdict === "PASS" ? "buy off" : verdict === "FAIL" ? "fail" : "waive"} this first piece.`}
                                 passwordHelpText="The QA inspector's password, to verify their identity."
                                 error={error}
                             />
@@ -242,13 +278,40 @@ export function FpiSignOffDialog({
                     </Button>
                     <Button
                         onClick={handleConfirm}
-                        disabled={passMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700"
+                        disabled={pending}
+                        variant={verdict === "FAIL" ? "destructive" : "default"}
+                        className={verdict === "PASS" ? "bg-green-600 hover:bg-green-700" : undefined}
                     >
-                        {passMutation.isPending ? "Signing off…" : "Confirm sign-off"}
+                        {pending ? "Recording…" : CONFIRM[verdict]}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
+
+const TITLE: Record<FpiVerdict, string> = {
+    PASS: "Sign off First Piece Inspection",
+    FAIL: "Fail First Piece Inspection",
+    WAIVE: "Waive First Piece Inspection",
+};
+const CONFIRM: Record<FpiVerdict, string> = {
+    PASS: "Confirm sign-off",
+    FAIL: "Record failure",
+    WAIVE: "Waive FPI",
+};
+const DONE: Record<FpiVerdict, string> = {
+    PASS: "FPI signed off — parts can now proceed.",
+    FAIL: "FPI failed — correct the setup and re-run the first piece.",
+    WAIVE: "FPI requirement waived.",
+};
+const NOTES_LABEL: Record<FpiVerdict, string> = {
+    PASS: "Notes (optional)",
+    FAIL: "Reason / findings",
+    WAIVE: "Reason for waiving",
+};
+const NOTES_PLACEHOLDER: Record<FpiVerdict, string> = {
+    PASS: "Inspection notes / gauges used / observations…",
+    FAIL: "What was out of spec / what needs correcting…",
+    WAIVE: "Why this first piece doesn't need inspecting (e.g. identical setup re-run, customer concession)…",
+};

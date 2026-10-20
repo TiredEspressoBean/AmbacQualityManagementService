@@ -33,7 +33,7 @@ def contain_failed_batch(report) -> None:
     `report` is a FAIL QualityReports with `batch_execution` set. Safe to call
     from the auto_create_disposition signal on every FAIL save — idempotent.
     """
-    from Tracker.models import Parts, PartsStatus, QuarantineDisposition, User
+    from Tracker.models import PartsStatus, QuarantineDisposition, User
 
     batch = report.batch_execution
     if batch is None:
@@ -48,13 +48,13 @@ def contain_failed_batch(report) -> None:
     members = list(batch.parts.all())
     # Contain: hold the members still in production.
     held = [p for p in members if p.part_status in _QUARANTINABLE]
+    # One save per part, not bulk_update: a quarantine is a quality record, and only a
+    # save writes the part's audit entry (with who triggered it). A load is tens of
+    # parts, not thousands.
     for p in held:
         p.part_status = PartsStatus.QUARANTINED
+        p.save(update_fields=["part_status"])
     if held:
-        # tenant-safe: members sourced from the batch (same tenant).
-        Parts.objects.bulk_update(held, ["part_status"])
-        # bulk_update bypasses the Parts post_save that flags the schedule stale,
-        # so the held parts would keep being scheduled — flag it explicitly.
         from Tracker.services.scheduling.staleness import mark_active_schedule_stale
         mark_active_schedule_stale(report.tenant_id)
 

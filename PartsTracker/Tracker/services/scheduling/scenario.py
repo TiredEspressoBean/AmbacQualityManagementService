@@ -64,6 +64,9 @@ def _summarize(sched) -> dict | None:
     return {
         'schedule_id': str(sched.id),
         'solver_status': sched.solver_status,
+        # Both solves stop within a proven gap of optimal; a difference smaller than
+        # that may be the solver, not the change — the comparison shows it.
+        'relative_gap': sched.relative_gap,
         'weighted_lateness': sched.weighted_lateness,
         'makespan_minutes': makespan,
         'task_count': len(tasks),

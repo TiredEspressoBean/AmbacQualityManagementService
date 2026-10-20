@@ -372,9 +372,14 @@ class QualityReportsSerializer(SecureModelMixin):
         # Silently discard the field on update so the form can't clobber the
         # linked MeasurementResult rows by sending an empty array.
         validated_data.pop("measurements", None)
+        prior_status = instance.status
         instance = super().update(instance, validated_data)
         if has_equipment:
             self._set_production_equipment(instance, production_equipment)
+        # Edited to FAIL: the save above opened the disposition (signal); quarantine and
+        # the rest follow on the same transition, as they do for a report created FAIL.
+        from Tracker.services.qms.quality_report import on_report_failed
+        on_report_failed(instance, prior_status)
         return instance
 
     def _set_production_equipment(self, report, equipment):
@@ -972,6 +977,14 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         # Closing isn't an edit: it goes through the `close` action
         # (complete_disposition_resolution), and the approval lock refuses a PATCH
         # that changes current_state before it gets here.
+        # `disposition_type` is read-only here, so DRF used to drop a changed type and
+        # answer 200 with it unchanged — the edit looked saved. Refuse it instead; the
+        # same value (a form re-sending the record) passes.
+        sent = (getattr(self, 'initial_data', None) or {}).get('disposition_type')
+        if sent not in (None, '') and sent != (instance.disposition_type or ''):
+            raise serializers.ValidationError({'disposition_type': [
+                "The disposition is decided through Decide, which records who authorized "
+                "it (a co-signer can authorize) — it can't be changed by editing the record."]})
         containment_done = validated_data.pop('containment_completed', False)
         scrap_verified = validated_data.pop('scrap_verified', None)
         instance = super().update(instance, validated_data)

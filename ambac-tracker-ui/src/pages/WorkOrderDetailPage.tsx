@@ -1,4 +1,5 @@
 import { useParams, Link } from "@tanstack/react-router";
+import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
 import { useRetrieveParts } from "@/hooks/parts";
@@ -173,6 +174,10 @@ export function WorkOrderDetailPage() {
                     />
                 </div>
             </div>
+
+            {/* Make-up: replace scrap so the order still delivers its good count. Only
+                shown when there's a shortfall (the schedule's WO dialog always shows it). */}
+            <MakeupPanel workOrderId={workOrderId} onlyWhenShort />
 
             {/* Process Info */}
             {workOrder.process_info?.name && (

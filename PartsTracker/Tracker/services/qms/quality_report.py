@@ -11,6 +11,11 @@ All three helpers are create-only: they should run once per report, not on
 every subsequent save. The serializer is the sole production create path;
 tests that call QualityReports.objects.create() directly bypass these side
 effects by design (they are testing model/DB behaviour, not the full flow).
+
+A report that becomes FAIL later — edited to FAIL, or resolved to FAIL by its
+findings — gets the FAIL consequences through `on_report_failed`, the same ones a
+report created at FAIL gets. (The disposition is opened by the post_save signal on
+any save at FAIL, so the trigger must be a real save, never a queryset .update().)
 """
 from __future__ import annotations
 
@@ -33,20 +38,38 @@ def record_quality_report_side_effects(report) -> None:
     """
     _link_sampling_audit_log(report)
 
-    if report.status in {"PASS", "FAIL"}:
+    if report.status == "PASS":
         SamplingTriggerManager(report.part, report.status).update_state()
 
     if report.status == "FAIL":
-        _trigger_sampling_fallback(report)
-
-        if report.part:
-            report.part.part_status = PartsStatus.QUARANTINED
-            report.part.save(update_fields=["part_status"])
-            _notify_step_failure(report)
-
-        _emit_ncr_opened(report)
+        _apply_fail_consequences(report)
 
     _update_sampling_analytics(report)
+
+
+def on_report_failed(report, prior_status) -> bool:
+    """Run the FAIL consequences when `report` has just moved into FAIL from
+    `prior_status` — the same ones a report created at FAIL gets: sampling state and
+    fallback, quarantine of the part, the step-failure notification, ncr.opened.
+    Returns True when it ran. No-op when the report was already FAIL or isn't now."""
+    if prior_status == "FAIL" or report.status != "FAIL":
+        return False
+    # A batch cycle's report has no single part to react on; the disposition signal
+    # contains the whole load instead (batch_disposition.contain_failed_batch).
+    if report.batch_execution_id or report.part_id is None:
+        return False
+    _apply_fail_consequences(report)
+    return True
+
+
+def _apply_fail_consequences(report) -> None:
+    SamplingTriggerManager(report.part, "FAIL").update_state()
+    _trigger_sampling_fallback(report)
+    if report.part:
+        report.part.part_status = PartsStatus.QUARANTINED
+        report.part.save(update_fields=["part_status"])
+        _notify_step_failure(report)
+    _emit_ncr_opened(report)
 
 
 def _notify_step_failure(report) -> None:

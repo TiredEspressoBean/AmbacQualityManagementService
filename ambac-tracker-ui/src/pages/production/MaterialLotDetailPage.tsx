@@ -142,7 +142,13 @@ export function MaterialLotDetailPage() {
             <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-base">The lot</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <Field label="On hand">{`${l.quantity_remaining ?? "—"} ${unit}`} <span className="text-muted-foreground">of {l.quantity}</span></Field>
+                    {/* An expected receipt carries its expected quantity before anything has
+                        arrived; nothing is on hand until it's received. */}
+                    {l.status === "ON_ORDER" ? (
+                        <Field label="On hand">{`0 ${unit}`} <span className="text-muted-foreground">· {l.quantity_remaining ?? l.quantity} expected</span></Field>
+                    ) : (
+                        <Field label="On hand">{`${l.quantity_remaining ?? "—"} ${unit}`} <span className="text-muted-foreground">of {l.quantity}</span></Field>
+                    )}
                     {l.ordered_quantity != null && (
                         <Field label="Ordered">{`${l.ordered_quantity} ${unit}`}{" "}
                             <span className="text-muted-foreground">{Number(l.quantity) > Number(l.ordered_quantity)

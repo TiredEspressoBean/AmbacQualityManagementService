@@ -46,6 +46,9 @@ import { matchKey } from "@/lib/query-filters";
 import { parseDateOnly } from "@/lib/date-only";
 
 const ORDER_STATUS = schemas.OrdersStatusEnum.options;
+// The model's default. Not ORDER_STATUS[0] ("RFI"): an edit form showed that for every
+// order before its data loaded, and a save from that state would have written it.
+const DEFAULT_ORDER_STATUS = "PENDING" as const;
 
 // Use generated schema with form-specific overrides
 // Note: customer_note is managed via notes timeline on OrderDetailsPage
@@ -135,7 +138,7 @@ export default function OrderFormPage() {
             name: "",
             customer: undefined,
             estimated_completion: undefined,
-            order_status: ORDER_STATUS[0],
+            order_status: DEFAULT_ORDER_STATUS,
             current_hubspot_gate: undefined,
             current_milestone: undefined,
             company: undefined,
@@ -150,7 +153,7 @@ export default function OrderFormPage() {
                 name: order.name || "",
                 customer: order.customer ?? undefined,
                 estimated_completion: order.estimated_completion ? parseDateOnly(order.estimated_completion) : undefined,
-                order_status: order.order_status || ORDER_STATUS[0],
+                order_status: order.order_status || DEFAULT_ORDER_STATUS,
                 current_hubspot_gate: order.current_hubspot_gate ?? undefined,
                 current_milestone: order.current_milestone ?? undefined,
                 company: order.company ?? undefined,
@@ -344,7 +347,7 @@ export default function OrderFormPage() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Order Status</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select order status" />

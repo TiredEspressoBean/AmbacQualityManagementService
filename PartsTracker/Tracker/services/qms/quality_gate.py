@@ -223,12 +223,14 @@ def _hold(ruleset, *, work_order, material_lot):
         return
     # In-process: quarantine the not-yet-advanced parts in the window.
     from Tracker.models import Parts, PartsStatus
-    Parts.objects.filter(
+    # One save per part, not a queryset .update(): a quarantine is a quality record,
+    # and only a save writes each part's audit entry. The window is one WO at one step.
+    for part in Parts.objects.filter(
         work_order=work_order, step=ruleset.step,
         part_status__in=[PartsStatus.PENDING, PartsStatus.IN_PROGRESS],
-    ).update(part_status=PartsStatus.QUARANTINED)
-    # Bulk `.update()` bypasses the Parts post_save that would flag the schedule,
-    # so quarantined parts would otherwise stay on the board — flag it explicitly.
+    ):
+        part.part_status = PartsStatus.QUARANTINED
+        part.save(update_fields=["part_status"])
     mark_active_schedule_stale(work_order.tenant_id)
 
 

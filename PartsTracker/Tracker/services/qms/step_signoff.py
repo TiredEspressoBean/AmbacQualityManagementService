@@ -26,16 +26,18 @@ from __future__ import annotations
 from django.db.models import Count, Exists, Min, OuterRef
 
 
-def pending_signoffs(work_order=None) -> list[dict]:
+def pending_signoffs(work_order=None, user=None) -> list[dict]:
     """[{work_order_id, work_order, step_id, step, units, oldest_entered_at}] —
-    QA-gated steps whose submitted work is waiting for a sign-off."""
+    QA-gated steps whose submitted work is waiting for a sign-off, among the step
+    executions `user` may see (all of the tenant's when no user is given)."""
     from Tracker.models import QaApproval, StepExecution, Substep, SubstepCompletion
     submitted = SubstepCompletion.objects.filter(  # tenant-safe: correlated to a scoped execution
         step_execution=OuterRef("pk"), is_voided=False)
     has_substeps = Substep.objects.filter(step=OuterRef("step"))  # tenant-safe: correlated to a scoped step
     signed = QaApproval.objects.filter(  # tenant-safe: correlated to a scoped execution
         step=OuterRef("step"), work_order=OuterRef("part__work_order"), archived=False)
-    qs = (StepExecution.objects  # tenant-safe: .objects auto-scopes (request / tenant_context)
+    from Tracker.services.qms.incoming_inspection import visible
+    qs = (visible(StepExecution, user)
           .filter(exited_at__isnull=True, step__requires_qa_signoff=True,
                   part__isnull=False, part__archived=False, part__work_order__isnull=False)
           # An FPI-gated step is signed off by its first-piece buy-off (fpi.pass_fpi

@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,8 +20,6 @@ import {
   useHoldWorkOrder,
   useReleaseWorkOrder,
   useCancelWorkOrder,
-  useMakeupStatus,
-  useCreateMakeup,
   useReleaseReadiness,
   useReleaseForScheduling,
   useUnreleaseForScheduling,
@@ -39,14 +38,11 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   const hold = useHoldWorkOrder();
   const releaseHold = useReleaseWorkOrder();
   const cancel = useCancelWorkOrder();
-  const { data: makeupData } = useMakeupStatus(workOrderId);
-  const createMakeup = useCreateMakeup();
   const { data: readiness } = useReleaseReadiness(workOrderId);
   const { data: config } = useOptimizationConfig();
   const release = useReleaseForScheduling();
   const unrelease = useUnreleaseForScheduling();
   const wo = data;
-  const makeup = makeupData;
   const onHold = !!wo?.current_hold;
   const released = !!wo?.released_at;
   // Under "auto" the gate never filters, so releasing is bookkeeping the planner
@@ -138,34 +134,7 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
           </div>
         )}
 
-        {wo && makeup && (
-          <div className="rounded-md border p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Make-up</span>
-              <span className="text-xs text-muted-foreground">
-                {makeup.good}/{makeup.target_good} good · {makeup.alive} alive · {makeup.scrapped} scrapped
-              </span>
-            </div>
-            {makeup.shortfall > 0 ? (
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-red-600 dark:text-red-400">
-                  {makeup.shortfall} short of {makeup.target_good} good
-                </span>
-                <Button
-                  size="sm" variant="outline"
-                  onClick={() => workOrderId && createMakeup.mutate(workOrderId)}
-                  disabled={createMakeup.isPending}
-                >
-                  Create {makeup.shortfall} make-up part{makeup.shortfall === 1 ? "" : "s"}
-                </Button>
-              </div>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                On track for its ordered good count.
-              </p>
-            )}
-          </div>
-        )}
+        {wo && workOrderId && <MakeupPanel workOrderId={workOrderId} />}
 
         {wo && manualRelease && (
           <div className="rounded-md border p-3 text-sm">

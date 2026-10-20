@@ -155,8 +155,12 @@ export function useFpiFail() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
-            api.api_FPIRecords_fail_create({ notes }, {
+        /** `cosign_*`: the second-person path, as for pass. */
+        mutationFn: ({ id, notes, cosign_email, cosign_password, cosign_signature }: {
+            id: string; notes?: string;
+            cosign_email?: string; cosign_password?: string; cosign_signature?: string;
+        }) =>
+            api.api_FPIRecords_fail_create({ notes, cosign_email, cosign_password, cosign_signature }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",
@@ -178,8 +182,14 @@ export function useFpiWaive() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-            api.api_FPIRecords_waive_create({ reason }, {
+        /** A waive releases the step as surely as a pass, so it meets the same bar:
+         *  the signer's own `password` when the step is authored to need one, or the
+         *  `cosign_*` second-person path. */
+        mutationFn: ({ id, reason, password, cosign_email, cosign_password, cosign_signature }: {
+            id: string; reason: string; password?: string;
+            cosign_email?: string; cosign_password?: string; cosign_signature?: string;
+        }) =>
+            api.api_FPIRecords_waive_create({ reason, password, cosign_email, cosign_password, cosign_signature }, {
                 params: { id },
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken") ?? "",

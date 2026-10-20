@@ -721,13 +721,9 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         # AWAITING_INSPECTION, plus lots soft-held at receiving (QUARANTINE with a
         # hold_reason, e.g. an unqualified supplier) so they surface and get resolved.
         if self.request.query_params.get('inspection_pending') in ('true', '1'):
-            from django.db.models import Q
-            qs = qs.filter(
-                Q(status__in=['RECEIVED', 'AWAITING_INSPECTION'])
-                | (Q(status='QUARANTINE') & ~Q(hold_reason=''))
-            # A customer's bulk cores aren't supplier stock: each unit is graded when it
-            # is identified off the lot, not sampled at receiving.
-            ).filter(holds_cores=False)
+            # The same rule as the inspection queue and inbox — one place.
+            from Tracker.services.qms.incoming_inspection import awaiting_inspection
+            qs = awaiting_inspection(qs)
         # Late deliveries: ON_ORDER lots past (overdue), or within DUE_SOON_DAYS of
         # (due_soon), their promised date; `late` is both. The plant's day, not UTC's.
         delivery = self.request.query_params.get('delivery')
@@ -1395,7 +1391,7 @@ class IncomingInspectionViewSet(viewsets.ViewSet):
                     "normalized with a `source` discriminator and shared status vocabulary.",
     )
     def list(self, request):
-        rows = incoming_inspection.build_incoming_rows()
+        rows = incoming_inspection.build_incoming_rows(user=request.user)
         return Response(IncomingInspectionRowSerializer(rows, many=True).data)
 
 
@@ -1426,7 +1422,7 @@ class InspectionInboxViewSet(viewsets.ViewSet):
                     "counts alone hide rot) from the rows.",
     )
     def list(self, request):
-        rows = inspection_inbox.build_inbox_rows()
+        rows = inspection_inbox.build_inbox_rows(user=request.user)
         return Response(InspectionInboxRowSerializer(rows, many=True).data)
 
     @extend_schema(
@@ -1444,7 +1440,7 @@ class InspectionInboxViewSet(viewsets.ViewSet):
             wo = WorkOrder.objects.filter(pk=request.query_params['work_order']).first()  # tenant-safe: .objects auto-scopes
             if wo is None:
                 return Response([])
-        return Response(PendingQaSignoffSerializer(pending_signoffs(wo), many=True).data)
+        return Response(PendingQaSignoffSerializer(pending_signoffs(wo, user=request.user), many=True).data)
 
     @extend_schema(
         request=SignOffStepRequestSerializer, responses=SignOffStepResultSerializer,

@@ -137,6 +137,8 @@ type Task = {
 type CompareSummary = {
   schedule_id: string;
   solver_status: string;
+  /** Proven optimality gap of that solve (0 = optimal); null when unknown. */
+  relative_gap: number | null;
   weighted_lateness: number;
   makespan_minutes: number;
   task_count: number;
@@ -172,6 +174,15 @@ function DraftCompareBar({
         : "text-red-600 dark:text-red-400";
   const dMakespan = l && d ? d.makespan_minutes - l.makespan_minutes : null;
   const dLateness = l && d ? d.weighted_lateness - l.weighted_lateness : null;
+  // Neither solve is proven optimal — they stop within a gap of the best possible. A
+  // difference smaller than that gap may be the solver, not the change, so say so.
+  const gapPct = (g?: number | null) => (g == null ? "?" : `${(g * 100).toFixed(g < 0.1 ? 1 : 0)}%`);
+  const worstGap = Math.max(l?.relative_gap ?? 0, d?.relative_gap ?? 0);
+  const withinGap = (delta: number | null, a?: number, b?: number) =>
+    delta != null && delta !== 0 && worstGap > 0
+    && Math.abs(delta) <= worstGap * Math.max(Math.abs(a ?? 0), Math.abs(b ?? 0));
+  const noisy = withinGap(dMakespan, l?.makespan_minutes, d?.makespan_minutes)
+    || withinGap(dLateness, l?.weighted_lateness, d?.weighted_lateness);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -203,6 +214,19 @@ function DraftCompareBar({
         </span>
         {compare?.moved != null && (
           <span className="text-muted-foreground">moves {compare.moved.toLocaleString()} tasks</span>
+        )}
+        {(l || d) && (
+          <span
+            className="text-muted-foreground"
+            title="How far each solve could still be from the best possible schedule when it stopped (0% = proven optimal)."
+          >
+            solver gap {gapPct(l?.relative_gap)} live · {gapPct(d?.relative_gap)} draft
+          </span>
+        )}
+        {noisy && (
+          <span className="text-amber-700 dark:text-amber-400">
+            Differences this small are within the solvers' gap — they may not be real.
+          </span>
         )}
       </div>
       {canDecide && (

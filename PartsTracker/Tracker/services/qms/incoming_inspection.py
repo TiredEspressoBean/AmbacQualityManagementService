@@ -16,13 +16,21 @@ from __future__ import annotations
 from django.db.models import Q
 
 
+def visible(model, user):
+    """`model`'s rows `user` may see (SecureManager.for_user: tenant, order scope,
+    classification), or the tenant's rows when no user is given (internal callers).
+    The inspection queues are aggregations, so they apply the row rule themselves —
+    the endpoint's permission check gates the action, not which rows come back."""
+    return model.objects.for_user(user) if user is not None else model.objects  # tenant-safe: .objects auto-scopes
+
+
 def awaiting_inspection(qs):
     """Lots still needing a receiving decision: RECEIVED / AWAITING_INSPECTION, plus
     soft-held at receiving (QUARANTINE with a hold_reason, e.g. unqualified supplier).
     Shared by this queue and the inspector's inbox, which drifted apart when each kept
     its own copy (the inbox lost the core-lot exclusion). A third copy is the
-    MaterialLot list's `inspection_pending` lens (MaterialLotViewSet.get_queryset) —
-    change the rule there too."""
+    MaterialLot list's `inspection_pending` lens (MaterialLotViewSet.get_queryset),
+    which calls this too."""
     return (qs.filter(archived=False)  # .objects doesn't exclude soft-deleted; the per-model queue does
             .filter(Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
                     | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
@@ -31,9 +39,9 @@ def awaiting_inspection(qs):
             .filter(holds_cores=False))
 
 
-def _lot_rows():
+def _lot_rows(user=None):
     from Tracker.models import MaterialLot
-    qs = (awaiting_inspection(MaterialLot.objects)  # tenant-safe: .objects auto-scopes (request context)
+    qs = (awaiting_inspection(visible(MaterialLot, user))
           .select_related("material_type", "material", "supplier"))
     for lot in qs:
         yield {
@@ -50,9 +58,9 @@ def _lot_rows():
         }
 
 
-def _shipment_rows():
+def _shipment_rows(user=None):
     from Tracker.models import OutsideProcessShipment
-    qs = (OutsideProcessShipment.objects  # tenant-safe: .objects auto-scopes (request context)
+    qs = (visible(OutsideProcessShipment, user)
           .filter(archived=False)  # exclude soft-deleted (voided) shipments
           .filter(status__in=["SENT", "RETURNED"])
           .select_related("supplier", "step"))
@@ -72,9 +80,9 @@ def _shipment_rows():
         }
 
 
-def build_incoming_rows():
-    """All inbound-inspection rows (purchased lots + subcontract shipments),
-    newest first. Callers filter by `source` / normalized status client-side."""
-    rows = [*_lot_rows(), *_shipment_rows()]
+def build_incoming_rows(user=None):
+    """All inbound-inspection rows (purchased lots + subcontract shipments) `user` may
+    see, newest first. Callers filter by `source` / normalized status client-side."""
+    rows = [*_lot_rows(user), *_shipment_rows(user)]
     rows.sort(key=lambda r: r["received_at"] or "", reverse=True)
     return rows

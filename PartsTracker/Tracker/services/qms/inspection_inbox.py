@@ -39,6 +39,8 @@ _AGE_RED_HOURS = 72
 _WO_DUE_SOON_DAYS = 2
 
 
+from Tracker.services.qms.incoming_inspection import visible
+
 def _hours_since(dt) -> float | None:
     if dt is None:
         return None
@@ -121,12 +123,12 @@ def _resume_progress(lot) -> str | None:
     return f"{done} of {report.sample_size} samples"
 
 
-def _receiving_rows():
+def _receiving_rows(user=None):
     from Tracker.models import MaterialLot
     from Tracker.services.qms.incoming_inspection import awaiting_inspection
     # The same lots /production/incoming lists — one filter, so the chip and the
     # queue can't disagree (core lots showed in the chip and not the queue).
-    qs = (awaiting_inspection(MaterialLot.objects)  # tenant-safe: .objects auto-scopes
+    qs = (awaiting_inspection(visible(MaterialLot, user))
           .select_related("material_type", "material", "supplier"))
     for lot in qs:
         received_dt = None
@@ -155,9 +157,9 @@ def _receiving_rows():
         }
 
 
-def _outside_process_rows():
+def _outside_process_rows(user=None):
     from Tracker.models import OutsideProcessShipment
-    qs = (OutsideProcessShipment.objects  # tenant-safe: .objects auto-scopes
+    qs = (visible(OutsideProcessShipment, user)
           .filter(archived=False, status="RETURNED")
           .select_related("supplier", "step"))
     for s in qs:
@@ -181,13 +183,13 @@ def _outside_process_rows():
         }
 
 
-def _in_process_rows():
+def _in_process_rows(user=None):
     from Tracker.models import Parts
     from Tracker.services.mes.parts import TERMINAL_PART_STATUSES
 
     # The operation (work order × step) is the unit of inspector work; parts
     # are its quantity. Mirrors the Parts.needs_qa property semantics.
-    groups = (Parts.objects  # tenant-safe: .objects auto-scopes
+    groups = (visible(Parts, user)
               .filter(archived=False, requires_sampling=True)
               .exclude(error_reports__status="PASS")
               .exclude(part_status__in=list(TERMINAL_PART_STATUSES))
@@ -219,9 +221,9 @@ def _in_process_rows():
         }
 
 
-def _fpi_rows():
+def _fpi_rows(user=None):
     from Tracker.models import FPIRecord
-    qs = (FPIRecord.objects  # tenant-safe: .objects auto-scopes
+    qs = (visible(FPIRecord, user)
           .filter(archived=False, status="PENDING")
           .select_related("work_order", "step", "part_type", "designated_part", "equipment"))
     for r in qs:
@@ -250,11 +252,11 @@ def _fpi_rows():
         }
 
 
-def _qa_signoff_rows():
+def _qa_signoff_rows(user=None):
     """QA-gated steps whose submitted work waits for a sign-off. Without this row the
     unit was parked with no inspector able to see it (services.qms.step_signoff)."""
     from Tracker.services.qms.step_signoff import pending_signoffs
-    for g in pending_signoffs():
+    for g in pending_signoffs(user=user):
         yield {
             "type": "qa_signoff",
             "subject_kind": "operation",
@@ -277,12 +279,12 @@ def _qa_signoff_rows():
         }
 
 
-def build_inbox_rows():
-    """The inspector inbox rows: FPI first, then by urgency tone, then age.
+def build_inbox_rows(user=None):
+    """The inspector inbox rows `user` may see: FPI first, then by urgency tone, then age.
     A flat list (the ``build_incoming_rows`` convention) — clients derive the
     type-count chips (with oldest-age; counts alone hide rot) from the rows."""
-    rows = [*_fpi_rows(), *_qa_signoff_rows(), *_receiving_rows(), *_outside_process_rows(),
-            *_in_process_rows()]
+    rows = [*_fpi_rows(user), *_qa_signoff_rows(user), *_receiving_rows(user),
+            *_outside_process_rows(user), *_in_process_rows(user)]
 
     tone_rank = {"red": 0, "orange": 1, "green": 2, "gray": 3}
     rows.sort(key=lambda r: (

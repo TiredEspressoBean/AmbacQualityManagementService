@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FpiSignOffDialog } from "@/components/fpi-sign-off-dialog";
+import { FpiSignOffDialog, type FpiVerdict } from "@/components/fpi-sign-off-dialog";
 import { useFpiRecords } from "@/hooks/useFpiRecords";
 import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
@@ -44,7 +44,7 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
     });
     const acknowledge = useAcknowledgeFpi();
     const canSignOff = usePermissionSet().has("sign_off_fpi");
-    const [signing, setSigning] = useState<FpiRow | null>(null);
+    const [signing, setSigning] = useState<{ row: FpiRow; verdict: FpiVerdict } | null>(null);
 
     const rows: FpiRow[] = data?.results ?? [];
     useReportActivity(rows.length > 0, onActivity);
@@ -119,8 +119,16 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                                     </Button>
                                 )}
 
-                                <Button size="sm" onClick={() => setSigning(row)}>
+                                <Button size="sm" onClick={() => setSigning({ row, verdict: "PASS" })}>
                                     {canSignOff ? "Sign off" : "Get QA sign-off"}
+                                </Button>
+                                {/* Fail and waive sit beside pass, under the same SoD and
+                                    assurance rules (the co-sign path when you can't sign). */}
+                                <Button size="sm" variant="destructive" onClick={() => setSigning({ row, verdict: "FAIL" })}>
+                                    Fail
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setSigning({ row, verdict: "WAIVE" })}>
+                                    Waive
                                 </Button>
                             </div>
                         );
@@ -130,12 +138,14 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
 
             {signing && (
                 <FpiSignOffDialog
+                    key={`${signing.row.id}-${signing.verdict}`}
                     open={Boolean(signing)}
                     onOpenChange={(v) => !v && setSigning(null)}
-                    fpiId={signing.id}
+                    fpiId={signing.row.id}
                     canSignOff={canSignOff}
-                    assurance={signing.step_info?.qa_signoff_assurance}
-                    partLabel={signing.designated_part_info?.erp_id ?? null}
+                    assurance={signing.row.step_info?.qa_signoff_assurance}
+                    partLabel={signing.row.designated_part_info?.erp_id ?? null}
+                    verdict={signing.verdict}
                     onSigned={() => setSigning(null)}
                 />
             )}

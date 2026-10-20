@@ -30,12 +30,18 @@ def work_order_shortfall(work_order) -> dict:
     # A reman order's units are cores — someone's units, received, not made — so a
     # scrapped one cannot be "made up" by spawning another. It owes no make-up.
     is_reman = work_order.cores.exists()
+    # Make-up replaces scrap. A work order whose parts don't exist yet (a Pending one
+    # not yet spawned) isn't short — it read its whole quantity as shortfall — and an
+    # ended one takes no more parts.
+    from Tracker.models import WorkOrderStatus
+    no_makeup = (is_reman or not parts.exists()
+                 or work_order.workorder_status in (WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED))
     return {
         'target_good': target,
         'alive': alive,
         'good': parts.filter(part_status=PartsStatus.COMPLETED).count(),
         'scrapped': parts.filter(part_status=PartsStatus.SCRAPPED).count(),
-        'shortfall': 0 if is_reman else max(0, target - alive),
+        'shortfall': 0 if no_makeup else max(0, target - alive),
     }
 
 
