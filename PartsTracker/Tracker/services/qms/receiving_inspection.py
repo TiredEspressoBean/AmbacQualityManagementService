@@ -577,6 +577,12 @@ def evaluate_lot_acceptance(report):
         units_recorded = len(by_unit)
         defectives = sum(1 for unit_results in by_unit.values()
                          if any(r.is_within_spec is False for r in unit_results))
+        if report.defectives_found is not None:
+            # Readings captured in the DWI AND a bulk tally from the review: the tally
+            # covers the whole sample, so it counts — but never below what the readings
+            # themselves failed. (Readings alone used to win, dropping the tally.)
+            defectives = max(defectives, report.defectives_found)
+            units_recorded = max(units_recorded, n)
     elif report.defectives_found is not None:
         # Bulk/attribute: the whole sample of n was inspected as a batch.
         defectives = report.defectives_found
@@ -667,8 +673,12 @@ def hold_if_expired(lot) -> bool:
     return True
 
 
-def accept(report, user):
-    """Accept the inspected lot (AWAITING_INSPECTION → ACCEPTED) + close the execution."""
+def accept(report, user, *, remainder: bool = False):
+    """Accept the inspected lot (AWAITING_INSPECTION → ACCEPTED) + close the execution.
+
+    ``remainder=True`` is the partial reject accepting what's left once the bad pieces
+    are split off: the inspection failed for those pieces, not for the rest, so the
+    failed-inspection refusal doesn't apply. Only ``lot_reject.reject_lot`` passes it."""
     if report.material_lot_id is None:
         raise ValueError("Report is not a receiving inspection (no material_lot).")
     # A lot that expired while awaiting inspection: quarantined + flagged, not accepted.
@@ -676,6 +686,13 @@ def accept(report, user):
         raise ValueError(
             f"Lot {report.material_lot.lot_number} is shelf-life expired; it was "
             f"quarantined instead of accepted. Extend the shelf life or dispose it."
+        )
+    # A lot whose inspection failed is rejected, not accepted: the disposition the
+    # reject opens is where a use-as-is decision is made and recorded.
+    if report.status == "FAIL" and not remainder:
+        raise ValueError(
+            f"Lot {report.material_lot.lot_number} failed its inspection; reject it. "
+            f"Its disposition can still decide to use it as is."
         )
     inventory.mark_lot_accepted(report.material_lot)
     _finalize_execution(report.material_lot, user)

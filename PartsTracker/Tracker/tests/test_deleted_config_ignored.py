@@ -54,6 +54,28 @@ class DeletedSamplingRuleTests(TenantContextMixin, TestCase):
         from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
         return SamplingFallbackApplier(self.part).evaluate()["requires_sampling"]
 
+    def test_a_part_arriving_at_the_step_is_counted(self):
+        """An advance judges sampling before it saves the move, so the part isn't at
+        the step in the database yet. EVERY_NTH couldn't find it and never sampled."""
+        from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
+        before = Steps.objects.create(tenant=self.tenant, name="Wash", part_type=self.pt)
+        Parts.objects.filter(pk=self.part.pk).update(step=before)
+        self.part.refresh_from_db()
+        self.part.step = self.step          # the move, in memory only
+        self.assertTrue(SamplingFallbackApplier(self.part).evaluate()["requires_sampling"])
+
+    def test_every_fourth_of_a_cohort_is_sampled(self):
+        """Four parts arriving together: exactly the 4th is picked."""
+        from Tracker.services.mes.sampling_applier import SamplingFallbackApplier
+        self.rule.value = 4
+        self.rule.save(update_fields=["value"])
+        cohort = [self.part] + [Parts.objects.create(
+            tenant=self.tenant, ERP_id=f"WO-S-{i}", work_order=self.part.work_order,
+            part_type=self.pt, step=self.step, part_status=PartsStatus.PENDING) for i in (2, 3, 4)]
+        picked = [p.ERP_id for p in cohort
+                  if SamplingFallbackApplier(p).evaluate()["requires_sampling"]]
+        self.assertEqual(picked, ["WO-S-4"])
+
     def test_a_deleted_rule_no_longer_samples(self):
         self.assertTrue(self._requires_sampling())
         self.rule.delete()

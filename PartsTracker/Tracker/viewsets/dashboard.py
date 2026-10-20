@@ -26,6 +26,7 @@ from Tracker.models import (
     CAPA,
     QualityReports,
     QuarantineDisposition,
+    MaterialLot,
     Parts,
     QualityErrorsList,
     Steps,
@@ -98,13 +99,14 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             status='CLOSED'
         ).count()
 
-        # Open NCRs (Quality Reports with FAIL status awaiting disposition)
-        # An NCR is a failed inspection that needs disposition
-        open_ncrs = self.qs_for_user(QualityReports).filter(
-            status='FAIL',
+        # Open NCRs: open dispositions — the same count NCR aging buckets and the
+        # needs-attention NCR item use. (It counted FAIL reports without a closed
+        # disposition, which disagreed with the aging card beside it: a report can
+        # carry several dispositions, and a disposition several reports.)
+        open_ncrs = self.qs_for_user(QuarantineDisposition).filter(
             archived=False,
         ).exclude(
-            dispositions__current_state='CLOSED'
+            current_state='CLOSED'
         ).count()
 
         # Overdue CAPAs
@@ -1037,6 +1039,25 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'link': '/quality/capas',
                 'linkParams': {'status': 'PENDING_VERIFICATION'},
             })
+
+        # 6. Whole-lot rejects requested at receiving — a decision waiting on whoever
+        # holds reject_whole_lot. One item per lot: each is its own decision.
+        from Tracker.services.qms.lot_reject import (
+            HOLD_WHOLE_LOT_REJECT_REQUESTED, can_reject_whole_lot)
+        if can_reject_whole_lot(request.user):
+            requested = (self.qs_for_user(MaterialLot)
+                         .filter(archived=False, hold_reasons__contains=[HOLD_WHOLE_LOT_REJECT_REQUESTED])
+                         .select_related('supplier').order_by('updated_at'))
+            for lot in requested:
+                qty = f"{lot.quantity_remaining.normalize():f} {lot.unit_of_measure}".strip()
+                who = f", {lot.supplier.name}" if lot.supplier_id else ""
+                data.append({
+                    'type': 'whole_lot_reject',
+                    'message': f"Whole-lot reject requested: {lot.lot_number} ({qty}{who})",
+                    'count': 1,
+                    'severity': 'high',
+                    'link': f"/production/material-lots/{lot.id}",
+                })
 
         # Sort by severity
         severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}

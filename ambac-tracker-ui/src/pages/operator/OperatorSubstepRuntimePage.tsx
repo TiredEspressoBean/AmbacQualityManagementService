@@ -34,20 +34,10 @@ import {
     PenLine,
     ListChecks,
     Pencil,
-    Ban,
     ShieldAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useSubsteps, useSubmitSubstep, useSaveCaptureDraft } from "@/hooks/useSubsteps";
 import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
 import type { Substep } from "@/hooks/useSubsteps";
@@ -91,7 +81,6 @@ import {
     type CompletionContext,
 } from "./completion-adapters";
 import type { OperatorRuntimeSearchParams } from "@/lib/routes/operator-runtime-search";
-import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const captureStateOptions = (executionId: unknown, enabled: boolean) =>
     queryOptions({
@@ -130,12 +119,6 @@ export function OperatorSubstepRuntimePage() {
     // Sealed = substep was Confirmed by the operator. Auto-advance + the
     // review screen both key off this set.
     const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
-
-    // N/A dialog state: when set, opens the reason-picker for the targeted
-    // substep. Submit fires `submit_substep` immediately with
-    // `marked_not_applicable=true` + the reason code, then advances the
-    // operator past the substep.
-    const [naDialogSubstepId, setNaDialogSubstepId] = useState<string | null>(null);
 
     const setResponseFor = (substepId: string, node_id: string, value: unknown) => {
         setResponsesBySubstepId((prev) => ({
@@ -569,7 +552,6 @@ export function OperatorSubstepRuntimePage() {
                                 responses={responsesBySubstepId[current.id] ?? {}}
                                 setResponse={(node_id, value) => setResponseFor(current.id, node_id, value)}
                                 outcome={outcomeBySubstepId[current.id]}
-                                onMarkNotApplicable={() => setNaDialogSubstepId(current.id)}
                             />
                         ) : null}
                     </div>
@@ -599,157 +581,8 @@ export function OperatorSubstepRuntimePage() {
 
                 {signaturePrompt.dialog}
 
-                <NotApplicableDialog
-                    open={naDialogSubstepId !== null}
-                    substep={
-                        naDialogSubstepId
-                            ? sortedSubsteps.find((s) => s.id === naDialogSubstepId) ?? null
-                            : null
-                    }
-                    pending={submit.isPending}
-                    onCancel={() => setNaDialogSubstepId(null)}
-                    onConfirm={(reasonCode) => {
-                        if (!naDialogSubstepId || !search.execution) {
-                            setNaDialogSubstepId(null);
-                            return;
-                        }
-                        const targetIdx = sortedSubsteps.findIndex((s) => s.id === naDialogSubstepId);
-                        submit.mutate(
-                            {
-                                id: naDialogSubstepId,
-                                data: {
-                                    step_execution: search.execution,
-                                    captures: [],
-                                    marked_not_applicable: true,
-                                    na_reason_code: reasonCode,
-                                },
-                            },
-                            {
-                                onSuccess: () => {
-                                    setConfirmedIds((prev) =>
-                                        new Set(prev).add(naDialogSubstepId),
-                                    );
-                                    setNaDialogSubstepId(null);
-                                    toast.success("Marked not applicable");
-                                    if (targetIdx >= 0) goTo(targetIdx + 1);
-                                },
-                                onError: (err: unknown) => {
-                                    const msg =
-                                        apiErrorMessage(err) ??
-                                        "Could not mark not applicable.";
-                                    toast.error(msg);
-                                },
-                            },
-                        );
-                    }}
-                />
             </div>
         </PartContext.Provider>
-    );
-}
-
-// ============================================================================
-// N/A reason dialog
-// ============================================================================
-
-/**
- * Reason-coded N/A modal.
- *
- * Common reasons are exposed as pick chips so operators don't have to type
- * for routine cases; a free-text fallback covers the edge cases. Server
- * re-validates the reason code at submit time — empty / whitespace-only
- * reasons get rejected at the API boundary.
- */
-const COMMON_NA_REASONS: { code: string; label: string }[] = [
-    { code: "not_in_revision", label: "Not in this revision" },
-    { code: "not_applicable_geometry", label: "Doesn't apply to this geometry" },
-    { code: "feature_not_present", label: "Feature not present on this part" },
-    { code: "previously_inspected", label: "Already inspected upstream" },
-    { code: "engineering_disposition", label: "Engineering disposition" },
-];
-
-function NotApplicableDialog({
-    open,
-    substep,
-    pending,
-    onCancel,
-    onConfirm,
-}: {
-    open: boolean;
-    substep: Substep | null;
-    pending: boolean;
-    onCancel: () => void;
-    onConfirm: (reasonCode: string) => void;
-}) {
-    const [reasonCode, setReasonCode] = useState("");
-    useEffect(() => {
-        if (!open) setReasonCode("");
-    }, [open]);
-
-    const submit = () => {
-        const trimmed = reasonCode.trim();
-        if (!trimmed) return;
-        onConfirm(trimmed);
-    };
-
-    return (
-        <Dialog
-            open={open}
-            onOpenChange={(next) => {
-                if (!next) onCancel();
-            }}
-        >
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Mark not applicable</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                        Recording N/A for{" "}
-                        <span className="font-medium">
-                            {substep?.title || "this substep"}
-                        </span>
-                        . Pick a reason or type your own — the code lands in the
-                        audit trail.
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {COMMON_NA_REASONS.map((r) => (
-                            <Button
-                                key={r.code}
-                                variant={reasonCode === r.code ? "default" : "outline"}
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => setReasonCode(r.code)}
-                            >
-                                {r.label}
-                            </Button>
-                        ))}
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="na-reason" className="text-xs">
-                            Reason code
-                        </Label>
-                        <Input
-                            id="na-reason"
-                            value={reasonCode}
-                            onChange={(e) => setReasonCode(e.target.value)}
-                            placeholder="snake_case_reason"
-                            className="h-9 font-mono text-sm"
-                            autoFocus
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={onCancel} disabled={pending}>
-                        Cancel
-                    </Button>
-                    <Button onClick={submit} disabled={pending || !reasonCode.trim()}>
-                        {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Mark N/A
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 }
 
@@ -842,13 +675,11 @@ function SubstepStage({
     responses,
     setResponse,
     outcome,
-    onMarkNotApplicable,
 }: {
     substep: Substep;
     responses: OperatorResponses;
     setResponse: (node_id: string, value: unknown) => void;
     outcome?: SamplingOutcome;
-    onMarkNotApplicable?: () => void;
 }) {
     const contextValue = useMemo<OperatorResponseContextValue>(
         () => ({ responses, setResponse }),
@@ -899,18 +730,6 @@ function SubstepStage({
                                 <Badge variant="outline">
                                     <PenLine className="mr-1 h-3 w-3" /> Sign-off
                                 </Badge>
-                            )}
-                            {substep.allow_not_applicable && !substep.is_critical && onMarkNotApplicable && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={onMarkNotApplicable}
-                                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                                    title="Mark this substep as not applicable to this part (reason required)."
-                                >
-                                    <Ban className="mr-1 h-3.5 w-3.5" />
-                                    Not applicable
-                                </Button>
                             )}
                         </>
                     )}

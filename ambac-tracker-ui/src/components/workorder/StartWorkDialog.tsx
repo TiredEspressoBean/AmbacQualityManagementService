@@ -16,7 +16,7 @@
  * via paper traveler already know the WO id. A first-class sidebar /
  * scanner entry is a separate design pass.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Play, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -49,6 +49,8 @@ type StartWorkDialogProps = {
     /** Why work can't start now (held, cancelled, completed). When set the button is
      *  disabled and says why; the server refuses the start regardless. */
     blockedReason?: string | null;
+    /** Open on arrival with this part ticked — a scanned part serial. */
+    initialPartId?: string;
 };
 
 /** Actionability tier for a part's status — 0 = workable right now, 1 = already
@@ -68,6 +70,13 @@ const statusRank = (status: string | null | undefined) => {
     }
 };
 
+/** A part held for a quality decision isn't worked: its disposition decides what
+ *  happens to it (a rework routes it; use-as-is releases it). Listed, not selectable. */
+const PARKED: Record<string, string> = {
+    QUARANTINED: "quarantined — waiting on its disposition",
+    ON_HOLD: "on hold",
+};
+
 /** `step_info` is schema-typed as a loose dict; `order` is the ProcessStep
  *  order within the WO's process (null when the WO has no locked process). */
 const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
@@ -75,7 +84,7 @@ const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
     return typeof raw === "number" ? raw : Number.MAX_SAFE_INTEGER;
 };
 
-export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogProps) {
+export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: StartWorkDialogProps) {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     // Insertion-ordered: the order an operator checks parts is the order
@@ -86,7 +95,9 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
     const { data: partsData, isLoading } = useRetrieveParts(
         { work_order: workOrderId, limit: 500 },
         undefined,
-        { enabled: open && !!workOrderId },
+        // Also before opening when a scanned part is waiting: the dialog opens once its
+        // parts have loaded, so loading only while open meant it never opened.
+        { enabled: (open || (!!initialPartId && !blockedReason)) && !!workOrderId },
     );
 
     // Only parts routed to a step are workable. Group by step so an
@@ -129,6 +140,18 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
         () => partsByStep.flatMap(([_id, g]) => g.parts),
         [partsByStep],
     );
+
+    // A scanned part: open with it ticked, once, when the parts have loaded. A part
+    // that can't be started (quarantined, on hold) opens the dialog without a tick.
+    const scannedRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!initialPartId || blockedReason || scannedRef.current === initialPartId) return;
+        const part = allParts.find((p) => String(p.id) === initialPartId);
+        if (!part) return;
+        scannedRef.current = initialPartId;
+        if (!PARKED[part.part_status ?? ""]) setSelectedIds([initialPartId]);
+        setOpen(true);
+    }, [initialPartId, blockedReason, allParts]);
 
     // Pre-flight: which of these parts is the current user qualified to work?
     // Authorization is per-step, so every part in a step group shares a verdict.
@@ -191,6 +214,14 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
     const [overrideReason, setOverrideReason] = useState("");
     const [overriding, setOverriding] = useState(false);
 
+    // The gate prompt is its own dialog. Opened over this one it could sit behind it, so
+    // a refused start (assigned to someone else, not qualified) looked like nothing
+    // happened. Close this one first; the selection is kept for "Authorize & start".
+    const showGate = (g: NonNullable<typeof gate>) => {
+        setOpen(false);
+        setGate(g);
+    };
+
     const resetOverride = () => {
         setGate(null);
         setSupEmail("");
@@ -245,7 +276,7 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
         // the resume path (existing execution) is gated too, not just create.
         const firstAuth = authByPart.get(selectedIds[0]);
         if (firstAuth && !firstAuth.authorized) {
-            setGate({
+            showGate({
                 code: "training_not_authorized",
                 detail: "You are not qualified for this step.",
                 missing: firstAuth.missing,
@@ -257,7 +288,7 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
             await launch();
         } catch (e) {
             if (e instanceof TrainingGateError) {
-                setGate(e.gate);
+                showGate(e.gate);
             } else {
                 toast.error("Could not open the work surface", {
                     description: e instanceof Error ? e.message : undefined,
@@ -348,7 +379,9 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
                         </p>
                     ) : (
                         partsByStep.map(([stepId, { stepName, parts }]) => {
-                            const stepPartIds = parts.map((p) => String(p.id));
+                            const stepPartIds = parts
+                                .filter((p) => !PARKED[p.part_status ?? ""])
+                                .map((p) => String(p.id));
                             const selectedInStep = stepPartIds.filter((id) =>
                                 selectedIds.includes(id),
                             );
@@ -387,19 +420,26 @@ export function StartWorkDialog({ workOrderId, blockedReason }: StartWorkDialogP
                                     const id = String(p.id);
                                     const orderIdx = selectedIds.indexOf(id);
                                     const checked = orderIdx !== -1;
+                                    const parked = PARKED[p.part_status ?? ""];
                                     return (
                                         <label
                                             key={id}
-                                            className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/30"
+                                            className={`flex items-center gap-3 px-3 py-2 text-sm ${parked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/30"}`}
                                         >
                                             <Checkbox
                                                 checked={checked}
+                                                disabled={Boolean(parked)}
                                                 onCheckedChange={() => togglePart(id)}
                                             />
                                             <span className="font-medium">{p.ERP_id}</span>
                                             <span className="text-xs text-muted-foreground">
-                                                {p.part_status?.replace(/_/g, " ").toLowerCase()}
+                                                {parked ?? p.part_status?.replace(/_/g, " ").toLowerCase()}
                                             </span>
+                                            {/* Picked for inspection at this step — so an inspector
+                                                can choose the sampled part from here. */}
+                                            {p.requires_sampling && !parked && (
+                                                <Badge variant="outline" className="text-[10px]">Sample</Badge>
+                                            )}
                                             {checked && (
                                                 <Badge variant="secondary" className="ml-auto text-[10px]">
                                                     #{orderIdx + 1}

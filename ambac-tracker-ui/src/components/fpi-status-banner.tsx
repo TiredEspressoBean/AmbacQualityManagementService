@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { FpiReadings } from "@/components/fpi/FpiReadings";
 
 type FpiStatusBannerProps = {
     workOrderId: string;
@@ -218,6 +219,7 @@ export function FpiStatusBanner({
                             your name and releases the run.
                         </DialogDescription>
                     </DialogHeader>
+                    {pendingId && <FpiReadings fpiId={pendingId} />}
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Notes (optional)</label>
                         <Textarea
@@ -250,6 +252,7 @@ export function FpiStatusBanner({
                             a new first piece for re-inspection.
                         </DialogDescription>
                     </DialogHeader>
+                    {pendingId && <FpiReadings fpiId={pendingId} />}
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Reason / findings</label>
                         <Textarea
@@ -278,6 +281,7 @@ export function FpiStatusBanner({
                             proper authorization.
                         </DialogDescription>
                     </DialogHeader>
+                    {pendingId && <FpiReadings fpiId={pendingId} />}
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Reason for waiving (min 10 characters)</label>
                         <Textarea

@@ -96,19 +96,22 @@ class SamplingFallbackApplier:
             part_type=self.part_type,
             step=self.step
         ).order_by('created_at', 'id')
+        # The part being judged is often not at the step in the database yet: an
+        # advance evaluates sampling before it saves the move. Without it in the list
+        # EVERY_NTH could never pick it (index() failed -> False) and the counting
+        # rules miscounted. Same order as the query: created_at, then id.
+        parts = list(qs)
+        if self.part not in parts:
+            parts.append(self.part)
+            parts.sort(key=lambda p: (p.created_at, str(p.id)))
+        index = parts.index(self.part)
 
         if rule.rule_type == "EVERY_NTH_PART":
-            parts = list(qs)
-            try:
-                index = parts.index(self.part)
-                return (index + 1) % rule.value == 0
-            except ValueError:
-                return False
+            return (index + 1) % rule.value == 0
 
         elif rule.rule_type == "PERCENTAGE":
-            parts = list(qs)
             threshold = int(len(parts) * (rule.value / 100))
-            return self.part in parts[:threshold]
+            return index < threshold
 
         elif rule.rule_type == "RANDOM":
             # Deliberately NOT reproducible — an unpredictable spot check. The
@@ -128,24 +131,22 @@ class SamplingFallbackApplier:
             return random.random() * 100 < rule.value
 
         elif rule.rule_type == "FIRST_N_PARTS":
-            return qs.filter(created_at__lte=self.part.created_at).count() <= rule.value
+            return index < rule.value
 
         elif rule.rule_type == "LAST_N_PARTS":
-            total = qs.count()
-            index = qs.filter(created_at__lte=self.part.created_at).count()
-            return index > (total - rule.value)
+            return index >= len(parts) - rule.value
 
         elif rule.rule_type == "EXACT_COUNT":
-            return self._evaluate_exact_count_rule(rule, qs)
+            return self._evaluate_exact_count_rule(rule, parts)
 
         return False
 
-    def _evaluate_exact_count_rule(self, rule, qs):
+    def _evaluate_exact_count_rule(self, rule, parts):
         """Select exactly N parts based on created_at timestamp (deterministic)"""
         if rule.value <= 0:
             return False
 
-        all_parts = list(qs)
+        all_parts = list(parts)
         if rule.value >= len(all_parts):
             return True
 

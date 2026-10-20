@@ -224,7 +224,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                                     {disposition.annotation_status.pending_count} quality report(s) require 3D annotations
                                     before this disposition can be closed.
                                 </p>
-                                <Link to="/annotator">
+                                <Link to="/annotator" search={{ reports: (disposition.quality_reports ?? []).map(String).join(",") || undefined }}>
                                     <Button variant="outline" size="sm" className="gap-2">
                                         <ExternalLink className="h-4 w-4" />
                                         Go to Annotator
@@ -624,7 +624,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                             hideLabel
                             items={qualityReports.map((qr) => ({
                                 id: qr.id,
-                                label: `Report #${qr.id}`,
+                                label: qr.report_number ?? "Report",
                                 description: [
                                     `Part #${qr.part}`,
                                     qr.created_at ? format(new Date(qr.created_at), "MMM dd, yyyy") : null,

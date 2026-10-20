@@ -1599,8 +1599,10 @@ class RequiredFieldCaptureTests(DwiPhase1BaseTestCase):
         sub = self._text_substep(required=False)
         self._submit(sub, captures=[])  # no raise
 
-    def test_marked_na_bypasses_required_capture(self):
-        # A substep marked N/A skips required-field capture entirely.
+    def test_marking_a_substep_na_is_refused(self):
+        # Substep N/A is retired (2026-10-20): even a substep authored to allow it
+        # (a legacy flag) refuses a new N/A submit. Existing N/A rows stay readable.
+        from django.core.exceptions import ValidationError
         self.node = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
         sub = Substep.objects.create(
             tenant=self.tenant, step=self.step, order=0, title="Optional check",
@@ -1609,5 +1611,7 @@ class RequiredFieldCaptureTests(DwiPhase1BaseTestCase):
                 {"type": "textInput", "attrs": {"node_id": self.node, "required": True}},
             ]},
         )
-        self._submit(sub, captures=[], marked_not_applicable=True,
-                     na_reason_code="NOT_APPLICABLE")  # no raise
+        with self.assertRaises(ValidationError) as ctx:
+            self._submit(sub, captures=[], marked_not_applicable=True,
+                         na_reason_code="NOT_APPLICABLE")
+        self.assertIn("no longer supported", " ".join(ctx.exception.messages))

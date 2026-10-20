@@ -113,14 +113,25 @@ function View(props: NodeViewProps) {
     const rows: ResponseRow[] = Array.isArray(value) ? (value as ResponseRow[]) : [];
 
     const { data: equipResp } = useRetrieveEquipments();
-    const equipments = (equipResp?.results ?? []) as Array<{ id: string; name: string }>;
+    const equipments = (equipResp?.results ?? []) as Array<{
+        id: string; name: string; status?: string | null; calibration_status?: string | null;
+    }>;
+    // An out-of-service or failed-calibration gauge can't be recorded against (the
+    // server refuses it, as it does a measurement on one): listed, marked, unpickable.
+    // An overdue one is recorded with a warning, so it's pickable but says so up front.
+    const unusable = (eq: { status?: string | null; calibration_status?: string | null }) =>
+        eq.status === "OUT_OF_SERVICE" || eq.calibration_status === "FAILED";
+    const mark = (eq: { status?: string | null; calibration_status?: string | null }) =>
+        eq.status === "OUT_OF_SERVICE" ? " — out of service"
+            : eq.calibration_status === "FAILED" ? " — calibration failed"
+                : eq.calibration_status === "OVERDUE" ? " — calibration overdue" : "";
 
     const update = (next: ResponseRow[]) => {
         if (!isOperator) return;
         setValue(next);
     };
     const addRow = () => {
-        const first = equipments[0];
+        const first = equipments.find((eq) => !unusable(eq));
         if (!first) return;
         update([...rows, { equipment_id: first.id, role: (a.default_role || "PRODUCTION") as EquipmentRole }]);
     };
@@ -154,7 +165,9 @@ function View(props: NodeViewProps) {
                             className="h-8 flex-1 rounded border bg-background px-2 text-sm"
                         >
                             {equipments.map((eq) => (
-                                <option key={eq.id} value={eq.id}>{eq.name}</option>
+                                <option key={eq.id} value={eq.id} disabled={unusable(eq)}>
+                                    {eq.name}{mark(eq)}
+                                </option>
                             ))}
                         </select>
                         <select

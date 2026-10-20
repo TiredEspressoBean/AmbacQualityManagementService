@@ -2,7 +2,7 @@
  * AttestationCheckpoint — checkbox confirmation OR inline signature gate.
  * In operator mode the capture is recorded against the substep's response store.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -102,6 +102,27 @@ function View(props: NodeViewProps) {
     const signGate = useSignGate(scope);
     const clearGate = useClearGateSignature(scope);
     const signed = (gates ?? []).find((g) => g.node_id === String(a.node_id)) ?? null;
+
+    // The signature is recorded on the server (the gate row), but the substep's
+    // completeness check — client and server — and the submitted capture read this
+    // node's response. Mirror the recorded signature into it, and clear it on undo, or
+    // a signed block reads "Not signed" and the substep can't be confirmed. The server
+    // stamps the capture with the submitter and its own clock; it trusts nothing here.
+    const signedId = signed?.id ?? null;
+    const recordedId = (value && typeof value === "object"
+        ? (value as { gate_signature_id?: string }).gate_signature_id
+        : undefined) ?? null;
+    useEffect(() => {
+        if (!isOperator || kind !== "signature" || gates === undefined) return;
+        if (signedId === recordedId) return;
+        setValue(signed
+            ? {
+                gate_signature_id: signed.id,
+                signer_name: signed.completed_by_name ?? undefined,
+                signed_at: signed.completed_at ?? undefined,
+            }
+            : undefined);
+    }, [isOperator, kind, gates, signedId, recordedId, signed, setValue]);
     const { request, dialog } = useSignaturePrompt();
 
     // In the editor there is no part and no execution, so a signature has nowhere

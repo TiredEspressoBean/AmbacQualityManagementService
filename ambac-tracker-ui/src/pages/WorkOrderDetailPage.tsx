@@ -1,4 +1,4 @@
-import { useParams, Link } from "@tanstack/react-router";
+import { useParams, useSearch, Link } from "@tanstack/react-router";
 import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
@@ -30,6 +30,8 @@ const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
 };
 
 export function WorkOrderDetailPage() {
+    // `?start=<part>` (a scanned part serial) opens Start Work with that part ticked.
+    const startPartId = (useSearch({ strict: false }) as { start?: string }).start;
     const { workOrderId } = useParams({ from: "/workorder/$workOrderId" });
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedPart, setSelectedPart] = useState<any | null>(null);
@@ -161,7 +163,8 @@ export function WorkOrderDetailPage() {
                 {/* Status Actions */}
                 <div className="flex items-center gap-2">
                     <WorkOrderDocuments workOrderId={workOrderId} />
-                    <StartWorkDialog workOrderId={workOrderId} blockedReason={workOrder.start_refusal} />
+                    <StartWorkDialog workOrderId={workOrderId} blockedReason={workOrder.start_refusal}
+                                     initialPartId={startPartId} />
                     <WorkOrderStatusActions
                         workOrderId={workOrderId}
                         currentStatus={currentStatus}

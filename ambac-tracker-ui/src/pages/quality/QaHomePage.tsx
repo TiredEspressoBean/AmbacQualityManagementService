@@ -17,6 +17,7 @@
  */
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
+import { UnassignedDispositions } from "@/components/quality/UnassignedDispositions";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -84,14 +85,20 @@ function severityWhy(sev: NonNullable<InspectionInboxRow["severity"]>): string {
 
 function FpiBanner() {
     const navigate = useNavigate();
-    const { data: fpis = [] } = usePendingFpis();
+    const { data: pending = [] } = usePendingFpis();
     const acknowledge = useAcknowledgeFpi();
+    // Oldest first: the longest-waiting first piece is the one most likely holding the
+    // floor. The API lists newest first, so the oldest used to fall off the three shown.
+    const fpis = [...pending].sort((a, b) =>
+        new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+    const [showAll, setShowAll] = useState(false);
+    const more = fpis.length - 3;
 
     if (fpis.length === 0) return null;
 
     return (
         <div className="space-y-2">
-            {fpis.slice(0, 3).map((f) => {
+            {(showAll ? fpis : fpis.slice(0, 3)).map((f) => {
                 const ageMs = f.created_at ? Date.now() - new Date(f.created_at).getTime() : null;
                 const age = ageMs != null ? formatAge(ageMs / 3_600_000) : "";
                 const seenBy = f.acknowledged_by_info?.first_name || f.acknowledged_by_info?.username;
@@ -141,6 +148,7 @@ function FpiBanner() {
                                 onClick={() => navigate({
                                     to: "/workorder/$workOrderId/control",
                                     params: { workOrderId: String(f.work_order_info!.id) },
+                                    search: f.step_info?.id ? { step: String(f.step_info.id) } : {},
                                 })}
                             >
                                 Start check
@@ -149,6 +157,11 @@ function FpiBanner() {
                     </div>
                 );
             })}
+            {more > 0 && (
+                <Button variant="link" size="sm" className="h-auto px-0 text-xs" onClick={() => setShowAll((v) => !v)}>
+                    {showAll ? "Show the 3 longest-waiting" : `+${more} more first piece${more === 1 ? "" : "s"} waiting`}
+                </Button>
+            )}
         </div>
     );
 }
@@ -201,8 +214,10 @@ function InboxList() {
         } else if (row.subject_kind === "shipment") {
             navigate({ to: "/production/incoming" });
         } else if (row.subject_kind === "operation") {
-            const workOrderId = row.id.split(":")[0];
-            navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId } });
+            // An operation is work order × step: land on that step's parts, not the bare WO.
+            const [workOrderId, stepId] = row.id.split(":");
+            navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId },
+                       search: stepId ? { step: stepId } : {} });
         }
     };
 
@@ -335,6 +350,8 @@ function MyActionsPanel({ user }: { user: AuthUser }) {
                 </Link>
             </div>
 
+            <UnassignedDispositions userPk={user.pk} />
+
             {claimable.length > 0 && (
                 <div className="mt-3">
                     <div className="text-xs text-muted-foreground">
@@ -389,14 +406,18 @@ function GaugeNagTile() {
                     <>
                         <div className="mt-2 text-sm">
                             <b>{gauges.length} gauge{gauges.length === 1 ? "" : "s"} you used in the last 7 days</b>
-                            {" "}need{gauges.length === 1 ? "s" : ""} calibration within 7 days.
+                            {" "}need{gauges.length === 1 ? "s" : ""} {gauges.some((g) => g.failed)
+                                ? "attention: a failed calibration, or one due within 7 days."
+                                : "calibration within 7 days."}
                         </div>
                         <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                             {gauges.slice(0, 3).map((g) => (
-                                <div key={g.equipment_id} className={g.overdue ? "text-destructive" : ""}>
-                                    {g.equipment_name} — {g.overdue
-                                        ? `overdue ${Math.abs(g.days_until_due)}d`
-                                        : `due in ${g.days_until_due}d`}
+                                <div key={g.equipment_id} className={g.failed || g.overdue ? "text-destructive" : ""}>
+                                    {g.equipment_name} — {g.failed
+                                        ? "calibration FAILED: readings you took with it may be suspect"
+                                        : g.overdue
+                                            ? `overdue ${Math.abs(g.days_until_due)}d`
+                                            : `due in ${g.days_until_due}d`}
                                 </div>
                             ))}
                         </div>

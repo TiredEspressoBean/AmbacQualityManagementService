@@ -166,7 +166,6 @@ type PendingEdits = {
     requires_signature?: boolean;
     is_inspection_point?: boolean;
     is_critical?: boolean;
-    allow_not_applicable?: boolean;
     scope?: "sampled" | "batch";
     once_per_lot?: boolean;
 };
@@ -189,7 +188,6 @@ type PendingCreate = {
     requires_signature: boolean;
     is_inspection_point: boolean;
     is_critical: boolean;
-    allow_not_applicable: boolean;
     scope: "sampled" | "batch";
     once_per_lot: boolean;
 };
@@ -412,7 +410,6 @@ export function SubstepEditorPage() {
                     is_inspection_point:
                         draft.is_inspection_point || bodyHasAnnotator(draft.body_blocks),
                     is_critical: draft.is_critical,
-                    allow_not_applicable: draft.allow_not_applicable,
                     scope: draft.scope,
                     once_per_lot: draft.once_per_lot,
                 });
@@ -485,7 +482,6 @@ export function SubstepEditorPage() {
             requires_signature: false,
             is_inspection_point: false,
             is_critical: false,
-            allow_not_applicable: false,
             scope: "sampled",
             once_per_lot: false,
             ...seed,
@@ -960,8 +956,6 @@ function SubstepExpandedBody({
         pending?.is_inspection_point ?? (substep.is_inspection_point ?? false);
     const workingCritical =
         pending?.is_critical ?? (substep.is_critical ?? false);
-    const workingAllowNa =
-        pending?.allow_not_applicable ?? (substep.allow_not_applicable ?? false);
     const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
     const workingOncePerLot =
         pending?.once_per_lot ?? ((substep as { once_per_lot?: boolean }).once_per_lot ?? false);
@@ -1090,46 +1084,17 @@ function SubstepExpandedBody({
                         id={`critical-${substep.id}`}
                         checked={workingCritical}
                         disabled={!editable}
-                        onCheckedChange={(v) => {
-                            // is_critical=True overrides allow_not_applicable.
-                            // Clear the N/A flag so the operator can't see a
-                            // contradictory UI state.
-                            const patch: PendingEdits = { is_critical: v };
-                            if (v) patch.allow_not_applicable = false;
-                            mergePending(patch);
-                        }}
+                        onCheckedChange={(v) => mergePending({ is_critical: v })}
                     />
                     <Label
                         htmlFor={`critical-${substep.id}`}
                         className="text-xs"
-                        title="Safety-critical: this substep can never be marked N/A. Use for torque on safety-critical fasteners, witnessed sign-offs, final dimensional verification."
+                        title="Safety-critical: use for torque on safety-critical fasteners, witnessed sign-offs, final dimensional verification."
                     >
                         Critical
                     </Label>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Switch
-                        id={`allow-na-${substep.id}`}
-                        checked={workingAllowNa}
-                        disabled={!editable || workingCritical}
-                        onCheckedChange={(v) => mergePending({ allow_not_applicable: v })}
-                    />
-                    <Label
-                        htmlFor={`allow-na-${substep.id}`}
-                        className={
-                            "text-xs " +
-                            (workingCritical ? "text-muted-foreground line-through" : "")
-                        }
-                        title={
-                            workingCritical
-                                ? "Disabled: critical substeps cannot be marked N/A."
-                                : "When set, an operator may mark this substep N/A with a reason code instead of completing it."
-                        }
-                    >
-                        Allow N/A
-                    </Label>
-                </div>
 
                 {showOncePerLot && (
                     <div className="flex items-center gap-2">
@@ -1335,31 +1300,10 @@ function PendingCreateRow({
                                 id={`critical-${draft.tempId}`}
                                 checked={draft.is_critical}
                                 disabled={!editable}
-                                onCheckedChange={(v) => {
-                                    const patch: Partial<PendingCreate> = { is_critical: v };
-                                    if (v) patch.allow_not_applicable = false;
-                                    onChange(patch);
-                                }}
+                                onCheckedChange={(v) => onChange({ is_critical: v })}
                             />
                             <Label htmlFor={`critical-${draft.tempId}`} className="text-xs">
                                 Critical
-                            </Label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Switch
-                                id={`allow-na-${draft.tempId}`}
-                                checked={draft.allow_not_applicable}
-                                disabled={!editable || draft.is_critical}
-                                onCheckedChange={(v) => onChange({ allow_not_applicable: v })}
-                            />
-                            <Label
-                                htmlFor={`allow-na-${draft.tempId}`}
-                                className={
-                                    "text-xs " +
-                                    (draft.is_critical ? "text-muted-foreground line-through" : "")
-                                }
-                            >
-                                Allow N/A
                             </Label>
                         </div>
                         {showOncePerLot && (

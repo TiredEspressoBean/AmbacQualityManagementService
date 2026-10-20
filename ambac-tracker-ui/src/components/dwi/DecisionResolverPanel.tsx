@@ -136,10 +136,12 @@ export function DecisionResolverPanel({
 
     // ---- QA_RESULT: automatic routing from the inspection result ----
     if (data.decision_type === "QA_RESULT") {
+        // Only a decided result routes. A PENDING report used to show "→ Rework", as
+        // if a result not yet in sends the part to the rework branch.
         const suggestedTarget =
             data.qa_suggested === "PASS"
                 ? def?.step_name
-                : data.qa_suggested
+                : data.qa_suggested === "FAIL"
                     ? alt?.step_name
                     : null;
         return (
@@ -159,8 +161,10 @@ export function DecisionResolverPanel({
                 {data.qa_suggested && (
                     <p className="mt-1 text-xs">
                         Latest inspection: <span className="font-medium">{data.qa_suggested}</span>
-                        {suggestedTarget && (
+                        {suggestedTarget ? (
                             <span className="text-muted-foreground"> → {suggestedTarget}</span>
+                        ) : (
+                            <span className="text-muted-foreground"> — routes once the result is in</span>
                         )}
                     </p>
                 )}

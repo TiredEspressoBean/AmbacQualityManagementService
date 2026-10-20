@@ -597,6 +597,12 @@ def update_process_with_steps(instance: Processes, data: dict, user=None) -> Pro
                     ps.auto_advance = auto_advance
                 ps.save()
             else:
+                # A step whose substeps require a reman capture can't join a route new
+                # builds run: the unit would stick there (substep N/A is retired).
+                from Tracker.services.dwi.reman_capture_guard import process_step_refusal
+                refusal = process_step_refusal(instance, step)
+                if refusal:
+                    raise ValueError(refusal)
                 ProcessStep.objects.create(
                     process=instance,
                     step=step,

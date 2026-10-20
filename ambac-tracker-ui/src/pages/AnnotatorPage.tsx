@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PartAnnotator } from "./PartAnnotator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,13 @@ const annotatorPartOptions = (partId: string | null) => queryOptions({
 
 export function AnnotatorPage() {
     const navigate = useNavigate();
-    const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
+    // `?reports=` (from a disposition) scopes the page to those reports and preselects them.
+    const scopedParam = (useSearch({ strict: false }) as { reports?: string }).reports ?? "";
+    const scopedIds = useMemo(() => {
+        const raw = scopedParam.split(",").filter(Boolean);
+        return raw.length ? new Set(raw) : null;
+    }, [scopedParam]);
+    const [selectedReportIds, setSelectedReportIds] = useState<string[]>(() => (scopedIds ? [...scopedIds] : []));
     const [startAnnotating, setStartAnnotating] = useState(false);
 
     // Fetch all quality reports
@@ -37,6 +43,7 @@ export function AnnotatorPage() {
         if (!qualityReportsData?.results || !errorTypesData?.results) return [];
 
         return qualityReportsData.results.filter(report => {
+            if (scopedIds && !scopedIds.has(report.id)) return false;
             if (!report.errors || report.errors.length === 0) return false;
 
             return report.errors.some(errorId => {
@@ -44,7 +51,7 @@ export function AnnotatorPage() {
                 return errorType?.requires_3d_annotation === true;
             });
         });
-    }, [qualityReportsData, errorTypesData]);
+    }, [qualityReportsData, errorTypesData, scopedIds]);
 
     // Get the part from selected reports (should all be same part)
     const selectedReports = useMemo(() => {
@@ -205,14 +212,17 @@ export function AnnotatorPage() {
                                             className="flex items-center space-x-3 p-3 hover:bg-accent cursor-pointer transition-colors"
                                             onClick={() => handleToggleReport(report.id)}
                                         >
+                                            {/* The row toggles; the box only shows it. With its own
+                                                handler too, a tick toggled twice and nothing changed. */}
                                             <Checkbox
                                                 checked={selectedReportIds.includes(report.id)}
-                                                onCheckedChange={() => handleToggleReport(report.id)}
+                                                className="pointer-events-none"
+                                                aria-label={`Select ${report.report_number ?? "report"}`}
                                             />
                                             <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-medium">Report #{report.id}</span>
+                                                    <span className="text-sm font-medium">{report.report_number ?? "Report"}</span>
                                                     <span className={`text-xs px-2 py-0.5 rounded ${
                                                         report.status === 'PASS' ? 'bg-green-100 text-green-800' :
                                                         report.status === 'FAIL' ? 'bg-red-100 text-red-800' :

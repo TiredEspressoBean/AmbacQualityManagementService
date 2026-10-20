@@ -33,7 +33,7 @@ def contain_failed_batch(report) -> None:
     `report` is a FAIL QualityReports with `batch_execution` set. Safe to call
     from the auto_create_disposition signal on every FAIL save — idempotent.
     """
-    from Tracker.models import PartsStatus, QuarantineDisposition, User
+    from Tracker.models import PartsStatus, QuarantineDisposition
 
     batch = report.batch_execution
     if batch is None:
@@ -58,17 +58,9 @@ def contain_failed_batch(report) -> None:
         from Tracker.services.scheduling.staleness import mark_active_schedule_stale
         mark_active_schedule_stale(report.tenant_id)
 
-    qa_user = (
-        User.objects.filter(
-            user_roles__group__name__in=["QA Manager", "QA Inspector"],
-            user_roles__group__tenant=report.tenant,
-        ).first()
-        or report.detected_by
-    )
-
     step_name = batch.step.name if batch.step else "cycle"
     disposition = QuarantineDisposition.objects.create(
-        assigned_to=qa_user,
+        assigned_to=None,  # the QA queue, like every auto-opened disposition
         batch_execution=batch,
         step=batch.step,
         description=(

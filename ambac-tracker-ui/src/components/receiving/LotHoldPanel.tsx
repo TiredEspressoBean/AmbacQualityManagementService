@@ -139,7 +139,8 @@ function HoldCard({ lot, reason, several }: { lot: Lot; reason: string; several:
             )}
             {!canRelease && !selfClearing && (
                 <p className="text-xs text-muted-foreground">
-                    A quality manager can release this hold, or the lot can be rejected.
+                    A quality manager can release this hold. Once released the lot is
+                    inspected, and it can be rejected from the inspection.
                 </p>
             )}
         </div>

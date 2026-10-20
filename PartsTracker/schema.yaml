@@ -15413,12 +15413,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/RejectLotRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/RejectLotRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/RejectLotRequest'
@@ -15449,12 +15443,6 @@ paths:
       - api
       requestBody:
         content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LotDecisionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/LotDecisionRequest'
           application/json:
             schema:
               $ref: '#/components/schemas/LotDecisionRequest'
@@ -24353,6 +24341,10 @@ paths:
         name: assigned_to
         schema:
           type: integer
+      - in: query
+        name: assigned_to__isnull
+        schema:
+          type: boolean
       - in: query
         name: batch_execution
         schema:
@@ -55145,6 +55137,10 @@ components:
           readOnly: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        calibration_status:
+          type: string
+          nullable: true
+          readOnly: true
         is_schedulable:
           type: boolean
           description: Whether the scheduler treats this asset as a finite resource
@@ -55191,6 +55187,7 @@ components:
           type: integer
           readOnly: true
       required:
+      - calibration_status
       - created_at
       - equipment_type_name
       - id
@@ -55719,6 +55716,16 @@ components:
           - $ref: '#/components/schemas/FPIRecordDesignatedPartInfo'
           nullable: true
           readOnly: true
+        first_piece_readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FpiReading'
+          readOnly: true
+        first_piece_signer_ids:
+          type: array
+          items:
+            type: integer
+          readOnly: true
         equipment:
           type: string
           format: uuid
@@ -55828,6 +55835,10 @@ components:
           nullable: true
           description: The designated first piece's QualityReport this buy-off was
             made against
+        notes:
+          type: string
+          readOnly: true
+          description: Inspector notes captured at pass / fail time (audit trail)
         created_at:
           type: string
           format: date-time
@@ -55845,11 +55856,14 @@ components:
       - created_at
       - designated_part_info
       - equipment_info
+      - first_piece_readings
+      - first_piece_signer_ids
       - has_signature
       - id
       - inspected_at
       - inspected_by
       - inspected_by_info
+      - notes
       - part_type
       - part_type_info
       - performed_by
@@ -56473,6 +56487,47 @@ components:
           type: boolean
       required:
       - name
+    FpiReading:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        value:
+          type: string
+          nullable: true
+        unit:
+          type: string
+        nominal:
+          type: string
+          nullable: true
+        lower_limit:
+          type: string
+          nullable: true
+        upper_limit:
+          type: string
+          nullable: true
+        within_spec:
+          type: boolean
+          nullable: true
+        recorded_by_name:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - label
+      - lower_limit
+      - nominal
+      - recorded_at
+      - recorded_by_name
+      - unit
+      - upper_limit
+      - value
+      - within_spec
     FpiScopeEnum:
       enum:
       - PER_WORKORDER
@@ -56527,11 +56582,14 @@ components:
           type: integer
         overdue:
           type: boolean
+        failed:
+          type: boolean
       required:
       - days_until_due
       - due_date
       - equipment_id
       - equipment_name
+      - failed
       - overdue
     GenerateReportRequest:
       type: object
@@ -65080,6 +65138,10 @@ components:
         qa_completed:
           type: boolean
           readOnly: true
+        current_operator_name:
+          type: string
+          nullable: true
+          readOnly: true
         order:
           type: string
           format: uuid
@@ -65260,6 +65322,7 @@ components:
       - ERP_id
       - core_role
       - created_at
+      - current_operator_name
       - has_error
       - id
       - location
@@ -69210,14 +69273,9 @@ components:
           description: Operator may mark this substep N/A instead of completing it.
         is_critical:
           type: boolean
-          description: Safety-critical substep. When True, N/A is impossible regardless
-            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
-            with marked_not_applicable=True for this substep, even at gate-time re-check.
-        allow_not_applicable:
-          type: boolean
-          description: 'Engineer authoring concern: when True, an operator may mark
-            this substep N/A (must provide na_reason_code on the SubstepCompletion
-            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
+          description: Safety-critical substep (torque on a safety-critical fastener,
+            a witnessed sign-off, final dimensional verification). Shown as critical
+            to the operator.
         requires_signature:
           type: boolean
           description: 'Derived, not authored: true when the body carries an attestation
@@ -72814,6 +72872,10 @@ components:
           type: string
           nullable: true
           readOnly: true
+        part_erp_id:
+          type: string
+          nullable: true
+          readOnly: true
         assignee_name:
           type: string
           readOnly: true
@@ -72861,6 +72923,7 @@ components:
       - disposition_number
       - id
       - material_lot_number
+      - part_erp_id
       - quality_reports
       - resolution_completed
       - resolution_completed_at
@@ -79588,14 +79651,14 @@ components:
           description: Operator may mark this substep N/A instead of completing it.
         is_critical:
           type: boolean
-          description: Safety-critical substep. When True, N/A is impossible regardless
-            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
-            with marked_not_applicable=True for this substep, even at gate-time re-check.
+          description: Safety-critical substep (torque on a safety-critical fastener,
+            a witnessed sign-off, final dimensional verification). Shown as critical
+            to the operator.
         allow_not_applicable:
           type: boolean
-          description: 'Engineer authoring concern: when True, an operator may mark
-            this substep N/A (must provide na_reason_code on the SubstepCompletion
-            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
+          readOnly: true
+          description: 'RETIRED (2026-10-20): substep N/A is no longer accepted. Kept
+            so N/A completions recorded before then still read and gate as they did.'
         requires_signature:
           type: boolean
           description: 'Derived, not authored: true when the body carries an attestation
@@ -79667,6 +79730,7 @@ components:
         archived:
           type: boolean
       required:
+      - allow_not_applicable
       - created_at
       - id
       - is_editable
@@ -80018,14 +80082,9 @@ components:
           description: Operator may mark this substep N/A instead of completing it.
         is_critical:
           type: boolean
-          description: Safety-critical substep. When True, N/A is impossible regardless
-            of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion
-            with marked_not_applicable=True for this substep, even at gate-time re-check.
-        allow_not_applicable:
-          type: boolean
-          description: 'Engineer authoring concern: when True, an operator may mark
-            this substep N/A (must provide na_reason_code on the SubstepCompletion
-            row). When False, N/A is rejected at write time. Ignored when is_critical=True.'
+          description: Safety-critical substep (torque on a safety-critical fastener,
+            a witnessed sign-off, final dimensional verification). Shown as critical
+            to the operator.
         requires_signature:
           type: boolean
           description: 'Derived, not authored: true when the body carries an attestation

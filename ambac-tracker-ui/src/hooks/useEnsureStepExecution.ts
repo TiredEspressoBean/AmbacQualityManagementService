@@ -157,6 +157,10 @@ export async function ensureStepExecution(
 
 export function useEnsureStepExecution() {
     return useMutation<EnsureResult, Error, EnsureVariables>({
+        // The caller handles every failure: a gate refusal opens the reassignment /
+        // qualification prompt, anything else gets its own toast. The global "Operation
+        // failed" toast doubled the gate case.
+        meta: { suppressGlobalError: true },
         mutationFn: ensureStepExecution,
     });
 }

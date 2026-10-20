@@ -166,8 +166,42 @@ def fail_fpi(fpi: FPIRecord, user, notes: str = '', performed_by=None, *,
     if notes:
         fpi.notes = notes
     fpi.save()
+    _record_first_piece_failure(fpi, user)
     notify_fpi_decided(fpi)
     return fpi
+
+
+def _record_first_piece_failure(fpi: FPIRecord, user) -> None:
+    """The failed first piece is nonconforming product (user decision 2026-10-20): a
+    FAIL quality report on it at the FPI's step, through the same path as any failed
+    inspection — the disposition (unassigned, the QA queue) from the report's save, and
+    quarantine, the step-failure notice and ncr.opened from on_report_failed. The run
+    stays held by the FPI itself. The FPI's own reason is the report's description, so
+    the disposition doesn't read "No description"."""
+    from Tracker.models import QualityReports
+    from Tracker.services.qms.quality_report import on_report_failed
+    if fpi.designated_part_id is None:
+        return  # no first piece to hold
+    step_name = fpi.step.name if fpi.step_id else "the step"
+    description = (fpi.notes or "").strip() or f"First piece failed at {step_name}"
+    report = fpi.quality_report
+    if report is None:
+        report = QualityReports.objects.create(  # tenant-safe: tenant set explicitly
+            tenant=fpi.tenant, part=fpi.designated_part, step=fpi.step,
+            status="FAIL", detected_by=user, description=description,
+            sampling_method="fpi_fail")
+        prior = None
+        fpi.quality_report = report
+        fpi.save(update_fields=["quality_report", "updated_at"])
+    else:
+        prior = report.status
+        if prior == "FAIL":
+            return
+        report.status = "FAIL"
+        if not (report.description or "").strip():
+            report.description = description
+        report.save(update_fields=["status", "description"])
+    on_report_failed(report, prior)
 
 
 def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
@@ -244,3 +278,57 @@ def notify_fpi_decided(fpi: FPIRecord) -> None:
         correlation_id=f"fpi:{fpi.id}",
         idempotency_key=f"fpi.decided:{fpi.id}:{fpi.status}",
     )
+
+
+def first_piece_readings(fpi: FPIRecord) -> list[dict]:
+    """The readings captured on the first piece at the FPI's step — what the buy-off
+    attests to. The designated part's latest visit to that step, one row per
+    measurement as recorded (value, limits, in spec, who, when). Empty when no first
+    piece is designated or nothing was measured; the buy-off dialog says so rather
+    than inviting an attestation made blind."""
+    from Tracker.models import StepExecution, StepExecutionMeasurement
+    if fpi.designated_part_id is None or fpi.step_id is None:
+        return []
+    execution = (StepExecution.objects  # tenant-safe: .objects auto-scopes; FK-correlated to the record
+                 .filter(part_id=fpi.designated_part_id, step_id=fpi.step_id)
+                 .order_by('-visit_number').first())
+    if execution is None:
+        return []
+    rows = []
+    for m in (StepExecutionMeasurement.objects  # tenant-safe: FK-correlated to a scoped execution
+              .filter(step_execution=execution)
+              .select_related('measurement_definition', 'recorded_by')
+              .order_by('recorded_at')):
+        d = m.measurement_definition
+        nominal = d.nominal if d else None
+        lower = (nominal - d.lower_tol) if (nominal is not None and d.lower_tol is not None) else None
+        upper = (nominal + d.upper_tol) if (nominal is not None and d.upper_tol is not None) else None
+        rows.append({
+            'id': str(m.id),
+            'label': d.label if d else '',
+            'value': (str(m.value) if m.value is not None else (m.string_value or None)),
+            'unit': (d.unit if d else '') or '',
+            'nominal': str(nominal) if nominal is not None else None,
+            'lower_limit': str(lower) if lower is not None else None,
+            'upper_limit': str(upper) if upper is not None else None,
+            'within_spec': m.is_within_spec,
+            'recorded_by_name': (m.recorded_by.get_full_name() or m.recorded_by.username) if m.recorded_by_id else '',
+            'recorded_at': m.recorded_at,
+        })
+    return rows
+
+
+def first_piece_signer_ids(fpi: FPIRecord) -> list[int]:
+    """Users who signed the first piece's substeps at its current execution — the
+    people `_reject_self_signoff` refuses as buy-off signers. Lets the dialog say so
+    before the click instead of refusing after it."""
+    from Tracker.models import StepExecution, SubstepCompletion
+    if fpi.designated_part_id is None:
+        return []
+    se = StepExecution.get_current_execution(fpi.designated_part)
+    if se is None:
+        return []
+    return sorted(set(
+        SubstepCompletion.objects  # tenant-safe: FK-correlated to a scoped execution
+        .filter(step_execution=se, completed_by__isnull=False)
+        .values_list('completed_by_id', flat=True)))

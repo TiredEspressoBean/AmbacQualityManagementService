@@ -254,6 +254,29 @@ class ReceivingFlowTests(_ReceivingFixtureMixin, TenantTestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, "FAIL")
 
+    def test_a_failed_lot_cannot_be_accepted(self):
+        """A failed inspection is rejected; use-as-is is the disposition's decision."""
+        lot = self._make_lot()
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        receiving_inspection.record_inspection(
+            report, [{"definition": str(self.char.id), "value_pass_fail": "FAIL"}], self.user_a)
+        report.refresh_from_db()
+        with self.assertRaisesMessage(ValueError, "failed its inspection"):
+            receiving_inspection.accept(report, self.user_a)
+        lot.refresh_from_db()
+        self.assertNotEqual(lot.status, "ACCEPTED")
+
+    def test_a_bulk_tally_counts_alongside_captured_readings(self):
+        """Readings captured in the DWI and the review's tally of the sample: the larger
+        decides. Readings alone used to win, dropping a tally of other defects."""
+        lot = self._make_lot()
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        receiving_inspection.record_inspection(
+            report, [{"definition": str(self.char.id), "value_pass_fail": "PASS"}], self.user_a)
+        receiving_inspection.record_bulk(report, 1, self.user_a)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "FAIL")   # 1 ≥ Re (C=0), though the reading passed
+
     def test_reject_moves_lot(self):
         lot = self._make_lot()
         report = receiving_inspection.open_inspection(lot, self.user_a)
@@ -396,6 +419,23 @@ class ReceivingDwiExecutionTests(_ReceivingFixtureMixin, TenantTestCase):
         report.refresh_from_db()
         self.assertEqual(report.measurements.count(), 1)
         self.assertEqual(report.material_lot_id, lot.id)
+
+    def test_a_failing_reading_on_a_lot_fails_its_report(self):
+        """An out-of-spec reading turns the lot's report FAIL. The FAIL consequences
+        are part-scoped (sampling state, quarantine); the lot report has no part, and
+        dereferencing it was a 500 on every failing receiving reading (walk 2026-10-20)."""
+        from Tracker.models import Substep
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        lot = self._make_lot()
+        report = receiving_inspection.open_inspection(lot, self.user_a)
+        substep = Substep.objects.create(
+            tenant=self.tenant_a, step=self.recv_step, title="Inspect",
+            order=1, is_inspection_point=True)
+        record_dwi_measurement(
+            step_execution=receiving_inspection.receiving_execution(lot), substep=substep,
+            measurement_definition=self.char, value_string="FAIL", recorded_by=self.user_a)
+        report.refresh_from_db()
+        self.assertEqual(report.status, "FAIL")
 
     def test_accept_finalizes_execution(self):
         lot = self._make_lot()

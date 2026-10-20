@@ -2942,6 +2942,7 @@ export type Equipments = {
   location?: (string | null) | undefined;
   location_name: string | null;
   status?: EquipmentsStatusEnum | undefined;
+  calibration_status: string | null;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
@@ -3096,6 +3097,8 @@ export type FPIRecord = {
     (string | null)
     | undefined;
   designated_part_info: FPIRecordDesignatedPartInfo;
+  first_piece_readings: Array<FpiReading>;
+  first_piece_signer_ids: Array<number>;
   equipment?:
     | /**
      * Equipment being used (for per-equipment FPI)
@@ -3163,6 +3166,10 @@ export type FPIRecord = {
    * The designated first piece's QualityReport this buy-off was made against
    */
   quality_report: string | null;
+  /**
+   * Inspector notes captured at pass / fail time (audit trail)
+   */
+  notes: string;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -3184,6 +3191,18 @@ export type FPIRecordPartTypeInfo = {
 export type FPIRecordDesignatedPartInfo = {
   id: string;
   erp_id: string | null;
+};
+export type FpiReading = {
+  id: string;
+  label: string;
+  value: string | null;
+  unit: string;
+  nominal: string | null;
+  lower_limit: string | null;
+  upper_limit: string | null;
+  within_spec: boolean | null;
+  recorded_by_name: string;
+  recorded_at: string;
 };
 export type FPIRecordEquipmentInfo = {
   id: string;
@@ -6976,6 +6995,7 @@ export type Parts = {
   requires_sampling: boolean;
   needs_qa: boolean;
   qa_completed: boolean;
+  current_operator_name: string | null;
   order?: (string | null) | undefined;
   part_type: string;
   part_type_info: {
@@ -8389,6 +8409,7 @@ export type QuarantineDisposition = {
   affected_parts: Array<DispositionAffectedPart>;
   work_order_id: string | null;
   work_order_erp_id: string | null;
+  part_erp_id: string | null;
   assignee_name: string;
   choices_data: {};
   annotation_status: {};
@@ -10349,13 +10370,13 @@ export type Substep = {
    */
   boolean | undefined;
   is_critical?: /**
-   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
+   * Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator.
    */
   boolean | undefined;
-  allow_not_applicable?: /**
-   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
+  /**
+   * RETIRED (2026-10-20): substep N/A is no longer accepted. Kept so N/A completions recorded before then still read and gate as they did.
    */
-  boolean | undefined;
+  allow_not_applicable: boolean;
   requires_signature?: /**
    * Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice.
    */
@@ -14489,13 +14510,9 @@ export type PatchedSubstepRequest = Partial<{
    */
   is_optional: boolean;
   /**
-   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
+   * Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator.
    */
   is_critical: boolean;
-  /**
-   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
-   */
-  allow_not_applicable: boolean;
   /**
    * Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice.
    */
@@ -17280,11 +17297,7 @@ export type SubstepRequest = {
    */
   boolean | undefined;
   is_critical?: /**
-   * Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check.
-   */
-  boolean | undefined;
-  allow_not_applicable?: /**
-   * Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True.
+   * Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator.
    */
   boolean | undefined;
   requires_signature?: /**
@@ -19173,6 +19186,7 @@ const GaugeNagRow = z.object({
   due_date: z.string(),
   days_until_due: z.number().int(),
   overdue: z.boolean(),
+  failed: z.boolean(),
 });
 const CalibrationStats = z.object({
   total_equipment: z.number().int(),
@@ -20288,6 +20302,7 @@ const Equipments = z.object({
   location: z.string().uuid().nullish(),
   location_name: z.string().nullable(),
   status: EquipmentsStatusEnum.optional(),
+  calibration_status: z.string().nullable(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
@@ -20446,6 +20461,18 @@ const FPIRecordDesignatedPartInfo = z.object({
   id: z.string(),
   erp_id: z.string().nullable(),
 });
+const FpiReading = z.object({
+  id: z.string().uuid(),
+  label: z.string(),
+  value: z.string().nullable(),
+  unit: z.string(),
+  nominal: z.string().nullable(),
+  lower_limit: z.string().nullable(),
+  upper_limit: z.string().nullable(),
+  within_spec: z.boolean().nullable(),
+  recorded_by_name: z.string(),
+  recorded_at: z.string().datetime({ offset: true }),
+});
 const FPIRecordEquipmentInfo = z.object({
   id: z.string(),
   name: z.string().nullable(),
@@ -20468,6 +20495,8 @@ const FPIRecord = z.object({
   part_type_info: FPIRecordPartTypeInfo.nullable(),
   designated_part: z.string().uuid().nullish(),
   designated_part_info: FPIRecordDesignatedPartInfo.nullable(),
+  first_piece_readings: z.array(FpiReading),
+  first_piece_signer_ids: z.array(z.number().int()),
   equipment: z.string().uuid().nullish(),
   equipment_info: FPIRecordEquipmentInfo.nullable(),
   shift_date: z.string().nullish(),
@@ -20489,6 +20518,7 @@ const FPIRecord = z.object({
   acknowledged_by_info: UserSelect.nullable(),
   acknowledged_at: z.string().datetime({ offset: true }).nullable(),
   quality_report: z.string().uuid().nullable(),
+  notes: z.string(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -22575,6 +22605,7 @@ const Parts = z.object({
   requires_sampling: z.boolean(),
   needs_qa: z.boolean(),
   qa_completed: z.boolean(),
+  current_operator_name: z.string().nullable(),
   order: z.string().uuid().nullish(),
   part_type: z.string().uuid(),
   part_type_info: z
@@ -23331,6 +23362,7 @@ const QuarantineDisposition = z.object({
   affected_parts: z.array(DispositionAffectedPart),
   work_order_id: z.string().uuid().nullable(),
   work_order_erp_id: z.string().nullable(),
+  part_erp_id: z.string().nullable(),
   assignee_name: z.string(),
   choices_data: z.object({}).partial().passthrough().nullable(),
   annotation_status: z.object({}).partial().passthrough(),
@@ -25497,7 +25529,7 @@ const Substep = z.object({
     .optional(),
   is_optional: z.boolean().optional(),
   is_critical: z.boolean().optional(),
-  allow_not_applicable: z.boolean().optional(),
+  allow_not_applicable: z.boolean(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   once_per_lot: z.boolean().optional(),
@@ -25534,7 +25566,6 @@ const SubstepRequest = z.object({
     .optional(),
   is_optional: z.boolean().optional(),
   is_critical: z.boolean().optional(),
-  allow_not_applicable: z.boolean().optional(),
   requires_signature: z.boolean().optional(),
   is_inspection_point: z.boolean().optional(),
   once_per_lot: z.boolean().optional(),
@@ -25561,7 +25592,6 @@ const PatchedSubstepRequest = z
     ]),
     is_optional: z.boolean(),
     is_critical: z.boolean(),
-    allow_not_applicable: z.boolean(),
     requires_signature: z.boolean(),
     is_inspection_point: z.boolean(),
     once_per_lot: z.boolean(),
@@ -28867,6 +28897,7 @@ export const schemas = {
   FPIRecordStepInfo,
   FPIRecordPartTypeInfo,
   FPIRecordDesignatedPartInfo,
+  FpiReading,
   FPIRecordEquipmentInfo,
   FPIRecordStatusEnum,
   FPIRecordResultEnum,
@@ -40950,7 +40981,7 @@ to incoming inspection like any other receipt).`,
     path: "/api/MaterialLots/:id/reject-remainder/",
     alias: "api_MaterialLots_reject_remainder_create",
     description: `Escalate to the whole lot: reject what&#x27;s left of an accepted lot.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -40972,7 +41003,7 @@ to incoming inspection like any other receipt).`,
     description: `Reject at receiving inspection, opening the disposition with it. A partial
 reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
 reject_whole_lot, and without it holds the lot as a request.`,
-    requestFormat: "form-data",
+    requestFormat: "json",
     parameters: [
       {
         name: "body",
@@ -49055,6 +49086,11 @@ Usage:
         name: "assigned_to",
         type: "Query",
         schema: z.number().int().optional(),
+      },
+      {
+        name: "assigned_to__isnull",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "batch_execution",

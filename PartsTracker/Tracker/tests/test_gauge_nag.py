@@ -56,6 +56,20 @@ class GaugeNagTests(TenantTestCase):
         self.assertFalse(rows[1]["overdue"])
         self.assertEqual(rows[1]["days_until_due"], 3)
 
+    def test_a_gauge_whose_calibration_failed_is_listed_first(self):
+        """The exposure case: a gauge I measured with that has since failed calibration.
+        It used to be excluded from the nag entirely."""
+        today = timezone.now().date()
+        CalibrationRecord.objects.create(
+            tenant=self.tenant_a, equipment=self.gauge_fine, calibration_date=today,
+            due_date=today + datetime.timedelta(days=365), result='FAIL')
+        self._use(self.gauge_fine)
+        self._use(self.gauge_due)
+        rows = my_gauge_nag(self.user_a)
+        self.assertEqual([r["equipment_name"] for r in rows], ["Caliper C-01", "Micrometer M-04"])
+        self.assertTrue(rows[0]["failed"])
+        self.assertFalse(rows[1]["failed"])
+
     def test_other_users_usage_does_not_nag_me(self):
         from django.contrib.auth import get_user_model
         other = get_user_model().objects.create_user(

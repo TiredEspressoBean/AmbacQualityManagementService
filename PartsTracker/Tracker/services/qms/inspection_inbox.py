@@ -189,9 +189,12 @@ def _in_process_rows(user=None):
 
     # The operation (work order × step) is the unit of inspector work; parts
     # are its quantity. Mirrors the Parts.needs_qa property semantics.
-    groups = (visible(Parts, user)
-              .filter(archived=False, requires_sampling=True)
-              .exclude(error_reports__status="PASS")
+    # Not yet passed at its current step this visit — a PASS from an earlier step left
+    # a part sampled here out of the queue (services/qms/qa_status.py).
+    from Tracker.services.qms.qa_status import with_qa_passed
+    groups = (with_qa_passed(visible(Parts, user)
+                             .filter(archived=False, requires_sampling=True))
+              .filter(_qa_passed=False)
               .exclude(part_status__in=list(TERMINAL_PART_STATUSES))
               .exclude(step__isnull=True)
               .values("work_order", "step",

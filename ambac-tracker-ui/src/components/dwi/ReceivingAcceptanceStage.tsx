@@ -163,13 +163,33 @@ export function ReceivingAcceptanceStage({
     // them, else a single total. The sum is the defect "amount" checked vs Ac/Re.
     const hasPlan = n > 0;
     const useByChar = !isVariables && hasPlan && characteristics.length > 0;
+    // The inspector's own failing readings are defects already found: each
+    // characteristic's count starts at (and can't go below) the out-of-spec readings
+    // captured for it. Otherwise skipping the tally accepted a lot the reading failed.
+    const failedByChar = useMemo(() => {
+        const out: Record<string, number> = {};
+        const chars = samplePlan?.characteristics ?? [];
+        for (const m of capturedMeasurements) {
+            const c = chars.find((ch) => String(ch.id) === String(m.definition_id));
+            let failed = m.value_pass_fail === "FAIL";
+            if (!failed && c && m.value_numeric != null && c.nominal != null) {
+                const hi = c.upper_tol != null ? c.nominal + c.upper_tol : null;
+                const lo = c.lower_tol != null ? c.nominal - c.lower_tol : null;
+                failed = (hi != null && m.value_numeric > hi) || (lo != null && m.value_numeric < lo);
+            }
+            if (failed) out[String(m.definition_id)] = (out[String(m.definition_id)] ?? 0) + 1;
+        }
+        return out;
+    }, [capturedMeasurements, samplePlan]);
+    const capturedFailures = Object.values(failedByChar).reduce((a, b) => a + b, 0);
+    const countFor = (id: string) => Math.max(parseInt(defectByChar[id]) || 0, failedByChar[id] ?? 0);
     const bd = useByChar
-        ? characteristics.reduce((sum, c) => sum + (parseInt(defectByChar[String(c.id)]) || 0), 0)
-        : (parseInt(defectTotal) || 0);
+        ? characteristics.reduce((sum, c) => sum + countFor(String(c.id)), 0)
+        : Math.max(parseInt(defectTotal) || 0, capturedFailures);
     const defectBreakdown = useByChar
         ? characteristics
-            .filter((c) => (parseInt(defectByChar[String(c.id)]) || 0) > 0)
-            .map((c) => `${c.label}: ${parseInt(defectByChar[String(c.id)]) || 0}`)
+            .filter((c) => countFor(String(c.id)) > 0)
+            .map((c) => `${c.label}: ${countFor(String(c.id))}`)
             .join(", ")
         : "";
     const attributeVerdict: Verdict = bd >= re ? "reject" : bd <= ac ? "accept" : "pending";
@@ -201,7 +221,8 @@ export function ReceivingAcceptanceStage({
             toast.success("Lot accepted");
             navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } });
         } catch {
-            toast.error("Could not accept lot");
+            // The global mutation handler toasts the server's reason (a failed
+            // inspection, an expired lot); a second generic toast here only buried it.
         } finally {
             setBusy(false);
         }
@@ -245,7 +266,7 @@ export function ReceivingAcceptanceStage({
             }
             navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } });
         } catch {
-            toast.error("Could not reject lot");
+            // The global mutation handler toasts the server's reason.
         } finally {
             setBusy(false);
             setRejectOpen(false);
@@ -282,12 +303,15 @@ export function ReceivingAcceptanceStage({
                                     <div key={c.id} className="flex items-center gap-2 text-sm">
                                         <span className="w-48 text-muted-foreground">{c.label}</span>
                                         <Input
-                                            className="w-20" type="number" min={0}
-                                            placeholder="0"
+                                            className="w-20" type="number" min={failedByChar[String(c.id)] ?? 0}
+                                            placeholder={String(failedByChar[String(c.id)] ?? 0)}
                                             value={defectByChar[String(c.id)] ?? ""}
                                             onChange={(e) => setDefectByChar((p) => ({ ...p, [String(c.id)]: e.target.value }))}
                                         />
-                                        <span className="text-xs text-muted-foreground">defective</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            defective
+                                            {failedByChar[String(c.id)] ? ` · at least ${failedByChar[String(c.id)]} from your readings` : ""}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -296,7 +320,7 @@ export function ReceivingAcceptanceStage({
                         <div className="flex items-center gap-2 text-sm">
                             <span>Defectives found in the sample of <b>{n}</b></span>
                             <Input
-                                className="w-24" type="number" min={0} value={defectTotal}
+                                className="w-24" type="number" min={capturedFailures} value={defectTotal}
                                 onChange={(e) => setDefectTotal(e.target.value)}
                             />
                         </div>
@@ -366,7 +390,7 @@ export function ReceivingAcceptanceStage({
             <div className="flex gap-2 border-t pt-4">
                 <Button
                     className="h-11 min-w-32"
-                    disabled={busy || verdict === "pending"}
+                    disabled={busy || verdict !== "accept"}
                     onClick={finishAccept}
                 >
                     Accept lot

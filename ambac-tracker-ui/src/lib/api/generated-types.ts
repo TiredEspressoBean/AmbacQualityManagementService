@@ -23579,6 +23579,7 @@ export interface components {
             location?: string | null;
             readonly location_name: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            readonly calibration_status: string | null;
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
             /** @description Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag. */
@@ -23879,6 +23880,8 @@ export interface components {
              */
             designated_part?: string | null;
             readonly designated_part_info: components["schemas"]["FPIRecordDesignatedPartInfo"] | null;
+            readonly first_piece_readings: components["schemas"]["FpiReading"][];
+            readonly first_piece_signer_ids: number[];
             /**
              * Format: uuid
              * @description Equipment being used (for per-equipment FPI)
@@ -23935,6 +23938,8 @@ export interface components {
              * @description The designated first piece's QualityReport this buy-off was made against
              */
             readonly quality_report: string | null;
+            /** @description Inspector notes captured at pass / fail time (audit trail) */
+            readonly notes: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -24232,6 +24237,20 @@ export interface components {
             steps?: string[];
             archived?: boolean;
         };
+        FpiReading: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            value: string | null;
+            unit: string;
+            nominal: string | null;
+            lower_limit: string | null;
+            upper_limit: string | null;
+            within_spec: boolean | null;
+            recorded_by_name: string;
+            /** Format: date-time */
+            recorded_at: string;
+        };
         /**
          * @description * `PER_WORKORDER` - Per Work Order
          *     * `PER_SHIFT` - Per Shift
@@ -24267,6 +24286,7 @@ export interface components {
             due_date: string;
             days_until_due: number;
             overdue: boolean;
+            failed: boolean;
         };
         /**
          * @description Top-level shape: {report_type, params}.
@@ -28720,6 +28740,7 @@ export interface components {
             readonly requires_sampling: boolean;
             readonly needs_qa: boolean;
             readonly qa_completed: boolean;
+            readonly current_operator_name: string | null;
             /** Format: uuid */
             order?: string | null;
             /** Format: uuid */
@@ -31110,10 +31131,8 @@ export interface components {
             }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
-            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            /** @description Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator. */
             is_critical?: boolean;
-            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
-            allow_not_applicable?: boolean;
             /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -33018,6 +33037,7 @@ export interface components {
             /** Format: uuid */
             readonly work_order_id: string | null;
             readonly work_order_erp_id: string | null;
+            readonly part_erp_id: string | null;
             readonly assignee_name: string;
             readonly choices_data: {
                 [key: string]: unknown;
@@ -36423,10 +36443,10 @@ export interface components {
             }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
-            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            /** @description Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator. */
             is_critical?: boolean;
-            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
-            allow_not_applicable?: boolean;
+            /** @description RETIRED (2026-10-20): substep N/A is no longer accepted. Kept so N/A completions recorded before then still read and gate as they did. */
+            readonly allow_not_applicable: boolean;
             /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -36644,10 +36664,8 @@ export interface components {
             }[];
             /** @description Operator may mark this substep N/A instead of completing it. */
             is_optional?: boolean;
-            /** @description Safety-critical substep. When True, N/A is impossible regardless of `allow_not_applicable` or `is_optional`; the gate will reject any SubstepCompletion with marked_not_applicable=True for this substep, even at gate-time re-check. */
+            /** @description Safety-critical substep (torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification). Shown as critical to the operator. */
             is_critical?: boolean;
-            /** @description Engineer authoring concern: when True, an operator may mark this substep N/A (must provide na_reason_code on the SubstepCompletion row). When False, N/A is rejected at write time. Ignored when is_critical=True. */
-            allow_not_applicable?: boolean;
             /** @description Derived, not authored: true when the body carries an attestation block whose kind is 'signature'. Those blocks are signed one at a time, in the body, with a drawing and the signer's own password (services.dwi.gate_signature). The column stays because the advancement gate, the API filter and the capture service all read it. It used to be a separate toggle, so a substep could demand a signature inline AND again at completion — the operator signed twice. */
             requires_signature?: boolean;
             /** @description When True, MeasurementInput captures within this substep additionally create inspection records (QualityReports + MeasurementResult) via services/qms/inline_capture.py, firing the existing record_quality_report_side_effects pipeline (auto-quarantine on out-of-spec, ncr.opened notification, sampling fallback). Default False = process data only. Set True for FAI substeps, in-process hold-points, final inspection. See architectural decision #21 in the DWI design doc. */
@@ -51018,8 +51036,6 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "multipart/form-data": components["schemas"]["RejectLotRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["RejectLotRequest"];
                 "application/json": components["schemas"]["RejectLotRequest"];
             };
         };
@@ -51046,8 +51062,6 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["LotDecisionRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["LotDecisionRequest"];
                 "application/json": components["schemas"]["LotDecisionRequest"];
             };
         };
@@ -57322,6 +57336,7 @@ export interface operations {
         parameters: {
             query?: {
                 assigned_to?: number;
+                assigned_to__isnull?: boolean;
                 batch_execution?: string;
                 /**
                  * @description * `OPEN` - Open

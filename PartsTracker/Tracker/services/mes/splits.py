@@ -148,8 +148,11 @@ def split_part_from_lot(
                 status__in=['PENDING', 'CLAIMED', 'IN_PROGRESS'],
             ).order_by('-visit_number').first()
             if current_exec is not None:
+                # The visit ended: stamp it, or get_current_execution (exited_at IS
+                # NULL) can return this row instead of the rework execution.
                 current_exec.status = 'ROLLED_BACK'
-                current_exec.save(update_fields=['status'])
+                current_exec.exited_at = timezone.now()
+                current_exec.save(update_fields=['status', 'exited_at'])
 
             part.step = rework_target_step
             update_fields.append('step')

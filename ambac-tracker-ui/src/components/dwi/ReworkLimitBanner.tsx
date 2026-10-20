@@ -38,7 +38,9 @@ export function ReworkLimitBanner({ partId }: { partId: string }) {
                     <RotateCcw className="h-4 w-4 text-amber-600" />
                 )}
                 <span className="text-sm font-medium">
-                    Rework attempt {current_visits} of {max_visits}
+                    {/* Visits, not rework attempts: the first pass is visit 1, and a
+                        part that was never reworked read "Rework attempt 1". */}
+                    Visit {current_visits} of {max_visits}
                 </span>
                 {data.total_rework_count > 0 && (
                     <Badge variant="secondary" className="text-[10px]">

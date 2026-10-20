@@ -2,7 +2,7 @@ import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponen
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
     ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
-    ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch,
+    ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch,
 } from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -518,6 +518,7 @@ export const usersEditRoute = createRoute({
 
 export const workOrderDetailRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/workorder/$workOrderId',
+    validateSearch: WorkOrderDetailSearch,
     component: lazyRouteComponent(() => import("@/pages/WorkOrderDetailPage"), "WorkOrderDetailPage"),
 });
 

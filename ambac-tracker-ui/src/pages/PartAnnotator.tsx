@@ -18,6 +18,8 @@ import {useUpdateHeatMapAnnotation} from "@/hooks/useUpdateHeatMapAnnotation";
 import {useDeleteHeatMapAnnotation} from "@/hooks/useDeleteHeatMapAnnotation";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import {useRetrieveThreeDModel} from "@/hooks/useRetrieveThreeDModel";
 import {useQualityReports} from "@/hooks/useQualityReports";
 import {useRetrieveErrorTypes} from "@/hooks/useRetrieveErrorTypes";
@@ -127,7 +129,7 @@ export function PartAnnotator({
             position_y: ann.position_y,
             position_z: ann.position_z,
             defect_type: ann.defect_type || "",
-            severity: ann.severity || "low",
+            severity: (ann.severity || "low").toLowerCase(),
             notes: ann.notes || "",
             isExisting: true,
             isSubmitted: ann.is_submitted,
@@ -347,7 +349,9 @@ export function PartAnnotator({
             return;
         }
 
-        if (workOrderId && activeQrIds.length === 0) {
+        // Every annotation carries the quality report it belongs to (provenance) —
+        // whatever opened the annotator, not only a work-order context.
+        if (activeQrIds.length === 0) {
             toast.error("Please select at least one quality report to link annotations to");
             return;
         }
@@ -490,9 +494,7 @@ export function PartAnnotator({
                 <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Linked to inspection report:</span>
                     {qualityReportIds.map((qrid) => (
-                        <Badge key={qrid} variant="secondary" className="font-mono text-[10px]">
-                            {qrid.slice(0, 8)}…
-                        </Badge>
+                        <ReportNumberBadge key={qrid} id={qrid} />
                     ))}
                     <span className="ml-auto">Tap the model to add a defect.</span>
                 </div>
@@ -728,4 +730,20 @@ export function PartAnnotator({
                 </DialogContent>
             </Dialog>
         </div>);
+}
+
+const linkedReportOptions = (id: string) =>
+    queryOptions({
+        queryKey: ["quality-reports", "detail", id] as const,
+        queryFn: () => api.api_QualityReports_retrieve({ params: { id } }),
+    });
+
+/** A linked inspection report by its number, not its id. */
+function ReportNumberBadge({ id }: { id: string }) {
+    const { data } = useQuery(linkedReportOptions(id));
+    return (
+        <Badge variant="secondary" className="font-mono text-[10px]">
+            {data?.report_number ?? "…"}
+        </Badge>
+    );
 }

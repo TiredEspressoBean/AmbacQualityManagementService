@@ -1163,8 +1163,10 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response({'capa_id': capa.id, 'capa_number': capa.capa_number},
                         status=status.HTTP_201_CREATED)
 
+    # JSON only: the viewset's default multipart makes the generated client post form
+    # data, which sends a null rejected_quantity (a whole-lot reject) as the string "null".
     @extend_schema(request=RejectLotSerializer, responses={200: RejectLotResponseSerializer})
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], parser_classes=_JSON_ONLY)
     def reject(self, request, pk=None):
         """Reject at receiving inspection, opening the disposition with it. A partial
         reject splits the bad pieces off and accepts the rest; a whole-lot reject needs
@@ -1229,7 +1231,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     @extend_schema(request=LotDecisionSerializer, responses={200: MaterialLotSerializer})
-    @action(detail=True, methods=['post'], url_path='reject-remainder')
+    @action(detail=True, methods=['post'], url_path='reject-remainder', parser_classes=_JSON_ONLY)
     def reject_remainder(self, request, pk=None):
         """Escalate to the whole lot: reject what's left of an accepted lot."""
         from Tracker.services.qms.lot_reject import reject_remainder

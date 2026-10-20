@@ -81,6 +81,26 @@ class PartialRejectTests(_Fixture):
         lot.refresh_from_db()
         self.assertEqual((lot.status, lot.quantity_remaining), ("ACCEPTED", Decimal(480)))
 
+    def test_a_failed_inspection_still_rejects_some_and_accepts_the_rest(self):
+        """The failed-inspection refusal on Accept is for the lot as a whole. A partial
+        reject splits the failing pieces off and accepts the remainder on the same FAIL
+        report — refused there, it rolled the whole reject back (walk 2026-10-20)."""
+        lot = self._lot()
+        report = self._report(lot)
+        report.status = "FAIL"
+        report.save(update_fields=["status"])
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {"rejected_quantity": "2"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["outcome"], "PARTIAL")
+        lot.refresh_from_db()
+        self.assertEqual((lot.status, lot.quantity_remaining), ("ACCEPTED", Decimal(498)))
+        # A plain Accept of a failed lot is still refused.
+        other = self._lot(lot_number="L-2")
+        r2 = self._report(other)
+        r2.status = "FAIL"
+        r2.save(update_fields=["status"])
+        self.assertEqual(self.client.post(f"/api/MaterialLots/{other.id}/accept/").status_code, 400)
+
     def test_rejecting_all_the_pieces_is_a_whole_lot_reject(self):
         lot = self._lot()
         resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {"rejected_quantity": "500"}, format="json")
@@ -96,6 +116,21 @@ class WholeLotTests(_Fixture):
         self.assertEqual(lot.status, "REJECTED")
         self.assertEqual(lot.dispositions.get().quantity, Decimal(500))
 
+    def test_the_dialogs_whole_lot_body_is_accepted(self):
+        """The dialog sends rejected_quantity: null with whole_lot. The endpoint was
+        multipart, so the generated client posted form data — null went as "null" and
+        was refused as "A valid number is required" (walk 2026-10-20). JSON only now."""
+        lot = self._lot()
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/reject/", {
+            "disposition_type": "RETURN_TO_SUPPLIER", "severity": "MAJOR", "description": "Bores oversize",
+            "rejected_quantity": None, "whole_lot": True}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["outcome"], "WHOLE_LOT")
+        other = self._lot(lot_number="L-2")
+        resp = self.client.post(f"/api/MaterialLots/{other.id}/reject/",
+                                {"whole_lot": "true"}, format="multipart")
+        self.assertEqual(resp.status_code, 415)
+
     def test_without_it_the_lot_is_held_as_a_request_then_confirmed(self):
         from Tracker.services.qms.lot_reject import confirm_whole_lot_reject, reject_lot
         lot = self._lot()
@@ -108,6 +143,20 @@ class WholeLotTests(_Fixture):
         confirm_whole_lot_reject(lot, self.qa)
         lot.refresh_from_db()
         self.assertEqual((lot.status, lot.hold_reason), ("REJECTED", ""))
+
+    def test_the_request_waits_on_the_deciders_home(self):
+        """Whoever may decide sees the request under Needs attention, linked to the lot;
+        the requester (who can't decide it) doesn't (walk 2026-10-20)."""
+        from Tracker.services.qms.lot_reject import reject_lot
+        lot = self._lot()
+        reject_lot(self._report(lot), self.inspector, whole_lot=True)
+        items = self.client.get("/api/dashboard/needs-attention/").json()["data"]
+        item, = [i for i in items if i["type"] == "whole_lot_reject"]
+        self.assertIn(lot.lot_number, item["message"])
+        self.assertEqual(item["link"], f"/production/material-lots/{lot.id}")
+        self.client.force_authenticate(user=self.inspector)
+        items = self.client.get("/api/dashboard/needs-attention/").json()["data"]
+        self.assertFalse([i for i in items if i["type"] == "whole_lot_reject"])
 
     def test_declining_the_request_sends_the_lot_back_to_inspection(self):
         from Tracker.services.qms.lot_reject import reject_lot

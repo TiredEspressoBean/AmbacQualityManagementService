@@ -160,24 +160,19 @@ class Substep(SecureModel):
     is_critical = models.BooleanField(
         default=False,
         help_text=(
-            "Safety-critical substep. When True, N/A is impossible regardless "
-            "of `allow_not_applicable` or `is_optional`; the gate will reject "
-            "any SubstepCompletion with marked_not_applicable=True for this "
-            "substep, even at gate-time re-check."
+            "Safety-critical substep (torque on a safety-critical fastener, a "
+            "witnessed sign-off, final dimensional verification). Shown as critical "
+            "to the operator."
         ),
     )
-    """Safety-critical flag. Some substeps (torque on a safety-critical
-    fastener, witnessed sign-off) can never be skipped via N/A, no matter
-    what flags say. `is_critical=True` makes that invariant explicit and
-    enforced both at write time and at gate time."""
+    """Safety-critical flag. Substep N/A is retired (2026-10-20); the advancement
+    gate still refuses a legacy N/A completion recorded on a critical substep."""
 
     allow_not_applicable = models.BooleanField(
         default=False,
         help_text=(
-            "Engineer authoring concern: when True, an operator may mark "
-            "this substep N/A (must provide na_reason_code on the "
-            "SubstepCompletion row). When False, N/A is rejected at write "
-            "time. Ignored when is_critical=True."
+            "RETIRED (2026-10-20): substep N/A is no longer accepted. Kept so "
+            "N/A completions recorded before then still read and gate as they did."
         ),
     )
     """Authoring-side opt-in for the N/A path. Distinct from `is_optional`:

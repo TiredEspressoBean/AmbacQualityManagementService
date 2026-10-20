@@ -105,11 +105,14 @@ export function ScanBox({
     const [code, setCode] = useState("");
     const [busy, setBusy] = useState(false);
 
-    const goToWo = (workOrderId: string) => {
+    const goToWo = (workOrderId: string, partId?: string) => {
         if (dest === "control") {
             navigate({ to: "/workorder/$workOrderId/control", params: { workOrderId } });
         } else {
-            navigate({ to: "/workorder/$workOrderId", params: { workOrderId } });
+            // A scanned part lands on its work order with Start Work open and that part
+            // ticked (user decision 2026-10-20).
+            navigate({ to: "/workorder/$workOrderId", params: { workOrderId },
+                       search: partId ? { start: partId } : {} });
         }
     };
 
@@ -122,7 +125,7 @@ export function ScanBox({
             // serials as before, plus lot labels, location labels and label QR codes.
             const hit = await resolveScan(q);
             if (hit?.kind === "WORK_ORDER") { goToWo(hit.id); return; }
-            if (hit?.kind === "PART" && hit.work_order_id) { goToWo(hit.work_order_id); return; }
+            if (hit?.kind === "PART" && hit.work_order_id) { goToWo(hit.work_order_id, hit.id); return; }
             if (hit?.kind === "LOT") {
                 void navigate({ to: "/production/material-lots/$lotId", params: { lotId: hit.id } });
                 return;

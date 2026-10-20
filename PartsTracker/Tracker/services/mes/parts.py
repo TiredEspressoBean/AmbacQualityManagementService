@@ -390,9 +390,15 @@ def advance_part_step(
         transition_logs = []
         step_executions = []
 
+        # Move the cohort first. Sampling counts the parts at the target step from the
+        # database, so judging each part before its siblings' moves were saved left
+        # the cohort out of the count: every-Nth never fired on a lot advance.
         for p in ready_parts:
             p.step = next_step
             p.part_status = PartsStatus.IN_PROGRESS
+        Parts.objects.bulk_update(ready_parts, ["step", "part_status"])
+
+        for p in ready_parts:
             evaluator = SamplingFallbackApplier(part=p)
             result = evaluator.evaluate()
             p.requires_sampling = result.get("requires_sampling", False)
@@ -418,8 +424,7 @@ def advance_part_step(
             ))
 
         Parts.objects.bulk_update(ready_parts, [
-            "step", "part_status", "requires_sampling",
-            "sampling_rule", "sampling_ruleset", "sampling_context",
+            "requires_sampling", "sampling_rule", "sampling_ruleset", "sampling_context",
         ])
         for p in ready_parts:
             reman.after_advance(p)
@@ -464,6 +469,12 @@ def advance_part_step(
     # quarantined parts as they walked through non-quarantine-blocking
     # steps.
     if part.part_status not in HELD_PART_STATUSES:
+        part.part_status = PartsStatus.IN_PROGRESS
+    elif leaving_rework_step and part.part_status in (PartsStatus.REWORK_NEEDED,
+                                                      PartsStatus.REWORK_IN_PROGRESS):
+        # Leaving the rework step means the rework was re-inspected and passed (the
+        # step's inspection gates the advance), so the part is no longer held for
+        # rework. It kept REWORK_NEEDED and read as held at the step it re-entered.
         part.part_status = PartsStatus.IN_PROGRESS
 
     evaluator = SamplingFallbackApplier(part=part)
@@ -659,7 +670,8 @@ def rollback_part_step(
 
     # Perform the rollback
     current_execution.status = 'ROLLED_BACK'
-    current_execution.save(update_fields=['status'])
+    current_execution.exited_at = timezone.now()
+    current_execution.save(update_fields=['status', 'exited_at'])
 
     visit_number = StepExecution.get_visit_count(part, previous_step) + 1
     rolled_back_exec = StepExecution.objects.create(

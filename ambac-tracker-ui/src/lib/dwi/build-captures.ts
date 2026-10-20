@@ -262,9 +262,17 @@ function summarizeOne(
                         : "";
             const eqSuffix = eqName ? ` · ${eqName}` : "";
             if (v === "PASS" || v === "FAIL") return `${v}${eqSuffix}`;
-            return typeof v === "string" && v !== ""
-                ? `${v}${unit ? " " + unit : ""}${eqSuffix}`
-                : "—";
+            if (typeof v !== "string" || v === "") return "—";
+            // The same in-spec rule the capture node shows (nominal ± tolerance), so the
+            // review doesn't drop the out-of-spec mark the inspector saw while capturing.
+            const n = Number(v);
+            const nominal = typeof attrs.nominal === "number" ? attrs.nominal : null;
+            const lo = typeof attrs.lower_tol === "number" ? attrs.lower_tol : 0;
+            const hi = typeof attrs.upper_tol === "number" ? attrs.upper_tol : 0;
+            const spec = Number.isFinite(n) && nominal != null
+                ? (n >= nominal - lo && n <= nominal + hi ? " · in spec" : " · OUT OF SPEC")
+                : "";
+            return `${v}${unit ? " " + unit : ""}${spec}${eqSuffix}`;
         }
 
         case "timer": {

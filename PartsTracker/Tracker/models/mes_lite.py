@@ -3783,15 +3783,14 @@ class Parts(SecureModel):
         Returns True if this part requires QA inspection but hasn't passed yet.
 
         A part needs QA if:
-        1. It requires sampling (was selected for QA)
-        2. It has NOT received a PASS quality report
-
-        This is the single source of truth for QA status - used by filters,
-        serializers, and templates.
+        1. It requires sampling (was selected for QA at its current step)
+        2. It has NOT passed at that step, this visit — a PASS from an earlier step
+           doesn't count (services/qms/qa_status.py holds the rule).
         """
         if not self.requires_sampling:
             return False
-        return not self.error_reports.filter(status='PASS').exists()
+        from Tracker.services.qms.qa_status import part_passed_qa_here
+        return not part_passed_qa_here(self)
 
     @property
     def qa_completed(self):
@@ -3801,7 +3800,8 @@ class Parts(SecureModel):
         """
         if not self.requires_sampling:
             return False  # Doesn't require QA, so not "completed"
-        return self.error_reports.filter(status='PASS').exists()
+        from Tracker.services.qms.qa_status import part_passed_qa_here
+        return part_passed_qa_here(self)
 
     def has_quality_errors(self):
         """Check if part has any quality errors"""

@@ -235,6 +235,45 @@ def authorize_start(operator, step, process, *, authorizer=None, reason=None):
     return authorization_snapshot(result, override=override)
 
 
+def assert_startable(part, work_order) -> None:
+    """Every refusal that stands before a step is started, whoever asks — none of them
+    is a start-gate refusal a supervisor can override. Both start paths call this
+    (start_execution, and creating an execution IN_PROGRESS), so neither can skip one.
+
+    - a reman unit parked on the customer's authorisation (assert_workable);
+    - an expired temporary change (assert_in_date);
+    - a held, cancelled or completed work order (work_order.start_refusal);
+    - a QUARANTINED part: it waits for its disposition, which decides what happens to
+      it (user decision 2026-10-20). Rework is routed by the disposition's split, not a
+      plain start, and containment is recorded on the disposition, so neither is
+      blocked by this.
+
+    Raises:
+        ValidationError: naming why.
+    """
+    from django.core.exceptions import ValidationError
+    if part is not None:
+        from Tracker.services.reman.core_steps import assert_workable
+        assert_workable(part)
+        from Tracker.models import PartsStatus
+        if part.part_status == PartsStatus.QUARANTINED:
+            from Tracker.models import QuarantineDisposition
+            disp = (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
+                    .filter(part=part, archived=False).exclude(current_state='CLOSED')
+                    .order_by('-created_at').first())
+            raise ValidationError(
+                f"{part.ERP_id} is quarantined — "
+                + (f"{disp.disposition_number} decides what happens to it; work it from there."
+                   if disp else "it needs a disposition before any work starts."))
+    if work_order is not None:
+        from Tracker.services.change_control.temporary import assert_in_date
+        assert_in_date(work_order)
+        from Tracker.services.mes.work_order import start_refusal
+        held_or_ended = start_refusal(work_order)
+        if held_or_ended:
+            raise ValidationError(held_or_ended)
+
+
 def start_execution(execution, operator, *, authorizer=None, reason=None):
     """Apply the waiting -> in-process transition to an existing execution.
 
@@ -243,21 +282,8 @@ def start_execution(execution, operator, *, authorizer=None, reason=None):
     and saves. Raises `StartGateError` subclasses; the row is untouched on any
     raise (all checks precede the save).
     """
-    if execution.part_id:
-        from Tracker.services.reman.core_steps import assert_workable
-        assert_workable(execution.part)
-    # An expired temporary change stops work until change control extends it — not a
-    # start-gate refusal, so no supervisor override reaches past it.
-    from Tracker.services.change_control.temporary import assert_in_date
-    if execution.subject_work_order is not None:
-        assert_in_date(execution.subject_work_order)
-    # A held or ended work order takes no new work — not a start-gate refusal either:
-    # the hold is cleared (or the order ended) by its own action, not overridden here.
-    from django.core.exceptions import ValidationError
-    from Tracker.services.mes.work_order import start_refusal
-    held_or_ended = start_refusal(execution.subject_work_order)
-    if held_or_ended:
-        raise ValidationError(held_or_ended)
+    # Refusals no supervisor override reaches past (see assert_startable).
+    assert_startable(execution.part if execution.part_id else None, execution.subject_work_order)
 
     reassignment = None
     if execution.assigned_to_id and execution.assigned_to_id != operator.id:

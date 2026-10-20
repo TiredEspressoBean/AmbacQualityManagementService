@@ -42,6 +42,9 @@ import {
     type SignatureVerificationData,
 } from "@/components/approval/SignatureVerification";
 import { useFpiFail, useFpiPass, useFpiWaive } from "@/hooks/useFpiRecords";
+import { FpiReadings, fpiRecordOptions } from "@/components/fpi/FpiReadings";
+import { useQuery } from "@tanstack/react-query";
+import { useAuthUser } from "@/hooks/useAuthUser";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type FpiSignOffDialogProps = {
@@ -74,13 +77,20 @@ export function FpiSignOffDialog({
     open,
     onOpenChange,
     fpiId,
-    canSignOff,
+    canSignOff: canSignOffProp,
     assurance,
     partLabel,
     verdict = "PASS",
     onSigned,
 }: FpiSignOffDialogProps) {
     // A fail holds the run, so it isn't held to the release bar; pass and waive are.
+    // Whoever signed the first piece's substeps can't buy it off (segregation of
+    // duties). Know it before the click: switch to the co-sign path and say why,
+    // rather than refusing after "Confirm".
+    const { data: me } = useAuthUser();
+    const { data: record } = useQuery({ ...fpiRecordOptions(fpiId), enabled: open });
+    const selfSigned = !!me && (record?.first_piece_signer_ids ?? []).includes(me.pk);
+    const canSignOff = canSignOffProp && !selfSigned;
     const needsOwnPassword = canSignOff && assurance === "PASSWORD" && verdict !== "FAIL";
     const [notes, setNotes] = useState("");
     const [ownPassword, setOwnPassword] = useState("");
@@ -172,8 +182,8 @@ export function FpiSignOffDialog({
                     const detail = apiErrorMessage(err)
                         || (resp?.data?.error as string)
                         || "Could not record the FPI verdict.";
+                    // Shown inline in the dialog; a toast as well said it twice.
                     setError(detail);
-                    toast.error(detail);
                 },
             };
         if (verdict === "FAIL") {
@@ -212,6 +222,7 @@ export function FpiSignOffDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    <FpiReadings fpiId={fpiId} />
                     <div className="space-y-2">
                         <Label>{NOTES_LABEL[verdict]}</Label>
                         <Textarea
@@ -240,13 +251,22 @@ export function FpiSignOffDialog({
                         </div>
                     )}
 
+                    {selfSigned && (
+                        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-sm">
+                            You signed this first piece&rsquo;s inspection, so another qualified
+                            inspector must sign — they can sign here below.
+                        </p>
+                    )}
+
                     {!canSignOff && (
                         <div className="space-y-4 border-t pt-4">
-                            <p className="text-sm text-muted-foreground">
-                                You aren't authorized to buy off a first piece. An
-                                authorized QA inspector can sign here without logging you
-                                out.
-                            </p>
+                            {!selfSigned && (
+                                <p className="text-sm text-muted-foreground">
+                                    You aren't authorized to buy off a first piece. An
+                                    authorized QA inspector can sign here without logging you
+                                    out.
+                                </p>
+                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="fpi-cosign-email">QA inspector email</Label>
                                 <Input

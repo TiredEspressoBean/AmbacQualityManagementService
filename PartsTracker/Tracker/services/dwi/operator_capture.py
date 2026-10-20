@@ -183,19 +183,13 @@ def submit_substep(
     elif signature_data:
         verification_method = "NONE"
 
+    # Substep "Not applicable" is retired (user decision 2026-10-20): a substep that
+    # doesn't apply to some units is authored optional, and an observation is a choice
+    # inside the capture. N/A rows already recorded are read and honoured as before.
     if marked_not_applicable:
-        if substep.is_critical:
-            raise ValidationError(
-                f"Substep '{substep.title}' is critical; N/A is not permitted."
-            )
-        if not substep.allow_not_applicable:
-            raise ValidationError(
-                f"Substep '{substep.title}' is not configured to allow N/A."
-            )
-        if not (na_reason_code and na_reason_code.strip()):
-            raise ValidationError(
-                f"Substep '{substep.title}' requires an N/A reason code."
-            )
+        raise ValidationError(
+            "Not-applicable is no longer supported; author the substep as optional, or "
+            "capture the observation as a choice.")
     else:
         # Required-field capture gate. A substep marked N/A skips it (the whole
         # substep is declared inapplicable); otherwise every engineer-required
@@ -349,7 +343,9 @@ def submit_substep(
                 if kind == "status":
                     _apply_status(report, cap)
                 elif kind == "equipment_roles":
-                    _apply_equipment_roles(report, cap)
+                    for warning in _apply_equipment_roles(report, cap):
+                        if warning not in warnings:
+                            warnings.append(warning)
                 elif kind == "personnel_roles":
                     _apply_personnel_roles(report, cap)
                 elif kind == "signatures":
@@ -683,7 +679,7 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
 
     if step_execution.part_id is not None:
         # Part DWI — one report per (step_execution, substep).
-        report, _ = QualityReports.objects.get_or_create(
+        report, created = QualityReports.objects.get_or_create(
             step_execution=step_execution,
             substep=substep,
             defaults={
@@ -694,6 +690,14 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
                 "status": "PENDING",
             },
         )
+        # Who was working the part: the execution's operator, as the report's OPERATOR
+        # (the personnel roster; the flat `operators` M2M is deprecated). The report
+        # recorded only who detected, so "operator on the job" was blank on every
+        # captured report.
+        if created and step_execution.assigned_to_id:
+            QualityReportPersonnel.objects.get_or_create(
+                quality_report=report, user_id=step_execution.assigned_to_id,
+                role=PersonnelRole.OPERATOR)
         return report
 
     # Receiving-style DWI — the subject is a MaterialLot (Flow A incoming) or an
@@ -844,12 +848,31 @@ def _write_substep_response(*, substep, step_execution=None, batch_execution=Non
 
 
 def _apply_status(report: QualityReports, cap) -> None:
+    """The inspector's own verdict. A real save, then the FAIL consequences on a move
+    into FAIL — a queryset .update() fired neither the disposition signal nor the
+    quarantine, so a visual-judgement FAIL left the part in production with no NCR."""
     raw = (cap.get("status") or "").upper()
-    if raw in {"PASS", "FAIL", "PENDING"}:
-        QualityReports.objects.filter(pk=report.pk).update(status=raw)
+    if raw not in {"PASS", "FAIL", "PENDING"}:
+        return
+    report.refresh_from_db(fields=["status"])
+    prior = report.status
+    if prior == raw:
+        return
+    report.status = raw
+    report.save(update_fields=["status"])
+    from Tracker.services.qms.quality_report import on_report_failed
+    on_report_failed(report, prior)
 
 
-def _apply_equipment_roles(report: QualityReports, cap) -> None:
+def _apply_equipment_roles(report: QualityReports, cap) -> list[str]:
+    """The inspection's equipment roster. An OUT_OF_SERVICE or failed-calibration gauge
+    is refused here as it is on a measurement capture — this block was a second door
+    onto the record that skipped the check. An OVERDUE one is recorded with a warning,
+    as on a measurement (user decision 2026-10-07: any capture that names a gauge).
+    Returns those warnings."""
+    warnings: list[str] = []
+    from django.core.exceptions import ValidationError
+    from Tracker.models import Equipments, EquipmentStatus
     rows = cap.get("rows") or []
     valid_roles = {r.value for r in EquipmentRole}
     for row in rows:
@@ -857,12 +880,24 @@ def _apply_equipment_roles(report: QualityReports, cap) -> None:
         role = row.get("role")
         if not equipment_id or role not in valid_roles:
             continue
+        # tenant-safe: .objects auto-scopes via the tenant ContextVar
+        equipment = Equipments.objects.filter(pk=equipment_id).first()
+        if equipment is None:
+            continue  # another tenant's id: bind nothing
+        if equipment.status == EquipmentStatus.OUT_OF_SERVICE or equipment.calibration_status == 'FAILED':
+            raise ValidationError(
+                f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
+                f"missing calibration). Recalibrate or pick a different gauge.")
+        if equipment.calibration_status == 'OVERDUE':
+            warnings.append(f"{equipment.name} is past its calibration due date — it was "
+                            f"recorded; tell QA so the gauge gets recalibrated.")
         QualityReportEquipment.objects.update_or_create(
             quality_report=report,
             equipment_id=equipment_id,
             role=role,
             defaults={"notes": row.get("notes") or ""},
         )
+    return warnings
 
 
 # Roles that are an ATTESTATION, not a roster entry: someone vouching for the
@@ -1102,7 +1137,7 @@ def _apply_defects(report: QualityReports, cap) -> None:
         if not QualityErrorsList.objects.filter(pk=error_type_id).exists():
             continue
         QualityReportDefect.objects.update_or_create(
-            quality_report=report,
+            report=report,
             error_type_id=error_type_id,
             defaults={
                 "severity": row.get("severity") or "MAJOR",

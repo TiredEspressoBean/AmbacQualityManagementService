@@ -34,6 +34,13 @@ export const CreateCapaSearch = z.object({
 });
 export type CreateCapaSearchParams = z.infer<typeof CreateCapaSearch>;
 
+/** Work order page — `?start=<part>` opens Start Work with that part ticked: how a
+ *  scanned part serial lands (user decision 2026-10-20). */
+export const WorkOrderDetailSearch = z.object({
+    start: z.string().uuid().optional().catch(undefined),
+});
+export type WorkOrderDetailSearchParams = z.infer<typeof WorkOrderDetailSearch>;
+
 /** Work order control — `?step=` opens it filtered to one step's parts (how the QA
  *  inbox's operation and first-piece rows land on the work, not the bare order). */
 export const WorkOrderControlSearch = z.object({

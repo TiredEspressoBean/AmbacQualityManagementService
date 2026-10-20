@@ -309,6 +309,17 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
+        # Who is working the part now: its open execution's operator, in one query
+        # rather than one per row (WO Control's Operator column read "—").
+        from django.db.models import OuterRef, Subquery
+        open_ex = (StepExecution.unscoped  # tenant-safe: correlated to the outer scoped part
+                   .filter(part=OuterRef('pk'), exited_at__isnull=True, assigned_to__isnull=False)
+                   .order_by('-visit_number'))
+        qs = qs.annotate(
+            _operator_first=Subquery(open_ex.values('assigned_to__first_name')[:1]),
+            _operator_last=Subquery(open_ex.values('assigned_to__last_name')[:1]),
+            _operator_username=Subquery(open_ex.values('assigned_to__username')[:1]),
+        )
         return qs.select_related(
             'order', 'order__customer',
             'part_type',
@@ -3428,11 +3439,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             # asks (services/reman/core_steps.assert_workable).
             part = Parts.objects.filter(pk=request.data.get('part')).first() if request.data.get('part') else None  # tenant-safe: .objects auto-scopes to the request tenant
             if part is not None:
-                from Tracker.services.reman.core_steps import assert_workable
-                assert_workable(part)
-                if part.work_order_id:
-                    from Tracker.services.change_control.temporary import assert_in_date
-                    assert_in_date(part.work_order)
+                # The same refusals as start_execution: held/ended WO, quarantined part,
+                # expired temporary change, a reman unit awaiting authorisation.
+                from Tracker.services.mes.lifecycle import assert_startable
+                assert_startable(part, part.work_order if part.work_order_id else None)
             step = Steps.objects.filter(pk=request.data.get('step')).first()
             if step is not None:
                 process = self._gate_process_for(request.data)
@@ -4374,7 +4384,8 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
-        return qs
+        # calibration_status reads the type and the latest calibration per row.
+        return qs.select_related('equipment_type').prefetch_related('calibration_records')
 
 
 class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
@@ -4403,7 +4414,7 @@ class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin
         # old version stays retrievable by id, since history points at it.
         if self.action == 'list':
             qs = qs.filter(is_current_version=True)
-        return qs.select_related('equipment_type', 'location')
+        return qs.select_related('equipment_type', 'location').prefetch_related('calibration_records')
 
 
 class EquipmentTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,

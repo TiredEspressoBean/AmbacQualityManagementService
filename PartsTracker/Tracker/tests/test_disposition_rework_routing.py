@@ -83,6 +83,23 @@ class DispositionReworkRoutingTests(TenantContextMixin, VectorTestCase):
         disp.refresh_from_db()
         self.assertEqual(disp.current_state, "IN_PROGRESS")  # NOT closed by routing
 
+    def test_the_rework_split_ends_the_failed_visit(self):
+        """The visit the part failed is ROLLED_BACK *and exited*; it used to keep
+        exited_at NULL, so get_current_execution could return it instead of the
+        rework visit."""
+        from Tracker.models import StepExecution
+        from Tracker.services.qms.disposition import route_part_to_rework_if_needed
+
+        failed = StepExecution.objects.create(
+            tenant=self.tenant, part=self.part, step=self.task_step, visit_number=1,
+            status="IN_PROGRESS")
+        route_part_to_rework_if_needed(self._rework_disposition(), self.user)
+
+        failed.refresh_from_db()
+        self.assertEqual(failed.status, "ROLLED_BACK")
+        self.assertIsNotNone(failed.exited_at)
+        self.assertEqual(StepExecution.get_current_execution(self.part).step_id, self.rework_step.id)
+
     def test_no_route_when_process_has_no_rework_step(self):
         # Drop the rework step from the process → routing no-ops, leaving the part
         # REWORK_NEEDED at its current step for manual routing (2c).

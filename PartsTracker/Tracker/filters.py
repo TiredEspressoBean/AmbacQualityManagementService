@@ -76,17 +76,13 @@ class PartFilter(TenantFilterMixin, django_filters.FilterSet):
         See Parts.needs_qa and Parts.qa_completed properties for the single
         source of truth on QA status semantics.
         """
+        # "Passed" means at the part's current step, this visit — not any PASS ever
+        # (services/qms/qa_status.py).
+        from Tracker.services.qms.qa_status import with_qa_passed
         if value is True:
-            # Parts that require sampling but don't have any PASS QA report
-            return queryset.filter(requires_sampling=True).exclude(
-                error_reports__status='PASS'
-            )
+            return with_qa_passed(queryset.filter(requires_sampling=True)).filter(_qa_passed=False)
         elif value is False:
-            # Parts that have at least one PASS QA report (QA completed)
-            return queryset.filter(
-                requires_sampling=True,
-                error_reports__status='PASS'
-            ).distinct()
+            return with_qa_passed(queryset.filter(requires_sampling=True)).filter(_qa_passed=True)
         return queryset
 
     def filter_exclude_terminal(self, queryset, name, value):

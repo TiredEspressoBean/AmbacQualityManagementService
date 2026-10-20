@@ -23,7 +23,8 @@ import { api } from "@/lib/api/generated";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FpiSignOffDialog, type FpiVerdict } from "@/components/fpi-sign-off-dialog";
-import { useFpiRecords } from "@/hooks/useFpiRecords";
+import { useFpiGetOrCreate, useFpiRecords } from "@/hooks/useFpiRecords";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useReportActivity } from "@/hooks/useReportActivity";
@@ -36,18 +37,28 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
     workOrderId: string;
     onActivity?: (active: boolean) => void;
 }) {
-    // WO-scoped, unlike `usePendingFpis` which is tenant-wide. `work_order` is
-    // already in FPIRecordViewSet.filterset_fields, so no new endpoint.
+    // WO-scoped, unlike `usePendingFpis` which is tenant-wide. Every status, so a
+    // step whose latest first piece FAILED shows as held — after a fail the pending
+    // card used to vanish and nothing said the run was stopped.
     const { data, isLoading } = useFpiRecords({
         work_order: workOrderId,
-        status: "PENDING",
+        ordering: "-created_at",
+        limit: 200,
     });
+    const startNew = useFpiGetOrCreate();
     const acknowledge = useAcknowledgeFpi();
     const canSignOff = usePermissionSet().has("sign_off_fpi");
     const [signing, setSigning] = useState<{ row: FpiRow; verdict: FpiVerdict } | null>(null);
 
-    const rows: FpiRow[] = data?.results ?? [];
-    useReportActivity(rows.length > 0, onActivity);
+    // The latest record per step decides: PENDING → waiting on QA; FAILED → held.
+    const latestByStep = new Map<string, FpiRow>();
+    for (const r of data?.results ?? []) {
+        const key = String(r.step ?? "");
+        if (!latestByStep.has(key)) latestByStep.set(key, r);
+    }
+    const rows: FpiRow[] = [...latestByStep.values()].filter((r) => r.status === "PENDING");
+    const held: FpiRow[] = [...latestByStep.values()].filter((r) => r.status === "FAILED");
+    useReportActivity(rows.length + held.length > 0, onActivity);
 
     if (isLoading) {
         return (
@@ -58,10 +69,40 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
         );
     }
 
-    // Self-hiding: a WO with no pending FPI shouldn't occupy space on Control.
-    if (rows.length === 0) return null;
+    // Self-hiding: a WO with no pending or held FPI shouldn't occupy space on Control.
+    if (rows.length === 0 && held.length === 0) return null;
 
     return (
+        <>
+            {held.map((r) => (
+                <div key={r.id} className="rounded-lg border-2 border-destructive/50 bg-destructive/10 p-4">
+                    <div className="flex flex-wrap items-start gap-3">
+                        <ShieldAlert className="mt-0.5 h-5 w-5 text-destructive" />
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <p className="font-medium">
+                                First piece failed at {r.step_info?.name ?? "this step"} — run held
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                No part moves past this step. Correct the setup, then start a new
+                                first piece for inspection.
+                                {r.inspected_by_info?.full_name ? ` Failed by ${r.inspected_by_info.full_name}.` : ""}
+                            </p>
+                            {r.notes && <p className="text-sm italic">“{r.notes}”</p>}
+                        </div>
+                        <Button size="sm" disabled={startNew.isPending}
+                                onClick={() => startNew.mutate(
+                                    { work_order: workOrderId, step: String(r.step),
+                                      ...(r.equipment ? { equipment: String(r.equipment) } : {}) },
+                                    {
+                                        onSuccess: () => toast.success("New first piece started — it's waiting on QA once inspected."),
+                                        onError: (e) => toast.error(apiErrorMessage(e) ?? "Could not start a new first piece"),
+                                    })}>
+                            Start a new first piece
+                        </Button>
+                    </div>
+                </div>
+            ))}
+            {rows.length > 0 && (
         <>
             <div className="rounded-lg border-2 border-amber-500/50 bg-amber-500/10 p-4">
                 <div className="mb-3 flex items-center gap-2">
@@ -136,6 +177,8 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                 </div>
             </div>
 
+        </>
+            )}
             {signing && (
                 <FpiSignOffDialog
                     key={`${signing.row.id}-${signing.verdict}`}

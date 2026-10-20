@@ -587,6 +587,9 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     # almost every part is not a core.
     core_role = serializers.SerializerMethodField()
 
+    # Who is working the part now (open execution's operator); null when nobody.
+    current_operator_name = serializers.SerializerMethodField()
+
     # QA status from model properties (single source of truth)
     needs_qa = serializers.BooleanField(read_only=True)
     qa_completed = serializers.BooleanField(read_only=True)
@@ -619,9 +622,22 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
     order = TenantScopedPrimaryKeyRelatedField(queryset=Orders.unscoped.all(), required=False, allow_null=True)
     work_order = TenantScopedPrimaryKeyRelatedField(queryset=WorkOrder.unscoped.all(), required=False, allow_null=True)
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_current_operator_name(self, obj):
+        if hasattr(obj, '_operator_username'):
+            full = f"{obj._operator_first or ''} {obj._operator_last or ''}".strip()
+            return full or obj._operator_username or None
+        ex = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
+              .filter(part=obj, exited_at__isnull=True, assigned_to__isnull=False)
+              .select_related('assigned_to').order_by('-visit_number').first())
+        if ex is None:
+            return None
+        return ex.assigned_to.get_full_name() or ex.assigned_to.username
+
     class Meta:
         model = Parts
         fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'needs_qa', 'qa_completed',
+                  'current_operator_name',
                   'order', 'part_type', 'part_type_info', 'step', 'step_info', 'work_order', 'quality_info',
                   'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
                   'step_name', 'step_description', 'work_order_erp_id', 'sampling_rule',
@@ -968,11 +984,9 @@ class WorkOrderListSerializer(SecureModelMixin):
         ]
         parts = obj.parts.filter(part_status__in=active_statuses)
         required = parts.filter(requires_sampling=True).count()
-        # Completed = has at least one error_report (QualityReport) with PASS status
-        completed = parts.filter(
-            requires_sampling=True,
-            error_reports__status='PASS'
-        ).distinct().count()
+        # Completed = passed at its current step, this visit (services/qms/qa_status.py)
+        from Tracker.services.qms.qa_status import with_qa_passed
+        completed = with_qa_passed(parts.filter(requires_sampling=True)).filter(_qa_passed=True).count()
 
         return {
             'required': required,
@@ -2040,6 +2054,13 @@ class EquipmentsSerializer(SecureModelMixin):
     """
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     location_name = serializers.SerializerMethodField()
+    # CURRENT / DUE_SOON / OVERDUE / FAILED, or null when the gauge isn't calibrated —
+    # so a picker can say "calibration overdue" before the reading is taken.
+    calibration_status = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_calibration_status(self, obj):
+        return obj.calibration_status
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_location_name(self, obj):
@@ -2050,6 +2071,7 @@ class EquipmentsSerializer(SecureModelMixin):
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "location_name", "status",
+            "calibration_status",
             "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]

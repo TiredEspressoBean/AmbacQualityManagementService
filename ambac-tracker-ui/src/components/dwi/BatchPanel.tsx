@@ -29,7 +29,7 @@ import {
     useSealBatchExecution,
 } from "@/hooks/useBatchExecutions";
 import { useSubsteps, useSubmitSubstep, type Substep } from "@/hooks/useSubsteps";
-import { useSignaturePrompt, type VerifiedSignature } from "@/components/dwi/useSignaturePrompt";
+import { useSignaturePrompt } from "@/components/dwi/useSignaturePrompt";
 import { submitSignedSubstep } from "@/lib/dwi/signed-submit";
 import { SubstepOperatorView } from "@/components/dwi/SubstepOperatorView";
 import {
@@ -337,7 +337,7 @@ function BatchCaptureSection({
 }) {
     const { data: substepsData, isLoading } = useSubsteps(stepId ? { step: stepId } : undefined);
     const submit = useSubmitSubstep();
-    // A `requires_signature` batch substep is signed once, for the whole load.
+    // Signature blocks are signed where they sit; this prompt is only the retry path.
     const signaturePrompt = useSignaturePrompt();
     const [responsesBySubstep, setResponsesBySubstep] = useState<
         Record<string, OperatorResponses>
@@ -366,15 +366,11 @@ function BatchCaptureSection({
             return;
         }
         const captures = buildCaptures(body, responses);
-        let signature: VerifiedSignature | undefined;
-        if ((substep as { requires_signature?: boolean }).requires_signature) {
-            const sig = await signaturePrompt.request(substep.title ?? "this substep");
-            if (sig === null) return; // cancelled: nothing recorded
-            signature = sig;
-        }
+        // Its Signature + password blocks were signed where they sit; the server checks
+        // them and asks for no second, substep-level signature.
         setSubmittingId(substep.id);
         try {
-            const refused = await submitSignedSubstep(substep, signature, signaturePrompt.request,
+            const refused = await submitSignedSubstep(substep, undefined, signaturePrompt.request,
                 (fields) => submit.mutateAsync({
                     id: substep.id,
                     data: { batch_execution: batchId, captures, ...fields },

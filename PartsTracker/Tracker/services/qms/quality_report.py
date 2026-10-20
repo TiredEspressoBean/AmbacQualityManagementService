@@ -38,7 +38,8 @@ def record_quality_report_side_effects(report) -> None:
     """
     _link_sampling_audit_log(report)
 
-    if report.status == "PASS":
+    # Sampling state is per part; a receiving lot's or an OSP return's report has none.
+    if report.status == "PASS" and report.part:
         SamplingTriggerManager(report.part, report.status).update_state()
 
     if report.status == "FAIL":
@@ -63,7 +64,10 @@ def on_report_failed(report, prior_status) -> bool:
 
 
 def _apply_fail_consequences(report) -> None:
-    SamplingTriggerManager(report.part, "FAIL").update_state()
+    # A report with no part (a receiving lot, an OSP return) has no sampling state or
+    # part to quarantine — the lot/shipment flow contains it — but is still an NCR.
+    if report.part:
+        SamplingTriggerManager(report.part, "FAIL").update_state()
     _trigger_sampling_fallback(report)
     if report.part:
         report.part.part_status = PartsStatus.QUARANTINED

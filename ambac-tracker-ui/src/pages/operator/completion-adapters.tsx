@@ -34,7 +34,7 @@ import {
 } from "@/components/dwi/ReceivingAcceptanceStage";
 import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
-import type { RequestSignature, VerifiedSignature } from "@/components/dwi/useSignaturePrompt";
+import type { RequestSignature } from "@/components/dwi/useSignaturePrompt";
 import { submitSignedSubstep } from "@/lib/dwi/signed-submit";
 
 // ---------------------------------------------------------------------------
@@ -82,20 +82,11 @@ export type CompletionAdapter = {
 const needsSignature = (s: Substep) =>
     Boolean((s as { requires_signature?: boolean }).requires_signature);
 
-/** Signatures for the substeps about to be submitted that need one, asked for up
- *  front and in order — null if the operator cancels any, and then nothing is
- *  submitted. A substep's own title is what the signature means. */
-export async function collectSignatures(
-    substeps: Substep[], requestSignature: RequestSignature,
-): Promise<Map<string, VerifiedSignature> | null> {
-    const out = new Map<string, VerifiedSignature>();
-    for (const s of substeps.filter(needsSignature)) {
-        const sig = await requestSignature(s.title ?? "this substep");
-        if (sig === null) return null;
-        out.set(s.id, sig);
-    }
-    return out;
-}
+// No substep-level signature is asked for at submit. A substep "requires a
+// signature" because its body has Signature + password blocks, and each is signed
+// where it sits, before submit (services.dwi.gate_signature). The server checks those
+// blocks were signed (unsigned_signature_blocks) and asks for nothing more — the
+// prompt here made the inspector sign the same act twice.
 
 /** Substeps on this execution with a live (not voided) completion — committed.
  *  A signed one isn't re-submitted: it's recorded, and changing a signed entry is
@@ -127,20 +118,19 @@ export async function flushSubstepCaptures({
 }): Promise<boolean> {
     if (!stepExecutionId) return false;
     // Each sampled unit re-submits the same substeps by design, so nothing is
-    // skipped as committed here; a signature is asked for on every pass.
+    // skipped as committed here. Only substeps with captures are sent: one with none
+    // would only be refused for its required fields.
     const toSubmit = substeps.filter((s) =>
-        Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0 || needsSignature(s));
-    const signatures = await collectSignatures(toSubmit, requestSignature);
-    if (signatures === null) return false;
+        Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0);
     let failCount = 0;
     for (const s of toSubmit) {
-        const captures = buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {});
-        const refused = await submitSignedSubstep(s, signatures.get(s.id), requestSignature,
+        const body = { captures: buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {}) };
+        const refused = await submitSignedSubstep(s, undefined, requestSignature,
             (fields) => submit.mutateAsync({
                 id: s.id,
                 data: {
                     step_execution: stepExecutionId,
-                    captures,
+                    ...body,
                     ...fields,
                     ...(sampleNumber != null ? { sample_number: sampleNumber } : {}),
                 },
@@ -263,8 +253,7 @@ async function completePart(ctx: CompletionContext): Promise<void> {
         return;
     }
     // Phase 1: commit per-substep captures. A signed substep already committed is
-    // left alone (see committedSubstepIds); every signature still needed is asked
-    // for up front, so cancelling one writes nothing.
+    // left alone (see committedSubstepIds) — its signatures are recorded.
     let committed: Set<string>;
     try {
         committed = await committedSubstepIds(stepExecutionId);
@@ -276,19 +265,14 @@ async function completePart(ctx: CompletionContext): Promise<void> {
         if (needsSignature(s)) return !committed.has(s.id);
         return Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0;
     });
-    const signatures = await collectSignatures(toSubmit, ctx.requestSignature);
-    if (signatures === null) {
-        toast("Step not completed", { description: "A signature was cancelled — nothing was recorded." });
-        return;
-    }
     let okCount = 0;
     const failures: string[] = [];
     for (const s of toSubmit) {
-        const captures = buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {});
-        const refused = await submitSignedSubstep(s, signatures.get(s.id), ctx.requestSignature,
+        const body = { captures: buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {}) };
+        const refused = await submitSignedSubstep(s, undefined, ctx.requestSignature,
             (fields) => submit.mutateAsync({
                 id: s.id,
-                data: { step_execution: stepExecutionId, captures, ...fields },
+                data: { step_execution: stepExecutionId, ...body, ...fields },
             }));
         if (refused === null) okCount++;
         else failures.push(`${s.title}: ${refused}`);

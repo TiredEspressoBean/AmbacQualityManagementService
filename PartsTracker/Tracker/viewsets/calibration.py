@@ -254,6 +254,8 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
                 'due_date': serializers.DateField(),
                 'days_until_due': serializers.IntegerField(),
                 'overdue': serializers.BooleanField(),
+                # The gauge's latest calibration failed: readings taken with it are suspect.
+                'failed': serializers.BooleanField(),
             },
             many=True,
         )},

@@ -109,7 +109,8 @@ class SubstepSerializer(SecureModelMixin):
             'is_editable',
             'created_at', 'updated_at', 'archived',
         )
-        read_only_fields = ('created_at', 'updated_at', 'is_editable')
+        # allow_not_applicable: N/A is retired; existing values are shown, not set.
+        read_only_fields = ('created_at', 'updated_at', 'is_editable', 'allow_not_applicable')
 
     def validate_body_blocks(self, value):
         """Enforce decision #18: every `node_id` in the TipTap doc is a valid
@@ -171,6 +172,15 @@ class SubstepSerializer(SecureModelMixin):
                 'scope': "Cannot set BATCH scope on a substep of a first-piece-inspection "
                          "step - FPI and batch are mutually exclusive.",
             })
+        # A required reman capture can't go on a step new builds also run (no N/A escape).
+        from Tracker.services.dwi.reman_capture_guard import substep_refusal
+        body = attrs.get('body_blocks') if 'body_blocks' in attrs else (
+            self.instance.body_blocks if self.instance else None)
+        optional = attrs.get('is_optional') if 'is_optional' in attrs else (
+            self.instance.is_optional if self.instance else False)
+        refusal = substep_refusal(step, body, optional=bool(optional))
+        if refusal:
+            raise serializers.ValidationError({'body_blocks': refusal})
         return attrs
 
     def update(self, instance, validated_data):

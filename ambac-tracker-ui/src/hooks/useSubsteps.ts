@@ -108,8 +108,6 @@ export type SubmitSubstepRequest = {
      *  authored `requires_signature` (a verified signature). The server derives
      *  how the signature was verified — the client no longer says. */
     password?: string;
-    marked_not_applicable?: boolean;
-    na_reason_code?: string;
 };
 export type SubmitSubstepResponse = {
     completion_id: string;
@@ -127,6 +125,9 @@ export function useSubmitSubstep() {
         unknown,
         { id: string; data: SubmitSubstepRequest }
     >({
+        // Every caller reports the server's reason itself (the completion adapters, the
+        // batch panel); the global "Operation failed" doubled it.
+        meta: { suppressGlobalError: true },
         mutationFn: ({ id, data }) =>
             api.api_Substeps_submit_create(data, {
                 params: { id },

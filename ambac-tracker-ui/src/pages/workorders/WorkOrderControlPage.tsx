@@ -178,7 +178,7 @@ function adaptPart(p: PartRow): MockPart {
         step_id: p.step ?? "",
         status: (p.part_status ?? "PENDING") as MockPartStatus,
         updated_at: p.updated_at,
-        operator: null, // Parts list serializer doesn't expose the current operator directly
+        operator: p.current_operator_name ?? null, // the open execution's operator
         rework_count: p.total_rework_count,
         requires_sampling: p.requires_sampling,
         traveler: [], // fetched lazily via usePartTraveler on row expand

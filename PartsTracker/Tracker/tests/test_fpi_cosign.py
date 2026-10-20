@@ -287,6 +287,20 @@ class FpiCosignTests(TenantContextMixin, TestCase):
 
     # -- segregation of duties ----------------------------------------------
 
+    def test_an_inspector_who_signed_the_work_can_have_a_colleague_cosign(self):
+        """The dialog offers a co-sign when the caller (who holds sign_off_fpi) signed
+        the first piece's substeps. The server used to sign as the caller anyway and
+        refuse them on segregation of duties (QA walk, 2026-10-20)."""
+        self._sign_substep_as(self.qa)
+        second = User.objects.create_user(username="cs-qa2", email="qa2@cs.test",
+                                           password="qa2pass", tenant=self.tenant)
+        self._grant(second, "view_fpirecord", "sign_off_fpi", "full_tenant_access", group="QA2")
+        resp = self._pass(self.qa, notes="ok", cosign_email="qa2@cs.test", cosign_password="qa2pass")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.fpi.refresh_from_db()
+        self.assertEqual(self.fpi.inspected_by_id, second.id)
+
+
     def test_cosigner_who_signed_the_substeps_is_refused_with_400(self):
         """SOD: you cannot buy off first-piece work you performed. This used to
         escape `_reject_self_signoff` as an uncaught ValueError → 500."""

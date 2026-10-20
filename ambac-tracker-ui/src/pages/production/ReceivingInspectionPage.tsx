@@ -237,7 +237,7 @@ export function ReceivingInspectionPage() {
                         <Link to="/production/material-lots/$lotId" params={{ lotId: lot.id }} className="font-mono hover:underline" title="Open the lot record">
                             {lot.lot_number}
                         </Link>
-                        <Badge variant="outline">{lot.status}</Badge>
+                        <Badge variant="outline">{lot.status.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())}</Badge>
                         <LotHoldBadges lot={lot} />
                         <div className="ml-auto flex items-center gap-2">
                             {canExtend(lot) && (

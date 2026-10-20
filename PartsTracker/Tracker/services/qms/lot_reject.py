@@ -102,7 +102,7 @@ def reject_lot(report, user, *, disposition_type: str = "RETURN_TO_SUPPLIER",
             # the reject: raised here, it rolled the reject back while its message still
             # said the lot was quarantined.
             if lot.status == "AWAITING_INSPECTION" and not ri.hold_if_expired(lot):
-                ri.accept(report, user)
+                ri.accept(report, user, remainder=True)
             apply_disposition_to_lot(disposition)
             return child, disposition, "PARTIAL"
 

@@ -130,14 +130,17 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
 
     # Fixed filterset fields - these should be actual model fields, not SerializerMethodField names
-    filterset_fields = ["disposition_number", "current_state", "disposition_type", "resolution_completed",
-                        "assigned_to", "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
+    filterset_fields = {k: ["exact"] for k in [
+                        "disposition_number", "current_state", "disposition_type", "resolution_completed",
+                        "resolution_completed_by", "part", "part__ERP_id", "part__part_type__name",
                         # Batch dispositions (a failed cycle's whole load) — filter/list by the batch,
                         # or reach them as a class via batch_execution (part is null on these).
                         "batch_execution",
                         # Held-lots surface + RTV loop: reach the rejected lot / its supplier through the
                         # linked receiving quality reports (no denormalized FK on the disposition).
-                        "quality_reports__material_lot", "quality_reports__material_lot__supplier"]
+                        "quality_reports__material_lot", "quality_reports__material_lot__supplier"]}
+    # assigned_to__isnull=true is the unassigned queue (auto-opened dispositions).
+    filterset_fields["assigned_to"] = ["exact", "isnull"]
 
     # Search fields should be actual model fields that can be searched
     search_fields = ["disposition_number", "description", "resolution_notes", "assigned_to__first_name",
@@ -1863,8 +1866,16 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         explicitly, so `inspected_by`, the `QaApproval.qa_staff`, and the
         segregation-of-duties check all follow the *cosigner*, not whoever
         happened to be logged in.
+
+        Credentials supplied mean a co-sign, even from a caller who holds the perm:
+        an inspector who signed the first piece's substeps can't buy it off, so the
+        dialog offers a colleague's co-sign — which this used to ignore, signing as
+        the caller and refusing them on segregation of duties.
         """
-        if request.user.has_tenant_perm('sign_off_fpi'):
+        # A holder's own email in the fields is stray, not a co-sign (they sign directly).
+        cosign_email = (request.data.get('cosign_email') or '').strip().lower()
+        cosigning = bool(cosign_email) and cosign_email != (request.user.email or '').lower()
+        if request.user.has_tenant_perm('sign_off_fpi') and not cosigning:
             return request.user, None
 
         cosigner, err = self.verify_second_person(

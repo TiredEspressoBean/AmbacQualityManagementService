@@ -441,6 +441,18 @@ class HeatMapAnnotationsSerializer(SecureModelMixin):
         from Tracker.services.qms.annotations import is_submitted
         return is_submitted(obj)
 
+    def validate(self, attrs):
+        # Every annotation belongs to a quality report — provenance (user decision
+        # 2026-10-20). The model allows none; the API doesn't.
+        reports = attrs.get('quality_reports', None)
+        if self.instance is None and not reports:
+            raise serializers.ValidationError(
+                {'quality_reports': ["Link the annotation to the quality report it records."]})
+        if self.instance is not None and reports is not None and len(reports) == 0:
+            raise serializers.ValidationError(
+                {'quality_reports': ["An annotation can't be unlinked from every report."]})
+        return super().validate(attrs)
+
     def create(self, validated_data):
         """Set created_by to current user"""
         request = self.context.get('request')

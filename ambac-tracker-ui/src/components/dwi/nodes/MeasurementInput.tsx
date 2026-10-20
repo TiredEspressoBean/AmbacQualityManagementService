@@ -6,6 +6,8 @@
  */
 import { Combobox } from "@/components/ui/combobox";
 import { useRef } from "react";
+import { queryOptions, useQueries } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -92,6 +94,14 @@ function readMeasResponse(resp: unknown): MeasResponse {
 
 // Radix Select can't use an empty-string item value; equipment is optional.
 const EQUIP_NONE = "__none__";
+
+
+const gaugeOptions = (id: string) =>
+    queryOptions({
+        queryKey: ["equipment", "detail", id] as const,
+        queryFn: () => api.api_Equipment_retrieve({ params: { id } }),
+        staleTime: 60_000,
+    });
 
 export function MeasurementInputEditForm({ node, updateAttributes }: NodeViewProps) {
     const a = node.attrs as Attrs;
@@ -215,10 +225,24 @@ function View(props: NodeViewProps) {
             ? { id: a.backup_equipment_id, name: a.backup_equipment_name || "Backup", status: a.backup_equipment_status, tag: "backup" as const }
             : null,
     ].filter((o): o is { id: string; name: string; status: string | null; tag: "default" | "backup" } => o !== null);
-    const equipmentOptions = rawEquipmentOptions.filter((o) => o.status !== "OUT_OF_SERVICE");
-    // If the configured default is OUT_OF_SERVICE, don't fall through to it —
+    // The gauges' live state on the floor: the authored status is a snapshot, and
+    // calibration (overdue / failed) moves on after authoring. Overdue is marked so the
+    // operator knows before the reading (it is recorded, with a warning — 10-07
+    // decision); failed or out of service is left out, as the server refuses it.
+    const live = useQueries({
+        queries: rawEquipmentOptions.map((o) => ({ ...gaugeOptions(o.id), enabled: isOperator })),
+        combine: (results) => new Map(results.map((r, i) => [rawEquipmentOptions[i]?.id, r.data])),
+    });
+    const unusable = (o: { id: string; status: string | null }) => {
+        const g = live.get(o.id);
+        return (g?.status ?? o.status) === "OUT_OF_SERVICE" || g?.calibration_status === "FAILED";
+    };
+    const overdue = (o: { id: string }) => live.get(o.id)?.calibration_status === "OVERDUE";
+    const equipmentOptions = rawEquipmentOptions.filter((o) => !unusable(o));
+    // If the configured default is unusable, don't fall through to it —
     // start with no selection so the operator has to pick a live gauge.
-    const defaultIsLive = a.default_equipment_status !== "OUT_OF_SERVICE";
+    const defaultIsLive = !rawEquipmentOptions.some((o) => o.tag === "default" && unusable(o))
+        && a.default_equipment_status !== "OUT_OF_SERVICE";
     const selectedEquipmentId = resp.equipment_id ?? (defaultIsLive ? a.default_equipment_id : null) ?? null;
 
     // Always write the structured {value, equipment_id} shape so the chosen
@@ -351,6 +375,7 @@ function View(props: NodeViewProps) {
                                         <SelectItem key={o.id} value={o.id}>
                                             {o.name}
                                             {o.tag === "default" ? " (default)" : " (backup)"}
+                                            {overdue(o) ? " — calibration overdue" : ""}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

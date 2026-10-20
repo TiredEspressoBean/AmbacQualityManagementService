@@ -25,8 +25,10 @@ DEFAULT_DUE_WITHIN_DAYS = 7
 
 def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
                  due_within_days: int = DEFAULT_DUE_WITHIN_DAYS) -> list[dict]:
-    """Equipment the user recently used whose calibration is due soon or
-    overdue. One row per equipment, most-urgent first."""
+    """Equipment the user recently used whose calibration FAILED, is overdue, or is
+    due soon. One row per equipment; failed first, then most-urgent. A failed gauge
+    you just measured with is the exposure case — the readings may be suspect — so it
+    is listed, not dropped (it used to be excluded)."""
     from Tracker.models import CalibrationRecord, QualityReportEquipment
 
     used_cutoff = timezone.now() - timedelta(days=used_within_days)
@@ -45,24 +47,27 @@ def my_gauge_nag(user, used_within_days: int = DEFAULT_USED_WITHIN_DAYS,
     today = tenant_today(user.tenant_id)
     due_cutoff = today + timedelta(days=due_within_days)
 
+    # The latest calibration per gauge decides: a FAIL is listed whatever its due date.
     records = (CalibrationRecord.objects  # tenant-safe: .objects auto-scopes
-               .filter(equipment_id__in=used_ids, due_date__lte=due_cutoff)
-               .exclude(result='FAIL')
+               .filter(equipment_id__in=used_ids)
                .select_related("equipment"))
     if hasattr(records, "latest_per_equipment"):
         records = records.latest_per_equipment()
 
     rows = []
     for rec in records:
-        overdue = rec.due_date < today
+        failed = rec.result == 'FAIL'
+        if not failed and rec.due_date > due_cutoff:
+            continue
         rows.append({
             "equipment_id": str(rec.equipment_id),
             "equipment_name": rec.equipment.name if rec.equipment_id else "",
             "due_date": rec.due_date.isoformat(),
             "days_until_due": (rec.due_date - today).days,
-            "overdue": overdue,
+            "overdue": rec.due_date < today,
+            "failed": failed,
         })
-    rows.sort(key=lambda r: r["days_until_due"])
+    rows.sort(key=lambda r: (not r["failed"], r["days_until_due"]))
     return rows
 
 

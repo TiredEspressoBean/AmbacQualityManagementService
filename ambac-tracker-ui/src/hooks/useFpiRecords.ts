@@ -93,6 +93,8 @@ export function useFpiGetOrCreate() {
     const queryClient = useQueryClient();
 
     return useMutation({
+        // Every caller shows the server's reason itself.
+        meta: { suppressGlobalError: true },
         mutationFn: (data: {
             work_order: string;
             step: string;
@@ -118,6 +120,8 @@ export function useFpiPass() {
     const queryClient = useQueryClient();
 
     return useMutation({
+        // Every caller shows the server's reason itself.
+        meta: { suppressGlobalError: true },
         /** `cosign_*` are for the second-person path: when the caller lacks
          *  `sign_off_fpi`, an authorized QA person authenticates inline and the
          *  verdict is attributed to *them*. Omit both for a normal sign-off. */
@@ -155,6 +159,8 @@ export function useFpiFail() {
     const queryClient = useQueryClient();
 
     return useMutation({
+        // Every caller shows the server's reason itself.
+        meta: { suppressGlobalError: true },
         /** `cosign_*`: the second-person path, as for pass. */
         mutationFn: ({ id, notes, cosign_email, cosign_password, cosign_signature }: {
             id: string; notes?: string;
@@ -182,6 +188,8 @@ export function useFpiWaive() {
     const queryClient = useQueryClient();
 
     return useMutation({
+        // Every caller shows the server's reason itself.
+        meta: { suppressGlobalError: true },
         /** A waive releases the step as surely as a pass, so it meets the same bar:
          *  the signer's own `password` when the step is authored to need one, or the
          *  `cosign_*` second-person path. */

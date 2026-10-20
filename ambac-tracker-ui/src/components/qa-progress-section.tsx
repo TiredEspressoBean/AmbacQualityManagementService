@@ -26,15 +26,16 @@ type QaProgressSectionProps = {
     onJumpToStatus?: (status: string) => void;
 };
 
+const DONE_STATUSES = new Set(['COMPLETED', 'DISMANTLED', 'SHIPPED', 'IN_STOCK', 'AWAITING_PICKUP']);
+
 export const QaProgressSection = memo(function QaProgressSection({ workOrder, parts, isLoadingParts, onJumpToStatus }: QaProgressSectionProps) {
     // Calculate progress stats
     const totalParts = parts.length;
-    const completedParts = parts.filter(p =>
-        p.part_status === 'COMPLETED' || p.part_status === 'PASSED'
-    ).length;
-    const failedParts = parts.filter(p =>
-        p.part_status === 'REWORK_NEEDED' || p.part_status === 'FAILED'
-    ).length;
+    // Done is the server's PROGRESS_DONE_STATUSES: a route can end in Shipped, In stock
+    // or Awaiting pickup, not only Completed — a shipped work order read 0% complete.
+    // ("PASSED" / "FAILED" aren't part statuses.)
+    const completedParts = parts.filter(p => DONE_STATUSES.has(p.part_status ?? '')).length;
+    const failedParts = parts.filter(p => p.part_status === 'REWORK_NEEDED').length;
     const progressPercentage = totalParts > 0 ? Math.round((completedParts / totalParts) * 100) : 0;
 
     // Exception counts — derived from parts already loaded (no extra query).

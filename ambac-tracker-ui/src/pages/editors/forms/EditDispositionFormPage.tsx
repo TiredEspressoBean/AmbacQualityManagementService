@@ -8,7 +8,7 @@ import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { useParams, useSearch, useNavigate, Link } from "@tanstack/react-router"
-import { useInfiniteQuery, infiniteQueryOptions, useQueryClient } from "@tanstack/react-query"
+import { useInfiniteQuery, infiniteQueryOptions, useQueryClient, useQueries, useQuery, queryOptions } from "@tanstack/react-query"
 
 import { cn, getCookie } from "@/lib/utils"
 import { api, type PaginatedUserSelectList } from "@/lib/api/generated"
@@ -139,6 +139,18 @@ const employeeOptionsInfinite = () =>
         initialPageParam: 0,
     });
 
+const dispositionReportOptions = (id: string) =>
+    queryOptions({
+        queryKey: ["quality-reports", "detail", id] as const,
+        queryFn: () => api.api_QualityReports_retrieve({ params: { id } }),
+    })
+
+const dispositionPartOptions = (id: string) =>
+    queryOptions({
+        queryKey: ["parts", "detail", id] as const,
+        queryFn: () => api.api_Parts_retrieve({ params: { id } }),
+    })
+
 export default function EditDispositionFormPage() {
     const params = useParams({ strict: false })
     const searchParams = useSearch({ strict: false }) as DispositionSearchParams
@@ -180,7 +192,24 @@ export default function EditDispositionFormPage() {
     const { data: partsData } = useRetrieveParts({ limit: 100, search: partSearch })
     const { data: qualityReportsData } = useQualityReports({ limit: 100, search: qualityReportSearch })
     const parts = partsData?.results ?? []
-    const qualityReports = qualityReportsData?.results ?? []
+    // The pickers search the first 100 records, so the disposition's own report(s) and
+    // part may not be among them — and then their labels fell back to raw ids. Fetch
+    // them by id and merge, so they always show by number / serial.
+    const ownReportIds: string[] = (disposition?.quality_reports ?? []).map(String)
+    const ownReports = useQueries({
+        queries: ownReportIds.map((id) => dispositionReportOptions(id)),
+        combine: (results) => results.map((r) => r.data).filter((r): r is NonNullable<typeof r> => !!r),
+    })
+    const qualityReports = ownReports.concat(
+        (qualityReportsData?.results ?? []).filter((r) => !ownReportIds.includes(r.id)))
+    const { data: ownPart } = useQuery({
+        ...dispositionPartOptions(disposition?.part ? String(disposition.part) : ""),
+        enabled: !!disposition?.part,
+    })
+    const partLabel = (id: string) =>
+        parts.find((p) => p.id === id)?.ERP_id
+        ?? (ownPart && ownPart.id === id ? ownPart.ERP_id : undefined)
+        ?? "Selected part"
 
     // Popover states
 
@@ -323,11 +352,9 @@ export default function EditDispositionFormPage() {
 
     // Form submission
     const onSubmit = async (values: FormValues) => {
-        // Client-side validation for closing with pending annotations
-        if (mode === "edit" && values.current_state === "CLOSED" && disposition?.annotation_status?.has_pending) {
-            toast.error("Cannot close disposition: 3D annotations are required. Please complete annotations first.")
-            return
-        }
+        // Closing is checked by the server, which names every blocker at once (decision,
+        // containment, annotations). A client check for one of them pre-empted that, so
+        // the inspector fixed one thing, tried again, and met the next.
 
         const typeChanged =
             mode === "edit" && !!values.disposition_type
@@ -837,7 +864,7 @@ export default function EditDispositionFormPage() {
                                                             onChange={(v) => v && field.onChange(v)}
                                                             options={parts.map((p) => ({ value: p.id, label: p.ERP_id, ...(p.part_type_name ? { description: p.part_type_name } : {}) }))}
                                                             onSearch={setPartSearch}
-                                                            selectedLabel={field.value ? `Part #${field.value}` : undefined}
+                                                            selectedLabel={field.value ? partLabel(String(field.value)) : undefined}
                                                             placeholder="Select part"
                                                             searchPlaceholder="Search parts..."
                                                             emptyText="No parts found."
@@ -862,7 +889,7 @@ export default function EditDispositionFormPage() {
                                                             id: qr.id,
                                                             label: qr.report_number ?? "Report",
                                                             description: [
-                                                                `Part #${qr.part}`,
+                                                                qr.part_display || null,
                                                                 qr.created_at ? format(new Date(qr.created_at), "MMM dd, yyyy") : null,
                                                                 qr.status,
                                                             ].filter(Boolean).join(" · "),
@@ -981,7 +1008,7 @@ export default function EditDispositionFormPage() {
                                         // UUID; the UUID is all we have if the QR isn't in the
                                         // currently-loaded (search-limited) list, but we can still
                                         // link by id.
-                                        const label = qr?.report_number ?? `#${qrId}`
+                                        const label = qr?.report_number ?? "Quality report"
                                         return (
                                             <Link
                                                 key={qrId}

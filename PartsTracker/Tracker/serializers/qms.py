@@ -820,6 +820,7 @@ class DispositionAffectedPartSerializer(serializers.Serializer):
 
 class QuarantineDispositionSerializer(SecureModelMixin):
     disposition_number = serializers.CharField(read_only=True)
+    part_erp_id = serializers.SerializerMethodField()
     assignee_name = serializers.SerializerMethodField()
     affected_parts = serializers.SerializerMethodField()
     choices_data = serializers.SerializerMethodField()
@@ -883,7 +884,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             # WO denormalization (for frontend exception → WO linking)
             'work_order_id', 'work_order_erp_id',
             # Computed
-            'assignee_name', 'choices_data', 'annotation_status',
+            'part_erp_id', 'assignee_name', 'choices_data', 'annotation_status',
             'can_be_completed', 'completion_blockers',
             # SecureModel timestamps — a disposition's whole job is tracking a
             # decision over time, so "opened at" / "last touched" are core, not
@@ -1001,7 +1002,9 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             if scrap_verified is not None and scrap_verified != instance.scrap_verified:
                 record_scrap_verification(instance, user, verified=scrap_verified)
         except ValueError as e:
-            raise serializers.ValidationError({'containment_completed': [str(e)]})
+            # The sentence stands on its own; keyed to the write-only flag it read
+            # "containment completed: Describe the containment action…".
+            raise serializers.ValidationError(str(e))
 
     def _route_if_rework(self, instance):
         """2b (lifecycle Y): when QA's decision is REWORK/REPAIR, route the part to
@@ -1021,6 +1024,11 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             route_part_to_rework_if_needed(instance, user)
         except Exception:
             logger.exception("Rework routing failed for disposition %s", instance.pk)
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_part_erp_id(self, obj):
+        """The part's serial — for lists that name the disposition by what it's about."""
+        return obj.part.ERP_id if obj.part_id else None
 
     @extend_schema_field(serializers.CharField())
     def get_assignee_name(self, obj):
@@ -1797,6 +1805,8 @@ class FPIRecordSerializer(SecureModelMixin):
     step_info = serializers.SerializerMethodField()
     part_type_info = serializers.SerializerMethodField()
     designated_part_info = serializers.SerializerMethodField()
+    first_piece_readings = serializers.SerializerMethodField()
+    first_piece_signer_ids = serializers.SerializerMethodField()
     inspected_by_info = serializers.SerializerMethodField()
     performed_by_info = serializers.SerializerMethodField()
     waived_by_info = serializers.SerializerMethodField()
@@ -1827,7 +1837,7 @@ class FPIRecordSerializer(SecureModelMixin):
             'work_order', 'work_order_info',
             'step', 'step_info',
             'part_type', 'part_type_info',
-            'designated_part', 'designated_part_info',
+            'designated_part', 'designated_part_info', 'first_piece_readings', 'first_piece_signer_ids',
             'equipment', 'equipment_info',
             'shift_date',
             'status', 'status_display',
@@ -1838,11 +1848,11 @@ class FPIRecordSerializer(SecureModelMixin):
             'waived', 'waived_by', 'waived_by_info',
             'waive_reason',
             'acknowledged_by', 'acknowledged_by_info', 'acknowledged_at',
-            'quality_report',
+            'quality_report', 'notes',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
-            'status', 'result', 'inspected_by', 'inspected_at', 'performed_by',
+            'status', 'result', 'inspected_by', 'inspected_at', 'performed_by', 'notes',
             'waived', 'waived_by', 'waive_reason',
             'acknowledged_by', 'acknowledged_at',
             'quality_report',
@@ -1912,6 +1922,29 @@ class FPIRecordSerializer(SecureModelMixin):
                 'name': obj.part_type.name,
             }
         return None
+
+    @extend_schema_field(serializers.ListField(child=serializers.IntegerField()))
+    def get_first_piece_signer_ids(self, obj):
+        """Who signed the first piece's substeps — they can't buy it off."""
+        from Tracker.services.qms.fpi import first_piece_signer_ids
+        return first_piece_signer_ids(obj)
+
+    @extend_schema_field(inline_serializer('FpiReading', many=True, fields={
+        'id': serializers.UUIDField(),
+        'label': serializers.CharField(),
+        'value': serializers.CharField(allow_null=True),
+        'unit': serializers.CharField(),
+        'nominal': serializers.CharField(allow_null=True),
+        'lower_limit': serializers.CharField(allow_null=True),
+        'upper_limit': serializers.CharField(allow_null=True),
+        'within_spec': serializers.BooleanField(allow_null=True),
+        'recorded_by_name': serializers.CharField(),
+        'recorded_at': serializers.DateTimeField(),
+    }))
+    def get_first_piece_readings(self, obj):
+        """What the buy-off attests to: the first piece's readings at this step."""
+        from Tracker.services.qms.fpi import first_piece_readings
+        return first_piece_readings(obj)
 
     @extend_schema_field(
         inline_serializer(
