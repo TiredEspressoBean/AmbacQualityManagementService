@@ -586,12 +586,20 @@ class SubstepGateCompletionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         data = serializer.validated_data
         substep = data.get('substep')
         node_id = str(data.get('node_id') or '')
+        # Exactly one of the two: a part's run or a batch's. Without either it hit the
+        # exactly-one check constraint as a 500.
+        if bool(data.get('step_execution')) == bool(data.get('batch_execution')):
+            raise DRFValidationError(
+                {'detail': "Sign against the part's run or the batch's — exactly one."})
         from Tracker.services.dwi.gate_signature import signature_node_ids
         if substep is not None and node_id in signature_node_ids(substep):
             try:
                 gate = sign_gate(
                     substep=substep,
                     step_execution=data.get('step_execution'),
+                    # A batch substep's signature belongs to the batch: dropping it left
+                    # the row with no execution at all (500, "Could not sign").
+                    batch_execution=data.get('batch_execution'),
                     node_id=node_id,
                     user=self.request.user,
                     signature_data=data.get('signature_data'),
@@ -703,7 +711,15 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             with transaction.atomic():
                 if part_ids:
                     # Materialize the locked rows (FOR UPDATE) before the check.
-                    list(Parts.objects.select_for_update().filter(id__in=part_ids))
+                    locked = list(Parts.objects.select_for_update().filter(id__in=part_ids))
+                    # A held unit isn't loadable: sealing the load would carry it past
+                    # its hold (a core awaiting the customer's answer, a quarantined
+                    # part) — Operator walk 2026-10-21.
+                    held = sorted(p.ERP_id for p in locked if p.part_status in ("QUARANTINED", "ON_HOLD"))
+                    if held:
+                        raise DjangoValidationError(
+                            f"{', '.join(held)} {'is' if len(held) == 1 else 'are'} held "
+                            "(quarantined or on hold) and can't go into a load.")
                 assert_no_open_batch_overlap(step=step, parts=parts)
                 serializer.save(started_by=self.request.user)
         except DjangoValidationError as exc:

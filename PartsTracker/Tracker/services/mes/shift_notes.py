@@ -129,9 +129,16 @@ def acknowledge_shift_note(note, *, user):
     """Record a reader's acknowledgment. Idempotent per (note, user)."""
     from Tracker.models import ShiftNoteAck
 
+    from Tracker.models import NotificationOutbox
+
     ack, _ = ShiftNoteAck.objects.get_or_create(
         tenant=note.tenant, note=note, user=user,
     )
+    # Acknowledging the note reads its notification too — it stayed "NEW" in the feed,
+    # so the same note had to be dismissed twice. (A plain read flag, as mark-all-read.)
+    NotificationOutbox.objects.filter(  # tenant-safe: .objects auto-scopes; keyed to this user
+        user=user, correlation_id=f"shift_note:{note.id}", read_at__isnull=True,
+    ).update(read_at=timezone.now())
     return ack
 
 

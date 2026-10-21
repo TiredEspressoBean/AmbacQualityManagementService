@@ -82,6 +82,18 @@ class ShiftNoteServiceTests(TenantTestCase):
         acknowledge_shift_note(note, user=self.operator)
         self.assertEqual(ShiftNoteAck.objects.filter(note=note, user=self.operator).count(), 1)
 
+    def test_acknowledging_reads_the_notes_notification(self):
+        """Its notification stayed NEW in the feed, so one note was dismissed twice
+        (Operator walk 2026-10-20)."""
+        from Tracker.models import NotificationOutbox
+        note = publish_shift_note(author=self.lead, tenant=self.tenant_a, body="Apex's load is late")
+        row = NotificationOutbox.objects.create(
+            tenant=self.tenant_a, event_code="shift_note.published", user=self.operator,
+            channel="in_app", correlation_id=f"shift_note:{note.id}")
+        acknowledge_shift_note(note, user=self.operator)
+        row.refresh_from_db()
+        self.assertIsNotNone(row.read_at)
+
     def test_retract_voids_and_drops_from_active(self):
         note = publish_shift_note(author=self.lead, tenant=self.tenant_a, body="oops")
         retract_shift_note(note, user=self.lead, reason="mistake")

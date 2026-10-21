@@ -332,7 +332,14 @@ export function OperatorSubstepRuntimePage() {
                 // this narrows optionally: a future `split_from_cohort` field would
                 // exclude solo-advancing parts; until then it's a no-op passthrough.
                 .filter((p) => !(p as { split_from_cohort?: boolean }).split_from_cohort)
-                .map((p) => ({ id: String(p.id), label: p.ERP_id ?? String(p.id).slice(0, 8) })),
+                .map((p) => ({
+                    id: String(p.id), label: p.ERP_id ?? String(p.id).slice(0, 8),
+                    // A held unit (quarantined, or on hold — e.g. a core awaiting the
+                    // customer's answer) isn't loadable: sealing the load would carry it
+                    // past its hold. Shown, disabled, with why — as Start Work does.
+                    held: p.part_status === "QUARANTINED" ? "quarantined — waiting on its disposition"
+                        : p.part_status === "ON_HOLD" ? "on hold" : undefined,
+                })),
         [cohortPartsData],
     );
     // A >500-part cohort would silently truncate the batch-start list (§3.10);

@@ -15,6 +15,8 @@
 export type SignaturePayload = {
     user_id: number;
     username: string;
+    /** The signer's name, for display (usernames are emails). Older records lack it. */
+    display_name?: string;
     signed_at: string; // ISO timestamp
     /** Reserved for a future SignatureCanvas integration. Base64 PNG data
      *  URI when the canvas captures a stroke; undefined otherwise. */

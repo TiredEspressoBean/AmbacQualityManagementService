@@ -8,6 +8,8 @@ import type { components } from "@/lib/api/generated-types";
 export type NotificationFeedItem = components["schemas"]["NotificationFeedItem"];
 
 const FEED_KEY = ["notificationFeed"] as const;
+/** Every feed query (any filter) — for invalidating after something reads a notification. */
+export const notificationFeedKeyOptions = () => ({ queryKey: FEED_KEY });
 
 // Invalidation-only helper: not a real queryOptions (no queryFn needed), just
 // something that isn't a bare object literal at the invalidateQueries call

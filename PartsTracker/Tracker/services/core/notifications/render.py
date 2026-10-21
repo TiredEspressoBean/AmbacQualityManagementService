@@ -150,9 +150,13 @@ def render_outbox_row(row, payload_dict: dict, *, language: str = 'en') -> None:
             if template.action_url_template else ''
         )
         ctx = Context({**context_dict, 'action_url': action_url})
+        # Subject and text body are plain text, shown by the UI (which escapes) and
+        # sent as text/plain: escaping them here turned "Apex's" into "Apex&#x27;s" on
+        # screen. Only the HTML body is HTML-escaped.
+        text_ctx = Context({**context_dict, 'action_url': action_url}, autoescape=False)
 
-        row.rendered_subject = Template(template.subject).render(ctx)
-        row.rendered_body_text = Template(template.body_text).render(ctx) if template.body_text else ''
+        row.rendered_subject = Template(template.subject).render(text_ctx)
+        row.rendered_body_text = Template(template.body_text).render(text_ctx) if template.body_text else ''
         row.rendered_body_html = Template(template.body_html).render(ctx) if template.body_html else ''
         row.rendered_action_url = action_url
     else:

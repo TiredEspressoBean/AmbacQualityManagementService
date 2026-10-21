@@ -113,7 +113,9 @@ function SignatureSlot({
             <div className="flex items-center gap-2 rounded border border-green-500/40 bg-green-50/40 dark:bg-green-950/20 p-2 text-xs">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <div className="flex flex-col">
-                    <span className="font-medium">{label}: {sig.username}</span>
+                    <span className="font-medium">{label}: {sig.display_name || sig.username
+                        // A verifier's credentials before submit: the server names them then.
+                        || (sig as { cosign_email?: string }).cosign_email}</span>
                     <span className="text-[10px] text-muted-foreground">
                         Signed {new Date(sig.signed_at).toLocaleString()}
                         {preview ? " · preview, nothing recorded" : null}
@@ -183,6 +185,8 @@ function View(props: NodeViewProps) {
         const base = {
             user_id: me.pk,
             username: me.username ?? `user-${me.pk}`,
+            // A name to show — the username is an email ("Detected by: mike.ops@…").
+            display_name: me.full_name?.trim() || undefined,
             signed_at: new Date().toISOString(),
         };
         if (!detectedNeedsSignature) {

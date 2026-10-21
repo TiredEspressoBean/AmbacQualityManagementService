@@ -1033,6 +1033,8 @@ def _resolve_verifier(cap, *, user, substep, stored=None):
         **verified,
         "user_id": verifier.pk,
         "username": verifier.get_username(),
+        # A name for the record to show — the username is a login (an email).
+        "display_name": verifier.get_full_name().strip() or verifier.get_username(),
         "signed_at": timezone.now().isoformat(),
     }}
 
@@ -1080,7 +1082,9 @@ def _stamp_signers(cap, *, user, substep, step_execution, batch_execution):
             if str(prior.get("user_id")) == str(user.pk):
                 out[slot] = prior  # already signed by this person: keep the original time
             else:
-                out[slot] = {**sig, "user_id": user.pk, "username": user.get_username(), "signed_at": now}
+                out[slot] = {**sig, "user_id": user.pk, "username": user.get_username(),
+                             "display_name": user.get_full_name().strip() or user.get_username(),
+                             "signed_at": now}
             continue
         prior = stored.get(slot)
         if isinstance(prior, dict) and str(prior.get("user_id")) == str(claimed):

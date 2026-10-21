@@ -430,6 +430,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                                                 checked={checked}
                                                 disabled={Boolean(parked)}
                                                 onCheckedChange={() => togglePart(id)}
+                                                aria-label={`${p.ERP_id} — ${parked ?? p.part_status?.replace(/_/g, " ").toLowerCase() ?? ""}`}
                                             />
                                             <span className="font-medium">{p.ERP_id}</span>
                                             <span className="text-xs text-muted-foreground">

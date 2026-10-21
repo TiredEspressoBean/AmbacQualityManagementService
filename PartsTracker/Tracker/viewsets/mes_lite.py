@@ -936,9 +936,21 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             tenant_id=str(part.tenant_id),
             operator=request.user,
         )
+        reason = result.reason
+        waiting_on = [pid for pid in (result.blockers_by_part or {}) if pid != str(part.pk)]
+        if (result.status == "blocked" and not reason and waiting_on
+                and str(part.pk) not in (result.blockers_by_part or {})):
+            # This unit is done; the lot moves together. Say so, by serial — the
+            # response used to be blocked with an empty reason, and the operator couldn't
+            # tell whether the step had been recorded (Operator walk 2026-10-20).
+            serials = list(Parts.objects.filter(pk__in=waiting_on)  # tenant-safe: .objects auto-scopes
+                           .order_by("ERP_id").values_list("ERP_id", flat=True))
+            shown = ", ".join(serials[:3]) + (f" and {len(serials) - 3} more" if len(serials) > 3 else "")
+            reason = (f"{part.ERP_id} is recorded. It moves on with its lot once {shown} "
+                      f"{'is' if len(serials) == 1 else 'are'} done.")
         return Response({
             "status": result.status,
-            "reason": result.reason,
+            "reason": reason,
             "parts_advanced": result.parts_advanced,
             "blockers_by_part": result.blockers_by_part,
             "split_parts_advanced": result.split_parts_advanced,
@@ -1024,19 +1036,32 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         target_step = None
         target_id = request.data.get("rework_target_step_id")
         if target_id:
-            target_step = Steps.objects.filter(id=target_id).first()
+            target_step = Steps.objects.filter(id=target_id).first()  # tenant-safe: .objects auto-scopes
             if target_step is None:
                 return Response({"detail": "rework_target_step_id not found"},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+        notes = (request.data.get("notes") or "").strip()
+        if reason == "rework" and not notes:
+            # Sending a part to rework is a nonconformance: say why (user 2026-10-21).
+            return Response({"detail": "Say why the part is going to rework."},
+                            status=status.HTTP_400_BAD_REQUEST)
         try:
-            result = split_part_from_lot(
-                part=part,
-                reason=reason,
-                user=request.user,
-                rework_target_step=target_step,
-                notes=request.data.get("notes") or "",
-            )
+            from django.db import transaction
+            with transaction.atomic():
+                if reason == "rework":
+                    # The report and disposition QA sees — joining QA's own if they got
+                    # there first. Rework that comes FROM a disposition doesn't come
+                    # through here (route_part_to_rework_if_needed calls the service).
+                    from Tracker.services.qms.disposition import record_operator_rework
+                    record_operator_rework(part, request.user, notes)
+                result = split_part_from_lot(
+                    part=part,
+                    reason=reason,
+                    user=request.user,
+                    rework_target_step=target_step,
+                    notes=notes,
+                )
         except ValidationError as e:
             msg = "; ".join(e.messages) if getattr(e, "messages", None) else str(e)
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
@@ -3462,11 +3487,21 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         # Let the tenant-aware base assign tenant + save first, then stamp the
         # authorization snapshot computed by create()'s gate.
         super().perform_create(serializer)
+        execution = serializer.instance
+        fields = []
+        # Started by whoever started it — as start_execution assigns on an existing
+        # PENDING row. A first start (an unstarted part, no execution yet) left
+        # assigned_to empty: the traveler showed no operator, and the qualified-operator
+        # gate could refuse work a qualified operator had done (Operator walk 2026-10-21).
+        if execution.status == 'IN_PROGRESS' and execution.assigned_to_id is None:
+            execution.assigned_to = self.request.user
+            fields.append('assigned_to')
         snapshot = getattr(self, '_pending_training_snapshot', None)
         if snapshot is not None:
-            execution = serializer.instance
             execution.training_authorization = snapshot
-            execution.save(update_fields=['training_authorization'])
+            fields.append('training_authorization')
+        if fields:
+            execution.save(update_fields=fields)
 
     def update(self, request, *args, **kwargs):
         # Close the PATCH bypass: flipping an existing row to IN_PROGRESS is the

@@ -8,13 +8,16 @@ v1 readiness = 'blocked' when the WO has an active hold, else 'ready'. Upstream-
 done is implicit for open executions. Cert / calibration / downtime / manual-
 blocker predicates layer on later as those systems mature (see design doc §9).
 """
+from datetime import timedelta
+
 from django.db.models import Count, Exists, Min, OuterRef, Q
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.response import Response
 
 from Tracker.models import (
-    ScheduledTask, ScheduleResult, StepExecution, WorkOrder, WorkOrderHold,
+    Parts, ScheduledTask, ScheduleResult, StepExecution, WorkOrder, WorkOrderHold,
 )
 from Tracker.serializers.work_queue import WorkQueueRowSerializer
 from Tracker.viewsets.base import TenantScopedMixin
@@ -119,33 +122,37 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             )
         )
 
-        wo = params.get("wo")
-        if wo:
-            rows_qs = rows_qs.filter(part__work_order_id=wo)
+        def _scoped(qs, p):
+            """The request's filters, for rows reached through `p` ("part__" from an
+            execution, "" from a part)."""
+            wo = params.get("wo")
+            if wo:
+                qs = qs.filter(**{f"{p}work_order_id": wo})
+            # Surface routing: filter by the step's work-center kind (e.g.
+            # PRODUCTION for the operator queue) and/or a specific work-center or
+            # set of work-centers (e.g. the current operator's memberships). Rows
+            # with no work-center set (unmapped steps) drop out of the kind filter
+            # but appear when no filter is set — see Documents/WORK_CENTER_DESIGN.md.
+            kind = params.get("kind")
+            if kind:
+                qs = qs.filter(step__work_center__kind=kind)
+            wc = params.get("work_center")
+            if wc:
+                qs = qs.filter(step__work_center_id=wc)
+            wcs_csv = params.get("work_center__in")
+            if wcs_csv:
+                wc_ids = [w for w in wcs_csv.split(",") if w]
+                if wc_ids:
+                    qs = qs.filter(step__work_center_id__in=wc_ids)
+            term = (params.get("search") or "").strip()
+            if term:
+                qs = qs.filter(
+                    Q(**{f"{p}work_order__ERP_id__icontains": term})
+                    | Q(step__name__icontains=term)
+                )
+            return qs
 
-        # Surface routing: filter by the step's work-center kind (e.g.
-        # PRODUCTION for the operator queue) and/or a specific work-center or
-        # set of work-centers (e.g. the current operator's memberships). Rows
-        # with no work-center set (unmapped steps) drop out of the kind filter
-        # but appear when no filter is set — see Documents/WORK_CENTER_DESIGN.md.
-        kind = params.get("kind")
-        if kind:
-            rows_qs = rows_qs.filter(step__work_center__kind=kind)
-        wc = params.get("work_center")
-        if wc:
-            rows_qs = rows_qs.filter(step__work_center_id=wc)
-        wcs_csv = params.get("work_center__in")
-        if wcs_csv:
-            wc_ids = [w for w in wcs_csv.split(",") if w]
-            if wc_ids:
-                rows_qs = rows_qs.filter(step__work_center_id__in=wc_ids)
-
-        term = (params.get("search") or "").strip()
-        if term:
-            rows_qs = rows_qs.filter(
-                Q(part__work_order__ERP_id__icontains=term)
-                | Q(step__name__icontains=term)
-            )
+        rows_qs = _scoped(rows_qs, "part__")
 
         # Fallback rank (rows the planner hasn't scheduled): blocked sink last;
         # then priority (1=Urgent .. 4=Low), due date, aging.
@@ -165,6 +172,59 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
 
         def _meta(wo_id, step_id):
             return sched_meta.get((wo_id, step_id)) or {}
+
+        # Unstarted parts at their current step on a RELEASED order: a new part waits
+        # at its first step with no StepExecution until someone starts it (that is
+        # what "unstarted" means — reduce_work_order_quantity cancels exactly these),
+        # so a freshly released order was in nobody's queue and new work could only
+        # be started from the WO page (Operator walk 2026-10-20). Counted as ready.
+        open_here = StepExecution.unscoped.filter(  # tenant-safe: correlated to the scoped outer part
+            part=OuterRef("pk"), step=OuterRef("step_id"), exited_at__isnull=True)
+        active_holds_part = WorkOrderHold.unscoped.filter(
+            tenant=tenant, work_order=OuterRef("work_order_id"),
+            cleared_at__isnull=True, is_voided=False)
+        unstarted_qs = _scoped(
+            Parts.unscoped.filter(  # tenant-safe: tenant=tenant explicitly
+                tenant=tenant, archived=False, part_status="PENDING", step__isnull=False,
+                work_order__released_at__isnull=False,
+            ).exclude(work_order__workorder_status__in=["COMPLETED", "CANCELLED"])
+            .exclude(Exists(open_here)),
+            "",
+        ).values(
+            "work_order_id", "work_order__ERP_id", "work_order__priority",
+            "work_order__expected_completion", "part_type__name", "step_id", "step__name",
+            "step__work_center_id", "step__work_center__kind",
+        ).annotate(
+            qty_ready=Count("id", distinct=True),
+            earliest_entered_at=Min("work_order__released_at"),
+            is_held=Exists(active_holds_part),
+        )
+        merged = {(r["part__work_order_id"], r["step_id"]): dict(r) for r in rows_qs}
+        for u in unstarted_qs:
+            key = (u["work_order_id"], u["step_id"])
+            if key in merged:
+                merged[key]["qty_ready"] += u["qty_ready"]
+                continue
+            merged[key] = {
+                "part__work_order_id": u["work_order_id"],
+                "part__work_order__ERP_id": u["work_order__ERP_id"],
+                "part__work_order__priority": u["work_order__priority"],
+                "part__work_order__expected_completion": u["work_order__expected_completion"],
+                "part__part_type__name": u["part_type__name"],
+                "step_id": u["step_id"], "step__name": u["step__name"],
+                "step__work_center_id": u["step__work_center_id"],
+                "step__work_center__kind": u["step__work_center__kind"],
+                "qty_ready": u["qty_ready"], "earliest_entered_at": u["earliest_entered_at"],
+                "is_held": u["is_held"],
+            }
+        # Same fallback rank as the query's order_by, now over both sources.
+        _far = timezone.now() + timedelta(days=36500)
+        ranked = sorted(merged.values(), key=lambda r: (
+            r["is_held"],
+            r["part__work_order__priority"] if r["part__work_order__priority"] is not None else 99,
+            r["part__work_order__expected_completion"] or _far.date(),
+            r["earliest_entered_at"] or _far,
+        ))
 
         rows = [
             {
@@ -186,7 +246,7 @@ class WorkQueueViewSet(TenantScopedMixin, viewsets.GenericViewSet):
                 "machine": _meta(r["part__work_order_id"], r["step_id"]).get("machine_id"),
                 "machine_name": _meta(r["part__work_order_id"], r["step_id"]).get("machine_name"),
             }
-            for r in rows_qs
+            for r in ranked
         ]
 
         # Stable re-rank onto the schedule: blocked still sink last; scheduled

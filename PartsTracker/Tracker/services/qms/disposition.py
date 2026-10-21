@@ -129,6 +129,46 @@ def open_disposition_for_failed_report(report) -> QuarantineDisposition:
     return disposition
 
 
+def record_operator_rework(part, user, reason: str):
+    """An operator sends a part to rework directly (WO control, not from a disposition):
+    say why, and it becomes a nonconformance QA sees (user decision 2026-10-21).
+
+    Writes a FAIL report carrying the reason — who, when, at which step — and puts it on
+    a disposition: the one already open on the part if QA got there first (their record
+    stands; the operator's report joins it), else a new UNASSIGNED one of type Rework
+    for the QA queue. The part is not held: it goes straight to rework (the caller
+    splits it). Nothing here stops QA deciding the disposition differently, taking it,
+    or raising their own report. Returns the disposition.
+    """
+    from Tracker.models import QualityReports
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the part is going to rework.")
+    with transaction.atomic():
+        # PENDING first, linked, then FAIL: the post_save disposition signal sees it
+        # already on a disposition and opens no second one. A plain save, not
+        # on_report_failed — the part isn't quarantined; it's going to rework now.
+        report = QualityReports.objects.create(
+            tenant=part.tenant, part=part, step=part.step, status="PENDING",
+            description=f"Sent to rework: {reason}", detected_by=user)
+        existing = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
+                    .filter(part=part, archived=False, current_state__in=["OPEN", "IN_PROGRESS"])
+                    .order_by("created_at").first())
+        if existing is not None:
+            existing.quality_reports.add(report)
+            disposition = existing
+        else:
+            disposition = QuarantineDisposition.objects.create(
+                tenant=part.tenant, assigned_to=None, part=part, step=part.step,
+                description=f"Sent to rework at {part.step.name if part.step_id else 'its step'}: {reason}",
+                disposition_type="REWORK")
+            disposition.quality_reports.add(report)
+        report.status = "FAIL"
+        report.save(update_fields=["status"])
+    return disposition
+
+
 def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) -> None:
     """Apply a disposition's decision to its part's status.
 

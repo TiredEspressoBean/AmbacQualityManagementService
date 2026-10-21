@@ -255,3 +255,37 @@ class WorkQueueApiTests(TenantTestCase):
         self.assertEqual(len(no_filter), 1)
         self.assertIsNone(no_filter[0]["work_center"])
         self.assertIsNone(no_filter[0]["work_center_kind"])
+
+
+    # --- unstarted parts ----------------------------------------------------
+    # A released order's parts wait at their first step with no StepExecution until
+    # someone starts one, and the queue was built from executions only — so new work
+    # was in nobody's queue (Operator walk 2026-10-20).
+
+    def _unstarted(self, wo, pt, step, n):
+        for i in range(n):
+            Parts.objects.create(tenant=self.tenant_a, ERP_id=f"{wo.ERP_id}-{i}", part_type=pt,
+                                 work_order=wo, step=step, part_status="PENDING")
+
+    def test_a_released_orders_unstarted_parts_are_ready_work(self):
+        pt, _, wo = self._make_wo(erp="WO-REL-1")
+        step = self._step(name="Machining", part_type=pt)
+        self._unstarted(wo, pt, step, 4)
+        WorkOrder.objects.filter(pk=wo.pk).update(released_at=timezone.now())
+        rows = [r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-REL-1"]
+        self.assertEqual([(r["step_name"], r["qty_ready"], r["readiness"]) for r in rows],
+                         [("Machining", 4, "ready")])
+
+    def test_an_unreleased_order_is_not_on_the_floor(self):
+        pt, _, wo = self._make_wo(erp="WO-REL-2")
+        self._unstarted(wo, pt, self._step(name="Machining", part_type=pt), 2)
+        self.assertFalse([r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-REL-2"])
+
+    def test_started_and_unstarted_parts_at_a_step_are_one_row(self):
+        pt, _, wo = self._make_wo(erp="WO-REL-3")
+        step = self._step(name="Machining", part_type=pt)
+        self._part_at_step(wo=wo, part_type=pt, step=step, erp="WO-REL-3-S")
+        self._unstarted(wo, pt, step, 2)
+        WorkOrder.objects.filter(pk=wo.pk).update(released_at=timezone.now())
+        rows = [r for r in self._get().json()["results"] if r["work_order_erp_id"] == "WO-REL-3"]
+        self.assertEqual([r["qty_ready"] for r in rows], [3])

@@ -37,6 +37,9 @@ class SignatureStampingTests(TenantTestCase):
         self.assertEqual(sig["user_id"], self.user_a.pk)
         self.assertEqual(sig["username"], self.user_a.get_username())
         self.assertNotEqual(sig["signed_at"], "1999-01-01T00:00:00Z")
+        # A name to show on the record, not the login.
+        self.assertEqual(sig["display_name"],
+                         self.user_a.get_full_name().strip() or self.user_a.get_username())
 
     def test_signing_as_someone_else_is_refused(self):
         cap = {"node_id": "n1", "kind": "attestation",

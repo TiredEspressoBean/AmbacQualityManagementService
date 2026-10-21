@@ -79,16 +79,18 @@ type MyFlag = {
     elapsed: string; seenBy: string | null;
 };
 
+// Layout placeholders for the Preview tiles. Deliberately not names or record numbers:
+// a trainee on the training tenant went looking for "Dana" and "WO-2024-0047".
 const MOCK = {
     // The visible first-piece loop: sent → seen → (approve/reject arrives as a state change).
-    firstPiece: { step: "Final Test", part: "INJ-0042-018", sentAgo: "4m", ackBy: "Dana (QA)" },
+    firstPiece: { step: "<step>", part: "<serial>", sentAgo: "—", ackBy: "QA" },
     // Flags I raised — lifecycle visible so nobody walks the floor to ask "did anyone see this?"
     myFlags: [
-        { id: "f0", label: "Tooling / fixture unavailable", wo: "WO-2024-0047", owner: "your lead", elapsed: "38m", seenBy: "Luis" },
+        { id: "f0", label: "<reason>", wo: "<work order>", owner: "your lead", elapsed: "—", seenBy: null },
     ] as MyFlag[],
     // Undo window after Complete (Toast recall) — fearless big-button taps.
-    lastFinished: { step: "Final Test", part: "INJ-0042-017", ago: "8m" },
-    today: { completed: 14, flagged: 1 },
+    lastFinished: { step: "<step>", part: "<serial>", ago: "—" },
+    today: { completed: "—", flagged: "—" },
 };
 
 // Blocker reasons double as the routing table (reason → owner queue).
@@ -192,6 +194,9 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // record): clock in → SHIFT; Break/Lunch close the open entry then open a
     // BREAK/LUNCH pause; End break resumes SHIFT; Clock out closes and reopens
     // nothing. Clocking onto an actual job (a PRODUCTION entry) happens in the
+    // Must-acknowledge shift notes are read at clock-in (audit row 11): clocking in
+    // opens them, and the dialog closes once each is acknowledged.
+    const [ackAtClockIn, setAckAtClockIn] = useState(false);
     // runtime when the operator Starts/Resumes work.
     const clockAction = useMutation({
         mutationFn: async (
@@ -214,7 +219,10 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
         },
         onSuccess: (_data, action) => {
             queryClient.invalidateQueries(matchKey(["time-entries", "open", user.pk]));
-            if (action.kind === "clockin") toast.success("Clocked in.");
+            if (action.kind === "clockin") {
+                toast.success("Clocked in.");
+                setAckAtClockIn(true);
+            }
             else if (action.kind === "pause") toast.success(action.type === "LUNCH" ? "On lunch — labor paused." : "On break — labor paused.");
             else if (action.kind === "resume") toast.success("Welcome back — back on shift.");
             else toast.success("Clocked out.");
@@ -684,6 +692,22 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Preview dialogs — triggers live under glass, so these never open in
                 the shell; kept so the planned flow stays visible in the source. */}
+            {/* Shown at clock-in while any must-acknowledge note is unread; no way out
+                but acknowledging — that is what "must acknowledge" means. */}
+            <Dialog open={ackAtClockIn && mustAckNotes.length > 0} onOpenChange={() => {}}>
+                <DialogContent className="sm:max-w-lg" showCloseButton={false}
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                    onInteractOutside={(e) => e.preventDefault()}>
+                    <DialogHeader>
+                        <DialogTitle>Before you start</DialogTitle>
+                        <DialogDescription>
+                            Your lead has notes you need to acknowledge for this shift.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 text-sm">{mustAckNotes.map(noteRow)}</div>
+                </DialogContent>
+            </Dialog>
+
             <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>

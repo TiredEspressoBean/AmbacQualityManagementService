@@ -196,3 +196,42 @@ class VerifiedSignatureTests(TenantTestCase):
                                                  deleted_at__isnull=True).count(),
             1, "one signature covers the load, not one per part")
         self.assertEqual(len(parts), 3)
+
+
+class BatchSignatureEndpointTests(TenantTestCase):
+    """A signature on a BATCH substep, through the endpoint the runtime uses. The
+    viewset dropped batch_execution, so the row had no execution and broke the
+    exactly-one check (500, "Could not sign") — no wash load could be sealed in the UI
+    (Operator walk 2026-10-20)."""
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.user_a.set_password("right-pw")
+        self.user_a.save()
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Bs PT", ID_prefix="BS")
+        lot = _build_lot(tenant=self.tenant_a, user=self.user_a, part_type=pt, wo_erp_id="WO-BS")
+        self.se = lot["execs"][0]
+        self.substep = lot["substeps_by_step"][0][0]
+        self.substep.body_blocks = _body("signature")
+        self.substep.save()
+
+    def test_a_batch_substep_is_signed_against_the_batch(self):
+        from Tracker.models import BatchExecution, SubstepGateCompletion
+        batch = BatchExecution.objects.create(
+            tenant=self.tenant_a, work_order=self.se.part.work_order, step=self.substep.step,
+            started_by=self.user_a)
+        batch.parts.set([self.se.part])
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['add_substepgatecompletion', 'view_substepgatecompletion',
+                                       'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        body = {"batch_execution": str(batch.id), "substep": self.substep.id, "node_id": NODE,
+                "signature_data": SIG, "password": "right-pw"}
+        resp = self.client.post("/api/SubstepGateCompletions/", body, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        gate = SubstepGateCompletion.objects.get(substep=self.substep, node_id=NODE)
+        self.assertEqual((gate.batch_execution_id, gate.step_execution_id), (batch.id, None))
+        # Neither execution: a 400 with a reason, not the constraint's 500.
+        body.pop("batch_execution")
+        self.assertEqual(self.client.post("/api/SubstepGateCompletions/", body, format="json").status_code, 400)

@@ -10775,6 +10775,28 @@ export interface paths {
         patch: operations["api_Sampling_rule_sets_partial_update"];
         trace?: never;
     };
+    "/api/Sampling-rule-sets/{id}/rule-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Changes to this rule set's rules — added, changed, removed. A plan tightened
+         *     from every 4th to every 2nd part is a change to a rule, not to the set, so the
+         *     set's own history said "No recorded changes" (user decision 2026-10-20: the set's
+         *     History includes its rules).
+         */
+        get: operations["api_Sampling_rule_sets_rule_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Sampling-rule-sets/{id}/version-history/": {
         parameters: {
             query?: never;
@@ -34365,6 +34387,25 @@ export interface components {
             readonly ruleset_name: string;
             archived?: boolean;
         };
+        SamplingRuleChange: {
+            id: number;
+            /** Format: date-time */
+            timestamp: string;
+            action: components["schemas"]["SamplingRuleChangeActionEnum"];
+            actor_name: string | null;
+            rule_id: string;
+            rule_type: string | null;
+            changes: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * @description * `created` - created
+         *     * `changed` - changed
+         *     * `removed` - removed
+         * @enum {string}
+         */
+        SamplingRuleChangeActionEnum: "created" | "changed" | "removed";
         /** @description Enhanced sampling rule serializer */
         SamplingRuleRequest: {
             rule_type: components["schemas"]["RuleTypeEnum"];
@@ -58886,6 +58927,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SamplingRuleSet"];
+                };
+            };
+        };
+    };
+    api_Sampling_rule_sets_rule_history_list: {
+        parameters: {
+            query?: {
+                active?: boolean;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                part_type?: string;
+                process?: string;
+                /** @description A search term. */
+                search?: string;
+                step?: string;
+                version?: number;
+            };
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this sampling rule set. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SamplingRuleChange"][];
                 };
             };
         };

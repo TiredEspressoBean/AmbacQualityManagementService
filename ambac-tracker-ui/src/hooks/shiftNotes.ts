@@ -2,6 +2,7 @@
  *  feed: authored by a person, aimed at an audience, acknowledged by readers.
  *  `active` is the operator's self-scoped feed (audience ∩ effective ∩ un-acked);
  *  the plain list is the lead's management view. */
+import { notificationFeedKeyOptions } from "@/hooks/notificationFeed";
 import { useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { api } from "@/lib/api/generated";
 import type { components } from "@/lib/api/generated-types";
@@ -48,7 +49,12 @@ export function useAcknowledgeShiftNote() {
     return useMutation({
         mutationFn: (id: string) =>
             api.api_ShiftNotes_acknowledge_create(undefined, { params: { id } }),
-        onSuccess: () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === KEY[0] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === KEY[0] });
+            // The ack reads the note's notification too (server side) — refresh the feed
+            // so it doesn't stay "NEW" until a reload.
+            qc.invalidateQueries(notificationFeedKeyOptions());
+        },
     });
 }
 

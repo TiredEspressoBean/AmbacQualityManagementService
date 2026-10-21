@@ -65,6 +65,8 @@ type CapturedRow = {
     condition_notes: string;
     is_missing: boolean;
     original_part_number: string;
+    /** For the review screen to name the row (the server ignores it). */
+    component_type_name?: string;
 };
 
 type CapturedValue = { rows: CapturedRow[] };
@@ -276,7 +278,9 @@ function OperatorRuntime({
     }, [expected, captured.rows.length, setCaptured]);
 
     const update = (idx: number, patch: Partial<CapturedRow>) =>
-        setCaptured({ rows: captured.rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)) });
+        setCaptured({ rows: captured.rows.map((r, i) => (i === idx
+            ? { ...r, ...patch, component_type_name: typeName.get(r.component_type_id) ?? r.component_type_name }
+            : r)) });
     const remove = (idx: number) =>
         setCaptured({ rows: captured.rows.filter((_, i) => i !== idx) });
     const [unexpectedType, setUnexpectedType] = useState("");

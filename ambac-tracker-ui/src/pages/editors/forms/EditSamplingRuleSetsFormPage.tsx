@@ -2,6 +2,7 @@
 
 import { Combobox } from "@/components/ui/combobox";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RuleSetRuleHistory } from "@/components/sampling/RuleSetRuleHistory";
 import { RecordArchiveCard } from "@/components/data-management/RecordArchiveCard";
 import { useCreateSamplingRuleSet } from "@/hooks/useCreateSamplingRuleSet"
 import { useUpdateSamplingRuleSet } from "@/hooks/useUpdateSamplingRuleSet"
@@ -603,7 +604,7 @@ export default function SamplingRuleSetsFormPage() {
             </form>
             {mode === "edit" && ruleSetId && (
                 <div className="max-w-3xl mx-auto py-6">
-                    <div className="space-y-6"><RecordHistoryCard endpoint="Sampling-rule-sets" id={ruleSetId} model="samplingruleset" /><RecordArchiveCard endpoint="Sampling-rule-sets" id={ruleSetId} model="samplingruleset" /></div>
+                    <div className="space-y-6"><RecordHistoryCard endpoint="Sampling-rule-sets" id={ruleSetId} model="samplingruleset" /><RuleSetRuleHistory ruleSetId={ruleSetId} /><RecordArchiveCard endpoint="Sampling-rule-sets" id={ruleSetId} model="samplingruleset" /></div>
                 </div>
             )}
         </Form>

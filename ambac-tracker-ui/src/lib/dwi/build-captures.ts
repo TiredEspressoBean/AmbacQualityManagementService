@@ -346,6 +346,18 @@ function summarizeOne(
             return parts.length ? parts.join(" · ") : "—";
         }
 
+        case "harvestedComponentCapture": {
+            // The grades, so the operator can check them before completing (it read
+            // "(captured)"): "Injector Body A · Nozzle C · Valve missing".
+            const rows = harvestRows(response).filter(isRecordedHarvestRow);
+            if (rows.length === 0) return "—";
+            return rows.map((r) => {
+                const name = (typeof r.component_type_name === "string" && r.component_type_name) || "Component";
+                const where = typeof r.position === "string" && r.position ? ` (${r.position})` : "";
+                return `${name}${where} ${r.is_missing ? "missing" : r.condition_grade}`;
+            }).join(" · ");
+        }
+
         case "partAnnotation":
             return "Annotation recorded";
 

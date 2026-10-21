@@ -536,6 +536,49 @@ class SamplingRuleSetViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadat
         qs = super().get_queryset()
         return qs
 
+    @extend_schema(responses={200: inline_serializer(name="SamplingRuleChange", many=True, fields={
+        "id": serializers.IntegerField(),
+        "timestamp": serializers.DateTimeField(),
+        "action": serializers.ChoiceField(choices=["created", "changed", "removed"]),
+        "actor_name": serializers.CharField(allow_null=True),
+        "rule_id": serializers.CharField(),
+        "rule_type": serializers.CharField(allow_null=True),
+        "changes": serializers.DictField(),
+    })})
+    @action(detail=True, methods=['get'], url_path='rule-history', pagination_class=None)
+    def rule_history(self, request, pk=None):
+        """Changes to this rule set's rules — added, changed, removed. A plan tightened
+        from every 4th to every 2nd part is a change to a rule, not to the set, so the
+        set's own history said "No recorded changes" (user decision 2026-10-20: the set's
+        History includes its rules)."""
+        from auditlog.models import LogEntry
+        from django.contrib.contenttypes.models import ContentType
+        from django.db.models import Q
+        rule_set = self.get_object()
+        rules = {str(r.pk): r.rule_type for r in
+                 SamplingRule.unscoped.filter(ruleset=rule_set)}  # tenant-safe: scoped by the set FK, archived included
+        ct = ContentType.objects.get_for_model(SamplingRule)
+        set_id = str(rule_set.pk)
+        entries = (LogEntry.objects  # tenant-safe: rows of this set's rules (pks above, or the set id in a delete's changes)
+                   .filter(content_type=ct)
+                   .filter(Q(object_pk__in=list(rules)) | Q(changes__ruleset__0=set_id) | Q(changes__ruleset__1=set_id))
+                   .select_related('actor').order_by('-timestamp')[:200])
+        kind = {0: "created", 1: "changed", 2: "removed"}
+        out = []
+        for e in entries:
+            changes = e.changes if isinstance(e.changes, dict) else {}
+            rule_type = rules.get(e.object_pk)
+            if rule_type is None and isinstance(changes.get('rule_type'), list):
+                rule_type = next((v for v in changes['rule_type'] if v and v != 'None'), None)
+            out.append({
+                "id": e.id, "timestamp": e.timestamp, "action": kind.get(e.action, "changed"),
+                "actor_name": (e.actor.get_full_name() or e.actor.get_username()) if e.actor_id else None,
+                "rule_id": e.object_pk, "rule_type": rule_type,
+                "changes": {k: v for k, v in changes.items()
+                            if k not in ('id', 'tenant', 'created_at', 'updated_at', 'ruleset', 'archived')},
+            })
+        return Response(out)
+
 
 class SamplingSeverityStateViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only runtime Z1.4 severity state per (receiving step, supplier).

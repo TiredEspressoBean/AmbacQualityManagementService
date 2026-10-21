@@ -16342,6 +16342,24 @@ export type ReceivingCharacteristic = {
   upper_tol: number | null;
   lower_tol: number | null;
 };
+export type SamplingRuleChange = {
+  id: number;
+  timestamp: string;
+  action: SamplingRuleChangeActionEnum;
+  actor_name: string | null;
+  rule_id: string;
+  rule_type: string | null;
+  changes: {};
+};
+export type SamplingRuleChangeActionEnum =
+  /**
+   * * `created` - created
+   * `changed` - changed
+   * `removed` - removed
+   *
+   * @enum created, changed, removed
+   */
+  "created" | "changed" | "removed";
 export type SamplingRuleRequest = {
   rule_type: RuleTypeEnum;
   value?:
@@ -23847,6 +23865,16 @@ const PatchedSamplingRuleSetRequest = z
     archived: z.boolean(),
   })
   .partial();
+const SamplingRuleChangeActionEnum = z.enum(["created", "changed", "removed"]);
+const SamplingRuleChange = z.object({
+  id: z.number().int(),
+  timestamp: z.string().datetime({ offset: true }),
+  action: SamplingRuleChangeActionEnum,
+  actor_name: z.string().nullable(),
+  rule_id: z.string(),
+  rule_type: z.string().nullable(),
+  changes: z.object({}).partial().passthrough(),
+});
 const RuleTypeEnum = z.enum([
   "EVERY_NTH_PART",
   "PERCENTAGE",
@@ -29275,6 +29303,8 @@ export const schemas = {
   PaginatedSamplingRuleSetList,
   SamplingRuleSetRequest,
   PatchedSamplingRuleSetRequest,
+  SamplingRuleChangeActionEnum,
+  SamplingRuleChange,
   RuleTypeEnum,
   SamplingRule,
   PaginatedSamplingRuleList,
@@ -50730,6 +50760,59 @@ Usage:
   },
   {
     method: "get",
+    path: "/api/Sampling-rule-sets/:id/rule-history/",
+    alias: "api_Sampling_rule_sets_rule_history_list",
+    description: `Changes to this rule set&#x27;s rules — added, changed, removed. A plan tightened
+from every 4th to every 2nd part is a change to a rule, not to the set, so the
+set&#x27;s own history said &quot;No recorded changes&quot; (user decision 2026-10-20: the set&#x27;s
+History includes its rules).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "active",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "step",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "version",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: z.array(SamplingRuleChange),
+  },
+  {
+    method: "get",
     path: "/api/Sampling-rule-sets/:id/version-history/",
     alias: "api_Sampling_rule_sets_version_history_list",
     description: `Every revision of this row, oldest first.`,
@@ -55328,7 +55411,10 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "patch",
     path: "/api/StepTimings/:id/",
@@ -55349,10 +55435,7 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/StepTimings/:id/",
@@ -60103,7 +60186,10 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "patch",
     path: "/api/UserInvitations/:id/",
@@ -60129,10 +60215,7 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/UserInvitations/:id/",

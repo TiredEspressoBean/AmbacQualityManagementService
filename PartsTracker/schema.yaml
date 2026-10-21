@@ -26584,6 +26584,71 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/Sampling-rule-sets/{id}/rule-history/:
+    get:
+      operationId: api_Sampling_rule_sets_rule_history_list
+      description: |-
+        Changes to this rule set's rules — added, changed, removed. A plan tightened
+        from every 4th to every 2nd part is a change to a rule, not to the set, so the
+        set's own history said "No recorded changes" (user decision 2026-10-20: the set's
+        History includes its rules).
+      parameters:
+      - in: query
+        name: active
+        schema:
+          type: boolean
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this sampling rule set.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: process
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: step
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: version
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SamplingRuleChange'
+          description: ''
   /api/Sampling-rule-sets/{id}/version-history/:
     get:
       operationId: api_Sampling_rule_sets_version_history_list
@@ -75681,6 +75746,45 @@ components:
       - ruleset_name
       - ruletype_name
       - updated_at
+    SamplingRuleChange:
+      type: object
+      properties:
+        id:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+        action:
+          $ref: '#/components/schemas/SamplingRuleChangeActionEnum'
+        actor_name:
+          type: string
+          nullable: true
+        rule_id:
+          type: string
+        rule_type:
+          type: string
+          nullable: true
+        changes:
+          type: object
+          additionalProperties: {}
+      required:
+      - action
+      - actor_name
+      - changes
+      - id
+      - rule_id
+      - rule_type
+      - timestamp
+    SamplingRuleChangeActionEnum:
+      enum:
+      - created
+      - changed
+      - removed
+      type: string
+      description: |-
+        * `created` - created
+        * `changed` - changed
+        * `removed` - removed
     SamplingRuleRequest:
       type: object
       description: Enhanced sampling rule serializer

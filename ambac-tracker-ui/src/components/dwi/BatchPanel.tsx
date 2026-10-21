@@ -39,7 +39,7 @@ import {
 import { buildCaptures, findMissingRequired } from "@/lib/dwi/build-captures";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
-export type CohortPart = { id: string; label: string };
+export type CohortPart = { id: string; label: string; /** why it can't be loaded */ held?: string };
 
 export function BatchPanel({
     workOrderId,
@@ -82,7 +82,7 @@ export function BatchPanel({
     const availableParts = cohortParts.filter((p) => !openBatchedIds.has(p.id));
     // "Fresh" = in no batch at all. Coverage + select-all key off these so a
     // part sitting in a sealed load isn't counted/treated-batched.
-    const freshParts = availableParts.filter((p) => !sealedBatchedIds.has(p.id));
+    const freshParts = availableParts.filter((p) => !sealedBatchedIds.has(p.id) && !p.held);
 
     const toggle = (id: string) =>
         setSelectedIds((prev) => {
@@ -103,7 +103,7 @@ export function BatchPanel({
         );
 
     const handleStart = () => {
-        const parts = availableParts.map((p) => p.id).filter((id) => selectedIds.has(id));
+        const parts = availableParts.filter((p) => !p.held).map((p) => p.id).filter((id) => selectedIds.has(id));
         if (parts.length === 0) {
             toast.error("Select at least one part for this load.");
             return;
@@ -141,8 +141,12 @@ export function BatchPanel({
     };
 
     const totalAtStep = cohortParts.length;
-    const unbatched = freshParts.length;            // never in any batch
-    const batchedAtStep = totalAtStep - unbatched;  // in an open OR sealed load
+    const unbatched = freshParts.length;            // never in any batch, and loadable
+    // In an open OR sealed load — counted, not derived: a held unit is neither batched
+    // nor loadable, and deriving it read "2/2 in a load" with one loaded.
+    const batchedAtStep = cohortParts.filter(
+        (p) => openBatchedIds.has(p.id) || sealedBatchedIds.has(p.id)).length;
+    const heldAtStep = cohortParts.filter((p) => p.held).length;
 
     return (
         <div className="rounded-lg border bg-card">
@@ -170,6 +174,11 @@ export function BatchPanel({
                                 {" "}· {unbatched} not yet batched
                             </span>
                         )}
+                        {heldAtStep > 0 && (
+                            <span className="text-muted-foreground">
+                                {" "}· {heldAtStep} held
+                            </span>
+                        )}
                     </p>
                 )}
             </div>
@@ -194,7 +203,7 @@ export function BatchPanel({
                                     <div className="flex-1 text-xs">
                                         <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                         <div className="text-muted-foreground">
-                                            {(b.parts ?? []).length} parts · started {new Date(b.started_at).toLocaleString()}
+                                            {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · started {new Date(b.started_at).toLocaleString()}
                                         </div>
                                     </div>
                                     <Button
@@ -229,7 +238,7 @@ export function BatchPanel({
                                 <div className="flex-1 text-xs">
                                     <div className="font-mono">{b.id.slice(0, 8)}…</div>
                                     <div className="text-muted-foreground">
-                                        {(b.parts ?? []).length} parts · sealed{" "}
+                                        {(b.parts ?? []).length} part{(b.parts ?? []).length === 1 ? "" : "s"} · sealed{" "}
                                         {b.sealed_at ? new Date(b.sealed_at).toLocaleString() : ""}
                                     </div>
                                 </div>
@@ -274,17 +283,23 @@ export function BatchPanel({
                                 return (
                                     <label
                                         key={p.id}
-                                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-muted/50"
+                                        className={"flex items-center gap-2 rounded px-1 py-0.5 text-xs "
+                                            + (p.held ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted/50")}
                                     >
                                         <input
                                             type="checkbox"
                                             className="h-3.5 w-3.5"
-                                            checked={selectedIds.has(p.id)}
+                                            checked={!p.held && selectedIds.has(p.id)}
+                                            disabled={Boolean(p.held)}
+                                            aria-label={p.held ? `${p.label} — ${p.held}` : p.label}
                                             onChange={() => toggle(p.id)}
                                         />
                                         <span className={"font-mono" + (inSealed ? " text-muted-foreground" : "")}>
                                             {p.label}
                                         </span>
+                                        {p.held && (
+                                            <span className="text-[10px] text-muted-foreground">{p.held}</span>
+                                        )}
                                         {inSealed && (
                                             <Badge variant="outline" className="text-[9px] text-muted-foreground">
                                                 in a sealed load

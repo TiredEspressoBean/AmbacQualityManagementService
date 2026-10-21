@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
     Sheet,
     SheetContent,
@@ -919,7 +920,7 @@ type Action =
     | { kind: "move"; stepId: string }
     | { kind: "status"; status: MockPartStatus }
     | { kind: "scrap"; reason: string }
-    | { kind: "split"; reason: PartSplitReason; reworkTargetStepId?: string }
+    | { kind: "split"; reason: PartSplitReason; reworkTargetStepId?: string; notes?: string }
     | { kind: "rejoin" };
 
 /** Group names that grant the privileged "Force advance" emergency action.
@@ -1088,6 +1089,7 @@ export function WorkOrderControlPage() {
     } | null>(null);
     const [flowDrawerOpen, setFlowDrawerOpen] = useState(false);
     const [splitMode, setSplitMode] = useState<SplitMode | null>(null);
+    const [reworkWhy, setReworkWhy] = useState("");
     const [splitQuantity, setSplitQuantity] = useState<number>(1);
     const [splitNewErpId, setSplitNewErpId] = useState<string>("");
     const [splitReworkProcessId, setSplitReworkProcessId] = useState<string>("");
@@ -1284,6 +1286,7 @@ export function WorkOrderControlPage() {
                         ...(action.reworkTargetStepId
                             ? { rework_target_step_id: action.reworkTargetStepId }
                             : {}),
+                        ...(action.notes ? { notes: action.notes } : {}),
                     }),
                 ),
             ).catch(() => {
@@ -2274,10 +2277,17 @@ export function WorkOrderControlPage() {
                     <DialogHeader>
                         <DialogTitle>Send {reworkDialogIds.length} part(s) to rework</DialogTitle>
                         <DialogDescription>
-                            Pick the in-process rework step. The part is split from the lot and routed there
-                            (a fresh visit), so it can be reworked and re-inspected before rejoining the flow.
+                            Pick the in-process rework step and say why. The part is split from the lot and
+                            routed there now; the reason is recorded as a quality report and opens a
+                            disposition QA reviews.
                         </DialogDescription>
                     </DialogHeader>
+                    <div className="space-y-1">
+                        <Label htmlFor="rework-why">Why is it going to rework? *</Label>
+                        <Textarea id="rework-why" rows={2} value={reworkWhy}
+                            onChange={(e) => setReworkWhy(e.target.value)}
+                            placeholder="What's wrong with it — e.g. burr on the seat face after machining" />
+                    </div>
                     {reworkSteps.length > 0 ? (
                         <Select value={reworkTargetStep ?? ""} onValueChange={setReworkTargetStep}>
                             <SelectTrigger>
@@ -2301,15 +2311,17 @@ export function WorkOrderControlPage() {
                             Cancel
                         </Button>
                         <Button
-                            disabled={!reworkTargetStep}
+                            disabled={!reworkTargetStep || !reworkWhy.trim()}
                             onClick={() => {
-                                if (reworkTargetStep) {
+                                if (reworkTargetStep && reworkWhy.trim()) {
                                     applyToIds(reworkDialogIds, {
                                         kind: "split",
                                         reason: "rework",
                                         reworkTargetStepId: reworkTargetStep,
+                                        notes: reworkWhy.trim(),
                                     });
                                 }
+                                setReworkWhy("");
                                 setReworkDialogOpen(false);
                             }}
                         >

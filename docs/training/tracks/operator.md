@@ -215,15 +215,16 @@ part can't go to rework without a reason.
 **You will:** know what to do when you find you recorded something wrong after
 completing the step.
 
-You recorded `INJ-OPS-001`'s Body OD on MIC-1, which is overdue. QA wants it
-re-measured on a calibrated micrometer.
+You recorded `INJ-OPS-001`'s Body OD, then realised you measured it before the body
+had cooled. The reading needs taking again.
 
 1. **Try to break it:** on `WO-OPS-01`'s control page, open 001's history (**Show
    history**) and its **Checks**. You can see your record, but there's no way for you
-   to void it.
-2. Log in as Sarah. On the same record, **Void**, with the reason. Voiding keeps the
-   record (marked void, with the reason) and reopens Machining for 001.
-3. Log back in as Mike, and capture it again from the work order.
+   to void it. Tell QA.
+2. Log in as Sarah. On the same record, **Void**, with the reason. The record stays
+   on file, marked void with the reason, and Machining reopens for 001.
+3. Log back in as Mike. Scan `INJ-OPS-001` and **Start**: the step opens with what
+   you recorded before. Measure again, enter the new reading, and **Complete step**.
 
 A completed record is evidence: only quality can void one, and the original stays on
 file.

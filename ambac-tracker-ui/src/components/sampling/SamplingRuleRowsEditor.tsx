@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { RULE_TYPES } from "@/components/sampling/rule-types";
+import { ruleSetRuleHistoryOptions } from "@/components/sampling/RuleSetRuleHistory";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +17,6 @@ import { api } from "@/lib/api/generated";
 import { useUpdateSamplingRule } from "@/hooks/useUpdateSamplingRule";
 import { useDeleteSamplingRule } from "@/hooks/useDeleteSamplingRule";
 
-const RULE_TYPES = [
-    { value: "EVERY_NTH_PART", label: "Every Nth part", unit: "N" },
-    { value: "PERCENTAGE", label: "Percentage", unit: "%" },
-    { value: "RANDOM", label: "Random", unit: "%" },
-    { value: "FIRST_N_PARTS", label: "First N parts", unit: "N" },
-    { value: "LAST_N_PARTS", label: "Last N parts", unit: "N" },
-    { value: "EXACT_COUNT", label: "Exact count", unit: "N" },
-    { value: "AQL", label: "Acceptance sampling (Z1.4)", unit: "" },
-    { value: "C_ZERO", label: "Zero-acceptance (C=0)", unit: "" },
-];
 const labelFor = (t: string) => RULE_TYPES.find((r) => r.value === t)?.label ?? t;
 const unitFor = (t: string) => RULE_TYPES.find((r) => r.value === t)?.unit ?? "";
 const needsValue = (t: string) => unitFor(t) !== "";
@@ -33,6 +26,12 @@ const needsValue = (t: string) => unitFor(t) !== "";
  *  from the ruleset header form's save. */
 export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
     const { data, refetch, isLoading } = useRetrieveSamplingRules({ ruleset: rulesetId });
+    const queryClient = useQueryClient();
+    // Refresh the set's "Rule changes" with every add / edit / remove.
+    const refresh = () => {
+        refetch();
+        queryClient.invalidateQueries(ruleSetRuleHistoryOptions(rulesetId));
+    };
     const create = useCreateSamplingRule();
     const update = useUpdateSamplingRule();
     const del = useDeleteSamplingRule();
@@ -57,7 +56,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
             });
             setNewValue("");
             toast.success("Rule added");
-            refetch();
+            refresh();
         } catch {
             toast.error("Failed to add rule");
         }
@@ -73,7 +72,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
             await update.mutateAsync({ id, data: { value: v === "" ? null : Number(v) } });
             // The plan changed and is live now: say so (it saved silently).
             toast.success("Sampling rule updated — applies to parts from now on");
-            refetch();
+            refresh();
         } catch {
             delete lastSent.current[id];
             toast.error("Failed to update rule");
@@ -84,7 +83,7 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
         try {
             await del.mutateAsync(id);
             toast.success("Rule removed");
-            refetch();
+            refresh();
         } catch {
             toast.error("Failed to remove rule");
         }

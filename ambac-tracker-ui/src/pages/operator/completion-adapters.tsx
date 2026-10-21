@@ -342,7 +342,12 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             } else if (reasonList.length > 0) {
                 toast.warning("Part didn't move — see why", hold);
             } else {
-                toast.warning("Step submitted — lot waiting on cohort", { description });
+                // This unit's work is done and recorded; it moves when the rest of its
+                // lot does. Said plainly, with who it's waiting on (the server names them).
+                toast.success("Recorded — moves on with its lot", {
+                    description: reason || description,
+                    duration: 10000,
+                });
             }
             // Only this unit's own blockers keep the operator here. Waiting on the rest
             // of the lot means this unit's work is done, so the queue moves on.

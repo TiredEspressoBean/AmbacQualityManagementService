@@ -675,6 +675,15 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             assert_work_order_allowed(self.instance, attrs['work_order'])
         if self.instance is not None and ('part_status' in attrs or 'work_order' in attrs):
             self._validate_core_part(attrs)
+        # Into rework only through Send to rework, which asks why and opens the NCR QA
+        # sees — a bare step move put a part on a rework step with no record at all
+        # (user decision 2026-10-21).
+        new_step = attrs.get('step')
+        if (self.instance is not None and new_step is not None
+                and new_step.pk != self.instance.step_id and new_step.step_type == 'REWORK'):
+            raise serializers.ValidationError({'step': [
+                "Send it to rework instead — that records why and opens the disposition "
+                "QA reviews."]})
         return attrs
 
     def _validate_core_part(self, attrs):
