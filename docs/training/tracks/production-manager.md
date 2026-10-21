@@ -144,6 +144,15 @@ solved.
    by why: added since the last solve, waiting to ship, no units created yet, on
    hold. Each says what fixes it.
 
+3. **Dispatch** puts named operators on the plan's work, by their qualifications and
+   shifts. A bar then says how it went: *Dispatch assigned N of M tasks. K have no
+   qualified operator free.* **Show them in People** switches the board to one row
+   per person, with the uncovered work under **— Unassigned —**.
+4. **What-if** solves a draft beside the live plan; the live plan doesn't change. The
+   board switches to the draft with a comparison: makespan, lateness and the
+   solver's gap for each. Small differences inside the gap may not be real.
+   **Commit draft** makes it the plan; **Discard** throws it away.
+
 **Exercise 5.1.** Before solving, open **Not scheduled** and find your new work
 order. Say why it isn't there. Solve, and check again.
 
@@ -262,6 +271,32 @@ Your trainer is watching for:
 - [ ] You released only once the work was ready, or gave a reason to override.
 - [ ] You re-solved after releasing, and read the result.
 - [ ] When the system refused something, you read the refusal and acted on it.
+
+## If your shop remanufactures
+
+Everything above is new manufacture. A shop that also remanufactures adds this
+module; a new-build-only shop skips it.
+
+### R1. Record the customer's answer on extra work
+
+**You will:** read what a customer is being asked to approve, and record their
+answer.
+
+`CORE-240212-0009` is Great Lakes Diesel's own injector, here for repair under
+`ORD-2024-0046`. At the bench its nozzle was found cracked, and replacing it is more
+than the rebuild they bought. The unit waits, *Awaiting customer authorisation*.
+
+1. **Remanufacturing** > **Cores**, open `CORE-240212-0009`: *Awaiting customer
+   authorisation*, *Repair & return — this unit goes back*.
+2. **Approved…**. The dialog lists the repairs waiting on the customer's answer:
+   *NZL-REPLACE · Replace injector nozzle*, with the finding behind it. That's the
+   scope they were asked about; the price is agreed in your own system, not here.
+   Record **who answered**, **how** (phone, email) and a **reference** you can find
+   again, then **Record approval**.
+3. *Approved, rebuild resumed.* The core is *In Rebuild*, its hold is cleared, and
+   the answer is added to its notes with your name.
+
+**Declined…** records a refusal the same way.
 
 ## Recording your qualification
 
