@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Calendar, Package, CheckCircle2, Circle, Clock, User, Gauge, AlertTriangle, Paperclip, Truck } from "lucide-react";
@@ -369,12 +370,7 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                                                             </Badge>
                                                         )}
                                                         {isCompleted && step.quality_status && (
-                                                            <Badge
-                                                                variant={step.quality_status === 'PASS' ? 'default' : 'destructive'}
-                                                                className="text-xs"
-                                                            >
-                                                                {step.quality_status}
-                                                            </Badge>
+                                                            <QualityResultBadge status={step.quality_status} className="text-xs" />
                                                         )}
                                                         {isSkipped && (
                                                             <Badge variant="secondary" className="text-xs">

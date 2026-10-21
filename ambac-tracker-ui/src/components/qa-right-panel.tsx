@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { QaDocumentsSection } from "./qa-documents-section";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
 import { usePartTraveler } from "@/hooks/parts";
@@ -135,12 +136,7 @@ export const QaRightPanel = memo(function QaRightPanel({ workOrder, selectedPart
                                                                 </Badge>
                                                             )}
                                                             {step.quality_status && (
-                                                                <Badge
-                                                                    variant={step.quality_status === 'PASS' ? 'default' : 'destructive'}
-                                                                    className="text-xs"
-                                                                >
-                                                                    {step.quality_status}
-                                                                </Badge>
+                                                                <QualityResultBadge status={step.quality_status} className="text-xs" />
                                                             )}
                                                         </div>
 

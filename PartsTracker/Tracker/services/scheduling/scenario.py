@@ -7,6 +7,8 @@ top APS ask. Cross-aggregate state changes live here, not in the viewset.
 """
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.db import transaction
 
 
@@ -76,15 +78,22 @@ def _summarize(sched) -> dict | None:
 
 def _moved_task_count(live, draft) -> int:
     """Tasks the draft reschedules vs live — matched by unit+step, counting a change
-    of start time or machine (and any task the draft adds)."""
+    of start time or machine (and any task the draft adds).
+
+    A start counts as changed only past the gap between the two solves' horizon starts
+    (plus a minute): both are anchored on "now", so a draft solved two minutes after
+    live shifts every early task by those minutes without anyone moving it. Counting
+    that jitter reported every task on the board as moved."""
     def key(t):
         return (t.part_id, t.step_id)
 
+    slack = abs(draft.horizon_start - live.horizon_start) + timedelta(minutes=1)
     live_map = {key(t): t for t in live.tasks.all()}
     moved = 0
     for t in draft.tasks.all():
         prev = live_map.get(key(t))
-        if prev is None or prev.start_time != t.start_time or prev.machine_id != t.machine_id:
+        if (prev is None or prev.machine_id != t.machine_id
+                or abs(prev.start_time - t.start_time) > slack):
             moved += 1
     return moved
 

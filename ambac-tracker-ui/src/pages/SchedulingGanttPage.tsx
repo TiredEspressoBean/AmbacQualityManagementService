@@ -103,6 +103,27 @@ const isBatchId = (id: string) => id.startsWith("batch:");
 const OSP_LANE = "At an outside vendor";
 
 
+/** Minutes a lane is occupied: the union of its tasks' intervals. */
+function occupiedMinutes(tasks: { start_time: string; end_time: string }[]): number {
+  const spans = tasks
+    .map((t) => [new Date(t.start_time).getTime(), new Date(t.end_time).getTime()] as const)
+    .sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let curStart = -Infinity;
+  let curEnd = -Infinity;
+  for (const [st, en] of spans) {
+    if (st > curEnd) {
+      if (curEnd > curStart) total += curEnd - curStart;
+      curStart = st;
+      curEnd = en;
+    } else if (en > curEnd) {
+      curEnd = en;
+    }
+  }
+  if (curEnd > curStart) total += curEnd - curStart;
+  return total / 60000;
+}
+
 type Task = {
   id: string;
   part_erp: string | null;
@@ -599,14 +620,19 @@ export function SchedulingGanttPage() {
   const kpis = useMemo(() => {
     let minStart = Infinity;
     let maxEnd = -Infinity;
-    let uncovered = 0;
+    // Uncovered LOT-operations, counted as dispatch counts them: a work order's parts
+    // at one step on one machine in one slot need one operator, not one each. Counting
+    // part rows read 38 beside dispatch's "17 have no qualified operator".
+    const uncoveredLots = new Set<string>();
     let materialShort = 0;
     const lateWos = new Set<string>();
     const causeCounts: Record<string, number> = {};
     for (const t of allRows) {
       minStart = Math.min(minStart, new Date(t.start_time).getTime());
       maxEnd = Math.max(maxEnd, new Date(t.end_time).getTime());
-      if (t.requires_operator && !t.operator_name) uncovered += 1;
+      if (t.requires_operator && !t.operator_name) {
+        uncoveredLots.add([t.work_order_id, t.step_name, t.machine, t.start_time, t.end_time].join("|"));
+      }
       if (t.material_shortage) materialShort += 1;
       if (t.is_late) {
         lateWos.add(t.work_order ?? t.id);
@@ -620,7 +646,7 @@ export function SchedulingGanttPage() {
       .sort((a, b) => b[1] - a[1])
       .map(([cause, n]) => `${cause}: ${n}`)
       .join("\n");
-    return { makespanH, uncovered, materialShort, lateOrders: lateWos.size, lateCauseSummary };
+    return { makespanH, uncovered: uncoveredLots.size, materialShort, lateOrders: lateWos.size, lateCauseSummary };
   }, [allRows]);
 
   // Text search filters which tasks show (across WO / unit / step / machine / operator).
@@ -794,11 +820,12 @@ export function SchedulingGanttPage() {
         // reported OSP as by far the biggest "load" on the board — 3,120 h of other
         // people's time. Excluded; the OSP bars still render, they just don't count
         // as our capacity.
-        loadMinutes: tasks.reduce(
-          (s, t) => t.is_outside_process ? s
-            : s + (new Date(t.end_time).getTime() - new Date(t.start_time).getTime()) / 60000,
-          0
-        ),
+        //
+        // Occupied time, not a sum of part rows: a lot's parts share one interval (one
+        // occupancy, one operator), so summing rows counted a 15-part lot fifteen times
+        // and put a person at more hours than the whole plan spans. Overlapping
+        // intervals are merged, so a lane can never exceed the schedule's span.
+        loadMinutes: occupiedMinutes(tasks.filter((t) => !t.is_outside_process)),
         ospTasks: tasks.filter((t) => t.is_outside_process).length,
       }));
     return { list, batchMeta: meta };
@@ -1099,7 +1126,9 @@ export function SchedulingGanttPage() {
                   )}
                 </span>
                 {kpis.uncovered > 0 && (
-                  <Badge variant="destructive">{kpis.uncovered} uncovered</Badge>
+                  <Badge variant="destructive" title="Operations (a work order's parts at one step, in one slot) that need an operator and have none">
+                    {kpis.uncovered} operation{kpis.uncovered === 1 ? "" : "s"} without an operator
+                  </Badge>
                 )}
                 {kpis.materialShort > 0 && (
                   <Badge variant="destructive">▲ {kpis.materialShort} material-short</Badge>
@@ -1359,7 +1388,7 @@ export function SchedulingGanttPage() {
       {dispatchResult && (
         <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm" role="status">
           <span>
-            Dispatch assigned <b>{dispatchResult.covered}</b> of {dispatchResult.attended} tasks.
+            Dispatch assigned <b>{dispatchResult.covered}</b> of {dispatchResult.attended} operations.
           </span>
           {dispatchResult.uncovered > 0 && (
             <>

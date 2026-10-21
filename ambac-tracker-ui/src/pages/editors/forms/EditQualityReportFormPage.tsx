@@ -66,6 +66,8 @@ const statusLabels: Record<string, string> = {
     PASS: "Pass",
     FAIL: "Fail (NCR)",
     PENDING: "Pending Review",
+    // Refused by the server except for a core in rebuild at a check with planned repairs.
+    REPAIR: "Needs repair (rebuild checks only)",
 };
 
 const employeeOptionsInfinite = () =>

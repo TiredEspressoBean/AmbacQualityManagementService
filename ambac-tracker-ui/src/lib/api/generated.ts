@@ -8316,10 +8316,11 @@ export type QualityReportStatusEnum =
    * * `PASS` - Pass
    * `FAIL` - Fail
    * `PENDING` - Pending
+   * `REPAIR` - Needs repair
    *
-   * @enum PASS, FAIL, PENDING
+   * @enum PASS, FAIL, PENDING, REPAIR
    */
-  "PASS" | "FAIL" | "PENDING";
+  "PASS" | "FAIL" | "PENDING" | "REPAIR";
 export type QualityReportEquipment = {
   id: number;
   equipment: string;
@@ -9632,6 +9633,10 @@ export type StepExecution = {
    * Snapshot of the operator's training authorization at work start (audit trail). Includes the supervisor override, if one was used.
    */
   training_authorization: unknown;
+  /**
+   * Whether 'Needs repair' (REPAIR) is a result an inspector may record on this visit: a core in rebuild at a check with planned repairs. The server refuses it anywhere else. Set on a single execution; null in lists.
+   */
+  repair_result_offered: boolean | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -12179,10 +12184,11 @@ export type TravelerStepQualityStatusEnum =
    * * `PASS` - PASS
    * `FAIL` - FAIL
    * `CONDITIONAL` - CONDITIONAL
+   * `REPAIR` - REPAIR
    *
-   * @enum PASS, FAIL, CONDITIONAL
+   * @enum PASS, FAIL, CONDITIONAL, REPAIR
    */
-  "PASS" | "FAIL" | "CONDITIONAL";
+  "PASS" | "FAIL" | "CONDITIONAL" | "REPAIR";
 export type TravelerDefect = {
   error_type_id: string | null;
   error_name: string;
@@ -21512,7 +21518,7 @@ const PatchedMaterialLotRequest = z
     archived: z.boolean(),
   })
   .partial();
-const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING"]);
+const QualityReportStatusEnum = z.enum(["PASS", "FAIL", "PENDING", "REPAIR"]);
 const ValuePassFailEnum = z.enum(["PASS", "FAIL"]);
 const MeasurementResult = z.object({
   id: z.string().uuid(),
@@ -23082,7 +23088,12 @@ const TravelerMeasurement = z.object({
   recorded_at: z.string().datetime({ offset: true }),
   recorded_by: z.string().nullable(),
 });
-const TravelerStepQualityStatusEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
+const TravelerStepQualityStatusEnum = z.enum([
+  "PASS",
+  "FAIL",
+  "CONDITIONAL",
+  "REPAIR",
+]);
 const TravelerDefect = z.object({
   error_type_id: z.string().uuid().nullable(),
   error_name: z.string(),
@@ -24926,6 +24937,7 @@ const StepExecution = z.object({
   status: StepExecutionStatusEnum.optional(),
   is_active: z.boolean(),
   training_authorization: z.unknown().nullable(),
+  repair_result_offered: z.boolean().nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -27471,6 +27483,7 @@ const DashboardKPIsResponse = z.object({
   overdue_capas: z.number().int(),
   parts_in_quarantine: z.number().int(),
   current_fpy: z.number().nullable(),
+  needed_repair_rate: z.number().nullable(),
 });
 const NcrAgingResponse = z.object({
   data: z.array(z.object({}).partial().passthrough()),
@@ -49080,7 +49093,7 @@ Usage:
       {
         name: "status",
         type: "Query",
-        schema: z.enum(["FAIL", "PASS", "PENDING"]).optional(),
+        schema: z.enum(["FAIL", "PASS", "PENDING", "REPAIR"]).optional(),
       },
       {
         name: "step",

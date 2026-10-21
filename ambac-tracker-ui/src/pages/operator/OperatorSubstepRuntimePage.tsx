@@ -92,6 +92,14 @@ const captureStateOptions = (executionId: unknown, enabled: boolean) =>
         enabled,
     });
 
+// The visit itself: whether this check offers "Needs repair" is the server's answer.
+const stepExecutionOptions = (executionId: unknown) =>
+    queryOptions({
+        queryKey: ["step-execution", executionId],
+        queryFn: () => api.api_StepExecutions_retrieve({ params: { id: executionId as string } }),
+        enabled: Boolean(executionId),
+    });
+
 type RouteParams = { stepId: string };
 // Derived from the schema the router validates with, rather than restated
 // here — the two can't drift, and the ids are known-good UUIDs by the time
@@ -211,6 +219,7 @@ export function OperatorSubstepRuntimePage() {
     // deliberately fresh pass).
     const { data: captureState } = useQuery(
         captureStateOptions(search.execution, Boolean(search.execution) && !isUnitMode));
+    const { data: stepExecution } = useQuery(stepExecutionOptions(search.execution));
 
     const hydratedExecutionRef = useRef<string | null>(null);
     useEffect(() => {
@@ -460,6 +469,7 @@ export function OperatorSubstepRuntimePage() {
         // context carrying the load — a step can have several open at once.
         substep_id: current?.id ?? null,
         quality_report_id: current ? (qrIdBySubstepId[current.id] ?? null) : null,
+        repair_result_offered: stepExecution?.repair_result_offered === true,
     };
 
     // Resolve the completion behaviour for this run's subject (part advancement,

@@ -1,6 +1,10 @@
 import { Play, CheckCircle, Wrench, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useStartTeardownBatch } from "@/hooks/useStartTeardownBatch";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { useReleaseCore } from "@/hooks/useReleaseCore";
@@ -12,6 +16,7 @@ type WorkableCore = {
     part?: string | number | null;
     work_order?: string | null;
     fulfilment_mode?: string;
+    core_number?: string;
 };
 
 function errorDetail(err: unknown, fallback: string) {
@@ -109,9 +114,27 @@ export function WorkThisUnit({ core }: { core: WorkableCore }) {
                 <Button variant="default" disabled={busy} onClick={rebuildIt}>
                     <Wrench className="mr-2 h-4 w-4" /> Rebuild to stock
                 </Button>
-                <Button variant="outline" disabled={busy} onClick={harvestIt}>
-                    <PackageOpen className="mr-2 h-4 w-4" /> Harvest for parts
-                </Button>
+                {/* Harvest ends the unit (it is dismantled), so it is confirmed first. */}
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline" disabled={busy}>
+                            <PackageOpen className="mr-2 h-4 w-4" /> Harvest for parts
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Harvest {core.core_number ?? "this core"}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                The unit is consumed: it won't be rebuilt, and its usable
+                                components go to stock. This can't be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={harvestIt}>Harvest for parts</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </span>
         );
     }

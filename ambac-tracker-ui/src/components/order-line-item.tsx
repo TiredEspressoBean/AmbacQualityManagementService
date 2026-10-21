@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { formatDistanceToNow, format } from "date-fns";
 import {
     ChevronDown, ChevronRight, AlertTriangle, CheckCircle2,
@@ -207,12 +208,7 @@ export function OrderLineItem({ part, index, partsContentTypeId }: OrderLineItem
                                         </Badge>
                                     )}
                                     {part.quality_info?.latest_status && (
-                                        <Badge
-                                            variant={part.quality_info.latest_status === "PASS" ? "outline" : "destructive"}
-                                            className="text-xs"
-                                        >
-                                            QA: {part.quality_info.latest_status}
-                                        </Badge>
+                                        <QualityResultBadge status={part.quality_info.latest_status} prefix="QA: " className="text-xs" />
                                     )}
                                 </div>
                             </div>

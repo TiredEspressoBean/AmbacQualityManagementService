@@ -1007,6 +1007,8 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                             ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
                             : status === 'FAIL'
                                 ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                                : status === 'REPAIR'
+                                ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300'
                                 : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300';
                         return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${tone}`}>{value || status}</span>;
                     },

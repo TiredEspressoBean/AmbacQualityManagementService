@@ -2,6 +2,7 @@
 from django.db import models
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from Tracker.services.qms.qa_status import INSPECTED_OK
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
 from Tracker.models.scheduling import StepTiming
@@ -1164,7 +1165,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
             requires_sampling=True,
             part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'READY_FOR_NEXT_STEP',
                             'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
-        ).exclude(error_reports__status='PASS')
+        ).exclude(error_reports__status__in=INSPECTED_OK)
         return {'total': parts.count(), 'requiring_qa': needs_qa_parts.count(),
                 'completed': parts.filter(part_status=PartsStatus.COMPLETED).count(),
                 'in_progress': parts.filter(part_status=PartsStatus.IN_PROGRESS).count(),
@@ -1177,7 +1178,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
 # cycle can only pass or fail. Named so the two distinct sets get stable, distinct
 # OpenAPI enum components (see ENUM_NAME_OVERRIDES in settings) instead of a
 # hash-resolved collision.
-STEP_QUALITY_STATUSES = ['PASS', 'FAIL', 'CONDITIONAL']
+STEP_QUALITY_STATUSES = ['PASS', 'FAIL', 'CONDITIONAL', 'REPAIR']
 BATCH_CYCLE_QUALITY_STATUSES = ['PASS', 'FAIL']
 
 
@@ -1607,6 +1608,10 @@ class StepExecutionSerializer(SecureModelMixin):
     # Computed fields
     duration_seconds = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
+    repair_result_offered = serializers.SerializerMethodField(
+        help_text="Whether 'Needs repair' (REPAIR) is a result an inspector may record on "
+                  "this visit: a core in rebuild at a check with planned repairs. The "
+                  "server refuses it anywhere else. Set on a single execution; null in lists.")
 
     class Meta:
         model = StepExecution
@@ -1617,7 +1622,7 @@ class StepExecutionSerializer(SecureModelMixin):
             'assigned_to', 'assigned_to_info',
             'completed_by', 'completed_by_info',
             'next_step', 'decision_result', 'status', 'is_active',
-            'training_authorization',
+            'training_authorization', 'repair_result_offered',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -1628,6 +1633,15 @@ class StepExecutionSerializer(SecureModelMixin):
         )
 
 
+
+    @extend_schema_field(serializers.BooleanField(allow_null=True))
+    def get_repair_result_offered(self, obj):
+        # Per row it costs a core lookup and an edge query, so only on a single read.
+        view = self.context.get('view')
+        if getattr(view, 'action', None) != 'retrieve':
+            return None
+        from Tracker.services.reman.repair_routing import repair_result_offered
+        return repair_result_offered(obj.part, obj.step)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_part_info(self, obj):

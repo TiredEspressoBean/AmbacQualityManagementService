@@ -15,6 +15,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from Tracker.services.qms.qa_status import INSPECTED_OK
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 from Tracker.serializers.locations import MovePartsRequestSerializer, MovePartsResultSerializer
 
@@ -482,7 +483,8 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         part = self.get_object()
         step = part.step
         max_visits = getattr(step, 'max_visits', None) if step else None
-        current_visits = StepExecution.get_visit_count(part, step) if step else 0
+        # Attempts, as the cap counts them: a "Needs repair" visit isn't one.
+        current_visits = StepExecution.get_attempt_count(part, step) if step else 0
 
         escalation_step_name = None
         if step and max_visits is not None:
@@ -1454,12 +1456,16 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                     })
 
             # Determine quality status
+            # FAIL over REPAIR over PASS: a step that found planned repair work says so,
+            # in its own colour, rather than reading as a clean pass or a failure.
             quality_status = None
             for qr in step_qrs:
                 if qr.status == 'FAIL':
                     quality_status = 'FAIL'
                     break
-                elif qr.status == 'PASS' and quality_status != 'FAIL':
+                elif qr.status == 'REPAIR':
+                    quality_status = 'REPAIR'
+                elif qr.status == 'PASS' and quality_status is None:
                     quality_status = 'PASS'
 
             # Build defects list
@@ -2124,7 +2130,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         parts_needing_qa = parts.filter(
             requires_sampling=True,
             part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
-        ).exclude(error_reports__status='PASS')
+        ).exclude(error_reports__status__in=INSPECTED_OK)
 
         return Response({'work_order': self.get_serializer(work_order).data,
                          'parts_summary': {'total': parts.count(), 'needing_qa': parts_needing_qa.count(),
@@ -2158,7 +2164,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         parts_needing_qa = work_order.parts.filter(
             requires_sampling=True,
             part_status__in=['PENDING', 'IN_PROGRESS', 'AWAITING_QA', 'REWORK_NEEDED', 'REWORK_IN_PROGRESS']
-        ).exclude(error_reports__status='PASS').select_related('step', 'part_type')
+        ).exclude(error_reports__status__in=INSPECTED_OK).select_related('step', 'part_type')
 
         if not parts_needing_qa.exists():
             return Response({'work_order_documents': [], 'current_step_documents': [], 'part_type_documents': [],
@@ -2324,6 +2330,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             total=Count('id'),
             passed=Count('id', filter=Q(status='PASS')),
             failed=Count('id', filter=Q(status='FAIL')),
+            repair=Count('id', filter=Q(status='REPAIR')),
         )
         qr_map = {q['step_id']: q for q in qr_stats}
 
@@ -2383,6 +2390,8 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             if qr_data:
                 if qr_data.get('failed', 0) > 0:
                     quality_status = 'FAIL'
+                elif qr_data.get('repair', 0) > 0:
+                    quality_status = 'REPAIR'
                 elif qr_data.get('passed', 0) > 0:
                     quality_status = 'PASS'
 
@@ -4093,12 +4102,17 @@ class PartTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin,
 
         part_type = self.get_object()
 
-        reports = self.qs_for_user(QualityReports).filter(part__part_type=part_type)
+        all_reports = self.qs_for_user(QualityReports).filter(part__part_type=part_type)
+        # A planned repair (REPAIR) is scoped work, not a first-pass failure: out of FPY
+        # on both sides, and reported as its own "needed repair" rate.
+        repair = all_reports.filter(status='REPAIR').count()
+        reports = all_reports.exclude(status='REPAIR')
         total = reports.count()
         passed = reports.filter(status='PASS').count()
         failed = reports.filter(status='FAIL').count()
         pending = reports.filter(status='PENDING').count()
         fpy = round(passed / total * 100, 1) if total else None
+        repair_rate = round(repair / (total + repair) * 100, 1) if repair else None
 
         parts_total = self.qs_for_user(Parts).filter(part_type=part_type).count()
 
@@ -4215,6 +4229,7 @@ class PartTypeViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin,
             'reports': {
                 'total': total, 'passed': passed, 'failed': failed,
                 'pending': pending, 'fpy': fpy,
+                'repair': repair, 'repair_rate': repair_rate,
             },
             'open': {'dispositions': open_dispositions, 'capas': open_capas},
             'defect_pareto': defect_pareto,

@@ -184,6 +184,7 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
     auditlog attributes the `part.save()` to `request.user` via middleware.
     """
     from Tracker.models import PartsStatus, Parts
+    from Tracker.services.mes.parts import end_open_executions
 
     if disposition.part_id is None or not disposition.disposition_type:
         return
@@ -290,12 +291,15 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
             from Tracker.services.reman.core_part import scrap_if_core
 
             if scrap_if_core(part, reason=f"disposition {disposition.disposition_number}"):
-                return
+                return  # scrap_core ends the open visit too
 
         part.part_status = new_status
         if disposition.disposition_type in ('REWORK', 'REPAIR'):
             part.total_rework_count += 1
         part.save(update_fields=['part_status', 'total_rework_count'])
+        # Scrap and return end the unit's time here, so the visit it was on ends too.
+        if new_status in (PartsStatus.SCRAPPED, PartsStatus.CANCELLED):
+            end_open_executions(part)
 
 
 # USE_AS_IS and REPAIR accept known-nonconforming product, so the standard treats

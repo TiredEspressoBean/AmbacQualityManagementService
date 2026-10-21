@@ -61,6 +61,18 @@ def _int_param(request, name: str, default: int, lo: int, hi: int) -> int:
         return default
 
 
+
+def _not_on_crew(operator, tenant) -> str | None:
+    """Why `operator` can't be given scheduled work, or None. Work goes to the crew
+    dispatch schedules from — active shop-floor operators rostered to a shift — never
+    to a customer contact or office staff, whatever a step's (absent) training
+    requirement would allow."""
+    from Tracker.services.scheduling.data import get_dispatchable_operators
+    if operator.id in {o.user_id for o in get_dispatchable_operators(tenant)}:
+        return None
+    return (f"{operator.get_full_name() or operator.username} isn't on the crew — only "
+            "active shop-floor operators rostered to a shift can be assigned work.")
+
 class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     """Run the solver / dispatch and read the active schedule."""
     queryset = ScheduleResult.unscoped.all()
@@ -901,9 +913,15 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
             for a in StepEquipmentAffinity.objects.filter(step_id=task.step_id)
             .select_related('equipment')
         ]
+        # The crew dispatch schedules from (active shop-floor operators with a shift),
+        # narrowed to who is qualified. "Qualified" alone is every user in the tenant
+        # when a step has no training requirement — customers and office staff included.
+        from Tracker.services.scheduling.data import get_dispatchable_operators
+        crew = {o.user_id for o in get_dispatchable_operators(self.tenant)}
         operators = [
             {'id': str(u.id), 'name': (u.get_full_name() or u.username)}
             for u in get_qualified_users_for_step(task.step, tenant=self.tenant)
+            if u.id in crew
         ]
         return Response({'machines': machines, 'operators': operators})
 
@@ -941,6 +959,9 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
             operator = User.objects.filter(pk=op_id, tenant=self.tenant).first()
             if operator is None:
                 return Response({'detail': 'Unknown operator.'}, status=status.HTTP_400_BAD_REQUEST)
+            why = _not_on_crew(operator, self.tenant)
+            if why:
+                return Response({'detail': why}, status=status.HTTP_400_BAD_REQUEST)
         result = svc(task, operator, user=request.user)
         return Response({**result, **ScheduledTaskSerializer(task).data})
 
@@ -981,6 +1002,9 @@ class ScheduledTaskViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
             operator = User.objects.filter(pk=op_id, tenant=self.tenant).first()
             if operator is None:
                 return Response({'detail': 'Unknown operator.'}, status=status.HTTP_400_BAD_REQUEST)
+            why = _not_on_crew(operator, self.tenant)
+            if why:
+                return Response({'detail': why}, status=status.HTTP_400_BAD_REQUEST)
         tasks = list(self.get_queryset().filter(
             pk__in=body.validated_data['task_ids']).select_related('step', 'schedule'))
         if not tasks:

@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { WorkOrderHoldBanner } from "@/components/workorders/WorkOrderHoldBanner";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -204,7 +206,7 @@ function adaptTravelerEntry(t: TravelerStepEntry): MockStepVisit {
         ended_at: t.completed_at ?? null,
         operator: op,
         equipment: eq,
-        quality_status: qs === "PASS" ? "PASS" : qs === "FAIL" ? "FAIL" : null,
+        quality_status: qs === "PASS" || qs === "FAIL" || qs === "REPAIR" ? qs : null,
         step_execution_ids: t.step_execution_ids ?? [],
         completion_count: t.completion_count ?? 0,
         voided_completion_count: t.voided_completion_count ?? 0,
@@ -832,7 +834,9 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                 {formatTravelerTime(v.ended_at)}
                             </TableCell>
                             <TableCell className="py-1.5 text-xs">
-                                {v.quality_status ? (
+                                {v.quality_status === "REPAIR" ? (
+                                    <QualityResultBadge status="REPAIR" className="text-[10px]" />
+                                ) : v.quality_status ? (
                                     <PartStatusBadge status={v.quality_status} size="sm" showIcon={false} />
                                 ) : (
                                     <span className="text-muted-foreground">—</span>
@@ -1717,28 +1721,7 @@ export function WorkOrderControlPage() {
                 onShowFlow={() => setFlowDrawerOpen(true)}
             />
 
-            {currentHold && (
-                <Card className="border-amber-500/50">
-                    <CardContent className="flex items-start gap-3 p-3">
-                        <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                        <div className="flex-1 space-y-0.5 text-sm">
-                            <div className="font-medium">
-                                On hold · {HOLD_REASONS.find((r) => r.value === currentHold.reason)?.label ?? currentHold.reason}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                {currentHold.hours_open}h open
-                                {currentHold.placed_by_name ? ` · placed by ${currentHold.placed_by_name}` : ""}
-                                {currentHold.expected_clear_at
-                                    ? ` · expected clear ${new Date(currentHold.expected_clear_at).toLocaleDateString()}`
-                                    : ""}
-                            </div>
-                            {currentHold.notes && (
-                                <div className="text-xs text-muted-foreground">{currentHold.notes}</div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            {currentHold && <WorkOrderHoldBanner hold={currentHold} />}
 
             {splitMode && (
                 <Card className="border-primary">

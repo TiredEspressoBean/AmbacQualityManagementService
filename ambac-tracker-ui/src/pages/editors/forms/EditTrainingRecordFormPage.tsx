@@ -101,12 +101,13 @@ export default function EditTrainingRecordFormPage() {
     });
     const trainingTypes = trainingTypesData?.results ?? [];
 
-    const { data: usersData } = useRetrieveUsers(
-        {
-            search: userSearch || trainerSearch,
-        }
-    );
+    // One query per picker: they shared one, keyed on `userSearch || trainerSearch`, so
+    // once a trainee had been searched the trainer list showed the trainee's results
+    // whatever was typed into it.
+    const { data: usersData } = useRetrieveUsers({ search: userSearch });
     const users = usersData?.results ?? [];
+    const { data: trainersData } = useRetrieveUsers({ search: trainerSearch });
+    const trainers = trainersData?.results ?? [];
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
@@ -213,7 +214,7 @@ export default function EditTrainingRecordFormPage() {
                                         selectedLabel={infoName(record?.user_info)}
                                         placeholder="Select trainee"
                                         searchPlaceholder="Search users..."
-                                        emptyText="No users found."
+                                        emptyText={userSearch ? "No users found." : "Type a name to search"}
                                     />
                                 </FormControl>
                                 <FormDescription>The person who completed the training</FormDescription>
@@ -364,13 +365,13 @@ export default function EditTrainingRecordFormPage() {
                                     <Combobox
                                         value={field.value == null ? null : String(field.value)}
                                         onChange={(v) => field.onChange(v === null ? null : Number(v))}
-                                        options={users.map(userOption)}
+                                        options={trainers.map(userOption)}
                                         onSearch={setTrainerSearch}
                                         clearLabel="No trainer"
                                         selectedLabel={infoName(record?.trainer_info)}
                                         placeholder="Select trainer (optional)"
                                         searchPlaceholder="Search users..."
-                                        emptyText="No users found."
+                                        emptyText={trainerSearch ? "No users found." : "Type a name to search"}
                                     />
                                 </FormControl>
                                 <FormDescription>Person who conducted the training</FormDescription>

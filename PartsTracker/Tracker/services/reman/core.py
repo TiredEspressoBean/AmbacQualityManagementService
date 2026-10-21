@@ -61,6 +61,9 @@ def scrap_core(core: Core, reason: str = '') -> Core:
         core.condition_notes = f"{core.condition_notes}\nScrapped: {reason}".strip()
     core.save()
     sync_part_status(core)
+    # The unit's time in the flow is over, so the visit it was on ends too.
+    from Tracker.services.mes.parts import end_open_executions
+    end_open_executions(core.part)
     return core
 
 

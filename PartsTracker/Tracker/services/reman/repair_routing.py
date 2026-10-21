@@ -196,6 +196,50 @@ def repair_route(part, step):
     return None
 
 
+def repair_result_offered(part, step) -> bool:
+    """Whether "Needs repair" is a result an inspector may record for `part` at `step`:
+    a core in rebuild at a check with Repair nodes in its process. Everywhere else an
+    inspection is Pass or Fail."""
+    from Tracker.services.reman.core_steps import core_of
+    if part is None or step is None:
+        return False
+    core = core_of(part)
+    return (core is not None and core.status == 'IN_REBUILD'
+            and bool(repair_branches(_process_of(part), step)))
+
+
+def repair_result_refusal(part, step) -> str | None:
+    """Why a REPAIR result can't be recorded for `part` at `step`, or None."""
+    if repair_result_offered(part, step):
+        return None
+    return (f"Needs repair is only a result at a rebuild check with planned repairs; "
+            f"{step.name if step else 'this step'} has none for {part}. Record Pass or Fail.")
+
+
+NO_REPAIR_RAISED = ("Repair recorded but no repair was raised — record what needs repairing "
+                    "(Report a component found worse), or change the result.")
+
+
+def assert_repair_result_routed(part, step) -> None:
+    """A unit inspected "Needs repair" here leaves by a repair branch or not at all.
+
+    Called when routing found no repair to take. A REPAIR result on this visit with no
+    repair raised — no finding recorded, or one dismissed — must not fall through to the
+    step's own routing: on a QA_RESULT check that is the Rework branch, and the unit was
+    never failed.
+
+    Raises:
+        RepairHold: this visit's inspection says Needs repair.
+    """
+    from Tracker.models import QualityReports, StepExecution
+    ex = StepExecution.get_current_execution(part)
+    if ex is None or ex.step_id != getattr(step, 'id', None):
+        return
+    if QualityReports.objects.filter(  # tenant-safe: scoped by the execution FK
+            step_execution=ex, status='REPAIR', archived=False).exists():
+        raise RepairHold(NO_REPAIR_RAISED)
+
+
 def auto_apply_pre_approved(component, step_execution, user) -> bool:
     """Apply a just-recorded finding at once when this check pre-approves the repair it
     raises — the approved process is the authorisation. Returns True when applied.

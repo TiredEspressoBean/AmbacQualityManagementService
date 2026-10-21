@@ -323,4 +323,8 @@ def _compute_report_status(report: QualityReports) -> str:
         return "PENDING"
     if any(m.is_within_spec is False for m in measurements):
         return "FAIL"
+    # An inspector's "Needs repair" stands while the readings are in spec: in-spec
+    # numbers don't make planned repair work a pass.
+    if report.status == "REPAIR":
+        return "REPAIR"
     return "PASS"

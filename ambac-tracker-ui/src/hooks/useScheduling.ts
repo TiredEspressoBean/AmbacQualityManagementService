@@ -229,7 +229,7 @@ export function useDispatchSchedule(onDone?: (r: DispatchResult | null) => void)
       verb: "dispatch",
       done: (r) =>
         r?.covered != null
-          ? `Assigned ${r.covered} of ${r.attended} tasks`
+          ? `Assigned ${r.covered} of ${r.attended} operations`
             + (r.uncovered ? ` · ${r.uncovered} have no qualified operator free` : "")
           : "Dispatch complete",
     },
@@ -267,7 +267,19 @@ export const activeRunOptions = () =>
   });
 
 export function useActiveRun() {
-  return useQuery(activeRunOptions());
+  const qc = useQueryClient();
+  const q = useQuery(activeRunOptions());
+  // When the tenant's run finishes, refresh the board here — whichever page instance is
+  // looking. The tab that started a run refreshes through its own task poll, but after
+  // a reload or navigating away that poll is gone: the banner saw the run land while
+  // the board, the draft and its compare stayed as they were until a manual refresh.
+  const wasRunning = useRef(false);
+  const running = Boolean(q.data?.running);
+  useEffect(() => {
+    if (wasRunning.current && !running) invalidateSchedule(qc);
+    wasRunning.current = running;
+  }, [running, qc]);
+  return q;
 }
 
 /** The tenant's solver knobs (time limit, fences, penalties, labor model). */

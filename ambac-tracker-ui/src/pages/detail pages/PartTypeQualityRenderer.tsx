@@ -80,8 +80,12 @@ export function PartTypeQualityRenderer({ modelData }: RendererProps) {
                 <Kpi
                     label="First Pass Yield"
                     value={reports.fpy != null ? `${reports.fpy}%` : "—"}
-                    sub={`${reports.total} inspection${reports.total === 1 ? "" : "s"}`}
+                    sub={`${reports.total} inspection${reports.total === 1 ? "" : "s"} · planned repairs excluded`}
                 />
+                {reports.repair > 0 && (
+                    <Kpi label="Needed repair" value={`${reports.repair_rate}%`}
+                         sub={`${reports.repair} planned repair${reports.repair === 1 ? "" : "s"}`} />
+                )}
                 <Kpi label="Passed" value={reports.passed} tone={reports.passed ? "good" : undefined} />
                 <Kpi label="Failed" value={reports.failed} tone={reports.failed ? "bad" : undefined} />
                 <Kpi label="Pending" value={reports.pending} />

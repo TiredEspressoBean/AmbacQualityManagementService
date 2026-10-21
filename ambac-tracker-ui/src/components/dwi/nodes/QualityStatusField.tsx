@@ -4,6 +4,8 @@
  * containing substep has `is_inspection_point=True`.
  *
  * Engineer authoring: label, required, allowed values (default all three).
+ * "Needs repair" (REPAIR) is not an authored choice: it appears only where the server
+ * offers it for this visit (a core in rebuild at a check with planned repairs).
  * Operator capture: single status string.
  */
 import { Node, mergeAttributes } from "@tiptap/core";
@@ -12,7 +14,7 @@ import {
     ReactNodeViewRenderer,
     type NodeViewProps,
 } from "@tiptap/react";
-import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldQuestion, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -21,8 +23,9 @@ import { AuthoringPopover } from "../shared/AuthoringPopover";
 import { useDebouncedAttrs } from "../shared/useDebouncedAttrs";
 import { TextAttrRow } from "../shared/AttrInputs";
 import { useOperatorResponse } from "../shared/OperatorResponseContext";
+import { usePartContext } from "../shared/PartContext";
 
-type Status = "PASS" | "FAIL" | "PENDING";
+type Status = "PASS" | "FAIL" | "PENDING" | "REPAIR";
 
 type Attrs = {
     node_id: string;
@@ -35,6 +38,8 @@ const STATUS_META: Record<Status, { label: string; icon: React.ComponentType<{ c
     PASS: { label: "Pass", icon: ShieldCheck, cls: "bg-green-600 text-white" },
     FAIL: { label: "Fail", icon: ShieldAlert, cls: "bg-destructive text-destructive-foreground" },
     PENDING: { label: "Pending", icon: ShieldQuestion, cls: "bg-amber-500 text-white" },
+    // Neutral, not the fail red: planned repair work, not a nonconformance.
+    REPAIR: { label: "Needs repair", icon: Wrench, cls: "bg-sky-600 text-white" },
 };
 const ALL_STATUSES: Status[] = ["PASS", "FAIL", "PENDING"];
 
@@ -86,9 +91,11 @@ function View(props: NodeViewProps) {
     const a = node.attrs as Attrs;
     const isOperator = !editor.isEditable;
     const { value, setValue } = useOperatorResponse(a.node_id);
-    const allowed = (Array.isArray(a.allowed) && a.allowed.length > 0
+    const { repair_result_offered } = usePartContext();
+    const authored = (Array.isArray(a.allowed) && a.allowed.length > 0
         ? a.allowed
-        : ALL_STATUSES) as Status[];
+        : ALL_STATUSES).filter((s) => s !== "REPAIR") as Status[];
+    const allowed: Status[] = repair_result_offered && isOperator ? [...authored, "REPAIR"] : authored;
     const v = (typeof value === "string" ? value : "") as Status | "";
 
     const card = (
@@ -128,6 +135,14 @@ function View(props: NodeViewProps) {
                     );
                 })}
             </div>
+            {v === "REPAIR" && (
+                <p className="mt-2 text-xs text-sky-700 dark:text-sky-400" contentEditable={false}>
+                    Repair needs a finding: record what needs repairing under
+                    "Report a component found worse" before you complete the step. A
+                    repair this check pre-approves sends the unit down that branch;
+                    anything else waits here for a lead.
+                </p>
+            )}
         </NodeCard>
     );
 

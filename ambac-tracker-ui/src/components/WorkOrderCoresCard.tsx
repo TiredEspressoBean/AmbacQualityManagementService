@@ -7,6 +7,10 @@ import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { coreStageLabel, coreStageVariant } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -42,6 +46,8 @@ export function WorkOrderCoresCard(
     { cores, workOrderId }: { cores: WorkOrderCore[]; workOrderId?: string },
 ) {
     const [pending, setPending] = useState<string | null>(null);
+    // Harvest consumes the unit, so it is confirmed before it runs.
+    const [harvesting, setHarvesting] = useState<WorkOrderCore | null>(null);
     // The customer's answer, recorded by staff: who answered, how, and the reference.
     const [answering, setAnswering] = useState<{ core: WorkOrderCore; approved: boolean } | null>(null);
     const [returning, setReturning] = useState<WorkOrderCore | null>(null);
@@ -105,6 +111,23 @@ export function WorkOrderCoresCard(
 
     return (
         <TooltipProvider>
+            <AlertDialog open={harvesting !== null} onOpenChange={(o) => { if (!o) setHarvesting(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Harvest {harvesting?.core_number ?? "this core"}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The unit is consumed: it won't be rebuilt, and its usable components go
+                            to stock. This can't be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => { if (harvesting) doRelease(harvesting, "inventory"); setHarvesting(null); }}>
+                            Harvest for parts
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex flex-wrap items-baseline gap-3">
@@ -300,7 +323,7 @@ export function WorkOrderCoresCard(
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    onClick={() => doRelease(core, "inventory")}
+                                                                    onClick={() => setHarvesting(core)}
                                                                     disabled={busy}
                                                                 >
                                                                     <PackageCheck className="mr-1 h-4 w-4" />

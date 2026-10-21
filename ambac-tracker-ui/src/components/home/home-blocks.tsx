@@ -593,7 +593,12 @@ function QualityKpisBlock() {
             <StatTile label="Parts under disposition" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
             <StatTile label="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" />
             <StatTile label="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} />
-            <StatTile label="First pass yield" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" />
+            {/* Planned repairs (a "Needs repair" result at a rebuild check) are scoped
+                work, not first-pass failures: out of FPY, and shown as their own rate. */}
+            <StatTile label="First pass yield (excl. planned repairs)" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" />
+            {data?.needed_repair_rate != null && (
+                <StatTile label="Needed repair" value={`${data.needed_repair_rate}%`} icon={Wrench} link="/analysis" />
+            )}
         </StatSection>
     );
 }

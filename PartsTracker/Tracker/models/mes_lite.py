@@ -1943,6 +1943,14 @@ class StepExecution(SecureModel):
         return cls.objects.filter(part=part, step=step).count()
 
     @classmethod
+    def get_attempt_count(cls, part, step):
+        """Visits that count toward a step's visit cap (`max_visits`): every visit but
+        one inspected "Needs repair". A planned repair sends the unit round again by
+        design — it isn't a failed attempt, so it mustn't bring escalation nearer."""
+        return (cls.objects.filter(part=part, step=step)
+                .exclude(quality_reports__status='REPAIR').distinct().count())
+
+    @classmethod
     def get_visit_count_for_update(cls, part, step):
         """
         Get visit count with row-level locking to prevent race conditions.
@@ -3601,7 +3609,7 @@ class Parts(SecureModel):
         if target_step is None or target_step.max_visits is None:
             return target_step
 
-        current_visits = StepExecution.get_visit_count(self, target_step)
+        current_visits = StepExecution.get_attempt_count(self, target_step)
 
         if current_visits >= target_step.max_visits:
             # Limit exceeded - route to escalation (e.g., scrap decision)
@@ -3660,10 +3668,12 @@ class Parts(SecureModel):
         # A check with Repair nodes sends a reman unit down the repair its raised codes
         # call for, or holds it for a decision (services/reman/repair_routing). Nothing
         # called for → the step's own routing below, as for any step.
-        from Tracker.services.reman.repair_routing import repair_route
+        from Tracker.services.reman.repair_routing import assert_repair_result_routed, repair_route
         repair_step = repair_route(self, current)
         if repair_step is not None:
             return self._check_cycle_limit(repair_step)
+        # Inspected "Needs repair" but nothing to repair: hold, never the Rework branch.
+        assert_repair_result_routed(self, current)
 
         # Decision point - route based on result
         if current.is_decision_point:

@@ -75,6 +75,23 @@ class DispositionPartStatusCascadeTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(part.part_status, PartsStatus.SCRAPPED)
         self.assertEqual(part.total_rework_count, 0)
 
+    def test_scrap_and_return_end_the_visit_the_part_was_on(self):
+        """A scrapped part's step must not read "In Progress" forever on the traveler;
+        a use-as-is part is still mid-step, so its visit stays open."""
+        from Tracker.models import PartTypes, StepExecution, Steps
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Body")
+        step = Steps.objects.create(tenant=self.tenant, name="Machining", part_type=pt)
+        for erp, decision, ended in (("P-SCX", "SCRAP", True), ("P-RTX", "RETURN_TO_SUPPLIER", True),
+                                     ("P-UAX", "USE_AS_IS", False)):
+            part = self._make_part(erp)
+            Parts.objects.filter(pk=part.pk).update(step=step, part_type=pt, part_status="QUARANTINED")
+            ex = StepExecution.objects.create(tenant=self.tenant, part=part, step=step,
+                                              visit_number=1, status="IN_PROGRESS")
+            self._disposition(part, decision)
+            ex.refresh_from_db()
+            self.assertEqual((ex.status, ex.exited_at is not None),
+                             ("CANCELLED", True) if ended else ("IN_PROGRESS", False), decision)
+
     def test_use_as_is_puts_the_part_back_to_work(self):
         # Not READY_FOR_NEXT_STEP: that means "staged for its batch".
         part = self._make_part("P-UAI")

@@ -226,6 +226,7 @@ export function AnnotatorPage() {
                                                     <span className={`text-xs px-2 py-0.5 rounded ${
                                                         report.status === 'PASS' ? 'bg-green-100 text-green-800' :
                                                         report.status === 'FAIL' ? 'bg-red-100 text-red-800' :
+                                                        report.status === 'REPAIR' ? 'bg-sky-100 text-sky-800' :
                                                         'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                         {report.status}

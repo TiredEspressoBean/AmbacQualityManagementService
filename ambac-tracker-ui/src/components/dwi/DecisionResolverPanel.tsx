@@ -160,8 +160,12 @@ export function DecisionResolverPanel({
                 </p>
                 {data.qa_suggested && (
                     <p className="mt-1 text-xs">
-                        Latest inspection: <span className="font-medium">{data.qa_suggested}</span>
-                        {suggestedTarget ? (
+                        Latest inspection: <span className="font-medium">
+                            {data.qa_suggested === "REPAIR" ? "Needs repair" : data.qa_suggested}</span>
+                        {data.qa_suggested === "REPAIR" ? (
+                            // Never the rework branch: the finding's repair, or a hold.
+                            <span className="text-muted-foreground"> → the repair its finding raises (shown above)</span>
+                        ) : suggestedTarget ? (
                             <span className="text-muted-foreground"> → {suggestedTarget}</span>
                         ) : (
                             <span className="text-muted-foreground"> — routes once the result is in</span>

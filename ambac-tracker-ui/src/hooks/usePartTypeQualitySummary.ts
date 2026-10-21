@@ -8,7 +8,10 @@ export type PartTypeQualitySummary = {
         passed: number;
         failed: number;
         pending: number;
+        /** Planned repairs (REPAIR) are excluded from `total` and `fpy`. */
         fpy: number | null;
+        repair: number;
+        repair_rate: number | null;
     };
     open: { dispositions: number; capas: number };
     defect_pareto: { error_type: string; count: number }[];

@@ -149,7 +149,9 @@ function QRStatusBadge({ status }: { status: string }) {
             ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
             : status === "FAIL"
                 ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+                : status === "REPAIR"
+                    ? "bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
     return <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tone}`}>{status}</span>;
 }
 

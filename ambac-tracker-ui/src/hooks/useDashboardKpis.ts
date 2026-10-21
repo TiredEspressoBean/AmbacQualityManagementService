@@ -6,7 +6,10 @@ export type DashboardKpis = {
     open_ncrs: number;
     overdue_capas: number;
     parts_in_quarantine: number;
+    /** First-pass yield with planned repairs (REPAIR results) left out of both sides. */
     current_fpy: number;
+    /** Share of inspections that found planned repair work; null when there were none. */
+    needed_repair_rate: number | null;
 };
 
 export const dashboardKpisOptions = () => queryOptions({

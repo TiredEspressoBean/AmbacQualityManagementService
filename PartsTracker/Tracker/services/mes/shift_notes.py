@@ -15,6 +15,19 @@ from django.utils import timezone
 # "leave it unchanged" (not passed).
 _UNSET = object()
 
+# Groups a shift note can't be addressed to. Notes are internal floor hand-offs; a
+# customer contact or an auditor is not on the floor.
+NOT_A_FLOOR_AUDIENCE = frozenset({"Customer", "Auditor"})
+
+
+def _floor_audience(audience_roles) -> list:
+    """The audience as given, refusing groups that aren't the floor."""
+    audience = list(audience_roles or [])
+    outside = sorted(set(audience) & NOT_A_FLOOR_AUDIENCE)
+    if outside:
+        raise ValueError(f"Shift notes are for the floor; {', '.join(outside)} can't be an audience.")
+    return audience
+
 
 def audience_user_ids(tenant, audience_roles):
     """Resolve a note's audience to concrete user ids (for from_payload
@@ -25,7 +38,9 @@ def audience_user_ids(tenant, audience_roles):
     if audience_roles:
         return list(
             UserRole.objects.filter(
-                group__tenant=tenant, group__name__in=audience_roles
+                group__tenant=tenant, group__name__in=audience_roles,
+                # Internal people only, whatever group a portal user sits in.
+                user__is_active=True, user__user_type="INTERNAL",
             ).values_list("user_id", flat=True).distinct()
         )
     return list(
@@ -47,7 +62,7 @@ def publish_shift_note(
     if not body:
         raise ValueError("Shift note body cannot be empty.")
 
-    audience = list(audience_roles or [])
+    audience = _floor_audience(audience_roles)
     note = ShiftNote.objects.create(
         tenant=tenant,
         author=author,
@@ -106,7 +121,7 @@ def edit_shift_note(
             raise ValueError("Shift note body cannot be empty.")
         note.body = body
     if audience_roles is not None:
-        note.audience_roles = list(audience_roles)
+        note.audience_roles = _floor_audience(audience_roles)
     if work_order is not _UNSET:
         note.work_order = work_order
     if priority is not None:

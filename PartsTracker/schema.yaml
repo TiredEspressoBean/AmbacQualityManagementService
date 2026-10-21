@@ -23994,10 +23994,12 @@ paths:
           - FAIL
           - PASS
           - PENDING
+          - REPAIR
         description: |-
           * `PASS` - Pass
           * `FAIL` - Fail
           * `PENDING` - Pending
+          * `REPAIR` - Needs repair
       - in: query
         name: step
         schema:
@@ -53788,9 +53790,16 @@ components:
           type: number
           format: double
           nullable: true
+        needed_repair_rate:
+          type: number
+          format: double
+          nullable: true
+          description: Share of the window's inspections that found planned repair
+            work (REPAIR). Left out of current_fpy, which it sits beside.
       required:
       - active_capas
       - current_fpy
+      - needed_repair_rate
       - open_ncrs
       - overdue_capas
       - parts_in_quarantine
@@ -72836,11 +72845,13 @@ components:
       - PASS
       - FAIL
       - PENDING
+      - REPAIR
       type: string
       description: |-
         * `PASS` - Pass
         * `FAIL` - Fail
         * `PENDING` - Pending
+        * `REPAIR` - Needs repair
     QualityReports:
       type: object
       description: Quality reports serializer
@@ -78294,6 +78305,14 @@ components:
           nullable: true
           description: Snapshot of the operator's training authorization at work start
             (audit trail). Includes the supervisor override, if one was used.
+        repair_result_offered:
+          type: boolean
+          nullable: true
+          readOnly: true
+          description: 'Whether ''Needs repair'' (REPAIR) is a result an inspector
+            may record on this visit: a core in rebuild at a check with planned repairs.
+            The server refuses it anywhere else. Set on a single execution; null in
+            lists.'
         created_at:
           type: string
           format: date-time
@@ -78313,6 +78332,7 @@ components:
       - id
       - is_active
       - part_info
+      - repair_result_offered
       - step
       - step_info
       - training_authorization
@@ -84049,11 +84069,13 @@ components:
       - PASS
       - FAIL
       - CONDITIONAL
+      - REPAIR
       type: string
       description: |-
         * `PASS` - PASS
         * `FAIL` - FAIL
         * `CONDITIONAL` - CONDITIONAL
+        * `REPAIR` - REPAIR
     TravelerStepStatusEnum:
       enum:
       - COMPLETED

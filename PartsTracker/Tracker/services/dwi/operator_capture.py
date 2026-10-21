@@ -859,8 +859,15 @@ def _apply_status(report: QualityReports, cap) -> None:
     into FAIL — a queryset .update() fired neither the disposition signal nor the
     quarantine, so a visual-judgement FAIL left the part in production with no NCR."""
     raw = (cap.get("status") or "").upper()
-    if raw not in {"PASS", "FAIL", "PENDING"}:
+    if raw not in {"PASS", "FAIL", "PENDING", "REPAIR"}:
         return
+    if raw == "REPAIR":
+        # Only where the server offers it — refused with the reason, never stored.
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.repair_routing import repair_result_refusal
+        why = repair_result_refusal(report.part, report.step)
+        if why:
+            raise ValidationError(why)
     report.refresh_from_db(fields=["status"])
     prior = report.status
     if prior == raw:

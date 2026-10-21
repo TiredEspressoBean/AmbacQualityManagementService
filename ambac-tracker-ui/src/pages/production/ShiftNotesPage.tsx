@@ -22,6 +22,8 @@ import {
     useRetractShiftNote,
 } from "@/hooks/shiftNotes";
 
+const NOT_A_FLOOR_AUDIENCE = new Set(["Customer", "Auditor"]);
+
 // Audience options = the tenant's groups (empty selection → everyone).
 const shiftNoteAudienceOptions = () =>
     queryOptions({
@@ -40,7 +42,9 @@ export default function ShiftNotesPage() {
 
     // Audience options = the tenant's groups (empty selection → everyone).
     const { data: groupPage } = useQuery(shiftNoteAudienceOptions());
-    const groups = groupPage?.results ?? [];
+    // Notes are internal floor hand-offs: a customer or auditor group isn't an audience
+    // (the server refuses them too).
+    const groups = (groupPage?.results ?? []).filter((g) => !NOT_A_FLOOR_AUDIENCE.has(g.name));
 
     const toggleRole = (name: string) =>
         setAudience((a) => (a.includes(name) ? a.filter((r) => r !== name) : [...a, name]));
@@ -125,6 +129,7 @@ export default function ShiftNotesPage() {
                         placeholder="e.g. Prioritize WO-2024-0042 before lunch — customer pickup at 2pm."
                         submitting={publish.isPending}
                         onSubmit={submit}
+                        submitLabel="Post note"
                     />
                 </CardContent>
             </Card>

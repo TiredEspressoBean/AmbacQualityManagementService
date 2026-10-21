@@ -22901,6 +22901,11 @@ export interface components {
             parts_in_quarantine: number;
             /** Format: double */
             current_fpy: number | null;
+            /**
+             * Format: double
+             * @description Share of the window's inspections that found planned repair work (REPAIR). Left out of current_fpy, which it sits beside.
+             */
+            needed_repair_rate: number | null;
         };
         /**
          * @description * `NATIVE` - Native
@@ -32998,9 +33003,10 @@ export interface components {
          * @description * `PASS` - Pass
          *     * `FAIL` - Fail
          *     * `PENDING` - Pending
+         *     * `REPAIR` - Needs repair
          * @enum {string}
          */
-        QualityReportStatusEnum: "PASS" | "FAIL" | "PENDING";
+        QualityReportStatusEnum: "PASS" | "FAIL" | "PENDING" | "REPAIR";
         /** @description Quality reports serializer */
         QualityReports: {
             /** Format: uuid */
@@ -35600,6 +35606,8 @@ export interface components {
             readonly is_active: boolean;
             /** @description Snapshot of the operator's training authorization at work start (audit trail). Includes the supervisor override, if one was used. */
             readonly training_authorization: unknown;
+            /** @description Whether 'Needs repair' (REPAIR) is a result an inspector may record on this visit: a core in rebuild at a check with planned repairs. The server refuses it anywhere else. Set on a single execution; null in lists. */
+            readonly repair_result_offered: boolean | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -38531,9 +38539,10 @@ export interface components {
          * @description * `PASS` - PASS
          *     * `FAIL` - FAIL
          *     * `CONDITIONAL` - CONDITIONAL
+         *     * `REPAIR` - REPAIR
          * @enum {string}
          */
-        TravelerStepQualityStatusEnum: "PASS" | "FAIL" | "CONDITIONAL";
+        TravelerStepQualityStatusEnum: "PASS" | "FAIL" | "CONDITIONAL" | "REPAIR";
         /**
          * @description * `COMPLETED` - COMPLETED
          *     * `IN_PROGRESS` - IN_PROGRESS
@@ -57368,8 +57377,9 @@ export interface operations {
                  * @description * `PASS` - Pass
                  *     * `FAIL` - Fail
                  *     * `PENDING` - Pending
+                 *     * `REPAIR` - Needs repair
                  */
-                status?: "FAIL" | "PASS" | "PENDING";
+                status?: "FAIL" | "PASS" | "PENDING" | "REPAIR";
                 step?: string;
             };
             header?: never;

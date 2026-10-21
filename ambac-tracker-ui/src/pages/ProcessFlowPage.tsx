@@ -1,4 +1,5 @@
 import { Combobox } from "@/components/ui/combobox";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ReactFlowProvider, type Node, type Edge } from '@xyflow/react';
 import { validateProcessFlow, type ValidationResult } from '@/lib/process-validation';
@@ -945,9 +946,7 @@ export default function ProcessFlowPage() {
                 <div className="flex justify-between">
                   <span>Visit #{visit.visitNumber}</span>
                   {visit.result && (
-                    <Badge variant={visit.result === 'PASS' ? 'default' : 'destructive'} className="text-xs">
-                      {visit.result}
-                    </Badge>
+                    <QualityResultBadge status={visit.result} className="text-xs" />
                   )}
                 </div>
                 <div className="text-muted-foreground">

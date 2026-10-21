@@ -2302,6 +2302,88 @@ class RepairRoutingTests(TenantTestCase):
         self._advance()
         self.assertEqual(self.core.part.step.name, 'Assemble')
 
+    # ----- the REPAIR ("Needs repair") inspection result (2026-10-21) -----
+
+    def _at_check(self):
+        """Advance to Check and return the visit there."""
+        from Tracker.models import StepExecution
+        self._advance()                        # Clean → Check
+        return (StepExecution.get_current_execution(self.core.part)
+                or StepExecution.objects.create(part=self.core.part, step=self.steps['Check'],
+                                                status='IN_PROGRESS', visit_number=1))
+
+    def _repair_result(self, se):
+        from Tracker.models import QualityReports
+        return QualityReports.objects.create(
+            tenant=self.tenant_a, part=self.core.part, step=se.step, step_execution=se,
+            status='REPAIR', detected_by=self.user_a)
+
+    def test_needs_repair_is_refused_off_a_repair_check(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import QualityReports
+        from Tracker.services.dwi.operator_capture import _apply_status
+        from Tracker.services.reman.repair_routing import repair_result_offered
+        self.assertFalse(repair_result_offered(self.core.part, self.steps['Clean']))
+        self.assertTrue(repair_result_offered(self.core.part, self.steps['Check']))
+        qr = QualityReports.objects.create(tenant=self.tenant_a, part=self.core.part,
+                                           step=self.steps['Clean'], status='PENDING',
+                                           detected_by=self.user_a)
+        with self.assertRaisesMessage(ValidationError, 'Record Pass or Fail'):
+            _apply_status(qr, {'status': 'REPAIR'})
+        qr.refresh_from_db()
+        self.assertEqual(qr.status, 'PENDING')
+
+    def test_needs_repair_with_no_finding_holds_and_never_goes_to_rework(self):
+        se = self._at_check()
+        self._repair_result(se)
+        with self.assertRaisesMessage(ValueError, 'no repair was raised'):
+            self._advance()
+        self.assertEqual(self.core.part.step.name, 'Check')
+
+    def test_needs_repair_with_a_pre_approved_finding_takes_the_branch_and_opens_nothing(self):
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.reman.findings import record_findings_from_capture
+        se = self._at_check()
+        record_findings_from_capture(se, [{'harvested_id': str(self.hc.id), 'grade': 'C',
+                                           'finding': 'Light pitting on the seat face'}], self.user_a)
+        self._repair_result(se)
+        self._advance()
+        self.assertEqual(self.core.part.step.name, 'Hone')
+        self.assertFalse(QuarantineDisposition.objects.filter(part=self.core.part).exists())
+        self.assertNotEqual(self.core.part.part_status, 'QUARANTINED')
+
+    def test_needs_repair_with_a_finding_not_pre_approved_holds_for_a_decision(self):
+        from Tracker.services.reman.findings import record_findings_from_capture
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        se = self._at_check()
+        record_findings_from_capture(se, [{'harvested_id': str(self.hc.id), 'grade': 'C',
+                                           'finding': 'Seat pitted'}], self.user_a)
+        self._repair_result(se)
+        with self.assertRaisesMessage(ValueError, 'waiting on a lead'):
+            self._advance()
+        self.assertEqual(self.core.part.step.name, 'Check')
+
+    def test_a_needs_repair_visit_is_not_an_attempt_toward_the_visit_cap(self):
+        from Tracker.models import StepExecution
+        se = self._at_check()
+        self.assertEqual(StepExecution.get_attempt_count(self.core.part, self.steps['Check']), 1)
+        self._repair_result(se)
+        self.assertEqual(StepExecution.get_attempt_count(self.core.part, self.steps['Check']), 0)
+
+    def test_first_pass_yield_leaves_out_planned_repairs_and_reports_them_apart(self):
+        from Tracker.models import QualityReports
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['full_tenant_access',
+                                                                   'view_qualityreports'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        for status in ('PASS', 'FAIL', 'REPAIR'):
+            QualityReports.objects.create(tenant=self.tenant_a, part=self.core.part,
+                                          step=self.steps['Check'], status=status,
+                                          detected_by=self.user_a)
+        r = self.client.get('/api/dashboard/kpis/')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual((r.json()['current_fpy'], r.json()['needed_repair_rate']), (50.0, 33.3))
+
     def test_release_picks_up_after_the_last_teardown_step(self):
         from Tracker.services.reman.release import release_core_to_rebuild
         # The fixture's released BOM is what release plans against.

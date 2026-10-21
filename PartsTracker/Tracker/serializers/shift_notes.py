@@ -28,6 +28,15 @@ class ShiftNoteSerializer(SecureModelMixin):
     audience_size = serializers.SerializerMethodField()
     is_locked = serializers.BooleanField(read_only=True)
 
+    def validate_audience_roles(self, value):
+        # Notes are internal floor hand-offs: a customer or auditor group isn't an audience.
+        from Tracker.services.mes.shift_notes import NOT_A_FLOOR_AUDIENCE
+        outside = sorted(set(value or []) & NOT_A_FLOOR_AUDIENCE)
+        if outside:
+            raise serializers.ValidationError(
+                f"Shift notes are for the floor; {', '.join(outside)} can't be an audience.")
+        return value
+
     class Meta:
         model = ShiftNote
         fields = (

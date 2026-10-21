@@ -30,6 +30,10 @@ export type PartContextValue = {
      *  (execution, substep, node), so the node needs to know which substep it
      *  is sitting in. */
     substep_id?: string | number | null;
+    /** Whether "Needs repair" is a result this visit may record — a core in rebuild
+     *  at a check with planned repairs. From the server (StepExecution
+     *  `repair_result_offered`); the status control offers Repair only when true. */
+    repair_result_offered?: boolean;
 };
 
 export const PartContext = createContext<PartContextValue | null>(null);

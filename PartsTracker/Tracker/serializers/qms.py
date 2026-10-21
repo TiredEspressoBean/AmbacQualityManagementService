@@ -347,6 +347,18 @@ class QualityReportsSerializer(SecureModelMixin):
             }
         return None
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs.get('status') == 'REPAIR':
+            # Offered only at a rebuild check with planned repairs, as in the runtime.
+            from Tracker.services.reman.repair_routing import repair_result_refusal
+            inst = self.instance
+            why = repair_result_refusal(attrs.get('part', inst.part if inst else None),
+                                        attrs.get('step', inst.step if inst else None))
+            if why:
+                raise serializers.ValidationError({'status': why})
+        return attrs
+
     def create(self, validated_data):
         from Tracker.services.qms.quality_report import record_quality_report_side_effects
 

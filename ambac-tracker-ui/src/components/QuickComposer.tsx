@@ -21,6 +21,7 @@ export function QuickComposer({
     disabled = false,
     multiline = false,
     trailing,
+    submitLabel = "Send",
 }: {
     onSubmit: (text: string) => void;
     placeholder?: string;
@@ -29,6 +30,8 @@ export function QuickComposer({
     multiline?: boolean;
     /** Control(s) shown between the field and Send — e.g. a visibility toggle or audience select. */
     trailing?: ReactNode;
+    /** The icon-only send button's accessible name. */
+    submitLabel?: string;
 }) {
     const [text, setText] = useState("");
     const canSubmit = !!text.trim() && !submitting && !disabled;
@@ -73,7 +76,8 @@ export function QuickComposer({
                 )}
                 {trailing}
             </div>
-            <Button size="icon" disabled={!canSubmit} onClick={submit} title="Send">
+            <Button type="button" size="icon" disabled={!canSubmit} onClick={submit}
+                    title={submitLabel} aria-label={submitLabel}>
                 <Send className="h-4 w-4" />
             </Button>
         </div>

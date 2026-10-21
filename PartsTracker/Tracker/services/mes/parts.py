@@ -727,6 +727,18 @@ TERMINAL_PART_STATUSES = frozenset([
     PartsStatus.DISMANTLED,
 ])
 
+def end_open_executions(part) -> int:
+    """Close the visit a part was on when it left the flow without finishing it —
+    scrapped, or returned to its supplier. Marked CANCELLED, not COMPLETED: the step's
+    work wasn't done. Left open, the traveler reads the step "In Progress" forever and
+    the unit still counts in that step's queue. Returns how many were closed."""
+    from Tracker.models import StepExecution
+    return (StepExecution.objects  # tenant-safe: keyed to an in-tenant part
+            .filter(part=part, archived=False, exited_at__isnull=True,
+                    status__in=['PENDING', 'CLAIMED', 'IN_PROGRESS'])
+            .update(status='CANCELLED', exited_at=timezone.now()))
+
+
 # Statuses that must survive a step transition intact. `advance_part_step`
 # writes part_status on transition (IN_PROGRESS on the destination step,
 # READY_FOR_NEXT_STEP for batch-completion holds, or a terminal status on the
@@ -884,6 +896,8 @@ def bulk_set_status(
                     continue
                 part.part_status = new_status
                 part.save(update_fields=['part_status', 'updated_at'])
+                if new_status in (PartsStatus.SCRAPPED, PartsStatus.CANCELLED):
+                    end_open_executions(part)
                 if new_status in TERMINAL_PART_STATUSES:
                     _cascade_work_order_completion(part)
                 transaction.savepoint_commit(sid)

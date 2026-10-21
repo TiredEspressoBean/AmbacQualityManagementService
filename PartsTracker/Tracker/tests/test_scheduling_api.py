@@ -48,6 +48,17 @@ class SchedulingAPITests(TenantTestCase):
         Parts.objects.create(tenant=t, ERP_id="WO-API-P0", part_type=self.pt,
                              work_order=self.wo, step=self.step1)
 
+    def _on_the_crew(self, user):
+        """Make `user` dispatchable — an active member rostered to a shift — since only
+        the crew can be given scheduled work."""
+        from datetime import time
+        from Tracker.models import Shift, TenantMembership
+        shift = Shift.objects.create(tenant=self.tenant_a, name="Day", code="D",
+                                     start_time=time(6), end_time=time(14))
+        type(user).objects.filter(pk=user.pk).update(default_shift=shift, user_type='INTERNAL')
+        TenantMembership.objects.get_or_create(user=user, tenant=self.tenant_a,
+                                               defaults={'status': 'ACTIVE'})
+
     @staticmethod
     def _rows(data):
         return data['results'] if isinstance(data, dict) and 'results' in data else data
@@ -242,6 +253,7 @@ class SchedulingAPITests(TenantTestCase):
         self.authenticate_superuser(self.tenant_a)
         self.client.post('/api/Schedules/solve/')
         task_id = self._rows(self.client.get('/api/ScheduledTasks/').data)[0]['id']
+        self._on_the_crew(self.user_a)
 
         r = self.client.post(f'/api/ScheduledTasks/{task_id}/reassign-operator/',
                              {'operator_id': self.user_a.pk}, format='json')
@@ -265,6 +277,7 @@ class SchedulingAPITests(TenantTestCase):
         self.authenticate_superuser(self.tenant_a)
         self.client.post('/api/Schedules/solve/')
         ids = [t['id'] for t in self._rows(self.client.get('/api/ScheduledTasks/').data)]
+        self._on_the_crew(self.user_a)
 
         r = self.client.post('/api/ScheduledTasks/bulk-reassign-operator/',
                              {'task_ids': ids, 'operator_id': self.user_a.pk},
@@ -289,3 +302,21 @@ class SchedulingAPITests(TenantTestCase):
         backward = [t.pk for t in _lock_order(list(reversed(tasks)))]
         self.assertEqual(forward, backward,
                          "lock order must not depend on the caller's argument order")
+
+    def test_a_customer_is_never_offered_or_given_scheduled_work(self):
+        """With no training requirement on a step, "qualified" is every user in the
+        tenant; the picker and the assign endpoints are limited to the crew."""
+        from django.contrib.auth import get_user_model
+        customer = get_user_model().objects.create_user(
+            username='fleet_contact', email='contact@fleet.example', password='x',
+            tenant=self.tenant_a, user_type='PORTAL')
+        self.authenticate_superuser(self.tenant_a)
+        self.client.post('/api/Schedules/solve/')
+        task_id = self._rows(self.client.get('/api/ScheduledTasks/').data)[0]['id']
+        opts = self.client.get(f'/api/ScheduledTasks/{task_id}/reassign-options/')
+        self.assertEqual(opts.status_code, 200, opts.content)
+        self.assertNotIn(str(customer.id), {o['id'] for o in opts.data['operators']})
+        r = self.client.post(f'/api/ScheduledTasks/{task_id}/reassign-operator/',
+                             {'operator_id': customer.id}, format='json')
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("isn't on the crew", r.data['detail'])

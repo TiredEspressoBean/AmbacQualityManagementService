@@ -128,7 +128,19 @@ export function CoreDetailPage() {
                             Plan rebuild
                         </Button>
                     )}
-                    {core.status === 'AWAITING_AUTHORISATION' && <CustomerAnswerActions core={core} />}
+                    {core.status === 'AWAITING_AUTHORISATION' && (
+                        <>
+                            {/* What the customer is being asked to approve, and the finding
+                                behind each, is on the plan — beside the answer buttons. */}
+                            <Button variant="outline" asChild>
+                                <Link to="/reman/cores/$id/rebuild" params={{ id: id! }}>
+                                    <Wrench className="mr-2 h-4 w-4" />
+                                    Rebuild plan
+                                </Link>
+                            </Button>
+                            <CustomerAnswerActions core={core} />
+                        </>
+                    )}
                     <WorkThisUnit core={core} />
                     <ScrapCoreButton core={core} />
                     <IssueCreditButton core={core} />
@@ -189,6 +201,17 @@ export function CoreDetailPage() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Customer</p>
                                 <p>{core.customer_name || "—"}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">For order</p>
+                                {core.order ? (
+                                    <Link to="/production/orders/$orderId" params={{ orderId: String(core.order) }}
+                                          className="text-primary hover:underline">
+                                        {core.order_number ?? "View order"}
+                                    </Link>
+                                ) : (
+                                    <p>—</p>
+                                )}
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Fulfilment</p>

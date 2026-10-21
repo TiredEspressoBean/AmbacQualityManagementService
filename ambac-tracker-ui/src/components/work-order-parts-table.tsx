@@ -1,4 +1,5 @@
 import { useState, useMemo, Fragment } from "react";
+import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { useNavigate } from "@tanstack/react-router";
 import {
     Table,
@@ -113,12 +114,7 @@ function PartStepHistory({ partId }: { partId: string }) {
                             </div>
                             <div className="flex items-center gap-2">
                                 {step.quality_status && (
-                                    <Badge
-                                        variant={step.quality_status === "PASS" ? "default" : "destructive"}
-                                        className="text-xs"
-                                    >
-                                        {step.quality_status}
-                                    </Badge>
+                                    <QualityResultBadge status={step.quality_status} className="text-xs" />
                                 )}
                                 <span className="text-xs text-muted-foreground">
                                     {step.status}

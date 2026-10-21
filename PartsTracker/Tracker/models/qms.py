@@ -321,7 +321,14 @@ class QualityReports(SecureModel):
     - Per-instance severity classification
     """
 
-    STATUS_CHOICES = [("PASS", "Pass"), ("FAIL", "Fail"), ("PENDING", "Pending")]
+    # REPAIR (2026-10-21): at a reman check with repair branches, a component found
+    # worse is often planned repair work, not a nonconformance. It is an inspection
+    # result — inspected, not failed — so it never opens a disposition or NCR, never
+    # counts as a failed attempt, and is left out of first-pass yield (a separate
+    # "needed repair" rate reports it). Offered and enforced by
+    # services/reman/repair_routing.repair_result_refusal.
+    STATUS_CHOICES = [("PASS", "Pass"), ("FAIL", "Fail"), ("PENDING", "Pending"),
+                      ("REPAIR", "Needs repair")]
 
     report_number = models.CharField(
         max_length=20,

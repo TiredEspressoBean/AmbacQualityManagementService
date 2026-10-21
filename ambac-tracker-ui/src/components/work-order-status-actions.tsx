@@ -33,6 +33,7 @@ import { PlayCircle, PauseCircle, XCircle, RotateCcw, Undo2 } from "lucide-react
 import { usePlaceOnHoldWorkOrder } from "@/hooks/usePlaceOnHoldWorkOrder";
 import { useClearHoldWorkOrder } from "@/hooks/useClearHoldWorkOrder";
 import { HOLD_REASONS, type HoldReason } from "@/pages/workorders/constants";
+import { holdReasonLabel, type WorkOrderHold } from "@/components/workorders/WorkOrderHoldBanner";
 import { useCancelWorkOrder, useReleaseForScheduling, useUnreleaseForScheduling } from "@/hooks/useScheduling";
 import { ShortCloseDialog } from "@/components/workorders/ShortCloseDialog";
 import { apiErrorBlockers } from "@/lib/api/describeApiError";
@@ -47,6 +48,8 @@ type Props = {
     currentStatus: WorkOrderStatus;
     /** When the work order was released for scheduling; null if it has not been. */
     releasedAt?: string | null;
+    /** The open hold, so Resume can say what it is clearing. */
+    currentHold?: WorkOrderHold | null;
     onStatusChange?: () => void;
 };
 
@@ -59,6 +62,7 @@ export function WorkOrderStatusActions({
     workOrderId,
     currentStatus,
     releasedAt,
+    currentHold,
     onStatusChange,
 }: Props) {
     const [holdDialogOpen, setHoldDialogOpen] = useState(false);
@@ -301,15 +305,31 @@ export function WorkOrderStatusActions({
 
             {/* Resume Button */}
             {canResume && (
-                <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleResume}
-                    disabled={busy}
-                >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Resume
-                </Button>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="default" size="sm" disabled={busy}>
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Resume
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Clear the hold and resume?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {currentHold
+                                    ? `On hold for ${holdReasonLabel(currentHold.reason)}${
+                                        currentHold.notes ? ` — ${currentHold.notes}` : ""}${
+                                        currentHold.placed_by_name ? `, placed by ${currentHold.placed_by_name}` : ""}. `
+                                    : ""}
+                                Work can start on it again once the hold is cleared.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Keep on hold</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleResume}>Clear hold</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             )}
 
             {/* Short-close: complete with fewer built than planned (same gate as Cancel). */}

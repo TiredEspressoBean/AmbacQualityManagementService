@@ -30,12 +30,19 @@ def _visit_start(part):
     return ex or _EPOCH
 
 
+# Results that complete a part's QA at a step: it was inspected and not failed. REPAIR
+# ("Needs repair") is one — the unit was inspected, and routing takes it down a repair
+# branch rather than holding it for an inspection it already had.
+INSPECTED_OK = ('PASS', 'REPAIR')
+
+
 def part_passed_qa_here(part) -> bool:
-    """A PASS report for `part` at its current step, recorded during the current visit."""
+    """A PASS (or REPAIR) report for `part` at its current step, recorded during the
+    current visit."""
     if part.step_id is None:
         return False
     return part.error_reports.filter(  # tenant-safe: reverse FK from a scoped part
-        archived=False, status='PASS', step_id=part.step_id,
+        archived=False, status__in=INSPECTED_OK, step_id=part.step_id,
         created_at__gte=_visit_start(part),
     ).exists()
 
@@ -47,7 +54,7 @@ def with_qa_passed(qs):
              .filter(part=OuterRef('pk'), step=OuterRef('step'), exited_at__isnull=True)
              .order_by('-visit_number').values('entered_at')[:1])
     passed = QualityReports.unscoped.filter(  # tenant-safe: correlated to the outer scoped part
-        part=OuterRef('pk'), step=OuterRef('step'), status='PASS', archived=False,
+        part=OuterRef('pk'), step=OuterRef('step'), status__in=INSPECTED_OK, archived=False,
         created_at__gte=OuterRef('_qa_visit_start'))
     return (qs.annotate(_qa_visit_start=Coalesce(Subquery(visit), Value(_EPOCH)))
               .annotate(_qa_passed=Exists(passed)))

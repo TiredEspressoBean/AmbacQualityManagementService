@@ -125,6 +125,15 @@ class ShiftNoteApiTests(TenantTestCase):
         resp = self.client.post("/api/ShiftNotes/", {"body": "hi", "audience_roles": []}, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
 
+    def test_a_customer_or_auditor_group_is_not_an_audience(self):
+        """Notes are internal floor hand-offs."""
+        self.authenticate_as(self.lead, self.tenant_a)
+        for group in ("Customer", "Auditor"):
+            resp = self.client.post("/api/ShiftNotes/", {"body": "hi", "audience_roles": [group]},
+                                    format="json")
+            self.assertEqual(resp.status_code, 400, resp.data)
+            self.assertIn("audience_roles", resp.data)
+
     def test_operator_cannot_create(self):
         self.authenticate_as(self.operator, self.tenant_a)
         resp = self.client.post("/api/ShiftNotes/", {"body": "hi", "audience_roles": []}, format="json")

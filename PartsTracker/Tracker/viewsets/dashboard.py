@@ -71,6 +71,10 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'overdue_capas': serializers.IntegerField(),
                 'parts_in_quarantine': serializers.IntegerField(),
                 'current_fpy': serializers.FloatField(allow_null=True),
+                'needed_repair_rate': serializers.FloatField(
+                    allow_null=True,
+                    help_text="Share of the window's inspections that found planned repair "
+                              "work (REPAIR). Left out of current_fpy, which it sits beside."),
             }
         )}
     )
@@ -126,13 +130,19 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         ).values('part').distinct().count()
 
         # Current FPY (7-day average)
-        recent_reports = self.qs_for_user(QualityReports).filter(
+        # A planned repair (REPAIR) is scoped work, not a first-pass failure: it is left
+        # out of FPY on both sides and reported as its own rate.
+        inspected = self.qs_for_user(QualityReports).filter(
             created_at__gte=_day_start(seven_days_ago, tz),
             archived=False,
         )
+        repairs_recent = inspected.filter(status='REPAIR').count()
+        recent_reports = inspected.exclude(status='REPAIR')
         total_recent = recent_reports.count()
         passed_recent = recent_reports.filter(status='PASS').count()
         current_fpy = round((passed_recent / total_recent * 100), 1) if total_recent > 0 else 0
+        all_recent = total_recent + repairs_recent
+        needed_repair_rate = round(repairs_recent / all_recent * 100, 1) if repairs_recent else None
 
         return Response({
             'active_capas': active_capas,
@@ -140,6 +150,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             'overdue_capas': overdue_capas,
             'parts_in_quarantine': parts_in_quarantine,
             'current_fpy': current_fpy,
+            'needed_repair_rate': needed_repair_rate,
         })
 
     @extend_schema(
@@ -183,7 +194,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             created_at__gte=_day_start(start_date, tz),
             created_at__lt=_day_start(end_date + timedelta(days=1), tz),
             archived=False,
-        ).annotate(
+        ).exclude(status='REPAIR').annotate(  # planned repairs aren't first-pass failures
             date=TruncDate('created_at', tzinfo=tz)
         ).values('date').annotate(
             total=Count('id'),

@@ -296,7 +296,8 @@ export default function AnalysisPage() {
                 <MetricCard
                     label="First Pass Yield"
                     value={`${currentFpy}%`}
-                    subtext={`Target: ${fpyTarget}%`}
+                    subtext={`Target: ${fpyTarget}% · planned repairs excluded${
+                        kpisData?.needed_repair_rate != null ? ` (${kpisData.needed_repair_rate}% needed repair)` : ""}`}
                     trend={{ ...fpyTrend, goodDirection: "up" }}
                     status={fpyStatus}
                     link="/spc"

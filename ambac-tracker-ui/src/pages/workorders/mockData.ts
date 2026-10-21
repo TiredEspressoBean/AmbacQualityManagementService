@@ -37,7 +37,7 @@ export type MockStepVisit = {
     ended_at: string | null;
     operator: string | null;
     equipment: string | null;
-    quality_status: "PASS" | "FAIL" | null;
+    quality_status: "PASS" | "FAIL" | "REPAIR" | null;
     /** Executions behind this row, oldest visit first. A row is per-step, so
      *  rework collapses several into it; the substep completions QA can void
      *  hang off these. Empty for a step the part hasn't reached. */
