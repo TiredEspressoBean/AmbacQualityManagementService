@@ -429,6 +429,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             return _merge_minute_gaps(gaps + closure_gaps)
 
         op_minutes = {u: _to_minutes(w, horizon.start, H) for u, w in op_windows.items()}
+        _crew_cap, crew_segs = _staffing_segments(op_windows, horizon.start, H)
+
+        def _crew_on_shift(a, b) -> int:
+            """The fewest operators on shift at any point in [a, b)."""
+            counts = [c for sa, sb, c in crew_segs if sa < b and a < sb]
+            return min(counts) if counts else 0
+
+        def _peak_with(a, b, held) -> int:
+            """Most held attended operations running at once in [a, b), counting one more
+            over the whole span."""
+            points = [a] + [x for x, _y in held if a <= x < b]
+            return 1 + max((sum(1 for x, y in held if x <= p < y) for p in points), default=0)
         normal_per_min = max(1, _penalty_cents_per_min(config, 3))
         slushy_per_min = max(1, round(normal_per_min * SLUSHY_STICKINESS))
         slushy_machine_cost = normal_per_min * _SLUSHY_MACHINE_MINUTES
@@ -453,7 +465,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             return any(ws <= a and b <= we for ws, we in windows)
 
         def _frozen_refusal(*, prev_raw, rep, release_min, mat_lb, choices, durs, dur_free,
-                            prec, step_id, fixed_end, lm, front_len, fixed_by_machine):
+                            prec, step_id, fixed_end, lm, front_len, fixed_by_machine,
+                            fixed_attended=()):
             """Why a frozen or planner-pinned operation can't be held where the live plan
             put it, as `(code, text)` — or None, when it is held exactly.
 
@@ -495,6 +508,14 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                             "the operation before it isn't held, so it can't be held after it")
                 if pend + move_min > ps:
                     return ('predecessor_late', "the operation before it now ends too late")
+            att_len = front_len if front_len is not None else op_dur
+            if lm != 'off' and att_len and crew_segs:
+                # The crew on shift is a hard cap on attended work at once. Held work
+                # that would exceed it (another plan's double-booking, the crew shrinking
+                # under it) can't all hold; this one goes back to planning.
+                if _peak_with(ps, ps + att_len, fixed_attended) > _crew_on_shift(ps, ps + att_len):
+                    return ('crew_full', "the crew on shift then is already taken by other "
+                            "fixed work")
             op = getattr(rep, 'assigned_operator_id', None)
             if op is not None and lm != 'off':
                 if op not in all_op_ids:
@@ -508,11 +529,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                             "its operator isn't on shift then (rota, leave or training)")
             return None
 
-        def _build_and_solve(labor_override, machine_hints, tlimit, hard_fence=True):
+        def _build_and_solve(labor_override, machine_hints, tlimit, hard_fence=True,
+                             release=frozenset()):
             """`hard_fence=False` is the fallback when fixing every valid frozen/pinned
             operation made the model infeasible (fixed blocks that the changed world can
             no longer fit together): they are then held only by slushy stickiness and all
-            reported as freed with reason `conflict`."""
+            reported as freed with reason `conflict`.
+
+            `release`: held operations ((part_ids, step_id)) a previous attempt found in
+            an infeasible core — re-planned this time and reported as `conflict`. Each
+            hold is enforced through an assumption literal, so when the fixed set can't
+            fit together CP-SAT names the operations that conflict instead of the whole
+            fence being dropped."""
             def _eff(step_id):
                 base = labor_models.get(step_id, 'pool')
                 return 'off' if base == 'off' else (labor_override or base)
@@ -542,6 +570,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             freed = []         # frozen/pinned operations sent back to planning, with why
             kept = 0           # frozen/pinned operations held exactly
             fixed_by_machine: dict = defaultdict(list)   # equip_id -> [(s, e)] fixed so far
+            fixed_by_operator: dict = defaultdict(list)  # user_id -> [(s, e)] attended, fixed
+            fixed_attended: list = []   # [(s, e)] attended spans of held work (crew cap)
+            holds: list = []   # (assumption_lit, (part_ids, step_id)) per held operation
             wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
             wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
             wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
@@ -800,25 +831,48 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                             prev_start = max(0, min(H, prev_raw))
                             fence_held = any_pinned or prev_raw < frozen_min
                             why = None
-                            if fence_held and hard_fence:
+                            hold_key = (lot['part_ids'], step_id)
+                            if fence_held and hold_key in release:
+                                why = ('conflict', "it couldn't be held together with other "
+                                       "fixed work as the shop now stands")
+                            elif fence_held and hard_fence:
                                 why = _frozen_refusal(
                                     prev_raw=prev_raw, rep=rep, release_min=release_min,
                                     mat_lb=mat_lb, choices=choices, durs=durs,
                                     dur_free=dur_free, prec=prec, step_id=step_id,
                                     fixed_end=fixed_end, lm=lm, front_len=front_len,
-                                    fixed_by_machine=fixed_by_machine)
+                                    fixed_by_machine=fixed_by_machine,
+                                    fixed_attended=fixed_attended)
                             elif fence_held:
                                 why = ('conflict', "it couldn't be held together with the other "
                                        "fixed work as the shop now stands")
                             if fence_held and why is None:
                                 fixed_m = rep.machine_id if choices else None
                                 op_dur = durs.get(fixed_m) if fixed_m else dur_free
-                                model.Add(start == prev_start)
+                                hold = model.NewBoolVar(f"hold_{key}")
+                                holds.append((hold, hold_key))
+                                model.Add(start == prev_start).OnlyEnforceIf(hold)
                                 for lit, eqid in choices:
-                                    model.Add(lit == (1 if eqid == fixed_m else 0))
-                                if rep.assigned_operator_id is not None:
-                                    for op, lit in named_assign:
-                                        model.Add(lit == (1 if op == rep.assigned_operator_id else 0))
+                                    model.Add(lit == (1 if eqid == fixed_m else 0)).OnlyEnforceIf(hold)
+                                # Keep its operator too — unless that person is already held
+                                # on other fixed work then. Operators on the live plan may
+                                # come from Dispatch, which models attention differently
+                                # from this solve; fixing every one exactly double-booked
+                                # people and made the whole fixed set infeasible (walk
+                                # 2026-10-21). Time and machine still hold; the solve
+                                # picks the operator.
+                                op_id = rep.assigned_operator_id
+                                if op_id is not None and named_assign:
+                                    att = front_len if front_len is not None else op_dur
+                                    span = (prev_start, prev_start + (att or 0))
+                                    if att and not _overlaps(span[0], span[1],
+                                                             fixed_by_operator.get(op_id, ())):
+                                        for op, lit in named_assign:
+                                            model.Add(lit == (1 if op == op_id else 0)).OnlyEnforceIf(hold)
+                                        fixed_by_operator[op_id].append(span)
+                                held_att = front_len if front_len is not None else op_dur
+                                if lm != 'off' and held_att:
+                                    fixed_attended.append((prev_start, prev_start + held_att))
                                 if op_dur is not None:
                                     fixed_end[step_id] = prev_start + op_dur
                                     if fixed_m is not None:
@@ -1070,15 +1124,22 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     for _lit, _eqid in _t['choices']:
                         if _eqid == _h[1]:
                             model.AddHint(_lit, 1)
+            if holds:
+                model.AddAssumptions([h for h, _k in holds])
             solver = cp_model.CpSolver()
             solver.parameters.max_time_in_seconds = tlimit
 
             cp_status = solver.Solve(model) if tasks else cp_model.OPTIMAL
             solved = cp_status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+            conflicts = []
+            if holds and cp_status == cp_model.INFEASIBLE:
+                by_index = {h.Index(): k for h, k in holds}
+                conflicts = [by_index[i] for i in solver.SufficientAssumptionsForInfeasibility()
+                             if i in by_index]
             return {'cp_status': cp_status, 'solver': solver, 'tasks': tasks,
                     'pins': pins, 'lateness_terms': lateness_terms, 'solved': solved,
                     'max_time_viols': max_time_viols, 'stick_terms': stick_terms,
-                    'freed': freed, 'kept': kept}
+                    'freed': freed, 'kept': kept, 'conflicts': conflicts}
 
         # Two-phase when operator matching is on AND a crew is rostered: solve machines
         # (pooled labor, ~40% of the budget), then re-solve assigning specific operators
@@ -1089,24 +1150,38 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         machine_solve_ms = 0
         operator_solve_ms = 0
         _wt = lambda p: int(p['solver'].WallTime() * 1000) if p['tasks'] else 0
-        def _run(hard):
+        def _run(hard, release=frozenset()):
             ms_m = ms_o = 0
             if _match:
                 _ta = max(1, int(time_limit_seconds * 0.4))
-                _pa = _build_and_solve('pool', None, _ta, hard)
+                _pa = _build_and_solve('pool', None, _ta, hard, release)
+                if not _pa['solved']:
+                    return _pa, _wt(_pa), 0
                 ms_m = _wt(_pa)
                 _hints = None
                 if _pa['solved']:
                     _sa = _pa['solver']
                     _hints = {i: (_sa.Value(t['start']), _chosen_machine(t, _sa))
                               for i, t in enumerate(_pa['tasks'])}
-                _pb = _build_and_solve('named', _hints, max(1, time_limit_seconds - _ta), hard)
+                _pb = _build_and_solve('named', _hints, max(1, time_limit_seconds - _ta), hard,
+                                       release)
                 ms_o = _wt(_pb)
                 return (_pb if _pb['solved'] else _pa), ms_m, ms_o
-            out = _build_and_solve(None, None, time_limit_seconds, hard)
+            out = _build_and_solve(None, None, time_limit_seconds, hard, release)
             return out, _wt(out), 0
 
         _final, machine_solve_ms, operator_solve_ms = _run(True)
+        # Held blocks that can't fit together: free the ones CP-SAT names as the
+        # conflict (its infeasible core) and try again, so one collision doesn't drop
+        # the whole fence. A few rounds; then the whole-fence fallback below.
+        released: set = set()
+        for _round in range(5):
+            if _final['solved'] or not _final['conflicts']:
+                break
+            released |= set(_final['conflicts'])
+            logger.info("Frozen fence: releasing %s conflicting held operation(s), round %s.",
+                        len(_final['conflicts']), _round + 1)
+            _final, machine_solve_ms, operator_solve_ms = _run(True, frozenset(released))
         if not _final['solved'] and _final['kept']:
             # The fixed blocks no longer fit together (a duration grew, crew shrank
             # under them). Rather than return no plan, re-plan them with stickiness and

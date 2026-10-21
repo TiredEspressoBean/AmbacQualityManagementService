@@ -423,7 +423,13 @@ def get_schedule_horizon(tenant, horizon_days: int | None = None) -> HorizonData
     if horizon_days is None:
         horizon_days = cfg.horizon_days if cfg else 30
 
-    start = timezone.now()
+    # On a whole minute. The solver works in integer minutes from here, and held
+    # (frozen/pinned) work keeps its exact time across re-solves — so a start with a
+    # seconds part put each solve on its own sub-minute grid, held work from different
+    # solves rounded differently, and back-to-back held operations collided by a
+    # minute: the fixed set went infeasible and the fence fell back to re-planning it
+    # all. Aligned, a time converts to the same minute whenever the solve runs.
+    start = timezone.now().replace(second=0, microsecond=0)
     return HorizonData(
         start=start,
         end=start + timedelta(days=horizon_days),

@@ -106,6 +106,27 @@ class FrozenFenceTests(TenantContextMixin, TestCase):
             lateness.append(r.weighted_lateness)
         self.assertLessEqual(lateness[2], lateness[0])
 
+    def test_b_held_work_from_different_solves_still_fits_together(self):
+        """The walk that found this (2026-10-21): a re-solve 2 minutes after another
+        freed every held operation as `conflict`. Held work keeps its exact time, and
+        each solve counted minutes from a "now" with a seconds part — so held work from
+        two solves sat on two sub-minute grids, rounded differently, and back-to-back
+        operations collided. Re-solved at different seconds, it must all hold."""
+        for i in range(3):
+            self._wo(f"WO-G{i}", 2, due_days=4)
+        base = timezone.now().replace(second=0, microsecond=0)
+        results = []
+        # Three solves inside one minute, at different seconds: nothing passes its
+        # slot, so anything freed is the rounding, not the clock.
+        for secs in (5.8, 23.9, 47.2):
+            at = base + timedelta(seconds=secs)
+            with mock.patch.object(timezone, 'now', return_value=at):
+                results.append(solve_schedule(self.tenant, time_limit_seconds=10))
+        last = results[-1]
+        self.assertIn(last.solver_status, SOLVED)
+        self.assertNotIn('conflict', self._freed_codes(last))
+        self.assertGreater(last.frozen_kept, 0)
+
     # --- c: an operation is freed only when it can't happen where it is -------------
 
     def _held_task(self):
