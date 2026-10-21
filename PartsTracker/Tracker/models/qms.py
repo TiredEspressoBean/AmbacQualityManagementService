@@ -1631,6 +1631,15 @@ class CAPA(SecureModel):
             output_field=CharField(),
         )
 
+    @property
+    def latest_verification(self):
+        """The CAPA's most recent effectiveness verification, or None. A CAPA has
+        several (`verifications`); code that read a singular `capa.verification` never
+        found one — it raised in the verification-complete notification and silently
+        dropped the verification quarter of the completion percentage."""
+        return (self.verifications.filter(archived=False, is_current_version=True)
+                .order_by('-verification_date', '-created_at').first())
+
     def calculate_completion_percentage(self):
         """Calculate overall CAPA completion progress
 
@@ -1648,9 +1657,9 @@ class CAPA(SecureModel):
             total = self.tasks.count()
             progress += int((completed / total) * 50)
 
-        if hasattr(self, 'verification') and self.verification:
-            if self.verification.effectiveness_result == EffectivenessResult.CONFIRMED:
-                progress += 25
+        verification = self.latest_verification
+        if verification and verification.effectiveness_result == EffectivenessResult.CONFIRMED:
+            progress += 25
 
         return progress
 

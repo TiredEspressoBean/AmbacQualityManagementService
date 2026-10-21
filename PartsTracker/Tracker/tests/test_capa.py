@@ -191,6 +191,30 @@ class CAPAModelTestCase(TenantTestCase):
         #   - RCA: 25%, Tasks: 50%, Verification: 25%
         self.assertEqual(capa.calculate_completion_percentage(), 25)
 
+        # A confirmed effectiveness verification is the last quarter. It never counted:
+        # the code read a singular `capa.verification`, and a CAPA has `verifications`.
+        CapaVerification.objects.create(
+            capa=capa, verification_method='INSPECTION', verification_criteria='Recheck',
+            effectiveness_result='CONFIRMED', verified_by=self.qa_manager)
+        self.assertEqual(capa.calculate_completion_percentage(), 50)
+
+    def test_verification_complete_notification_names_the_verifier(self):
+        """The task read `capa.verification` (there is none — it's `verifications`) and
+        raised on every run, so the email never went out."""
+        from django.core import mail
+        from Tracker.tasks import send_capa_verification_complete_notification
+        capa = CAPA.objects.create(capa_type='CORRECTIVE', severity='MAJOR',
+                                   problem_statement="Issue", initiated_by=self.user,
+                                   assigned_to=self.qa_manager, status='PENDING_VERIFICATION')
+        CapaVerification.objects.create(
+            capa=capa, verification_method='INSPECTION', verification_criteria='Recheck',
+            effectiveness_result='CONFIRMED', verified_by=self.qa_manager)
+        result = send_capa_verification_complete_notification.apply(args=[str(capa.id)]).get()
+        self.assertEqual(result['status'], 'success')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(f"Verified By: {self.qa_manager.get_full_name() or self.qa_manager.username}",
+                      mail.outbox[0].body)
+
     def test_is_overdue(self):
         """Test CAPA overdue detection"""
         capa = CAPA.objects.create(

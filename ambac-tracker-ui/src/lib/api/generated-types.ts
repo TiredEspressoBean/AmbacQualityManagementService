@@ -11604,6 +11604,28 @@ export interface paths {
         patch: operations["api_Schedules_config_partial_update"];
         trace?: never;
     };
+    "/api/Schedules/crew/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The dispatchable crew — the people the solver and dispatch schedule (active,
+         *     internal, in a shop-floor group, rostered to a shift). The same set Capacity
+         *     counts as "N crew", so a calendar's headcount can count it too rather than every
+         *     rostered employee.
+         */
+        get: operations["api_Schedules_crew_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/current/": {
         parameters: {
             query?: never;
@@ -34811,6 +34833,9 @@ export interface components {
          * @enum {string}
          */
         ScanResultKindEnum: "LOT" | "PART" | "WORK_ORDER" | "LOCATION" | "URL";
+        ScheduleCrew: {
+            user_ids: number[];
+        };
         ScheduleResult: {
             /** Format: uuid */
             readonly id: string;
@@ -60500,6 +60525,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptimizationConfig"];
+                };
+            };
+        };
+    };
+    api_Schedules_crew_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleCrew"];
                 };
             };
         };

@@ -28378,6 +28378,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/OptimizationConfig'
           description: ''
+  /api/Schedules/crew/:
+    get:
+      operationId: api_Schedules_crew_retrieve
+      description: |-
+        The dispatchable crew — the people the solver and dispatch schedule (active,
+        internal, in a shop-floor group, rostered to a shift). The same set Capacity
+        counts as "N crew", so a calendar's headcount can count it too rather than every
+        rostered employee.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleCrew'
+          description: ''
   /api/Schedules/current/:
     get:
       operationId: api_Schedules_current_retrieve
@@ -76638,6 +76658,15 @@ components:
         * `WORK_ORDER` - Work order
         * `LOCATION` - Location
         * `URL` - Page
+    ScheduleCrew:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: integer
+      required:
+      - user_ids
     ScheduleResult:
       type: object
       properties:

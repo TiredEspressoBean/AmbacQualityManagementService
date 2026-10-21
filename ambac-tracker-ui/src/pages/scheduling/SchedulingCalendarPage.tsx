@@ -44,7 +44,7 @@ import {
   useDeleteOvertime, type PlantClosure, type LaborBlock, type Overtime,
 } from "@/hooks/useCalendar";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
-import { useShifts } from "@/hooks/useScheduling";
+import { scheduleCrewOptions, useShifts } from "@/hooks/useScheduling";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { queryOptions, useQuery } from "@tanstack/react-query";
@@ -147,6 +147,10 @@ export function SchedulingCalendarPage() {
   // Memoized: `?? []` mints a new array every render, and both feed a memo below, so
   // that memo recomputed on every render whether or not the data had changed.
   const users = useMemo(() => usersPage?.results ?? [], [usersPage]);
+  // The headcount counts the crew — who the solver schedules and Capacity calls "N crew" —
+  // not every rostered employee: office staff on a shift aren't floor capacity.
+  const { data: crewData } = useQuery(scheduleCrewOptions());
+  const crewIds = useMemo(() => new Set(crewData?.user_ids ?? []), [crewData]);
   const { data: shiftsPage } = useShifts();
   const shifts = useMemo(
     () => (shiftsPage as { results?: { id: string; name: string }[] } | undefined)?.results ?? [],
@@ -292,7 +296,8 @@ export function SchedulingCalendarPage() {
     if (narrowed) return null;
     const map = new Map<string, { avail: number; total: number; out: number; status: string }>();
     const rostered = users.filter(
-      (u) => (u as { default_shift?: string | null }).default_shift != null);
+      (u) => (u as { default_shift?: string | null }).default_shift != null
+        && crewIds.has(u.id as number));
     const byShift = new Map<string, number>(); // shift id -> rostered heads
     const shiftOfUser = new Map<number, string>(); // user id -> shift id
     for (const u of rostered) {
@@ -393,7 +398,7 @@ export function SchedulingCalendarPage() {
       });
     }
     return map;
-  }, [narrowed, users, blocks, closures, overtimes, shifts, viewedYear, viewedMonth]);
+  }, [narrowed, users, crewIds, blocks, closures, overtimes, shifts, viewedYear, viewedMonth]);
 
   // ── Wall-chart data (crew/station scope) ──────────────────────────────────
   const wall = useMemo(() => {

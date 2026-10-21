@@ -1159,13 +1159,15 @@ def send_capa_verification_complete_notification(self, capa_id):
             recipients.append(capa.assigned_to.email)
 
         if recipients:
+            verification = capa.latest_verification
+            verifier = verification.verified_by if verification else None
             subject = f"CAPA Verification Complete: {capa.capa_number}"
             message = f"""
 CAPA {capa.capa_number} has been verified as effective and is ready to close.
 
 CAPA Number: {capa.capa_number}
-Verified By: {capa.verification.verified_by.get_full_name() if capa.verification and capa.verification.verified_by else 'Unknown'}
-Result: {capa.verification.get_effectiveness_result_display() if capa.verification else 'N/A'}
+Verified By: {(verifier.get_full_name() or verifier.username) if verifier else 'Unknown'}
+Result: {verification.get_effectiveness_result_display() if verification else 'N/A'}
 
 You can now close this CAPA.
             """

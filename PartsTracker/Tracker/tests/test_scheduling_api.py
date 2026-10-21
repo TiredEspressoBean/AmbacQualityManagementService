@@ -320,3 +320,19 @@ class SchedulingAPITests(TenantTestCase):
                              {'operator_id': customer.id}, format='json')
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("isn't on the crew", r.data['detail'])
+
+    def test_crew_lists_the_dispatchable_operators_only(self):
+        """The calendar's headcount counts these, as Capacity does — not every user
+        rostered to a shift."""
+        from django.contrib.auth import get_user_model
+        office = get_user_model().objects.create_user(
+            username='office', email='office@a.test', password='x', tenant=self.tenant_a)
+        self._on_the_crew(self.user_a)
+        get_user_model().objects.filter(pk=office.pk).update(
+            default_shift=get_user_model().objects.get(pk=self.user_a.pk).default_shift,
+            user_type='PORTAL')
+        self.authenticate_superuser(self.tenant_a)
+        r = self.client.get('/api/Schedules/crew/')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertIn(self.user_a.pk, r.data['user_ids'])
+        self.assertNotIn(office.pk, r.data['user_ids'])

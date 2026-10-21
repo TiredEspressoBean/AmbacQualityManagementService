@@ -282,6 +282,14 @@ export function useActiveRun() {
   return q;
 }
 
+/** The dispatchable crew's user ids — who the solver and dispatch schedule, and what
+ *  Capacity counts as "N crew". */
+export const scheduleCrewOptions = () =>
+  queryOptions({
+    queryKey: ["schedule", "crew"],
+    queryFn: () => api.api_Schedules_crew_retrieve(),
+  });
+
 /** The tenant's solver knobs (time limit, fences, penalties, labor model). */
 export const optimizationConfigOptions = () =>
   queryOptions({

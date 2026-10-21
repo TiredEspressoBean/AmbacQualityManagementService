@@ -374,6 +374,18 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         mark_started(self._get_config(), task.id, 'dispatch')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
+    @extend_schema(responses={200: inline_serializer(name="ScheduleCrew", fields={
+        "user_ids": serializers.ListField(child=serializers.IntegerField()),
+    })})
+    @action(detail=False, methods=['get'], url_path='crew')
+    def crew(self, request):
+        """The dispatchable crew — the people the solver and dispatch schedule (active,
+        internal, in a shop-floor group, rostered to a shift). The same set Capacity
+        counts as "N crew", so a calendar's headcount can count it too rather than every
+        rostered employee."""
+        from Tracker.services.scheduling.data import get_dispatchable_operators
+        return Response({"user_ids": sorted(o.user_id for o in get_dispatchable_operators(self.tenant))})
+
     @extend_schema(
         parameters=[
             OpenApiParameter('start', OpenApiTypes.DATE, description="Range start (inclusive). Default: 7 days ago."),

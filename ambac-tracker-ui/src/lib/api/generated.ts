@@ -24570,6 +24570,7 @@ const PatchedOptimizationConfigRequest = z
     auto_resolve_min_interval_minutes: z.number().int().gte(0).lte(2147483647),
   })
   .partial();
+const ScheduleCrew = z.object({ user_ids: z.array(z.number().int()) });
 const ExplodeWorkOrderInputRequest = z.object({
   work_order_id: z.string().uuid(),
   create: z.boolean().optional().default(true),
@@ -29620,6 +29621,7 @@ export const schemas = {
   AutoResolveEnum,
   OptimizationConfig,
   PatchedOptimizationConfigRequest,
+  ScheduleCrew,
   ExplodeWorkOrderInputRequest,
   OperatorHoursRow,
   OperatorHoursReport,
@@ -52035,6 +52037,17 @@ action_permissions applies per action, not per HTTP method.`,
   },
   {
     method: "get",
+    path: "/api/Schedules/crew/",
+    alias: "api_Schedules_crew_retrieve",
+    description: `The dispatchable crew — the people the solver and dispatch schedule (active,
+internal, in a shop-floor group, rostered to a shift). The same set Capacity
+counts as &quot;N crew&quot;, so a calendar&#x27;s headcount can count it too rather than every
+rostered employee.`,
+    requestFormat: "json",
+    response: ScheduleCrew,
+  },
+  {
+    method: "get",
     path: "/api/Schedules/current/",
     alias: "api_Schedules_current_retrieve",
     description: `The live (committed) schedule&#x27;s run metadata, or 404 if none exists yet.`,
@@ -55650,7 +55663,10 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: PaginatedStepTimingRecordList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepTimings/",
@@ -55666,10 +55682,7 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepTimings/:id/",
@@ -60410,7 +60423,10 @@ Provides endpoints for:
       },
     ],
     response: PaginatedUserInvitationList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/UserInvitations/",
@@ -60431,10 +60447,7 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/UserInvitations/:id/",
