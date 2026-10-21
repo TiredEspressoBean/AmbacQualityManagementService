@@ -227,16 +227,8 @@ class TrainingExercisesSeeder(BaseSeeder):
         default_customer = customers[0] if customers else None
 
         for order_config in TRAINING_ORDERS:
-            customer = default_customer
-
-            # Try to find specific customer company
-            customer_company = self._companies.get(order_config['customer_key'])
-            if customer_company:
-                # Find a customer user for this company
-                for c in customers:
-                    if c.parent_company == customer_company:
-                        customer = c
-                        break
+            customer_company, customer = self._order_customer(
+                order_config, customers, default_customer)
 
             order, created = Orders.objects.update_or_create(
                 tenant=self.tenant,
@@ -244,7 +236,7 @@ class TrainingExercisesSeeder(BaseSeeder):
                 defaults={
                     'name': order_config['name'],
                     'customer': customer,
-                    'company': customer.parent_company if customer else None,
+                    'company': customer_company,
                     'order_status': order_config['status'],
                     'estimated_completion': self.today + timedelta(days=14),
                     'customer_note': order_config['description'],
@@ -421,20 +413,24 @@ class TrainingExercisesSeeder(BaseSeeder):
     # Assessment Data Creation (mirrors training data but for assessments)
     # =========================================================================
 
+    def _order_customer(self, order_config, customers, default_customer):
+        """The order's company, and a contact there if it has one. Taking the company
+        from a contact, with the default customer as fallback, put every order on
+        Midwest Fleet whenever the named company had no contact user."""
+        company = self._companies.get(order_config['customer_key'])
+        if company is None:
+            return (default_customer.parent_company if default_customer else None,
+                    default_customer)
+        return company, next((c for c in customers if c.parent_company == company), None)
+
     def _create_assessment_orders(self):
         """Create assessment orders for practical assessment exercises."""
         customers = self._users.get('customers', [])
         default_customer = customers[0] if customers else None
 
         for order_config in ASSESSMENT_ORDERS:
-            customer = default_customer
-
-            customer_company = self._companies.get(order_config['customer_key'])
-            if customer_company:
-                for c in customers:
-                    if c.parent_company == customer_company:
-                        customer = c
-                        break
+            customer_company, customer = self._order_customer(
+                order_config, customers, default_customer)
 
             order, created = Orders.objects.update_or_create(
                 tenant=self.tenant,
@@ -442,7 +438,7 @@ class TrainingExercisesSeeder(BaseSeeder):
                 defaults={
                     'name': order_config['name'],
                     'customer': customer,
-                    'company': customer.parent_company if customer else None,
+                    'company': customer_company,
                     'order_status': order_config['status'],
                     'estimated_completion': self.today + timedelta(days=21),
                     'customer_note': order_config['description'],

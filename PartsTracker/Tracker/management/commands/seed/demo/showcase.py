@@ -162,12 +162,16 @@ class DemoShowcaseSeeder(BaseSeeder):
         return draft
 
     def _order(self):
+        from Tracker.models import Companies
+        # A customer's order, as every order is: with none, the order book showed it
+        # with no customer and the customer views couldn't find it.
+        company = Companies.objects.filter(tenant=self.tenant, name='Midwest Fleet Services').first()
         order, _ = Orders.objects.update_or_create(
             tenant=self.tenant,
             order_number="ORD-SHOWCASE",
             defaults={
                 "name": "SHOWCASE Demo Order - Injector Reman",
-                "company": None,
+                "company": company,
                 "customer": None,
                 "customer_note": None,
                 "order_status": OrdersStatus.IN_PROGRESS,

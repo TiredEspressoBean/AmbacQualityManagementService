@@ -22,6 +22,17 @@ from Tracker.models import (
 from ..base import BaseSeeder
 
 
+# The customer orders the repair-and-return units are here for. A unit that goes back
+# to its customer is received against their order (services/reman/core.py
+# receipt_order_refusal), so each such core names one; exchange cores name none.
+REPAIR_ORDERS = {
+    'ORD-2024-0044': {'name': 'Midwest Fleet warranty returns', 'customer': 'Midwest Fleet Services',
+                      'due_days': 14},
+    'ORD-2024-0046': {'name': 'Great Lakes injector repairs', 'customer': 'Great Lakes Diesel',
+                      'due_days': 14},
+}
+
+
 # Component definitions for injector disassembly (reverse BOM).
 #
 # Names and prefixes MATCH the assembly BOM in seed/demo/showcase.py. Both seeders
@@ -217,6 +228,7 @@ DEMO_CORES = [
     },
     {
         'core_number': 'CORE-240210-0007',
+        'for_order': 'ORD-2024-0044',
         'serial_number': 'SN-CRI-G33E44F8',
         'received_days_ago': 17,
         'status': 'DISASSEMBLED',
@@ -233,13 +245,10 @@ DEMO_CORES = [
         'core_credit_value': None,
         'core_credit_issued': False,
         'release': 'REBUILD',
-        # Found worse at the bench after teardown graded it A. Recorded through
-        # findings.record_finding (not at a check), so it waits on a lead (the
-        # pending-findings card) and the unit holds at Nozzle Inspection until it's
-        # decided. Applied, it raises NZL-RECON — pre-approved there, so the unit then
-        # goes down the Nozzle Recondition branch (services/reman/repair_routing).
-        'finding': {'component': 'Injector Nozzle Assembly', 'grade': 'C',
-                    'finding': 'Light pitting on the seat face, visible only after cleaning.'},
+        # No finding seeded. The operator finds the nozzle seat pitted at Nozzle
+        # Inspection (Operator track R2), and recorded there it applies at once:
+        # NZL-RECON is pre-approved at that check. Recording it off-check left it
+        # waiting on a lead, a state the check never produces.
         'components': [
             {
                 'component_name': 'Injector Body',
@@ -280,6 +289,7 @@ DEMO_CORES = [
         # standard rebuild they bought, so the unit is sent for authorisation
         # (release.request_authorisation). The QA Manager records the answer.
         'core_number': 'CORE-240212-0009',
+        'for_order': 'ORD-2024-0046',
         'serial_number': 'SN-CRI-J52B18C4',
         'received_days_ago': 15,
         'status': 'DISASSEMBLED',
@@ -391,6 +401,9 @@ class DemoRemanSeeder(BaseSeeder):
 
         # Create DisassemblyBOMLines
         result['bom_lines'] = self._create_disassembly_bom_lines(part_types, component_types)
+
+        # The repair orders the repair-and-return cores are received against
+        self._repair_orders = self._create_repair_orders(companies)
 
         # Create cores
         result['cores'] = self._create_cores(companies, users)
@@ -769,6 +782,33 @@ class DemoRemanSeeder(BaseSeeder):
 
         return bom_lines
 
+    def _create_repair_orders(self, companies):
+        """One open order per customer whose own units are here for repair, with a line
+        for the units it covers. Received cores name it (create_core(order=...))."""
+        from Tracker.models import Orders, OrdersStatus, OrderLine, OrderLineStatus
+        by_name = companies.get('by_name', {}) if isinstance(companies, dict) else {}
+        core_type = PartTypes.objects.filter(tenant=self.tenant, name__icontains='Common Rail').first()
+        units = {}
+        for c in DEMO_CORES:
+            if c.get('for_order'):
+                units[c['for_order']] = units.get(c['for_order'], 0) + 1
+        orders = {}
+        for number, spec in REPAIR_ORDERS.items():
+            company = by_name.get(spec['customer'])
+            due = (self.today + timedelta(days=spec['due_days'])).date()
+            order, _ = Orders.objects.update_or_create(
+                tenant=self.tenant, order_number=number,
+                defaults={'name': spec['name'], 'company': company,
+                          'order_status': OrdersStatus.IN_PROGRESS, 'estimated_completion': due})
+            if core_type is not None:
+                OrderLine.objects.update_or_create(
+                    tenant=self.tenant, order=order, line_number=1,
+                    defaults={'part_type': core_type, 'quantity': units.get(number, 1),
+                              'due_date': due, 'status': OrderLineStatus.OPEN,
+                              'notes': 'Customer-owned injectors, repaired and returned.'})
+            orders[number] = order
+        return orders
+
     def _create_cores(self, companies, users):
         """Create preset demo cores."""
         cores = []
@@ -865,9 +905,10 @@ class DemoRemanSeeder(BaseSeeder):
         }
         core = Core.objects.filter(tenant=self.tenant,
                                    core_number=core_data['core_number']).first()
+        order = getattr(self, '_repair_orders', {}).get(core_data.get('for_order'))
         if core is None:
             core = create_core(tenant=self.tenant, core_number=core_data['core_number'],
-                               **core_fields)
+                               order=order, **core_fields)
         else:
             if walked and core.part_id and core.part.work_order_id:
                 # Already walked on an earlier run: don't drag it back to RECEIVED.

@@ -103,7 +103,9 @@ DEMO_PROCESS = {
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
             'sampling_required': True, 'min_sampling_rate': 25.0,  # 25% sampling (whole-number percent: backend compares against sampled/total*100)
-            'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
+            # No first piece: each reman unit is inspected on its own, so there is no run
+            # whose setup a first piece proves.
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
@@ -115,7 +117,7 @@ DEMO_PROCESS = {
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
             'sampling_required': True, 'min_sampling_rate': 20.0,  # 20% sampling (whole-number percent)
-            'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',  # no first piece on reman: each unit is tested on its own
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 8, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
@@ -138,7 +140,7 @@ DEMO_PROCESS = {
             'pass_threshold': 1.0, 'expected_duration': None,
             'block_on_quarantine': True, 'requires_qa_signoff': True,
             'sampling_required': True, 'min_sampling_rate': 10.0,  # 10% sampling (whole-number percent)
-            'requires_first_piece_inspection': True, 'fpi_scope': 'PER_WORKORDER',  # FPI enabled
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',  # no first piece on reman: each unit is tested on its own
             'block_on_measurement_failure': True, 'block_on_spc_violation': True,  # SPC-enabled step
             'override_expiry_hours': 4, 'undo_window_minutes': 15, 'rollback_requires_approval': True,
             'requires_batch_completion': False,
