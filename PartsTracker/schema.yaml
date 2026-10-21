@@ -48771,6 +48771,16 @@ components:
           type: integer
         portable_count:
           type: integer
+        version:
+          type: integer
+        version_id:
+          type: string
+          format: uuid
+        applies_cleanly:
+          type: boolean
+        not_clean_reason:
+          type: string
+          nullable: true
         stranded:
           type: array
           items:
@@ -81559,7 +81569,11 @@ components:
           type: string
         status:
           type: string
+        base_version:
+          type: integer
+          nullable: true
       required:
+      - base_version
       - erp_id
       - id
       - status

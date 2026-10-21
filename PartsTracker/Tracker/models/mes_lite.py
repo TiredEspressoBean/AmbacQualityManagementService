@@ -395,6 +395,14 @@ class Processes(SecureModel):
     temporary_until = models.DateField(
         null=True, blank=True,
         help_text="Last day a temporary version may be worked. Extended only by an approved PCR.")
+    # The temporary PCR this version carries. One deviation can be in force on several
+    # versions of the same chain — the one it was drafted on, and each older approved
+    # version its work orders still run — so the link runs from each version to the
+    # PCR, not the other way round (services/change_control/temporary.py).
+    temporary_change = models.ForeignKey(
+        'Tracker.ProcessChangeRequest', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='temporary_versions',
+        help_text="On a temporary version: the PCR that put it in force.")
 
     class Meta:
         verbose_name_plural = 'Processes'

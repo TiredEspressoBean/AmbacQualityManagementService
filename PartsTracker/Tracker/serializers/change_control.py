@@ -25,6 +25,8 @@ class TemporaryWorkOrderSerializer(serializers.Serializer):
     id = serializers.CharField()
     erp_id = serializers.CharField()
     status = serializers.CharField()
+    # The version this WO runs underneath the deviation (where moving back returns it).
+    base_version = serializers.IntegerField(allow_null=True)
 
 
 class TemporaryChangeInfoSerializer(serializers.Serializer):
@@ -78,23 +80,28 @@ class ProcessChangeRequestSerializer(SecureModelMixin):
         """For an implemented temporary change: its version, end date, and the work
         orders on it. Null for anything else."""
         from Tracker.models import WorkOrder
-        from Tracker.services.change_control.temporary import temporary_version_of
+        from Tracker.services.change_control.temporary import temporary_versions_of
         from Tracker.services.core.clock import tenant_today
         if not obj.is_temporary or obj.extends_request_id is not None:
             return None
-        version = temporary_version_of(obj)
-        if version is None:
+        versions = temporary_versions_of(obj)
+        if not versions:
             return None
-        work_orders = (WorkOrder.objects.filter(process=version)  # tenant-safe: .objects auto-scopes
-                       .order_by('ERP_id').values('id', 'ERP_id', 'workorder_status'))
+        version = versions[0]
+        # Every version it's in force on: each work order's base version says where it
+        # goes back to.
+        work_orders = (WorkOrder.objects.filter(process__in=versions)  # tenant-safe: .objects auto-scopes
+                       .select_related('process__previous_version').order_by('ERP_id'))
         return {
             'version_id': str(version.id),
             'version': version.version,
             'until': version.temporary_until,
             'expired': bool(version.temporary_until
                             and version.temporary_until < tenant_today(obj.tenant_id)),
-            'work_orders': [{'id': str(w['id']), 'erp_id': w['ERP_id'],
-                             'status': w['workorder_status']} for w in work_orders],
+            'work_orders': [{'id': str(w.id), 'erp_id': w.ERP_id, 'status': w.workorder_status,
+                             'base_version': (w.process.previous_version.version
+                                              if w.process.previous_version_id else None)}
+                            for w in work_orders],
         }
 
     class Meta:

@@ -259,45 +259,103 @@ def create_new_process_version(
             **field_updates,
         )
 
-        # Every ProcessStep field, not a subset. `is_exit_point` and `auto_advance`
-        # were omitted here, and both have defaults that read as "normal" — False and
-        # True — so versioning a process silently dropped its early-exit paths and
-        # re-enabled auto-advance on any step where it had been deliberately turned
-        # off. A clone that loses settings quietly is worse than one that fails.
-        for ps in process.process_steps.all():
-            ProcessStep.objects.create(
-                process=new_version,
-                step=ps.step,
-                order=ps.order,
-                is_entry_point=ps.is_entry_point,
-                is_exit_point=ps.is_exit_point,
-                auto_advance=ps.auto_advance,
-            )
-
-        # Same omission on the edges: `tech_continuity` and `max_minutes` were added
-        # for scheduling after this clone was written and never added to it. Losing
-        # them is not cosmetic — tech_continuity=DIFFERENT is the independent-
-        # verification control, and max_minutes carries real process limits (cure
-        # windows, "coat within 4h of clean").
-        for edge in process.step_edges.all():
-            StepEdge.objects.create(
-                process=new_version,
-                from_step=edge.from_step,
-                to_step=edge.to_step,
-                edge_type=edge.edge_type,
-                pre_approved=edge.pre_approved,
-                tech_continuity=edge.tech_continuity,
-                max_minutes=edge.max_minutes,
-                condition_measurement=edge.condition_measurement,
-                condition_operator=edge.condition_operator,
-                condition_value=edge.condition_value,
-            )
+        _copy_routing(process, new_version)
 
         # Documents (GenericRelation) carry forward automatically — the base
         # SecureModel.create_new_version clones them inside the super() call
         # above. No explicit copy needed here.
 
     return new_version
+
+
+def _copy_routing(source: Processes, target: Processes) -> None:
+    """Copy a process version's routing onto a new version: its ProcessStep junctions
+    (same Step rows — steps are shared across versions) and its edges."""
+    # Every ProcessStep field, not a subset. `is_exit_point` and `auto_advance`
+    # were omitted here, and both have defaults that read as "normal" — False and
+    # True — so versioning a process silently dropped its early-exit paths and
+    # re-enabled auto-advance on any step where it had been deliberately turned
+    # off. A clone that loses settings quietly is worse than one that fails.
+    for ps in source.process_steps.all():
+        ProcessStep.objects.create(
+            process=target,
+            step=ps.step,
+            order=ps.order,
+            is_entry_point=ps.is_entry_point,
+            is_exit_point=ps.is_exit_point,
+            auto_advance=ps.auto_advance,
+        )
+
+    # Same omission on the edges: `tech_continuity` and `max_minutes` were added
+    # for scheduling after this clone was written and never added to it. Losing
+    # them is not cosmetic — tech_continuity=DIFFERENT is the independent-
+    # verification control, and max_minutes carries real process limits (cure
+    # windows, "coat within 4h of clean").
+    for edge in source.step_edges.all():
+        StepEdge.objects.create(
+            process=target,
+            from_step=edge.from_step,
+            to_step=edge.to_step,
+            edge_type=edge.edge_type,
+            pre_approved=edge.pre_approved,
+            tech_continuity=edge.tech_continuity,
+            max_minutes=edge.max_minutes,
+            condition_measurement=edge.condition_measurement,
+            condition_operator=edge.condition_operator,
+            condition_value=edge.condition_value,
+        )
+
+
+def fork_version_for_deviation(
+    process: Processes,
+    *,
+    user,
+    change_description: str,
+) -> Processes:
+    """A DRAFT fork of an approved process version — typically a retired (superseded)
+    one — for a temporary change that must reach work orders still running it.
+
+    Approving a revision archives its predecessor — archived here means retired, not
+    deleted: work orders on it still run it. The generic versioning refuses to fork an
+    archived row, and should for genuinely deleted ones, so this is the one process-
+    specific path that forks a retired approved version. It never supersedes the
+    source, and runs the same steps the generic fork does — field copy, routing,
+    documents, inbound links, the revision signal — through the same helpers.
+
+    Raises:
+        ValueError: change_description blank, or the source isn't an approved,
+            non-temporary version.
+    """
+    from django.db import transaction
+    from Tracker.services.core.documents import clone_current_documents, forward_target_links
+    from Tracker.services.core.version_links import apply_version_links
+    from Tracker.signals_versioning import revision_created
+
+    if not change_description or not change_description.strip():
+        raise ValueError("change_description is required when forking a process version.")
+    if process.status != ProcessStatus.APPROVED or process.is_temporary:
+        raise ValueError("Only an approved, non-temporary version can be forked for a deviation.")
+
+    with transaction.atomic():
+        source = Processes.all_tenants.select_for_update().get(pk=process.pk)  # tenant-safe: pk of an in-tenant process
+        data = {f.name: getattr(source, f.name) for f in Processes._meta.fields
+                if f.name not in Processes._VERSIONING_EXCLUDE_FIELDS}
+        data.update(
+            version=source.version + 1, previous_version=source,
+            # Never current: it carries a deviation for named work orders only.
+            is_current_version=False, archived=False,
+            status=ProcessStatus.DRAFT, approved_at=None, approved_by=None,
+            change_description=change_description,
+        )
+        fork = Processes.objects.create(**data)  # tenant-safe: tenant copied from the source version in `data`
+        _copy_routing(source, fork)
+        clone_current_documents(source=source, target=fork)
+        forward_target_links(old_target=source, new_target=fork)
+        apply_version_links(source, fork, supersede_source=False)
+
+    revision_created.send_robust(sender=Processes, old_version=source, new_version=fork,
+                                 user=user, change_description=change_description)
+    return fork
 
 
 def duplicate_process(

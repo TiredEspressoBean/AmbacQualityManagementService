@@ -680,13 +680,20 @@ def implement_pco(
             pco.draft_process_version, user=user,
             temporary_until=pcr.temporary_until if pcr.is_temporary else None)
 
-        migrated_ids = _apply_workorder_migrations(
-            old_version=pcr.target_process,
-            new_version=new_version,
-            disposition=migration_disposition,
-            selected_workorder_ids=selected_workorder_ids or [],
-            resolutions=stranded_resolutions,
-        )
+        if pcr.is_temporary:
+            # A deviation follows each work order to its own version of the chain.
+            from Tracker.services.change_control.temporary import put_in_force
+            migrated_ids = put_in_force(
+                pcr, pco.draft_process_version, new_version, selected_workorder_ids or [],
+                user=user, resolutions=stranded_resolutions)
+        else:
+            migrated_ids = _apply_workorder_migrations(
+                old_version=pcr.target_process,
+                new_version=new_version,
+                disposition=migration_disposition,
+                selected_workorder_ids=selected_workorder_ids or [],
+                resolutions=stranded_resolutions,
+            )
 
         pco.migration_disposition = migration_disposition
         pco.migration_reason = migration_reason or ''
@@ -712,15 +719,17 @@ def implement_pco(
 def _implement_extension(pco: ProcessChangeOrder, *, user, mode) -> ProcessChangeNotice:
     """Implement an extension PCR: move its temporary change's end date. No process
     edit and no migration - the work orders already on the temporary version stay."""
-    from Tracker.services.change_control.temporary import temporary_version_of
+    from Tracker.services.change_control.temporary import temporary_versions_of
     pcr = pco.request
-    version = temporary_version_of(pcr.extends_request)
-    if version is None:
+    versions = temporary_versions_of(pcr.extends_request)
+    if not versions:
         raise ValueError(
             f"{pcr.extends_request.artifact_number} isn't a temporary change in force.")
     with transaction.atomic():
-        version.temporary_until = pcr.temporary_until
-        version.save(update_fields=['temporary_until', 'updated_at'])
+        # One deviation, one end date: every version it's in force on moves together.
+        for version in versions:
+            version.temporary_until = pcr.temporary_until
+            version.save(update_fields=['temporary_until', 'updated_at'])
         pco.migration_disposition = ProcessChangeMigrationDisposition.KEEP_ALL
         pco.status = ProcessChangeOrder.Status.IMPLEMENTED
         pco.implemented_at = timezone.now()

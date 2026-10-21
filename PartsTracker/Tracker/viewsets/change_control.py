@@ -433,13 +433,14 @@ class ProcessChangeRequestViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         from Tracker.models import WorkOrder
         from Tracker.services.change_control.part_remap import StrandedPartsNeedResolution
         from Tracker.services.change_control.temporary import (
-            return_to_baseline, temporary_version_of)
+            return_to_baseline, temporary_versions_of)
         pcr = self.get_object()
-        version = temporary_version_of(pcr)
-        if version is None:
+        versions = temporary_versions_of(pcr)
+        if not versions:
             return Response({'detail': f"{pcr.artifact_number} isn't a temporary change in force."},
                             status=400)
-        wo = WorkOrder.objects.filter(pk=request.data.get('work_order'), process=version).first()  # tenant-safe: .objects auto-scopes
+        wo = WorkOrder.objects.filter(pk=request.data.get('work_order'),  # tenant-safe: .objects auto-scopes
+                                      process__in=versions).first()
         if wo is None:
             return Response({'detail': "That work order isn't on this temporary change."},
                             status=400)
@@ -628,6 +629,12 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
                         'total_parts': serializers.IntegerField(),
                         'affected_parts': serializers.IntegerField(),
                         'portable_count': serializers.IntegerField(required=False),
+                        # Temporary changes only: which chain version the WO is on,
+                        # and whether the deviation applies to it cleanly.
+                        'version': serializers.IntegerField(required=False),
+                        'version_id': serializers.UUIDField(required=False),
+                        'applies_cleanly': serializers.BooleanField(required=False),
+                        'not_clean_reason': serializers.CharField(required=False, allow_null=True),
                         'stranded': serializers.ListField(
                             required=False,
                             child=inline_serializer(
@@ -665,11 +672,16 @@ class ProcessChangeOrderViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         )
         pco = self.get_object()
         diff = getattr(pco.request, 'proposed_change_diff', None) or {}
-        rows = affected_workorders_with_impact(
-            target_process=pco.request.target_process,
-            proposed_change_diff=diff,
-            new_process=pco.draft_process_version,
-        )
+        if pco.request.is_temporary and pco.draft_process_version is not None:
+            # A deviation reaches in-flight work on every approved version of the chain.
+            from Tracker.services.change_control.temporary import reach_rows
+            rows = reach_rows(pco.request, pco.draft_process_version)
+        else:
+            rows = affected_workorders_with_impact(
+                target_process=pco.request.target_process,
+                proposed_change_diff=diff,
+                new_process=pco.draft_process_version,
+            )
         # Surviving steps in the new version — the RELOCATE targets the picker
         # offers for parts stranded at a removed step.
         draft = pco.draft_process_version

@@ -293,7 +293,11 @@ function ImplementDialog({
     const rows = data?.rows;
     const availableSteps = data?.availableSteps ?? [];
 
+    // A deviation that doesn't apply cleanly to a work order's version can't be chosen
+    // for it; the server refuses those too.
+    const selectable = (rows ?? []).filter((r) => r.applies_cleanly !== false);
     const toggleOne = (id: string) => {
+        if (!selectable.some((r) => r.wo_id === id)) return;
         setSelectedIds((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
@@ -302,8 +306,7 @@ function ImplementDialog({
         });
     };
     const toggleAll = (checked: boolean) => {
-        if (!rows) return;
-        setSelectedIds(checked ? new Set(rows.map((r) => r.wo_id)) : new Set());
+        setSelectedIds(checked ? new Set(selectable.map((r) => r.wo_id)) : new Set());
     };
 
     // Only the WOs that will actually migrate contribute stranded parts.
@@ -345,8 +348,9 @@ function ImplementDialog({
                         </p>
                     ) : temporary ? (
                         <p className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-                            A temporary change applies only to the work orders you choose below. The current
-                            version stays in force for everything else.
+                            A temporary change applies only to the work orders you choose below, including
+                            ones still running on an older version: each keeps its own version, with the
+                            change on top. The current version stays in force for everything else.
                         </p>
                     ) : (
                     <div>
@@ -484,11 +488,14 @@ function WorkorderPicker({
     if (!rows || rows.length === 0) {
         return (
             <div className="py-4 text-sm text-muted-foreground italic">
-                No in-flight work orders on the target process.
+                No in-flight work orders on any approved version of this process.
             </div>
         );
     }
-    const allChecked = rows.length > 0 && rows.every((r) => selectedIds.has(r.wo_id));
+    // Temporary changes reach every version of the chain, so their rows say which.
+    const showVersion = rows.some((r) => r.version != null);
+    const selectable = rows.filter((r) => r.applies_cleanly !== false);
+    const allChecked = selectable.length > 0 && selectable.every((r) => selectedIds.has(r.wo_id));
     return (
         <div className="border rounded-md overflow-hidden">
             <Table>
@@ -502,6 +509,7 @@ function WorkorderPicker({
                             />
                         </TableHead>
                         <TableHead>Work Order</TableHead>
+                        {showVersion && <TableHead>Version</TableHead>}
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Qty</TableHead>
                         <TableHead className="text-right">In flight</TableHead>
@@ -511,20 +519,34 @@ function WorkorderPicker({
                 <TableBody>
                     {rows.map((r) => {
                         const checked = selectedIds.has(r.wo_id);
+                        const blocked = r.applies_cleanly === false;
                         return (
                             <TableRow
                                 key={r.wo_id}
-                                className="cursor-pointer"
+                                className={blocked ? "opacity-60" : "cursor-pointer"}
                                 onClick={() => onToggleOne(r.wo_id)}
                             >
                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                     <Checkbox
                                         checked={checked}
+                                        disabled={blocked}
                                         onCheckedChange={() => onToggleOne(r.wo_id)}
                                         aria-label={`Select ${r.erp_id}`}
                                     />
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">{r.erp_id}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                    {r.erp_id}
+                                    {blocked && r.not_clean_reason && (
+                                        <div className="mt-0.5 font-sans text-[11px] text-amber-700 dark:text-amber-400">
+                                            {r.not_clean_reason}
+                                        </div>
+                                    )}
+                                </TableCell>
+                                {showVersion && (
+                                    <TableCell className="tabular-nums text-xs">
+                                        {r.version != null ? `v${r.version}` : "—"}
+                                    </TableCell>
+                                )}
                                 <TableCell>
                                     <Badge variant="outline" className="text-[10px]">{r.status}</Badge>
                                 </TableCell>

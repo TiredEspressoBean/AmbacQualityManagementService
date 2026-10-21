@@ -176,3 +176,16 @@ class TravelerPerSerialCreditTests(TenantTestCase):
             QualityReports.objects.create(tenant=self.tenant_a, part=self.second, step=self.cal,
                                           step_execution=ex, status=status, detected_by=self.user_a)
         self.assertEqual(self._row(self.second, self.cal).acc_rej, "RPR")
+
+    def test_an_assigned_but_unstarted_visit_names_no_operator(self):
+        """013's Rework visit: PENDING, assigned to Sarah, not worked — printed as hers."""
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.second, step=self.cal,
+                                     visit_number=1, status="PENDING", assigned_to=self.user_a)
+        self.assertIsNone(self._row(self.second, self.cal).operator)
+
+    def test_a_rolled_back_visit_never_started_still_names_who_worked_it(self):
+        """013's Flow Calibration: ROLLED_BACK, assigned to Mike, no started_at — he did
+        the work and its readings are his, so the row must not lose him."""
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.second, step=self.cal,
+                                     visit_number=1, status="ROLLED_BACK", assigned_to=self.user_a)
+        self.assertIsNotNone(self._row(self.second, self.cal).operator)

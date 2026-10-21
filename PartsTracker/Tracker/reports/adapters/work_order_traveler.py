@@ -728,7 +728,13 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         operator = inspector = acc_rej = remarks = None
 
         if execution is not None:
-            who = execution.completed_by or execution.assigned_to
+            # Operator means who did the work: whoever completed it, or — once the visit
+            # was worked — whoever it's assigned to. An assignment alone (pending, claimed,
+            # skipped, cancelled) isn't work done. A visit can complete or be rolled back
+            # without Start Work ever being pressed, so started_at alone isn't the test.
+            started = execution.started_at is not None or execution.status in (
+                "IN_PROGRESS", "COMPLETED", "ROLLED_BACK")
+            who = execution.completed_by or (execution.assigned_to if started else None)
             when = execution.exited_at or execution.started_at or execution.entered_at
             # Nobody on it (a visit that's only been entered) is no operator — printing
             # its entry date alone read as a sign-off by "10/20".

@@ -93,6 +93,10 @@ export type AffectedWorkorderRow = {
   total_parts: number;
   affected_parts: number;
   portable_count?: number | undefined;
+  version?: number | undefined;
+  version_id?: string | undefined;
+  applies_cleanly?: boolean | undefined;
+  not_clean_reason?: (string | null) | undefined;
   stranded?: Array<StrandedPart> | undefined;
 };
 export type StrandedPart = {
@@ -7724,6 +7728,7 @@ export type TemporaryWorkOrder = {
   id: string;
   erp_id: string;
   status: string;
+  base_version: number | null;
 };
 export type PaginatedProcessWithStepsList = {
   /**
@@ -28285,6 +28290,10 @@ const AffectedWorkorderRow = z.object({
   total_parts: z.number().int(),
   affected_parts: z.number().int(),
   portable_count: z.number().int().optional(),
+  version: z.number().int().optional(),
+  version_id: z.string().uuid().optional(),
+  applies_cleanly: z.boolean().optional(),
+  not_clean_reason: z.string().nullish(),
   stranded: z.array(StrandedPart).optional(),
 });
 const AvailableStep = z.object({ id: z.string().uuid(), name: z.string() });
@@ -28333,6 +28342,7 @@ const TemporaryWorkOrder = z.object({
   id: z.string(),
   erp_id: z.string(),
   status: z.string(),
+  base_version: z.number().int().nullable(),
 });
 const TemporaryChangeInfo = z.object({
   version_id: z.string(),

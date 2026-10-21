@@ -20574,6 +20574,11 @@ export interface components {
             total_parts: number;
             affected_parts: number;
             portable_count?: number;
+            version?: number;
+            /** Format: uuid */
+            version_id?: string;
+            applies_cleanly?: boolean;
+            not_clean_reason?: string | null;
             stranded?: components["schemas"]["StrandedPart"][];
         };
         AffectedWorkordersResponse: {
@@ -37402,6 +37407,7 @@ export interface components {
             id: string;
             erp_id: string;
             status: string;
+            base_version: number | null;
         };
         /** @description Serializer for Tenant model. */
         Tenant: {
