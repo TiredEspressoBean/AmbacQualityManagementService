@@ -4,6 +4,8 @@ import { getCookie } from "@/lib/utils";
 
 type ClearHoldVariables = {
     id: string;
+    /** What resolved it — required by the server for Quality and Tooling holds. */
+    notes?: string;
 };
 
 export const useClearHoldWorkOrder = () => {
@@ -11,7 +13,7 @@ export const useClearHoldWorkOrder = () => {
 
     return useMutation({
         mutationFn: (vars: ClearHoldVariables) =>
-            api.api_WorkOrders_clear_hold_create(undefined, {
+            api.api_WorkOrders_clear_hold_create({ notes: vars.notes ?? "" }, {
                 params: { id: vars.id },
                 headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
             }),

@@ -3360,6 +3360,10 @@ class WorkOrderHold(SecureModel, VoidableModel):
         related_name='+',
     )
     cleared_at = models.DateTimeField(null=True, blank=True)
+    clear_notes = models.TextField(
+        blank=True,
+        help_text="What resolved the hold, recorded when it is cleared. Required for "
+                  "Quality and Tooling holds (work_order.HOLD_REASONS_NEEDING_RESOLUTION).")
 
     class Meta:
         indexes = [

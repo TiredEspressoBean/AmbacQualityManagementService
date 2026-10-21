@@ -17,6 +17,13 @@ from .core import SecureModelMixin
 from .fields import TenantScopedPrimaryKeyRelatedField
 
 
+# Each code a customer is (or would be) asked to authorise, its name and the findings
+# behind it. One definition: two inline copies collide as schema components.
+_AUTHORISATION_SCOPE = inline_serializer(name='AuthorisationScopeItem', many=True, fields={
+    'code': serializers.CharField(), 'name': serializers.CharField(),
+    'why': serializers.ListField(child=serializers.CharField())})
+
+
 # ===== CORE SERIALIZERS =====
 
 class CoreSerializer(SecureModelMixin):
@@ -41,9 +48,15 @@ class CoreSerializer(SecureModelMixin):
     awaiting_authorisation = serializers.SerializerMethodField(
         help_text="While the unit awaits the customer: each code they're asked about, its "
                   "name and the findings behind it. Empty otherwise.")
+    authorisation_needed = serializers.SerializerMethodField(
+        help_text="While a repair-and-return unit is in rebuild: what a request for the "
+                  "customer's authorisation would ask about (code, name, findings). Empty "
+                  "otherwise.")
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
     usable_component_count = serializers.IntegerField(read_only=True)
+    pending_finding_count = serializers.IntegerField(
+        read_only=True, help_text="Findings waiting on a lead's decision; the unit holds until each is decided.")
     # Repair codes approved for this unit since its process ran. Read-only: approvals
     # change only through approve_repair / record_authorisation. Declared so the
     # schema says list-of-codes, not "unknown".
@@ -73,14 +86,14 @@ class CoreSerializer(SecureModelMixin):
             'disassembled_by', 'disassembled_by_name',
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
             'work_order', 'part', 'order', 'order_number',
-            'harvested_component_count', 'usable_component_count',
-            'approved_repair_codes', 'awaiting_authorisation',
+            'harvested_component_count', 'usable_component_count', 'pending_finding_count',
+            'approved_repair_codes', 'awaiting_authorisation', 'authorisation_needed',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
             'created_at', 'updated_at',             'received_by', 'disassembled_by',
             'disassembly_started_at', 'disassembly_completed_at',
-            'core_credit_issued_at', 'harvested_component_count', 'usable_component_count',
+            'core_credit_issued_at', 'harvested_component_count', 'usable_component_count', 'pending_finding_count',
             'returns_to_customer', 'work_order_erp_id', 'work_order_status',
             'returned_at', 'returned_by',
             # The part this core IS — what the operator runtime opens. Minted with the
@@ -165,12 +178,17 @@ class CoreSerializer(SecureModelMixin):
         if why:
             raise serializers.ValidationError({'order': why})
 
-    @extend_schema_field(inline_serializer(name='AuthorisationScopeItem', many=True, fields={
-        'code': serializers.CharField(), 'name': serializers.CharField(),
-        'why': serializers.ListField(child=serializers.CharField())}))
+    @extend_schema_field(_AUTHORISATION_SCOPE)
     def get_awaiting_authorisation(self, obj):
         from Tracker.services.reman.release import pending_authorisation_scope
         return pending_authorisation_scope(obj)
+
+    @extend_schema_field(_AUTHORISATION_SCOPE)
+    def get_authorisation_needed(self, obj):
+        if not obj.returns_to_customer:
+            return []
+        from Tracker.services.reman.release import pending_authorisation_scope
+        return pending_authorisation_scope(obj, asking=True)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):
@@ -192,6 +210,8 @@ class CoreListSerializer(SecureModelMixin):
     customer_name = serializers.CharField(source='customer.name', read_only=True, allow_null=True)
     harvested_component_count = serializers.IntegerField(read_only=True)
     usable_component_count = serializers.IntegerField(read_only=True)
+    pending_finding_count = serializers.IntegerField(
+        read_only=True, help_text="Findings waiting on a lead's decision; the unit holds until each is decided.")
 
     class Meta:
         model = Core
@@ -207,7 +227,7 @@ class CoreListSerializer(SecureModelMixin):
             # been sitting is the question that surface exists to answer, and showing
             # `received_date` next to a teardown-ordered list just reads as broken.
             'disassembly_completed_at',
-            'harvested_component_count', 'usable_component_count',
+            'harvested_component_count', 'usable_component_count', 'pending_finding_count',
             # The part this core IS, so a list row can open the unit in the operator
             # runtime without a second fetch.
             'part',

@@ -88,6 +88,27 @@ class RccpTests(_RccpFixture, TestCase):
         self.assertGreater(first["capacity_hours"], 0)
         self.assertLess(first["capacity_hours"], 31 * 24)
 
+    def test_the_current_month_offers_only_what_is_left_of_it(self):
+        """Pinned dates, not today's: the bug this guards against only showed late in a
+        month. On 21 Oct 2026 (a Wednesday) the October bucket is the rest of October —
+        about 7½ shift days of an 8h Mon-Fri shift — not all 22 working days, which read
+        a busy crew as two-thirds idle. On the 1st it is the whole month."""
+        from datetime import datetime
+        from unittest import mock
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        with mock.patch.object(rccp.timezone, 'now',
+                               return_value=datetime(2026, 10, 21, 12, 0, tzinfo=tz)):
+            late = rccp.build_capacity_load(self.tenant, months=2)["labor"]["series"]
+        with mock.patch.object(rccp.timezone, 'now',
+                               return_value=datetime(2026, 10, 1, 0, 0, tzinfo=tz)):
+            whole = rccp.build_capacity_load(self.tenant, months=2)["labor"]["series"]
+        self.assertEqual((late[0]["bucket"], whole[0]["bucket"]), ("2026-10", "2026-10"))
+        self.assertAlmostEqual(whole[0]["capacity_hours"], 22 * 8, delta=8)    # 22 weekdays
+        self.assertAlmostEqual(late[0]["capacity_hours"], 7.5 * 8, delta=8)    # 21st noon → 30th
+        # Later months are whole either way.
+        self.assertEqual(late[1]["capacity_hours"], whole[1]["capacity_hours"])
+
     def test_lights_out_machine_gets_calendar_hours(self):
         """A lights-out machine's capacity is wall-clock, an attended one's is shift
         hours — the runs_unattended resolution the scheduler uses."""

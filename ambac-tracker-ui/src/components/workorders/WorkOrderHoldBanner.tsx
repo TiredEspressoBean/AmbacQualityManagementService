@@ -37,3 +37,39 @@ export function WorkOrderHoldBanner({ hold }: { hold: WorkOrderHold }) {
         </Card>
     );
 }
+
+export type ClearedHold = WorkOrderHold & {
+    id: string;
+    cleared_at: string;
+    cleared_by_name?: string | null;
+    clear_notes?: string | null;
+};
+
+/** The order's cleared holds: why each stopped it, who released it, and what resolved it. */
+export function WorkOrderHoldHistory({ holds }: { holds: readonly ClearedHold[] }) {
+    if (holds.length === 0) return null;
+    return (
+        <details className="rounded-lg border px-3 py-2 text-sm">
+            <summary className="cursor-pointer font-medium">Hold history ({holds.length})</summary>
+            <ul className="mt-2 space-y-2">
+                {holds.map((h) => (
+                    <li key={h.id} className="border-t pt-2 first:border-t-0 first:pt-0">
+                        <div>
+                            <span className="font-medium">{holdReasonLabel(h.reason)}</span>
+                            {h.notes ? <span className="text-muted-foreground"> — {h.notes}</span> : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                            Placed{h.placed_by_name ? ` by ${h.placed_by_name}` : ""}
+                            {h.placed_at ? ` ${new Date(h.placed_at).toLocaleString()}` : ""}
+                            {" · "}cleared{h.cleared_by_name ? ` by ${h.cleared_by_name}` : ""}
+                            {` ${new Date(h.cleared_at).toLocaleString()}`}
+                        </div>
+                        <div className="text-xs">
+                            {h.clear_notes ? <>Resolved: {h.clear_notes}</> : <span className="text-muted-foreground">No resolution note.</span>}
+                        </div>
+                    </li>
+                ))}
+            </ul>
+        </details>
+    );
+}

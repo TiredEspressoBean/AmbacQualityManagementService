@@ -1,6 +1,6 @@
 # serializers/mes_lite.py - Manufacturing, Orders, Parts & Processes
 from django.db import models
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 from Tracker.services.qms.qa_status import INSPECTED_OK
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
@@ -887,6 +887,24 @@ def _serialize_current_hold(wo):
     }
 
 
+def _serialize_hold_history(wo, limit=10):
+    """The work order's cleared holds, newest first: why it stopped, who released it,
+    and what resolved it."""
+    from Tracker.models import WorkOrderHold
+
+    def name(u):
+        return (u.get_full_name().strip() or u.username) if u else None
+    holds = (WorkOrderHold.objects  # tenant-safe: keyed to an in-tenant work order
+             .filter(work_order=wo, cleared_at__isnull=False, is_voided=False)
+             .select_related('placed_by', 'cleared_by').order_by('-cleared_at')[:limit])
+    return [{
+        'id': str(h.id), 'reason': h.reason, 'notes': h.notes,
+        'placed_at': h.placed_at, 'placed_by_name': name(h.placed_by),
+        'cleared_at': h.cleared_at, 'cleared_by_name': name(h.cleared_by),
+        'clear_notes': h.clear_notes,
+    } for h in holds]
+
+
 class WorkOrderListSerializer(SecureModelMixin):
     """Lightweight serializer for work order list views - avoids N+1 queries."""
     related_order_info = serializers.SerializerMethodField()
@@ -1027,6 +1045,8 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     related_order_detail = serializers.SerializerMethodField()
     process_info = serializers.SerializerMethodField()
     current_hold = serializers.SerializerMethodField()
+    hold_history = serializers.SerializerMethodField(
+        help_text="Cleared holds, newest first, with who released them and what resolved them.")
     parent_workorder_id = serializers.UUIDField(read_only=True, allow_null=True)
     child_count = serializers.SerializerMethodField()
 
@@ -1081,7 +1101,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         fields = (
         'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'order_line', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
-        'notes', 'parts_summary', 'current_hold',
+        'notes', 'parts_summary', 'current_hold', 'hold_history',
         'released_at', 'released_by', 'release_override_reason',
         'parent_workorder_id', 'split_reason', 'split_at', 'child_count', 'cores',
         'priority_reason', 'priority_changes',
@@ -1090,7 +1110,7 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         'created_at', 'updated_at', 'archived')
         read_only_fields = (
             'created_at', 'updated_at', 'related_order_info', 'parts_summary', 'related_order_detail',
-            'process_info', 'current_hold', 'cores',
+            'process_info', 'current_hold', 'hold_history', 'cores',
             # Release is an authorization act with its own gated endpoints — never a
             # plain PATCH, or the readiness check and the override record are bypassed.
             'released_at', 'released_by', 'release_override_reason',
@@ -1131,6 +1151,16 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
         if hasattr(obj, '_child_count'):
             return obj._child_count
         return obj.child_workorders.count()
+
+    @extend_schema_field(inline_serializer(name='WorkOrderHoldHistoryItem', many=True, fields={
+        'id': serializers.CharField(), 'reason': serializers.CharField(),
+        'notes': serializers.CharField(), 'placed_at': serializers.DateTimeField(),
+        'placed_by_name': serializers.CharField(allow_null=True),
+        'cleared_at': serializers.DateTimeField(),
+        'cleared_by_name': serializers.CharField(allow_null=True),
+        'clear_notes': serializers.CharField()}))
+    def get_hold_history(self, obj):
+        return _serialize_hold_history(obj)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_current_hold(self, obj):

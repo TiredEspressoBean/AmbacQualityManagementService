@@ -67,8 +67,35 @@ class WorkOrderStatusGateTests(TenantTestCase):
                                      visit_number=1, status="IN_PROGRESS")
         self.client.post(f"/api/WorkOrders/{self.wo.id}/place_on_hold/",
                          {"reason": "TOOLING"}, format="json")
-        self.client.post(f"/api/WorkOrders/{self.wo.id}/clear_hold/", {}, format="json")
+        self.client.post(f"/api/WorkOrders/{self.wo.id}/clear_hold/",
+                         {"notes": "Fixture re-shimmed"}, format="json")
         self.assertEqual(self._status(), WorkOrderStatus.IN_PROGRESS)
+
+    def test_a_quality_or_tooling_hold_needs_a_resolution_note(self):
+        """User decision 2026-10-21: required for Quality and Tooling, optional otherwise."""
+        from Tracker.models import WorkOrderHold
+        for reason in ("QUALITY", "TOOLING"):
+            self.client.post(f"/api/WorkOrders/{self.wo.id}/place_on_hold/",
+                             {"reason": reason}, format="json")
+            resp = self.client.post(f"/api/WorkOrders/{self.wo.id}/clear_hold/", {}, format="json")
+            self.assertEqual(resp.status_code, 400, resp.content)
+            self.assertIn("resolution note", resp.data["detail"])
+            self.assertEqual(self._status(), WorkOrderStatus.ON_HOLD)
+            resp = self.client.post(f"/api/WorkOrders/{self.wo.id}/clear_hold/",
+                                    {"notes": "Gauge recalibrated; suspects re-inspected"}, format="json")
+            self.assertEqual(resp.status_code, 200, resp.content)
+        latest = WorkOrderHold.objects.filter(work_order=self.wo).order_by("-cleared_at").first()
+        self.assertEqual(latest.clear_notes, "Gauge recalibrated; suspects re-inspected")
+
+    def test_bulk_clear_refuses_a_quality_hold_without_a_note_on_its_own_row(self):
+        self.client.post(f"/api/WorkOrders/{self.wo.id}/place_on_hold/",
+                         {"reason": "QUALITY"}, format="json")
+        resp = self.client.post("/api/WorkOrders/bulk_clear_hold/", {"ids": [str(self.wo.id)]},
+                                format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        row, = resp.data["results"]
+        self.assertFalse(row["ok"])
+        self.assertEqual(self._status(), WorkOrderStatus.ON_HOLD)
 
     def test_cancel_is_its_own_action(self):
         resp = self.client.post(f"/api/WorkOrders/{self.wo.id}/cancel/", {}, format="json")

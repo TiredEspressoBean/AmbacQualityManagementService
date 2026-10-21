@@ -42,16 +42,22 @@ class Bucket:
 
 
 def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
-    """`months` monthly buckets from the start of `start`'s month."""
+    """`months` monthly buckets from the start of `start`'s month.
+
+    The current month offers only what is LEFT of it: capacity is measured from
+    `start`, not the 1st. Load is future work, so counting the month's elapsed days as
+    capacity read late in a month as an idle crew — on 21 October, 792 h available
+    against work that only the remaining third of the month could carry."""
     out: list[Bucket] = []
     y, m = start.year, start.month
     cur = start.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     for _ in range(months):
         ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
         nxt = cur.replace(year=ny, month=nm)
-        windows = sched_data.get_working_windows(tenant, cur, nxt)
+        avail_from = max(cur, start)
+        windows = sched_data.get_working_windows(tenant, avail_from, nxt)
         working = sum((b - a).total_seconds() / 3600 for a, b in windows)
-        calendar = (nxt - cur).total_seconds() / 3600
+        calendar = (nxt - avail_from).total_seconds() / 3600
         out.append(Bucket(f"{y:04d}-{m:02d}", cur, nxt, working, calendar))
         y, m, cur = ny, nm, nxt
     return out

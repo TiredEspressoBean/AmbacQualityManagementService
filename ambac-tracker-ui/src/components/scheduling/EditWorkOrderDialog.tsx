@@ -1,5 +1,7 @@
 // Edit a work order's schedule-relevant attributes from the Gantt (Phase 4):
 // priority, release date, due date, and quantity (adds/cancels parts). Re-solve to apply.
+import type { WorkOrderHold } from "@/components/workorders/WorkOrderHoldBanner";
+import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -52,6 +54,7 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   // second click into an informed override rather than a repeat of the same request.
   const [blockers, setBlockers] = useState<ReleaseCheck[]>([]);
   const [overrideReason, setOverrideReason] = useState("");
+  const [clearingHold, setClearingHold] = useState(false);
 
   const doRelease = () => {
     if (!workOrderId) return;
@@ -205,12 +208,20 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
           </div>
         )}
 
+        <ClearHoldDialog
+          open={clearingHold}
+          onOpenChange={setClearingHold}
+          hold={(wo?.current_hold as WorkOrderHold | null) ?? null}
+          pending={releaseHold.isPending}
+          onConfirm={(notes) => workOrderId && releaseHold.mutate(
+            { id: workOrderId, notes }, { onSuccess: () => setClearingHold(false) })}
+        />
         {wo && (
           <div className="flex flex-wrap gap-2 border-t pt-3">
             {onHold ? (
               <Button
                 variant="outline" size="sm"
-                onClick={() => workOrderId && releaseHold.mutate(workOrderId)}
+                onClick={() => setClearingHold(true)}
                 disabled={releaseHold.isPending}
               >
                 Release hold

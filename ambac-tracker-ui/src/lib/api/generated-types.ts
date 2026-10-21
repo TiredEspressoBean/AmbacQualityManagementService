@@ -22217,9 +22217,13 @@ export interface components {
             readonly order_number: string | null;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
+            /** @description Findings waiting on a lead's decision; the unit holds until each is decided. */
+            readonly pending_finding_count: number;
             readonly approved_repair_codes: string[];
             /** @description While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise. */
             readonly awaiting_authorisation: components["schemas"]["AuthorisationScopeItem"][];
+            /** @description While a repair-and-return unit is in rebuild: what a request for the customer's authorisation would ask about (code, name, findings). Empty otherwise. */
+            readonly authorisation_needed: components["schemas"]["AuthorisationScopeItem"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -22320,6 +22324,8 @@ export interface components {
             disassembly_completed_at?: string | null;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
+            /** @description Findings waiting on a lead's decision; the unit holds until each is decided. */
+            readonly pending_finding_count: number;
             /**
              * Format: uuid
              * @description The part this core is. Its part_status is derived from `status`.
@@ -39148,6 +39154,8 @@ export interface components {
             readonly current_hold: {
                 [key: string]: unknown;
             } | null;
+            /** @description Cleared holds, newest first, with who released them and what resolved them. */
+            readonly hold_history: components["schemas"]["WorkOrderHoldHistoryItem"][];
             /**
              * Format: date-time
              * @description When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
@@ -39195,6 +39203,8 @@ export interface components {
         };
         WorkOrderBulkClearHoldInputRequest: {
             ids: string[];
+            /** @description Resolution note for every hold cleared. Quality and Tooling holds without one are refused per row. */
+            notes?: string;
         };
         WorkOrderBulkClearHoldResponse: {
             results: {
@@ -39212,6 +39222,10 @@ export interface components {
             results: {
                 [key: string]: unknown;
             }[];
+        };
+        WorkOrderClearHoldInputRequest: {
+            /** @description What resolved the hold. Required for Quality and Tooling holds. */
+            notes?: string;
         };
         /**
          * @description A core on a teardown work order, for the control surface.
@@ -39245,6 +39259,18 @@ export interface components {
             good: number;
             scrapped: number;
             shortfall: number;
+        };
+        WorkOrderHoldHistoryItem: {
+            id: string;
+            reason: string;
+            notes: string;
+            /** Format: date-time */
+            placed_at: string;
+            placed_by_name: string | null;
+            /** Format: date-time */
+            cleared_at: string;
+            cleared_by_name: string | null;
+            clear_notes: string;
         };
         /** @description Lightweight serializer for work order list views - avoids N+1 queries. */
         WorkOrderList: {
@@ -69982,7 +70008,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderClearHoldInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WorkOrderClearHoldInputRequest"];
+                "multipart/form-data": components["schemas"]["WorkOrderClearHoldInputRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {

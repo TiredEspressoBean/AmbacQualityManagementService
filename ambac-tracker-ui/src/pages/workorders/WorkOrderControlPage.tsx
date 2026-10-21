@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
 import { WorkOrderHoldBanner } from "@/components/workorders/WorkOrderHoldBanner";
 import { QualityResultBadge } from "@/components/quality/QualityResultBadge";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1351,8 +1352,9 @@ export function WorkOrderControlPage() {
             },
         );
     }
-    function clearHold() {
-        clearHoldMutation.mutate({ id: workOrderId });
+    const [clearHoldOpen, setClearHoldOpen] = useState(false);
+    function clearHold(notes: string) {
+        clearHoldMutation.mutate({ id: workOrderId, notes }, { onSuccess: () => setClearHoldOpen(false) });
     }
 
     const stepById = useMemo(() => {
@@ -1579,9 +1581,14 @@ export function WorkOrderControlPage() {
                         />
                     )}
                     {currentHold != null ? (
-                        <Button variant="outline" onClick={clearHold}>
-                            Clear hold
-                        </Button>
+                        <>
+                            <Button variant="outline" onClick={() => setClearHoldOpen(true)}>
+                                Clear hold
+                            </Button>
+                            <ClearHoldDialog open={clearHoldOpen} onOpenChange={setClearHoldOpen}
+                                             hold={currentHold} pending={clearHoldMutation.isPending}
+                                             onConfirm={clearHold} />
+                        </>
                     ) : (
                         <Button variant="outline" onClick={() => setHoldDialogOpen(true)}>
                             <PauseCircle className="mr-1 h-4 w-4" />

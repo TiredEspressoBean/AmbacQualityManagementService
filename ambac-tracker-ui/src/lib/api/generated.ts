@@ -1824,11 +1824,19 @@ export type Core = {
   order_number: string | null;
   harvested_component_count: number;
   usable_component_count: number;
+  /**
+   * Findings waiting on a lead's decision; the unit holds until each is decided.
+   */
+  pending_finding_count: number;
   approved_repair_codes: Array<string>;
   /**
    * While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise.
    */
   awaiting_authorisation: Array<AuthorisationScopeItem>;
+  /**
+   * While a repair-and-return unit is in rebuild: what a request for the customer's authorisation would ask about (code, name, findings). Empty otherwise.
+   */
+  authorisation_needed: Array<AuthorisationScopeItem>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -1934,6 +1942,10 @@ export type CoreList = {
   disassembly_completed_at?: (string | null) | undefined;
   harvested_component_count: number;
   usable_component_count: number;
+  /**
+   * Findings waiting on a lead's decision; the unit holds until each is decided.
+   */
+  pending_finding_count: number;
   /**
    * The part this core is. Its part_status is derived from `status`.
    */
@@ -18252,6 +18264,10 @@ export type WorkOrder = {
   parts_summary: {};
   current_hold: {};
   /**
+   * Cleared holds, newest first, with who released them and what resolved them.
+   */
+  hold_history: Array<WorkOrderHoldHistoryItem>;
+  /**
    * When a planner authorized this work order for scheduling. Null = not released. Only gates the solver under release_mode=MANUAL; under AUTO it is recorded when set but never filters.
    */
   released_at: string | null;
@@ -18278,6 +18294,16 @@ export type WorkOrder = {
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
+};
+export type WorkOrderHoldHistoryItem = {
+  id: string;
+  reason: string;
+  notes: string;
+  placed_at: string;
+  placed_by_name: string | null;
+  cleared_at: string;
+  cleared_by_name: string | null;
+  clear_notes: string;
 };
 export type WorkOrderCore = {
   id: string;
@@ -19598,6 +19624,7 @@ const CoreList = z.object({
   disassembly_completed_at: z.string().datetime({ offset: true }).nullish(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
+  pending_finding_count: z.number().int(),
   part: z.string().uuid(),
 });
 const PaginatedCoreListList = z.object({
@@ -19671,8 +19698,10 @@ const Core = z.object({
   order_number: z.string().nullable(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
+  pending_finding_count: z.number().int(),
   approved_repair_codes: z.array(z.string()),
   awaiting_authorisation: z.array(AuthorisationScopeItem),
+  authorisation_needed: z.array(AuthorisationScopeItem),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -27030,6 +27059,16 @@ const WorkOrderRequest = z.object({
   priority_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
+const WorkOrderHoldHistoryItem = z.object({
+  id: z.string(),
+  reason: z.string(),
+  notes: z.string(),
+  placed_at: z.string().datetime({ offset: true }),
+  placed_by_name: z.string().nullable(),
+  cleared_at: z.string().datetime({ offset: true }),
+  cleared_by_name: z.string().nullable(),
+  clear_notes: z.string(),
+});
 const WorkOrderCore = z.object({
   id: z.string().uuid(),
   core_number: z.string(),
@@ -27078,6 +27117,7 @@ const WorkOrder = z.object({
   notes: z.string().nullish(),
   parts_summary: z.object({}).partial().passthrough().nullable(),
   current_hold: z.object({}).partial().passthrough().nullable(),
+  hold_history: z.array(WorkOrderHoldHistoryItem),
   released_at: z.string().datetime({ offset: true }).nullable(),
   released_by: z.number().int().nullable(),
   release_override_reason: z.string(),
@@ -27127,6 +27167,9 @@ const WorkOrderBulkAddPartsResponse = z.object({
   count: z.number().int(),
   created_part_ids: z.array(z.string().uuid()),
 });
+const WorkOrderClearHoldInputRequest = z
+  .object({ notes: z.string() })
+  .partial();
 const WorkOrderCreateMakeupResponse = z.object({
   created: z.number().int(),
   target_good: z.number().int(),
@@ -27268,6 +27311,7 @@ const WorkOrderStepMetricsResponse = z.object({
 });
 const WorkOrderBulkClearHoldInputRequest = z.object({
   ids: z.array(z.string().uuid()),
+  notes: z.string().optional(),
 });
 const WorkOrderBulkClearHoldResponse = z.object({
   results: z.array(z.object({}).partial().passthrough()),
@@ -29826,12 +29870,14 @@ export const schemas = {
   WorkOrderList,
   PaginatedWorkOrderListList,
   WorkOrderRequest,
+  WorkOrderHoldHistoryItem,
   WorkOrderCore,
   WorkOrderPriorityChange,
   WorkOrder,
   PatchedWorkOrderRequest,
   WorkOrderBulkAddPartsInputRequest,
   WorkOrderBulkAddPartsResponse,
+  WorkOrderClearHoldInputRequest,
   WorkOrderCreateMakeupResponse,
   WorkOrderMakeupStatus,
   WorkOrderMaterialRequirementRow,
@@ -61575,6 +61621,11 @@ Import/Export endpoints (auto-configured from model):
 - GET /export/ - Export filtered data to CSV/Excel`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ notes: z.string() }).partial(),
+      },
       {
         name: "id",
         type: "Path",

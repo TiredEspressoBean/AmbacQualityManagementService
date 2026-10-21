@@ -156,7 +156,10 @@ export function DecisionResolverPanel({
                 <p className="mt-1 text-xs text-muted-foreground">
                     Routes automatically from the inspection result when you complete the step —
                     pass takes <span className="font-medium">{def?.step_name ?? "the next step"}</span>,
-                    fail takes <span className="font-medium">{alt?.step_name ?? "the rework branch"}</span>.
+                    fail takes <span className="font-medium">{alt?.step_name ?? "the rework branch"}</span>
+                    {(data.repair_branches ?? []).length > 0
+                        ? ", and Needs repair takes the repair its finding raises."
+                        : "."}
                 </p>
                 {data.qa_suggested && (
                     <p className="mt-1 text-xs">

@@ -22,9 +22,12 @@ export const useUpdateWorkOrder = () => {
             }) as Promise<UpdateWorkOrderResponse>,
         onSuccess: () => {
             queryClient.invalidateQueries({
+                // record-edits / record-history / logs back the edit page's History card,
+                // which otherwise showed the change only after a reload.
                 predicate: (query) => {
                     const key = query.queryKey[0];
-                    return key === "workorder" || key === "work-order";
+                    return key === "workorder" || key === "work-order" || key === "record-edits"
+                        || key === "record-history" || key === "logs";
                 },
             });
         },

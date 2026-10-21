@@ -169,7 +169,11 @@ export function OperatorSubstepRuntimePage() {
     const activeSubstep =
         atBind < sortedForBind.length ? sortedForBind[atBind] : undefined;
     const activeSubstepId = activeSubstep?.id;
-    const activeIsInspectionPoint = Boolean(activeSubstep?.is_inspection_point);
+    // A BATCH substep's inspection is the load's, reported once on the batch's report (in
+    // the batch panel) — pre-binding a per-part report here left a PENDING report behind
+    // on every unit in the load.
+    const activeIsInspectionPoint = Boolean(activeSubstep?.is_inspection_point)
+        && activeSubstep?.scope !== "batch";
 
     // Flatten the measurement captures across all substeps — feeds the
     // receiving acceptance stage's family verdict (attribute count / Z1.9 x̄·s).

@@ -1087,6 +1087,26 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'link': f"/reman/cores/{core.id}",
             })
 
+        # 8. Findings waiting on a lead: a component found worse during rebuild, proposed
+        # but not decided. The unit holds at its check until someone applies or dismisses
+        # it, and nothing else says so — the lead only heard if the operator told them.
+        # Shown to whoever can decide one (accept_component, as apply_finding requires).
+        if request.user.has_tenant_perm('accept_component'):
+            from Tracker.models import HarvestedComponent
+            waiting = (self.qs_for_user(HarvestedComponent)
+                       .filter(archived=False, is_scrapped=False).exclude(proposed_grade='')
+                       .values('core_id', 'core__core_number')
+                       .annotate(n=Count('id')).order_by('core__core_number')[:10])
+            for row in waiting:
+                data.append({
+                    'type': 'rebuild_finding',
+                    'message': (f"Finding to decide: {row['core__core_number']}"
+                                + (f" ({row['n']} components)" if row['n'] > 1 else "")),
+                    'count': row['n'],
+                    'severity': 'high',
+                    'link': f"/reman/cores/{row['core_id']}/rebuild",
+                })
+
         # Sort by severity
         severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
         data.sort(key=lambda x: severity_order.get(x['severity'], 4))

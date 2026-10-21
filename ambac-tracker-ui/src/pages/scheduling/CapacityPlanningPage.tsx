@@ -73,8 +73,58 @@ function overloadRatio(series: CapacityBucket[]): { over: number; measured: numb
            measured: measured.length };
 }
 
-function HeatRow({ name, series, critical }: {
-  name: string; series: CapacityBucket[]; critical?: boolean;
+/** The worst month in a series: `{bucket, utilization}`, or null with no capacity. */
+function peak(series: CapacityBucket[]) {
+  let best: CapacityBucket | null = null;
+  for (const b of series) {
+    if (b.utilization == null) continue;
+    if (!best || b.utilization > (best.utilization ?? 0)) best = b;
+  }
+  return best;
+}
+
+const TIGHT = 0.85;
+
+/** "Is my crew enough?", answered in one line above the heatmap: the aggregate crew's
+ *  worst month, the tightest certified skill, and how many skills hang on one person. */
+function CrewVerdict({ labor, pools }: {
+  labor: CapacityBucket[];
+  pools: { name: string; qualified: number; series: CapacityBucket[] }[];
+}) {
+  const over = labor.filter((b) => (b.utilization ?? 0) >= 1).map((b) => b.bucket);
+  const worst = peak(labor);
+  const tightest = pools
+    .map((p) => ({ p, b: peak(p.series) }))
+    .filter((x) => x.b && (x.b.load_hours ?? 0) > 0)
+    .sort((x, y) => (y.b!.utilization ?? 0) - (x.b!.utilization ?? 0))[0];
+  const singles = pools.filter((p) => p.qualified === 1 && p.series.some((b) => b.load_hours > 0));
+  const pctOf = (b: CapacityBucket) => `${Math.round((b.utilization ?? 0) * 100)}%`;
+  const headline = over.length > 0
+    ? <span className="font-semibold text-red-600 dark:text-red-400">Crew: short in {over.join(", ")} (over 100%)</span>
+    : worst && (worst.utilization ?? 0) >= TIGHT
+      ? <span className="font-semibold text-amber-600 dark:text-amber-400">Crew: tight in {worst.bucket} ({pctOf(worst)})</span>
+      : <span className="font-semibold text-green-700 dark:text-green-400">
+          Crew: enough for the planned work{worst && worst.load_hours > 0 ? ` · busiest ${worst.bucket} at ${pctOf(worst)}` : ""}
+        </span>;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-3 py-2 text-sm" role="status">
+      {headline}
+      {tightest?.b && (
+        <span className="text-muted-foreground">
+          Tightest skill: {tightest.p.name} at {pctOf(tightest.b)} in {tightest.b.bucket}
+        </span>
+      )}
+      {singles.length > 0 && (
+        <Link to="/quality/training/matrix" className="text-amber-700 underline underline-offset-2 dark:text-amber-400">
+          {singles.length} skill{singles.length === 1 ? "" : "s"} only one person can do
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function HeatRow({ name, series, critical, badge }: {
+  name: string; series: CapacityBucket[]; critical?: boolean; badge?: React.ReactNode;
 }) {
   const { over, measured } = overloadRatio(series);
   return (
@@ -88,6 +138,7 @@ function HeatRow({ name, series, critical }: {
                   className="h-3 w-3 shrink-0 fill-amber-400 text-amber-500" />
           )}
           <span className="truncate">{name}</span>
+          {badge}
         </span>
       </th>
       <td className="px-2 py-1.5 text-center text-[11px] tabular-nums">
@@ -405,6 +456,8 @@ export function CapacityPlanningPage() {
             </label>
           </div>
 
+          {data && <CrewVerdict labor={data.labor.series} pools={data.labor_pools ?? []} />}
+
           <div className="overflow-x-auto rounded-lg border">
             {isLoading ? (
               <p className="p-4 text-sm text-muted-foreground">Computing capacity…</p>
@@ -441,6 +494,14 @@ export function CapacityPlanningPage() {
                       key={p.name}
                       name={`↳ ${p.name} · ${p.qualified} qualified`}
                       series={p.series}
+                      badge={p.qualified === 1 && p.series.some((b) => b.load_hours > 0) ? (
+                        // Low load reads as safe; one certified person means one absence
+                        // stops the step. The fix is a second person trained.
+                        <Link to="/quality/training/matrix" title="Only one person is certified for this work — one absence stops it. Train a second."
+                              className="shrink-0 rounded border border-amber-500/60 px-1 text-[10px] font-normal text-amber-700 dark:text-amber-400">
+                          one person
+                        </Link>
+                      ) : undefined}
                     />
                   ))}
                   {data.work_centers.map((w) => (

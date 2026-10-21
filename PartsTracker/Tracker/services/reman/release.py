@@ -154,14 +154,17 @@ def request_authorisation(core, user=None):
     return core, over_and_above
 
 
-def pending_authorisation_scope(core) -> list[dict]:
+def pending_authorisation_scope(core, *, asking: bool = False) -> list[dict]:
     """What the customer is being asked about: each code awaiting their answer, its
     name, and the findings behind it — so whoever records the answer sees what was
-    agreed to. Empty unless the unit is AWAITING_AUTHORISATION."""
+    agreed to. Empty unless the unit is AWAITING_AUTHORISATION.
+
+    `asking=True`: what a request for authorisation WOULD send, for a unit in rebuild —
+    so whoever sends it sees what they're asking for first."""
     from Tracker.models import RepairCode
     from Tracker.services.reman.repair_routing import codes_needing_approval, raised_codes
 
-    if core.status != 'AWAITING_AUTHORISATION':
+    if core.status != ('IN_REBUILD' if asking else 'AWAITING_AUTHORISATION'):
         return []
     codes = codes_needing_approval(core)
     if not codes:

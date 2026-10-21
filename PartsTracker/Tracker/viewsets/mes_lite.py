@@ -439,12 +439,21 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
 
         qa_suggested = None
         if step.decision_type == 'QA_RESULT':
+            # This visit's verdict across its inspection reports — FAIL over REPAIR over
+            # PASS, PENDING while any is undecided — not whichever report was made last:
+            # a check with a visual result and a measured one has two, and the newest
+            # was routinely still a PENDING placeholder.
+            from Tracker.models import StepExecution
             from Tracker.models.qms import QualityReports
-            qr = (
-                QualityReports.objects.filter(part=part, step=step)
-                .order_by('-created_at').first()
-            )
-            qa_suggested = qr.status if qr else None
+            ex = StepExecution.get_current_execution(part)
+            reports = QualityReports.objects.filter(part=part, step=step, archived=False)
+            if ex is not None and ex.step_id == step.id:
+                reports = reports.filter(step_execution=ex)
+            statuses = set(reports.values_list('status', flat=True))
+            for verdict in ('FAIL', 'REPAIR', 'PENDING', 'PASS'):
+                if verdict in statuses:
+                    qa_suggested = verdict
+                    break
 
         return Response({
             "is_decision_point": True,
@@ -483,8 +492,11 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
         part = self.get_object()
         step = part.step
         max_visits = getattr(step, 'max_visits', None) if step else None
-        # Attempts, as the cap counts them: a "Needs repair" visit isn't one.
-        current_visits = StepExecution.get_attempt_count(part, step) if step else 0
+        # The visit number is every visit; what's left is counted in attempts, as the cap
+        # counts them — a "Needs repair" visit isn't one. (Counting attempts for both
+        # read "Visit 0 of 2" on the visit that had just found a repair.)
+        current_visits = StepExecution.get_visit_count(part, step) if step else 0
+        attempts = StepExecution.get_attempt_count(part, step) if step else 0
 
         escalation_step_name = None
         if step and max_visits is not None:
@@ -495,14 +507,14 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
                 ).first()
                 escalation_step_name = esc.to_step.name if esc and esc.to_step else None
 
-        remaining = max(0, max_visits - current_visits) if max_visits is not None else None
+        remaining = max(0, max_visits - attempts) if max_visits is not None else None
         return Response({
             "total_rework_count": part.total_rework_count or 0,
             "current_step_name": step.name if step else None,
             "max_visits": max_visits,
             "current_visits": current_visits,
             "remaining": remaining,
-            "at_limit": max_visits is not None and current_visits >= max_visits,
+            "at_limit": max_visits is not None and attempts >= max_visits,
             "escalation_step_name": escalation_step_name,
         })
 
@@ -2528,12 +2540,21 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": str(hold.id), "placed_at": hold.placed_at, "reason": hold.reason})
 
-    @extend_schema(request=None, responses={200: dict})
+    @extend_schema(
+        request=inline_serializer(name="WorkOrderClearHoldInput", fields={
+            "notes": serializers.CharField(
+                required=False, allow_blank=True,
+                help_text="What resolved the hold. Required for Quality and Tooling holds."),
+        }),
+        responses={200: dict})
     @action(detail=True, methods=["post"], url_path="clear_hold")
     def clear_hold(self, request, pk=None):
         from Tracker.services.mes.work_order import clear_hold as svc
         wo = self.get_object()
-        hold = svc(wo, cleared_by=request.user)
+        try:
+            hold = svc(wo, cleared_by=request.user, notes=request.data.get("notes", "") or "")
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         if hold is None:
             return Response({"detail": "No open hold"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"id": str(hold.id), "cleared_at": hold.cleared_at})
@@ -2923,7 +2944,11 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
     @extend_schema(
         request=inline_serializer(
             name="WorkOrderBulkClearHoldInput",
-            fields={"ids": serializers.ListField(child=serializers.UUIDField())},
+            fields={"ids": serializers.ListField(child=serializers.UUIDField()),
+                    "notes": serializers.CharField(
+                        required=False, allow_blank=True,
+                        help_text="Resolution note for every hold cleared. Quality and "
+                                  "Tooling holds without one are refused per row.")},
         ),
         responses={200: inline_serializer(
             name="WorkOrderBulkClearHoldResponse",
@@ -2940,6 +2965,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             tenant_id=self.tenant.id if self.tenant else None,
             work_order_ids=ids,
             cleared_by=request.user,
+            notes=request.data.get("notes", "") or "",
         )
         return Response({"results": [r.to_dict() for r in results]})
 

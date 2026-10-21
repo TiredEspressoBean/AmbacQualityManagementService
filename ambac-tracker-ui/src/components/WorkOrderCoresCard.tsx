@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RequestAuthorisationButton } from "@/components/reman/RequestAuthorisationButton";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -238,14 +239,7 @@ export function WorkOrderCoresCard(
                                                             </Link>
                                                         </Button>
                                                         {core.returns_to_customer && (
-                                                            <Button
-                                                                size="sm" variant="ghost" disabled={busy}
-                                                                onClick={() => act(core,
-                                                                    { id, action: "request_authorisation" },
-                                                                    "sent for customer authorisation")}
-                                                            >
-                                                                Authorise…
-                                                            </Button>
+                                                            <RequestAuthorisationButton coreId={id} coreNumber={core.core_number} />
                                                         )}
                                                     </span>
                                                 ) : core.status === "AWAITING_AUTHORISATION" ? (

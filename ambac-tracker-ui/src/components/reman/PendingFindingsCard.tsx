@@ -14,6 +14,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SearchCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -94,9 +98,33 @@ export function PendingFindingsCard({ coreId }: { coreId: string }) {
                                     onClick={() => setDismissing({ id: String(c.id), name: c.component_type_name })}>
                                 Dismiss
                             </Button>
-                            <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate(String(c.id))}>
-                                Apply
-                            </Button>
+                            {c.proposed_grade === "SCRAP" ? (
+                                // Applying a scrap grade scraps the component outright — confirmed.
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="sm" disabled={apply.isPending}>Apply</Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Scrap the {c.component_type_name}?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                It can't be reused: the component is scrapped, and the rebuild
+                                                plan re-resolves to replace it. This can't be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => apply.mutate(String(c.id))}>
+                                                Scrap component
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            ) : (
+                                <Button size="sm" disabled={apply.isPending} onClick={() => apply.mutate(String(c.id))}>
+                                    Apply
+                                </Button>
+                            )}
                         </div>
                     </div>
                 ))}

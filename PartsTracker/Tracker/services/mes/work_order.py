@@ -541,10 +541,18 @@ def place_on_hold(
     return hold
 
 
-def clear_hold(work_order: WorkOrder, cleared_by) -> WorkOrderHold | None:
-    """Close the open hold on a work order. Returns the cleared hold, or None if nothing was open.
+# A hold for one of these stopped work over the product or the means of making it, so
+# releasing it records what resolved it (user decision 2026-10-21). Others may say.
+HOLD_REASONS_NEEDING_RESOLUTION = frozenset({
+    WorkOrderHoldReason.QUALITY, WorkOrderHoldReason.TOOLING})
 
-    Does not auto-transition WO status — caller decides the post-hold status.
+
+def clear_hold(work_order: WorkOrder, cleared_by, notes: str = "") -> WorkOrderHold | None:
+    """Close the open hold on a work order, recording what resolved it. Returns the
+    cleared hold, or None if nothing was open. The order returns to what it was doing.
+
+    Raises:
+        ValueError: a Quality or Tooling hold cleared without a resolution note.
     """
     hold = WorkOrderHold.unscoped.filter(
         tenant_id=work_order.tenant_id,
@@ -554,10 +562,16 @@ def clear_hold(work_order: WorkOrder, cleared_by) -> WorkOrderHold | None:
     ).first()
     if hold is None:
         return None
+    notes = (notes or "").strip()
+    if hold.reason in HOLD_REASONS_NEEDING_RESOLUTION and not notes:
+        raise ValueError(
+            f"{work_order.ERP_id}'s {hold.get_reason_display()} hold needs a resolution note "
+            "— say what resolved it.")
 
     hold.cleared_at = timezone.now()
     hold.cleared_by = cleared_by
-    hold.save(update_fields=['cleared_at', 'cleared_by', 'updated_at'])
+    hold.clear_notes = notes
+    hold.save(update_fields=['cleared_at', 'cleared_by', 'clear_notes', 'updated_at'])
     # Back to what the order was doing. Clearing a hold used to leave the status at
     # ON_HOLD, so a cleared order still read "On hold" everywhere.
     if work_order.workorder_status == WorkOrderStatus.ON_HOLD:
@@ -869,7 +883,9 @@ def bulk_place_on_hold(
     return results
 
 
-def bulk_clear_hold(tenant_id, work_order_ids: list, cleared_by) -> list[BulkResult]:
+def bulk_clear_hold(tenant_id, work_order_ids: list, cleared_by, notes: str = "") -> list[BulkResult]:
+    """Clear each order's hold with the same resolution note. A Quality or Tooling hold
+    with no note is refused on its own row; the others still clear."""
     results: list[BulkResult] = []
     wos = {wo.id: wo for wo in WorkOrder.unscoped.filter(
         tenant_id=tenant_id, id__in=work_order_ids,
@@ -882,7 +898,7 @@ def bulk_clear_hold(tenant_id, work_order_ids: list, cleared_by) -> list[BulkRes
                 continue
             sid = transaction.savepoint()
             try:
-                hold = clear_hold(wo, cleared_by)
+                hold = clear_hold(wo, cleared_by, notes=notes)
                 if hold is None:
                     transaction.savepoint_rollback(sid)
                     results.append(BulkResult(id=wo_id, ok=False, error="No open hold"))

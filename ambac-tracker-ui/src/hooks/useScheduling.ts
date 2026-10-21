@@ -970,8 +970,9 @@ export function useHoldWorkOrder() {
 export function useReleaseWorkOrder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api.api_WorkOrders_clear_hold_create(undefined, { params: { id } }),
+    // `notes`: what resolved it — required by the server for Quality and Tooling holds.
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      api.api_WorkOrders_clear_hold_create({ notes: notes ?? "" }, { params: { id } }),
     onSuccess: () => {
       invalidateSchedule(qc);
       qc.invalidateQueries(underRoot(ROOT.workOrder));

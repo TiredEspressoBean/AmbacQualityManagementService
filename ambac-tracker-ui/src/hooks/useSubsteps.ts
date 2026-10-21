@@ -139,6 +139,11 @@ export function useSubmitSubstep() {
             // Invalidate substep + completion queries so badges and
             // operator-side counters refresh.
             qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === QK_BASE });
+            // The step's decision panel reads the inspection result this submit may
+            // have just set; it kept showing the previous one until a reload.
+            qc.invalidateQueries({
+                predicate: (q) => q.queryKey[0] === "parts" && q.queryKey[q.queryKey.length - 1] === "decision_options",
+            });
         },
     });
 }

@@ -2384,6 +2384,29 @@ class RepairRoutingTests(TenantTestCase):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual((r.json()['current_fpy'], r.json()['needed_repair_rate']), (50.0, 33.3))
 
+    def test_a_finding_waiting_on_a_lead_is_in_needs_attention(self):
+        from Tracker.services.reman.findings import record_finding
+        record_finding(self.hc, grade='SCRAP', finding='Cracked tip', user=self.user_a)
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, [
+            'accept_component', 'full_tenant_access', 'view_harvestedcomponent'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.get('/api/dashboard/needs-attention/')
+        self.assertEqual(r.status_code, 200, r.content)
+        row, = [d for d in r.json()['data'] if d['type'] == 'rebuild_finding']
+        self.assertEqual(row['link'], f"/reman/cores/{self.core.id}/rebuild")
+        self.assertIn(self.core.core_number, row['message'])
+        self.assertEqual(self.core.pending_finding_count, 1)
+
+    def test_what_an_authorisation_request_would_ask_is_shown_before_sending(self):
+        from Tracker.services.reman.release import pending_authorisation_scope
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        self._grade('C')
+        self.core.refresh_from_db()
+        asking = pending_authorisation_scope(self.core, asking=True)
+        self.assertEqual([a['code'] for a in asking], ['NZL-RECON'])
+        self.assertEqual(pending_authorisation_scope(self.core), [])   # not yet awaiting
+
     def test_release_picks_up_after_the_last_teardown_step(self):
         from Tracker.services.reman.release import release_core_to_rebuild
         # The fixture's released BOM is what release plans against.

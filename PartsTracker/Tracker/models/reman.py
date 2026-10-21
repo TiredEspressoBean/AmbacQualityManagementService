@@ -367,6 +367,13 @@ class Core(SecureModel):
         """Number of harvested components that are usable (not scrapped)."""
         return self.harvested_components.filter(is_scrapped=False).count()
 
+    @property
+    def pending_finding_count(self):
+        """Components found worse during rebuild and waiting on a lead's decision. The
+        unit holds at its check until each is applied or dismissed."""
+        return (self.harvested_components.filter(archived=False, is_scrapped=False)
+                .exclude(proposed_grade='').count())
+
 
 class HarvestedComponent(SecureModel):
     """

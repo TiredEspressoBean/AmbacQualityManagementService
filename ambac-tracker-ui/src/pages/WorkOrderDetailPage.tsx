@@ -1,5 +1,5 @@
 import { useParams, useSearch, Link } from "@tanstack/react-router";
-import { WorkOrderHoldBanner, type WorkOrderHold } from "@/components/workorders/WorkOrderHoldBanner";
+import { WorkOrderHoldBanner, WorkOrderHoldHistory, type WorkOrderHold } from "@/components/workorders/WorkOrderHoldBanner";
 import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { useState } from "react";
 import { useRetrieveWorkOrder } from "@/hooks/useRetrieveWorkOrder";
@@ -178,6 +178,7 @@ export function WorkOrderDetailPage() {
 
             {/* Why it stopped — the lead deciding whether to resume needs it here. */}
             {workOrder.current_hold && <WorkOrderHoldBanner hold={workOrder.current_hold as WorkOrderHold} />}
+            <WorkOrderHoldHistory holds={workOrder.hold_history ?? []} />
 
             {/* Make-up: replace scrap so the order still delivers its good count. Only
                 shown when there's a shortfall (the schedule's WO dialog always shows it). */}

@@ -41369,6 +41369,17 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkOrderClearHoldInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkOrderClearHoldInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkOrderClearHoldInputRequest'
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -52234,6 +52245,11 @@ components:
         usable_component_count:
           type: integer
           readOnly: true
+        pending_finding_count:
+          type: integer
+          readOnly: true
+          description: Findings waiting on a lead's decision; the unit holds until
+            each is decided.
         approved_repair_codes:
           type: array
           items:
@@ -52246,6 +52262,14 @@ components:
           readOnly: true
           description: 'While the unit awaits the customer: each code they''re asked
             about, its name and the findings behind it. Empty otherwise.'
+        authorisation_needed:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorisationScopeItem'
+          readOnly: true
+          description: 'While a repair-and-return unit is in rebuild: what a request
+            for the customer''s authorisation would ask about (code, name, findings).
+            Empty otherwise.'
         created_at:
           type: string
           format: date-time
@@ -52258,6 +52282,7 @@ components:
           type: boolean
       required:
       - approved_repair_codes
+      - authorisation_needed
       - awaiting_authorisation
       - condition_grade
       - core_credit_issued_at
@@ -52273,6 +52298,7 @@ components:
       - id
       - order_number
       - part
+      - pending_finding_count
       - received_by
       - received_by_name
       - received_date
@@ -52455,6 +52481,11 @@ components:
         usable_component_count:
           type: integer
           readOnly: true
+        pending_finding_count:
+          type: integer
+          readOnly: true
+          description: Findings waiting on a lead's decision; the unit holds until
+            each is decided.
         part:
           type: string
           format: uuid
@@ -52468,6 +52499,7 @@ components:
       - harvested_component_count
       - id
       - part
+      - pending_finding_count
       - received_date
       - usable_component_count
     CoreLot:
@@ -85384,6 +85416,13 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        hold_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderHoldHistoryItem'
+          readOnly: true
+          description: Cleared holds, newest first, with who released them and what
+            resolved them.
         released_at:
           type: string
           format: date-time
@@ -85471,6 +85510,7 @@ components:
       - cores
       - created_at
       - current_hold
+      - hold_history
       - id
       - parent_workorder_id
       - parts_summary
@@ -85535,6 +85575,10 @@ components:
           items:
             type: string
             format: uuid
+        notes:
+          type: string
+          description: Resolution note for every hold cleared. Quality and Tooling
+            holds without one are refused per row.
       required:
       - ids
     WorkOrderBulkClearHoldResponse:
@@ -85577,6 +85621,12 @@ components:
             additionalProperties: {}
       required:
       - results
+    WorkOrderClearHoldInputRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+          description: What resolved the hold. Required for Quality and Tooling holds.
     WorkOrderCore:
       type: object
       description: |-
@@ -85667,6 +85717,38 @@ components:
       - scrapped
       - shortfall
       - target_good
+    WorkOrderHoldHistoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+        reason:
+          type: string
+        notes:
+          type: string
+        placed_at:
+          type: string
+          format: date-time
+        placed_by_name:
+          type: string
+          nullable: true
+        cleared_at:
+          type: string
+          format: date-time
+        cleared_by_name:
+          type: string
+          nullable: true
+        clear_notes:
+          type: string
+      required:
+      - clear_notes
+      - cleared_at
+      - cleared_by_name
+      - id
+      - notes
+      - placed_at
+      - placed_by_name
+      - reason
     WorkOrderList:
       type: object
       description: Lightweight serializer for work order list views - avoids N+1 queries.

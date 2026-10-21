@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -36,6 +36,12 @@ export function QaSignOffDialog({ target, onOpenChange }: {
 }) {
     const signOff = useSignOffStep();
     const [password, setPassword] = useState("");
+    // Render from the last target while the dialog animates closed: the caller clears
+    // `target` to close it, and the closing frames read "Sign off ?" with every field
+    // blank, which looked like a dialog left open after a successful sign-off.
+    const last = useRef<SignOffTarget | null>(target);
+    if (target) last.current = target;
+    const shown = target ?? last.current;
     const needsPassword = target?.assurance === "PASSWORD";
 
     // Never carry a typed password from one sign-off to the next.
@@ -72,10 +78,10 @@ export function QaSignOffDialog({ target, onOpenChange }: {
         <AlertDialog open={target !== null} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Sign off {target?.step}?</AlertDialogTitle>
+                    <AlertDialogTitle>Sign off {shown?.step}?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        {target?.units} unit{target?.units === 1 ? "" : "s"} on <span className="font-mono">{target?.workOrder}</span>{" "}
-                        {target?.units === 1 ? "is" : "are"} waiting at {target?.step} for a QA sign-off. Signing records you
+                        {shown?.units} unit{shown?.units === 1 ? "" : "s"} on <span className="font-mono">{shown?.workOrder}</span>{" "}
+                        {shown?.units === 1 ? "is" : "are"} waiting at {shown?.step} for a QA sign-off. Signing records you
                         as having accepted the step&rsquo;s work. The lot moves on to its next step once
                         every unit in it is ready — if others haven&rsquo;t finished this step, it waits for them.
                         {needsPassword

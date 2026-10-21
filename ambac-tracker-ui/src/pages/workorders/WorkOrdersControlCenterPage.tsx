@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBulkRelease, type BulkReleaseResult } from "@/hooks/useScheduling";
@@ -161,6 +162,8 @@ export function WorkOrdersControlCenterPage() {
     const [priority, setPriority] = useState("all");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [bulkError, setBulkError] = useState<string | null>(null);
+    // Work orders whose holds are about to be cleared — the dialog asks what resolved them.
+    const [clearIds, setClearIds] = useState<string[] | null>(null);
     const [addPartsOpen, setAddPartsOpen] = useState(false);
 
     const queryClient = useQueryClient();
@@ -238,9 +241,23 @@ export function WorkOrdersControlCenterPage() {
         const real = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
         if (real.length === 0) return;
         setBulkError(null);
+        setClearIds(real);
+    }
+
+    function confirmBulkClearHold(notes: string) {
+        if (!clearIds) return;
         bulkClearHold.mutate(
-            { ids: real },
-            { onError: (err) => setBulkError(String(err)) },
+            { ids: clearIds, notes },
+            {
+                onSuccess: (data) => {
+                    setClearIds(null);
+                    // A Quality/Tooling hold with no note stays on hold — say which.
+                    const refused = ((data as { results?: { ok: boolean; error?: string }[] })?.results ?? [])
+                        .filter((r) => !r.ok).map((r) => r.error).filter(Boolean);
+                    if (refused.length) setBulkError(refused.join(" · "));
+                },
+                onError: (err) => setBulkError(String(err)),
+            },
         );
     }
 
@@ -353,8 +370,15 @@ export function WorkOrdersControlCenterPage() {
         });
     }
 
+    const clearDialog = (
+        <ClearHoldDialog open={clearIds !== null} onOpenChange={(o) => { if (!o) setClearIds(null); }}
+                         count={clearIds?.length} pending={bulkClearHold.isPending}
+                         onConfirm={confirmBulkClearHold} />
+    );
+
     return (
         <TooltipProvider>
+            {clearDialog}
             <div className="space-y-4 p-6 pb-24">
                 <div className="flex items-start justify-between gap-4">
                     <div>

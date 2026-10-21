@@ -1,4 +1,5 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { RequestAuthorisationButton } from "@/components/reman/RequestAuthorisationButton";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { useState } from "react";
@@ -127,6 +128,9 @@ export function CoreDetailPage() {
                             <Wrench className="mr-2 h-4 w-4" />
                             Plan rebuild
                         </Button>
+                    )}
+                    {core.status === 'IN_REBUILD' && core.returns_to_customer && (
+                        <RequestAuthorisationButton coreId={id!} coreNumber={core.core_number} variant="outline" size="default" />
                     )}
                     {core.status === 'AWAITING_AUTHORISATION' && (
                         <>

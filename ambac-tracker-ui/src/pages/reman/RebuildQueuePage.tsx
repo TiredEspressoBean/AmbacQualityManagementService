@@ -93,6 +93,14 @@ export function RebuildQueuePage() {
                                             <TableRow key={id}>
                                                 <TableCell className="font-mono text-sm font-medium">
                                                     {core.core_number}
+                                                    {(core.pending_finding_count ?? 0) > 0 && (
+                                                        // Held at its check until a lead decides.
+                                                        <Link to="/reman/cores/$id/rebuild" params={{ id }} className="ml-2">
+                                                            <Badge variant="outline" className="border-amber-500/60 font-sans text-amber-700 dark:text-amber-400">
+                                                                {core.pending_finding_count} finding{core.pending_finding_count === 1 ? "" : "s"} to decide
+                                                            </Badge>
+                                                        </Link>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>{core.core_type_name || "—"}</TableCell>
                                                 <TableCell>{core.customer_name || "—"}</TableCell>

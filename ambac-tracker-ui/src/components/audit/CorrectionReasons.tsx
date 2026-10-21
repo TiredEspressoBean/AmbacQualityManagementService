@@ -16,6 +16,11 @@ export const recordCorrectionsOptions = (contentType: number, objectId: string) 
     });
 
 const fieldLabel = (f: string) => f.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+/** Fields whose change is a decision, with how each stored value reads. */
+const DECISION_FIELD_LABELS: Record<string, Record<string, string>> = {
+    priority: { "1": "Urgent", "2": "High", "3": "Normal", "4": "Low" },
+};
+
 const show = (v: string | null | undefined) => (v == null || v === "" || v === "None" ? "—" : v);
 
 export function CorrectionReasons({ contentType, objectId }: { contentType: number | undefined; objectId: string }) {
@@ -29,10 +34,16 @@ export function CorrectionReasons({ contentType, objectId }: { contentType: numb
     // correction of a wrong value — filed apart, and named by its label, not its code.
     const isRelease = (e: { field_name: string; new_value?: string | null }) =>
         e.field_name === "hold_reason" && !e.new_value;
+    // Likewise a work order's priority change (expediting): a decision with its reason,
+    // not the correction of a wrong value — and named, not shown as "3 → 1".
+    const isDecision = (e: { field_name: string; new_value?: string | null }) =>
+        isRelease(e) || e.field_name in DECISION_FIELD_LABELS;
     const groups = [
-        { title: "Decisions", edits: all.filter(isRelease) },
-        { title: "Corrections", edits: all.filter((e) => !isRelease(e)) },
+        { title: "Decisions", edits: all.filter(isDecision) },
+        { title: "Corrections", edits: all.filter((e) => !isDecision(e)) },
     ].filter((g) => g.edits.length > 0);
+    const valueLabel = (field: string, v: string | null | undefined) =>
+        DECISION_FIELD_LABELS[field]?.[v ?? ""] ?? show(v);
 
     return (
         <div className="space-y-3">
@@ -51,9 +62,9 @@ export function CorrectionReasons({ contentType, objectId }: { contentType: numb
                         ) : (
                         <div className="flex flex-wrap gap-1">
                             <span className="font-medium">{fieldLabel(e.field_name)}:</span>
-                            <span className="text-muted-foreground line-through">{show(e.old_value)}</span>
+                            <span className="text-muted-foreground line-through">{valueLabel(e.field_name, e.old_value)}</span>
                             <span className="text-muted-foreground">→</span>
-                            <span>{show(e.new_value)}</span>
+                            <span>{valueLabel(e.field_name, e.new_value)}</span>
                         </div>
                         )}
                         <div className="italic">“{e.reason}”</div>

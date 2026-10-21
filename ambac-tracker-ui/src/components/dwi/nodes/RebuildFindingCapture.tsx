@@ -123,7 +123,10 @@ function OperatorRuntime({ captured, setCaptured }: {
                                 </Badge>
                             ) : (
                                 <label className="flex shrink-0 items-center gap-2 text-xs">
+                                    {/* A Radix switch is a button, so the wrapping label doesn't
+                                        name it — it carries its own name. */}
                                     <Switch
+                                        aria-label={`Found worse: ${c.component_type_name}${c.position ? ` (${c.position})` : ""}`}
                                         checked={!!row}
                                         onCheckedChange={(on) =>
                                             setRow(id, on ? { harvested_id: id, grade: "", finding: "" } : null)}
@@ -156,7 +159,8 @@ function OperatorRuntime({ captured, setCaptured }: {
                 );
             })}
             <p className="text-xs text-muted-foreground">
-                A finding changes nothing until a lead applies it on the rebuild plan.
+                A repair this check pre-approves applies when you submit, and the unit takes
+                that branch; any other finding — or a scrap — waits for a lead on the rebuild plan.
             </p>
         </div>
     );
