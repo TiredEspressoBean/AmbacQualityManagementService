@@ -337,7 +337,7 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         document was `Internal` so the classification filter could never be seen
         hiding anything.
         """
-        from Tracker.models import Documents
+        from Tracker.models import ClassificationLevel, Documents
 
         touched = []
         docs = list(Documents.objects.order_by('file_name'))
@@ -353,7 +353,7 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         if len(docs) > 1:
             classified = docs[1]
             if (classified.classification or '').lower() in ('', 'internal', 'public'):
-                classified.classification = 'confidential'
+                classified.classification = ClassificationLevel.CONFIDENTIAL
                 classified.save(update_fields=['classification'])
                 touched.append(f"{classified.file_name} -> Confidential")
 

@@ -30,6 +30,7 @@ DEMO_DOCUMENT_TYPES = [
     {'name': 'Work Instruction', 'code': 'WI', 'description': 'Standard operating procedures'},
     {'name': 'RCA Report', 'code': 'RCA', 'description': 'Root cause analysis reports'},
     {'name': 'Customer PO', 'code': 'PO', 'description': 'Customer purchase orders'},
+    {'name': 'Certificate', 'code': 'CERT', 'description': 'Certificates and test results shared with a customer'},
 ]
 
 # Demo approval templates
@@ -172,6 +173,18 @@ DEMO_DOCUMENTS = [
             'approvers': ['maria.qa@demo.ambac.com', 'jennifer.mgr@demo.ambac.com'],
             'status': 'PENDING',
         },
+    },
+    # Shared with the customer: PUBLIC and attached to their order, which is the
+    # only way a portal user sees a document (Customer track, module 3).
+    {
+        'file_name': 'CERT Flow test results SHP-2026-000001',
+        'type': 'Certificate',
+        'status': 'RELEASED',
+        'created_days_ago': 1,
+        'effective_days_ago': 1,
+        'change_justification': 'Flow test results for the ten units shipped on SHP-2026-000001.',
+        'classification': 'PUBLIC',
+        'attach_to_order': 'ORD-2024-0042',
     },
 ]
 
@@ -461,7 +474,7 @@ class DemoDocumentsSeeder(BaseSeeder):
             'status': status,  # UPPERCASE enum value
             'change_justification': doc_data.get('change_justification', ''),
             # Classification - UPPERCASE enum value
-            'classification': ClassificationLevel.INTERNAL,
+            'classification': doc_data.get('classification', ClassificationLevel.INTERNAL),
             # Boolean fields - explicitly set
             'is_image': False,
             'ai_readable': False,
@@ -472,6 +485,16 @@ class DemoDocumentsSeeder(BaseSeeder):
             # User who uploaded
             'uploaded_by': uploaded_by,
         }
+
+        if doc_data.get('attach_to_order'):
+            from Tracker.models import Orders
+            order = Orders.objects.filter(order_number=doc_data['attach_to_order']).first()
+            if order is None:
+                self.log(f"  Warning: no order {doc_data['attach_to_order']!r} for {doc_data['file_name']}",
+                         warning=True)
+            else:
+                defaults['content_type'] = ContentType.objects.get_for_model(Orders)
+                defaults['object_id'] = str(order.pk)
 
         # Set effective_date if specified
         if doc_data.get('effective_days_ago'):

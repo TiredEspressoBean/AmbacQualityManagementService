@@ -1,510 +1,246 @@
-# Receiving Training Guide
+# Receiving
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+Receiving's slice of [the shop day](../shop-day.md): taking in what arrives, checking
+it, clearing what holds it, sending back what's wrong, and putting away stock you can
+find again. Every exercise is on the training shop, and every record it names is one
+the training seed creates.
 
-**Duration:** 3-4 hours
-**Prerequisites:** None
-**Goal:** Learn to take in a delivery, inspect it, deal with holds, send back
-what's wrong, and put away stock you can find again
+**About 2½ hours**, in one sitting. **Before you start:** nothing. The
+[Purchasing](purchasing.md) track is the other half of the supplier relationship.
 
-!!! note "Role Name"
-    This training is for the **Receiving** role in the system.
+!!! warning "On a training instance only"
+    Every exercise writes real records: a lot you accept becomes stock that
+    production draws from. See the [training program](../index.md).
 
-!!! info "Demo Environment Login"
-    **Email:** admin@demo.ambac.com
-    **Password:** `demo123`
+## How a session runs
 
-    The demo has no account whose only group is Receiving. Alex Demo is
-    **Tenant Admin**, which holds every receiving permission plus more.
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Try to break it.** Where a module has a refusal, something the system won't let
+   you do, do it on purpose and read what it says. The refusal is part of the
+   lesson, not an error.
+5. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
-!!! warning "Receiving has no Home landing yet"
-    If your live account holds only Receiving, Home will be empty. Reach your
-    work through the **Supply** section of the sidebar.
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
----
+## Who you are
 
-## Module 1: The Dock's Day
+| You log in as | When |
+|---------------|------|
+| **Luis Ortega**, Receiving, `luis.recv@demo.ambac.com` | Every module |
 
-### Learning Objectives
-
-1. Find what is coming, what arrived, what is stuck and what goes back
-2. Tell Receiving apart from Purchasing
-
-### 1.1 Five questions, five places
-
-| Question | Where |
-|----------|-------|
-| What is coming? | **Materials → On order**, and **Late** |
-| What just arrived? | **Receive**, or batch receive for a lorry-load |
-| What is stuck? | **Materials → Held**, and incoming inspection |
-| What goes back? | **Materials → Rejected** |
-| Where did I put it? | [Locations](../../workflows/supply/locations.md) |
-
-### 1.2 Receiving is not Purchasing
-
-| | [Purchasing](purchasing.md) | Receiving |
-|---|-----------|-----------|
-| **Owns** | The supplier relationship and the order | The physical delivery |
-| **Does** | Places it, chases it, qualifies the supplier | Takes it in, inspects it, puts it away |
-
-One person often holds both. They are still different jobs.
-
-### 1.3 What the dock does not settle
-
-!!! warning "You raise problems; QA closes them"
-    **Rejecting a whole lot (a VDMR)** and **approving a disposition** are QA's
-    call, not yours. You can reject the bad pieces and you can raise a SCAR — you
-    cannot decide the lot's fate.
-
-### Knowledge Check: Module 1
-
-1. A lot is three days overdue. Whose job is it to ring the supplier?
-2. You believe an entire pallet is scrap. What can you do, and who decides?
+Every password is `demo123`.
 
 ---
 
-## Module 2: Knowing What to Expect
+## 1. Your desk
 
-### Learning Objectives
+**You will:** read the receiving home page.
 
-1. Explain where expected deliveries come from
-2. Record a chase without distorting supplier performance
+Log in as Luis. **Receiving dock** links what you do every day: **Receive a
+delivery**, **Incoming**, **Receiving inspection**, **Material lots** and **Cycle
+counts**.
 
-### 2.1 Expected deliveries
+**Late deliveries** lists what's overdue or due soon. Each row names the supplier and
+whom to chase there (*Great Lakes Diesel (Dana Fischer)*), the PO and line, and what
+was said the last time somebody chased it. Chasing is [Purchasing's](purchasing.md);
+the card tells you what's coming and when.
 
-Lots **on order** are created by **Import expected deliveries** from your ERP's
-open PO lines, or added one at a time.
-
-!!! note "Until it is expected, nothing can tell you it is late"
-    An item nobody loaded is not late — it is invisible. That is the most common
-    reason a shortage surprises everyone.
-
-### 2.2 Late, and chasing
-
-**Late** is anything overdue or due within three days. **Chase…** records what
-the supplier said and any new promised date.
-
-!!! important "Chasing never moves the goalposts"
-    A new date changes what you are waiting for, but supplier on-time performance
-    is still scored against the **first** promise. That is deliberate — otherwise
-    a supplier who re-promises five times scores perfectly.
-
-### Knowledge Check: Module 2
-
-1. A supplier re-promises for the third time. What does that do to their on-time
-   score?
-2. Where do expected deliveries usually come from?
+**Supply** > **Materials** is the same picture by status: **On order**, **Late**,
+**Awaiting inspection**, **On hand**, **Held**, **Rejected**.
 
 ---
 
-## Module 3: Receiving a Delivery
+## 2. Receive a delivery
 
-### Learning Objectives
+**You will:** book in a short delivery against what was expected.
 
-1. Receive against an expected delivery
-2. Handle short and over receipts correctly
-3. Capture the evidence that travels with the goods
+1. **Materials** > **On order**. `RCV-EXP-0102` is 150 Common Rail Injectors on
+   `PO-2026-EXP0102`, overdue.
+2. **Receive** on its row. Enter the supplier's lot number (`GLD-24-8812`), a
+   quantity of **120**, and a heat number (`H-55021`).
+3. A short delivery asks a question: *30 fewer than the 150 on order. What does the
+   packing slip say?* Choose **More coming**: the other 30 stay on order with the
+   same supplier, PO and promised date. **That's all** stops planning on them;
+   closing the PO line is done in the ERP.
+4. **Receive lot**: *Lot LOT-2026-00001 received — waiting on incoming inspection.*
 
-### 3.1 The receive dialog
+**On order** now shows the 30 still owed, still overdue.
 
-It handles what a dock actually meets:
+!!! important "The system never guesses a short delivery"
+    Guessing either strands a balance forever or closes a line that's still owed.
+    The packing slip tells you which; you say it.
 
-- **Counting in by box or pound**, with the conversion shown as you type
-- **Heat number** and **Source**
-- **A photo of the CoC or packing slip**, taken at the dock
-- **Putaway**, defaulting to the receiving dock location
-
-### 3.2 Short and over
-
-!!! warning "A short delivery is a decision, never an assumption"
-    You say whether more is coming or that's all. uqmes will not guess, because
-    guessing either strands a balance forever or closes a line that is still
-    owed.
-
-**Over-receipts** keep the ordered figure: the lot reads *Ordered 100 · 10 over*.
-
-### 3.3 A lorry-load
-
-Use the **paste grid** at `/production/material-lots/receive` rather than
-receiving twenty lines one at a time.
-
-### 3.4 Lot numbers are issued here
-
-The lot number is created at receipt. See [Lot numbers are issued
-here](../../workflows/supply/overview.md#lot-numbers-are-issued-here).
-
-### Knowledge Check: Module 3
-
-1. 80 of 100 arrive and the rest are coming next week. What do you record?
-2. Where does the CoC photo go, and why take it at the dock rather than later?
+A heat number is required where the material needs one: without it the lot is held
+until it's entered (module 4). Photograph the CoC and packing slip into the dialog at
+the dock, while they're in your hand.
 
 ---
 
-## Module 4: Holds
+## 3. Inspect it
 
-### Learning Objectives
+**You will:** run an incoming inspection and accept the lot.
 
-1. Review and clear a hold
-2. Explain why clearing one hold may change nothing
+1. **Awaiting inspection** > `LOT-2026-00001` > **Inspect**. The sample plan says
+   what to check: *Inspect 20 of 120 · Accept ≤ 0 · Reject ≥ 1*.
+2. **Run Inspection (DWI)**. Record the Outer Diameter (`25.01`, in spec), set
+   **Pass**, and **Sign as detected by**.
+3. **Confirm & review**. The review asks for defects found in the sample of 20 and
+   says what that means: *Total defective: 0 … will ACCEPT*.
+4. **Accept lot**.
 
-### 4.1 Several at once
+**Incoming Inspection** (in **Supply**) is the same queue with parts back from a
+subcontract vendor mixed in; **Inspect** opens the same runtime for both.
 
-A lot can be held for **several reasons at once** — missing CoC, missing heat
-number, unqualified supplier, expired shelf life. **Review hold** opens them.
+---
 
-!!! important "The lot moves when the LAST hold goes"
-    Clearing one and seeing nothing happen is normal, not a bug. Check what else
-    is still open before escalating.
+## 4. Holds
 
-### 4.2 Two kinds of hold
+**You will:** clear the hold you can, and recognise the one you can't.
 
-| Kind | How it clears |
+`RCV-MAT-HOLD` (Bargain Bolts LLC) is *Held for 2 reasons — each clears on its own*:
+
+| Hold | Who clears it |
 |------|---------------|
-| **Missing information** — no CoC, no heat number | Supply it; the hold clears itself |
-| **A judgement** — unqualified supplier, unapproved part | A quality manager releases it with a reason |
+| *Awaiting heat number* | You: enter it from the mill certificate. |
+| *Unqualified supplier* | *A quality manager can release this hold.* |
 
-You can fix the first kind. The second needs QA.
+1. **Review hold**. Enter heat number `BB-7731` and **Save**: *Heat number saved —
+   the hold has cleared.*
+2. The lot is still held. That's normal: it moves on when the **last** hold goes.
+   There's no release button for the supplier hold, because it's a judgement, not
+   missing paperwork.
 
-See [Held at receiving](../../workflows/supply/overview.md#held-at-receiving).
-
-### Knowledge Check: Module 4
-
-1. You add the missing heat number and the lot is still held. What now?
-2. The supplier isn't qualified. Can you release it?
-
----
-
-## Module 5: Incoming Inspection
-
-### Learning Objectives
-
-1. Perform an incoming inspection against its plan
-2. Reject correctly
-
-### 5.1 Inspection plans
-
-Receiving inspection plans decide what gets checked and how much. Some checks are
-**once per lot**; others are proportionate to quantity.
-
-See [Receiving Inspection
-Plans](../../workflows/supply/overview.md#receiving-inspection-plans).
-
-### 5.2 Rejecting
-
-Reject the bad pieces. Rejecting the **whole** lot is a VDMR and needs the
-permission QA holds.
-
-A rejection can raise a **SCAR** against the supplier — a CAPA they are
-answerable to.
-
-See [Rejecting](../../workflows/supply/overview.md#rejecting).
-
-### Knowledge Check: Module 5
-
-1. Twelve of fifty are out of tolerance. What do you reject?
-2. What turns a rejection into something the supplier must formally answer?
+`RCV-MAT-0007` reads *Whole-lot reject requested*: an inspector asked to reject the
+whole delivery and the QA manager decides. Rejecting a whole lot isn't yours either.
 
 ---
 
-## Module 6: Sending It Back
+## 5. Send it back
 
-### Learning Objectives
+**You will:** return a rejected lot and tell planning a replacement is coming.
 
-1. Return goods to a supplier with the right paperwork
-2. Keep planning informed about replacements
+1. **Rejected** > `RCV-MAT-0006` > **Ship back**. *Returning to Great Lakes Diesel.
+   Send the RTV sheet with the goods. Any credit is settled in your ERP.*
+2. Enter the supplier's RMA (`RMA-GLD-4471`) and the carrier and tracking.
+   **Print RTV sheet** to go in the box.
+3. Tick **The supplier is sending replacements** and give the promised date.
+4. **Mark shipped back**.
 
-### 6.1 The return
-
-Reject, then **Ship back** with the supplier's **RMA number**. Say whether
-replacements are coming — an expected delivery is created and linked, **so
-planning sees it**.
-
-Print the **RTV sheet** to travel with the goods.
-
-!!! tip "Saying replacements are coming is not admin"
-    It is the only thing that tells the planner the shortage has an end date.
-
-See [Sending it back](../../workflows/supply/overview.md#sending-it-back).
-
-### Knowledge Check: Module 6
-
-1. What travels physically with returned goods?
-2. What happens in the system if you say replacements are coming?
+**On order** now lists 80 replacements on `PO-2026-0006` for that date. That line is
+the only thing that tells the planner the shortage has an end.
 
 ---
 
-## Module 7: Putting It Away and Proving It
+## 6. Put it away, and count it
 
-### Learning Objectives
+**You will:** move a lot into stores and run a blind count.
 
-1. Label, move and locate stock
-2. Run a cycle count and know who applies it
+1. **Supply** > **Locations** > **Main Stores**. Scan or type `LOT-2026-00001` into
+   *Scan a lot or unit to put it in Main Stores…* and **Put here**: *Lot
+   LOT-2026-00001 → Main Stores*. Each location keeps who moved what in and out.
+2. Turn on **Blind** and **Count this location**. The count sheet lists the lots
+   without their quantities.
+3. Count each one: everything as expected except **Seal & O-Ring Kit**, where you
+   find **396**. **Submit count**.
+4. **Differences**: `STOCK-CRI-SEAL` 400 expected, 396 counted, −4, *Short*. *A lead
+   applies the count to UQMES.* **For the ERP** is the same difference to key into
+   the ERP.
 
-### 7.1 Labels and moves
-
-- **Print lot labels** at receipt, singly or for a whole batch
-- **Move** lots by scanning, into locations that **nest**
-
-A move is recorded in the location's ledger with who, when and from where — so
-"where did it go" always has an answer.
-
-### 7.2 Counting
-
-Count one location at a time, **blind if you want an honest number**.
-
-!!! warning "Submitting a count is not applying it"
-    Submitting is the counter's job. **Applying** needs `apply_cyclecount` — a
-    lead. The differences export as a spreadsheet for keying into the ERP.
-
-See [Locations & Cycle Counts](../../workflows/supply/locations.md).
-
-### Knowledge Check: Module 7
-
-1. Why count blind?
-2. You counted and the system still shows the old number. Why?
+Count blind when you want an honest number: a counter who can see the figure tends to
+find it.
 
 ---
 
-## Module 8: Staging to the Bench
+## 7. Stage the bench
 
-### Learning Objectives
+**You will:** put out what the next jobs need.
 
-1. Stage material for the next shift's scheduled work
-2. Record what was actually taken
-3. Recognise when the list is empty for a legitimate reason
+**Scheduling** > **Staging List** reads the solved schedule and lists, per station,
+what each job consumes, from which lot and where it is.
 
-### 8.1 What the staging list is
+1. If the next 8 hours show no materials, widen it to **next 24h**. A window with
+   nothing to stage is usually the window, not a fault.
+2. **Assembly Cell** > `WO-TRAIN-BOTTLE` · Assembly: five lines, from the
+   `STOCK-CRI-*` lots in Main Stores. **Confirm** the Control Valve Assembly line: it
+   reads *took 2*.
+3. When you picked a different lot from the one suggested, **Took another** records
+   the lot you actually took. That keeps the trace honest.
 
-**Scheduling → Staging List** (`/production/staging`) — *"What to put at each
-bench before the operator gets there."* It reads the **solved schedule** and
-lists the next window of work per station.
-
-Walked 2026-10-12:
-
-> **Assembly Cell · 2 jobs · 0/2 staged**
-> WO-ASSESS-004 · Assembly · Common Rail Injector · **4 units** · 05:59 AM
->   · Injector Spring **4** — `STOCK-CRI-SPR` · Main Stores
->   · Seal & O-Ring Kit **(optional)** 4 — `STOCK-CRI-SEAL` · Main Stores
->   · Solenoid Coil **4** — `STOCK-CRI-SOL` · Main Stores
-
-Every material line names **quantity, source lot and location**, so staging is a
-pick list rather than a puzzle. Optional lines are marked as optional. A step
-that consumes nothing says so rather than showing an empty table.
-
-### 8.2 Working it
-
-- **By station** / **By material** — stage bench by bench, or gather one material
-  across all benches
-- **Window** — next 4h / 8h / 12h / 24h
-- **Confirm** a line → the station count moves, e.g. **0/1 → 1/1 staged**, and the
-  row records who staged it
-- **Took another** — when you grabbed a different lot than the one suggested
-- **Mark staged** — the whole job
-- **PDF** — take it to the floor on paper
-
-!!! tip "\"Took another\" is not an error path"
-    The picker grabs what is physically nearest. Recording the lot you actually
-    took is what keeps traceability honest — the suggestion was only a suggestion.
-
-### 8.3 Two honest empty states
-
-!!! warning "An empty list usually means the window, not a fault"
-    The page defaults to the **next 8 hours**. On a plant holiday or a quiet
-    shift that is legitimately empty — it says *"Nothing scheduled in this window.
-    Try a longer window, or check the schedule board."*
-
-    In the demo, next Monday is a **plant maintenance day** in the plant calendar
-    and the solver respects it, so on that day the 8h view is empty and a longer
-    window fills up. Widen the window before concluding anything is broken.
-
-!!! note "The staleness banner is worth reading"
-    *"The schedule is stale — these times may have moved. Re-solve before staging
-    to them."* Staging to a stale plan puts material at the wrong bench.
-
-### Knowledge Check: Module 8
-
-1. The staging list is empty at 7am. Give two innocent explanations.
-2. You take `STOCK-CRI-SPR-02` when the line said `STOCK-CRI-SPR`. What do you press?
-3. What does the staleness banner mean for your picking?
+*The schedule is stale — these times may have moved* means re-solve before staging.
+That isn't yours: tell the planner.
 
 ---
 
-## Module 9: Cores (reman shops)
+## R. Cores (reman shops)
 
-!!! info "Skip this module if your shop does not reman"
+!!! info "Skip this section if your shop doesn't reman"
 
-### Learning Objectives
+### R1. A core arrives with its identity
 
-1. Receive a single identified core
-2. Receive a bulk core lot and identify units from it
+1. **Remanufacturing** > **Cores** > **Receive**. Serial `CRI-77821-MF`, type Common
+   Rail Injector, **Customer Return** from **Midwest Fleet Services**, **This unit
+   goes back to them**, for order `ORD-2024-0044`. Note what you see in **Condition
+   Notes**. **Receive Core**.
+2. The core is *Received · Returns to customer*. **Start teardown** opens its first
+   step, the check-in: scan the identity band, photograph it as it arrived, set the
+   arrival condition, and sign. *Cores arrive as-is from the field — record what you
+   see, don't clean yet.*
+3. **Complete step**: *Step submitted — awaiting QA sign-off.* It goes on to
+   Disassembly when QA signs.
 
-### 9.1 A core arrives with an identity
+### R2. A pallet arrives without serials
 
-Receiving one core is its own flow: **scan the identity band**, **photograph it
-as received**, **grade its arrival condition**, and **sign off**.
+1. **Core Lots** > **Receive in bulk**: Common Rail Injector, **40** units. *Received
+   CORELOT-2026-0001: 40 × Common Rail Injector*, 40 / 40 unidentified.
+2. **Identify a unit**: grade it, give the serial it carries, **Identify and next**.
+   Each one gets the next core number (*CORE-2026-0002 identified from
+   CORELOT-2026-0001*) and the count drops: 39, then 38.
 
-The photograph matters — it is the evidence of what condition the unit arrived
-in, taken before anyone touches it.
-
-### 9.2 A pallet arrives without one
-
-A counted delivery with no serials goes in as a **bulk core lot** at
-`/reman/core-lots` → **Receive in bulk**:
-
-> *"A counted delivery with no serials. Units are given identities later, one at
-> a time, and are exchange cores."*
-
-Receiving 40 gives `Received CORELOT-2026-0001: 40 × Common Rail Injector`,
-listed **40 / 40** unidentified at the Receiving Dock.
-
-!!! important "Bulk cores are exchange cores, definitionally"
-    A unit with no identity on arrival cannot be somebody's specific unit coming
-    back, so it is `EXCHANGE`. The system enforces this — it is *"definitional,
-    not shop policy"*.
-
-### 9.3 Identifying units
-
-**Identify a unit** takes grade (A / B / C / Scrap), source, serial and notes.
-**Identify and next** keeps the dialog open so you can work down a pallet.
-
-Each one drops the count — **40/40 → 39/40** — and the identified core keeps a
-link back to the lot it came from, so the trace to the receipt holds.
-
-!!! note "The core-type picker is deliberately narrow"
-    It offers only types that cores are received as, or that have a disassembly
-    BOM. Purchased stock cannot be counted into the core bank by mistake.
-
-### Knowledge Check: Module 9
-
-1. Why photograph a core before doing anything else?
-2. A customer insists a bulk-received core is their own unit. What does the
-   system say, and why?
-3. You identify 12 of a 40-core pallet and go home. What does the next person see?
+A unit with no identity on arrival can't be somebody's own unit coming back, so it is
+an exchange core by definition.
 
 ---
 
-## Module 10: How the Dock Is Doing
+## What isn't yours
 
-### Learning Objectives
-
-1. Read the receiving metrics
-2. Spot a scheduling problem disguised as an inspection one
-
-Lots received, what is waiting, median days to a decision, rejects and PPM, over
-30 / 60 / 90 days.
-
-!!! tip "The number worth watching"
-    *Median days to a decision* against *inspection itself*. If the first is days
-    and the second is hours, material is waiting for someone to **start** — which
-    is a scheduling problem, not an inspection one.
-
-### Knowledge Check: Module 8
-
-1. Decisions take 4 days; inspections take 2 hours. What is wrong?
+| Not yours | Whose |
+|-----------|-------|
+| Release a supplier or approval hold | QA manager |
+| Reject a whole lot | QA manager |
+| Apply a cycle count | A lead |
+| Chase the supplier, change a lead time | Purchasing |
+| Re-solve a stale schedule | Planner |
 
 ---
 
-## Practical Assessment
+## Final task — observed
 
-### Task 1: Receive a short delivery
-Receive fewer than ordered and record whether the balance is coming.
+Your trainer regenerates the data, logs you in as Luis, and says only: *"The truck
+brought `PO-2026-EXP0101`: 180 of the 200, and the slip says that's the lot. Get it
+into stores, and send back what we rejected last week."* Then they watch without
+helping:
 
-### Task 2: Clear a multi-reason hold
-Find a held lot, list every reason, clear the ones you can, and name who clears
-the rest.
+- receive the 180 and record that nothing more is coming on that line
+- inspect and accept it, then put it away in Main Stores
+- ship back `RCV-MAT-0006` with an RMA, saying whether replacements are coming
+- name who clears `RCV-MAT-HOLD`'s supplier hold
 
-### Task 3: Inspect and reject
-Perform an incoming inspection and reject the bad pieces. Explain why you cannot
-reject the whole lot.
+Your trainer is watching for:
 
-### Task 4: Return to supplier
-Ship back a rejected lot with an RMA, flag replacements, and print the RTV sheet.
+- [ ] You read the packing slip before answering the short-delivery question.
+- [ ] The lot went into stores only after it was accepted.
+- [ ] You said who decides the holds that aren't yours.
 
-### Task 5: Put away and find again
-Receive a lot, print its label, move it to a location, then find it in that
-location's ledger.
+## Recording your qualification
 
-### Task 6: Count
-Run a blind count on one location, submit it, and say who applies it.
-
-### Task 7: Stage a bench (row 11)
-Open the staging list. If it is empty, widen the window and say why it was. Stage
-one job's material, using **Took another** on at least one line, and report what
-the station count did.
-
-### Task 8 (reman only): Receive a bulk lot (row R2)
-Receive a bulk core lot, then identify two units from it. Report the count before
-and after, and say why the system made them exchange cores.
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Supervisor verification
-
-### Trainee Acknowledgment
-
-By completing this training, I confirm that I:
-
-- Will record a short-delivery decision rather than leaving it to be assumed
-- Will take the CoC photo at the dock, not from memory later
-- Will check every open hold before escalating
-- Understand that I raise lot problems and QA settles them
-
-### Recording the qualification
-
-Create a **Training Record** under **Quality** > **Training**, as in [Operator
-training](operator.md#recording-the-qualification).
-
----
-
-## Quick Reference Card
-
-### At the dock
-- Count in by box or pound — conversion shows as you type
-- Heat number, source, CoC photo
-- Short → say whether more is coming
-- Over → ordered figure is kept
-
-### Holds
-- Several at once is normal
-- Lot moves when the **last** one goes
-- Missing info → you fix it. Judgement → QA releases it
-
-### Returns
-- Reject → Ship back with RMA → RTV sheet travels
-- Flag replacements so planning sees the end date
-
-### Staging
-- Defaults to the **next 8h** — widen before assuming it's broken
-- **Took another** records the lot you actually picked
-- Read the **staleness banner**; staging to a stale plan misplaces material
-
-### Cores
-- Single core: scan band → photograph → grade → sign off
-- Bulk lot: counted, no serials, **always exchange**
-- **Identify and next** works down a pallet
-
-### Not yours
-- Reject a whole lot (VDMR) → QA
-- Approve a disposition → QA Manager
-- Apply a cycle count → a lead
-- Chase the supplier commercially → Purchasing
-
----
-
-## Next Steps
-
-- [Receiving role guide](../../roles/receiving.md)
-- [Supply Overview](../../workflows/supply/overview.md) — the full reference
-- [Locations & Cycle Counts](../../workflows/supply/locations.md)
-- [Shipping Training](shipping.md) — the other direction
-- [Purchasing Training](purchasing.md) — who owns the order
+Passing the final task is the assessment. The record is a **training record**, which
+your QA manager writes. See [Training Records](../../workflows/quality/training-records.md).

@@ -174,37 +174,41 @@ grants the view, not the permissions.
 
 ## Receiving
 
+Walked 2026-10-21 as Luis Ortega (`luis.recv`), a seeded Receiving user. The seed now books lots in as Luis, chases as Priya and raises qualifications as Priya; inspections stay Sarah's.
+
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | Know what is expected | ✅ | ✅ | ✅ | ? | 2026-10-07 | Materials **On order / Late**. An expected receipt is a `MaterialLot` that hasn't arrived, with PO, line, promised date and chase fields. |
-| 2 | Receive a delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | A new lot number and heat number, and the CoC or packing slip photographed. The lot is routed to inspection automatically. |
-| 3 | Verify against the paperwork | ✅ | ✅ | ✅ | ? | 2026-10-07 | The unified **Incoming Inspection** queue. |
-| 4 | Handle a short or over delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | *"20 fewer than the 200 on order. What does the packing slip say?"* **More coming** keeps the remainder on order; **That's all** stops planning on it (the PO line is closed in the ERP). |
-| 5 | Resolve holds | ✅ | ✅ | ✅ | ? | 2026-10-06 | *Held for N reasons — each clears on its own.* Paperwork holds self-clear; judgement holds need a quality manager. |
-| 6 | Reject and return | ✅ | ✅ | ✅ | ? | 2026-10-07 | Reject opens a disposition. **Ship back** takes an RMA and prints the RTV sheet, and the replacement delivery is created automatically. The lot is *Returned — not scrapped*. A whole-lot reject needs `reject_whole_lot` (QA Manager, Tenant Admin); without it, the reject becomes a request. |
-| 7 | Put away and find again | ✅ | ✅ | ✅ | ? | 2026-10-07 | `/production/locations`, with nesting and **Move…** (partial moves allowed). Every movement is in the ledger. |
-| 8 | Count stock | ✅ | ✅ | ✅ | ? | 2026-10-12 | A blind count, then apply. Applying needs `apply_cyclecount` (a lead's). `CC-2026-0001` is seeded submitted but not applied. |
-| 9 | Chase a late delivery | ✅ | ✅ | ✅ | ? | 2026-10-07 | **The first promise is kept:** a supplier can't improve their on-time record by re-promising, and the screen shows it. |
-| 10 | Hand receipts to the ERP | ✅ | — | ✅ | ? | 2026-10-15 | **Not a feed, by design.** Glovia is bridged by a person. UQMES owes the document: **Receipts for ERP** on Materials. |
-| 11 | Stage and kit material to the bench for the next shift | ✅ | ✅ | ✅ | ? | 2026-10-12 | `/production/staging`. **Confirm** and **Took another**. Trap: the 8 h window reads *"Nothing scheduled"* on a plant holiday. |
-| R1 | Receive a core | ✅ | ✅ | ✅ | ? | 2026-10-07 | An authored DWI step: scan the identity band, photograph it as received, grade it, sign. *"Don't clean yet"* keeps the evidence (ISO 9001 8.5.3). |
-| R2 | Receive a bulk core lot and identify units from it | ✅ | ✅ | ✅ | ? | 2026-10-07 | A counted delivery with no serials. **Identify and next** works down a pallet. Exchange cores by definition. |
+| 1 | Know what is expected | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Materials **On order / Late**. An expected receipt is a `MaterialLot` that hasn't arrived, with PO, line, promised date and chase fields. |
+| 2 | Receive a delivery | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | A new lot number and heat number, and the CoC or packing slip photographed. The lot is routed to inspection automatically. |
+| 3 | Verify against the paperwork | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | The unified **Incoming Inspection** queue. |
+| 4 | Handle a short or over delivery | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | *"20 fewer than the 200 on order. What does the packing slip say?"* **More coming** keeps the remainder on order; **That's all** stops planning on it (the PO line is closed in the ERP). |
+| 5 | Resolve holds | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | *Held for N reasons — each clears on its own.* Paperwork holds self-clear; judgement holds need a quality manager. `RCV-MAT-HOLD`: the heat number cleared its hold and the supplier hold stayed, with no release button for Receiving. |
+| 6 | Reject and return | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Reject opens a disposition. **Ship back** takes an RMA and prints the RTV sheet, and the replacement delivery is created automatically. The lot is *Returned — not scrapped*. A whole-lot reject needs `reject_whole_lot` (QA Manager, Tenant Admin); without it, the reject becomes a request. |
+| 7 | Put away and find again | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `/production/locations`, with nesting and **Move…** (partial moves allowed). Every movement is in the ledger. |
+| 8 | Count stock | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | A blind count, then apply. Applying needs `apply_cyclecount` (a lead's). `CC-2026-0001` is seeded submitted but not applied. |
+| 9 | Chase a late delivery | ✅ | ✅ | ✅ | ? | 2026-10-21 | **The first promise is kept:** a supplier can't improve their on-time record by re-promising, and the screen shows it. |
+| 10 | Hand receipts to the ERP | ✅ | — | ✅ | ? | 2026-10-21 | **Not a feed, by design.** Glovia is bridged by a person. UQMES owes the document: **Receipts for ERP** on Materials. |
+| 11 | Stage and kit material to the bench for the next shift | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `/production/staging`. **Confirm** and **Took another**. Trap: the 8 h window reads *"Nothing scheduled"* on a plant holiday. |
+| R1 | Receive a core | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | The **Receive Core** form, then **Start teardown** opens the check-in, an authored DWI step: scan the identity band, photograph it as received, grade it, sign. *"Don't clean yet"* keeps the evidence (ISO 9001 8.5.3). |
+| R2 | Receive a bulk core lot and identify units from it | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | A counted delivery with no serials. **Identify and next** works down a pallet. Exchange cores by definition. |
 
 ## Shipping
 
+Walked 2026-10-21 as Rosa Kim (`rosa.ship`), a seeded Shipping user.
+
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | See what is ready | ✅ | ✅ | ✅ | ? | 2026-10-08 | `/production/shipments`: *"Invoicing stays in your ERP."* Ready to ship / Shipped, grouped by order. |
-| 2 | Confirm it passed and is complete | ✅ | ✅ | ✅ | ? | 2026-10-08 | **The route's Ship step is the queue.** Shipping completes that step through `advance_part_step`, so the 8.6 release gate runs. |
-| 3 | Create the shipment | ✅ | ✅ | ✅ | ? | 2026-10-08 | Select units → **Ship …** → a shipment number. |
-| 4 | Produce the paperwork | ✅ | ✅ | ✅ | ? | 2026-10-08 | Packing list, CoC, Edit paperwork, Void…, and the history. |
-| 5 | Ship partially | ✅ | ✅ | ✅ | ? | 2026-10-08 | Per-unit selection; the rest keep waiting. |
-| 6 | Record carrier and tracking | ✅ | ✅ | ✅ | ? | 2026-10-08 | Tracking can be added later. |
-| 7 | Undo a mistake | ✅ | ✅ | ✅ | ? | 2026-10-12 | A void is for a shipment recorded by mistake: the parts return to their Ship step or to stock. *"Goods that went and came back are a return, not a void."* |
-| 8 | Return customer property | ✅ | ✅ | ✅ | ? | 2026-10-12 | Independent of any ship step. Lot-aware, so partial returns work. `MaterialLot.owner` is ringfenced throughout (8.5.3). |
+| 1 | See what is ready | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `/production/shipments`: *"Invoicing stays in your ERP."* Ready to ship / Shipped, grouped by order. |
+| 2 | Confirm it passed and is complete | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | **The route's Ship step is the queue.** Shipping completes that step through `advance_part_step`, so the 8.6 release gate runs. |
+| 3 | Create the shipment | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Select units → **Ship …** → a shipment number. |
+| 4 | Produce the paperwork | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Packing list, CoC, Edit paperwork, Void…, and the history. |
+| 5 | Ship partially | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Per-unit selection; the rest keep waiting. |
+| 6 | Record carrier and tracking | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Tracking can be added later. |
+| 7 | Undo a mistake | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | A void is for a shipment recorded by mistake: the parts return to their Ship step or to stock. *"Goods that went and came back are a return, not a void."* |
+| 8 | Return customer property | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Independent of any ship step. Lot-aware, so partial returns work. `MaterialLot.owner` is ringfenced throughout (8.5.3). |
 | 9 | Know whether we are on time | ✅ | ✅ | 🚧 | ? | 2026-10-15 | On-time %, falling back to the WO's expected completion, with "N not measurable" shown. **Demo 🚧:** the fallback never fires on seeded data. |
-| 10 | Send parts out to a subcontract vendor, and record them back | ✅ | ✅ | ✅ | ? | 2026-10-19 | `OutsideProcessPanel`. The return inspection is a step execution, and **Accept return** advances the parts. A step naming a **Special process** refuses an unqualified vendor. |
-| R1 | Return a rejected core to its owner | ✅ | ✅ | 🚧 | ? | 2026-10-13 | `return_core_to_customer` needs REBUILT or DECLINED and refuses an exchange unit. **Demo 🚧:** `CORE-240210-0007` hasn't been walked to REBUILT. |
+| 10 | Send parts out to a subcontract vendor, and record them back | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `OutsideProcessPanel`. The return inspection is a step execution, and **Accept return** advances the parts. A step naming a **Special process** refuses an unqualified vendor. |
+| R1 | Return a rejected core to its owner | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `return_core_to_customer` needs REBUILT or DECLINED and refuses an exchange unit. **Demo (fixed in seed):** `CORE-240215-0011` (Midwest Fleet, `ORD-2024-0044`) is torn down on its own WO, found with a cracked nozzle, and declined by the customer (recorded by Jennifer with Tom's reference). Shipping lists it as *Scope declined — to be returned unrepaired*, and shipping it sets RETURNED_UNREPAIRED with the shipment as the return reference. Track section R. |
 | R2 | Ship a rebuilt unit with the paperwork | ✅ | ✅ | ? | ? | 2026-10-20 | A return is a `CustomerShipment` (`ac85a3e`): **Return** on the Cores card opens the ship dialog, and the Shipping board lists finished reman units under their owner. Packing list always; CoC when the customer wants one with every shipment. Exchange stock on an order ends *Shipped on exchange*. No printed as-built sheet, by decision: it stays an in-system record. Not walked. |
 | C1 | Export-control screening before anything leaves | ✅ | — | — | ? | 2026-10-14 | **Not a target.** Export control is vestigial. The machinery is kept accurate in case it's revived. Don't build on it, and don't create non-US accounts. |
 
@@ -261,7 +265,7 @@ Built from the gates the QA Inspector pass hit: this is their other side.
 | 8 | Qualify someone for a process, and find whose qualification lapses this month | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | The training dashboard lists what expires (Mike's L1 certifications, 10/27); the matrix shows levels and coverage. **⚠️:** the record form defaults to Level 3 and no expiry; a renewal leaves the old record reminding; the matrix's expiry shows by colour only. |
 | 9 | Raise a SCAR, track the response, change the supplier's standing | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | Suspend from the Approved Supplier List row menu. **⚠️:** the scorecard recommends an action but offers none, counts on-order lots as received, and lists customers. A suspension doesn't reach lots already at the dock. |
 | 10 | Find everything measured by a gauge that just failed its check | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | `/quality/calibrations/records/$id/exposure` (7.1.5.2). MIC-2 measured five bodies at Body Inspection before failing this morning. It lists, but doesn't act. |
-| 11 | Pull the complete record for one serial, on demand | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | The per-serial **Traveler**: who did each step, what was measured, the lots used. Walked parts have real histories. **⚠️:** a work order's first-piece buy-off shows on every serial; outside-process inspections are missing. |
+| 11 | Pull the complete record for one serial, on demand | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | The per-serial **Traveler**: who did each step, what was measured, the lots used. A serial is credited only with its own work: `INJ-QA-INSPECT-012`'s Flow Calibration is blank, `-013` prints REJ beside its out-of-spec flow, and Nitride Coating carries the return inspection's readings. *Needs repair* prints RPR. **⚠️:** a visit nobody has worked prints its assignee as the operator (`-013`'s Rework shows Sarah). |
 | 12 | Approve a root cause | ✅ | ✅ | ✅ | ✅ | 2026-10-20 | **Approve** on the RCA tab (`review_rca`), under the independence rule. `CAPA-2024-003` (analysed by Jennifer, its go-ahead approved) is the exhibit. |
 | 13 | Watch a control chart and respond to a signal | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | SPC drives no decisions yet (user, 10/20): reading the chart is the workflow. **⚠️:** with no variation the page reports Cpk = Infinity and a healthy process. |
 | 14 | Set or tighten a sampling plan, and answer "why wasn't that part inspected?" | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | The part's **Sampling decisions** answer the second half ("Not selected — no rule in Standard Inspection - Body chose it"). **⚠️:** a rule change saves silently and doesn't appear in the rule set's History (auditlog records it twice); the rule set's View page fails to load. |
@@ -279,19 +283,21 @@ Built from the gates the QA Inspector pass hit: this is their other side.
 | 5 | Define measurements and attach them as step requirements | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | In the draft step: Configure measurements › Add Measurement (versioned with the step). **⚠️:** the tolerance hints read as absolute limits (*Maximum value*) though stored as offsets; the list drops the minus sign. Track module 3. |
 | 6 | Give the solver what it needs | ✅ | ❌ | 🚧 | — | 2026-10-21 | **❌:** the step panel shows timing *Not set — taking no time* with inputs capped at 0, although StepTiming holds the real setup/cycle (Wash 15/30); an engineer can't read or set it there (to -4f). Not in the track until fixed. |
 | 7 | Life limits | ✅ | ✅ | — | — | 2026-10-21 | **No UI yet** (user, 2026-10-21). Not in the track. |
-| 8 | Raise a temporary change for named work orders, then extend or end it | ✅ | ⚠️ | ✅ | — | 2026-10-21 | The temporary option requires an end date. **⚠️:** the picker lists only WOs on the version the change was drafted on, so work kept on a superseded version can't get a deviation; user approved widening it to any approved version (with c8). Not in the track until it lands. |
+| 8 | Raise a temporary change for named work orders, then extend or end it | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | Walked as Jordan on c8's d76dd0f. The temporary option requires an end date. Implement's picker lists in-flight WOs on every approved version, with a Version column, and greys a row where the change doesn't apply cleanly. `WO-2024-0042-A` (on v1, with v2 current) took the deviation on a v1-based fork with its parts on route, and **Move back to baseline** returned it to v1. Track module 5. **⚠️ (reported to c8):** the fork is numbered v2 beside the real v2; Move back has no confirm or reason; the PCR header reads *Affected in-flight WOs 0*; a description edit diffs as 8 edge changes. |
 | C1 | Change control (PCR / PCO / PCN) | ✅ | ✅ | ✅ | ? | 2026-10-15 | **Propose Change** in the process editor forks a draft and opens a PCR. The PCR carries affected WOs and a structured diff. An approved record can't be repointed. Approval templates are matched to group names exactly. |
 
 ## Purchasing
 
+Walked 2026-10-21 as Priya Nair (`priya.buy`), a seeded Purchasing user.
+
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | Know what is on order and what is late | ✅ | ✅ | ✅ | ? | 2026-10-12 | Shares Receiving 1 and 9. |
-| 2 | Chase a late delivery | ✅ | ✅ | 🚧 | ? | 2026-10-12 | OTD is scored against the first promise. **Demo 🚧:** no `ExternalContact` rows, so *who to chase* is empty (arc). |
-| 3 | Maintain sourcing: lead time, preferred supplier, safety stock | ✅ | ✅ | ✅ | ? | 2026-10-12 | **A wrong lead time fails silently**: it shows up later as a job that can't start. Sourcing edits never version the part. |
-| 4 | Qualify a supplier; maintain the approved list | ✅ | ✅ | ✅ | ? | 2026-10-12 | Purchasing raises a draft (Pending); QA Manager grants it (`approve_supplierqualification`). Its other side is QA Manager's grant. |
-| 5 | Read the supplier scorecard and act on standing | ✅ | ✅ | ✅ | ? | 2026-10-12 | Rating thresholds: C on any open SCAR, reject ≥ 10% or on-time < 85%. The reject rate's denominator is *inspected* lots. |
-| 6 | Raise a SCAR against a supplier | ✅ | ✅ | ✅ | ? | 2026-10-12 | `initiate_capa`. See QA Manager 9. |
+| 1 | Know what is on order and what is late | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | The Purchasing home: Late deliveries and expiring qualifications. **Shortages** (Requirements) shows the seeded valve shortage, *Control Valve Assembly · short 8 · order now* (STOCK-CRI-VLV seeded at 150). **Add expected delivery** records the ERP order as incoming. **⚠️:** incoming covers a line whatever its date, so a receipt promised after need-by makes the line vanish; and with every lane empty the page renders blank. Reported to -4f. |
+| 2 | Chase a late delivery | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | OTD is scored against the first promise. **Demo (fixed in seed):** Great Lakes Diesel has a deliveries contact (Dana Fischer) and a quality contact (Rob Lindqvist), so the card names whom to chase and **Chase…** offers to email them. |
+| 3 | Maintain sourcing: lead time, preferred supplier, safety stock | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Part Types › **Sourcing** dialog: *The part itself isn't changed.* **A wrong lead time fails silently**: it shows up later as a job that can't start. Sourcing edits never version the part. |
+| 4 | Qualify a supplier; maintain the approved list | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | Purchasing raises a draft (Pending); QA Manager grants it (`approve_supplierqualification`), and Grant… is refused for Priya. The seed now raises qualifications as Priya. **⚠️:** Grant… is offered anyway; the form promises *submit for approval*, which doesn't exist; the Basis picker shows raw codes. Reported to -4f. |
+| 5 | Read the supplier scorecard and act on standing | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Rating thresholds: C on any open SCAR, reject ≥ 10% or on-time < 85%. The reject rate's denominator is *inspected* lots. Great Lakes: *Rating C · Review: suspend*. |
+| 6 | Raise a SCAR against a supplier | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **Raise SCAR** on a rejected lot's inspection page. **⚠️:** no duplicate check (a second SCAR on `RCV-MAT-0006`), and a rejected lot's inspection page can't be reached from any list. Reported to -4f. |
 | C1 | Purchase orders, prices, spend approval | ✅ | — | — | ? | 2026-10-12 | **Out of bounds by design.** The PO lives in the ERP. |
 
 ## Document Controller
@@ -302,14 +308,49 @@ role can reach.
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
 | 1 | See what needs me | ✅ | ✅ | ✅ | ? | 2026-10-12 | Approvals in flight · Documents (Needs my approval / Pending / Due for review / Released) · Training. |
-| 2 | Upload a document with type and classification | ✅ | ✅ | ✅ | ? | 2026-10-12 | The name comes from the file; there's no title or document-number field. |
-| 3 | Route a document for release approval | ✅ | ✅ | ✅ | ? | 2026-10-12 | The template is picked by approval type, not by the submitter. |
+| 2 | Upload a document with type and classification | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Walked as Lisa: **Upload Document** with a file, type and classification creates v1 Draft. The name comes from the file, extension included (`WI-1004 Seat loupe check.txt`); there's no title or document-number field. |
+| 3 | Route a document for release approval | ✅ | ⚠️ | ✅ | ? | 2026-10-21 | **Submit for Approval** on the Approval tab: Under Review, assigned by the Document Release template to the QA Manager (Maria), not to Lisa. **⚠️:** one click, no confirm, no toast. |
 | 4 | Work a mixed approvals queue | ✅ | ✅ | 🚧 | ? | 2026-10-15 | **In flight ≠ assigned to me.** By default Document Controller is assigned only **Document Release**. **Demo 🚧:** nothing is assigned to this role. |
-| 5 | Track the lifecycle | ✅ | ✅ | ✅ | ? | 2026-10-12 | Draft → Under Review → Released. **Obsoleting is a deliberate act.** |
+| 5 | Track the lifecycle | ✅ | ❌ | ✅ | — | 2026-10-21 | Draft → Under Review → Approved works, and **Create Revision** makes v2 Draft with a justification. **❌:** nothing in the UI releases or obsoletes a document. Approval stops at APPROVED; `POST /api/Documents/$id/release/` and `mark_document_obsolete` exist with no caller. So no user-made document reaches RELEASED, and its review date is never set. Reported to -4f; the track holds release and obsolete until it lands. |
 | 6 | Find what is due for review | ✅ | ✅ | ✅ | ? | 2026-10-12 | Nothing notifies you; the tile is the signal. A type with no review period never prompts one. |
 | 7 | Classify, and hold the secret tier | ✅ | ✅ | 🚧 | ? | 2026-10-12 | `classify_documents` and `view_secret_documents` belong to this role and QA Manager. **Demo 🚧:** nothing above Confidential is exercised (arc). |
 | 8 | Write training records | 📄 | ✅ | ✅ | ? | 2026-10-20 | `TRAINING_RECORD_WRITE`. **Docs 📄:** see QA Manager 8. |
 | C1 | Delete a document | ✅ | ✅ | ✅ | ? | 2026-10-12 | Deletion is a soft delete. Obsolete documents stay listed; status is a filter. |
+
+## Customer
+
+Walked as Tom Bradley (`tom.bradley`, Midwest Fleet Services, portal user).
+
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | See my orders and where each is | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **Tracker**: one card per order with delivery date, stage and shipments. Visibility is `customer` or `viewers` on the order. **Demo (fixed in seed):** only orders naming Tom were visible (4 of 8), so the seed now names each company's portal contact on its orders. **⚠️:** a repair order with no work order yet (`ORD-2024-0044`, core `CORE-240210-0007`) is dropped from Tracker, so the customer can't see their own unit. Reported to -4f. |
+| 2 | Read one order: progress, shipments, documents | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | A customer sees only PUBLIC documents attached to their order, its work orders, parts or part types. **Demo (fixed in seed):** none existed, so `CERT Flow test results SHP-2026-000001` is now seeded on `ORD-2024-0042`. The order was named 24 injectors with 30 parts on it (now 30), and its placed date was the seed's run time (now `days_ago`). **⚠️:** Line Items reads *0/25 completed* with 10 shipped; **Edit** and a Notes box are offered and then refused (403). Reported to -4f. |
+| 3 | Invite a colleague to an order | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **Invite** → *Invitation sent*. The invitee joins `viewers` with a pending `UserInvitation`. **⚠️:** the invitee is created INTERNAL with no company, and the People list doesn't show a pending invite. Reported to -4f. |
+| 4 | Give my answer when the shop needs one | ✅ | — | ✅ | ✅ | 2026-10-21 | **Not in the portal, by design.** Staff record the customer's answer with their reference (`decide_disposition(customer_approval=…)`, the reman scope answer). The old track's "respond in the portal" was wrong. |
+
+## Administrator
+
+Walked 2026-10-21 as Alex Demo (Tenant Admin).
+
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Add a user with roles and a position | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **User Management › Add user**: role checkboxes (multi-role allowed), Position for the training matrix, Company and *Contact for* for outside people. **⚠️:** the form shows Django's *Staff Status* (admin-site login). Reported to -4f. |
+| 2 | Change a user's roles | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Edit › roles › Save; each grant and removal is in the user's History and the audit log. |
+| 3 | Suspend a leaver | ✅ | ❌ | ✅ | ✅ | 2026-10-21 | Untick **Active User** (users are never deleted). **❌:** Edit User silently won't save a user who has a Position: the field loads as *No position*, with *Job role must be a valid ID* and no toast. Re-picking the position saves. Reported to -4f; track module 4 assumes the fix, so re-walk it before committing the track. |
+| 4 | Find who changed what | ✅ | ✅ | 🚧 | ✅ | 2026-10-21 | **Audit Log**: time, user, action, object, before → after. Changes made in the app are all there. **Demo 🚧:** seeded changes have no actor and don't show (see Auditor 3). |
+| 5 | Read what a role can do | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | **Settings › Roles & Permissions** lists 14 groups with member and permission counts. **View** shows members and permissions. |
+| 6 | Keep outside contacts out of the invite flow | — | ⚠️ | ✅ | — | 2026-10-21 | Supplier contacts (contact_role users) list as *Pending invite*, and **Invite N not yet invited** would invite them. Customer contacts live in a separate model (Settings › External Contacts). Reported to -4f. |
+
+## Auditor
+
+Walked as Alex Morgan (`alex.audit`), a seeded Auditor. Lower priority than the
+production roles (user, 2026-10-21).
+
+| # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
+|---|----------|------|------|------|----------|---------|-------|
+| 1 | Land on the evidence | ✅ | ✅ | ✅ | ? | 2026-10-21 | The Auditor home lists Audit log, CAPAs, Calibration records, Training records, Documents and Approvals, with CAPA and NCR-aging counts. |
+| 2 | Look without being able to change | ✅ | ⚠️ | ✅ | ? | 2026-10-21 | The group holds only `view_*`, `export_data` and `full_tenant_access`, so the server refuses writes. **⚠️:** the UI still offers them: **Add Task**, **Add RCA** and **Upload** show on a CAPA. |
+| 3 | Read one record's history | ✅ | ✅ | 🚧 | ? | 2026-10-21 | **Demo 🚧:** every seeded change was written outside a request, so none of the 4,435 entries has an actor. The API hides actor-less entries, so History reads *No audit history* on every seeded record. Changes trainees make carry their names. Fixing it means each seeded write takes its persona as actor; stamping one actor on all of them would misattribute the work. A decision for the user. |
 
 ---
 

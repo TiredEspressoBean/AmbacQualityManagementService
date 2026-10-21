@@ -531,15 +531,21 @@ class DemoShowcaseSeeder(BaseSeeder):
                     hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
                     status="ACCEPTED"))
 
+        # Control valves run short, so Requirements has a buy line for Purchasing and
+        # the Planner (2026-10-21): 150 bought against ~115 units of open build demand,
+        # less what's been drawn, leaves the last builds uncovered. No incoming lot, so
+        # the solver only flags those operations (material-short) and holds nothing.
+        stock_qty = {"Control Valve Assembly": Decimal("150")}
         for name, pt in buy_parts.items():
+            qty = stock_qty.get(name, Decimal("200"))
             MaterialLot.objects.get_or_create(
                 tenant=self.tenant, lot_number=f"STOCK-{pt.ERP_id}",
                 defaults=dict(
                     material_type=pt, material_description=f"On-hand stock: {name}",
                     supplier_lot_number="STOCK", erp_po_number="PO-STOCK",
                     received_date=(self.today - timedelta(days=30)).date(),
-                    received_by=admin_user, quantity=Decimal("200"),
-                    quantity_remaining=Decimal("200"), unit_of_measure="EA",
+                    received_by=admin_user, quantity=qty,
+                    quantity_remaining=qty, unit_of_measure="EA",
                     hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
                     status="ACCEPTED"))
 

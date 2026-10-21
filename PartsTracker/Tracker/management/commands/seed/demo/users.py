@@ -141,6 +141,82 @@ DEMO_USERS = [
         'export_control_verified': True,
         'purpose': 'Engineering training - routings, change control, measurements, instructions',
     },
+    # === PURCHASING ===
+    # Purchasing only: the Purchasing track walks as them (suppliers, sourcing, SCARs).
+    {
+        'email': 'priya.buy@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Priya',
+        'last_name': 'Nair',
+        'role': 'Purchasing',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Purchasing training - suppliers, approved sources, supplier quality',
+    },
+    # === RECEIVING ===
+    # Receiving only: the Receiving track walks as them (dock, inspection, cores in).
+    {
+        'email': 'luis.recv@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Luis',
+        'last_name': 'Ortega',
+        'role': 'Receiving',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Receiving training - receive material and cores, incoming inspection',
+    },
+    # === SHIPPING ===
+    # Shipping only: the Shipping track walks as them (pack, ship, outside process).
+    {
+        'email': 'rosa.ship@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Rosa',
+        'last_name': 'Kim',
+        'role': 'Shipping',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Shipping training - shipments, packing, outside-process sends',
+    },
+    # === AUDITOR ===
+    # Auditor only: read-only, so the Auditor track shows what an auditor can find and can't change.
+    {
+        'email': 'alex.audit@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Alex',
+        'last_name': 'Morgan',
+        'role': 'Auditor',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Auditor training - records, traceability, read-only review',
+    },
     # === OPERATORS ===
     {
         'email': 'mike.ops@demo.ambac.com',
@@ -236,6 +312,16 @@ DEMO_USERS = [
     },
 ]
 
+# Outside contacts at a supplier: no login and no group, only the person to come to.
+# The late-deliveries card names the deliveries contact as who to chase; a SCAR goes
+# to the quality contact.
+SUPPLIER_CONTACTS = [
+    {'email': 'dana.fischer@greatlakesdiesel.com', 'first_name': 'Dana', 'last_name': 'Fischer',
+     'company_name': 'Great Lakes Diesel', 'contact_role': 'EXPEDITING'},
+    {'email': 'rob.lindqvist@greatlakesdiesel.com', 'first_name': 'Rob', 'last_name': 'Lindqvist',
+     'company_name': 'Great Lakes Diesel', 'contact_role': 'QUALITY'},
+]
+
 
 class DemoUserSeeder(BaseSeeder):
     """
@@ -299,7 +385,27 @@ class DemoUserSeeder(BaseSeeder):
                     result['doc_controller'] = user
 
         self.log(f"  Created {len(DEMO_USERS)} demo users")
+        self._create_supplier_contacts(companies)
         return result
+
+    def _create_supplier_contacts(self, companies):
+        for c in SUPPLIER_CONTACTS:
+            company = (companies or {}).get(c['company_name'])
+            if company is None:
+                self.log(f"  Warning: no company {c['company_name']!r} for {c['email']}", warning=True)
+                continue
+            user, created = User.objects.update_or_create(
+                email=c['email'],
+                defaults={
+                    'username': c['email'], 'first_name': c['first_name'],
+                    'last_name': c['last_name'], 'tenant': self.tenant,
+                    'user_type': 'PORTAL', 'is_staff': False, 'is_active': True,
+                    'is_superuser': False, 'parent_company': company,
+                    'contact_role': c['contact_role'],
+                })
+            if created:
+                user.set_unusable_password()
+                user.save(update_fields=['password'])
 
     def _create_user(self, user_data, companies=None):
         """Create a single demo user with all fields explicitly set."""

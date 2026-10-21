@@ -343,6 +343,46 @@ DEMO_CORES = [
             },
         ],
     },
+    {
+        # Shipping R1 exhibit: Midwest Fleet's own unit, declined. Its nozzle was found
+        # cracked and the customer said no to replacing it, so it goes back unrepaired
+        # (DECLINED), on the same dispatch step a rebuilt unit takes. Torn down on a
+        # work order of its own so the shared teardown batch is untouched.
+        'core_number': 'CORE-240215-0011',
+        'for_order': 'ORD-2024-0044',
+        'own_teardown': True,
+        'serial_number': 'SN-CRI-M08C51B2',
+        'received_days_ago': 12,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 11,
+        'disassembly_completed_days_ago': 10,
+        'condition_grade': 'B',
+        'condition_notes': 'Fair. Heavy carbon on the tip.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-46102',
+        'customer_name': 'Midwest Fleet Services',
+        'fulfilment_mode': 'REPAIR_RETURN',
+        'core_credit_value': None,
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'finding': {'component': 'Injector Nozzle Assembly', 'grade': 'SCRAP',
+                    'finding': 'Cracked nozzle body at the seat, found after cleaning.',
+                    'apply': True, 'authorise': True,
+                    'decline': {'contact': 'Tom Bradley', 'method': 'phone',
+                                'reference': 'MF-WR-118',
+                                'note': 'Unit is being retired from the fleet; return as is.'}},
+        'components': [
+            {'component_name': 'Injector Body', 'condition_grade': 'B', 'disposition': 'REUSE',
+             'condition_notes': 'Within limits.', 'position': '',
+             'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Injector Nozzle Assembly', 'condition_grade': 'B',
+             'disposition': 'REUSE', 'condition_notes': 'Heavy carbon at teardown.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Control Valve Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Passes dimensional checks.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+        ],
+    },
     # Scrapped core
     {
         'core_number': 'CORE-240218-0008',
@@ -589,6 +629,15 @@ class DemoRemanSeeder(BaseSeeder):
                     from Tracker.services.reman.release import request_authorisation
                     core.refresh_from_db()
                     request_authorisation(core, lead)
+                    answer = data['finding'].get('decline')
+                    if answer:
+                        # The customer's no, recorded by whoever took the call.
+                        from Tracker.services.reman.release import record_authorisation
+                        core.refresh_from_db()
+                        record_authorisation(
+                            core, False, by_email.get('jennifer.mgr@demo.ambac.com') or lead,
+                            note=answer['note'], contact=answer['contact'],
+                            method=answer['method'], reference=answer['reference'])
         self.log(f"  Released {released} torn-down core(s)")
         return released
 

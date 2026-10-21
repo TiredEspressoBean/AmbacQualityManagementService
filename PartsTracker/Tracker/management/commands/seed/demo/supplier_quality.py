@@ -58,8 +58,10 @@ class DemoSupplierQualitySeeder(BaseSeeder):
         by_email = users.get("by_email", {}) if isinstance(users, dict) else {}
         user = users.get("qa_manager") if isinstance(users, dict) else None
         user = user or (employees[0] if employees else None)
-        raiser = by_email.get("jennifer.mgr@demo.ambac.com") or user
-        receiver = by_email.get("sarah.qa@demo.ambac.com") or user
+        # Purchasing raises a qualification and the QA Manager grants it; the dock
+        # books lots in.
+        raiser = by_email.get("priya.buy@demo.ambac.com") or user
+        receiver = by_email.get("luis.recv@demo.ambac.com") or user
 
         company_map = companies.get("by_name", {}) if isinstance(companies, dict) else {}
         great_lakes = company_map.get("Great Lakes Diesel")

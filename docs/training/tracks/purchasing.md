@@ -1,358 +1,171 @@
-# Purchasing Training Guide
+# Purchasing
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+Purchasing's slice of [the shop day](../shop-day.md): knowing what's short and
+what's late, chasing it, keeping the sourcing facts planning relies on, and raising
+the supplier-quality records QA settles. Every exercise is on the training shop, and
+every record it names is one the training seed creates.
 
-**Duration:** 3-4 hours
-**Prerequisites:** None
-**Goal:** Learn to manage supplier relationships, expected deliveries and
-sourcing data — and to understand where uqmes stops and your ERP begins
+**About 1½ hours**, in one sitting. **Before you start:** nothing. The
+[Receiving](receiving.md) track is the other half: you own the order, they own the
+delivery.
 
-!!! note "Role Name"
-    This training is for the **Purchasing** role in the system.
+!!! danger "No purchase orders here"
+    UQMES doesn't hold purchase orders, prices, quotes or spend approvals. It holds
+    what you're expecting, from whom and when, and what's waiting on it. The PO lives
+    in your ERP. If you find yourself looking for a place to type a price, you're in
+    the wrong system.
 
-!!! info "Demo Environment Login"
-    **Email:** admin@demo.ambac.com
-    **Password:** `demo123`
+!!! warning "On a training instance only"
+    Every exercise writes real records: an expected delivery you record is incoming
+    supply the planner counts on. See the [training program](../index.md).
 
-    The demo has no account whose only group is Purchasing. Alex Demo is
-    **Tenant Admin**, which holds every purchasing permission plus more.
+## How a session runs
 
-!!! danger "Read this before anything else"
-    **uqmes does not hold purchase orders, prices, quotes, or approvals to
-    spend.** It is not a purchasing system and will not become one.
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Try to break it.** Where a module has a refusal, something the system won't let
+   you do, do it on purpose and read what it says. The refusal is part of the
+   lesson, not an error.
+5. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
-    What it holds is **what you are expecting, from whom, when** — and what is
-    waiting on it. Your PO lives in your ERP. If you find yourself looking for a
-    place to type a price, you are looking in the wrong system.
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
----
+## Who you are
 
-## Module 1: The Boundary
+| You log in as | When |
+|---------------|------|
+| **Priya Nair**, Purchasing, `priya.buy@demo.ambac.com` | Every module |
 
-### Learning Objectives
-
-1. State what uqmes holds and what the ERP holds
-2. Explain how a decision that needs a price gets made
-
-### 1.1 Where the line is
-
-| uqmes holds | Your ERP holds |
-|-------------|----------------|
-| What you are expecting, from whom, when | The purchase order |
-| Which work orders are waiting on it | The price, the terms |
-| Supplier qualification and approval status | The spend approval |
-| Sourcing facts: lead time, preferred supplier, safety stock | The invoice |
-
-### 1.2 How a priced decision actually happens
-
-Where a flow appears to need a price — a buy decision on a kit, over-and-above
-work on a repair — uqmes produces the **scope**: what work, what parts, and the
-finding behind each. It exports that, and records the answer that comes back.
-
-**Pricing happens in the system that owns it.**
-
-!!! note "This is a design decision, not a gap"
-    A scope with a price field invites a rate table, then a margin, then an
-    approval workflow — and then you have a second, worse ERP that disagrees with
-    the first one.
-
-### Knowledge Check: Module 1
-
-1. A supplier quotes you two prices for the same part. Where does that
-   comparison happen?
-2. What does uqmes give you to take to that decision?
+Every password is `demo123`.
 
 ---
 
-## Module 2: Expected Deliveries
+## 1. Your desk
 
-### Learning Objectives
+**You will:** read the purchasing home page.
 
-1. Load what is on order
-2. Work a late delivery
-3. Handle a short delivery and a cancellation
+Log in as Priya. **Purchasing** links **Shortages**, **Expected receipts**,
+**Supplier quality** and **Supplier qualifications**.
 
-### 2.1 Loading what is on order
-
-Expected deliveries are how uqmes knows something is coming. Until an item is
-expected, nothing downstream can tell you it is late or that work is waiting on
-it.
-
-See [Loading what is on order](../../workflows/supply/overview.md#loading-what-is-on-order).
-
-### 2.2 Chasing a late delivery
-
-The **Late deliveries** card on Home names the item, quantity, supplier and
-PO/line, with a lateness badge — and, more usefully, **which work orders it is
-holding up**. Each row carries the supplier's deliveries contact and their email.
-
-!!! note "\"Holding up\" is read from the production BOM"
-    It means *this work needs that item*, not *this lot was earmarked for it*.
-    Read it as "who is waiting on this", not as an allocation.
-
-!!! tip "An absent card is good news"
-    The card does not render when nothing is late. Empty space here is not a
-    missing feature.
-
-### 2.3 A short delivery is a decision
-
-A short delivery is not an assumption the system makes for you — you decide
-whether the balance is still coming or the line is closed. See [A short delivery
-is a decision, not an
-assumption](../../workflows/supply/overview.md#a-short-delivery-is-a-decision-not-an-assumption).
-
-### 2.4 Cancelling
-
-See [Cancelling something you are no longer
-expecting](../../workflows/supply/overview.md#cancelling-something-you-are-no-longer-expecting).
-
-### Knowledge Check: Module 2
-
-1. A delivery is 5 days late and three work orders are waiting. Where do you see
-   all of that at once?
-2. 80 of 100 arrive. What does uqmes need you to decide?
+- **Late deliveries**: what's overdue or due within days. Each row names the
+  supplier and whom to chase there (*Great Lakes Diesel (Dana Fischer)*), the PO and
+  line, the first promise if it's been moved, and what was said last time.
+- **Supplier qualifications expiring**: an expired qualification doesn't announce
+  itself; it holds the next delivery at the dock. `Lakeshore Seals Inc` has already
+  expired.
 
 ---
 
-## Module 3: Sourcing Facts Are Planning Inputs
+## 2. What to buy
 
-### Learning Objectives
+**You will:** find a shortage and record that it's ordered.
 
-1. Maintain lead time, preferred supplier and safety stock
-2. Explain what a wrong lead time does downstream
+1. **Shortages** (**Scheduling** > **Requirements**). **Source (buy)** lists what
+   open work needs that stock plus what's expected won't cover: *Control Valve
+   Assembly · short 8*, from Precision Castings, with its lead time, need-by and
+   order-by dates. *Order now* means the order-by date has passed.
+2. Place the order in the ERP. Then tick the row and **Add expected delivery**:
+   *Record what you've ordered in the ERP so planning counts it as incoming. Nothing
+   is purchased here.*
+3. Enter the PO number and line, the quantity, and the supplier's promised date (it
+   defaults to today plus the lead time). **Record 1 expected receipt**.
 
-### 3.1 These are not filing
-
-Lead time, preferred supplier and safety stock are what the **requirements
-report nets against**.
-
-!!! danger "A wrong lead time fails quietly"
-    It produces a buy recommendation at the wrong moment, every time, and nothing
-    flags it. The shortage shows up later as a work order that can't start, and
-    the cause looks like a planning problem rather than a data one.
-
-### 3.2 Sourcing is not definition
-
-!!! note "You own where a part comes from, not what it is"
-    You can change a bought part's supplier, lead time and safety stock. The
-    part's **definition** — what it is, its drawing, its specs — stays with
-    [Engineering](../../roles/engineering.md).
-
-    Two different questions about the same record.
-
-Editing sourcing on a part does **not** create a new version of it.
-
-### Knowledge Check: Module 3
-
-1. Lead time on a bought casting is set to 2 days; it really takes 6 weeks. What
-   happens, and when do you find out?
-2. You need to change a purchased part's drawing. Can you?
+The line leaves the list: the shortage is now covered by something expected. Until
+an order is recorded here, nothing can tell anyone it's late, and the shortage
+surprises the floor instead.
 
 ---
 
-## Module 4: Supplier Quality
+## 3. Chase a late delivery
 
-### Learning Objectives
+**You will:** record what the supplier said.
 
-1. Raise a supplier qualification
-2. Raise a SCAR against a supplier
-3. Know what you cannot approve
+1. On **Late deliveries**, `PO-2026-EXP0102` line 1: 150 Common Rail Injectors, 3
+   days late. **Chase…** offers **Email Dana Fischer**.
+2. Under **What they said**, write what Dana told you. Give the **new promised
+   date** if there is one. **Record chase**.
 
-### 4.1 Qualification
+The delivery leaves the late list if its new date is more than a few days out. The
+supplier's on-time score doesn't move: it's always measured against the **first**
+promise, so re-promising can't improve a record.
 
-You raise supplier qualifications and maintain the approved supplier list. There
-are two routes — qualifying for bulk stock, and qualifying on a certificate.
+---
 
-See [Supplier Quality](../../workflows/supply/overview.md#supplier-quality) and
-[Approved Suppliers](../../workflows/supply/overview.md#approved-suppliers).
+## 4. Keep the sourcing facts right
 
-!!! warning "You raise it; QA approves it"
-    `approve_supplierqualification` is **QA Manager's**, not yours. That is
-    separation of duties, and it is deliberate — the person who owns the
-    commercial relationship does not also certify the supplier's quality.
+**You will:** change a bought part's supplier and lead time.
 
-### 4.2 A SCAR is a CAPA against a supplier
+**Data Management** > **Part Types** > `Control Valve Assembly` > **Sourcing**: *Who
+it's bought from and how long they take, as the ERP has it, and the safety stock
+planning holds back. The part itself isn't changed.* Set **Preferred supplier** and
+**Lead time (days)**, and **Save**.
 
-When a supplier sends you something wrong, raise a **SCAR** from the rejected
-lot. That creates a record the supplier is answerable to, rather than a phone
-call nobody can find later.
+A wrong lead time fails quietly. It moves every order-by date on the shortages list,
+and the shortage shows up later as a job that can't start. You own where a part
+comes from; what the part *is* (its drawing, its specs) is Engineering's.
 
-See [Rejecting](../../workflows/supply/overview.md#rejecting) and [Sending it
-back](../../workflows/supply/overview.md#sending-it-back).
+---
 
-### 4.3 What you cannot settle
+## 5. Supplier quality
+
+**You will:** read a scorecard, raise a qualification, and raise a SCAR.
+
+1. **Supplier Quality**: per supplier, the lots received, accepted and rejected, the
+   reject rate, CoC compliance, on-time delivery and open SCARs. Great Lakes Diesel
+   reads *Rating C · Review: suspend*. The recommendation is the useful part.
+   Suspending a supplier is the QA manager's decision; you take the recommendation
+   to them.
+2. **Approved Suppliers** > **New qualification**: Lakeshore Seals Inc, part type
+   Common Rail Injector, basis **AUDIT**, with a note of when the audit is booked.
+   **Create**: *Qualification created (PENDING)*.
+3. In that row's menu, try **Grant…**. It's refused: *You do not have permission to
+   perform this action.* You raise a qualification; the QA manager grants it.
+4. A rejected lot is where a SCAR starts. When a lot is rejected, its inspection
+   page offers **Raise SCAR**: a corrective action the supplier must answer.
+   **View SCARs** on the supplier's card lists what they owe you an answer on:
+   Great Lakes has one, for `RCV-MAT-0006`. Look there before raising another, as
+   nothing stops a second SCAR on the same lot.
+
+---
+
+## What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|
-| Approve a supplier qualification | QA Manager |
-| Reject a whole lot (VDMR) | QA |
-| Approve a disposition on rejected goods | QA Manager |
-
-**You can see all of it and start all of it.** You cannot close it.
-
-### 4.4 The supplier scorecard
-
-**Supply → Supplier Quality** is where a supplier's behaviour becomes a number
-rather than an impression — *"Receiving-inspection scorecards: acceptance, reject
-rate, CoC compliance, on-time delivery, and open SCARs."*
-
-Each supplier card carries its **qualification standing** — *Qualified*,
-*Conditional*, *Not qualified* — and, where there is history:
-
-| Measure | What it tells you |
-|---------|-------------------|
-| **Lots received** / **Accepted** / **Rejected** | The volume behind everything else |
-| **Reject rate** | Quality, as a rate rather than an anecdote |
-| **CoC compliance** | Whether the paperwork arrives with the goods |
-| **On-time delivery** | Their promise-keeping, scored against the **first** promise |
-| **Open SCARs** | What they already owe you an answer on |
-
-Walked 2026-10-12 — Great Lakes Diesel showed **Rating C**, **9 lots received**,
-**1 open SCAR**, and the card itself recommended an action: **"Review: suspend"**.
-
-!!! tip "The recommendation is the useful part"
-    The scorecard does not just report; it tells you when a supplier's standing
-    should change. That is the moment to act — not three months later when
-    somebody notices the reject rate.
-
-!!! note "Honest empty states"
-    A supplier with no receipts says *"No material lots received from this
-    supplier yet."* rather than showing zeros that look like bad performance.
-    A new supplier is not a failing one.
-
-Changing the standing itself is a qualification decision, and **approving it is
-QA Manager's** — you raise it.
-
-### 4.5 Qualifications expiring
-
-Home gives you **Supplier qualifications expiring** — the thing that bites
-quietly, because an expired qualification blocks receipt rather than announcing
-itself in advance.
-
-### Knowledge Check: Module 4
-
-1. A lot arrives out of spec. What two things can you do, and what must you wait
-   for?
-2. Why can't the buyer approve the supplier's own qualification?
+| The purchase order, the price, the invoice | Your ERP |
+| Grant a supplier qualification, suspend a supplier | QA manager |
+| Reject a whole lot, decide a disposition | QA |
+| Book in what arrives | Receiving |
 
 ---
 
-## Module 5: Purchasing or Receiving?
+## Final task — observed
 
-### Learning Objectives
+Your trainer regenerates the data, logs you in as Priya, and says only: *"What are
+we short of, and is it ordered? And Great Lakes owe us an answer on 0103."* Then
+they watch without helping:
 
-1. Tell the two roles apart
-2. Know when one person holds both
+- find the shortage, and record an expected delivery for it with a PO, line and
+  promised date
+- chase `PO-2026-EXP0103` and record what was said
+- say what the Great Lakes scorecard recommends, and who decides it
 
-### 5.1 Different jobs
+Your trainer is watching for:
 
-| | Purchasing | [Receiving](receiving.md) |
-|---|-----------|---------------------------|
-| **Owns** | The supplier relationship and the order | The physical delivery |
-| **Does** | Places it, chases it, qualifies the supplier | Takes it in, inspects it, puts it away |
+- [ ] Nothing was "ordered" in UQMES: the order went to the ERP, and UQMES got the
+      expected delivery.
+- [ ] The chase recorded what the supplier said, not just a new date.
+- [ ] You took the suspend recommendation to the QA manager instead of acting on it.
 
-At a small plant one person holds both — the roles compose. Separating them is
-what lets a larger facility staff them separately.
+## Recording your qualification
 
-### Knowledge Check: Module 5
-
-1. Who decides a bin location for incoming stock?
-2. Who chases the supplier when it hasn't arrived?
-
----
-
-## Practical Assessment
-
-### Task 1: Work the late list
-Open Late deliveries. Pick a row and report the supplier, the contact you would
-email, and every work order it is holding up.
-
-### Task 2: Resolve a short delivery
-Receive a partial quantity and record the decision about the balance.
-
-### Task 3: Fix a sourcing fact
-Find a material with a questionable lead time. Correct it and explain what the
-requirements report will now do differently.
-
-### Task 4: Raise a supplier qualification
-Raise one, then identify who must approve it and why it isn't you.
-
-### Task 5: Raise a SCAR
-From a rejected lot, raise a SCAR. Explain what it becomes.
-
-### Task 6: Read a scorecard
-Open Supplier Quality. Pick the worst-performing supplier, quote its reject rate,
-CoC compliance and open SCARs, and say what the card recommends you do.
-
-### Task 7: State the boundary
-A colleague asks you to "put the PO price in so we can compare". Explain, in your
-own words, why that isn't in this system.
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Supervisor verification
-
-### Trainee Acknowledgment
-
-By completing this training, I confirm that I:
-
-- Understand that purchase orders and prices live in the ERP, not here
-- Will keep lead times and safety stock honest, because planning reads them
-- Will raise supplier problems formally rather than by phone alone
-- Understand that I raise supplier quality issues and QA settles them
-
-### Recording the qualification
-
-Create a **Training Record** under **Quality** > **Training**, as in [Operator
-training](operator.md#recording-the-qualification).
-
----
-
-## Quick Reference Card
-
-### Yours
-- Expected deliveries: load, chase, short-close, cancel
-- Supplier qualification (raise), approved supplier list
-- Sourcing: lead time, preferred supplier, safety stock
-- Supplier companies and their contacts
-- SCARs against suppliers
-- Storage locations
-
-### Not yours
-- Purchase orders, prices, spend approval → **your ERP**
-- Approve a supplier qualification → QA Manager
-- Reject a whole lot → QA
-- Approve a disposition → QA Manager
-- A part's definition or drawing → Engineering
-
-### The scorecard
-- Reject rate · CoC compliance · on-time delivery · open SCARs
-- Standing: Qualified / Conditional / Not qualified
-- It **recommends** — *"Review: suspend"* means act now
-- "No lots received yet" ≠ poor performance
-
-### Quiet failures to watch
-- Wrong lead time → buy recommendations at the wrong moment
-- Expired supplier qualification → blocked receipt
-- Item never marked expected → nothing can tell you it's late
-- OTD scored against the **first** promise, so re-promising doesn't repair it
-
----
-
-## Next Steps
-
-- [Purchasing role guide](../../roles/purchasing.md)
-- [Supply](../../workflows/supply/overview.md) — the full reference
-- [Receiving](receiving.md) — the dock
-- [Part Approvals](../../workflows/supply/part-approvals.md)
-- [Companies](../../admin/setup/companies.md) — suppliers and their contacts
+Passing the final task is the assessment. The record is a **training record**, which
+your QA manager writes. See [Training Records](../../workflows/quality/training-records.md).

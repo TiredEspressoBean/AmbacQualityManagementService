@@ -30,7 +30,7 @@ from .routes import build_steps, route_steps
 DEMO_ORDERS = [
     {
         'order_number': 'ORD-2024-0042',
-        'name': 'Midwest Fleet Order - 24 Injectors',
+        'name': 'Midwest Fleet Order - 30 Injectors',
         'company_name': 'Midwest Fleet Services',
         'days_ago': 10,
         'estimated_completion_days': 5,
@@ -248,6 +248,12 @@ class DemoOrdersSeeder(BaseSeeder):
             order_number=order_data['order_number'],
             defaults=defaults
         )
+        # Placed `days_ago`, not at the seed's run time: the customer's order page
+        # reads "Order placed" from it, beside shipments days old.
+        if order_data.get('days_ago'):
+            placed = self.today - timedelta(days=order_data['days_ago'])
+            Orders.objects.filter(pk=order.pk).update(created_at=placed)
+            order.created_at = placed
 
         return order
 

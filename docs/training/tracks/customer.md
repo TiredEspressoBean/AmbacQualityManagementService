@@ -1,142 +1,101 @@
-# Customer Portal Orientation
+# Customer
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+An orientation for the shop's customers: following an order, finding what shipped
+and the documents that came with it, and letting a colleague see it too. Every
+exercise is on the training shop, and every record it names is one the training seed
+creates.
+
+**About 30 minutes.** It assumes nothing about manufacturing systems or how the shop
+works inside.
+
+!!! warning "On a training instance only"
+    An invitation sent here is a real invitation. See the
     [training program](../index.md).
 
-**Duration:** 30 minutes
-**Prerequisites:** None
-**Goal:** Track your orders, find your documents, invite a colleague, and
-respond when you are asked to approve something
+## Who you are
 
-!!! note "Role Name"
-    This is for the **Customer** role in the system.
+| You log in as | When |
+|---------------|------|
+| **Tom Bradley**, Midwest Fleet Services, `tom.bradley@midwestfleet.com` | Every module |
 
-!!! info "Demo Environment Login"
-    **Email:** tom.bradley@midwestfleet.com
-    **Password:** `demo123`
+The password is `demo123`.
 
-    Tom Bradley is a Midwest Fleet Services contact and sees only Midwest Fleet's
-    orders — which is the point of this orientation.
-
-!!! important "Start on Tracker, not Home"
-    **Tracker** in the sidebar is your portal. Home is deliberately bare for a
-    customer — *"Use the sidebar to navigate to your workflow."*
-
-    Verified 2026-10-12: Tom sees **11 orders, all Midwest Fleet Services**, out
-    of 16 in the tenant. Other customers' orders are filtered out entirely.
-
-!!! tip "This is orientation for an external user"
-    Hand this to your customer. It assumes no knowledge of manufacturing systems
-    and nothing about how the shop works internally.
-
-!!! note "Two rough edges to warn them about"
-    The sidebar is not yet filtered by role, so a customer sees internal menu
-    items — Processes, Scheduling, CAPAs — that refuse them when clicked. Home
-    may also show a brief *"Failed to load data"* message for the same reason.
-    Neither affects their orders.
+Tom is the customer contact for Midwest Fleet Services, so he sees Midwest Fleet's
+orders and nothing else.
 
 ---
 
-## Module 1: What You Can See
+## 1. Your orders
 
-### 1.1 Your orders, and only your orders
+**You will:** find your orders and read where each one is.
 
-The Customer role is the only one in the system **without** tenant-wide
-visibility. Everything you see is filtered to orders you are the customer on, or
-have been invited to view.
+Log in as Tom and open **Tracker** in the sidebar. Home stays bare for a customer:
+*Use the sidebar to navigate to your workflow.*
 
-You cannot see other customers' orders, the shop's internal work, costs, or
-anyone else's documents. That isn't a setting your supplier chose — it is how the
-role is built.
+Each card is one of your orders: its name, the promised **Delivery** date and how
+many days away it is, the stage it has reached (*Current: Machining*, *3/10
+stages*), and what has shipped. `Midwest Fleet Order - 30 Injectors` reads
+*10 serials shipped in 1 shipment*.
 
-### 1.2 What you get
+You see only orders you are the customer on, or were invited to. Other customers'
+orders, the shop's internal work and costs are not hidden from you: they were never
+sent to you.
 
-| You can | You cannot |
-|---------|------------|
-| View your orders and their progress | See any other customer's anything |
-| View the parts on them | Change an order |
-| See documents linked to your orders | Upload documents |
-| See quality information for your orders | See internal quality data |
-| Invite colleagues to view your orders | Invite anyone to someone else's |
-| Respond to approval requests | Approve your supplier's internal work |
-| Use AI chat on your own data | Query anything outside your orders |
+!!! note "Menus that refuse you"
+    The sidebar still lists the shop's own pages (Processes, Scheduling, CAPAs).
+    Opening one shows nothing of yours. Your work is under **Tracker**.
 
 ---
 
-## Module 2: Tracking an Order
+## 2. One order
 
-### 2.1 Progress
+**You will:** read an order's progress, what shipped, and its documents.
 
-Each order shows where it is: which stage, how many stages, and the delivery
-date. A part-level view shows each unit's status.
+1. On the `Midwest Fleet Order - 30 Injectors` card, **Production Progress** lists
+   the stages in order, and **Shipped** lists each shipment: number, date, carrier,
+   tracking, and the serials in it.
+2. **View Full Details** opens the order: estimated delivery, progress, how many
+   units are done and how many remain, and the stages.
+3. **Documents** lists what the shop has shared against the order. Here it's
+   `CERT Flow test results SHP-2026-000001`. Open it.
 
-### 2.2 What the statuses mean
+Stage names come from the shop's own process. Ask once what each means there.
 
-Ask your supplier to walk you through their stage names once — they come from
-that shop's own process, so "Nozzle Inspection" means what it means there.
-
-See [Order Status](../../workflows/orders/order-status.md).
-
-### 2.3 What shipped
-
-An order shows what has shipped, when, and by which carrier — including partial
-shipments, so nine of ten units going out early appears as exactly that.
+If you expect a document and it isn't listed, it hasn't been shared against the
+order yet. Ask the shop: you see what was shared with you, never their library.
 
 ---
 
-## Module 3: Documents
+## 3. Let a colleague see it
 
-Documents linked to your orders appear in the portal — certificates, packing
-lists, CoCs and whatever else your supplier shares against the order.
+**You will:** invite someone at your company to an order.
 
-!!! note "You see what was shared against your order"
-    Not the supplier's library. If you expect a document and don't see it, it
-    hasn't been linked to your order yet — ask.
+1. On the order, **Invite**. *Send an invitation to view this order. They will have
+   read-only access.*
+2. Type their email, then **Send Invite**: *Invitation sent to …*
 
----
-
-## Module 4: Inviting a Colleague
-
-You can see who has access to your orders and **invite viewers** to them.
-
-!!! warning "You can only invite to orders you can already reach"
-    The invite applies to your own orders. There is no way to grant someone
-    access to anything you cannot see yourself.
+They can see that order once they accept. You can invite people only to orders you
+can already see.
 
 ---
 
-## Module 5: Responding to an Approval
+## 4. When the shop needs your answer
 
-Sometimes your supplier needs an answer from you — a use-as-is on a
-nonconformance, an authorisation to proceed.
+Sometimes the shop needs your decision: accepting a part that's slightly out of
+specification, or extra work found once a unit you sent for repair is opened up. The
+shop sends you what they found and what they propose, the way you normally deal with
+them. They record your answer against the job with your reference, so it stays with
+the unit rather than in an email thread.
 
-You will see the request, and you respond in the portal. Your answer is recorded
-against the order with your name and the date.
-
-!!! important "The decision is recorded, not negotiated here"
-    The conversation about price or commercial terms happens wherever you
-    normally have it. The portal records **what you decided**, so it is attached
-    to the job rather than living in an email thread.
-
-See [Approvals Overview](../../workflows/approvals/overview.md).
+Price and commercial terms are agreed where you always agree them. The system holds
+what was decided, not what it cost.
 
 ---
 
-## Orientation Checklist
+## Orientation checklist
 
-- [ ] Logged in and found your order list
-- [ ] Opened one order and read its progress
-- [ ] Found what has shipped against it
-- [ ] Opened a document linked to the order
-- [ ] Found who else has access
-- [ ] Located an approval request (if one exists)
-
----
-
-## Next Steps
-
-- [Customer Portal guide](../../roles/customer.md) — the full reference
-- [Order Status](../../workflows/orders/order-status.md)
-- [Approvals Overview](../../workflows/approvals/overview.md)
+- [ ] Found your orders under **Tracker**
+- [ ] Read one order's stage and delivery date
+- [ ] Found a shipment's carrier and tracking
+- [ ] Opened a document shared against the order
+- [ ] Invited a colleague to view an order

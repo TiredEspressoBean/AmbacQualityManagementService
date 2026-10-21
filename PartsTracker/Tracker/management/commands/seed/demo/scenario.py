@@ -232,11 +232,25 @@ class DemoScenario(BaseSeeder):
         planner._verbose = self._verbose
         result['planning'] = planner.seed(result['users'])
 
+        # After every order exists: a customer sees only orders naming them (or
+        # inviting them), so each company's portal contact is named on its orders.
+        named = self._name_portal_customers(result['users'])
+        self.log(f"Named the portal contact on {named} customer order(s)")
+
         self.log("\n" + "=" * 60)
         self.log("DEMO SCENARIO: Complete")
         self.log("=" * 60)
 
         return result
+
+    def _name_portal_customers(self, users):
+        from Tracker.models import Orders
+        named = 0
+        for user in (users or {}).get('customers', []):
+            if user.parent_company_id:
+                named += Orders.objects.filter(
+                    company_id=user.parent_company_id, customer__isnull=True).update(customer=user)
+        return named
 
     def _seed_dark_exhibits(self, users):
         """Populate the surfaces the role audit found built-but-empty."""

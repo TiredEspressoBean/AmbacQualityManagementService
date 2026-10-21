@@ -228,3 +228,57 @@ class DemoSeedDarkExhibitTests(TestCase):
                 classification__in=["", "public", "internal", "PUBLIC", "INTERNAL"])
             self.assertTrue(above_internal.exists(),
                             "every document is Internal — tier filtering is unobservable")
+
+    def test_a_customer_sees_every_order_for_their_company(self):
+        """The portal shows orders naming the customer, not their company's (Customer
+        track, 2026-10-21): an order with no customer was invisible to Tom."""
+        from Tracker.models import Documents, Orders, User
+        with tenant_context(self.tenant):
+            tom = User.objects.get(email="tom.bradley@midwestfleet.com")
+            unnamed = Orders.objects.filter(company=tom.parent_company, customer__isnull=True)
+            self.assertEqual(list(unnamed.values_list("order_number", flat=True)), [])
+            shared = Documents.objects.for_user(tom).values_list("file_name", flat=True)
+            self.assertIn("CERT Flow test results SHP-2026-000001", list(shared))
+            self.assertEqual(WorkOrder.objects.get(ERP_id="WO-2024-0042-A").quantity,
+                             Parts.objects.filter(work_order__ERP_id="WO-2024-0042-A").count())
+
+    def test_a_late_delivery_names_whom_to_chase(self):
+        from Tracker.models import Companies
+        from Tracker.services.mes.late_deliveries import company_contact
+        with tenant_context(self.tenant):
+            gld = Companies.objects.get(name="Great Lakes Diesel")
+            contacts = company_contact({gld.id}, ("EXPEDITING", "GENERAL"))
+            self.assertEqual(contacts[gld.id][0], "Dana Fischer")
+
+    def test_an_unstarted_visit_has_no_start(self):
+        """The traveler credits a started visit's assignee as its operator, so a seeded
+        start time on a visit nobody worked put a name on it (2026-10-21)."""
+        from Tracker.models import StepExecution
+        with tenant_context(self.tenant):
+            self.assertFalse(StepExecution.objects.filter(
+                status="PENDING", started_at__isnull=False).exists())
+
+    def test_the_small_track_personas_exist(self):
+        from Tracker.models import User
+        with tenant_context(self.tenant):
+            for email, group in [("priya.buy@demo.ambac.com", "Purchasing"),
+                                 ("luis.recv@demo.ambac.com", "Receiving"),
+                                 ("rosa.ship@demo.ambac.com", "Shipping"),
+                                 ("alex.audit@demo.ambac.com", "Auditor")]:
+                user = User.objects.get(email=email)
+                self.assertTrue(user.user_roles.filter(group__name=group).exists(), email)
+
+    def test_a_declined_unit_waits_to_go_back(self):
+        """Shipping R1 (2026-10-21): a customer's own unit they declined to repair is on
+        the shipping board for its order, to go back unrepaired."""
+        with tenant_context(self.tenant.id):
+            core = Core.objects.get(core_number="CORE-240215-0011")
+            self.assertEqual(core.status, "DECLINED")
+            self.assertIn("ORD-2024-0044", {g["order_number"] for g in ready_to_ship(self.tenant)})
+
+    def test_requirements_has_a_shortage_to_buy(self):
+        """Purchasing and Planner (2026-10-21): the Requirements page was empty, so
+        nobody could practise reading or covering a shortage."""
+        from Tracker.services.mes.requirements import sourcing_requirements
+        with tenant_context(self.tenant.id):
+            self.assertTrue(sourcing_requirements(self.tenant)["source"])

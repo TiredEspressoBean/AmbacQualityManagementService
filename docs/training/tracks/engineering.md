@@ -124,7 +124,38 @@ A defined measurement is only asked for where an instruction captures it.
 
 ---
 
-## 5. What isn't yours
+## 5. A temporary change
+
+**You will:** change the routing for named work orders only, until a date, and take
+one back.
+
+A deviation is a change for some jobs, for a while: the grinding wheel is worn until
+the new one arrives, so bodies off it get an extra check. Everything else keeps
+running to the approved version.
+
+1. **Propose Change** on `Injector Build`. In the draft, change **Body Inspection**'s
+   description to add *check the seat for nicks under a 10x loupe*. **Save**.
+2. **Submit for approval**, and tick **Temporary change (deviation)**: *Applies only
+   to the work orders you name when it is implemented.* Give it an end date: **Ends
+   on**, two weeks out. Approve it as in module 2.
+3. **Implement** the change order. The picker lists the work orders still in flight,
+   with the **Version** each runs on. After module 2 they are all on the version
+   before yours, and they can still take the deviation: *each keeps its own version,
+   with the change on top*. A row is greyed, with its reason under the WO number,
+   where the change doesn't apply cleanly to that version: a step it edits is
+   different there.
+4. Tick `WO-2024-0042-A`, give your reason, and **Implement (1)**.
+5. Open the request again (**Open PCR**). **Temporary change** lists the work orders
+   it's in force for, until the date. **Extend…** moves the end date for all of
+   them. **Move back to baseline** returns one work order to its own version, the
+   one it ran on before.
+
+After the end date, a work order still on the deviation can't proceed until another
+change extends it or it moves back.
+
+---
+
+## 6. What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|
@@ -146,12 +177,15 @@ helping:
   captures it
 - submit, approve and implement it, with a reason for what happens to running work
 - close the change notice with evidence
+- then: *"The wheel's due in a week. Until then, `WO-OPS-02`'s bodies get a loupe
+  check at Body Inspection."* Make it a temporary change for that work order only
 
 Your trainer is watching for:
 
 - [ ] You changed the routing through change control, not by duplicating it.
 - [ ] The characteristic is named for the feature and captured in a substep.
 - [ ] You decided what happens to running work, and said why.
+- [ ] The deviation names one work order and ends on a date.
 
 ## Recording your qualification
 

@@ -55,10 +55,14 @@ class DemoReceivingSeeder(BaseSeeder):
             (c for c in company_map.values() if 'AMBAC' not in (c.name or '')), None)
 
         employees = users.get('employees', []) if isinstance(users, dict) else []
-        # Receiving inspection is the QA inspector's work (no Receiving login is
-        # seeded) — not employees[0], which is the tenant admin.
+        # Receiving inspection is the QA inspector's work — not employees[0], which
+        # is the tenant admin.
         inspectors = [u for u in (users.get('qa_staff') or []) if u != users.get('qa_manager')]             if isinstance(users, dict) else []
         received_by = (inspectors or employees or [None])[0]
+        # The dock books lots in and Purchasing chases them; the inspector inspects.
+        by_email = users.get('by_email', {}) if isinstance(users, dict) else {}
+        receiver = by_email.get('luis.recv@demo.ambac.com') or received_by
+        buyer = by_email.get('priya.buy@demo.ambac.com') or received_by
         if received_by is None:
             self.log("  Warning: no employees available, skipping receiving seed", warning=True)
             return result
@@ -145,7 +149,7 @@ class DemoReceivingSeeder(BaseSeeder):
                     'erp_po_number': f"PO-2026-{suffix}",
                     'promised_date': promised,
                     'received_date': received,
-                    'received_by': received_by,
+                    'received_by': receiver,
                     'quantity': Decimal(qty), 'quantity_remaining': Decimal(qty),
                     'unit_of_measure': 'EA', 'status': 'RECEIVED',
                     # The part type requires one (armed above). These lots carry it
@@ -162,7 +166,7 @@ class DemoReceivingSeeder(BaseSeeder):
         for suffix, qty, days, late in (('0001', '250', 2, False), ('0002', '60', 1, True),
                                         ('0003', '500', 3, False), ('0004', '40', 1, False)):
             lot = make_lot(suffix, qty, days, late=late)
-            receiving_inspection.route_received_lot(lot, received_by)
+            receiving_inspection.route_received_lot(lot, receiver)
             result['lots'].append(lot)
 
         # One ACCEPTED, one REJECTED
@@ -256,7 +260,7 @@ class DemoReceivingSeeder(BaseSeeder):
         try:
             from Tracker.services.mes.material_lot import chase_expected_receipt
             chase_expected_receipt(
-                expected_chased, user=received_by,
+                expected_chased, user=buyer,
                 note="Spoke to their scheduler: held at the plating sub-tier, "
                      "re-promised for Friday.",
                 promised_date=today + timedelta(days=2))

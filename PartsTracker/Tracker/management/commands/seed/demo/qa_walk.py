@@ -585,7 +585,12 @@ class DemoQaWalkSeeder(BaseSeeder):
             cursor = end_at - timedelta(minutes=span)
             for v in visits:
                 minutes = STEP_MINUTES.get(v.step.name, 20)
-                fields = {'entered_at': cursor, 'started_at': cursor + timedelta(minutes=2)}
+                fields = {'entered_at': cursor}
+                # A visit only entered stays unstarted, or the traveler reads its
+                # assignee as having worked it. One that was worked gets a start even
+                # where the walk captured without pressing Start Work.
+                if v.started_at is not None or v.status != 'PENDING':
+                    fields['started_at'] = cursor + timedelta(minutes=2)
                 if v.exited_at is not None:
                     fields['exited_at'] = cursor + timedelta(minutes=minutes)
                 StepExecution.objects.filter(pk=v.pk).update(**fields)
@@ -614,6 +619,13 @@ class DemoQaWalkSeeder(BaseSeeder):
         QualityReports.objects.filter(part__work_order=wo).update(created_at=F('created_at') - delta)
         QuarantineDisposition.objects.filter(part__work_order=wo).update(
             created_at=F('created_at') - delta)
+        # The decision too, or 013's REWORK reads as authorised a day after its
+        # rework visit opened.
+        for stamp in ('decision_authorized_at', 'containment_completed_at',
+                      'scrap_verified_at', 'resolution_completed_at'):
+            QuarantineDisposition.objects.filter(
+                part__work_order=wo, **{f'{stamp}__isnull': False}).update(
+                **{stamp: F(stamp) - delta})
         FPIRecord.objects.filter(work_order=wo).update(created_at=F('created_at') - delta)
         FPIRecord.objects.filter(work_order=wo, inspected_at__isnull=False).update(
             inspected_at=F('inspected_at') - delta)

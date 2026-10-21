@@ -16,7 +16,7 @@ from decimal import Decimal
 
 from Tracker.models import (
     Companies, EdgeType, MeasurementDefinition, Parts, PartsStatus, ProcessStep,
-    StepEdge, StepMeasurementRequirement, Steps,
+    StepEdge, StepMeasurementRequirement, Steps, WorkOrder,
 )
 from Tracker.services.mes import outside_process
 
@@ -209,6 +209,9 @@ class DemoOutsideProcessSeeder(BaseSeeder):
             return part
 
         parts = [make_part(f"{i:03d}") for i in range(1, 7)]
+        # They join the work order, so its quantity counts them (24 built + 6 here).
+        WorkOrder.objects.filter(pk=work_order.pk).update(
+            quantity=Parts.objects.filter(work_order=work_order).count())
 
         # Ready to ship — leave 2 staged at the step (build_ready_to_ship_groups picks them up).
         result["ready_parts"] = parts[0:2]
