@@ -6,7 +6,7 @@ Serializers for remanufacturing models:
 - DisassemblyBOMLine: Expected disassembly yields
 """
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
@@ -38,6 +38,9 @@ class CoreSerializer(SecureModelMixin):
     work_order_status = serializers.CharField(
         source='part.work_order.workorder_status', read_only=True, allow_null=True)
     received_by_name = serializers.SerializerMethodField()
+    awaiting_authorisation = serializers.SerializerMethodField(
+        help_text="While the unit awaits the customer: each code they're asked about, its "
+                  "name and the findings behind it. Empty otherwise.")
     disassembled_by_name = serializers.SerializerMethodField()
     harvested_component_count = serializers.IntegerField(read_only=True)
     usable_component_count = serializers.IntegerField(read_only=True)
@@ -63,7 +66,7 @@ class CoreSerializer(SecureModelMixin):
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
             'work_order', 'part',
             'harvested_component_count', 'usable_component_count',
-            'approved_repair_codes',
+            'approved_repair_codes', 'awaiting_authorisation',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -114,6 +117,13 @@ class CoreSerializer(SecureModelMixin):
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
+
+    @extend_schema_field(inline_serializer(name='AuthorisationScopeItem', many=True, fields={
+        'code': serializers.CharField(), 'name': serializers.CharField(),
+        'why': serializers.ListField(child=serializers.CharField())}))
+    def get_awaiting_authorisation(self, obj):
+        from Tracker.services.reman.release import pending_authorisation_scope
+        return pending_authorisation_scope(obj)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_received_by_name(self, obj):

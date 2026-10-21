@@ -463,7 +463,7 @@ export default function PartDispositionForm({part, disposition, onClose}: { part
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                     <h4 className="font-medium text-sm">Customer Approval Required</h4>
                     <p className="text-sm text-muted-foreground">
-                        {watchDispositionType === "REPAIR" ? "Repair" : "Use As Is"} dispositions may require customer approval.
+                        {watchDispositionType === "REPAIR" ? "Repair" : "Use As Is"} accepts nonconforming product: it requires a customer or design concession reference.
                     </p>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField

@@ -1,6 +1,10 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useCoreLifecycleAction } from "@/hooks/useReleaseCore";
+import { CustomerAnswerDialog } from "@/components/WorkOrderCoresCard";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
 import { IssueCreditButton, ScrapCoreButton } from "@/components/reman/CoreLifecycleActions";
 import { useRetrieveHarvestedComponents } from "@/hooks/useRetrieveHarvestedComponents";
@@ -124,6 +128,7 @@ export function CoreDetailPage() {
                             Plan rebuild
                         </Button>
                     )}
+                    {core.status === 'AWAITING_AUTHORISATION' && <CustomerAnswerActions core={core} />}
                     <WorkThisUnit core={core} />
                     <ScrapCoreButton core={core} />
                     <IssueCreditButton core={core} />
@@ -423,3 +428,36 @@ export function CoreDetailPage() {
 }
 
 export default CoreDetailPage;
+
+
+/** Record the customer's answer from the core itself — it waits here, so the action
+ *  belongs here too (it was only on the teardown work order's card). */
+function CustomerAnswerActions({ core }: { core: { id: string; core_number?: string } }) {
+    const [answering, setAnswering] = useState<boolean | null>(null);
+    const lifecycle = useCoreLifecycleAction();
+    return (
+        <>
+            <Button onClick={() => setAnswering(true)} disabled={lifecycle.isPending}>Approved…</Button>
+            <Button variant="outline" onClick={() => setAnswering(false)} disabled={lifecycle.isPending}>Declined…</Button>
+            {answering !== null && (
+                <CustomerAnswerDialog
+                    coreId={String(core.id)}
+                    coreNumber={core.core_number ?? "Core"}
+                    approved={answering}
+                    pending={lifecycle.isPending}
+                    onCancel={() => setAnswering(null)}
+                    onConfirm={async (fields) => {
+                        try {
+                            await lifecycle.mutateAsync({ id: String(core.id), action: "record_authorisation",
+                                                          approved: answering, ...fields });
+                            toast.success(`${core.core_number ?? "Core"} — ${answering ? "approved, rebuild resumed" : "declined"}`);
+                            setAnswering(null);
+                        } catch {
+                            // the global mutation handler shows the server's reason
+                        }
+                    }}
+                />
+            )}
+        </>
+    );
+}

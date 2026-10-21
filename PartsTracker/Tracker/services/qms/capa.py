@@ -118,6 +118,31 @@ def transition_capa(capa: CAPA, new_status, user, notes: str | None = None) -> C
     return capa
 
 
+def capa_plan_refusal(capa) -> str | None:
+    """Why the CAPA's plan can't be worked yet, or None if it can.
+
+    A Major/Critical CAPA's plan is approved by a QA Manager or Production Manager
+    (user, 2026-10-20):
+    while its approval is PENDING or was REJECTED, corrective and preventive work and
+    the root-cause analysis wait. Containment never waits — stopping the immediate
+    harm can't hang on a sign-off — so callers check this for everything else. A CAPA
+    that needs no approval (no template, or a minor severity) is never held."""
+    if capa is None or capa.approval_status not in ('PENDING', 'REJECTED'):
+        return None
+    if capa.approval_status == 'REJECTED':
+        return (f"{capa.capa_number}'s plan was rejected; revise it and request approval "
+                f"again. Only containment can be worked until it's approved.")
+    return (f"{capa.capa_number}'s plan is awaiting approval (a QA Manager or Production "
+            f"Manager). Only containment can be worked until then.")
+
+
+def task_work_refusal(task) -> str | None:
+    """`capa_plan_refusal` for working a task: containment is always workable."""
+    if task.task_type == CapaTaskType.CONTAINMENT:
+        return None
+    return capa_plan_refusal(task.capa)
+
+
 def complete_capa_task(
     task: CapaTasks,
     user,
@@ -139,6 +164,10 @@ def complete_capa_task(
     Raises:
         ValueError: If signature requirements are unmet or password invalid
     """
+    refusal = task_work_refusal(task)
+    if refusal:
+        raise ValueError(refusal)
+
     if task.requires_signature:
         if not signature_data:
             raise ValueError("Signature is required for this task")

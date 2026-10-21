@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from Tracker.services.core.clock import tenant_today
@@ -18,6 +19,114 @@ from Tracker.services.core.clock import tenant_today
 from Tracker.models import QuarantineDisposition
 
 logger = logging.getLogger(__name__)
+
+
+def _auto_disposition_description(report) -> str:
+    """What failed, in words. A report captured at a step usually has no description
+    of its own, which left every auto-opened disposition reading "No description"."""
+    if (report.description or "").strip():
+        return f"Failed quality report: {report.description.strip()}"
+    where = report.step.name if report.step_id else "inspection"
+    findings = []
+    if report.pk:
+        findings += [d for d in report.defects.select_related("error_type")
+                     .values_list("error_type__error_name", flat=True)[:3] if d]
+        # The readings that failed, with their limits, so QA can decide from the
+        # disposition without opening the report.
+        for m in report.measurements.select_related("definition").filter(is_within_spec=False)[:3]:
+            findings.append(_reading_text(m))
+    return f"Failed {where}" + (f": {', '.join(findings)}" if findings else "")
+
+
+def _findings(report) -> list[str]:
+    """A failed report's findings in words: its own description, else its defects and
+    out-of-spec readings."""
+    if (report.description or "").strip():
+        return [report.description.strip()]
+    out = [d for d in report.defects.select_related("error_type")
+           .values_list("error_type__error_name", flat=True)[:3] if d]
+    out += [_reading_text(m) for m in
+            report.measurements.select_related("definition").filter(is_within_spec=False)[:3]]
+    return out
+
+
+def refresh_disposition_description(disposition) -> None:
+    """Rewrite an auto-written description from every report the disposition now holds.
+
+    A step's captures land after its report is first saved FAIL (defects, a second
+    report joining), so the description written at that moment named only the step.
+    Only an auto-written one ("Failed …") is rewritten — never what a person typed."""
+    if not (disposition.description or "").startswith("Failed"):
+        return
+    findings = []
+    for r in disposition.quality_reports.order_by("created_at"):
+        for f in _findings(r):
+            if f not in findings:
+                findings.append(f)
+    where = disposition.step.name if disposition.step_id else "inspection"
+    text = f"Failed {where}" + (f": {', '.join(findings)}" if findings else "")
+    if text != disposition.description:
+        disposition.description = text
+        disposition.save(update_fields=["description"])
+
+
+def _reading_text(m) -> str:
+    """'Bore Diameter 4.007 mm (limits 3.995–4.005)' — or the pass/fail verdict."""
+    d = m.definition
+    if m.value_numeric is None:
+        return f"{d.label} {m.value_pass_fail or 'FAIL'}"
+    unit = f" {d.unit}" if d.unit else ""
+    value = f"{m.value_numeric:g}"
+    limits = ""
+    if d.nominal is not None and (d.upper_tol is not None or d.lower_tol is not None):
+        lo = f"{float(d.nominal - (d.lower_tol or 0)):g}"
+        hi = f"{float(d.nominal + (d.upper_tol or 0)):g}"
+        limits = f" (limits {lo}–{hi})"
+    return f"{d.label} {value}{unit}{limits}"
+
+
+def open_disposition_for_failed_report(report) -> QuarantineDisposition:
+    """The disposition a failed in-process report belongs to: the one already open for
+    this part at this step on this visit, or a new one.
+
+    One nonconformance is one decision. A step can file several reports for a single
+    finding — a visual with a defect and a measurement that's out — and each opened
+    its own disposition, so QA owed two decisions and had to close both before the
+    part could move (walk 2026-10-20). A later visit, or another step, is a new
+    finding and opens its own. Auto-opened dispositions are unassigned: the QA queue
+    takes them (user decision 2026-10-20).
+    """
+    from Tracker.models import StepExecution
+
+    part, step = report.part, report.step
+    if part is not None and step is not None:
+        visit = (StepExecution.objects  # tenant-safe: scoped by the part FK
+                 .filter(archived=False, part=part, step=step)
+                 .order_by('-entered_at').first())
+        if visit is not None:
+            same_finding = (QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
+                            .filter(archived=False, part=part, step=step,
+                                    current_state__in=['OPEN', 'IN_PROGRESS'],
+                                    created_at__gte=visit.entered_at)
+                            .order_by('created_at').first())
+            if same_finding is not None:
+                same_finding.quality_reports.add(report)
+                refresh_disposition_description(same_finding)
+                return same_finding
+
+    existing_rework_count = 0
+    if part is not None and step is not None:
+        existing_rework_count = QuarantineDisposition.objects.filter(  # tenant-safe: part FK
+            part=part, step=step, disposition_type='REWORK').count()
+    disposition = QuarantineDisposition.objects.create(
+        assigned_to=None,
+        part=part,
+        step=step,
+        rework_attempt_at_step=existing_rework_count + 1,
+        description=_auto_disposition_description(report),
+    )
+    disposition.quality_reports.add(report)
+    return disposition
 
 
 def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) -> None:
@@ -112,6 +221,19 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
             return
         if terminal_rank.get(part.part_status, 0) > terminal_rank.get(new_status, 0):
             return  # current terminal status outranks this decision — don't regress it
+        # A decision that puts the part back to work (use as is, rework) releases it
+        # only when nothing else on it is still undecided: another open nonconformance
+        # keeps it held (walk 2026-10-20 — a use-as-is on one disposition put the part
+        # back in production while its twin was OPEN). The last decision releases it.
+        # Terminal decisions (scrap, return) don't wait.
+        if disposition.disposition_type in ('USE_AS_IS', 'REWORK', 'REPAIR'):
+            undecided_elsewhere = (QuarantineDisposition.objects  # tenant-safe: part FK
+                                   .filter(part_id=part.pk, archived=False,
+                                           current_state__in=['OPEN', 'IN_PROGRESS'])
+                                   .filter(Q(disposition_type__isnull=True) | Q(disposition_type=''))
+                                   .exclude(pk=disposition.pk).exists())
+            if undecided_elsewhere:
+                return
         # Loop-back-only guard: REWORK/REPAIR only routes parts that are still
         # held awaiting a decision. If the part has already moved on
         # (AWAITING_QA, IN_PROGRESS, REWORK_IN_PROGRESS, READY, etc.), the

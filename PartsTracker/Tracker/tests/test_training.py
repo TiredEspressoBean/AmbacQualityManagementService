@@ -407,6 +407,26 @@ class TrainingAuthorizationTests(TrainingModuleTestCase):
         self.assertEqual(required, {self.cmm_training: CompetencyLevel.EXPERT})
 
 
+class RenewedTrainingDoesNotRemindTests(TrainingModuleTestCase):
+    """A record the person has since renewed (a later one of the same type) isn't an
+    expiry reminder (walk 2026-10-20: a renewed L1 stayed under Expiring Soon)."""
+
+    def test_a_renewed_record_drops_out_of_the_expiring_list(self):
+        from datetime import timedelta
+        from Tracker.viewsets.training import _not_superseded
+        old = TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training, tenant=self.tenant,
+            completed_date=date.today() - timedelta(days=360),
+            expires_date=date.today() + timedelta(days=5), level=CompetencyLevel.TRAINEE)
+        new = TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training, tenant=self.tenant,
+            completed_date=date.today(), expires_date=date.today() + timedelta(days=365),
+            level=CompetencyLevel.QUALIFIED)
+        kept = set(_not_superseded(TrainingRecord.objects.filter(pk__in=[old.pk, new.pk]))
+                   .values_list('pk', flat=True))
+        self.assertEqual(kept, {new.pk})
+
+
 class GetQualifiedUsersTests(TrainingModuleTestCase):
     """Tests for get_qualified_users_for_step."""
 

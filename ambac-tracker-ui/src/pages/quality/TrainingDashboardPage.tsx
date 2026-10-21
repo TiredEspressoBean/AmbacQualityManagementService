@@ -79,7 +79,11 @@ export function TrainingDashboardPage() {
                         <div className="text-2xl font-bold text-destructive">
                             {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.expired ?? 0)}
                         </div>
-                        <p className="text-xs text-muted-foreground">Needs renewal</p>
+                        {/* Who: the count alone didn't say (renewed records aren't counted). */}
+                        <Link to="/quality/training/records" search={{ status: 'expired' }}
+                              className="text-xs text-muted-foreground underline underline-offset-2">
+                            Needs renewal — see who
+                        </Link>
                     </CardContent>
                 </Card>
             </div>

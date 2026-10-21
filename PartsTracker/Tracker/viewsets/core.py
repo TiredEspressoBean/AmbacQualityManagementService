@@ -953,6 +953,9 @@ class VersionedLikeTheAPIImport(BaseCSVImportSerializer):
                             'change_description': "Imported from a spreadsheet"})
 
 
+@extend_schema_view(list=extend_schema(parameters=[OpenApiParameter(
+    name='supplying', type=bool, required=False,
+    description="true: only companies that supply something (a lot, a qualification, or outside processing).")]))
 class CompanyViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                      viewsets.ModelViewSet):
     """Company management - scoped to tenant and user permissions."""
@@ -973,7 +976,13 @@ class CompanyViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, 
 
         # Apply tenant scoping first, then user-level filtering
         qs = super().get_queryset()
-        # Companies.objects.for_user filters based on user permissions
+        # ?supplying=true — companies that actually supply something: a lot, a
+        # qualification, or outside processing. is_supplier defaults to true, so it named
+        # every customer and the tenant's own company as a supplier on the scorecard.
+        if self.request.query_params.get('supplying') == 'true':
+            from django.db.models import Q
+            qs = qs.filter(Q(supplied_lots__isnull=False) | Q(qualifications__isnull=False)
+                           | Q(outside_process_shipments__isnull=False)).distinct()
         return qs
 
     @extend_schema(responses={200: inline_serializer(name="SupplierScorecard", fields={

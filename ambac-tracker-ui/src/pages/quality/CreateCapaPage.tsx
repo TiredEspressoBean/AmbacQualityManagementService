@@ -1,5 +1,7 @@
 "use client"
 
+import { queryOptions, useQueries } from "@tanstack/react-query"
+import { api } from "@/lib/api/generated"
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect } from "react"
@@ -154,6 +156,12 @@ function useDebounce<T>(value: T, delay: number): T {
  *  field configs), so gating here rather than at each call site means a new
  *  entry point can't reintroduce the "fill in the whole form, eat a 403 on
  *  submit" path. Individual buttons are hidden too where it's cheap. */
+const linkedReportOptions = (id: string) =>
+    queryOptions({
+        queryKey: ["quality-reports", "detail", id] as const,
+        queryFn: () => api.api_QualityReports_retrieve({ params: { id } }),
+    })
+
 export function CreateCapaPage() {
     const { has, isLoading } = usePermissionSet()
 
@@ -226,11 +234,17 @@ function CreateCapaForm() {
     const initialQualityReports = parseQualityReports()
 
     // Use debounced values for API calls to avoid excessive requests
-    const { data: users } = useRetrieveUsers({ search: debouncedUserSearch, limit: 50 })
+    const { data: users } = useRetrieveUsers({ search: debouncedUserSearch, limit: 50, user_type: "INTERNAL", is_active: true })
     const { data: parts } = useRetrieveParts({ search: debouncedPartSearch, limit: 50 })
     const { data: steps } = useRetrieveSteps({ search: debouncedStepSearch, limit: 50 })
     const { data: workOrders } = useRetrieveWorkOrders({ search: debouncedWorkOrderSearch, limit: 50 })
     const { data: qualityReports } = useQualityReports({ search: debouncedQualityReportSearch, limit: 50 })
+    // Reports linked from ?quality_reports= may not be in the first page of search
+    // results; fetched by id so their chips read by number, not a raw id.
+    const linkedReports = useQueries({
+        queries: (initialQualityReports ?? []).map((id) => linkedReportOptions(id)),
+        combine: (results) => results.map((r) => r.data).filter((r): r is NonNullable<typeof r> => !!r),
+    })
     const { data: dispositions } = useRetrieveQuarantineDispositions({ search: debouncedDispositionSearch, limit: 50 })
     const createCapa = useCreateCapa()
     const createRcaRecord = useCreateRcaRecord()
@@ -461,7 +475,7 @@ function CreateCapaForm() {
                                                 </SelectContent>
                                             </Select>
                                             <FormDescription>
-                                                Critical/Major require approval before closure
+                                                Critical/Major: a QA Manager or Production Manager approves the plan before work beyond containment begins
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -529,7 +543,11 @@ function CreateCapaForm() {
                                                     <Combobox
                                                         value={field.value == null ? null : String(field.value)}
                                                         onChange={(v) => v && form.setValue("assigned_to", Number(v))}
-                                                        options={(users?.results ?? []).map((u) => ({ value: String(u.id), label: u.username || u.email || `User #${u.id}` }))}
+                                                        options={(users?.results ?? []).map((u) => ({
+                                                            value: String(u.id),
+                                                            // Internal staff only (a customer portal user can't own a CAPA), by name.
+                                                            label: `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || u.username || u.email || "User",
+                                                        }))}
                                                         onSearch={setUserSearch}
                                                         placeholder="Select assignee (optional)"
                                                         searchPlaceholder="Search users..."
@@ -693,9 +711,10 @@ function CreateCapaForm() {
                                             <MultiPicker
                                                 label="Quality reports"
                                                 hideLabel
-                                                items={(qualityReports?.results ?? []).map((r) => ({
+                                                items={linkedReports.concat((qualityReports?.results ?? [])
+                                                    .filter((r) => !linkedReports.some((l) => l.id === r.id))).map((r) => ({
                                                     id: r.id,
-                                                    label: `Report #${r.id} - ${r.status}`,
+                                                    label: `${r.report_number ?? "Quality report"} · ${r.status}`,
                                                     ...(r.description ? { description: r.description.length > 50 ? `${r.description.slice(0, 50)}…` : r.description } : {}),
                                                 }))}
                                                 selected={field.value ?? []}

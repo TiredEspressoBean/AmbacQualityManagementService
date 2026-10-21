@@ -46,6 +46,89 @@ class UnassignedDispositionTests(_Fixture):
         self.assertIn(str(disp.id), ids)
 
 
+class OneFindingOneDispositionTests(_Fixture):
+    """Two failed reports on one visit (a visual with a defect, a measurement out)
+    are one finding: the second joins the open disposition (walk 2026-10-20). A new
+    visit is a new finding."""
+
+    def _fail(self):
+        return QualityReports.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                             status="FAIL", detected_by=self.user_a)
+
+    def test_a_second_failure_on_the_same_visit_joins_the_open_disposition(self):
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                     visit_number=1, status="IN_PROGRESS")
+        visual, bore = self._fail(), self._fail()
+        disp, = QuarantineDisposition.objects.filter(part=self.part)
+        self.assertEqual(set(disp.quality_reports.all()), {visual, bore})
+
+    def test_a_new_visit_opens_its_own(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        first = StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                             visit_number=1, status="COMPLETED")
+        self._fail()
+        StepExecution.objects.filter(pk=first.pk).update(
+            entered_at=timezone.now() - timedelta(hours=2), exited_at=timezone.now() - timedelta(hours=1))
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                     visit_number=2, status="IN_PROGRESS")
+        self._fail()
+        self.assertEqual(QuarantineDisposition.objects.filter(part=self.part).count(), 2)
+
+
+class DecidingADispositionTests(_Fixture):
+    """QA Manager module 2 walk (2026-10-20)."""
+
+    def _disposition(self, step=None):
+        return QuarantineDisposition.objects.create(
+            tenant=self.tenant_a, part=self.part, step=step or self.step, assigned_to=self.user_a)
+
+    def test_releasing_waits_for_every_open_decision_on_the_part(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        Parts.objects.filter(pk=self.part.pk).update(part_status="QUARANTINED")
+        other_step = Steps.objects.create(tenant=self.tenant_a, name="Test", part_type=self.pt)
+        first, second = self._disposition(), self._disposition(other_step)
+        decide_disposition(first, disposition_type="USE_AS_IS", authorized_by=self.user_a,
+                           customer_approval={"reference": "ENG-CONC-0041"})
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, "QUARANTINED")   # the second is undecided
+        decide_disposition(second, disposition_type="USE_AS_IS", authorized_by=self.user_a,
+                           customer_approval={"reference": "ENG-CONC-0042"})
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.part_status, "IN_PROGRESS")
+
+    def test_an_edit_does_not_clear_the_recorded_approval_date(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        disp = self._disposition()
+        decide_disposition(disp, disposition_type="USE_AS_IS", authorized_by=self.user_a,
+                           customer_approval={"reference": "ENG-CONC-0041", "date": None})
+        disp.refresh_from_db()
+        self.assertIsNotNone(disp.customer_approval_date)
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, [
+            'view_quarantinedisposition', 'change_quarantinedisposition', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        resp = self.client.patch(f"/api/QuarantineDispositions/{disp.id}/",
+                                 {"customer_approval_date": None, "resolution_notes": "Concession on file"},
+                                 format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        disp.refresh_from_db()
+        self.assertIsNotNone(disp.customer_approval_date)
+
+    def test_the_description_names_the_failing_reading(self):
+        from Tracker.models import MeasurementDefinition, MeasurementResult
+        bore = MeasurementDefinition.objects.create(
+            tenant=self.tenant_a, label="Bore Diameter", type="NUMERIC", unit="mm",
+            nominal=4.0, upper_tol=0.005, lower_tol=0.005, step=self.step)
+        qr = QualityReports.objects.create(tenant=self.tenant_a, part=self.part, step=self.step,
+                                           status="PENDING", detected_by=self.user_a)
+        MeasurementResult.objects.create(tenant=self.tenant_a, report=qr, definition=bore,
+                                         value_numeric=4.007, created_by=self.user_a)
+        qr.status = "FAIL"
+        qr.save()
+        disp = QuarantineDisposition.objects.get(quality_reports=qr)
+        self.assertEqual(disp.description, "Failed Assemble: Bore Diameter 4.007 mm (limits 3.995–4.005)")
+
+
 class QuarantinedPartIsNotStartedTests(_Fixture):
 
     def test_start_names_the_disposition(self):

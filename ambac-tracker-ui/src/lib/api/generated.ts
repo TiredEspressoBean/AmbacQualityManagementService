@@ -160,6 +160,10 @@ export type ApprovalRequest = {
   responses: Array<ApprovalResponse>;
   pending_approvers: Array<unknown>;
   is_overdue: boolean;
+  /**
+   * The viewer requested this and may decide it themselves (with a justification): the template allows it, or nobody else can approve it.
+   */
+  can_self_approve: boolean;
   requested_at: string;
   completed_at: string | null;
   created_at: string;
@@ -1819,6 +1823,10 @@ export type Core = {
   harvested_component_count: number;
   usable_component_count: number;
   approved_repair_codes: Array<string>;
+  /**
+   * While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise.
+   */
+  awaiting_authorisation: Array<AuthorisationScopeItem>;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -1864,6 +1872,11 @@ export type CoreStatusEnum =
   | "RETURNED_UNREPAIRED"
   | "HARVESTED"
   | "SCRAPPED";
+export type AuthorisationScopeItem = {
+  code: string;
+  name: string;
+  why: Array<string>;
+};
 export type CoreAssignIdentityRequest = {
   lot: string;
   condition_grade: ConditionGradeEnum;
@@ -2943,6 +2956,11 @@ export type Equipments = {
   location_name: string | null;
   status?: EquipmentsStatusEnum | undefined;
   calibration_status: string | null;
+  requires_calibration: boolean;
+  /**
+   * Days between calibrations: the gauge's own interval, else its type's.
+   */
+  calibration_interval_effective: number | null;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
@@ -18370,6 +18388,7 @@ const ApprovalRequest = z.object({
   responses: z.array(ApprovalResponse),
   pending_approvers: z.array(z.unknown()),
   is_overdue: z.boolean(),
+  can_self_approve: z.boolean(),
   requested_at: z.string().datetime({ offset: true }),
   completed_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
@@ -19193,6 +19212,7 @@ const CalibrationStats = z.object({
   current_calibrations: z.number().int(),
   due_soon: z.number().int(),
   overdue: z.number().int(),
+  failed: z.number().int(),
   compliance_rate: z.number(),
 });
 const PaginatedCapaTasksList = z.object({
@@ -19477,6 +19497,11 @@ const CoreRequest = z.object({
   core_credit_issued: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
+const AuthorisationScopeItem = z.object({
+  code: z.string(),
+  name: z.string(),
+  why: z.array(z.string()),
+});
 const Core = z.object({
   id: z.string().uuid(),
   core_number: z.string().max(100).optional(),
@@ -19515,6 +19540,7 @@ const Core = z.object({
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
   approved_repair_codes: z.array(z.string()),
+  awaiting_authorisation: z.array(AuthorisationScopeItem),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -20303,6 +20329,8 @@ const Equipments = z.object({
   location_name: z.string().nullable(),
   status: EquipmentsStatusEnum.optional(),
   calibration_status: z.string().nullable(),
+  requires_calibration: z.boolean(),
+  calibration_interval_effective: z.number().int().nullable(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
@@ -28789,6 +28817,7 @@ export const schemas = {
   CoreList,
   PaginatedCoreListList,
   CoreRequest,
+  AuthorisationScopeItem,
   Core,
   PatchedCoreRequest,
   CoreApproveRepairInputRequest,
@@ -33170,6 +33199,11 @@ Provides list, create, retrieve, update, and delete operations.`,
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "supplying",
+        type: "Query",
+        schema: z.boolean().optional(),
+      },
     ],
     response: PaginatedCompanyList,
   },
@@ -36915,6 +36949,11 @@ Usage:
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),
+      },
+      {
+        name: "requires_calibration",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
       {
         name: "search",

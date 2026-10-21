@@ -2,7 +2,7 @@ import {createRootRouteWithContext, createRoute, createRouter, lazyRouteComponen
 import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
     ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
-    ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch,
+    ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch, CalibrationRecordNewSearch,
 } from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -943,6 +943,7 @@ export const calibrationExposureRoute = createRoute({
 export const calibrationRecordCreateRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/quality/calibrations/records/new',
+    validateSearch: CalibrationRecordNewSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditCalibrationRecordFormPage")),
 });
 

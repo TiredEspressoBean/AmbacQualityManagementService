@@ -99,3 +99,9 @@ export const ApprovalsHistorySearch = z.object({
     myRequests: z.coerce.boolean().optional().catch(undefined),
 });
 export type ApprovalsHistorySearchParams = z.infer<typeof ApprovalsHistorySearch>;
+
+/** New calibration record — `?equipment=` opens it on that gauge (from the calibration
+ *  dashboard's overdue / due-soon rows). */
+export const CalibrationRecordNewSearch = z.object({
+    equipment: z.string().uuid().optional().catch(undefined),
+});

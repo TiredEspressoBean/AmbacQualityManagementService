@@ -74,7 +74,11 @@ export function NcrAnalysisPage() {
         id: String(q.id),
         report: q.report_number || "—",
         item: q.part_display || "—",
-        description: q.description || "",
+        // A report captured at a step usually has no description of its own: say what
+        // failed — its defects, else the step — rather than leave the Finding blank.
+        description: q.description
+            || ((q.errors_info ?? []) as Array<{ name?: string }>).map((e) => e.name).filter(Boolean).join(", ")
+            || (q.step_info?.name ? `Failed ${q.step_info.name}` : ""),
         created: q.created_at ? new Date(q.created_at).toLocaleDateString() : "",
     })), [undecided]);
 

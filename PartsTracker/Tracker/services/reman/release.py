@@ -154,6 +154,25 @@ def request_authorisation(core, user=None):
     return core, over_and_above
 
 
+def pending_authorisation_scope(core) -> list[dict]:
+    """What the customer is being asked about: each code awaiting their answer, its
+    name, and the findings behind it — so whoever records the answer sees what was
+    agreed to. Empty unless the unit is AWAITING_AUTHORISATION."""
+    from Tracker.models import RepairCode
+    from Tracker.services.reman.repair_routing import codes_needing_approval, raised_codes
+
+    if core.status != 'AWAITING_AUTHORISATION':
+        return []
+    codes = codes_needing_approval(core)
+    if not codes:
+        return []
+    why = raised_codes(core)
+    names = dict(RepairCode.objects  # tenant-safe: .objects auto-scopes
+                 .filter(code__in=codes, archived=False).values_list('code', 'name'))
+    return [{'code': c, 'name': names.get(c, ''), 'why': [str(w) for w in why.get(c, [])]}
+            for c in codes]
+
+
 @transaction.atomic
 def record_authorisation(core, approved: bool, user=None, note: str = '', *,
                          contact: str = '', method: str = '', reference: str = ''):

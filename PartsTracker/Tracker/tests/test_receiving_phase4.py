@@ -168,6 +168,9 @@ class WholeLotTests(_Fixture):
         self.assertEqual(resp.json()["status"], "AWAITING_INSPECTION")
         disposition.refresh_from_db()
         self.assertEqual(disposition.current_state, "CLOSED")
+        # Nothing was decided: it doesn't read as a return to supplier that never happened.
+        self.assertEqual(disposition.disposition_type, "")
+        self.assertIn("asked: Return to Supplier", disposition.resolution_notes)
 
     def test_rejecting_the_rest_of_an_accepted_lot(self):
         lot = self._lot()

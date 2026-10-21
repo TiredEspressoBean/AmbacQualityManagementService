@@ -115,7 +115,9 @@ export default function EditTrainingRecordFormPage() {
             user: undefined,
             training_type: undefined,
             completed_date: "",
-            level: 3,
+            // No default: the level is what the person is qualified to do (Level 3 lets
+            // them work unsupervised), so it's chosen, never assumed.
+            level: undefined,
             expires_date: null,
             trainer: null,
             notes: "",
@@ -141,6 +143,10 @@ export default function EditTrainingRecordFormPage() {
     const updateRecord = useUpdateTrainingRecord();
 
     function onSubmit(values: FormValues) {
+        if (values.level == null) {
+            form.setError("level", { message: "Choose the competency level." });
+            return;
+        }
         const submitData = {
             user: values.user,
             training_type: values.training_type,
@@ -282,7 +288,7 @@ export default function EditTrainingRecordFormPage() {
                         name="level"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Competency Level {required.level && "*"}</FormLabel>
+                                <FormLabel>Competency Level *</FormLabel>
                                 <Select
                                     value={field.value != null ? String(field.value) : "3"}
                                     onValueChange={(v) => field.onChange(Number(v))}
@@ -325,7 +331,7 @@ export default function EditTrainingRecordFormPage() {
                                                     !field.value && "text-muted-foreground"
                                                 )}
                                             >
-                                                {field.value ? format(parseISO(field.value), "PPP") : "No expiration"}
+                                                {field.value ? format(parseISO(field.value), "PPP") : "From the training type's validity"}
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -340,7 +346,7 @@ export default function EditTrainingRecordFormPage() {
                                     </PopoverContent>
                                 </Popover>
                                 <FormDescription>
-                                    Leave empty if training never expires. Auto-calculated from training type if not set.
+                                    Leave empty to use the training type's validity period (it never expires only if the type has none).
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

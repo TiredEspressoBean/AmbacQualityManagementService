@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { apiErrorBody, apiErrorField, apiErrorMessage } from "@/lib/api/describeApiError";
 import {
     Dialog,
@@ -46,10 +47,14 @@ interface ApprovalResponseModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    /** The viewer requested this and may decide it themselves (the request's
+     *  can_self_approve): a justification is then required, and kept on record. */
+    selfApproval?: boolean;
 }
 
 export function ApprovalResponseModal({
     approvalRequestId,
+    selfApproval = false,
     contentTitle,
     contentType,
     isOpen,
@@ -97,6 +102,11 @@ export function ApprovalResponseModal({
             return;
         }
 
+        if (selfApproval && comments.trim().length < 10) {
+            setError("You're deciding your own request: give the justification (at least 10 characters).");
+            return;
+        }
+
         if (decision === 'DELEGATED' && !delegateTo) {
             setError("Please select a user to delegate to");
             return;
@@ -113,6 +123,8 @@ export function ApprovalResponseModal({
 
         submitResponse(payload, {
             onSuccess: () => {
+                toast.success(decision === "APPROVED" ? "Approved"
+                    : decision === "REJECTED" ? "Rejected" : "Response recorded");
                 handleClose();
                 onSuccess?.();
             },
@@ -181,10 +193,21 @@ export function ApprovalResponseModal({
                         </RadioGroup>
                     </div>
 
+                    {selfApproval && (
+                        <Alert>
+                            <AlertDescription>
+                                You requested this approval, and nobody else can decide it. You may
+                                decide it yourself; it's recorded as self-approved, with your
+                                justification.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {/* Comments */}
                     <div className="space-y-2">
                         <Label htmlFor="comments">
-                            Comments {decision === 'REJECTED' && <span className="text-destructive">*</span>}
+                            {selfApproval ? "Justification" : "Comments"}
+                            {(decision === 'REJECTED' || selfApproval) && <span className="text-destructive">*</span>}
                         </Label>
                         <Textarea
                             id="comments"

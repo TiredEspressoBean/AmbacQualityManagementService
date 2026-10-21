@@ -13,6 +13,8 @@ export interface ApprovalResponse {
     decision: ApprovalResponseDecisionEnum;
     decision_display: string;
     comments?: string;
+    /** The requester decided their own request (only where nobody else could). */
+    self_approved?: boolean;
     signature_data?: string;
     signature_meaning?: string;
     decision_date: string;
@@ -48,6 +50,8 @@ export interface ApprovalRequest {
     reason?: string;
     notes?: string;
     is_overdue?: boolean;
+    /** The viewer requested this and may decide it themselves, with a justification. */
+    can_self_approve?: boolean;
     // `required_approvers` used to be declared here as a flat id list. The
     // API never emits it — ApprovalRequestSerializer sends
     // `required_approvers_info` — so the declaration was a lie that let

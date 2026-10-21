@@ -43,7 +43,7 @@ export function CalibrationDashboardPage() {
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6 mb-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Equipment</CardTitle>
@@ -93,6 +93,19 @@ export function CalibrationDashboardPage() {
                             {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.overdue ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">Past due</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Failed</CardTitle>
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-destructive">
+                            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.failed ?? 0)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Latest calibration failed: out of use</p>
                     </CardContent>
                 </Card>
 
@@ -168,9 +181,12 @@ export function CalibrationDashboardPage() {
                         ) : (
                             <div className="space-y-2">
                                 {dueSoon.slice(0, 5).map((record: any) => (
-                                    <div
+                                    <Link
                                         key={record.id}
-                                        className="p-2 rounded-lg border"
+                                        to="/quality/calibrations/records/new"
+                                        search={{ equipment: record.equipment }}
+                                        title="Record its calibration"
+                                        className="block p-2 rounded-lg border transition-colors hover:bg-accent"
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-medium text-sm truncate">
@@ -186,7 +202,7 @@ export function CalibrationDashboardPage() {
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))}
                                 {dueSoon.length > 5 && (
                                     <Link
@@ -229,9 +245,12 @@ export function CalibrationDashboardPage() {
                         ) : (
                             <div className="space-y-2">
                                 {overdue.slice(0, 5).map((record: any) => (
-                                    <div
+                                    <Link
                                         key={record.id}
-                                        className="p-2 rounded-lg border border-destructive/50"
+                                        to="/quality/calibrations/records/new"
+                                        search={{ equipment: record.equipment }}
+                                        title="Record its calibration"
+                                        className="block p-2 rounded-lg border border-destructive/50 transition-colors hover:bg-accent"
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-medium text-sm truncate">
@@ -247,7 +266,7 @@ export function CalibrationDashboardPage() {
                                                 </span>
                                             )}
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))}
                                 {overdue.length > 5 && (
                                     <Link

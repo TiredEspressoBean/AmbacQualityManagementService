@@ -212,3 +212,40 @@ class InspectionRecordTests(_Fixture):
         ser = ReceivingInspectionRecordParamsSerializer(data={"lot_id": str(theirs.id)},
                                                         context={"user": self.user})
         self.assertFalse(ser.is_valid())
+
+
+class SuspensionReachesTheDockTests(_Fixture):
+    """Suspending a supplier's qualification holds its lots still at the dock, the same
+    hold receipt gives — they used to stay acceptable (walk 2026-10-20). Accepted stock
+    is untouched."""
+
+    def test_a_lot_awaiting_inspection_is_held_and_accepted_stock_is_not(self):
+        from Tracker.models import MaterialLot
+        from Tracker.services.qms.supplier_qualification import suspend
+        from Tracker.models import SupplierQualification
+        qual = SupplierQualification.objects.create(
+            tenant=self.tenant, supplier=self.acme, scope_type="COMMODITY", scope_label="Elastomer seals",
+            status="APPROVED")
+        waiting = self._receive(material=str(self.seal.id), quantity="50", lot_number="S-1").json()
+        stocked = self._receive(material=str(self.seal.id), quantity="50", lot_number="S-2").json()
+        MaterialLot.objects.filter(pk=waiting["id"]).update(status="AWAITING_INSPECTION")
+        suspend(qual, user=self.user, reason="Audit finding")
+        w, s = MaterialLot.objects.get(pk=waiting["id"]), MaterialLot.objects.get(pk=stocked["id"])
+        self.assertEqual((w.status, w.hold_reason), ("QUARANTINE", "SUPPLIER_UNQUALIFIED"))
+        self.assertEqual(s.status, "ACCEPTED")
+
+    def test_a_lot_held_for_something_else_takes_the_hold_too(self):
+        """Holds are additive: a lot already held (a whole-lot request) keeps the supplier
+        hold when the other clears, rather than going back to inspection unheld."""
+        from Tracker.models import MaterialLot, SupplierQualification
+        from Tracker.services.qms import lot_holds
+        from Tracker.services.qms.supplier_qualification import suspend
+        qual = SupplierQualification.objects.create(
+            tenant=self.tenant, supplier=self.acme, scope_type="COMMODITY", scope_label="Elastomer seals",
+            status="APPROVED")
+        lot = MaterialLot.objects.get(pk=self._receive(material=str(self.seal.id), quantity="50",
+                                                       lot_number="S-3").json()["id"])
+        lot_holds.hold(lot, "WHOLE_LOT_REJECT_REQUESTED")
+        suspend(qual, user=self.user, reason="Audit finding")
+        lot.refresh_from_db()
+        self.assertEqual(set(lot_holds.holds(lot)), {"WHOLE_LOT_REJECT_REQUESTED", "SUPPLIER_UNQUALIFIED"})

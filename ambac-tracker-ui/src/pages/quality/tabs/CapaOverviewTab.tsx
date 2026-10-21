@@ -64,7 +64,7 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                         <div>
                             <span className="text-muted-foreground">Initiated Date</span>
                             <p className="font-medium">
-                                {capa?.initiated_date ? new Date(capa.initiated_date).toLocaleDateString() : "—"}
+                                {capa?.initiated_date ? parseDateOnly(capa.initiated_date).toLocaleDateString() : "—"}
                             </p>
                         </div>
                         <div>

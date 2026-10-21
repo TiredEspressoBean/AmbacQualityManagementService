@@ -8,6 +8,7 @@
  * entries are read, and a revision's changes are its created values against the
  * values the previous revision ended with.
  */
+import { HOLD_LABELS } from "@/components/receiving/lotStatus";
 import { useMemo } from "react";
 import { queryOptions, useQueries, useQuery } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -39,6 +40,15 @@ const show = (v: unknown) => {
     if (n === null || n === "") return "—";
     const s = String(n);
     return s.length > 40 ? `${s.slice(0, 40)}…` : s;
+};
+/** A field whose stored value is a code reads as its label (a lot's holds). */
+const showField = (field: string, v: unknown) => {
+    const n = norm(v);
+    if (n !== null && (field === "hold_reason" || field === "hold_reasons")) {
+        const codes = String(n).match(/[A-Z][A-Z_]+/g) ?? [];
+        if (codes.length) return codes.map((c) => HOLD_LABELS[c] ?? c).join(", ");
+    }
+    return show(v);
 };
 
 type Change = { field: string; from: unknown; to: unknown };
@@ -166,9 +176,9 @@ export function RecordHistoryCard({ endpoint, id, model }: {
                                     {ev.changes.slice(0, 6).map((c) => (
                                         <div key={c.field} className="flex flex-wrap gap-1">
                                             <span className="font-medium">{fieldLabel(c.field)}:</span>
-                                            <span className="text-muted-foreground line-through">{show(c.from)}</span>
+                                            <span className="text-muted-foreground line-through">{showField(c.field, c.from)}</span>
                                             <span className="text-muted-foreground">→</span>
-                                            <span>{show(c.to)}</span>
+                                            <span>{showField(c.field, c.to)}</span>
                                         </div>
                                     ))}
                                     {ev.changes.length > 6 && (

@@ -164,6 +164,7 @@ export function ApprovalSignaturePanel({
             {pending && (
                 <ApprovalResponseModal
                     approvalRequestId={pending.id}
+                    selfApproval={!!pending.can_self_approve}
                     contentTitle={contentTitle}
                     contentType={contentKind}
                     isOpen={showResponseModal}

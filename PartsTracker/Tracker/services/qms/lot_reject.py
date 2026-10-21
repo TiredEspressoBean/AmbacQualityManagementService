@@ -156,7 +156,13 @@ def decline_whole_lot_request(lot, user, reason: str) -> None:
     from Tracker.models import QuarantineDisposition
     for d in (QuarantineDisposition.objects  # tenant-safe: .objects auto-scopes
               .filter(material_lot=lot).exclude(current_state="CLOSED")):
-        note = f"{DECLINED_NOTE}: {reason}"
+        # The request carried the outcome asked for (return to supplier, scrap). Declined,
+        # nothing was decided: closed with that type it read as a return that never
+        # happened, and returns are counted (supplier scorecard, NCR by type, SCARs).
+        # The type goes; what was asked stays in the note.
+        asked = d.get_disposition_type_display() if d.disposition_type else ""
+        d.disposition_type = ""
+        note = f"{DECLINED_NOTE}" + (f" (asked: {asked})" if asked else "") + f": {reason}"
         d.resolution_notes = f"{d.resolution_notes}\n{note}".strip() if d.resolution_notes else note
         d.resolution_completed = True
         d.resolution_completed_by = user

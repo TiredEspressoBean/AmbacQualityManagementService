@@ -543,6 +543,7 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
             current_state='CLOSED'
         ).select_related(
             'part',
+            'material_lot',
             'assigned_to',
         ).order_by('-created_at')[:limit]
 
@@ -550,7 +551,9 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         for disp in dispositions:
             data.append({
                 'id': disp.id,
-                'part': disp.part.ERP_id if disp.part else 'N/A',
+                # A lot's disposition names the lot; 'N/A' said nothing.
+                'part': (disp.part.ERP_id if disp.part
+                         else f"Lot {disp.material_lot.lot_number}" if disp.material_lot_id else '—'),
                 'part_id': disp.part.id if disp.part else None,
                 'disposition': disp.disposition_type or 'PENDING',
                 'reason': disp.description[:50] + '...' if disp.description and len(disp.description) > 50 else (disp.description or 'N/A'),
@@ -1058,6 +1061,20 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                     'severity': 'high',
                     'link': f"/production/material-lots/{lot.id}",
                 })
+
+        # 7. Customer units waiting on the customer's answer to repairs that aren't
+        # pre-approved — work stopped until someone records it.
+        from Tracker.models import Core
+        for core in (self.qs_for_user(Core).filter(archived=False, status='AWAITING_AUTHORISATION')
+                     .select_related('customer').order_by('updated_at')[:10]):
+            who = f" ({core.customer.name})" if core.customer_id else ""
+            data.append({
+                'type': 'core_authorisation',
+                'message': f"Awaiting customer authorisation: {core.core_number}{who}",
+                'count': 1,
+                'severity': 'medium',
+                'link': f"/reman/cores/{core.id}",
+            })
 
         # Sort by severity
         severity_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}

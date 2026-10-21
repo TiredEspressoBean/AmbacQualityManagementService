@@ -139,7 +139,13 @@ export function SupplierQualificationsPage() {
                             <TableRow><TableCell colSpan={7} className="text-muted-foreground">No qualifications.</TableCell></TableRow>
                         ) : rows.map((q) => (
                             <TableRow key={q.id}>
-                                <TableCell className="font-mono text-xs">{q.qualification_number}</TableCell>
+                                <TableCell className="font-mono text-xs">
+                                    {/* The row's way in: the number opens the qualification. */}
+                                    <Link to="/production/supplier-qualifications/$qualId/edit" params={{ qualId: String(q.id) }}
+                                          className="text-primary hover:underline">
+                                        {q.qualification_number}
+                                    </Link>
+                                </TableCell>
                                 <TableCell>{q.supplier_name}</TableCell>
                                 <TableCell>{q.scope_display}</TableCell>
                                 <TableCell><Badge variant={STATUS_TONE[q.status] ?? "outline"}>{q.status_display ?? q.status}</Badge></TableCell>
@@ -148,14 +154,20 @@ export function SupplierQualificationsPage() {
                                 <TableCell>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${q.qualification_number}`}><MoreHorizontal className="h-4 w-4" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem asChild>
                                                 <Link to="/production/supplier-qualifications/$qualId/edit" params={{ qualId: String(q.id) }}>Edit</Link>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => openDialog("grant", String(q.id), q.supplier_name)}>Grant…</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => openDialog("suspend", String(q.id), q.supplier_name)}>Suspend…</DropdownMenuItem>
+                                            {/* Only what applies to the qualification's state: an approved
+                                                one isn't granted again; a suspended one isn't suspended again. */}
+                                            {q.status !== "APPROVED" && q.status !== "DISQUALIFIED" && (
+                                                <DropdownMenuItem onClick={() => openDialog("grant", String(q.id), q.supplier_name)}>Grant…</DropdownMenuItem>
+                                            )}
+                                            {(q.status === "APPROVED" || q.status === "CONDITIONAL") && (
+                                                <DropdownMenuItem onClick={() => openDialog("suspend", String(q.id), q.supplier_name)}>Suspend…</DropdownMenuItem>
+                                            )}
                                             <DropdownMenuItem className="text-destructive"
                                                 onClick={() => openDialog("disqualify", String(q.id), q.supplier_name)}>Disqualify…</DropdownMenuItem>
                                         </DropdownMenuContent>

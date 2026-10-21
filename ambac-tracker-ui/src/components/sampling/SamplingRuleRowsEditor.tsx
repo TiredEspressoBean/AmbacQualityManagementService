@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,11 +63,19 @@ export function SamplingRuleRowsEditor({ rulesetId }: { rulesetId: string }) {
         }
     };
 
+    // The last value sent per rule: a second blur before the refetch lands compared
+    // against the stale value and sent the same PATCH again (two audit entries).
+    const lastSent = useRef<Record<string, string>>({});
     const saveValue = async (id: string, v: string) => {
+        if (lastSent.current[id] === v) return;
+        lastSent.current[id] = v;
         try {
             await update.mutateAsync({ id, data: { value: v === "" ? null : Number(v) } });
+            // The plan changed and is live now: say so (it saved silently).
+            toast.success("Sampling rule updated — applies to parts from now on");
             refetch();
         } catch {
+            delete lastSent.current[id];
             toast.error("Failed to update rule");
         }
     };

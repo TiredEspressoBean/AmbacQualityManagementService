@@ -57,8 +57,11 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
     const currentUserId = authUser?.pk;
     // Extract group IDs from group objects — TenantGroup ids are UUID strings
     const userGroupIds = (authUser?.groups || []).map((g) => String(g.id));
+    // A requester decides their own request only where it's permitted (nobody else can).
+    const isRequester = !!pendingApprovalRequest && pendingApprovalRequest.requested_by === currentUserId;
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&
-        !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []);
+        !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []) &&
+        (!isRequester || !!pendingApprovalRequest?.can_self_approve);
 
     const handleRequestApproval = () => {
         requestApproval(undefined, {
@@ -159,7 +162,7 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                 <Clock className="h-4 w-4" />
                                 <AlertTitle>Awaiting Approval</AlertTitle>
                                 <AlertDescription>
-                                    This CAPA is pending management approval. Work cannot begin until approved.
+                                    Waiting for a QA Manager or Production Manager to approve the plan. Containment can be worked now; corrective and preventive actions and the root-cause analysis wait until it's approved.
                                 </AlertDescription>
                             </Alert>
 
@@ -186,6 +189,11 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                                     </span>
                                                     {hasResponded && response ? (
                                                         <StatusBadge status={response.decision} label={response.decision_display} />
+                                                    ) : approver.id === pendingApprovalRequest.requested_by
+                                                        && !pendingApprovalRequest.can_self_approve ? (
+                                                        // Assigned by role, but the requester doesn't decide their own
+                                                        // request while someone else can — it isn't waiting on them.
+                                                        <span className="text-xs text-muted-foreground">Requester</span>
                                                     ) : (
                                                         <StatusBadge status="PENDING" label="Pending" />
                                                     )}
@@ -231,7 +239,9 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                 <p className="text-sm text-muted-foreground">
                                     {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
                                         ? "You have already submitted your response."
-                                        : "You are not assigned as an approver for this request."}
+                                        : isRequester
+                                            ? "You requested this approval; a QA Manager or Production Manager decides it."
+                                            : "You are not assigned as an approver for this request."}
                                 </p>
                             )}
                         </>
@@ -378,6 +388,11 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                                     </span>
                                                 </div>
                                                 <StatusBadge status={response.decision} label={response.decision_display} />
+                                                {response.self_approved && (
+                                                    <div className="mt-1 text-xs font-medium text-amber-700">
+                                                        Self-approved — nobody else could approve it. Justification:
+                                                    </div>
+                                                )}
                                                 {response.comments && (
                                                     <p className="text-sm text-muted-foreground mt-2">
                                                         {response.comments}
@@ -397,6 +412,7 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
             {pendingApprovalRequest && (
                 <ApprovalResponseModal
                     approvalRequestId={pendingApprovalRequest.id}
+                    selfApproval={!!pendingApprovalRequest.can_self_approve}
                     contentTitle={capa?.capa_number}
                     contentType="CAPA Approval"
                     isOpen={showResponseModal}

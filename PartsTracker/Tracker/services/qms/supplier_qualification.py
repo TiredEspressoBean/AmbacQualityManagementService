@@ -147,6 +147,7 @@ def suspend(qualification, *, user=None, reason=''):
     if reason:
         qualification.notes = (qualification.notes + f"\n[SUSPENDED] {reason}").strip()
     qualification.save(update_fields=['status', 'notes', 'updated_at'])
+    _hold_lots_at_dock(qualification)
     return qualification
 
 
@@ -155,7 +156,15 @@ def disqualify(qualification, *, user=None, reason=''):
     if reason:
         qualification.notes = (qualification.notes + f"\n[DISQUALIFIED] {reason}").strip()
     qualification.save(update_fields=['status', 'notes', 'updated_at'])
+    _hold_lots_at_dock(qualification)
     return qualification
+
+
+def _hold_lots_at_dock(qualification) -> None:
+    """Lots from this supplier still at the dock take the unqualified-supplier hold, as
+    they would have on receipt (walk 2026-10-20: a suspension left them acceptable)."""
+    from Tracker.services.qms.receiving_inspection import hold_supplier_lots_at_dock
+    hold_supplier_lots_at_dock(qualification.supplier)
 
 
 def expire(qualification):

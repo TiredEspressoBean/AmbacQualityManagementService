@@ -25,6 +25,15 @@ from Tracker.models import (
 )
 
 
+def _assert_rca_workable(capa) -> None:
+    """Root-cause analysis is plan work: it waits on a Major/Critical CAPA's approval
+    (see `capa.capa_plan_refusal`)."""
+    from Tracker.services.qms.capa import capa_plan_refusal
+    refusal = capa_plan_refusal(capa)
+    if refusal:
+        raise ValidationError(refusal)
+
+
 def verify_root_cause(rca: RcaRecord, user, verification_notes: str | None = None) -> RcaRecord:
     """Mark an RCA's root cause as verified.
 
@@ -35,6 +44,7 @@ def verify_root_cause(rca: RcaRecord, user, verification_notes: str | None = Non
     Raises:
         ValidationError: self-verification rules violated.
     """
+    _assert_rca_workable(rca.capa)
     # If conducted_by is NULL (deleted user), `user == None` is False, which
     # would let the verifier slip past self-verification rules. Require an
     # explicit, non-null match instead.
@@ -71,6 +81,7 @@ def request_rca_review(rca: RcaRecord) -> RcaRecord:
     Sets REQUIRED, which approving (verifying) turns into COMPLETED. It used to write
     'PENDING', which is not a review status at all.
     """
+    _assert_rca_workable(rca.capa)
     if rca.rca_review_status != RcaReviewStatus.REQUIRED:
         rca.rca_review_status = RcaReviewStatus.REQUIRED
         rca.save(update_fields=['rca_review_status', 'updated_at'])
@@ -104,6 +115,7 @@ def create_rca_record(
     Only the child aggregate matching the record's `rca_method` is
     created; the other is ignored if supplied.
     """
+    _assert_rca_workable(data.get('capa'))
     rca_record = RcaRecord.objects.create(**data)
 
     if five_whys_data and rca_record.rca_method == 'FIVE_WHYS':
@@ -131,6 +143,7 @@ def update_rca_record(
     """
     from django.db import transaction
 
+    _assert_rca_workable(instance.capa)
     with transaction.atomic():
         for field, value in data.items():
             setattr(instance, field, value)

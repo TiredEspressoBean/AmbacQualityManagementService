@@ -46,17 +46,6 @@ def ensure_membership_for_role(sender, instance, created, **kwargs):
         ensure_membership(instance.user, tenant)
 
 
-def _auto_disposition_description(report) -> str:
-    """What failed, in words. A report captured at a step usually has no description
-    of its own, which left every auto-opened disposition reading "No description"."""
-    if (report.description or "").strip():
-        return f"Failed quality report: {report.description.strip()}"
-    where = report.step.name if report.step_id else "inspection"
-    defects = list(report.defects.select_related("error_type")
-                   .values_list("error_type__error_name", flat=True)[:3]) if report.pk else []
-    return f"Failed {where}" + (f": {', '.join(d for d in defects if d)}" if defects else "")
-
-
 @receiver(post_save, sender=QualityReports)
 def auto_create_disposition(sender, instance, created, **kwargs):
     """Create disposition when QualityReport fails"""
@@ -87,25 +76,10 @@ def auto_create_disposition(sender, instance, created, **kwargs):
         # still gets one; and a human can add further dispositions deliberately
         # (QR->disposition is legitimately 1:many).
         if not instance.dispositions.exists():
-            # Unassigned: an auto-opened disposition goes to the QA queue, and QA takes
-            # it (user decision 2026-10-20). It used to go to whichever QA user the
-            # query returned first — not the finder, not a rule.
-            existing_rework_count = 0
-            if instance.part and instance.step:
-                existing_rework_count = QuarantineDisposition.objects.filter(
-                    part=instance.part,
-                    step=instance.step,
-                    disposition_type='REWORK'
-                ).count()
-
-            disposition = QuarantineDisposition.objects.create(
-                assigned_to=None,
-                part=instance.part,
-                step=instance.step,  # Link to the step where failure occurred
-                rework_attempt_at_step=existing_rework_count + 1,
-                description=_auto_disposition_description(instance),
-            )
-            disposition.quality_reports.add(instance)
+            # Joins the disposition already open for this part's visit at this step,
+            # or opens one (unassigned, for the QA queue) — one finding, one decision.
+            from Tracker.services.qms.disposition import open_disposition_for_failed_report
+            open_disposition_for_failed_report(instance)
 
 
 @receiver(post_save, sender=ThreeDModel)

@@ -905,6 +905,9 @@ class ApprovalRequestSerializer(SecureModelMixin):
     content_object_info = serializers.SerializerMethodField()
     content_object_display = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
+    can_self_approve = serializers.SerializerMethodField(
+        help_text="The viewer requested this and may decide it themselves (with a "
+                  "justification): the template allows it, or nobody else can approve it.")
 
     class Meta:
         model = ApprovalRequest
@@ -921,7 +924,7 @@ class ApprovalRequestSerializer(SecureModelMixin):
             'required_approvers_info', 'optional_approvers_info',
             'approver_groups', 'approver_groups_info',
             'responses', 'pending_approvers',
-            'is_overdue',
+            'is_overdue', 'can_self_approve',
             'requested_at', 'completed_at', 'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -999,6 +1002,15 @@ class ApprovalRequestSerializer(SecureModelMixin):
         if obj.content_object:
             return str(obj.content_object)
         return None
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_can_self_approve(self, obj):
+        from Tracker.services.core.approval import self_approval_permitted
+        user = getattr(self.context.get('request'), 'user', None)
+        if (user is None or not user.is_authenticated or obj.requested_by_id != user.pk
+                or obj.status != 'PENDING'):
+            return False
+        return self_approval_permitted(obj, user)
 
     @extend_schema_field(serializers.BooleanField())
     def get_is_overdue(self, obj):

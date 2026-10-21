@@ -103,7 +103,12 @@ function CellButton({ op, column, cell }: { op: Operator; column: Column; cell: 
             <PopoverTrigger asChild>
                 <button
                     className="relative mx-auto flex h-9 w-9 items-center justify-center rounded hover:bg-muted"
-                    aria-label={`${op.name} — ${column.name}: ${LEVEL_META[level].label}`}
+                    // Expiry is shown by colour; say it in words for anyone not seeing the dot.
+                    aria-label={`${op.name} — ${column.name}: ${LEVEL_META[level].label}${
+                        status === "EXPIRED" ? `, expired ${cell?.expires_date ?? ""}`
+                            : status === "EXPIRING_SOON" ? `, expires ${cell?.expires_date ?? ""}` : ""}`}
+                    title={status === "EXPIRED" ? `Expired ${cell?.expires_date ?? ""}`
+                        : status === "EXPIRING_SOON" ? `Expires ${cell?.expires_date ?? ""}` : undefined}
                 >
                     <LevelPie level={level} />
                     <ExpiryDot status={status} />

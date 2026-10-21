@@ -266,6 +266,9 @@ class QualityReportsSerializer(SecureModelMixin):
             if part_type:
                 return f"{obj.part.ERP_id} ({part_type})"
             return obj.part.ERP_id
+        # A receiving report is about a lot, not a part — name the lot.
+        if obj.material_lot_id:
+            return f"Lot {obj.material_lot.lot_number}"
         return None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -986,6 +989,13 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             raise serializers.ValidationError({'disposition_type': [
                 "The disposition is decided through Decide, which records who authorized "
                 "it (a co-signer can authorize) — it can't be changed by editing the record."]})
+        # A form that re-sends the record after Decide carries the approval date it
+        # loaded (null, before the decision stamped one) — it wiped the date the
+        # decision recorded. A recorded approval date isn't cleared by an edit.
+        if ('customer_approval_date' in validated_data
+                and validated_data['customer_approval_date'] is None
+                and instance.customer_approval_date is not None):
+            validated_data.pop('customer_approval_date')
         containment_done = validated_data.pop('containment_completed', False)
         scrap_verified = validated_data.pop('scrap_verified', None)
         instance = super().update(instance, validated_data)
@@ -1233,6 +1243,15 @@ class FiveWhysSerializer(SecureModelMixin):
         )
         read_only_fields = ('created_at', 'updated_at')
 
+    def validate(self, attrs):
+        """Root-cause analysis waits on a Major/Critical CAPA's approval."""
+        from Tracker.services.qms.capa import capa_plan_refusal
+        rca = attrs.get('rca_record') or getattr(self.instance, 'rca_record', None)
+        refusal = capa_plan_refusal(rca.capa if rca else None)
+        if refusal:
+            raise serializers.ValidationError(refusal)
+        return super().validate(attrs)
+
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_rca_record_info(self, obj):
         if obj.rca_record:
@@ -1258,6 +1277,15 @@ class FishboneSerializer(SecureModelMixin):
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('created_at', 'updated_at')
+
+    def validate(self, attrs):
+        """Root-cause analysis waits on a Major/Critical CAPA's approval."""
+        from Tracker.services.qms.capa import capa_plan_refusal
+        rca = attrs.get('rca_record') or getattr(self.instance, 'rca_record', None)
+        refusal = capa_plan_refusal(rca.capa if rca else None)
+        if refusal:
+            raise serializers.ValidationError(refusal)
+        return super().validate(attrs)
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_rca_record_info(self, obj):
@@ -1378,6 +1406,14 @@ class RcaRecordSerializer(SecureModelMixin):
                 fishbone_data[field] = []
         return fishbone_data
 
+    def validate(self, attrs):
+        """Root-cause analysis waits on a Major/Critical CAPA's approval."""
+        from Tracker.services.qms.capa import capa_plan_refusal
+        refusal = capa_plan_refusal(attrs.get('capa') or getattr(self.instance, 'capa', None))
+        if refusal:
+            raise serializers.ValidationError(refusal)
+        return super().validate(attrs)
+
     def create(self, validated_data):
         from Tracker.services.qms.rca import create_rca_record
         five_whys_data = validated_data.pop('five_whys_data', None)
@@ -1485,6 +1521,20 @@ class CapaTasksSerializer(SecureModelMixin):
             'is_overdue', 'documents_info', 'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('task_number', 'completed_date', 'completed_by', 'completion_signature', 'created_at', 'updated_at')
+
+    def validate(self, attrs):
+        """Starting or finishing a corrective/preventive task waits on a Major/Critical
+        CAPA's approval; drafting the plan (tasks not yet started) doesn't."""
+        from Tracker.services.qms.capa import task_work_refusal
+        new_status = attrs.get('status')
+        if new_status in (CapaTaskStatus.IN_PROGRESS, CapaTaskStatus.COMPLETED):
+            probe = CapaTasks(
+                capa=attrs.get('capa') or getattr(self.instance, 'capa', None),
+                task_type=attrs.get('task_type') or getattr(self.instance, 'task_type', None))
+            refusal = task_work_refusal(probe)
+            if refusal:
+                raise serializers.ValidationError({'status': refusal})
+        return super().validate(attrs)
 
     @extend_schema_field(_CAPA_INFO_SCHEMA)
     def get_capa_info(self, obj):

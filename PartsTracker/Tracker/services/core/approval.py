@@ -531,6 +531,36 @@ def escalate_approval(request: ApprovalRequest):
 # ApprovalResponse — submission and delegation
 # =========================================================================
 
+# A CAPA plan's approval may fall back to self-approval when the requester is the only
+# one who can approve it: one QA Manager, no Production Manager (user, 2026-10-20).
+SOLE_APPROVER_SELF_APPROVAL_TYPES = ('CAPA_MAJOR', 'CAPA_CRITICAL', 'CAPA_APPROVAL')
+
+
+def other_eligible_approvers(approval_request: ApprovalRequest, approver):
+    """Active users other than `approver` who could approve this request: its assigned
+    approvers and the members of its approver groups."""
+    from django.db.models import Q
+    group_ids = list(approval_request.group_assignments.values_list('group_id', flat=True))
+    return (User.objects  # tenant-safe: groups and assignments are the request's own
+            .filter(is_active=True)
+            .filter(Q(user_roles__group_id__in=group_ids)
+                    | Q(approval_assignments__approval_request=approval_request))
+            .exclude(pk=approver.pk).distinct())
+
+
+def self_approval_permitted(approval_request: ApprovalRequest, approver) -> bool:
+    """Whether the requester may decide their own request (always with a justification).
+
+    The template's allow_self_approval permits it outright. A CAPA plan's approval
+    also permits it when nobody else can approve — otherwise a QA Manager in a shop
+    with no second approver could never get her own CAPA past the plan gate."""
+    template = approval_request.get_template()
+    if template and template.allow_self_approval:
+        return True
+    return (approval_request.approval_type in SOLE_APPROVER_SELF_APPROVAL_TYPES
+            and not other_eligible_approvers(approval_request, approver).exists())
+
+
 def submit_approval_response(
     approval_request: ApprovalRequest,
     approver,
@@ -561,8 +591,11 @@ def submit_approval_response(
 
     is_self_approval = (approval_request.requested_by == approver)
     if is_self_approval:
-        template = approval_request.get_template()
-        if not template or not template.allow_self_approval:
+        if not self_approval_permitted(approval_request, approver):
+            if approval_request.approval_type in SOLE_APPROVER_SELF_APPROVAL_TYPES:
+                raise ValidationError(
+                    "You requested this approval, and someone else can decide it — "
+                    "it waits for them.")
             raise ValidationError("Self-approval is not permitted for this approval type")
         if not comments or len(comments.strip()) < 10:
             raise ValidationError("Justification required for self-approval (minimum 10 characters)")

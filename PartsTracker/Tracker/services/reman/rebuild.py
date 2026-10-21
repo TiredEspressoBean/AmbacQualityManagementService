@@ -21,6 +21,8 @@ core nobody has committed to rebuilding yet.
 """
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field, replace
 
 # Grades that mean "fit to go back in as-is" versus "fit only after work". There is
@@ -182,6 +184,29 @@ def _purchased_candidates(component_type):
     ]
 
 
+# How `findings.apply_finding` records a finding in the notes:
+#   "<label> (<who, when>): grade B → SCRAP. <what the bench found>"
+_APPLIED_FINDING = re.compile(r"\(.*?\): grade \S+ → \S+\.\s*(?P<text>.+)$")
+
+
+def _bench_note(component) -> str:
+    """What the bench found: the latest applied finding's text, without its stamp — the
+    notes also keep the teardown remark and every earlier finding. Falls back to the
+    notes as written when no finding was applied."""
+    notes = (getattr(component, 'condition_notes', '') or '').strip()
+    for line in reversed(notes.splitlines()):
+        m = _APPLIED_FINDING.search(line.strip())
+        if m:
+            return m.group('text').strip()
+    return notes
+
+
+def _with_note(finding: str, component) -> str:
+    """A slot's finding, with what the bench found about the component if anything."""
+    note = _bench_note(component)
+    return f"{finding} — {note}" if note else finding
+
+
 def _resolve_slot(core, component_type, position, bom_line, own, loose, warnings, torn_down=True):
     """Propose a resolution for one slot, and say why.
 
@@ -213,7 +238,7 @@ def _resolve_slot(core, component_type, position, bom_line, own, loose, warnings
             position=position, component_type_id=ct_id,
             component_type_name=component_type.name,
             bom_line_id=str(bom_line.id) if bom_line else None,
-            finding=f"Grade {mine.condition_grade}, from this unit",
+            finding=_with_note(f"Grade {mine.condition_grade}, from this unit", mine),
             resolution=REUSE,
             reason='serviceable as found',
             candidates=candidates,
@@ -224,14 +249,23 @@ def _resolve_slot(core, component_type, position, bom_line, own, loose, warnings
             position=position, component_type_id=ct_id,
             component_type_name=component_type.name,
             bom_line_id=str(bom_line.id) if bom_line else None,
-            finding=f"Grade {mine.condition_grade}, from this unit",
+            finding=_with_note(f"Grade {mine.condition_grade}, from this unit", mine),
             resolution=RECONDITION,
             reason='below serviceable grade — work needed before it goes back',
             candidates=candidates,
         )
 
+    scrapped = None
+    if mine is None and torn_down:
+        # Recovered but scrapped at the bench: what the customer is deciding on is that
+        # finding ("hairline crack at the needle guide"), not "not recovered".
+        scrapped_qs = core.harvested_components.filter(
+            is_scrapped=True, archived=False, component_type=component_type)
+        scrapped = (scrapped_qs.filter(position=position).first() if position else None)             or scrapped_qs.first()
     if mine is not None:
-        finding = f"Grade {mine.condition_grade}"
+        finding = _with_note(f"Grade {mine.condition_grade}", mine)
+    elif scrapped is not None:
+        finding = _with_note("scrapped at the bench", scrapped)
     elif torn_down:
         finding = 'not recovered from this unit'
     else:

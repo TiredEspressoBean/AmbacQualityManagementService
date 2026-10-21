@@ -26,12 +26,19 @@ function QualificationBadge({ supplierId }: { supplierId: string }) {
     }
     const tone = q.status === "CONDITIONAL" ? "secondary" : "default";
     const expiringSoon = q.days_to_expiry != null && q.days_to_expiry <= 30;
-    return (
-        <Badge variant={expiringSoon ? "secondary" : tone}>
+    const badge = (
+        <Badge variant={expiringSoon ? "secondary" : tone} className={q.record_id ? "cursor-pointer hover:opacity-80" : ""}>
             {q.status === "CONDITIONAL" ? "Conditional" : "Qualified"}
             {expiringSoon ? ` · ${q.days_to_expiry}d` : ""}
         </Badge>
     );
+    // The qualification itself is where a review is acted on (suspend, renew).
+    return q.record_id ? (
+        <Link to="/production/supplier-qualifications/$qualId/edit" params={{ qualId: q.record_id }}
+              title="Open the qualification">
+            {badge}
+        </Link>
+    ) : badge;
 }
 
 const RATING_STYLE: Record<string, string> = {
@@ -85,6 +92,11 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
                         {name}
                         {sc && <RatingBadge rating={sc.rating} reason={sc.rating_reason} />}
                         {sc && <StandingBadge action={sc.recommended_action} reason={sc.recommendation_reason} />}
+                        {sc && sc.recommended_action === "REVIEW_SUSPEND" && (
+                            <Link to="/production/supplier-qualifications" className="text-xs font-normal underline underline-offset-2">
+                                Suspend from the Approved Supplier List
+                            </Link>
+                        )}
                         <QualificationBadge supplierId={id} />
                     </span>
                     {sc && sc.open_scar_count > 0 && (
@@ -128,7 +140,7 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
 }
 
 export function SupplierQualityPage() {
-    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200, is_supplier: true });
+    const { data: companies, isLoading } = useRetrieveCompanies({ limit: 200, supplying: true });
     return (
         <div className="space-y-4 p-2">
             <div>

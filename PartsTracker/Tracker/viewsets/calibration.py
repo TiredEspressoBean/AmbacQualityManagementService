@@ -217,8 +217,12 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
             due_date__gte=today
         ).exclude(result='FAIL').count()
 
-        # Overdue
-        overdue = latest_per_equipment.filter(due_date__lt=today).count()
+        # Overdue (a failed one is counted as failed, not again here)
+        overdue = latest_per_equipment.filter(due_date__lt=today).exclude(result='FAIL').count()
+
+        # Failed: the latest calibration failed — out of service until re-calibrated.
+        # It sat in no bucket, so the dashboard's counts didn't add up.
+        failed = latest_per_equipment.filter(result='FAIL').count()
 
         # Compliance rate
         compliance_rate = 0.0
@@ -230,6 +234,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
             'current_calibrations': current,
             'due_soon': due_soon,
             'overdue': overdue,
+            'failed': failed,
             'compliance_rate': compliance_rate,
         })
 

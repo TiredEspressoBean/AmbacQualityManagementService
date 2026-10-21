@@ -317,6 +317,11 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                                     status={response.decision}
                                                     label={response.decision_display}
                                                 />
+                                                {response.self_approved && (
+                                                    <div className="mt-1 text-xs font-medium text-amber-700">
+                                                        Self-approved — nobody else could approve it. Justification:
+                                                    </div>
+                                                )}
                                                 {response.comments && (
                                                     <p className="text-sm text-muted-foreground mt-2">
                                                         {response.comments}
@@ -336,6 +341,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
             {pendingApprovalRequest && (
                 <ApprovalResponseModal
                     approvalRequestId={pendingApprovalRequest.id}
+                    selfApproval={!!pendingApprovalRequest.can_self_approve}
                     contentTitle={document.file_name}
                     contentType="Document Approval"
                     isOpen={showResponseModal}

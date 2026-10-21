@@ -11,10 +11,15 @@ const invalidateReceiving = (queryClient: ReturnType<typeof useQueryClient>) =>
         // is the unified QA32-style worklist a lot also appears on; material-lot
         // (singular) is the lot-detail query — without it, the detail page keeps
         // showing AWAITING_INSPECTION + "Run Inspection" after an Accept/Reject.
+        // logs / record-edits / record-history back the lot's History card, which
+        // otherwise kept showing "No recorded changes" after a release or decline.
         predicate: (q) =>
             q.queryKey[0] === "material-lots" ||
             q.queryKey[0] === "incomingInspection" ||
-            q.queryKey[0] === "material-lot",
+            q.queryKey[0] === "material-lot" ||
+            q.queryKey[0] === "logs" ||
+            q.queryKey[0] === "record-edits" ||
+            q.queryKey[0] === "record-history",
     });
 
 // ----- Bulk receive lots (paste-grid) -----

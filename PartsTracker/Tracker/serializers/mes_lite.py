@@ -2066,12 +2066,20 @@ class EquipmentsSerializer(SecureModelMixin):
     def get_location_name(self, obj):
         return obj.location.name if obj.location_id else None
 
+    requires_calibration = serializers.BooleanField(read_only=True)
+    calibration_interval_effective = serializers.SerializerMethodField(
+        help_text="Days between calibrations: the gauge's own interval, else its type's.")
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_calibration_interval_effective(self, obj):
+        return obj.get_effective_calibration_interval()
+
     class Meta:
         model = Equipments
         fields = [
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "location_name", "status",
-            "calibration_status",
+            "calibration_status", "requires_calibration", "calibration_interval_effective",
             "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]

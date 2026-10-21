@@ -55,7 +55,8 @@ export const createModelConfig = (config: {
         fields: string[];
         auditLog?: boolean;
     }>;
-    apiPath: string;
+    // A generated alias, so a renamed endpoint fails the build instead of the page.
+    apiPath: keyof typeof api;
     includeDocuments?: boolean;
     includeAudit?: boolean;
     relatedModels?: Array<{
@@ -634,7 +635,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_SamplingRules_retrieve',
+                apiPath: 'api_Sampling_rules_retrieve',
                 relatedModels: [
                     {
                         modelType: 'samplingrulesets',
@@ -682,7 +683,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_SamplingRuleSets_retrieve',
+                apiPath: 'api_Sampling_rule_sets_retrieve',
                 relatedModels: [
                     {
                         modelType: 'parttypes',
@@ -811,7 +812,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_Error-types_retrieve',
+                apiPath: 'api_Error_types_retrieve',
                 relatedModels: [
                     {
                         modelType: 'parttypes',
@@ -835,7 +836,7 @@ export const getFieldsConfigForModel = (modelType: string): FieldsConfig => {
                         auditLog: true,
                     },
                 ],
-                apiPath: 'api_EquipmentTypes_retrieve',
+                apiPath: 'api_Equipment_types_retrieve',
             });
 
         case 'companies':

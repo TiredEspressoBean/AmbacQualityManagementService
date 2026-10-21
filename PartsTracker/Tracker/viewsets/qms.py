@@ -1238,8 +1238,12 @@ class RcaRecordViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vi
     def submit_for_review(self, request, pk=None):
         """Ask for the RCA to be reviewed: its review status becomes REQUIRED, and
         approving it (review_rca) completes the review."""
+        from django.core.exceptions import ValidationError as DjangoValidationError
         from Tracker.services.qms.rca import request_rca_review
-        rca = request_rca_review(self.get_object())
+        try:
+            rca = request_rca_review(self.get_object())
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(RcaRecordSerializer(rca).data)
 
     @extend_schema(

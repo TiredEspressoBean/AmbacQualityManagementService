@@ -20,6 +20,8 @@
  *    via their real, existing `assigned_to` workflow (the auto-create signal
  *    assigns a QA user) — NOT the unbuilt scheduling system.
  */
+import { useCalibrationsOverdue } from "@/hooks/useCalibrationsOverdue";
+import { getApprovalDetailLink } from "@/lib/approvals/approval-detail-link";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
@@ -585,7 +587,10 @@ function QualityKpisBlock() {
     return (
         <StatSection icon={Gauge} title="Quality">
             <StatTile label="Open NCRs" value={data?.open_ncrs ?? 0} icon={FileWarning} link="/quality/ncrs" />
-            <StatTile label="In quarantine" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
+            {/* Distinct parts with an open disposition — including ones already released to
+                rework. "Parts in quarantine" under Needs attention is the narrower
+                status count; the two labels used to read as the same thing. */}
+            <StatTile label="Parts under disposition" value={data?.parts_in_quarantine ?? 0} icon={PackageSearch} link="/production/dispositions" />
             <StatTile label="Active CAPAs" value={data?.active_capas ?? 0} icon={ClipboardCheck} link="/quality/capas" />
             <StatTile label="Overdue CAPAs" value={overdue} icon={AlertTriangle} link="/quality/capas" variant={overdue > 0 ? "danger" : "default"} />
             <StatTile label="First pass yield" value={`${data?.current_fpy ?? 0}%`} icon={Gauge} link="/analysis" />
@@ -1153,7 +1158,8 @@ function ApprovalsInFlightBlock() {
             </CardHeader>
             <CardContent className="space-y-2">
                 {rows.slice(0, 5).map((r) => (
-                    <div key={r.id} className="flex items-center gap-3 rounded-md border p-2.5 text-sm">
+                    <Link key={r.id} to={getApprovalDetailLink(r)}
+                          className="flex items-center gap-3 rounded-md border p-2.5 text-sm transition-colors hover:bg-accent">
                         <div className="min-w-0 flex-1">
                             <div className="truncate font-mono text-xs">{r.approval_number}</div>
                             <div className="truncate text-xs text-muted-foreground">
@@ -1166,8 +1172,58 @@ function ApprovalsInFlightBlock() {
                         ) : (
                             <Badge variant="outline" className="shrink-0">{r.status_display}</Badge>
                         )}
-                    </div>
+                    </Link>
                 ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Overdue calibrations (Quality Manager) — calibration control is the QM's
+// (ISO 9001 7.1.5): every gauge past its due date, tenant-wide, not just the
+// ones a user happened to measure with. Hides when none is overdue.
+// ---------------------------------------------------------------------------
+
+function OverdueCalibrationsBlock() {
+    const { data } = useCalibrationsOverdue();
+    type Row = Schema<"CalibrationRecord">;
+    const rows = rowsOf<Row>(data);
+    if (rows.length === 0) return null;
+    const today = parseDateOnly(new Date().toISOString().slice(0, 10));
+    return (
+        <Card>
+            <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                    <Gauge className="h-4 w-4 text-muted-foreground" />
+                    Overdue calibrations
+                    <Badge variant="destructive" className="ml-1">{rows.length}</Badge>
+                    <Link to="/quality/calibrations" className="ml-auto">
+                        <Button size="sm" variant="ghost">All <ArrowRight className="ml-1 h-4 w-4" /></Button>
+                    </Link>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {rows.slice(0, 5).map((r) => {
+                    const eq = r.equipment_info as { name?: string; equipment_type?: string | null } | null;
+                    const days = r.due_date
+                        ? Math.round((today.getTime() - parseDateOnly(r.due_date).getTime()) / 86_400_000)
+                        : null;
+                    return (
+                        <Link key={r.id} to="/quality/calibrations"
+                              className="flex items-center gap-3 rounded-md border p-2.5 transition-colors hover:bg-accent">
+                            <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium">{eq?.name ?? "Gauge"}</div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {eq?.equipment_type ? `${eq.equipment_type} · ` : ""}due {r.due_date}
+                                </div>
+                            </div>
+                            <Badge variant="destructive" className="shrink-0 tabular-nums">
+                                {days != null ? `${days}d overdue` : "Overdue"}
+                            </Badge>
+                        </Link>
+                    );
+                })}
             </CardContent>
         </Card>
     );
@@ -1498,6 +1554,7 @@ const BLOCKS: BlockDef[] = [
     { id: "wos-going-late", size: "full", groups: ["Production Manager", "Shift Lead", "Planner", "Tenant Admin"], Component: () => <JobsGoingLateBlock /> },
     { id: "wos-on-hold", size: "full", groups: ["Production Manager", "Shift Lead", "Planner", "Tenant Admin"], Component: () => <WosOnHoldBlock /> },
     { id: "ncr-aging", size: "half", groups: ["QA Manager", "Auditor", "Tenant Admin"], Component: () => <NcrAgingBlock /> },
+    { id: "overdue-calibrations", size: "half", groups: ["QA Manager", "Tenant Admin"], Component: () => <OverdueCalibrationsBlock /> },
     { id: "capa-status", size: "half", groups: ["QA Manager", "Auditor", "Tenant Admin"], Component: () => <CapaStatusBlock /> },
     { id: "late-deliveries", size: "half", groups: ["Purchasing", "Production Manager", "Planner", "Receiving", "Tenant Admin"], Component: () => <LateDeliveriesBlock /> },
     { id: "supplier-quals-expiring", size: "half", groups: ["QA Manager", "Production Manager", "Purchasing", "Tenant Admin"], Component: () => <SupplierQualsExpiringBlock /> },
@@ -1519,7 +1576,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
     { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
     { group: "Shift Lead", order: ["shift-lead-hero", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },

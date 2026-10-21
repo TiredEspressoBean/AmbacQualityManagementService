@@ -14,6 +14,9 @@ export interface ApprovalResponsePayload {
 const approvalsKeyOptions = () => ({ queryKey: ["approvals"] as const });
 const capasKeyOptions = () => ({ queryKey: ["capas"] as const });
 const capaStatsKeyOptions = () => ({ queryKey: ["capa-stats"] as const });
+// Prefixes of retrieveCapaOptions / retrieveDocumentOptions (["capa", id] / ["document", id]).
+const capaDetailKeyOptions = () => ({ queryKey: ["capa"] as const });
+const documentDetailKeyOptions = () => ({ queryKey: ["document"] as const });
 
 export function useSubmitApprovalResponse(approvalRequestId: string) {
     const queryClient = useQueryClient();
@@ -29,6 +32,11 @@ export function useSubmitApprovalResponse(approvalRequestId: string) {
             queryClient.invalidateQueries(approvalsKeyOptions());
             queryClient.invalidateQueries(capasKeyOptions());
             queryClient.invalidateQueries(capaStatsKeyOptions());
+            // The approved object's own detail carries approval_status (the tab's badge
+            // and "Awaiting approval" alert read it) — ["capa", id] / ["document", id].
+            // Only the list keys were refreshed, so the page stayed Pending until reload.
+            queryClient.invalidateQueries(capaDetailKeyOptions());
+            queryClient.invalidateQueries(documentDetailKeyOptions());
         },
     });
 }

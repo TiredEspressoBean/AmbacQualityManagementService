@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { queryOptions, useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api/generated";
 import { toast } from "sonner";
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +15,41 @@ import type { Schema } from "@/lib/api/types";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type Lot = Schema<"MaterialLot">;
+
+/** The open disposition a whole-lot request opened — who asked, and why. */
+const lotRequestOptions = (lotId: string) =>
+    queryOptions({
+        queryKey: ["dispositions", "lot-request", lotId] as const,
+        queryFn: () => api.api_QuarantineDispositions_list({
+            queries: { quality_reports__material_lot: lotId, ordering: "-created_at", limit: 5 },
+        }),
+        select: (d) => (d.results ?? []).find((r) => r.current_state !== "CLOSED") ?? null,
+    });
+
+/** The request in front of the decider: who asked, their reason, and where the
+ *  inspection and its disposition are — so it isn't decided blind. */
+function WholeLotRequestDetail({ lotId }: { lotId: string }) {
+    const { data: req } = useQuery(lotRequestOptions(lotId));
+    if (!req) return null;
+    return (
+        <div className="space-y-1 rounded border bg-background/60 p-2 text-sm">
+            <div>
+                <span className="text-muted-foreground">Requested by </span>
+                <b>{req.assignee_name || "an inspector"}</b>
+                {req.created_at ? <span className="text-muted-foreground"> · {new Date(req.created_at).toLocaleString()}</span> : null}
+            </div>
+            {req.description && <div className="italic">“{req.description}”</div>}
+            <div className="flex gap-3 text-xs">
+                <Link to="/production/receiving-inspection/$lotId" params={{ lotId }} className="underline underline-offset-2">
+                    The inspection
+                </Link>
+                <Link to="/production/dispositions/$id/edit" params={{ id: String(req.id) }} className="underline underline-offset-2">
+                    {req.disposition_number}
+                </Link>
+            </div>
+        </div>
+    );
+}
 
 /** What clears each self-clearing hold, said plainly. */
 const HOW_TO_CLEAR: Record<string, string> = {
@@ -73,12 +111,17 @@ function HoldCard({ lot, reason, several }: { lot: Lot; reason: string; several:
                 <p className="text-muted-foreground">{HOW_TO_CLEAR[reason]}</p>
             )}
             {REQUEST_TEXT[reason] && <p className="text-muted-foreground">{REQUEST_TEXT[reason]}</p>}
+            {reason === "WHOLE_LOT_REJECT_REQUESTED" && <WholeLotRequestDetail lotId={String(lot.id)} />}
             {reason === "WHOLE_LOT_REJECT_REQUESTED" && canRejectWholeLot && (
                 <Button size="sm" variant="destructive" disabled={confirmWhole.isPending}
-                    onClick={() => confirmWhole.mutate({ id: String(lot.id) }, {
-                        onSuccess: () => toast.success("Whole lot rejected · disposition updated"),
-                        onError: (e) => toast.error(errorOf(e, "Could not reject the whole lot")),
-                    })}>
+                    onClick={async () => {
+                        try {
+                            await confirmWhole.mutateAsync({ id: String(lot.id) });
+                            toast.success("Whole lot rejected · disposition updated");
+                        } catch (e) {
+                            toast.error(errorOf(e, "Could not reject the whole lot"));
+                        }
+                    }}>
                     {confirmWhole.isPending ? "Rejecting…" : "Confirm: reject whole lot"}
                 </Button>
             )}
@@ -123,13 +166,21 @@ function HoldCard({ lot, reason, several }: { lot: Lot; reason: string; several:
                         value={releaseReason} onChange={(e) => setReleaseReason(e.target.value)} />
                     <div className="flex gap-2">
                         <Button size="sm" disabled={!releaseReason.trim() || release.isPending}
-                            onClick={() => release.mutate({ id: String(lot.id), reason: releaseReason.trim(), code: reason }, {
-                                onSuccess: () => {
-                                    toast.success(several ? "Hold released — the lot's other holds still stand." : "Hold released — the lot has moved on.");
+                            onClick={async () => {
+                                // mutateAsync, not mutate(…, {onSuccess}): releasing the last hold
+                                // unmounts this panel, and a mutate() callback doesn't fire after
+                                // unmount — so the toast never showed.
+                                try {
+                                    await release.mutateAsync({ id: String(lot.id), reason: releaseReason.trim(), code: reason });
+                                    toast.success(reason === "WHOLE_LOT_REJECT_REQUESTED"
+                                        ? "Request declined — the lot is back in inspection."
+                                        : several ? "Hold released — the lot's other holds still stand."
+                                            : "Hold released — the lot has moved on.");
                                     setReleasing(false);
-                                },
-                                onError: (e) => toast.error(errorOf(e, "Could not release the hold")),
-                            })}>
+                                } catch (e) {
+                                    toast.error(errorOf(e, "Could not release the hold"));
+                                }
+                            }}>
                             {release.isPending ? "Saving…"
                                 : reason === "WHOLE_LOT_REJECT_REQUESTED" ? "Decline — back to inspection" : "Release hold"}
                         </Button>

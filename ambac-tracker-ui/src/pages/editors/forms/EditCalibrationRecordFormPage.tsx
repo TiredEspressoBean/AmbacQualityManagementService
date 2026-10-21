@@ -1,11 +1,11 @@
 "use client";
 
 import { Combobox } from "@/components/ui/combobox";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 
 import { ReportButton } from "@/components/reports/ReportButton";
 import { useRetrieveCalibrationRecord } from "@/hooks/useRetrieveCalibrationRecord";
@@ -92,23 +92,28 @@ export default function EditCalibrationRecordFormPage() {
     const navigate = useNavigate();
     const mode = params.id && params.id !== "new" ? "edit" : "create";
     const recordId = params.id !== "new" ? params.id : undefined;
+    // `?equipment=` (from the dashboard's overdue / due-soon rows) opens on that gauge.
+    const presetEquipment = (useSearch({ strict: false }) as { equipment?: string }).equipment;
 
     const [equipmentSearch, setEquipmentSearch] = useState("");
 
     const { data: record, isLoading: isLoadingRecord } = useRetrieveCalibrationRecord(recordId || "");
 
+    // Only equipment that's calibrated (a CNC lathe or a press has no calibration).
     const { data: equipmentData } = useRetrieveEquipments(
-        { search: equipmentSearch },
+        { search: equipmentSearch, requires_calibration: true },
     );
-    const equipmentList = equipmentData?.results ?? [];
+    const equipmentList = useMemo(() => equipmentData?.results ?? [], [equipmentData]);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues>,
         defaultValues: ({
-            equipment: "",
+            equipment: presetEquipment ?? "",
             calibration_date: "",
             due_date: "",
-            result: "PASS",
+            // No default: the result returns a gauge to service (PASS) or takes it out
+            // (FAIL), so it's asked, never assumed — a careless save recorded a pass.
+            result: undefined,
             calibration_type: "SCHEDULED",
             performed_by: "",
             external_lab: "",
@@ -127,7 +132,7 @@ export default function EditCalibrationRecordFormPage() {
                 equipment: record.equipment ?? "",
                 calibration_date: record.calibration_date ?? "",
                 due_date: record.due_date ?? "",
-                result: record.result ?? "PASS",
+                result: record.result ?? undefined,
                 calibration_type: record.calibration_type ?? "SCHEDULED",
                 performed_by: record.performed_by ?? "",
                 external_lab: record.external_lab ?? "",
@@ -140,10 +145,32 @@ export default function EditCalibrationRecordFormPage() {
         }
     }, [mode, record, form]);
 
+    // Next due = calibration date + the gauge's interval, prefilled until the user sets
+    // it themselves (then theirs stands).
+    const watchedEquipment = form.watch("equipment");
+    const watchedCalDate = form.watch("calibration_date");
+    const autoDue = useRef<string | null>(null);
+    useEffect(() => {
+        if (mode === "edit") return;
+        const eq = equipmentList.find((e: { id: string }) => e.id === watchedEquipment) as
+            { calibration_interval_effective?: number | null } | undefined;
+        const days = eq?.calibration_interval_effective;
+        if (!days || !watchedCalDate) return;
+        const current = form.getValues("due_date");
+        if (current && current !== autoDue.current) return;   // set by hand
+        const next = format(addDays(parseISO(watchedCalDate), days), "yyyy-MM-dd");
+        autoDue.current = next;
+        form.setValue("due_date", next, { shouldValidate: true });
+    }, [mode, watchedEquipment, watchedCalDate, equipmentList, form]);
+
     const createRecord = useCreateCalibrationRecord();
     const updateRecord = useUpdateCalibrationRecord();
 
     function onSubmit(values: FormValues) {
+        if (!values.result) {
+            form.setError("result", { message: "Choose the result: pass, fail or limited." });
+            return;
+        }
         const submitData = {
             equipment: values.equipment,
             calibration_date: values.calibration_date,
@@ -315,7 +342,7 @@ export default function EditCalibrationRecordFormPage() {
                             name="result"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Result</FormLabel>
+                                    <FormLabel>Result *</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>

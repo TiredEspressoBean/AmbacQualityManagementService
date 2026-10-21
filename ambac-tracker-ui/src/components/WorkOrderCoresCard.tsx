@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
@@ -328,6 +329,7 @@ export function WorkOrderCoresCard(
             </Card>
             {answering && (
                 <CustomerAnswerDialog
+                    coreId={String(answering.core.id)}
                     coreNumber={answering.core.core_number}
                     approved={answering.approved}
                     pending={lifecycle.isPending}
@@ -361,7 +363,8 @@ export function WorkOrderCoresCard(
 /** Record what the customer said. The conversation happened elsewhere (phone, email,
  *  a PO); this is the production record of it — who answered, how, and the reference
  *  to trace it. Nobody at the customer needs a login for it to be on record. */
-function CustomerAnswerDialog({ coreNumber, approved, pending, onCancel, onConfirm }: {
+export function CustomerAnswerDialog({ coreId, coreNumber, approved, pending, onCancel, onConfirm }: {
+    coreId: string;
     coreNumber: string;
     approved: boolean;
     pending: boolean;
@@ -372,6 +375,10 @@ function CustomerAnswerDialog({ coreNumber, approved, pending, onCancel, onConfi
     const [method, setMethod] = useState("");
     const [reference, setReference] = useState("");
     const [note, setNote] = useState("");
+    // What they're answering: each code, its name, and the finding behind it — so the
+    // person recording the answer sees what was agreed to.
+    const { data: core } = useRetrieveCore(coreId);
+    const scope = core?.awaiting_authorisation ?? [];
     return (
         <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
             <DialogContent>
@@ -385,6 +392,19 @@ function CustomerAnswerDialog({ coreNumber, approved, pending, onCancel, onConfi
                             : "The unit goes back to them unrepaired."}
                     </DialogDescription>
                 </DialogHeader>
+                {scope.length > 0 && (
+                    <ul className="space-y-1 rounded-md border bg-muted/30 p-2 text-sm">
+                        {scope.map((item) => (
+                            <li key={item.code}>
+                                <span className="font-mono text-xs">{item.code}</span>
+                                {item.name ? ` · ${item.name}` : ""}
+                                {item.why.length > 0 && (
+                                    <span className="text-muted-foreground"> — {item.why.join("; ")}</span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
                 <div className="grid gap-3">
                     <div className="grid gap-1.5">
                         <Label htmlFor="ans-contact">Who answered</Label>

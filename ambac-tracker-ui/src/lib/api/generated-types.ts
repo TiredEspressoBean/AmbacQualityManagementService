@@ -20548,6 +20548,8 @@ export interface components {
             readonly responses: components["schemas"]["ApprovalResponse"][];
             readonly pending_approvers: unknown[];
             readonly is_overdue: boolean;
+            /** @description The viewer requested this and may decide it themselves (with a justification): the template allows it, or nobody else can approve it. */
+            readonly can_self_approve: boolean;
             /** Format: date-time */
             readonly requested_at: string;
             /** Format: date-time */
@@ -20909,6 +20911,11 @@ export interface components {
             readonly work_center_code: string;
             readonly work_center_kind: string;
             readonly is_primary: boolean;
+        };
+        AuthorisationScopeItem: {
+            code: string;
+            name: string;
+            why: string[];
         };
         /**
          * @description * `off` - Off (flag stale only; planner re-solves by hand)
@@ -21589,6 +21596,8 @@ export interface components {
             current_calibrations: number;
             due_soon: number;
             overdue: number;
+            /** @description Equipment whose latest calibration failed. */
+            failed: number;
             /** Format: double */
             compliance_rate: number;
         };
@@ -22140,6 +22149,8 @@ export interface components {
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
             readonly approved_repair_codes: string[];
+            /** @description While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise. */
+            readonly awaiting_authorisation: components["schemas"]["AuthorisationScopeItem"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -23580,6 +23591,9 @@ export interface components {
             readonly location_name: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
             readonly calibration_status: string | null;
+            readonly requires_calibration: boolean;
+            /** @description Days between calibrations: the gauge's own interval, else its type's. */
+            readonly calibration_interval_effective: number | null;
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
             /** @description Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag. */
@@ -42955,6 +42969,8 @@ export interface operations {
                 ordering?: string;
                 /** @description A search term. */
                 search?: string;
+                /** @description true: only companies that supply something (a lot, a qualification, or outside processing). */
+                supplying?: boolean;
             };
             header?: never;
             path?: never;
@@ -46099,6 +46115,8 @@ export interface operations {
                 offset?: number;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
+                /** @description true: only equipment that requires calibration (its own setting or its type's). */
+                requires_calibration?: boolean;
                 /** @description A search term. */
                 search?: string;
                 /**

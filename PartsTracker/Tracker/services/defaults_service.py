@@ -165,22 +165,28 @@ APPROVAL_TEMPLATES = [
         "default_groups_names": ["QA Manager", "Document Controller"],
     },
     {
+        # A Major/Critical CAPA's plan is decided by a QA Manager or a Production
+        # Manager — either one, the first approval decides it (user, 2026-10-20). Not
+        # Tenant Admin: an administrator account, not a quality role. A requester who
+        # is the only eligible approver may self-approve with a justification
+        # (services/core/approval.self_approval_permitted). Critical differs from
+        # Major in urgency, not in who decides: shorter due/escalation, no delegating.
         "template_name": "Critical CAPA Approval",
         "approval_type": "CAPA_CRITICAL",
-        "auto_assign_by_role": "Tenant Admin",
-        "approval_flow_type": "ALL_REQUIRED",
+        "auto_assign_by_role": "QA Manager",
+        "approval_flow_type": "ANY",
         "delegation_policy": "DISABLED",
-        "approval_sequence": "SEQUENTIAL",
+        "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 3,
         "escalation_days": 1,
-        "default_groups_names": ["QA Manager", "Production Manager", "Tenant Admin"],
+        "default_groups_names": ["QA Manager", "Production Manager"],
     },
     {
         "template_name": "Major CAPA Approval",
         "approval_type": "CAPA_MAJOR",
         "auto_assign_by_role": "QA Manager",
-        "approval_flow_type": "ALL_REQUIRED",
+        "approval_flow_type": "ANY",
         "delegation_policy": "OPTIONAL",
         "approval_sequence": "PARALLEL",
         "allow_self_approval": False,

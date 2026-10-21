@@ -72,6 +72,7 @@ class CalibrationStatsSerializer(serializers.Serializer):
     current_calibrations = serializers.IntegerField()
     due_soon = serializers.IntegerField()
     overdue = serializers.IntegerField()
+    failed = serializers.IntegerField(help_text="Equipment whose latest calibration failed.")
     compliance_rate = serializers.FloatField()
 
 

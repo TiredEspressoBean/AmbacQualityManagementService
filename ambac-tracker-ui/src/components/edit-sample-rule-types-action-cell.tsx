@@ -51,7 +51,8 @@ export function EditRuleTypeActionsCell({ ruleSetId }: Props) {
                 variant="ghost"
                 size="icon"
                 onClick={handleEdit}
-                title="Edit Sampling Rule"
+                title="Edit sampling rule set"
+                aria-label="Edit sampling rule set"
             >
                 <Pencil className="h-4 w-4" />
             </Button>
@@ -61,7 +62,8 @@ export function EditRuleTypeActionsCell({ ruleSetId }: Props) {
                         variant="ghost"
                         size="icon"
                         className="text-destructive"
-                        title="Delete Sampling Rule"
+                        title="Delete sampling rule set"
+                        aria-label="Delete sampling rule set"
                     >
                         <Delete className="h-4 w-4" />
                     </Button>

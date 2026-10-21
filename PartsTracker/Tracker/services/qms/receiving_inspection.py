@@ -226,6 +226,29 @@ def _held_for_unqualified_supplier(lot) -> bool:
     return True
 
 
+def hold_supplier_lots_at_dock(supplier) -> list:
+    """A supplier's qualification was suspended or withdrawn: its lots still at the dock
+    (received, awaiting inspection, or held at receiving) get the same unqualified-supplier hold receipt
+    would have given them, so QA releases each on its merits. Stock already accepted or
+    in use is a separate decision and is untouched. Returns the lots held."""
+    from Tracker.models import MaterialLot
+    held = []
+    from django.db.models import Q
+    # At the dock: received, awaiting inspection, or already held at receiving for
+    # something else (holds are additive, so it keeps this one when the other clears —
+    # a lot held on a whole-lot request went back to inspection unheld).
+    at_dock = (Q(status__in=["RECEIVED", "AWAITING_INSPECTION"])
+               | (Q(status="QUARANTINE") & ~Q(hold_reason="")))
+    for lot in (MaterialLot.objects  # tenant-safe: .objects auto-scopes
+                .filter(at_dock, archived=False, supplier=supplier)
+                .select_related("material_type", "material")):
+        if HOLD_SUPPLIER_UNQUALIFIED in lot_holds.holds(lot):
+            continue
+        if _held_for_unqualified_supplier(lot):
+            held.append(lot)
+    return held
+
+
 def _emit_supplier_unqualified(lot) -> None:
     from Tracker.services.core.notifications import emit
     from Tracker.services.qms.events import SupplierUnqualifiedPayload
@@ -388,9 +411,10 @@ def release_hold(lot, user, reason: str, code: str | None = None):
             decline_whole_lot_request(lot, user, reason)
         if remaining:
             pass  # still held for the others; nothing routes yet
-        elif released == "WHOLE_LOT_REJECT_REQUESTED":
-            # Back to the SAME inspection for a partial reject. Routing it again opened
-            # a second report and execution, and left the first one's readings orphaned.
+        elif released == "WHOLE_LOT_REJECT_REQUESTED" or receiving_execution(lot) is not None:
+            # Back to the SAME inspection: a declined whole-lot request, or a lot held
+            # mid-inspection (its supplier suspended). Routing it again opened a second
+            # report and execution, and left the first one's readings orphaned.
             inventory.return_to_inspection(lot)
         else:
             inventory.release_hold(lot)

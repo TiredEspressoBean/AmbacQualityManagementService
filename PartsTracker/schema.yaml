@@ -4820,6 +4820,12 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: supplying
+        schema:
+          type: boolean
+        description: 'true: only companies that supply something (a lot, a qualification,
+          or outside processing).'
       tags:
       - api
       security:
@@ -8846,6 +8852,12 @@ paths:
         description: Which field to use when ordering the results.
         schema:
           type: string
+      - in: query
+        name: requires_calibration
+        schema:
+          type: boolean
+        description: 'true: only equipment that requires calibration (its own setting
+          or its type''s).'
       - name: search
         required: false
         in: query
@@ -48780,6 +48792,11 @@ components:
         is_overdue:
           type: boolean
           readOnly: true
+        can_self_approve:
+          type: boolean
+          readOnly: true
+          description: 'The viewer requested this and may decide it themselves (with
+            a justification): the template allows it, or nobody else can approve it.'
         requested_at:
           type: string
           format: date-time
@@ -48808,6 +48825,7 @@ components:
       - approver_groups
       - approver_groups_info
       - archived
+      - can_self_approve
       - completed_at
       - content_object_display
       - content_object_info
@@ -49581,6 +49599,21 @@ components:
       - work_center_code
       - work_center_kind
       - work_center_name
+    AuthorisationScopeItem:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        why:
+          type: array
+          items:
+            type: string
+      required:
+      - code
+      - name
+      - why
     AutoResolveEnum:
       enum:
       - 'off'
@@ -50931,6 +50964,9 @@ components:
           type: integer
         overdue:
           type: integer
+        failed:
+          type: integer
+          description: Equipment whose latest calibration failed.
         compliance_rate:
           type: number
           format: double
@@ -50938,6 +50974,7 @@ components:
       - compliance_rate
       - current_calibrations
       - due_soon
+      - failed
       - overdue
       - total_equipment
     CalibrationTypeEnum:
@@ -52079,6 +52116,13 @@ components:
           items:
             type: string
           readOnly: true
+        awaiting_authorisation:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthorisationScopeItem'
+          readOnly: true
+          description: 'While the unit awaits the customer: each code they''re asked
+            about, its name and the findings behind it. Empty otherwise.'
         created_at:
           type: string
           format: date-time
@@ -52091,6 +52135,7 @@ components:
           type: boolean
       required:
       - approved_repair_codes
+      - awaiting_authorisation
       - condition_grade
       - core_credit_issued_at
       - core_type
@@ -55141,6 +55186,15 @@ components:
           type: string
           nullable: true
           readOnly: true
+        requires_calibration:
+          type: boolean
+          readOnly: true
+        calibration_interval_effective:
+          type: integer
+          nullable: true
+          readOnly: true
+          description: 'Days between calibrations: the gauge''s own interval, else
+            its type''s.'
         is_schedulable:
           type: boolean
           description: Whether the scheduler treats this asset as a finite resource
@@ -55187,12 +55241,14 @@ components:
           type: integer
           readOnly: true
       required:
+      - calibration_interval_effective
       - calibration_status
       - created_at
       - equipment_type_name
       - id
       - location_name
       - name
+      - requires_calibration
       - updated_at
       - version
     EquipmentsRequest:

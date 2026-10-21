@@ -177,7 +177,7 @@ export default function SamplingRuleSetsFormPage() {
                     {mode === "edit" ? "Edit Rule Set" : "Create New Rule Set"}
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                    {mode === "edit" ? `Update details for Part #${ruleSetId ?? ""}` : "Fill out the details below to create a new part."}
+                    {mode === "edit" ? `Update ${ruleSet?.name ?? "the rule set"}` : "Fill out the details below to create a new rule set."}
                 </p>
             </div>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto py-10">

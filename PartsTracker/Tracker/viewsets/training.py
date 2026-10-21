@@ -114,6 +114,18 @@ class _TrainingRecordImport(BaseCSVImportSerializer):
         return instance
 
 
+
+def _not_superseded(qs):
+    """Drop records the person has since renewed: a later record of the same training
+    type replaces it, so the old one's expiry is no reminder (walk 2026-10-20 — a
+    renewed L1 kept showing under Expiring Soon)."""
+    from django.db.models import Exists, OuterRef
+    from Tracker.models import TrainingRecord
+    newer = TrainingRecord.unscoped.filter(  # tenant-safe: correlated to the scoped outer row
+        user=OuterRef('user'), training_type=OuterRef('training_type'),
+        completed_date__gt=OuterRef('completed_date'), archived=False)
+    return qs.exclude(Exists(newer))
+
 @extend_schema_view(
     list=extend_schema(
         description="List training records with filtering",
@@ -178,13 +190,13 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin
                 )
             elif status_filter == 'expiring_soon':
                 # Expiring soon: expires within 30 days but not yet expired
-                qs = qs.filter(
+                qs = _not_superseded(qs.filter(
                     expires_date__lte=thirty_days,
                     expires_date__gte=today
-                )
+                ))
             elif status_filter == 'expired':
                 # Expired: expires_date < today
-                qs = qs.filter(expires_date__lt=today)
+                qs = _not_superseded(qs.filter(expires_date__lt=today))
 
         return qs
 
@@ -221,10 +233,10 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin
         today = tenant_today(self.tenant)
         cutoff = today + timedelta(days=days)
 
-        qs = self.get_queryset().filter(
+        qs = _not_superseded(self.get_queryset().filter(
             expires_date__lte=cutoff,
             expires_date__gte=today
-        ).order_by('expires_date')
+        )).order_by('expires_date')
 
         page = self.paginate_queryset(qs)
         if page is not None:
@@ -239,7 +251,7 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin
     def expired(self, request):
         """Return all expired training records."""
         today = tenant_today(self.tenant)
-        qs = self.get_queryset().filter(expires_date__lt=today).order_by('-expires_date')
+        qs = _not_superseded(self.get_queryset().filter(expires_date__lt=today)).order_by('-expires_date')
         page = self.paginate_queryset(qs)
         if page is not None:
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
@@ -272,13 +284,13 @@ class TrainingRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin
         ).count()
 
         # Expiring soon: within 30 days but not expired
-        expiring_soon = qs.filter(
+        expiring_soon = _not_superseded(qs.filter(
             expires_date__lte=thirty_days,
             expires_date__gte=today
-        ).count()
+        )).count()
 
-        # Expired
-        expired = qs.filter(expires_date__lt=today).count()
+        # Expired (and not since renewed)
+        expired = _not_superseded(qs.filter(expires_date__lt=today)).count()
 
         return Response({
             'total_records': total,

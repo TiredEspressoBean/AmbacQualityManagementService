@@ -53,7 +53,11 @@ def compute_supplier_scorecard(supplier) -> SupplierScorecard:
     from Tracker.models import MaterialLot, CAPA
 
     # Customer property is not a purchase: it says nothing about the supplier.
-    lots = MaterialLot.objects.filter(archived=False, supplier=supplier, owner__isnull=True)  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
+    # Received means arrived: an expected receipt still ON_ORDER (or cancelled) isn't a
+    # lot from them yet, and counting it understated CoC compliance too.
+    lots = (MaterialLot.objects  # tenant-safe: runs in request/tenant_context; SecureManager auto-scopes
+            .filter(archived=False, supplier=supplier, owner__isnull=True, received_date__isnull=False)
+            .exclude(status__in=["ON_ORDER", "CANCELLED"]))
     received = lots.count()
     accepted = lots.filter(status="ACCEPTED").count()
     rejected = lots.filter(status="REJECTED").count()

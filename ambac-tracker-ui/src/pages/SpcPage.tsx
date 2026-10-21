@@ -860,7 +860,16 @@ export default function SpcPage() {
         );
     }
 
-    const isProcessCapable = capability.cpk >= 1.33;
+    // Capability can't be judged from zero spread (σ = 0 makes Cpk infinite — a divide
+    // by zero, not a capable process) or from too few subgroups to estimate σ.
+    const MIN_SUBGROUPS_FOR_CAPABILITY = 20;
+    const capabilityJudgeable = Number.isFinite(capability.cpk) && capability.sigma > 0
+        && spcData.length >= MIN_SUBGROUPS_FOR_CAPABILITY;
+    const isProcessCapable = capabilityJudgeable && capability.cpk >= 1.33;
+    // An index that can't be judged reads "—", not a number that looks like a verdict.
+    const idx = (v: number) => (capabilityJudgeable ? v.toFixed(2) : "—");
+    const idxTone = (v: number) => (!capabilityJudgeable ? "text-muted-foreground"
+        : v >= 1.33 ? "text-green-600" : v >= 1.0 ? "text-yellow-600" : "text-destructive");
     const hasOutOfControl = activeOutOfControl.length > 0;
 
     // Get violations for selected point (X-bar/R mode)
@@ -1174,8 +1183,11 @@ Specification Limits:
                                     onClick={() => chartMode === "i-mr" ? freezeIMRLimits() : freezeLimits()}
                                     disabled={
                                         freezeBaselineMutation.isPending ||
-                                        (chartMode === "i-mr" ? !calculatedIMRLimits : !calculatedLimits)
+                                        (chartMode === "i-mr" ? !calculatedIMRLimits : !calculatedLimits) ||
+                                        // Limits from no spread or too few subgroups aren't a baseline.
+                                        !capabilityJudgeable
                                     }
+                                    title={!capabilityJudgeable ? "Not enough varied readings yet to set a baseline" : undefined}
                                     className="h-8"
                                 >
                                     {freezeBaselineMutation.isPending ? (
@@ -1368,7 +1380,9 @@ Specification Limits:
                                 <h3 className="font-semibold text-sm">
                                     {hasOutOfControl
                                         ? "Action Needed"
-                                        : isProcessCapable
+                                        : !capabilityJudgeable
+                                            ? "Capability not judged yet"
+                                            : isProcessCapable
                                             ? "Process Healthy"
                                             : "Monitor Closely"}
                                 </h3>
@@ -1377,6 +1391,12 @@ Specification Limits:
                                         <>
                                             <strong>{activeOutOfControl.length} point{activeOutOfControl.length !== 1 ? "s" : ""}</strong> show unusual variation.
                                             Click on red points in the chart to investigate.
+                                        </>
+                                    ) : !capabilityJudgeable ? (
+                                        <>
+                                            {capability.sigma > 0 && Number.isFinite(capability.cpk)
+                                                ? `Only ${spcData.length} subgroup${spcData.length === 1 ? "" : "s"} so far; capability needs at least ${MIN_SUBGROUPS_FOR_CAPABILITY} to estimate the spread.`
+                                                : "The readings show no variation, so the spread (σ) is zero and Cpk can't be computed. Real measurements vary; check the gauge's resolution and how readings are recorded."}
                                         </>
                                     ) : isProcessCapable ? (
                                         <>
@@ -1396,6 +1416,8 @@ Specification Limits:
                                     <p className="text-xs text-muted-foreground">
                                         {hasOutOfControl ? (
                                             <>Click on any red point in the chart below, then select "Create CAPA" to start an investigation.</>
+                                        ) : !capabilityJudgeable ? (
+                                            <>Keep collecting readings. Don't freeze limits until capability can be judged.</>
                                         ) : spcMode === "baseline" && isProcessCapable ? (
                                             <>Your process is stable. Click "Freeze Limits" above to lock these control limits and start monitoring for future changes.</>
                                         ) : spcMode === "baseline" && !isProcessCapable ? (
@@ -1432,8 +1454,8 @@ Specification Limits:
                                 )}
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <div className={`text-2xl font-bold ${isProcessCapable ? "text-green-600" : "text-yellow-600"}`}>
-                                    {capability.cpk.toFixed(2)}
+                                <div className={`text-2xl font-bold ${!capabilityJudgeable ? "text-muted-foreground" : isProcessCapable ? "text-green-600" : "text-yellow-600"}`}>
+                                    {idx(capability.cpk)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">Target: ≥1.33</p>
                             </CardContent>
@@ -1454,7 +1476,7 @@ Specification Limits:
                                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent className="pt-0">
-                                <div className="text-2xl font-bold">{capability.cp.toFixed(2)}</div>
+                                <div className={`text-2xl font-bold ${capabilityJudgeable ? "" : "text-muted-foreground"}`}>{idx(capability.cp)}</div>
                                 <p className="text-xs text-muted-foreground">Process potential</p>
                             </CardContent>
                         </Card>
@@ -1981,22 +2003,22 @@ Specification Limits:
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                             <div className="text-muted-foreground">Cp (Potential)</div>
-                            <div className="text-lg font-semibold">{capability.cp.toFixed(2)}</div>
+                            <div className={`text-lg font-semibold ${capabilityJudgeable ? "" : "text-muted-foreground"}`}>{idx(capability.cp)}</div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Cpk (Actual)</div>
-                            <div className={`text-lg font-semibold ${capability.cpk >= 1.33 ? "text-green-600" : capability.cpk >= 1.0 ? "text-yellow-600" : "text-destructive"}`}>
-                                {capability.cpk.toFixed(2)}
+                            <div className={`text-lg font-semibold ${idxTone(capability.cpk)}`}>
+                                {idx(capability.cpk)}
                             </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Pp (Performance)</div>
-                            <div className="text-lg font-semibold">{capability.pp.toFixed(2)}</div>
+                            <div className={`text-lg font-semibold ${capabilityJudgeable ? "" : "text-muted-foreground"}`}>{idx(capability.pp)}</div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Ppk (Actual Perf.)</div>
-                            <div className={`text-lg font-semibold ${capability.ppk >= 1.33 ? "text-green-600" : capability.ppk >= 1.0 ? "text-yellow-600" : "text-destructive"}`}>
-                                {capability.ppk.toFixed(2)}
+                            <div className={`text-lg font-semibold ${idxTone(capability.ppk)}`}>
+                                {idx(capability.ppk)}
                             </div>
                         </div>
                     </div>

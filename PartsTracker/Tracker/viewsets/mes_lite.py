@@ -4388,6 +4388,9 @@ class EquipmentSelectViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         return qs.select_related('equipment_type').prefetch_related('calibration_records')
 
 
+@extend_schema_view(list=extend_schema(parameters=[OpenApiParameter(
+    name='requires_calibration', type=bool, required=False,
+    description="true: only equipment that requires calibration (its own setting or its type's).")]))
 class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExportMixin,
                       viewsets.ModelViewSet):
     queryset = Equipments.unscoped.all()
@@ -4414,6 +4417,12 @@ class EquipmentViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin
         # old version stays retrievable by id, since history points at it.
         if self.action == 'list':
             qs = qs.filter(is_current_version=True)
+            # ?requires_calibration=true — the gauges a calibration record can be for.
+            if self.request.query_params.get('requires_calibration') == 'true':
+                from django.db.models import Q
+                qs = qs.filter(
+                    Q(equipment_type__requires_calibration=True) | Q(_requires_calibration_override=True)
+                ).exclude(_requires_calibration_override=False)
         return qs.select_related('equipment_type', 'location').prefetch_related('calibration_records')
 
 
