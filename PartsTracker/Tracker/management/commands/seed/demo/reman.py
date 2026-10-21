@@ -30,6 +30,8 @@ REPAIR_ORDERS = {
                       'due_days': 14},
     'ORD-2024-0046': {'name': 'Great Lakes injector repairs', 'customer': 'Great Lakes Diesel',
                       'due_days': 14},
+    'ORD-2024-0047': {'name': 'Northern Trucking injector repairs', 'customer': 'Northern Trucking Co',
+                      'due_days': 18},
 }
 
 
@@ -355,6 +357,41 @@ DEMO_CORES = [
         'core_credit_value': None,
         'core_credit_issued': False,
     },
+    {
+        # Shift Lead R1 exhibit: Northern Trucking's own unit, torn down on a teardown
+        # work order of its own (one lot), released into rebuild, cleaned in its own
+        # load. At Nozzle Inspection the operator finds the nozzle beyond repair and
+        # records it there (ops_walk). Replacing it isn't pre-approved at that check,
+        # so the finding waits for the lead and the unit holds until it's decided.
+        'core_number': 'CORE-240214-0010',
+        'for_order': 'ORD-2024-0047',
+        'own_teardown': True,
+        'serial_number': 'SN-CRI-K17D90A3',
+        'received_days_ago': 9,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 8,
+        'disassembly_completed_days_ago': 7,
+        'condition_grade': 'B',
+        'condition_notes': 'Good condition. Light carbon on the tip.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-46021',
+        'customer_name': 'Northern Trucking Co',
+        'fulfilment_mode': 'REPAIR_RETURN',
+        'core_credit_value': None,
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'components': [
+            {'component_name': 'Injector Body', 'condition_grade': 'A', 'disposition': 'REUSE',
+             'condition_notes': 'Clean bore, within all tolerances.', 'position': '',
+             'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Injector Nozzle Assembly', 'condition_grade': 'B',
+             'disposition': 'REUSE', 'condition_notes': 'Carbon on the tip; spray holes clear.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Control Valve Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Seat clean, passes dimensional checks.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+        ],
+    },
 ]
 
 
@@ -452,11 +489,24 @@ class DemoRemanSeeder(BaseSeeder):
             self.log("  Skipped teardown walk: no employees", warning=True)
             return []
         config = {c['core_number']: c for c in DEMO_CORES}
-        batch = [c for c in cores
-                 if config[c.core_number]['status'] in self.WALKED_STATUSES
-                 and c.status == 'RECEIVED' and c.part_id and c.part.work_order_id is None]
-        if not batch:
-            return []
+        walked = [c for c in cores
+                  if config[c.core_number]['status'] in self.WALKED_STATUSES
+                  and c.status == 'RECEIVED' and c.part_id and c.part.work_order_id is None]
+        # A core marked own_teardown is torn down on a work order of its own: a lot of
+        # one, so its rebuild doesn't wait on the other units' lot.
+        batches = [[c for c in walked if not config[c.core_number].get('own_teardown')]]
+        batches += [[c] for c in walked if config[c.core_number].get('own_teardown')]
+        components = []
+        for batch in batches:
+            if batch:
+                components += self._tear_down(batch, config, employees, users)
+        return components
+
+    def _tear_down(self, batch, config, employees, users):
+        """One teardown work order for `batch`, walked as _walk_teardown describes."""
+        from Tracker.services.reman.core import complete_core_disassembly
+        from Tracker.services.reman.teardown import start_teardown_batch
+
         wo = start_teardown_batch(batch, self._actor('casey.dual@demo.ambac.com', employees[0]))
 
         components = []

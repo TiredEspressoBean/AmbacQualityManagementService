@@ -111,6 +111,19 @@ class DemoSeedFlowsTests(TestCase):
                      .values_list("disposition_number", "part__ERP_id"))
             self.assertEqual(list(stray), [])
 
+    def test_a_finding_waits_for_the_lead(self):
+        # The Shift Lead's pending finding: recorded at Nozzle Inspection, where a
+        # replacement isn't pre-approved, so it waits and the unit holds at the check.
+        from Tracker.models import Core
+        with tenant_context(self.tenant.id):
+            core = Core.objects.select_related("part__step", "part__order").get(
+                core_number="CORE-240214-0010")
+            self.assertEqual(core.part.step.name, "Nozzle Inspection")
+            self.assertEqual(core.part.order.order_number, "ORD-2024-0047")
+            pending = core.harvested_components.exclude(proposed_grade="")
+            self.assertEqual([(c.component_type.name, c.proposed_grade) for c in pending],
+                             [("Injector Nozzle Assembly", "SCRAP")])
+
     def test_makeup_exhibit_is_one_short(self):
         # The Production Manager tops up a job after scrap: one body scrapped through a
         # decided, verified Scrap disposition, the job one good unit short.

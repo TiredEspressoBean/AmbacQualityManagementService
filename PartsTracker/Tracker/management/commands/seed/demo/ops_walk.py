@@ -38,6 +38,11 @@ MAKEUP_WO = 'WO-PM-MAKEUP-01'
 MAKEUP_PARTS = ['INJ-PMK-001', 'INJ-PMK-002', 'INJ-PMK-003', 'INJ-PMK-004']
 MAKEUP_DUE_DAYS = 12
 
+# A repair unit held at Nozzle Inspection by a finding that waits for the lead.
+LEAD_FINDING_CORE = 'CORE-240214-0010'
+LEAD_FINDING = ('Injector Nozzle Assembly', 'SCRAP',
+                'Seat eroded through at the needle guide; leaks down on the spray test.')
+
 # Two cores Dave received, waiting at Disassembly for Mike to tear down and grade.
 GRADING_CORES = ['CORE-240220-0003', 'CORE-240220-0004']
 
@@ -118,6 +123,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
 
         result['teardown_cores'] = self._cores_to_teardown()
 
+        result['lead_finding'] = self._finding_for_the_lead(walk)
+
         result['shift_notes'] = self._shift_notes()
         self.log(f"  {UP_NEXT_WO}: {len(UP_NEXT_PARTS)} bodies waiting at Machining; "
                  f"{WASH_WO}: a Wash load Dave started; {ASSEMBLY_WO}: "
@@ -166,6 +173,46 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             self._run_step_for(good, 'Machining', walk, operator=self.dave)
         self._space_out(wo, self.today - timedelta(hours=3))
         return wo
+
+    def _finding_for_the_lead(self, walk):
+        """The Shift Lead's pending finding. The repair unit is cleaned in its own load,
+        then at Nozzle Inspection Mike records its nozzle beyond repair through the
+        capture's service (record_findings_from_capture). A replacement isn't
+        pre-approved at that check, so the finding waits for the lead and the unit
+        holds there until it's applied or dismissed."""
+        from Tracker.models import Core, ProcessStep
+        from Tracker.services.reman.findings import record_findings_from_capture
+        core = Core.objects.filter(tenant=self.tenant, core_number=LEAD_FINDING_CORE,
+                                   status='IN_REBUILD').first()
+        if core is None or not core.part_id:
+            self.log(f"  Warning: {LEAD_FINDING_CORE} not in rebuild; lead finding skipped.",
+                     warning=True)
+            return None
+        part = core.part
+        wo = part.work_order
+        build_steps = self.step
+        self.step = {ps.step.name: ps.step for ps in
+                     ProcessStep.objects.filter(process=wo.process).select_related('step')}
+        try:
+            with transaction.atomic():
+                self._run_batch_step(wo, [part], 'Cleaning', walk)
+                part.refresh_from_db()
+                if part.step is None or part.step.name != 'Nozzle Inspection':
+                    self.log(f"  Warning: {LEAD_FINDING_CORE} is at "
+                             f"{part.step.name if part.step else 'no step'}, not Nozzle "
+                             "Inspection; lead finding skipped.", warning=True)
+                    return None
+                se = self._start(part, walk)
+                component_name, grade, finding = LEAD_FINDING
+                nozzle = core.harvested_components.filter(
+                    component_type__name=component_name, is_scrapped=False).first()
+                record_findings_from_capture(
+                    se, [{'harvested_id': str(nozzle.id), 'grade': grade, 'finding': finding}],
+                    self.mike)
+        finally:
+            self.step = build_steps
+        self._space_out(wo, self.today - timedelta(minutes=50))
+        return core
 
     def _work_order(self, order, process, erp_id, quantity):
         """A work order released the way a planner releases one (release_work_order),
