@@ -324,6 +324,37 @@ together, and a held unit still counts. 0007 is done; it is waiting, not stuck.
 0009 moves to a work order of its own and keeps its hold. The message says what
 moved: *CORE-240210-0007 moved on to Nozzle Inspection*.
 
+### R3. Inspect a core, and find a component worse
+
+**You will:** inspect a rebuilt core's nozzle, find it needs reconditioning, and
+send it down the repair it needs.
+
+`CORE-240210-0007` is at Nozzle Inspection. Teardown graded its nozzle **A**; under
+the light, after cleaning, the seat face shows light pitting.
+
+1. Scan `CORE-240210-0007` and **Start**. You're level 1 on nozzle inspection:
+   Casey authorises you, as in module 8.
+2. Read **Repairs at this check**: *Nozzle Recondition* is **pre-approved** here;
+   *Nozzle Replacement* **needs approval**.
+3. **Visual nozzle inspection**: the result is **Needs repair**, not Pass and not
+   Fail. A planned repair isn't a nonconformance. Record the gauge you used and sign
+   as the one who found it.
+4. **Measure spray angle**: the pitting doesn't change it. Record it and sign.
+5. **Report a component found worse**: switch on **Injector Nozzle Assembly**, set
+   **C — needs reconditioning** and say what you found.
+
+When you choose **Needs repair**, you're reminded inline that it needs a finding:
+record what needs repairing under **Report a component found worse** before you
+complete the step.
+
+6. **Complete step**: *awaiting QA sign-off*. The check shows *Nozzle Recondition —
+   this unit goes here*: reconditioning is pre-approved, so your finding applied at
+   once. Once an inspector signs the step off, the core goes to Nozzle Recondition.
+   No disposition is opened.
+
+A finding that needs approval (a nozzle beyond repair, say) doesn't apply itself: it
+waits for your lead, and the core holds at the check until they decide.
+
 ## Recording your qualification
 
 Passing the final task is the assessment. The record that lets you do the work is a
