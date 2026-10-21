@@ -1,9 +1,9 @@
 """Production Manager exhibits: the plan the rest of the shop works to.
 
-- Every active work order is released, the way a planner releases one
-  (release_work_order), with an override reason only where readiness blocks it.
-  Work on an unreleased order is invisible to the operator queue's unstarted rows,
-  and no planner starts work they haven't released.
+- The plant runs manual release (only released work is scheduled). Every active
+  work order is released the way a planner releases one (release_work_order), with
+  an override reason only where readiness blocks it, except two left in the
+  planner's release queue for the Planner and Production Manager tracks.
 - ORD-2024-0051: a customer order with a dated demand line and no work orders yet,
   for the Production Manager to promise, turn into work orders and release.
 - Three downtime events this week, on three machines and three causes.
@@ -33,6 +33,11 @@ DOWNTIME = [
 
 SOLVE_SECONDS = 30
 
+# The plant runs manual release: only released work is scheduled. Every active order
+# is released except these, left in the planner's release queue (Pull in work) for
+# the Planner and Production Manager tracks.
+UNRELEASED = ['WO-TRAIN-PM-001', 'WO-ASSESS-PM-001']
+
 
 class DemoPlanningSeeder(BaseSeeder):
     def __init__(self, stdout, style, tenant, scale='small'):
@@ -47,6 +52,7 @@ class DemoPlanningSeeder(BaseSeeder):
         self.planner = (by_email.get('sam.plan@demo.ambac.com')
                         or by_email.get('jennifer.mgr@demo.ambac.com'))
         self.lead = by_email.get('casey.dual@demo.ambac.com')
+        self._manual_release()
         result = {
             'released': self._release_active_work(),
             'new_order': self._new_order(),
@@ -60,7 +66,8 @@ class DemoPlanningSeeder(BaseSeeder):
         from Tracker.services.mes.release import ReleaseBlocked, release_work_order
         released = 0
         for wo in (WorkOrder.objects.filter(tenant=self.tenant, released_at__isnull=True)
-                   .exclude(workorder_status__in=['COMPLETED', 'CANCELLED'])):
+                   .exclude(workorder_status__in=['COMPLETED', 'CANCELLED'])
+                   .exclude(ERP_id__in=UNRELEASED)):
             try:
                 release_work_order(wo, self.planner)
             except ReleaseBlocked as e:
@@ -72,6 +79,14 @@ class DemoPlanningSeeder(BaseSeeder):
             released += 1
         self.log(f"  Released {released} active work order(s)")
         return released
+
+    def _manual_release(self):
+        from Tracker.models import OptimizationConfig
+        from Tracker.models.scheduling import ReleaseMode
+        cfg, _ = OptimizationConfig.objects.get_or_create(tenant=self.tenant)
+        if cfg.release_mode != ReleaseMode.MANUAL:
+            cfg.release_mode = ReleaseMode.MANUAL
+            cfg.save(update_fields=['release_mode'])
 
     def _new_order(self):
         from Tracker.models import Companies, OrderLine, OrderLineStatus, Orders, OrdersStatus, PartTypes

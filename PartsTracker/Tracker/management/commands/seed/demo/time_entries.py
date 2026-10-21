@@ -26,8 +26,11 @@ class DemoTimeEntrySeeder(BaseSeeder):
 
     def seed(self):
         self.log("Creating demo labor time entries (prior work week)...")
-        tz = timezone.get_current_timezone()
-        today = timezone.localdate()
+        # The plant's clock, not the server's: a shift or a closure is on the wall
+        # clock where the work happens (services/core/clock).
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
 
         floor_users = [
             u for u in User.objects.filter(tenant=self.tenant)

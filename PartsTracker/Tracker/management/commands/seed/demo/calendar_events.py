@@ -27,8 +27,11 @@ class DemoCalendarSeeder(BaseSeeder):
 
     def seed(self):
         self.log("Creating demo calendar events (closures / labor blocks / overtime)...")
-        tz = timezone.get_current_timezone()
-        today = timezone.localdate()
+        # The plant's clock, not the server's: a shift or a closure is on the wall
+        # clock where the work happens (services/core/clock).
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        tz = plant_tz(self.tenant)
+        today = tenant_today(self.tenant)
 
         def aware(d, hh=0, mm=0):
             return timezone.make_aware(datetime(d.year, d.month, d.day, hh, mm), tz)
@@ -43,8 +46,9 @@ class DemoCalendarSeeder(BaseSeeder):
         next_monday = next_weekday(today, 0)
         for name, kind, recurrence, start, end in (
             # Next Monday off — lands inside the solve horizon so the Gantt
-            # visibly flows work around it. Yearly, like a fixed-date holiday.
-            ("Labor Day", 'HOLIDAY', 'YEARLY',
+            # visibly flows work around it. A one-off: a named holiday on a date
+            # computed from today would be on the wrong day.
+            ("Plant maintenance day", 'SHUTDOWN', 'ONCE',
              aware(next_monday), aware(next_monday, 23, 59)),
             # The winter shutdown — the classic multi-day yearly closure.
             ("Winter Shutdown", 'SHUTDOWN', 'YEARLY',

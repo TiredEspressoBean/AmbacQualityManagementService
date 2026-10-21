@@ -316,9 +316,9 @@ that consumes nothing says so rather than showing an empty table.
     shift that is legitimately empty — it says *"Nothing scheduled in this window.
     Try a longer window, or check the schedule board."*
 
-    In the demo, **2026-10-12 is Labor Day** in the plant calendar and the solver
-    respects it, so the 8h view is empty and the **24h** view is full. Widen the
-    window before concluding anything is broken.
+    In the demo, next Monday is a **plant maintenance day** in the plant calendar
+    and the solver respects it, so on that day the 8h view is empty and a longer
+    window fills up. Widen the window before concluding anything is broken.
 
 !!! note "The staleness banner is worth reading"
     *"The schedule is stale — these times may have moved. Re-solve before staging
