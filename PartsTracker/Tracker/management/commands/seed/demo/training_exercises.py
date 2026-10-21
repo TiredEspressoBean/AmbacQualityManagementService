@@ -184,8 +184,12 @@ class TrainingExercisesSeeder(BaseSeeder):
         self._process_steps = []
 
         if self._default_part_type:
-            # PartTypes has a reverse relation 'processes' from Processes.part_type FK
-            self._default_process = self._default_part_type.processes.first()
+            # The base track is new manufacture: training work runs on Injector Build.
+            # (processes.first() picked whichever came first, which was Injector Reman,
+            # so new injectors appeared at Core Receiving.)
+            from .routes import BUILD, process_named
+            self._default_process = (process_named(self.tenant, BUILD)
+                                     or self._default_part_type.processes.first())
             if self._default_process:
                 self._process_steps = list(
                     ProcessStep.objects.filter(process=self._default_process)
@@ -258,7 +262,14 @@ class TrainingExercisesSeeder(BaseSeeder):
             self.log("  Warning: No part type/process available, skipping training parts")
             return
 
-        steps = [ps.step for ps in self._process_steps]
+        # Working steps only: up to the terminal one, not it and not the Rework step
+        # ordered after it. A part placed at Ship has nothing left to schedule, and one
+        # at Rework got there through no disposition.
+        steps = []
+        for ps in self._process_steps:
+            if ps.step.is_terminal:
+                break
+            steps.append(ps.step)
         if not steps:
             return
 
@@ -278,6 +289,8 @@ class TrainingExercisesSeeder(BaseSeeder):
                     'related_order': order,
                     'process': self._default_process,
                     'workorder_status': WorkOrderStatus.IN_PROGRESS if config['status'] == OrdersStatus.IN_PROGRESS else WorkOrderStatus.PENDING,
+                    'quantity': config['parts_count'],
+                    'expected_completion': order.estimated_completion,
                 }
             )
 
@@ -290,11 +303,7 @@ class TrainingExercisesSeeder(BaseSeeder):
                 # Determine which step this part should be at
                 step = self._determine_part_step(steps, i, config)
                 # PartsStatus: IN_PROGRESS, COMPLETED, QUARANTINED, etc.
-                status = PartsStatus.IN_PROGRESS if step != steps[-1] else PartsStatus.COMPLETED
-
-                if config['status'] == OrdersStatus.ON_HOLD:
-                    # Orders can be ON_HOLD but Parts uses QUARANTINED for held items
-                    status = PartsStatus.QUARANTINED
+                status = PartsStatus.IN_PROGRESS
 
                 # First N parts require sampling (for QA training scenarios)
                 requires_sampling = i < requires_sampling_count
@@ -321,6 +330,21 @@ class TrainingExercisesSeeder(BaseSeeder):
                 )
 
                 self._parts[part_serial] = part
+
+            if config['status'] == OrdersStatus.ON_HOLD:
+                self._hold(work_order, config)
+
+    def _hold(self, work_order, config):
+        """Hold the work order the way a manager does, through the hold service. Its
+        parts keep their places; quarantining them would need a quality report and a
+        disposition behind each, which a held order doesn't have."""
+        from Tracker.models import User, WorkOrderHold
+        from Tracker.services.mes.work_order import place_on_hold
+        if WorkOrderHold.objects.filter(work_order=work_order, cleared_at__isnull=True,
+                                        is_voided=False).exists():
+            return
+        manager = User.objects.filter(email='jennifer.mgr@demo.ambac.com').first()
+        place_on_hold(work_order, 'QUALITY', manager, notes=config['description'])
 
     def _determine_part_step(self, steps, part_index, config):
         """Determine which step a part should be at based on distribution config."""
@@ -435,7 +459,14 @@ class TrainingExercisesSeeder(BaseSeeder):
         if not self._default_part_type or not self._default_process:
             return
 
-        steps = [ps.step for ps in self._process_steps]
+        # Working steps only: up to the terminal one, not it and not the Rework step
+        # ordered after it. A part placed at Ship has nothing left to schedule, and one
+        # at Rework got there through no disposition.
+        steps = []
+        for ps in self._process_steps:
+            if ps.step.is_terminal:
+                break
+            steps.append(ps.step)
         if not steps:
             return
 
@@ -456,6 +487,8 @@ class TrainingExercisesSeeder(BaseSeeder):
                     'related_order': order,
                     'process': self._default_process,
                     'workorder_status': WorkOrderStatus.IN_PROGRESS if config['status'] == OrdersStatus.IN_PROGRESS else WorkOrderStatus.PENDING,
+                    'quantity': config['parts_count'],
+                    'expected_completion': order.estimated_completion,
                 }
             )
 
@@ -464,10 +497,7 @@ class TrainingExercisesSeeder(BaseSeeder):
             for i in range(config['parts_count']):
                 part_serial = f"{config['parts_prefix']}-{i + 1:03d}"
                 step = self._determine_part_step(steps, i, config)
-                status = PartsStatus.IN_PROGRESS if step != steps[-1] else PartsStatus.COMPLETED
-
-                if config['status'] == OrdersStatus.ON_HOLD:
-                    status = PartsStatus.QUARANTINED
+                status = PartsStatus.IN_PROGRESS
 
                 # First N parts require sampling (for QA training scenarios)
                 requires_sampling = i < requires_sampling_count

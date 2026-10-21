@@ -38,6 +38,7 @@ from .outside_process import DemoOutsideProcessSeeder
 from .scheduling import DemoSchedulingSeeder
 from .qa_walk import DemoQaWalkSeeder
 from .ops_walk import DemoOpsWalkSeeder
+from .planning import DemoPlanningSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -224,6 +225,12 @@ class DemoScenario(BaseSeeder):
         # Same reason to run last: it links a gauge to the reports already filed.
         exposed = self._seed_found_out_calibration()
         self.log(f"Found a gauge out at calibration — {exposed} report(s) in its exposure window")
+
+        # Last of all: it releases what the seeders above made and solves over it.
+        self.log("\n--- Phase 10: The Plan (releases, new order, downtime, solve) ---")
+        planner = DemoPlanningSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        planner._verbose = self._verbose
+        result['planning'] = planner.seed(result['users'])
 
         self.log("\n" + "=" * 60)
         self.log("DEMO SCENARIO: Complete")
