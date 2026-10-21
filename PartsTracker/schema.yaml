@@ -77468,6 +77468,16 @@ components:
       - recover
       - source
       - tooling
+    SplitMovedOn:
+      type: object
+      properties:
+        part:
+          type: string
+        to_step:
+          type: string
+      required:
+      - part
+      - to_step
     SplitReasonEnum:
       enum:
       - QUANTITY
@@ -85752,9 +85762,14 @@ components:
           format: uuid
         child_erp_id:
           type: string
+        moved_on:
+          type: array
+          items:
+            $ref: '#/components/schemas/SplitMovedOn'
       required:
       - child_erp_id
       - child_work_order_id
+      - moved_on
     WorkOrderStatusEnum:
       enum:
       - PENDING

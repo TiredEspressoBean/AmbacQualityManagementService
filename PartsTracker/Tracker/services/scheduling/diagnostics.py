@@ -23,6 +23,8 @@ REASON_ORDER = (
     'on_hold',
     'not_released',
     'no_process',
+    'no_units',
+    'awaiting_shipment',
     'no_open_units',
     'no_routing',
     'no_timings',
@@ -38,6 +40,8 @@ REASON_LABELS = {
     'on_hold': "On hold",
     'not_released': "Not released",
     'no_process': "No process assigned",
+    'no_units': "No units created yet",
+    'awaiting_shipment': "Waiting to ship",
     'no_open_units': "Nothing left to work",
     'no_routing': "No routing to schedule",
     'no_timings': "No timings authored",
@@ -87,7 +91,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         WorkOrder.objects.filter(archived=False, tenant=tenant)
         .exclude(workorder_status__in=[WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED])
         .select_related('process', 'process__part_type')
-        .prefetch_related('parts__core_role')
+        .prefetch_related('parts__core_role', 'parts__step')
         .order_by('priority', 'expected_completion', 'ERP_id')
     )
 
@@ -134,8 +138,13 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     rows = []
     total_open = 0
     for wo in wos:
-        open_parts = [p for p in wo.parts.all()
-                      if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
+        live = [p for p in wo.parts.all()
+                if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
+        # A unit at a terminal step (Ship) has no route left — nothing for the solver
+        # to place. Counted as open, it read "not placed by the last solve → re-solve
+        # longer" (PM walk 2026-10-21). It's waiting to ship, not to be scheduled.
+        at_end = sum(1 for p in live if p.step_id and p.step.is_terminal)
+        open_parts = [p for p in live if not (p.step_id and p.step.is_terminal)]
         open_units = len(open_parts)
         total_open += open_units
 
@@ -151,7 +160,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         reason, detail, fix = _classify(
             wo, open_parts, open_units, covered, schedule, horizon_end_date,
             timings, unstaffable, short_by_wo, gated_by_wo, _graph, resolve_route,
-            manual_release,
+            manual_release, at_end=at_end,
         )
         rows.append({
             'work_order_id': str(wo.id),
@@ -195,7 +204,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
 
 def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
               timings, unstaffable, short_by_wo, gated_by_wo, graph, resolve_route,
-              manual_release):
+              manual_release, at_end: int = 0):
     """The single most actionable reason this WO isn't (fully) on the board.
 
     Returns `(reason_code, detail, fix)`. Order matters — see `REASON_ORDER`.
@@ -218,6 +227,20 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
         return ('no_process',
                 "No process is assigned, so there's no routing to schedule.",
                 "Assign a process to the work order.")
+
+    # No parts at all is not "all finished": the work order form creates none, and
+    # "close it" would throw away real demand (PM walk 2026-10-21).
+    if not wo.parts.filter(archived=False).exists():
+        return ('no_units',
+                f"No units have been created for this work order yet (quantity {wo.quantity}).",
+                "Add its parts to the work order.")
+
+    if open_units == 0 and at_end:
+        step = next((p.step for p in wo.parts.all() if p.step_id and p.step.is_terminal), None)
+        return ('awaiting_shipment',
+                f"{at_end} unit(s) are at {step.name if step else 'the last step'}, the end of "
+                f"the route — nothing left to schedule.",
+                "Ship them from Shipping.")
 
     if open_units == 0:
         return ('no_open_units',

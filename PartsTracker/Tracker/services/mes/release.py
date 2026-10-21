@@ -156,7 +156,11 @@ def evaluate_release(work_order: WorkOrder, ctx: _Context | None = None) -> Rele
     open_parts = [p for p in work_order.parts.all()
                   if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
     if not open_parts:
-        _blk('no_open_units', "No units left to work — nothing to release.")
+        if not any(not p.archived for p in work_order.parts.all()):
+            # Nothing created yet — not "all finished" (PM walk 2026-10-21).
+            _blk('no_units', "No units have been created yet — add its parts first.")
+        else:
+            _blk('no_open_units', "No units left to work — nothing to release.")
         return ReleaseReadiness(str(work_order.id), work_order.ERP_id, not blockers,
                                 tuple(blockers), tuple(warnings))
 

@@ -22,7 +22,11 @@ import { useUnscheduled, type UnscheduledReason, type UnscheduledRow } from "@/h
 // Severity drives the accent only — the ordering itself is the backend's.
 const TONE: Record<UnscheduledReason, string> = {
   on_hold: "border-l-amber-500",
+  not_released: "border-l-amber-500",
   no_process: "border-l-red-500",
+  // A work order with no parts is real demand not yet broken into units — act on it.
+  no_units: "border-l-amber-500",
+  awaiting_shipment: "border-l-sky-500",
   no_open_units: "border-l-muted-foreground/40",
   no_routing: "border-l-red-500",
   no_timings: "border-l-red-500",

@@ -296,3 +296,60 @@ class ReCaptureAfterVoidTests(TenantTestCase):
             record_dwi_measurement(step_execution=ex, substep=substep, measurement_definition=od,
                                    value=v, recorded_by=self.user_a)
         self.assertEqual(StepExecutionMeasurement.objects.filter(step_execution=ex).count(), 2)
+
+
+class StagedPartIsWaitingNotMovedTests(TenantTestCase):
+
+    def test_a_staged_part_names_its_held_lot_mate_and_the_split(self):
+        """The toast said "1 part moved" for a part only staged behind a held lot-mate
+        (Operator walk 2026-10-21). Lock-step stays (user): the lot waits; the message
+        names who and the way out."""
+        from Tracker.models import Parts
+        from Tracker.services.mes.advancement import try_advance_lot
+        from Tracker.tests.test_advancement_engine import _build_lot, _complete_substeps_for_part
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Core", ID_prefix="COR")
+        lot = _build_lot(tenant=self.tenant_a, user=self.user_a, part_type=pt, num_parts=2,
+                         wo_erp_id="WO-ST-1")
+        step = lot["steps"][0]
+        # Per-part path (as a batch step takes): parts advance individually, but this
+        # step's lot moves together (requires_batch_completion).
+        Steps.objects.filter(pk=step.pk).update(requires_batch_completion=True,
+                                                part_advancement_mode='PER_PART')
+        step.refresh_from_db()
+        done, held = lot["parts"]
+        Parts.objects.filter(pk=held.pk).update(part_status="ON_HOLD")
+        _complete_substeps_for_part(tenant=self.tenant_a, user=self.user_a, part=done,
+                                    substeps=lot["substeps_by_step"][0])
+        result = try_advance_lot(work_order_id=str(lot["wo"].id), step_id=str(step.id),
+                                 tenant_id=str(self.tenant_a.id), operator=self.user_a)
+        self.assertNotIn(str(done.id), result.parts_advanced)
+        msg = " ".join(result.blockers_by_part.get(str(done.id), []))
+        self.assertIn(held.ERP_id, msg)
+        self.assertIn("Split it from the lot", msg)
+
+    def test_splitting_the_held_part_off_moves_the_lot_on(self):
+        """"Split it from the lot to let the rest move" has to be true: the part staged
+        behind the held one moves once it's split off (Operator walk 2026-10-21)."""
+        from Tracker.models import Parts
+        from Tracker.services.mes.advancement import try_advance_lot
+        from Tracker.services.mes.work_order import move_staged_lots_on, split_work_order
+        from Tracker.tests.test_advancement_engine import _build_lot, _complete_substeps_for_part
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Core2", ID_prefix="CRB")
+        lot = _build_lot(tenant=self.tenant_a, user=self.user_a, part_type=pt, num_parts=2,
+                         wo_erp_id="WO-ST-2")
+        step = lot["steps"][0]
+        Steps.objects.filter(pk=step.pk).update(requires_batch_completion=True,
+                                                part_advancement_mode='PER_PART')
+        done, held = lot["parts"]
+        Parts.objects.filter(pk=held.pk).update(part_status="ON_HOLD")
+        _complete_substeps_for_part(tenant=self.tenant_a, user=self.user_a, part=done,
+                                    substeps=lot["substeps_by_step"][0])
+        try_advance_lot(work_order_id=str(lot["wo"].id), step_id=str(step.id),
+                        tenant_id=str(self.tenant_a.id), operator=self.user_a)
+        done.refresh_from_db()
+        self.assertEqual((done.step_id, done.part_status), (step.id, "READY_FOR_NEXT_STEP"))
+        split_work_order(lot["wo"], "OPERATION", self.user_a, "WO-ST-2-A", part_ids=[str(held.id)])
+        moved = move_staged_lots_on(lot["wo"], self.user_a)
+        done.refresh_from_db()
+        self.assertNotEqual(done.step_id, step.id)
+        self.assertEqual([m[0] for m in moved], [done.ERP_id])

@@ -1030,6 +1030,41 @@ def split_work_order(
     return child
 
 
+def move_staged_lots_on(work_order: WorkOrder, actor) -> list:
+    """Move on any lot of `work_order` that was staged only because of a lot-mate that
+    has since left (split off). Returns [(serial, step name moved to)].
+
+    A part finished at a step whose lot moves together waits READY_FOR_NEXT_STEP for
+    the rest. When the held lot-mate is split off, nothing re-checked, so the parts it
+    was holding stayed put — "split it from the lot to let the rest move" wasn't true
+    (Operator walk 2026-10-21). The staged parts were gated when they were staged; the
+    move is advance_part_step's own lot move, run now that no lot-mate is pending.
+    """
+    from django.db import transaction
+    from Tracker.services.mes.parts import advance_part_step
+
+    staged = (Parts.objects  # tenant-safe: .objects auto-scopes; scoped by the WO FK
+              .filter(archived=False, work_order=work_order, part_status=PartsStatus.READY_FOR_NEXT_STEP,
+                      step__isnull=False)
+              .select_related('step', 'part_type').order_by('step_id', 'ERP_id'))
+    moved: list = []
+    seen: set = set()
+    for p in staged:
+        key = (p.step_id, p.part_type_id)
+        if key in seen or not getattr(p.step, 'requires_batch_completion', False):
+            continue
+        seen.add(key)
+        before = {q.pk: q.step_id for q in staged if (q.step_id, q.part_type_id) == key}
+        with transaction.atomic():
+            outcome = advance_part_step(p, operator=actor, skip_gate_check=True)
+        if outcome == "marked_ready":
+            continue   # still waiting on someone else — nothing to report
+        for q in Parts.objects.filter(pk__in=list(before)).select_related('step'):  # tenant-safe: pks from this WO
+            if q.step_id != before[q.pk]:
+                moved.append((q.ERP_id, q.step.name if q.step_id else "done"))
+    return moved
+
+
 def undo_split(child_wo: WorkOrder, actor) -> WorkOrder:
     """Reverse a split: reassign child's parts back to the parent and archive the child WO.
 

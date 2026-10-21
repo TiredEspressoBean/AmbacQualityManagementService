@@ -115,3 +115,17 @@ class CapaPlanApproverTests(TenantTestCase):
         self.assertTrue(response.self_approved)
         capa.refresh_from_db()
         self.assertEqual(capa.approval_status, 'APPROVED')
+
+    def test_awaiting_my_approval_omits_my_own_request_when_someone_else_decides(self):
+        """It listed CAPAs the viewer requested and couldn't decide (PM walk 2026-10-21)."""
+        from Tracker.models import User, UserRole
+        jennifer = User.objects.create_user(username='jen2', password='pw', tenant=self.tenant_a)
+        UserRole.objects.create(user=jennifer, group=self.pm_group)
+        capa = CAPA.objects.create(capa_type='CORRECTIVE', severity='MAJOR', problem_statement="Repeat burr",
+                                   initiated_by=self.maria, assigned_to=self.maria)
+        req = self._request(capa)
+        self.grant_tenant_permissions(self.maria, self.tenant_a, ['view_approvalrequest', 'full_tenant_access'])
+        self.authenticate_as(self.maria, self.tenant_a)
+        body = self.client.get("/api/ApprovalRequests/my-pending/").json()
+        ids = {r["id"] for r in (body["results"] if isinstance(body, dict) else body)}
+        self.assertNotIn(str(req.id), ids)

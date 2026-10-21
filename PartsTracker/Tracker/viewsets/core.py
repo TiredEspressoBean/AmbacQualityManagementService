@@ -2327,6 +2327,14 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
         ).exclude(
             responses__approver=user
         ).distinct()
+        # Your own request is yours to decide only where self-approval is permitted
+        # (nobody else can, or the template allows it). Listing the rest counted items
+        # the viewer couldn't act on (PM walk 2026-10-21).
+        from Tracker.services.core.approval import self_approval_permitted
+        own_undecidable = [a.pk for a in pending_approvals.filter(requested_by=user)
+                           if not self_approval_permitted(a, user)]
+        if own_undecidable:
+            pending_approvals = pending_approvals.exclude(pk__in=own_undecidable)
 
         page = self.paginate_queryset(pending_approvals)
         if page is not None:

@@ -35191,6 +35191,10 @@ export interface components {
             recover: components["schemas"]["RecoverRequirement"][];
             tooling: components["schemas"]["ToolingRequirement"][];
         };
+        SplitMovedOn: {
+            part: string;
+            to_step: string;
+        };
         /**
          * @description * `QUANTITY` - Quantity
          *     * `OPERATION` - Operation
@@ -39279,6 +39283,7 @@ export interface components {
             /** Format: uuid */
             child_work_order_id: string;
             child_erp_id: string;
+            moved_on: components["schemas"]["SplitMovedOn"][];
         };
         /**
          * @description * `PENDING` - Pending

@@ -123,6 +123,33 @@ class UnscheduledDiagnosisTests(TenantContextMixin, TestCase):
                    if r['erp_id'] == "WO-SHIPPED")
         self.assertEqual((row['reason'], row['open_units']), ('no_open_units', 0))
 
+    def test_units_at_the_terminal_step_wait_to_ship_not_to_be_solved(self):
+        """At Ship there's nothing left to place; counted as open they read "not placed
+        by the last solve → re-solve longer" (PM walk 2026-10-21)."""
+        ship = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Ship",
+                                    step_type="TERMINAL", is_terminal=True)
+        ProcessStep.objects.create(process=self.process, step=ship, order=2)
+        wo = self._wo(erp="WO-SHIP", qty=2)
+        wo.parts.update(step=ship, part_status='IN_PROGRESS')
+        self._schedule()
+        row = next(r for r in diagnose_unscheduled(self.tenant)['work_orders'] if r['erp_id'] == "WO-SHIP")
+        self.assertEqual((row['reason'], row['open_units']), ('awaiting_shipment', 0))
+        # Mixed: units with route left are still reported for those alone.
+        mixed = self._wo(erp="WO-MIX", qty=3)
+        at_ship = list(mixed.parts.all())[:2]
+        Parts.objects.filter(pk__in=[p.pk for p in at_ship]).update(step=ship)
+        self._schedule(cover=[p for p in mixed.parts.all() if p.step_id == self.step.id])
+        self.assertFalse([r for r in diagnose_unscheduled(self.tenant)['work_orders']
+                          if r['erp_id'] == "WO-MIX"])
+
+    def test_a_work_order_with_no_parts_reads_as_no_units(self):
+        """Not "all finished — close it": the WO form creates no parts, and closing
+        would throw away real demand (PM walk 2026-10-21)."""
+        self._wo(erp="WO-EMPTY", qty=0)
+        WorkOrder.objects.filter(ERP_id="WO-EMPTY").update(quantity=8)
+        self._schedule()
+        self.assertEqual(self._reason(diagnose_unscheduled(self.tenant), "WO-EMPTY"), 'no_units')
+
     def test_process_with_no_steps_reads_as_no_routing(self):
         empty = Processes.objects.create(
             tenant=self.tenant, name="Empty", part_type=self.pt)

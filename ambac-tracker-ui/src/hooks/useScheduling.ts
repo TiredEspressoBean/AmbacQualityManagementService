@@ -653,7 +653,7 @@ export function useRecordPick() {
 /** "Why isn't this on the board?" — open work the active schedule doesn't cover, each
  *  row carrying the single most actionable reason and the fix for it. */
 export type UnscheduledReason =
-  | "on_hold" | "no_process" | "no_open_units" | "no_routing" | "no_timings"
+  | "on_hold" | "not_released" | "no_process" | "no_units" | "awaiting_shipment" | "no_open_units" | "no_routing" | "no_timings"
   | "unstaffable" | "outside_horizon" | "material_gated" | "material_short"
   | "stale_schedule" | "not_solved";
 export type UnscheduledRow = {

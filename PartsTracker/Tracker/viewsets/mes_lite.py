@@ -2445,6 +2445,9 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             fields={
                 "child_work_order_id": serializers.UUIDField(),
                 "child_erp_id": serializers.CharField(),
+                # Parts the split released: they were waiting only on what moved out.
+                "moved_on": inline_serializer(name="SplitMovedOn", many=True, fields={
+                    "part": serializers.CharField(), "to_step": serializers.CharField()}),
             },
         )},
     )
@@ -2465,9 +2468,14 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # The parts left behind may have been waiting only on the ones just moved out:
+        # move those lots on now, and say what moved.
+        from Tracker.services.mes.work_order import move_staged_lots_on
+        moved = move_staged_lots_on(parent, request.user)
         return Response({
             "child_work_order_id": str(child.id),
             "child_erp_id": child.ERP_id,
+            "moved_on": [{"part": serial, "to_step": step} for serial, step in moved],
         })
 
     @extend_schema(request=None, responses={200: dict})

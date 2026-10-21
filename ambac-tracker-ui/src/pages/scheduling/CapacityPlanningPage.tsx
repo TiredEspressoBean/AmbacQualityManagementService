@@ -293,10 +293,14 @@ export function CapacityPlanningPage() {
   // Split rather than sorted: "already late to release" is a different decision from
   // "coming up", and burying the former in a date-ordered list hides the only rows that
   // need action today.
-  const { overdue, upcoming } = useMemo(() => {
+  // Late splits again: one not released needs releasing; one released but not started
+  // needs starting — "release them" was wrong advice for a row whose action read
+  // "Released" (PM walk 2026-10-21).
+  const { overdue, lateReleased, upcoming } = useMemo(() => {
     const all = data?.planned_releases ?? [];
     return {
-      overdue: all.filter((r) => r.overdue),
+      overdue: all.filter((r) => r.overdue && !r.released),
+      lateReleased: all.filter((r) => r.overdue && r.released),
       upcoming: all.filter((r) => !r.overdue),
     };
   }, [data]);
@@ -532,7 +536,7 @@ export function CapacityPlanningPage() {
 
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Computing release dates&hellip;</p>
-          ) : overdue.length === 0 && upcoming.length === 0 ? (
+          ) : overdue.length === 0 && lateReleased.length === 0 && upcoming.length === 0 ? (
             <p className="rounded-lg border p-4 text-sm text-muted-foreground">
               Nothing to release in this horizon. Orders already in progress aren&rsquo;t
               listed &mdash; releasing them isn&rsquo;t a decision any more.
@@ -562,6 +566,37 @@ export function CapacityPlanningPage() {
                       </thead>
                       <tbody>
                         {overdue.map((r) => (
+                          <ReleaseRow key={r.work_order_id} r={r} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {lateReleased.length > 0 && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-semibold text-red-600 dark:text-red-400">
+                    Released, not started &mdash; {lateReleased.length}
+                  </h2>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    Released, but the date these needed to start has passed and no work has
+                    begun. Get them onto the floor (dispatch or re-sequence), cut scope, or
+                    move the promise.
+                  </p>
+                  <div className="overflow-x-auto rounded-lg border border-red-500/30">
+                    <table className="w-full text-sm">
+                      <thead className="bg-red-500/5 text-xs text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">Work order</th>
+                          <th className="px-3 py-2 text-left font-medium">Should have started</th>
+                          <th className="px-3 py-2 text-right font-medium">Slip</th>
+                          <th className="px-3 py-2 text-left font-medium">Due</th>
+                          <th className="px-3 py-2 text-right font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lateReleased.map((r) => (
                           <ReleaseRow key={r.work_order_id} r={r} />
                         ))}
                       </tbody>

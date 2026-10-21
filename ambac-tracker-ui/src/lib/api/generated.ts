@@ -18298,6 +18298,15 @@ export type WorkOrderRequest = {
   string | undefined;
   archived?: boolean | undefined;
 };
+export type WorkOrderSplitResponse = {
+  child_work_order_id: string;
+  child_erp_id: string;
+  moved_on: Array<SplitMovedOn>;
+};
+export type SplitMovedOn = {
+  part: string;
+  to_step: string;
+};
 export type WorkOrderStepHistoryResponse = {
   work_order_id: string;
   process_name: string | null;
@@ -27030,9 +27039,11 @@ const WorkOrderSplitInputRequest = z.object({
   target_process_id: z.string().uuid().nullish(),
   notes: z.string().optional(),
 });
+const SplitMovedOn = z.object({ part: z.string(), to_step: z.string() });
 const WorkOrderSplitResponse = z.object({
   child_work_order_id: z.string().uuid(),
   child_erp_id: z.string(),
+  moved_on: z.array(SplitMovedOn),
 });
 const StepSummary = z.object({
   step_id: z.string().uuid(),
@@ -29635,6 +29646,7 @@ export const schemas = {
   ShortCloseTarget,
   ShortCloseTargets,
   WorkOrderSplitInputRequest,
+  SplitMovedOn,
   WorkOrderSplitResponse,
   StepSummary,
   WorkOrderStepHistoryResponse,

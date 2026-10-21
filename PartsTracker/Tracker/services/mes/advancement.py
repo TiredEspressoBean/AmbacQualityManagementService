@@ -250,6 +250,7 @@ def _evaluate_and_advance(
         # independently. A failed part doesn't hold up passing parts — the
         # failed one is dispositioned (routed to Rework) or held in
         # quarantine; the rest of the cohort moves on.
+        staged = []
         for p in cohort:
             se = StepExecution.get_current_execution(p)
             if se is None:
@@ -261,11 +262,15 @@ def _evaluate_and_advance(
                 continue
             try:
                 with transaction.atomic():
-                    advance_part_step(p, operator=operator, skip_gate_check=True)
-                result.parts_advanced.append(str(p.id))
+                    outcome = advance_part_step(p, operator=operator, skip_gate_check=True)
+                if outcome == "marked_ready":
+                    staged.append(p)   # done here; moves with its lot (decided below)
+                else:
+                    result.parts_advanced.append(str(p.id))
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Per-part advance failed for %s: %s", p.id, exc)
                 result.blockers_by_part[str(p.id)] = [str(exc)]
+        _report_staged(result, staged, step, wo)
         if result.parts_advanced:
             result.status = 'advanced'
         elif result.blockers_by_part:
@@ -343,3 +348,38 @@ def _evaluate_and_advance(
         result.status = 'noop'
 
     return result
+
+
+def _report_staged(result, staged, step, wo) -> None:
+    """A part `advance_part_step` only staged (READY_FOR_NEXT_STEP on a step whose lot
+    moves together) isn't "advanced": the toast said it moved when it hadn't (Operator
+    walk 2026-10-21). One that a later lot-mate carried along did move. One still here
+    is reported as waiting — naming who for, and the way out when that's a held part:
+    the lot waits for its held member by design; splitting it off is the deliberate
+    lever (PartSplitReason)."""
+    from Tracker.models import Parts, PartsStatus
+    from Tracker.services.mes.locations import HELD_PART_STATUSES
+
+    if not staged:
+        return
+    still_here = set(Parts.objects.filter(  # tenant-safe: .objects auto-scopes; pks from the cohort
+        pk__in=[p.pk for p in staged], step=step).values_list("pk", flat=True))
+    for p in staged:
+        if p.pk not in still_here:
+            result.parts_advanced.append(str(p.id))
+    waiting = [p for p in staged if p.pk in still_here]
+    if not waiting:
+        return
+    pending = list(Parts.objects.filter(  # tenant-safe: .objects auto-scopes
+        archived=False, work_order=wo, step=step, part_type=waiting[0].part_type,
+    ).exclude(part_status=PartsStatus.READY_FOR_NEXT_STEP).order_by("ERP_id"))
+    held = [q for q in pending if q.part_status in HELD_PART_STATUSES]
+    names = ", ".join(
+        f"{q.ERP_id} ({q.get_part_status_display().lower()})" if q in held else q.ERP_id
+        for q in pending[:4]) + (f" and {len(pending) - 4} more" if len(pending) > 4 else "")
+    message = f"Done at {step.name} — the lot waits for {names or 'the rest of its parts'}."
+    if held:
+        message += f" Split {'it' if len(held) == 1 else 'them'} from the lot to let the rest move."
+    for p in waiting:
+        result.blockers_by_part[str(p.id)] = [message]
+

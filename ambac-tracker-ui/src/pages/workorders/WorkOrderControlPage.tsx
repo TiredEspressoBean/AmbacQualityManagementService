@@ -1147,8 +1147,14 @@ export function WorkOrderControlPage() {
         };
         splitMutation.mutate(body, {
             onSuccess: (data) => {
-                const childErpId = (data as { child_erp_id?: string }).child_erp_id ?? splitNewErpId;
-                setSplitBanner(`Child WO ${childErpId} created · parts moved`);
+                const res = data as { child_erp_id?: string; moved_on?: { part: string; to_step: string }[] };
+                const childErpId = res.child_erp_id ?? splitNewErpId;
+                // The parts left behind that were waiting only on what moved out have
+                // moved on — say so, or "split it to let the rest move" reads as untrue.
+                const movedOn = (res.moved_on ?? [])
+                    .map((m) => `${m.part} moved on to ${m.to_step}`).join("; ");
+                setSplitBanner(`Child WO ${childErpId} created · parts moved${movedOn ? `; ${movedOn}` : ""}`);
+                queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
                 setSplitMode(null);
             },
             onError: (err: unknown) => {

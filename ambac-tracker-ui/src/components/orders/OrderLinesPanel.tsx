@@ -83,12 +83,12 @@ function AddLineForm({ orderId, nextLineNumber, onDone }: {
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">
-          <Button size="sm" onClick={submit}
+          <Button type="button" size="sm" onClick={submit}
                   disabled={!partType || create.isPending}>
             {create.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
             Add
           </Button>
-          <Button size="sm" variant="ghost" onClick={onDone}>
+          <Button type="button" size="sm" variant="ghost" onClick={onDone}>
             <X className="h-3 w-3" />
           </Button>
         </div>
@@ -152,7 +152,7 @@ function LineRow({ line, orderId, canPlan, readOnly }: {
       <td className="px-3 py-2 text-right">
         <div className="flex justify-end gap-1">
           {canPlan && remaining > 0 && !cancelled && (
-            <Button
+            <Button type="button"
               size="sm" variant="outline"
               disabled={planning}
               onClick={() => {
@@ -172,7 +172,7 @@ function LineRow({ line, orderId, canPlan, readOnly }: {
               dealt with first, and hiding that behind one button would leave orphaned
               work pegged to a cancelled demand. */}
           {canPlan && !cancelled && line.planned_quantity === 0 && (
-            <Button size="sm" variant="ghost"
+            <Button type="button" size="sm" variant="ghost"
                     title="Cancel this line"
                     disabled={cancel.isPending}
                     onClick={() => cancel.mutate(line.id)}>
@@ -191,6 +191,8 @@ function LineRow({ line, orderId, canPlan, readOnly }: {
  *                    "add a line to your own order" in a customer's hands, and would
  *                    show them our planning state. Staff author lines on the internal
  *                    order editor instead. */
+// Every Button here is type="button": the panel sits inside the order form, where a
+// Button defaults to submit — "Plan 6" also saved the order ("Order updated successfully!").
 export function OrderLinesPanel({ orderId, readOnly = false }: {
   orderId: string; readOnly?: boolean;
 }) {
@@ -217,7 +219,7 @@ export function OrderLinesPanel({ orderId, readOnly = false }: {
           <span className="flex items-center gap-2">
             Order lines
             {canAdd && !adding && (
-              <Button size="sm" variant="ghost" className="h-7"
+              <Button type="button" size="sm" variant="ghost" className="h-7"
                       onClick={() => setAdding(true)}>
                 <Plus className="mr-1 h-3 w-3" /> Add line
               </Button>
