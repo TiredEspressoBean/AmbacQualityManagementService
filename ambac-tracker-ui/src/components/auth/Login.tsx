@@ -31,7 +31,6 @@ import { getCookie } from '@/lib/utils'
 import { isFieldRequired } from '@/lib/zod-config'
 import { getAppName, getAppTagline } from '@/lib/branding'
 import { useTenantContext } from '@/components/tenant-provider'
-import { matchKey } from "@/lib/query-filters";
 
 // Make sure you've done this somewhere globally:
 api.axios.defaults.withCredentials = true
@@ -92,7 +91,11 @@ export default function LoginPreview() {
         // cookie set by this POST; nudge a refresh and navigate — the root
         // layout fetches `authUser` (with retry) on its own.
         toast.success(`Welcome back, ${values.email}!`)
-        void queryClient.invalidateQueries(matchKey(['authUser']))
+        // A login is a new person: drop everything cached for the last one — their
+        // permissions above all. Refreshing only `authUser` left the previous user's
+        // effective permissions in place, so on a shared terminal the sidebar showed
+        // the last person's sections until a reload (Receiving walk 2026-10-21).
+        queryClient.clear()
         router.navigate({ to: "/" })
     }
 
