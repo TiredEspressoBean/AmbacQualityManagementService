@@ -37,6 +37,7 @@ from .supplier_quality import DemoSupplierQualitySeeder
 from .outside_process import DemoOutsideProcessSeeder
 from .scheduling import DemoSchedulingSeeder
 from .qa_walk import DemoQaWalkSeeder
+from .ops_walk import DemoOpsWalkSeeder
 from .reman import DemoRemanSeeder
 from .life_tracking import DemoLifeTrackingSeeder
 from .models_3d import DemoThreeDModelSeeder
@@ -189,6 +190,10 @@ class DemoScenario(BaseSeeder):
         result['qa_walk'] = self._seed_qa_walk(
             result['companies'], result['users'], result['manufacturing'])
 
+        self.log("\n--- Phase 6c: Operator Exhibits ---")
+        result['ops_walk'] = self._seed_ops_walk(
+            result['companies'], result['users'], result['manufacturing'])
+
         # Phase 7: Documents and Approvals
         self.log("\n--- Phase 7: Documents and Approvals ---")
         result['documents'] = self._seed_documents(result['users'])
@@ -308,6 +313,13 @@ class DemoScenario(BaseSeeder):
         """QA Inspector exhibits on WO-QA-INSPECT-01 (today) and -02 (yesterday),
         walked through the services. See seed/demo/qa_walk.py."""
         seeder = DemoQaWalkSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seeder._verbose = self._verbose
+        company_list = companies.get('customers', []) if isinstance(companies, dict) else []
+        return seeder.seed(company_list, users, manufacturing)
+
+    def _seed_ops_walk(self, companies, users, manufacturing):
+        """Operator exhibits on WO-OPS-01..03 and shift notes. See seed/demo/ops_walk.py."""
+        seeder = DemoOpsWalkSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
         seeder._verbose = self._verbose
         company_list = companies.get('customers', []) if isinstance(companies, dict) else []
         return seeder.seed(company_list, users, manufacturing)

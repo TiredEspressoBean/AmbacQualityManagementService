@@ -94,6 +94,9 @@ DEMO_TRAINING_RECORDS = [
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'TORQUE-CERT', 'level': 2, 'expires_days': 120, 'completed_days_ago': 60},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'SAFETY-CERT', 'level': 3, 'expires_days': 250, 'completed_days_ago': 115},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'FLOW-CERT', 'level': 3, 'expires_days': 180, 'completed_days_ago': 185},
+    # Grades what he tears down (the Operator track's reman addition), so grading isn't
+    # a second training-gate override after Body Inspection's.
+    {'user': 'mike.ops@demo.ambac.com', 'training_type': 'GRADING-CERT', 'level': 2, 'expires_days': 300, 'completed_days_ago': 65},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'NOZ-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
     {'user': 'mike.ops@demo.ambac.com', 'training_type': 'DIM-CERT', 'level': 1, 'expires_days': 7, 'completed_days_ago': 358},
     # Dave Wilson (Flow Test Technician) — FLOW expired => role gap (and keeps Flow

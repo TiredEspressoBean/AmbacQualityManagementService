@@ -742,7 +742,9 @@ class DemoDwiSeeder(BaseSeeder):
                     "body": _doc(
                         _para("Fit the purchased nozzle, control valve and solenoid to the body with new seals, then torque the retaining nut to spec."),
                         _callout("caution", "Torque is safety-critical - use the calibrated wrench and the recorded value."),
-                        _scan(b("Assembly"), "nozzle-lot", "Scan the nozzle's lot label"),
+                        # No lot scan: the components are drawn from stock on completion
+                        # (oldest lot first) and recorded against the unit automatically.
+                        _callout("note", "The nozzle, valve, solenoid, spring and seals you fit are recorded against this injector when you complete the step. You don't scan their lots."),
                         *maybe_measure("Assembly", "torque", "Assembly Torque", characteristic="A-01"),
                         _attest_confirm(b("Assembly"), "new-seals", "New seals installed", "I confirm new seals were used."),
                     ),

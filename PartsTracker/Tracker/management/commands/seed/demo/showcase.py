@@ -473,24 +473,36 @@ class DemoShowcaseSeeder(BaseSeeder):
         # falls back to a blanket default and can't distinguish urgent from far-off.
         BUY_LEAD_DAYS = {
             "Injector Spring": 21, "Solenoid Coil": 30, "Seal & O-Ring Kit": 14,
+            "Injector Nozzle Assembly": 28, "Control Valve Assembly": 28,
         }
 
         # (name, ERP_id, ID_prefix, find_number, qty, uom, optional, source)
-        # In-house sub-assemblies are MAKE (PartTypes); purchased items are BUY (Material).
+        # New build machines the body and BUYS the nozzle and control valve (the build
+        # route's own story, and the Assembly instruction scans the nozzle's lot): those
+        # are parts (PartTypes, can_buy) bought by the lot. Bulk items are Material.
+        # Reman harvests the same part types from cores.
         components = [
-            ("Injector Nozzle Assembly", "CRI-NZL", "NZL", "10", 1, "EA", False, "MAKE"),
-            ("Control Valve Assembly", "CRI-VLV", "VLV", "20", 1, "EA", False, "MAKE"),
+            ("Injector Nozzle Assembly", "CRI-NZL", "NZL", "10", 1, "EA", False, "BUY_PART"),
+            ("Control Valve Assembly", "CRI-VLV", "VLV", "20", 1, "EA", False, "BUY_PART"),
             ("Injector Spring", "CRI-SPR", "SPR", "30", 1, "EA", False, "BUY"),
             ("Solenoid Coil", "CRI-SOL", "SOL", "40", 1, "EA", False, "BUY"),
             ("Seal & O-Ring Kit", "CRI-SEAL", "SEAL", "50", 1, "EA", True, "BUY"),
         ]
-        make_types, buy_materials = {}, {}
+        make_types, buy_materials, buy_parts = {}, {}, {}
         for name, erp, prefix, find, qty, uom, optional, source in components:
-            if source == "MAKE":
+            if source in ("MAKE", "BUY_PART"):
                 pt = PartTypes.objects.filter(tenant=self.tenant, name=name).first()
                 if not pt:
                     pt = PartTypes.objects.create(
                         tenant=self.tenant, name=name, ERP_id=erp, ID_prefix=prefix)
+                if source == "BUY_PART":
+                    # A part bought by number: the reman seed creates these types
+                    # without one, so give them theirs.
+                    PartTypes.objects.filter(pk=pt.pk).update(
+                        can_buy=True, purchase_lead_time_days=BUY_LEAD_DAYS.get(name),
+                        ERP_id=pt.ERP_id or erp, ID_prefix=pt.ID_prefix or prefix)
+                    pt.refresh_from_db()
+                    buy_parts[name] = pt
                 make_types[name] = pt
             else:
                 buy_materials[name], _ = Material.objects.update_or_create(
@@ -512,6 +524,18 @@ class DemoShowcaseSeeder(BaseSeeder):
                     received_date=(self.today - timedelta(days=30)).date(),
                     received_by=admin_user, quantity=Decimal("400"),
                     quantity_remaining=Decimal("400"), unit_of_measure="EA",
+                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    status="ACCEPTED"))
+
+        for name, pt in buy_parts.items():
+            MaterialLot.objects.get_or_create(
+                tenant=self.tenant, lot_number=f"STOCK-{pt.ERP_id}",
+                defaults=dict(
+                    material_type=pt, material_description=f"On-hand stock: {name}",
+                    supplier_lot_number="STOCK", erp_po_number="PO-STOCK",
+                    received_date=(self.today - timedelta(days=30)).date(),
+                    received_by=admin_user, quantity=Decimal("200"),
+                    quantity_remaining=Decimal("200"), unit_of_measure="EA",
                     hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
                     status="ACCEPTED"))
 
@@ -544,17 +568,18 @@ class DemoShowcaseSeeder(BaseSeeder):
         if created or bom.lines.count() == 0:
             for name, erp, prefix, find, qty, uom, optional, source in components:
                 line_kwargs = dict(
-                    tenant=self.tenant, bom=bom, source=source, quantity=Decimal(qty),
+                    tenant=self.tenant, bom=bom, source="BUY" if source == "BUY_PART" else source,
+                    quantity=Decimal(qty),
                     unit_of_measure=uom, find_number=find, line_number=int(find),
                     is_optional=optional,
                 )
-                if source == "MAKE":
+                if source in ("MAKE", "BUY_PART"):
                     line_kwargs['component_type'] = make_types[name]
                 else:
                     line_kwargs['material'] = buy_materials[name]
-                    step = consumed_at.get(name)
-                    if step is not None:
-                        line_kwargs['consumed_at_step'] = step
+                step = consumed_at.get(name) if source != "MAKE" else None
+                if step is not None:
+                    line_kwargs['consumed_at_step'] = step
                 BOMLine.objects.create(**line_kwargs)
 
         self.log(f"  BOM {bom.revision} ({bom.status}) with {bom.lines.count()} lines for {part_type.name}")
@@ -563,13 +588,16 @@ class DemoShowcaseSeeder(BaseSeeder):
     def _consumption_steps(self, part_type):
         """Which step each purchased component goes in at, by component name.
 
-        A BOM line is consumed at one step: the new-build Assembly, where the seal kit,
-        solenoid and spring go into a new injector. (Reman fits its components at
+        A BOM line is consumed at one step: the new-build Assembly, where the bought
+        nozzle and control valve, the seal kit, solenoid and spring go into a new
+        injector. (Reman fits its components at
         Reassembly against the rebuild plan, not from this BOM's lines.)
         """
         from .routes import build_steps
         assembly = build_steps(self.tenant).get("Assembly")
         return {
+            "Injector Nozzle Assembly": assembly,
+            "Control Valve Assembly": assembly,
             "Seal & O-Ring Kit": assembly,
             "Solenoid Coil": assembly,
             "Injector Spring": assembly,
