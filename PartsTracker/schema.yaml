@@ -17600,6 +17600,54 @@ paths:
                 items:
                   $ref: '#/components/schemas/NotificationEventTypeCatalog'
           description: ''
+  /api/OrderBook/{id}/:
+    get:
+      operationId: api_OrderBook_retrieve
+      description: |-
+        Open customer demand, its progress, and whether it will make its promise.
+
+        Permissioned on `view_orders` (TenantModelPermissions derives it from the
+        queryset's model). Every figure is scoped to what the viewer may see (`for_user`).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+          description: ''
+  /api/OrderBook/book/:
+    get:
+      operationId: api_OrderBook_book_retrieve
+      description: |-
+        Open customer demand, its progress, and whether it will make its promise.
+
+        Permissioned on `view_orders` (TenantModelPermissions derives it from the
+        queryset's model). Every figure is scoped to what the viewer may see (`for_user`).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderBook'
+          description: ''
   /api/OrderLines/:
     get:
       operationId: api_OrderLines_list
@@ -52170,6 +52218,14 @@ components:
           format: uuid
           readOnly: true
           description: The part this core is. Its part_status is derived from `status`.
+        order:
+          type: string
+          format: uuid
+          nullable: true
+        order_number:
+          type: string
+          readOnly: true
+          nullable: true
         harvested_component_count:
           type: integer
           readOnly: true
@@ -52213,6 +52269,7 @@ components:
       - disassembly_started_at
       - harvested_component_count
       - id
+      - order_number
       - part
       - received_by
       - received_by_name
@@ -52651,6 +52708,10 @@ components:
         core_credit_issued:
           type: boolean
           description: Whether core credit has been issued to customer
+        order:
+          type: string
+          format: uuid
+          nullable: true
         archived:
           type: boolean
       required:
@@ -60902,6 +60963,27 @@ components:
     NullEnum:
       enum:
       - null
+    OnTimeDelivery:
+      type: object
+      properties:
+        days:
+          type: integer
+        deliveries:
+          type: integer
+        on_time:
+          type: integer
+        on_time_pct:
+          type: number
+          format: double
+          nullable: true
+        unmeasured:
+          type: integer
+      required:
+      - days
+      - deliveries
+      - on_time
+      - on_time_pct
+      - unmeasured
     OpenDispositionsResponse:
       type: object
       properties:
@@ -61118,6 +61200,108 @@ components:
             of changes batches into one re-solve.'
       required:
       - id
+    OrderBlocker:
+      type: object
+      properties:
+        kind:
+          type: string
+        label:
+          type: string
+        link:
+          type: string
+      required:
+      - kind
+      - label
+      - link
+    OrderBook:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBookRow'
+        on_time:
+          $ref: '#/components/schemas/OnTimeDelivery'
+      required:
+      - on_time
+      - rows
+    OrderBookRow:
+      type: object
+      properties:
+        order_id:
+          type: string
+        order_number:
+          type: string
+        name:
+          type: string
+        customer_name:
+          type: string
+          nullable: true
+        earliest_due:
+          type: string
+          format: date
+          nullable: true
+        unplanned:
+          type: integer
+        projection:
+          $ref: '#/components/schemas/OrderProjection'
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBlocker'
+        more_blockers:
+          type: integer
+        progress:
+          $ref: '#/components/schemas/OrderProgress'
+        at_risk:
+          type: boolean
+      required:
+      - at_risk
+      - blockers
+      - customer_name
+      - earliest_due
+      - more_blockers
+      - name
+      - order_id
+      - order_number
+      - progress
+      - projection
+      - unplanned
+    OrderDetail:
+      type: object
+      properties:
+        row:
+          $ref: '#/components/schemas/OrderBookRow'
+        original_completion:
+          type: string
+          format: date
+          nullable: true
+        estimated_completion:
+          type: string
+          format: date
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLineView'
+        work_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderWorkOrderView'
+        shipments:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderShipmentView'
+        ready_to_ship:
+          type: integer
+      required:
+      - estimated_completion
+      - lines
+      - original_completion
+      - ready_to_ship
+      - row
+      - shipments
+      - work_orders
     OrderLine:
       type: object
       description: |-
@@ -61284,6 +61468,115 @@ components:
       description: |-
         * `OPEN` - Open
         * `CANCELLED` - Cancelled
+    OrderLineView:
+      type: object
+      properties:
+        line_id:
+          type: string
+        line_number:
+          type: integer
+        part_type_id:
+          type: string
+        part_type_name:
+          type: string
+        quantity:
+          type: integer
+        remaining:
+          type: integer
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+        progress:
+          $ref: '#/components/schemas/OrderProgress'
+      required:
+      - due_date
+      - line_id
+      - line_number
+      - part_type_id
+      - part_type_name
+      - progress
+      - quantity
+      - remaining
+      - status
+    OrderProgress:
+      type: object
+      properties:
+        ordered:
+          type: integer
+        planned:
+          type: integer
+        in_work:
+          type: integer
+        done:
+          type: integer
+        shipped:
+          type: integer
+      required:
+      - done
+      - in_work
+      - ordered
+      - planned
+      - shipped
+    OrderProjection:
+      type: object
+      properties:
+        due:
+          type: string
+          format: date
+          nullable: true
+        projected:
+          type: string
+          format: date
+          nullable: true
+        slip_days:
+          type: integer
+          nullable: true
+        state:
+          $ref: '#/components/schemas/OrderProjectionStateEnum'
+      required:
+      - due
+      - projected
+      - slip_days
+      - state
+    OrderProjectionStateEnum:
+      enum:
+      - late
+      - on_track
+      - not_scheduled
+      type: string
+      description: |-
+        * `late` - late
+        * `on_track` - on_track
+        * `not_scheduled` - not_scheduled
+    OrderShipmentView:
+      type: object
+      properties:
+        shipment_id:
+          type: string
+        shipment_number:
+          type: string
+        shipped_at:
+          type: string
+          format: date
+          nullable: true
+        line_number:
+          type: integer
+          nullable: true
+        quantity:
+          type: integer
+        on_time:
+          type: boolean
+          nullable: true
+      required:
+      - line_number
+      - on_time
+      - quantity
+      - shipment_id
+      - shipment_number
+      - shipped_at
     OrderShipping:
       type: object
       properties:
@@ -61297,6 +61590,42 @@ components:
       required:
       - lines
       - order_id
+    OrderWorkOrderView:
+      type: object
+      properties:
+        work_order_id:
+          type: string
+        erp_id:
+          type: string
+        status:
+          type: string
+        released:
+          type: boolean
+        due:
+          type: string
+          format: date
+          nullable: true
+        projection:
+          $ref: '#/components/schemas/OrderProjection'
+        blockers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderBlocker'
+        units:
+          type: array
+          items:
+            type: string
+          description: 'Set when the work order isn''t the order''s own: the order''s
+            units on it.'
+      required:
+      - blockers
+      - due
+      - erp_id
+      - projection
+      - released
+      - status
+      - units
+      - work_order_id
     Orders:
       type: object
       description: Enhanced orders serializer with user filtering and features
@@ -66288,6 +66617,10 @@ components:
         core_credit_issued:
           type: boolean
           description: Whether core credit has been issued to customer
+        order:
+          type: string
+          format: uuid
+          nullable: true
         archived:
           type: boolean
     PatchedCustomerRuleRequest:

@@ -91,13 +91,15 @@ def sync_part_status(core) -> None:
 
 
 def create_core(*, tenant, work_order=None, step=None, core_number=None,
-                received_in_lot=None, **fields):
+                received_in_lot=None, order=None, **fields):
     """Receive a core: the part it is, and the role it plays, in one step.
 
     The part's ERP id IS the core number, and `Core.part` is required, so the number is
     generated first, the part minted with it, and the role created on the part.
     `work_order` and `step` are where the UNIT is, so they go on the part, as does
     `received_in_lot` — the bulk receipt a unit was given its identity from.
+    `order` — the customer order the unit is here for — is the part's too, so it stays
+    with the unit through teardown, split and rebuild (rules: `receipt_order_refusal`).
 
     Every core in the system is created here — receipt, bulk receipt, seeders and tests
     alike — so none can exist without its part.
@@ -117,6 +119,7 @@ def create_core(*, tenant, work_order=None, step=None, core_number=None,
             work_order=work_order,
             step=step,
             received_in_lot=received_in_lot,
+            order=order,
             part_status=part_status_for(stage, on_work_order=work_order is not None),
         )
         return Core.objects.create(tenant=tenant, part=part, core_number=number, **fields)

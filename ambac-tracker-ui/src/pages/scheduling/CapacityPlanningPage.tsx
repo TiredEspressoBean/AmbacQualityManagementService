@@ -11,7 +11,7 @@
  */
 import { useMemo, useState } from "react";
 import { CalendarClock, Gauge, Rocket, Star } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -257,9 +257,13 @@ export function CapacityPlanningPage() {
   const { data: partTypesData } = useRetrievePartTypes({ limit: 200 });
   const partTypes = partTypesData?.results ?? [];
 
-  const [partType, setPartType] = useState("");
-  const [quantity, setQuantity] = useState("100");
-  const [targetDate, setTargetDate] = useState("");
+  // An order line's "Check capacity" lands here prefilled: ?tab=simulator&part_type=…
+  const search = useSearch({ strict: false }) as {
+    tab?: string; part_type?: string; quantity?: number; due?: string;
+  };
+  const [partType, setPartType] = useState(search.part_type ?? "");
+  const [quantity, setQuantity] = useState(search.quantity ? String(search.quantity) : "100");
+  const [targetDate, setTargetDate] = useState(search.due ?? "");
   const [submitted, setSubmitted] = useState<{
     part_type: string; quantity: number; target_date: string; months: number;
   } | null>(null);
@@ -358,7 +362,7 @@ export function CapacityPlanningPage() {
         </div>
       )}
 
-      <Tabs defaultValue="heatmap">
+      <Tabs defaultValue={search.tab ?? "heatmap"}>
         <TabsList>
           <TabsTrigger value="heatmap">
             <Gauge className="mr-1.5 h-4 w-4" /> Capacity heatmap

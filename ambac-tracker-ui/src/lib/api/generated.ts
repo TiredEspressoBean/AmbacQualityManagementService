@@ -1820,6 +1820,8 @@ export type Core = {
    * The part this core is. Its part_status is derived from `status`.
    */
   part: string;
+  order?: (string | null) | undefined;
+  order_number: string | null;
   harvested_component_count: number;
   usable_component_count: number;
   approved_repair_codes: Array<string>;
@@ -2017,6 +2019,7 @@ export type CoreRequest = {
    * Whether core credit has been issued to customer
    */
   boolean | undefined;
+  order?: (string | null) | undefined;
   archived?: boolean | undefined;
 };
 export type CoreRequestAuthorisation = {
@@ -5153,6 +5156,98 @@ export type AutoResolveEnum =
    * @enum off, live
    */
   "off" | "live";
+export type OrderBook = {
+  rows: Array<OrderBookRow>;
+  on_time: OnTimeDelivery;
+};
+export type OrderBookRow = {
+  order_id: string;
+  order_number: string;
+  name: string;
+  customer_name: string | null;
+  earliest_due: string | null;
+  unplanned: number;
+  projection: OrderProjection;
+  blockers: Array<OrderBlocker>;
+  more_blockers: number;
+  progress: OrderProgress;
+  at_risk: boolean;
+};
+export type OrderProjection = {
+  due: string | null;
+  projected: string | null;
+  slip_days: number | null;
+  state: OrderProjectionStateEnum;
+};
+export type OrderProjectionStateEnum =
+  /**
+   * * `late` - late
+   * `on_track` - on_track
+   * `not_scheduled` - not_scheduled
+   *
+   * @enum late, on_track, not_scheduled
+   */
+  "late" | "on_track" | "not_scheduled";
+export type OrderBlocker = {
+  kind: string;
+  label: string;
+  link: string;
+};
+export type OrderProgress = {
+  ordered: number;
+  planned: number;
+  in_work: number;
+  done: number;
+  shipped: number;
+};
+export type OnTimeDelivery = {
+  days: number;
+  deliveries: number;
+  on_time: number;
+  on_time_pct: number | null;
+  unmeasured: number;
+};
+export type OrderDetail = {
+  row: OrderBookRow;
+  original_completion: string | null;
+  estimated_completion: string | null;
+  lines: Array<OrderLineView>;
+  work_orders: Array<OrderWorkOrderView>;
+  shipments: Array<OrderShipmentView>;
+  ready_to_ship: number;
+};
+export type OrderLineView = {
+  line_id: string;
+  line_number: number;
+  part_type_id: string;
+  part_type_name: string;
+  quantity: number;
+  remaining: number;
+  due_date: string | null;
+  status: string;
+  progress: OrderProgress;
+};
+export type OrderWorkOrderView = {
+  work_order_id: string;
+  erp_id: string;
+  status: string;
+  released: boolean;
+  due: string | null;
+  projection: OrderProjection;
+  blockers: Array<OrderBlocker>;
+  /**
+   * Set when the work order isn't the order's own: the order's units on it.
+   */
+  units: Array<string>;
+};
+export type OrderShipmentView = {
+  shipment_id: string;
+  shipment_number: string;
+  shipped_at: string | null;
+  line_number: number | null;
+  quantity: number;
+  on_time: boolean | null;
+};
 export type OrderLine = {
   id: string;
   order: string;
@@ -12658,6 +12753,7 @@ export type PatchedCoreRequest = Partial<{
    * Whether core credit has been issued to customer
    */
   core_credit_issued: boolean;
+  order: string | null;
   archived: boolean;
 }>;
 export type PatchedCustomerRuleRequest = Partial<{
@@ -19522,6 +19618,7 @@ const CoreRequest = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
     .nullish(),
   core_credit_issued: z.boolean().optional(),
+  order: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
 });
 const AuthorisationScopeItem = z.object({
@@ -19564,6 +19661,8 @@ const Core = z.object({
   core_credit_issued_at: z.string().datetime({ offset: true }).nullable(),
   work_order: z.string().uuid().nullable(),
   part: z.string().uuid(),
+  order: z.string().uuid().nullish(),
+  order_number: z.string().nullable(),
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
   approved_repair_codes: z.array(z.string()),
@@ -19591,6 +19690,7 @@ const PatchedCoreRequest = z
       .regex(/^-?\d{0,8}(?:\.\d{0,2})?$/)
       .nullable(),
     core_credit_issued: z.boolean(),
+    order: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial();
@@ -22080,6 +22180,87 @@ const NotificationEventTypeCatalog = z.object({
   default_channels: z.array(z.string()),
   default_on: z.boolean(),
   supports_escalation: z.boolean(),
+});
+const OrderProjectionStateEnum = z.enum(["late", "on_track", "not_scheduled"]);
+const OrderProjection = z.object({
+  due: z.string().nullable(),
+  projected: z.string().nullable(),
+  slip_days: z.number().int().nullable(),
+  state: OrderProjectionStateEnum,
+});
+const OrderBlocker = z.object({
+  kind: z.string(),
+  label: z.string(),
+  link: z.string(),
+});
+const OrderProgress = z.object({
+  ordered: z.number().int(),
+  planned: z.number().int(),
+  in_work: z.number().int(),
+  done: z.number().int(),
+  shipped: z.number().int(),
+});
+const OrderBookRow = z.object({
+  order_id: z.string(),
+  order_number: z.string(),
+  name: z.string(),
+  customer_name: z.string().nullable(),
+  earliest_due: z.string().nullable(),
+  unplanned: z.number().int(),
+  projection: OrderProjection,
+  blockers: z.array(OrderBlocker),
+  more_blockers: z.number().int(),
+  progress: OrderProgress,
+  at_risk: z.boolean(),
+});
+const OrderLineView = z.object({
+  line_id: z.string(),
+  line_number: z.number().int(),
+  part_type_id: z.string(),
+  part_type_name: z.string(),
+  quantity: z.number().int(),
+  remaining: z.number().int(),
+  due_date: z.string().nullable(),
+  status: z.string(),
+  progress: OrderProgress,
+});
+const OrderWorkOrderView = z.object({
+  work_order_id: z.string(),
+  erp_id: z.string(),
+  status: z.string(),
+  released: z.boolean(),
+  due: z.string().nullable(),
+  projection: OrderProjection,
+  blockers: z.array(OrderBlocker),
+  units: z.array(z.string()),
+});
+const OrderShipmentView = z.object({
+  shipment_id: z.string(),
+  shipment_number: z.string(),
+  shipped_at: z.string().nullable(),
+  line_number: z.number().int().nullable(),
+  quantity: z.number().int(),
+  on_time: z.boolean().nullable(),
+});
+const OrderDetail = z.object({
+  row: OrderBookRow,
+  original_completion: z.string().nullable(),
+  estimated_completion: z.string().nullable(),
+  lines: z.array(OrderLineView),
+  work_orders: z.array(OrderWorkOrderView),
+  shipments: z.array(OrderShipmentView),
+  ready_to_ship: z.number().int(),
+});
+const OnTimeDelivery = z.object({
+  days: z.number().int(),
+  deliveries: z.number().int(),
+  on_time: z.number().int(),
+  on_time_pct: z.number().nullable(),
+  unmeasured: z.number().int(),
+});
+const OrderBook = z.object({
+  rows: z.array(OrderBookRow),
+  on_time: OnTimeDelivery,
 });
 const OrderLineStatusEnum = z.enum(["OPEN", "CANCELLED"]);
 const OrderLine = z.object({
@@ -29130,6 +29311,17 @@ export const schemas = {
   MilestoneRequest,
   PatchedMilestoneRequest,
   NotificationEventTypeCatalog,
+  OrderProjectionStateEnum,
+  OrderProjection,
+  OrderBlocker,
+  OrderProgress,
+  OrderBookRow,
+  OrderLineView,
+  OrderWorkOrderView,
+  OrderShipmentView,
+  OrderDetail,
+  OnTimeDelivery,
+  OrderBook,
   OrderLineStatusEnum,
   OrderLine,
   PaginatedOrderLineList,
@@ -43618,6 +43810,35 @@ field metadata).`,
   },
   {
     method: "get",
+    path: "/api/OrderBook/:id/",
+    alias: "api_OrderBook_retrieve",
+    description: `Open customer demand, its progress, and whether it will make its promise.
+
+Permissioned on &#x60;view_orders&#x60; (TenantModelPermissions derives it from the
+queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60;for_user&#x60;).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: OrderDetail,
+  },
+  {
+    method: "get",
+    path: "/api/OrderBook/book/",
+    alias: "api_OrderBook_book_retrieve",
+    description: `Open customer demand, its progress, and whether it will make its promise.
+
+Permissioned on &#x60;view_orders&#x60; (TenantModelPermissions derives it from the
+queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60;for_user&#x60;).`,
+    requestFormat: "json",
+    response: OrderBook,
+  },
+  {
+    method: "get",
     path: "/api/OrderLines/",
     alias: "api_OrderLines_list",
     description: `Demand lines on an order, and the action that turns one into work.`,
@@ -44101,7 +44322,10 @@ a push to HubSpot.`,
       },
     ],
     response: Orders,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/Orders/:id/step-distribution/",
@@ -44170,10 +44394,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: PaginatedPartsList,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Orders/export/:export_format/",
@@ -49760,7 +49981,10 @@ approving it (review_rca) completes the review.`,
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/RcaRecords/metadata/",
@@ -49808,10 +50032,7 @@ approving it (review_rca) completes the review.`,
       },
     ],
     response: PaginatedRebuildScopePresetList,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/RebuildScopePresets/",
@@ -55386,7 +55607,10 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepTimings/:id/",
@@ -55423,10 +55647,7 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: StepTimingRecord,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/StepTimings/:id/",
@@ -60151,7 +60372,10 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/UserInvitations/:id/",
@@ -60198,10 +60422,7 @@ Provides endpoints for:
       },
     ],
     response: UserInvitation,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/UserInvitations/:id/",

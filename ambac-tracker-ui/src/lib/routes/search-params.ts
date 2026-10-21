@@ -105,3 +105,13 @@ export type ApprovalsHistorySearchParams = z.infer<typeof ApprovalsHistorySearch
 export const CalibrationRecordNewSearch = z.object({
     equipment: z.string().uuid().optional().catch(undefined),
 });
+
+/** Capacity — `?tab=simulator&part_type=&quantity=&due=` opens "Could we take this
+ *  order?" prefilled (from an order line's Check capacity). */
+export const CapacitySearch = z.object({
+    tab: z.enum(["heatmap", "releases", "simulator"]).optional().catch(undefined),
+    part_type: z.string().uuid().optional().catch(undefined),
+    quantity: z.coerce.number().int().positive().optional().catch(undefined),
+    due: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+});
+

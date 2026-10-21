@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema_field, inline_serializer
 from Tracker.models import (
     Core, HarvestedComponent, DisassemblyBOMLine,
     RepairCode, RebuildScopePreset, RebuildSlotOverride,
-    PartTypes, Companies,
+    PartTypes, Companies, Orders,
 )
 from .core import SecureModelMixin
 from .fields import TenantScopedPrimaryKeyRelatedField
@@ -49,6 +49,14 @@ class CoreSerializer(SecureModelMixin):
     # schema says list-of-codes, not "unknown".
     approved_repair_codes = serializers.ListField(
         child=serializers.CharField(), read_only=True)
+    # The customer order this unit is here for. It lives on the core's PART, so it
+    # follows the unit through teardown, split and rebuild. Required for a
+    # repair-and-return core (`receipt_order_refusal`); set at receipt, and correctable
+    # only while the core is still Received.
+    order = TenantScopedPrimaryKeyRelatedField(
+        source='part.order', queryset=Orders.unscoped.all(), required=False, allow_null=True)
+    order_number = serializers.CharField(
+        source='part.order.order_number', read_only=True, allow_null=True)
 
     class Meta:
         model = Core
@@ -64,7 +72,7 @@ class CoreSerializer(SecureModelMixin):
             'status', 'disassembly_started_at', 'disassembly_completed_at',
             'disassembled_by', 'disassembled_by_name',
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
-            'work_order', 'part',
+            'work_order', 'part', 'order', 'order_number',
             'harvested_component_count', 'usable_component_count',
             'approved_repair_codes', 'awaiting_authorisation',
             'created_at', 'updated_at', 'archived'
@@ -83,7 +91,17 @@ class CoreSerializer(SecureModelMixin):
     def create(self, validated_data):
         """Receive through the one creation path, so no core exists without its part."""
         from Tracker.services.reman.core_part import create_core
-        return create_core(tenant=validated_data.pop('tenant', None), **validated_data)
+        order = validated_data.pop('part', {}).get('order')
+        return create_core(tenant=validated_data.pop('tenant', None), order=order,
+                           **validated_data)
+
+    def update(self, instance, validated_data):
+        part_fields = validated_data.pop('part', None)
+        core = super().update(instance, validated_data)
+        if part_fields is not None and 'order' in part_fields:
+            core.part.order = part_fields['order']
+            core.part.save(update_fields=['order', 'updated_at'])
+        return core
 
     # Fields an EDIT may not change. The stage moves only through the reman services
     # (which keep the part's status derived from it); credit is recorded by
@@ -100,7 +118,14 @@ class CoreSerializer(SecureModelMixin):
     def validate(self, attrs):
         attrs = super().validate(attrs)
         core = self.instance
+        if core is None and not attrs.get('fulfilment_mode'):
+            # A receipt that doesn't say takes the customer's standing arrangement — what
+            # the receive screens show as "inherited" — not the model's EXCHANGE default,
+            # or a repair-and-return customer's unit is quietly pooled into stock.
+            from Tracker.services.reman.core import resolve_fulfilment_mode
+            attrs['fulfilment_mode'], _ = resolve_fulfilment_mode(attrs.get('customer'))
         if core is None:
+            self._validate_order(attrs, core)
             return attrs
         errors = {}
         for field, why in self._IMMUTABLE_ON_UPDATE.items():
@@ -116,7 +141,29 @@ class CoreSerializer(SecureModelMixin):
                 "and harvest, reservations and authorisation already follow from it.")
         if errors:
             raise serializers.ValidationError(errors)
+        # After the stage guards, so an edit refused for the stage says so first.
+        self._validate_order(attrs, core)
         return attrs
+
+    def _validate_order(self, attrs, core):
+        """The receipt's order against its customer and mode. On an edit, only when one
+        of the three changes — a repair core received before orders were linked can
+        still have its notes corrected."""
+        from Tracker.services.reman.core import receipt_order_refusal
+        touched = 'part' in attrs or 'customer' in attrs or 'fulfilment_mode' in attrs
+        if core is not None and not touched:
+            return
+        if core is not None and 'part' in attrs and core.status != 'RECEIVED':
+            raise serializers.ValidationError({'order': (
+                "Can only be changed while the core is Received.")})
+        order = (attrs['part'].get('order') if 'part' in attrs
+                 else (core.part.order if core is not None else None))
+        customer = attrs.get('customer', core.customer if core is not None else None)
+        mode = attrs.get('fulfilment_mode',
+                         core.fulfilment_mode if core is not None else 'EXCHANGE')
+        why = receipt_order_refusal(order=order, customer=customer, fulfilment_mode=mode)
+        if why:
+            raise serializers.ValidationError({'order': why})
 
     @extend_schema_field(inline_serializer(name='AuthorisationScopeItem', many=True, fields={
         'code': serializers.CharField(), 'name': serializers.CharField(),

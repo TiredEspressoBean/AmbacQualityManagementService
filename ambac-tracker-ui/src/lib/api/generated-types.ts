@@ -7007,6 +7007,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/OrderBook/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Open customer demand, its progress, and whether it will make its promise.
+         *
+         *     Permissioned on `view_orders` (TenantModelPermissions derives it from the
+         *     queryset's model). Every figure is scoped to what the viewer may see (`for_user`).
+         */
+        get: operations["api_OrderBook_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/OrderBook/book/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Open customer demand, its progress, and whether it will make its promise.
+         *
+         *     Permissioned on `view_orders` (TenantModelPermissions derives it from the
+         *     queryset's model). Every figure is scoped to what the viewer may see (`for_user`).
+         */
+        get: operations["api_OrderBook_book_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/OrderLines/": {
         parameters: {
             query?: never;
@@ -22168,6 +22212,9 @@ export interface components {
              * @description The part this core is. Its part_status is derived from `status`.
              */
             readonly part: string;
+            /** Format: uuid */
+            order?: string | null;
+            readonly order_number: string | null;
             readonly harvested_component_count: number;
             readonly usable_component_count: number;
             readonly approved_repair_codes: string[];
@@ -22391,6 +22438,8 @@ export interface components {
             core_credit_value?: string | null;
             /** @description Whether core credit has been issued to customer */
             core_credit_issued?: boolean;
+            /** Format: uuid */
+            order?: string | null;
             archived?: boolean;
         };
         CoreRequestAuthorisation: {
@@ -26246,6 +26295,14 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        OnTimeDelivery: {
+            days: number;
+            deliveries: number;
+            on_time: number;
+            /** Format: double */
+            on_time_pct: number | null;
+            unmeasured: number;
+        };
         OpenDispositionsResponse: {
             data: {
                 [key: string]: unknown;
@@ -26350,6 +26407,40 @@ export interface components {
             /** @description Anti-churn floor for LIVE auto-resolve: don't re-solve a schedule sooner than this many minutes after its last solve, so a burst of changes batches into one re-solve. */
             auto_resolve_min_interval_minutes?: number;
         };
+        OrderBlocker: {
+            kind: string;
+            label: string;
+            link: string;
+        };
+        OrderBook: {
+            rows: components["schemas"]["OrderBookRow"][];
+            on_time: components["schemas"]["OnTimeDelivery"];
+        };
+        OrderBookRow: {
+            order_id: string;
+            order_number: string;
+            name: string;
+            customer_name: string | null;
+            /** Format: date */
+            earliest_due: string | null;
+            unplanned: number;
+            projection: components["schemas"]["OrderProjection"];
+            blockers: components["schemas"]["OrderBlocker"][];
+            more_blockers: number;
+            progress: components["schemas"]["OrderProgress"];
+            at_risk: boolean;
+        };
+        OrderDetail: {
+            row: components["schemas"]["OrderBookRow"];
+            /** Format: date */
+            original_completion: string | null;
+            /** Format: date */
+            estimated_completion: string | null;
+            lines: components["schemas"]["OrderLineView"][];
+            work_orders: components["schemas"]["OrderWorkOrderView"][];
+            shipments: components["schemas"]["OrderShipmentView"][];
+            ready_to_ship: number;
+        };
         /**
          * @description One demand line on an order.
          *
@@ -26431,10 +26522,65 @@ export interface components {
          * @enum {string}
          */
         OrderLineStatusEnum: "OPEN" | "CANCELLED";
+        OrderLineView: {
+            line_id: string;
+            line_number: number;
+            part_type_id: string;
+            part_type_name: string;
+            quantity: number;
+            remaining: number;
+            /** Format: date */
+            due_date: string | null;
+            status: string;
+            progress: components["schemas"]["OrderProgress"];
+        };
+        OrderProgress: {
+            ordered: number;
+            planned: number;
+            in_work: number;
+            done: number;
+            shipped: number;
+        };
+        OrderProjection: {
+            /** Format: date */
+            due: string | null;
+            /** Format: date */
+            projected: string | null;
+            slip_days: number | null;
+            state: components["schemas"]["OrderProjectionStateEnum"];
+        };
+        /**
+         * @description * `late` - late
+         *     * `on_track` - on_track
+         *     * `not_scheduled` - not_scheduled
+         * @enum {string}
+         */
+        OrderProjectionStateEnum: "late" | "on_track" | "not_scheduled";
+        OrderShipmentView: {
+            shipment_id: string;
+            shipment_number: string;
+            /** Format: date */
+            shipped_at: string | null;
+            line_number: number | null;
+            quantity: number;
+            on_time: boolean | null;
+        };
         OrderShipping: {
             /** Format: uuid */
             order_id: string;
             lines: components["schemas"]["OrderLineShipping"][];
+        };
+        OrderWorkOrderView: {
+            work_order_id: string;
+            erp_id: string;
+            status: string;
+            released: boolean;
+            /** Format: date */
+            due: string | null;
+            projection: components["schemas"]["OrderProjection"];
+            blockers: components["schemas"]["OrderBlocker"][];
+            /** @description Set when the work order isn't the order's own: the order's units on it. */
+            units: string[];
         };
         /** @description Enhanced orders serializer with user filtering and features */
         Orders: {
@@ -29296,6 +29442,8 @@ export interface components {
             core_credit_value?: string | null;
             /** @description Whether core credit has been issued to customer */
             core_credit_issued?: boolean;
+            /** Format: uuid */
+            order?: string | null;
             archived?: boolean;
         };
         /**
@@ -52771,6 +52919,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationEventTypeCatalog"][];
+                };
+            };
+        };
+    };
+    api_OrderBook_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+        };
+    };
+    api_OrderBook_book_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderBook"];
                 };
             };
         };

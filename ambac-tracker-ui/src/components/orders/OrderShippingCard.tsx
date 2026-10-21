@@ -49,7 +49,7 @@ export function OrderShippingCard({ orderId }: { orderId: string }) {
                                             {l.shipments.map((s) => (
                                                 <Link key={s.shipment_id} to="/production/shipments/$shipmentId" params={{ shipmentId: s.shipment_id }}>
                                                     <Badge variant="outline" className={s.on_time ? "" : "border-destructive text-destructive"}>
-                                                        {s.shipment_number} · {s.quantity} · {new Date(s.shipped_at).toLocaleDateString()}{s.on_time ? "" : " · late"}
+                                                        {s.shipment_number} · {s.quantity} · {new Date(s.shipped_at).toLocaleDateString()}{s.on_time ? " · on time" : " · late"}
                                                     </Badge>
                                                 </Link>
                                             ))}

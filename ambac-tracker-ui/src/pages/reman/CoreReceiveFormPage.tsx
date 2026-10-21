@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
+import { CoreOrderSelect, ORDER_NONE } from "@/components/reman/CoreOrderSelect";
 import { ArrowLeft, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { matchKey } from "@/lib/query-filters";
@@ -43,8 +44,12 @@ const formSchema = z.object({
     source_reference: z.string().optional(),
     condition_grade: z.enum(["A", "B", "C", "SCRAP"]),
     fulfilment_mode: z.enum(["EXCHANGE", "REPAIR_RETURN"]),
+    order: z.string().optional(),
     condition_notes: z.string().optional(),
     core_credit_value: z.string().optional(),
+}).refine((d) => d.fulfilment_mode !== "REPAIR_RETURN" || (!!d.order && d.order !== ORDER_NONE), {
+    path: ["order"],
+    message: "A unit going back to the customer is repaired against one of their orders — pick it",
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -78,6 +83,7 @@ export function CoreReceiveFormPage() {
             source_reference: "",
             condition_grade: "B",
             fulfilment_mode: "EXCHANGE",
+            order: ORDER_NONE,
             condition_notes: "",
             core_credit_value: "",
         },
@@ -94,6 +100,9 @@ export function CoreReceiveFormPage() {
     const customers = companiesData?.results ?? [];
 
     const selectedCustomerId = form.watch("customer");
+    const mode = form.watch("fulfilment_mode");
+    // An order belongs to one customer: re-picking the customer drops it.
+    useEffect(() => { form.setValue("order", ORDER_NONE); }, [selectedCustomerId, form]);
     // A pick that the new source type no longer offers is dropped rather than kept
     // invisibly. Only once the list has loaded, so a pending fetch doesn't clear it.
     useEffect(() => {
@@ -130,6 +139,7 @@ export function CoreReceiveFormPage() {
                 ...(data.core_number?.trim() ? { core_number: data.core_number.trim() } : { core_number: undefined }),
                 core_credit_value: data.core_credit_value ? data.core_credit_value : null,
                 customer: data.customer && data.customer !== "__none__" ? data.customer : null,
+                order: data.order && data.order !== ORDER_NONE ? data.order : null,
             };
             return api.api_Cores_create(payload);
         },
@@ -346,6 +356,28 @@ export function CoreReceiveFormPage() {
                                                               + "defaulting to stock. Set one on the company "
                                                               + "to stop guessing per core."
                                                             : "No customer picked — defaulting to a unit from stock."}
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="order"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>For order{mode === "REPAIR_RETURN" ? " *" : ""}</FormLabel>
+                                            <CoreOrderSelect
+                                                companyId={selectedCustomerId && selectedCustomerId !== "__none__" ? selectedCustomerId : null}
+                                                value={field.value ?? ORDER_NONE}
+                                                onChange={field.onChange}
+                                                required={mode === "REPAIR_RETURN"}
+                                            />
+                                            <FormDescription>
+                                                {mode === "REPAIR_RETURN"
+                                                    ? "The customer order this unit is repaired against."
+                                                    : "Optional: the order this exchange core came in against."}
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

@@ -218,17 +218,22 @@ export function useDiscardDraft() {
   });
 }
 
-/** Assign operators to the active schedule (Layer 2) in the background. */
-export function useDispatchSchedule() {
+export type DispatchResult = { attended: number; covered: number; uncovered: number };
+
+/** Assign operators to the active schedule (Layer 2) in the background. `onDone` gets the coverage summary, so the
+ *  board can keep it on screen — a toast alone is gone before a planner has read it. */
+export function useDispatchSchedule(onDone?: (r: DispatchResult | null) => void) {
   return useAsyncScheduleTask(
     () => api.api_Schedules_dispatch_create(undefined) as Promise<{ task_id: string }>,
     {
       verb: "dispatch",
       done: (r) =>
         r?.covered != null
-          ? `Dispatched: ${r.covered}/${r.attended} attended tasks covered`
+          ? `Assigned ${r.covered} of ${r.attended} tasks`
+            + (r.uncovered ? ` · ${r.uncovered} have no qualified operator free` : "")
           : "Dispatch complete",
-    }
+    },
+    (r) => onDone?.(r?.covered != null ? r as DispatchResult : null),
   );
 }
 

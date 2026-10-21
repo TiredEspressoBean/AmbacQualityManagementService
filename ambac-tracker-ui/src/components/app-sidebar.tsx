@@ -7,6 +7,7 @@ import {
     CalendarRange,
     CheckSquare,
     ClipboardList,
+    ListOrdered,
     ClipboardCheck,
     Clock,
     Database,
@@ -168,6 +169,13 @@ export function AppSidebar({
     // Admin items gate individually: user/tenant admin needs the management
     // perms, but Work Centers is floor master data (a Production Manager holds
     // change_workcenter without add_user), and audit viewing is staff-wide.
+    // Orders (the staff order book) leads Production, for those who may see orders.
+    const productionPagesForUser = useMemo(() => [
+        ...(isPlatformStaff || hasAny('view_orders')
+            ? [{ name: "Orders", url: "/production/orders", icon: ListOrdered }] : []),
+        ...productionPages,
+    ], [isPlatformStaff, hasAny])
+
     const isUserAdmin = isPlatformStaff || hasAny('change_tenantgroup', 'add_user', 'change_user')
     const adminPages = useMemo(() => [
         ...(isUserAdmin ? [
@@ -234,7 +242,7 @@ export function AppSidebar({
                             {showProduction && (
                                 <NavPagesCollapsible
                                     title="Production"
-                                    pages={productionPages}
+                                    pages={productionPagesForUser}
                                     defaultOpen={true}
                                 />
                             )}

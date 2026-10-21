@@ -2882,13 +2882,25 @@ class OrderLine(SecureModel):
         returns its units to the line's remaining demand rather than leaving the line
         looking satisfied by work that will never run. A short-closed work order counts
         less the units its closer chose to give back.
+
+        Also covered: a unit received FOR the order (`Parts.order`) of this line's type
+        that is already being worked on some other work order — a repair-and-return core
+        torn down and rebuilt on its teardown WO. Planning the line again would build a
+        second unit for one the customer sent.
         """
         from django.db.models import Sum
         # tenant-safe: reverse FK from an in-tenant OrderLine row.
         agg = self.work_orders.exclude(
             workorder_status=WorkOrderStatus.CANCELLED
         ).aggregate(q=Sum('quantity'), back=Sum('short_close_returned_quantity'))
-        return max(0, (agg['q'] or 0) - (agg['back'] or 0))
+        pegged = max(0, (agg['q'] or 0) - (agg['back'] or 0))
+        # tenant-safe: reverse FK from an in-tenant Orders row.
+        in_work_elsewhere = (self.order.parts
+                             .filter(archived=False, part_type_id=self.part_type_id,
+                                     work_order__isnull=False)
+                             .exclude(work_order__related_order_id=self.order_id)
+                             .exclude(part_status__in=['SCRAPPED', 'CANCELLED']).count())
+        return pegged + in_work_elsewhere
 
     @property
     def remaining_quantity(self) -> int:

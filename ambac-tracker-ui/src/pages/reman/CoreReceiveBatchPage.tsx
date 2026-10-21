@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, ClipboardPaste, Package, Plus, Trash2 } from "lucide-react";
@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useRetrievePartTypes } from "@/hooks/useRetrievePartTypes";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useBulkCreateCores, type BulkCoreRow } from "@/hooks/useBulkCreateCores";
+import { CoreOrderSelect, ORDER_NONE } from "@/components/reman/CoreOrderSelect";
 
 type Row = {
     core_number: string;
@@ -52,6 +53,8 @@ type Row = {
     received_date: string;
     /** "" = follow the customer's standing arrangement. A chosen value overrides it. */
     fulfilment_mode: "" | "EXCHANGE" | "REPAIR_RETURN";
+    /** The customer order the unit is here for. Required when it goes back to them. */
+    order: string;
 };
 
 type RowErrors = Partial<Record<keyof Row, string>>;
@@ -85,6 +88,7 @@ function emptyRow(): Row {
         core_credit_value: "",
         received_date: new Date().toISOString().slice(0, 10),
         fulfilment_mode: "",
+        order: ORDER_NONE,
     };
 }
 
@@ -116,6 +120,7 @@ function toApiRow(row: Row): BulkCoreRow {
     if (row.condition_notes.trim()) out.condition_notes = row.condition_notes.trim();
     if (row.customer && row.customer !== CUSTOMER_NONE) out.customer = row.customer;
     if (row.core_credit_value.trim()) out.core_credit_value = row.core_credit_value.trim();
+    if (row.order && row.order !== ORDER_NONE) out.order = row.order;
     return out;
 }
 
@@ -144,6 +149,9 @@ const HEADER_ALIASES: Record<keyof Row, string[]> = {
     // receiving sheet exported from someone else's system will use whichever it uses.
     fulfilment_mode: ["fulfilment_mode", "fulfilment", "fulfillment_mode", "fulfillment",
                       "mode", "exchange"],
+    // Picked per row from the customer's open orders, not pasted: an order number in a
+    // sheet can't be trusted to be that customer's, open, or spelt the way we spell it.
+    order: [],
 };
 
 function normalizeHeader(s: string): string {
@@ -222,7 +230,18 @@ export function CoreReceiveBatchPage() {
         [companiesData],
     );
 
-    const rowErrors = useMemo(() => rows.map(validateRow), [rows]);
+    // The mode a row will actually be received with: its own, else its customer's
+    // standing arrangement, else stock — as the server resolves it.
+    const effectiveMode = useCallback((row: Row) =>
+        row.fulfilment_mode || customers.find((c) => c.id === row.customer)?.arrangement || "EXCHANGE",
+    [customers]);
+    const rowErrors = useMemo(() => rows.map((r): RowErrors => {
+        const errs = validateRow(r);
+        if (effectiveMode(r) === "REPAIR_RETURN" && (!r.order || r.order === ORDER_NONE)) {
+            errs.order = "Pick the order this unit is repaired against";
+        }
+        return errs;
+    }), [rows, effectiveMode]);
     const hasClientErrors = rowErrors.some((e) => Object.keys(e).length > 0);
 
     // ID sets used to detect cells where a pasted name didn't resolve to a
@@ -249,7 +268,9 @@ export function CoreReceiveBatchPage() {
     const mutation = useBulkCreateCores();
 
     function updateCell(rowIdx: number, key: keyof Row, value: string) {
-        setRows((prev) => prev.map((r, i) => (i === rowIdx ? { ...r, [key]: value } : r)));
+        // An order belongs to one customer: re-picking the customer drops it.
+        setRows((prev) => prev.map((r, i) => (i !== rowIdx ? r
+            : key === "customer" ? { ...r, customer: value, order: ORDER_NONE } : { ...r, [key]: value })));
         // Clear server-side error for this row when the operator edits it.
         setServerErrors((prev) => {
             if (!(rowIdx in prev)) return prev;
@@ -434,7 +455,8 @@ export function CoreReceiveBatchPage() {
                 <CardHeader>
                     <CardTitle>Batch Entry</CardTitle>
                     <CardDescription>
-                        Required: Core Number, Core Type, Received Date, Condition Grade.
+                        Required: Core Type, Received Date, Condition Grade — and For order when
+                        the unit goes back to its customer.
                         Paste cells from a spreadsheet to fill rows. Columns:
                         core_number, core_type, serial_number, customer, source_type,
                         source_reference, condition_grade, condition_notes,
@@ -485,6 +507,7 @@ export function CoreReceiveBatchPage() {
                                     <TableHead>Source</TableHead>
                                     <TableHead>Source Ref</TableHead>
                                     <TableHead>Fulfilment</TableHead>
+                                    <TableHead>For order</TableHead>
                                     <TableHead>Grade *</TableHead>
                                     <TableHead>Credit ($)</TableHead>
                                     <TableHead>Received *</TableHead>
@@ -675,6 +698,16 @@ export function CoreReceiveBatchPage() {
                                                         </Select>
                                                     );
                                                 })()}
+                                            </TableCell>
+                                            <TableCell title={errs.order}>
+                                                <CoreOrderSelect
+                                                    companyId={row.customer && row.customer !== CUSTOMER_NONE
+                                                        && !customerUnresolved(row) ? row.customer : null}
+                                                    value={row.order}
+                                                    onChange={(v) => updateCell(idx, "order", v)}
+                                                    required={effectiveMode(row) === "REPAIR_RETURN"}
+                                                    className="h-8 w-44"
+                                                />
                                             </TableCell>
                                             <TableCell>
                                                 <Select

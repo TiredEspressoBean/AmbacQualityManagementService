@@ -41,6 +41,7 @@ from Tracker.viewsets.tenant import (
 from Tracker.viewsets.scheduling_setup import (
     StepEquipmentAffinityViewSet, StepTimingViewSet, WorkCenterChangeoverViewSet,
 )
+from Tracker.viewsets.order_book import OrderBookViewSet
 from Tracker.viewsets.master_workbook import MasterWorkbookViewSet
 from Tracker.viewsets.receipts import ReceiptsViewSet
 from Tracker.viewsets.shipping import CustomerShipmentViewSet
@@ -229,6 +230,8 @@ router.register(r'ShiftNotes', ShiftNoteViewSet, basename='ShiftNotes')
 
 # Work queue (aggregate: ranked WO×step ready-or-blocked rows for the operator home)
 router.register(r'WorkQueue', WorkQueueViewSet, basename='WorkQueue')
+# Production › Orders — the staff order book and order page (read-only).
+router.register(r'OrderBook', OrderBookViewSet, basename='OrderBook')
 
 # Material Lots & Usage
 router.register(r'Materials', MaterialViewSet, basename='Materials')

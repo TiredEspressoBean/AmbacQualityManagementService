@@ -20,6 +20,8 @@ export type BulkCoreRow = {
      *  Per ROW, not per paste: a batch routinely mixes arrangements, and one mode for
      *  forty cores is how a repair-and-return unit gets pooled. */
     fulfilment_mode?: "EXCHANGE" | "REPAIR_RETURN";
+    /** The customer order the unit is here for; required for REPAIR_RETURN. */
+    order?: string | null;
 };
 
 type BulkCreateCoresVars = {

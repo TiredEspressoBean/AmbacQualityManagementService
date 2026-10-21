@@ -16,6 +16,7 @@ from rest_framework.test import APIClient
 from Tracker.models import (
     Companies,
     Core,
+    Orders,
     PartsStatus,
     PartTypes,
     Processes,
@@ -268,6 +269,52 @@ class CoreBulkCreateTests(BulkActionsBaseTestCase):
         self.assertEqual(core.source_reference, "RMA-9")
         self.assertEqual(core.core_credit_value, Decimal("42.00"))
         self.assertEqual(core.customer_id, self.customer.id)
+
+    # ----- the order a core is received for (Parts.order) -----
+
+    def _repair_order(self, company=None, **kw):
+        return Orders.objects.create(tenant=self.tenant, name="Repair", company=company or self.customer, **kw)
+
+    def test_a_repair_and_return_core_needs_its_order(self):
+        r = self.client.post(self.url(), {"cores": [self._row(
+            "RR-1", customer=str(self.customer.id), fulfilment_mode="REPAIR_RETURN")]}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('order', r.json()['errors'][0]['errors'])
+
+        order = self._repair_order()
+        r = self.client.post(self.url(), {"cores": [self._row(
+            "RR-1", customer=str(self.customer.id), fulfilment_mode="REPAIR_RETURN",
+            order=str(order.id))]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Core.objects.get(core_number="RR-1").part.order_id, order.id)
+
+    def test_an_exchange_core_may_come_without_an_order(self):
+        r = self.client.post(self.url(), {"cores": [self._row(
+            "EX-1", customer=str(self.customer.id), fulfilment_mode="EXCHANGE")]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertIsNone(Core.objects.get(core_number="EX-1").part.order_id)
+
+    def test_the_order_must_be_the_customers_and_open(self):
+        other = Companies.objects.create(name="Someone Else", tenant=self.tenant)
+        for order in (self._repair_order(company=other), self._repair_order(order_status='COMPLETED')):
+            r = self.client.post(self.url(), {"cores": [self._row(
+                "RR-2", customer=str(self.customer.id), fulfilment_mode="REPAIR_RETURN",
+                order=str(order.id))]}, format="json")
+            self.assertEqual(r.status_code, 400, r.content)
+            self.assertIn('order', r.json()['errors'][0]['errors'])
+
+    def test_an_inherited_repair_arrangement_is_kept_and_needs_the_order(self):
+        """A row that doesn't say takes the customer's arrangement — as the screen shows
+        it — not the model's EXCHANGE default."""
+        Companies.objects.filter(pk=self.customer.pk).update(default_core_fulfilment_mode='REPAIR_RETURN')
+        r = self.client.post(self.url(), {"cores": [self._row("RR-3", customer=str(self.customer.id))]},
+                             format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        order = self._repair_order()
+        r = self.client.post(self.url(), {"cores": [self._row(
+            "RR-3", customer=str(self.customer.id), order=str(order.id))]}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Core.objects.get(core_number="RR-3").fulfilment_mode, 'REPAIR_RETURN')
 
 
 class CoreStartTeardownBatchTests(BulkActionsBaseTestCase):
@@ -544,8 +591,16 @@ class CoreEditGuardTests(BulkActionsBaseTestCase):
         self.assertEqual(self._patch(core, core_type=str(self.other_type.id)).status_code, 400)
 
     def test_fulfilment_can_be_corrected_only_while_received(self):
-        core = self._core("EDIT-4", fulfilment_mode="EXCHANGE")
-        self.assertEqual(self._patch(core, fulfilment_mode="REPAIR_RETURN").status_code, 200)
+        core = self._core("EDIT-4", fulfilment_mode="EXCHANGE", customer=self.customer)
+        # Their own unit is repaired against one of their orders, so the correction names it.
+        r = self._patch(core, fulfilment_mode="REPAIR_RETURN")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn('order', r.json())
+        order = Orders.objects.create(tenant=self.tenant, name="Repair", company=self.customer)
+        r = self._patch(core, fulfilment_mode="REPAIR_RETURN", order=str(order.id))
+        self.assertEqual(r.status_code, 200, r.content)
+        core.refresh_from_db()
+        self.assertEqual(core.part.order_id, order.id)
         started = self._core("EDIT-5", fulfilment_mode="EXCHANGE", status='IN_DISASSEMBLY')
         r = self._patch(started, fulfilment_mode="REPAIR_RETURN")
         self.assertEqual(r.status_code, 400, r.content)

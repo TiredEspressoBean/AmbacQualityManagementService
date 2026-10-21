@@ -57,6 +57,7 @@ export function useCreateOrderLine(orderId: string) {
     }) => api.api_OrderLines_create({ order: orderId, ...v } as never),
     onSuccess: () => {
       qc.invalidateQueries(matchKey(["order-lines", orderId]));
+      qc.invalidateQueries(matchKey(["order-book"]));
       toast.success("Line added");
     },
     onError: (e: unknown) => {
@@ -79,6 +80,7 @@ export function useCancelOrderLine(orderId: string) {
                                         { params: { id } } as never),
     onSuccess: () => {
       qc.invalidateQueries(matchKey(["order-lines", orderId]));
+      qc.invalidateQueries(matchKey(["order-book"]));
       toast.success("Line cancelled");
     },
     onError: () => toast.error("Couldn't cancel the line"),
@@ -103,6 +105,7 @@ export function usePlanOrderLine(orderId: string) {
       }>,
     onSuccess: (r) => {
       qc.invalidateQueries(matchKey(["order-lines", orderId]));
+      qc.invalidateQueries(matchKey(["order-book"]));
       // New work changes what the board, the order and every planning surface show.
       qc.invalidateQueries(matchKey(["work-orders"]));
       qc.invalidateQueries(matchKey(["planning"]));

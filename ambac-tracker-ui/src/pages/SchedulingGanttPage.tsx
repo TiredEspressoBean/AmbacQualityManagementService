@@ -39,6 +39,7 @@ import {
   useCommitDraft,
   useDiscardDraft,
   useDispatchSchedule,
+  type DispatchResult,
   usePinTask,
   useMoveTask,
   useUndoScheduleEdit,
@@ -318,7 +319,8 @@ export function SchedulingGanttPage() {
   const solveDraft = useSolveDraft(() => setViewMode("draft"));
   const commitDraft = useCommitDraft();
   const discardDraft = useDiscardDraft();
-  const dispatch = useDispatchSchedule();
+  const [dispatchResult, setDispatchResult] = useState<DispatchResult | null>(null);
+  const dispatch = useDispatchSchedule(setDispatchResult);
   const pin = usePinTask();
   const move = useMoveTask();
   const undoEdit = useUndoScheduleEdit();
@@ -1353,6 +1355,29 @@ export function SchedulingGanttPage() {
           )}
         </div>
       </header>
+
+      {dispatchResult && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm" role="status">
+          <span>
+            Dispatch assigned <b>{dispatchResult.covered}</b> of {dispatchResult.attended} tasks.
+          </span>
+          {dispatchResult.uncovered > 0 && (
+            <>
+              <span className="text-destructive">
+                {dispatchResult.uncovered} have no qualified operator free.
+              </span>
+              <Button size="sm" variant="link" className="h-auto p-0"
+                      onClick={() => setGroupBy("operator")}>
+                Show them in People (— Unassigned —)
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="ghost" className="ml-auto h-6 px-2" onClick={() => setDispatchResult(null)}
+                  aria-label="Dismiss dispatch summary">
+            ✕
+          </Button>
+        </div>
+      )}
 
       {draft && (
         <DraftCompareBar
