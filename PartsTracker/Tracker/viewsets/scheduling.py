@@ -653,6 +653,13 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             # total a filtered view is indistinguishable from a shop with two centres.
             'work_center_total': serializers.IntegerField(),
             'critical_only': serializers.BooleanField(),
+            # Open order-line demand not yet planned into work orders: real load the
+            # lanes don't carry yet, costed on each part type's approved routing.
+            'unplanned_demand': inline_serializer(name='UnplannedDemand', fields={
+                'lines': serializers.IntegerField(),
+                'units': serializers.IntegerField(),
+                'labor_hours': serializers.FloatField(),
+                'unroutable_lines': serializers.IntegerField()}),
             # Material demand on the same buckets. A separate shape from the capacity
             # lanes on purpose: a material has no hourly capacity, it has a balance, so
             # the comparison is cumulative demand against on-hand plus what arrives by

@@ -1517,6 +1517,7 @@ export type CapacityLoad = {
   untimed_orders: Array<UntimedOrder>;
   work_center_total: number;
   critical_only: boolean;
+  unplanned_demand: UnplannedDemand;
   materials: Array<MaterialLoad>;
 };
 export type LaborCapacity = {
@@ -1565,6 +1566,12 @@ export type PlannedRelease = {
 export type UntimedOrder = {
   erp_id: string;
   step_count: number;
+};
+export type UnplannedDemand = {
+  lines: number;
+  units: number;
+  labor_hours: number;
+  unroutable_lines: number;
 };
 export type MaterialLoad = {
   id: string;
@@ -24424,6 +24431,12 @@ const UntimedOrder = z.object({
   erp_id: z.string(),
   step_count: z.number().int(),
 });
+const UnplannedDemand = z.object({
+  lines: z.number().int(),
+  units: z.number().int(),
+  labor_hours: z.number(),
+  unroutable_lines: z.number().int(),
+});
 const MaterialBucket = z.object({
   bucket: z.string(),
   demand: z.number(),
@@ -24446,6 +24459,7 @@ const CapacityLoad = z.object({
   untimed_orders: z.array(UntimedOrder),
   work_center_total: z.number().int(),
   critical_only: z.boolean(),
+  unplanned_demand: UnplannedDemand,
   materials: z.array(MaterialLoad),
 });
 const SolverStatusEnum = z.enum([
@@ -29610,6 +29624,7 @@ export const schemas = {
   WorkCenterCapacity,
   PlannedRelease,
   UntimedOrder,
+  UnplannedDemand,
   MaterialBucket,
   MaterialLoad,
   CapacityLoad,

@@ -87,9 +87,10 @@ const TIGHT = 0.85;
 
 /** "Is my crew enough?", answered in one line above the heatmap: the aggregate crew's
  *  worst month, the tightest certified skill, and how many skills hang on one person. */
-function CrewVerdict({ labor, pools }: {
+function CrewVerdict({ labor, pools, unplanned }: {
   labor: CapacityBucket[];
   pools: { name: string; qualified: number; series: CapacityBucket[] }[];
+  unplanned?: { lines: number; units: number; labor_hours: number; unroutable_lines: number };
 }) {
   const over = labor.filter((b) => (b.utilization ?? 0) >= 1).map((b) => b.bucket);
   const worst = peak(labor);
@@ -113,6 +114,15 @@ function CrewVerdict({ labor, pools }: {
         <span className="text-muted-foreground">
           Tightest skill: {tightest.p.name} at {pctOf(tightest.b)} in {tightest.b.bucket}
         </span>
+      )}
+      {unplanned && unplanned.units > 0 && (
+        // Demand the heatmap can't show yet: nothing carries it until it's planned.
+        <Link to="/production/orders" search={{}} className="text-muted-foreground underline underline-offset-2"
+              title="Open order lines not yet planned into work orders. Not in the load above until they are.">
+          +{unplanned.units} unit{unplanned.units === 1 ? "" : "s"} on open orders not yet planned
+          {unplanned.labor_hours > 0 ? ` (~${Math.round(unplanned.labor_hours)} h crew time)` : ""}
+          {unplanned.unroutable_lines > 0 ? ` · ${unplanned.unroutable_lines} with no approved routing` : ""}
+        </Link>
       )}
       {singles.length > 0 && (
         <Link to="/quality/training/matrix" className="text-amber-700 underline underline-offset-2 dark:text-amber-400">
@@ -456,7 +466,8 @@ export function CapacityPlanningPage() {
             </label>
           </div>
 
-          {data && <CrewVerdict labor={data.labor.series} pools={data.labor_pools ?? []} />}
+          {data && <CrewVerdict labor={data.labor.series} pools={data.labor_pools ?? []}
+                                unplanned={data.unplanned_demand} />}
 
           <div className="overflow-x-auto rounded-lg border">
             {isLoading ? (

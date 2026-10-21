@@ -197,18 +197,21 @@ def recommend_release(tenant, horizon_days: int | None = None) -> dict:
     from Tracker.models import OptimizationConfig
     from Tracker.services.mes.release import releasable_work_orders
     from Tracker.services.planning.rccp import (
-        _load_reference, _route_counts, _route_hours, window_bucket,
+        _load_reference, _people_hours, _route_counts, _route_hours, _with_crew_windows,
+        window_bucket,
     )
     from Tracker.services.scheduling import data as sched_data
 
     cfg = OptimizationConfig.objects.filter(tenant=tenant).first()
     horizon = sched_data.get_schedule_horizon(tenant, horizon_days)
-    ref = _load_reference(tenant)
+    ref = _with_crew_windows(_load_reference(tenant), tenant, horizon.start, horizon.end)
     bucket = window_bucket(tenant, horizon.start, horizon.end, label="release-window")
     policy = build_policy(tenant, cfg)
 
     # Capacity of the window, per resource.
-    capacity: dict = {LABOR: ref.crew_size * bucket.working_hours}
+    # What the crew can actually work in the window — their own shifts, less booked
+    # PTO, sickness and training — not headcount × the plant's working hours.
+    capacity: dict = {LABOR: _people_hours(ref, horizon.start, horizon.end)}
     for wc_id, (lights_out, attended) in ref.wc_machine_hours.items():
         capacity[wc_id] = (lights_out * bucket.calendar_hours
                            + attended * bucket.working_hours)

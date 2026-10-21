@@ -51621,6 +51621,8 @@ components:
           type: integer
         critical_only:
           type: boolean
+        unplanned_demand:
+          $ref: '#/components/schemas/UnplannedDemand'
         materials:
           type: array
           items:
@@ -51632,6 +51634,7 @@ components:
       - labor_pools
       - materials
       - planned_releases
+      - unplanned_demand
       - untimed_orders
       - work_center_total
       - work_centers
@@ -84222,6 +84225,23 @@ components:
       required:
       - count
       - emails
+    UnplannedDemand:
+      type: object
+      properties:
+        lines:
+          type: integer
+        units:
+          type: integer
+        labor_hours:
+          type: number
+          format: double
+        unroutable_lines:
+          type: integer
+      required:
+      - labor_hours
+      - lines
+      - units
+      - unroutable_lines
     UnscheduledDiagnosis:
       type: object
       properties:

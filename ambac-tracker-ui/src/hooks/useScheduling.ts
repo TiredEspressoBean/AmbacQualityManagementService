@@ -486,6 +486,9 @@ export type CapacityLoad = {
    *  lead days, so it reads as free rather than unknown — their load and release dates
    *  are a floor. */
   untimed_orders: { erp_id: string; step_count: number }[];
+  /** Open order-line demand not yet planned into work orders — load the lanes don't
+   *  carry yet, costed on each part type's approved routing (attended hours). */
+  unplanned_demand?: { lines: number; units: number; labor_hours: number; unroutable_lines: number };
   /** Material demand on the same buckets. Separate shape from the capacity lanes: a
    *  material has a balance rather than an hourly capacity, so the cell carries what is
    *  LEFT rather than a ratio — a percentage of a stock level reads as a consumption

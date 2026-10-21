@@ -109,6 +109,38 @@ class RccpTests(_RccpFixture, TestCase):
         # Later months are whole either way.
         self.assertEqual(late[1]["capacity_hours"], whole[1]["capacity_hours"])
 
+    def test_planned_absence_comes_off_the_crews_capacity(self):
+        """A booked week of PTO is a week the crew can't work — capacity is each
+        person's own shift windows less their labor-calendar blocks, not headcount ×
+        the plant's hours."""
+        from datetime import datetime
+        from unittest import mock
+        from Tracker.models import LaborCalendarBlock
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        now = datetime(2026, 10, 21, 12, 0, tzinfo=tz)
+        with mock.patch.object(rccp.timezone, 'now', return_value=now):
+            before = rccp.build_capacity_load(self.tenant, months=2)["labor"]["series"][1]
+        LaborCalendarBlock.objects.create(
+            tenant=self.tenant, user=self.user, kind='PTO', recurrence='ONCE', is_active=True,
+            start_time=datetime(2026, 11, 2, 0, 0, tzinfo=tz),
+            end_time=datetime(2026, 11, 7, 0, 0, tzinfo=tz))       # Mon 2nd – Fri 6th
+        with mock.patch.object(rccp.timezone, 'now', return_value=now):
+            after = rccp.build_capacity_load(self.tenant, months=2)["labor"]["series"][1]
+        self.assertEqual(before["bucket"], "2026-11")
+        self.assertAlmostEqual(before["capacity_hours"] - after["capacity_hours"], 5 * 8, delta=0.5)
+
+    def test_open_order_demand_not_yet_planned_is_reported_apart(self):
+        """Lines nobody has planned carry no load, so the heatmap can't show them; the
+        output says how much is waiting, costed on the approved routing."""
+        from Tracker.models import OrderLine, Orders
+        order = Orders.objects.create(tenant=self.tenant, name="Demand")
+        OrderLine.objects.create(tenant=self.tenant, order=order, line_number=1,
+                                 part_type=self.pt, quantity=5)
+        out = rccp.build_capacity_load(self.tenant, months=1)["unplanned_demand"]
+        self.assertEqual((out["lines"], out["units"], out["unroutable_lines"]), (1, 5, 0))
+        self.assertAlmostEqual(out["labor_hours"], 5.0, delta=0.01)   # 60 min/unit, attended
+
     def test_lights_out_machine_gets_calendar_hours(self):
         """A lights-out machine's capacity is wall-clock, an attended one's is shift
         hours — the runs_unattended resolution the scheduler uses."""

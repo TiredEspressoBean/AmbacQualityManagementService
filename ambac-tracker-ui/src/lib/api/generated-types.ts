@@ -21907,6 +21907,7 @@ export interface components {
             untimed_orders: components["schemas"]["UntimedOrder"][];
             work_center_total: number;
             critical_only: boolean;
+            unplanned_demand: components["schemas"]["UnplannedDemand"];
             materials: components["schemas"]["MaterialLoad"][];
         };
         CaptureDraftError: {
@@ -38617,6 +38618,13 @@ export interface components {
         UninvitedUsers: {
             count: number;
             emails: string[];
+        };
+        UnplannedDemand: {
+            lines: number;
+            units: number;
+            /** Format: double */
+            labor_hours: number;
+            unroutable_lines: number;
         };
         UnscheduledDiagnosis: {
             schedule_id: string | null;

@@ -83,7 +83,7 @@ def load_and_capacity(tenant, bucket: Bucket) -> dict:
     """
     import collections
 
-    ref = _load_reference(tenant)
+    ref = _with_crew_windows(_load_reference(tenant), tenant, bucket.start, bucket.end)
     labor_req = 0.0
     wc_req: dict = collections.defaultdict(float)
     for wo in sched_data.get_active_workorders(tenant, within_horizon=False):
@@ -107,7 +107,7 @@ def load_and_capacity(tenant, bucket: Bucket) -> dict:
 
     return {
         'labor': _entry(f"Labor ({ref.crew_size} crew)", labor_req,
-                        ref.crew_size * bucket.working_hours),
+                        _people_hours(ref, bucket.start, bucket.end)),
         'work_centers': work_centers,
     }
 
@@ -168,6 +168,11 @@ class _RefData:
     wc_critical: set         # wc_ids a planner flagged worth watching (presentation only)
     step_pools: dict         # step_id -> frozenset(user_id) qualified AND dispatchable
     step_training: dict      # step_id -> tuple(training names), for labelling a pool
+    # Each crew member's own availability (shift + overtime − closures − company and
+    # personal labor blocks), over the span asked about — see `_with_crew_windows`.
+    crew_windows: dict = field(default_factory=dict)   # user_id -> [(start, end)]
+    crew_ids: frozenset = frozenset()
+    now: datetime | None = None
 
 
 def _load_reference(tenant) -> _RefData:
@@ -175,7 +180,8 @@ def _load_reference(tenant) -> _RefData:
 
     timings = sched_data.get_step_timings(tenant)
     labor_models = sched_data.get_step_labor_models(tenant)
-    crew_size = len(sched_data.get_dispatchable_operators(tenant))
+    crew_ids = frozenset(o.user_id for o in sched_data.get_dispatchable_operators(tenant))
+    crew_size = len(crew_ids)
     attended_only = sched_data.get_attended_only_machines(tenant)
 
     step_wc: dict = {}
@@ -234,7 +240,41 @@ def _load_reference(tenant) -> _RefData:
 
     return _RefData(timings, labor_models, step_wc, osp_steps, osp_days, flow,
                     wc_machine_hours, crew_size, wc_names, wc_critical,
-                    step_pools, step_training)
+                    step_pools, step_training, crew_ids=crew_ids)
+
+
+def _with_crew_windows(ref: _RefData, tenant, start: datetime, end: datetime) -> _RefData:
+    """Fetch each crew member's availability over [start, end) onto `ref`, once.
+
+    Labour capacity is what the crew can actually work: each person's own shift and
+    overtime, less plant closures and the labor calendar's company-wide and personal
+    blocks (PTO, sick, training) — the windows the scheduler dispatches against. It used
+    to be headcount × the plant's working hours, so a week of booked holiday showed as
+    full capacity until the schedule could not be staffed."""
+    horizon = sched_data.HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
+    windows = sched_data.get_operator_shift_windows(tenant, horizon)
+    ref.crew_windows = {uid: w for uid, w in windows.items() if uid in ref.crew_ids}
+    ref.now = start
+    return ref
+
+
+def _people_hours(ref: _RefData, a: datetime, b: datetime, users=None) -> float:
+    """Working hours `users` (default: the whole crew) are available in [a, b)."""
+    if b <= a:
+        return 0.0
+    total = 0.0
+    for uid in (ref.crew_ids if users is None else users):
+        for x, y in ref.crew_windows.get(uid, ()):
+            lo, hi = max(x, a), min(y, b)
+            if hi > lo:
+                total += (hi - lo).total_seconds()
+    return total / 3600
+
+
+def _bucket_people_hours(ref: _RefData, bucket: Bucket, users=None) -> float:
+    """A bucket's labour capacity from now: the current month only offers what is left."""
+    a = max(bucket.start, ref.now) if ref.now else bucket.start
+    return _people_hours(ref, a, bucket.end, users)
 
 
 def _step_hours(ref: _RefData, step_id, quantity: int) -> tuple[float, float]:
@@ -340,7 +380,7 @@ def _add_spread_load(labor_hrs, wc_hrs: dict, lo, hi, n_buckets, wc_load, labor_
 def _bucket_capacity(ref, bucket: Bucket, wc_id=None) -> float:
     """Hours a resource offers in one bucket. `wc_id=None` means the labor pool."""
     if wc_id is None:
-        return ref.crew_size * bucket.working_hours
+        return _bucket_people_hours(ref, bucket)
     lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
     return lights_out * bucket.calendar_hours + attended * bucket.working_hours
 
@@ -364,7 +404,9 @@ def _lead_days(due: Bucket, ref, labor_hrs: float, wc_hrs: dict, counts: dict) -
     """
     import math
 
-    days_in = max(1, (due.end - due.start).days)
+    # The days the bucket's capacity was measured over: the current month offers only
+    # what is left of it, so its rate is the remaining hours over the remaining days.
+    days_in = max(1, (due.end - max(due.start, ref.now or due.start)).days)
 
     # Work content -> elapsed days at each resource's average daily rate. Worst resource
     # sets the pace; a zero-capacity resource can only mean "not inside this bucket".
@@ -444,6 +486,61 @@ def _load_span(buckets, wo, ref, labor_hrs: float, wc_hrs: dict, now,
     return lo, hi, planned_start
 
 
+def _candidate_route(part_type_id) -> tuple[list, str]:
+    """The steps a NEW work order for this part type would run, or `([], why)`.
+
+    The single APPROVED, non-disassembly process (the version in force, even while a
+    revision is open), resolved exactly as BOM explosion resolves it for the component
+    work orders the solver then schedules. Not "the newest process": that picked up an
+    unapproved draft revision and quoted against a routing nobody can release work on.
+    Walked from its head along DEFAULT edges (same route resolver as the solver — no
+    rework branch, no terminal state)."""
+    from Tracker.services.mes.bom_explosion import _build_process
+    proc, why_not = _build_process(part_type_id)
+    if proc is None:
+        return [], f'No approved process/routing defined for that part type ({why_not}).'
+    from Tracker.services.scheduling.manual_move import _process_graph
+    from Tracker.services.scheduling.routing import resolve_route
+    nodes, edges = _process_graph(proc.id)
+    if not nodes:
+        return [], 'The part type has a process but no routing steps.'
+    head = min(nodes, key=lambda nd: nd.order).step_id
+    steps, _ = resolve_route(head, nodes, edges)
+    if not steps:
+        return [], 'The routing has no schedulable (non-terminal) steps.'
+    return steps, ''
+
+
+def _unplanned_demand(tenant, ref: _RefData) -> dict:
+    """Open order lines' demand not yet turned into work orders — load the heatmap
+    can't show, because nothing carries it yet. Costed as a quote would be (the part
+    type's approved routing, attended hours only), so a low utilisation isn't read as
+    spare crew while orders wait to be planned. `unroutable_lines` have no approved
+    routing to cost them by."""
+    from Tracker.models import OrderLine
+    lines = units = unroutable = 0
+    labor = 0.0
+    routes: dict = {}
+    for ln in (OrderLine.objects  # tenant-safe: explicit tenant filter
+               .filter(tenant=tenant, status='OPEN', order__archived=False)
+               .exclude(order__order_status__in=['COMPLETED', 'CANCELLED'])):
+        qty = ln.remaining_quantity
+        if qty <= 0:
+            continue
+        lines += 1
+        units += qty
+        if ln.part_type_id not in routes:
+            routes[ln.part_type_id] = _candidate_route(ln.part_type_id)[0]
+        steps = routes[ln.part_type_id]
+        if not steps:
+            unroutable += 1
+            continue
+        labor += sum(_step_hours(ref, sid, qty)[1] for sid in steps
+                     if ref.labor_models.get(sid, 'pool') != 'off')
+    return {'lines': lines, 'units': units, 'labor_hours': round(labor, 1),
+            'unroutable_lines': unroutable}
+
+
 def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -> dict:
     """Capacity vs load per (resource, monthly bucket) over `months`.
 
@@ -464,6 +561,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
     start = timezone.now()
     buckets = _month_buckets(tenant, start, months)
     n = len(buckets)
+    _with_crew_windows(ref, tenant, start, buckets[-1].end)
 
     labor_load = [0.0] * n
     wc_load: dict = collections.defaultdict(lambda: [0.0] * n)
@@ -525,7 +623,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         return " + ".join(names) if names else f"Certified crew ({len(pool)})"
 
     def _labor_cap(b: Bucket) -> float:
-        return ref.crew_size * b.working_hours
+        return _bucket_people_hours(ref, b)
 
     def _wc_cap(wc_id, b: Bucket) -> float:
         lights_out, attended = ref.wc_machine_hours.get(wc_id, (0, 0))
@@ -545,6 +643,9 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         'buckets': [b.label for b in buckets],
         'labor': {'name': 'Labor (dispatchable crew)', 'crew_size': ref.crew_size,
                   'series': _series(_labor_cap, labor_load)},
+        # Demand on open order lines not yet planned into work orders — real work the
+        # series above doesn't carry yet (`_unplanned_demand`).
+        'unplanned_demand': _unplanned_demand(tenant, ref),
         # Certification-limited labour, one row per distinct qualified crew that
         # actually carries gated work. The aggregate row above answers "have we enough
         # people"; these answer "have we enough of the RIGHT people", which is the
@@ -557,7 +658,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         # satisfied at once". Rough-cut, deliberately — the solver owns that fidelity.
         'labor_pools': [
             {'name': _pool_label(pool), 'qualified': len(pool),
-             'series': _series(lambda b, p=pool: len(p) * b.working_hours,
+             'series': _series(lambda b, p=pool: _bucket_people_hours(ref, b, p),
                                pool_load[pool])}
             for pool in sorted(pool_load, key=lambda p: _pool_label(p))
         ],
@@ -605,6 +706,7 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     ref = _load_reference(tenant)
     start = timezone.now()
     buckets = _month_buckets(tenant, start, months)
+    _with_crew_windows(ref, tenant, start, buckets[-1].end)
     n = len(buckets)
 
     # existing committed load
@@ -625,20 +727,9 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
     # Not "the newest process": that picked up an unapproved draft revision and quoted
     # against a routing nobody can release work on. Walked from its head along DEFAULT
     # edges (same route resolver as the solver — no rework branch, no terminal state).
-    from Tracker.services.mes.bom_explosion import _build_process
-    proc, why_not = _build_process(part_type_id)
-    if proc is None:
-        return {'feasible': False,
-                'reason': f'No approved process/routing defined for that part type ({why_not}).'}
-    from Tracker.services.scheduling.manual_move import _process_graph
-    from Tracker.services.scheduling.routing import resolve_route
-    nodes, edges = _process_graph(proc.id)
-    if not nodes:
-        return {'feasible': False, 'reason': 'The part type has a process but no routing steps.'}
-    head = min(nodes, key=lambda nd: nd.order).step_id
-    cand_steps, _ = resolve_route(head, nodes, edges)
+    cand_steps, why_not = _candidate_route(part_type_id)
     if not cand_steps:
-        return {'feasible': False, 'reason': 'The routing has no schedulable (non-terminal) steps.'}
+        return {'feasible': False, 'reason': why_not}
 
     # Candidate work content, once. Same machine/labor split as committed load — a quote
     # measured differently from the load it is quoted against is not a comparison.
@@ -680,8 +771,10 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         binding = []
         usable = [_window_hours(tenant, buckets[i], start, window_end)
                   for i in range(upto + 1)]
+        def window(i):
+            return max(buckets[i].start, start), min(buckets[i].end, window_end)
         if cand_labor > 0:
-            free = sum(max(0.0, ref.crew_size * usable[i][0] - labor_load[i])
+            free = sum(max(0.0, _people_hours(ref, *window(i)) - labor_load[i])
                        for i in range(upto + 1))
             if cand_labor > free:
                 binding.append({'resource': 'Labor', 'need': round(cand_labor, 1),
@@ -693,7 +786,7 @@ def capable_to_promise(tenant, part_type_id, quantity: int, target_date: date,
         for pool, need in cand_pool.items():
             if need <= 0:
                 continue
-            free = sum(max(0.0, len(pool) * usable[i][0] - pool_load[pool][i])
+            free = sum(max(0.0, _people_hours(ref, *window(i), pool) - pool_load[pool][i])
                        for i in range(upto + 1))
             if need > free:
                 names = sorted({n for sid, p in ref.step_pools.items() if p == pool
