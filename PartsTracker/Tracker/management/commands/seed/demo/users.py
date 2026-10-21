@@ -101,6 +101,26 @@ DEMO_USERS = [
         'export_control_verified': True,
         'purpose': 'Production Manager training - oversight, scheduling, approvals',
     },
+    # === PLANNER ===
+    # Planner only: the Planner track walks as them, so it shows what a planner can
+    # and can't see. Not shop-floor crew, so dispatch never gives them work.
+    {
+        'email': 'sam.plan@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Sam',
+        'last_name': 'Okafor',
+        'role': 'Planner',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Planner training - release, promise, schedule, calendar',
+    },
     # === OPERATORS ===
     {
         'email': 'mike.ops@demo.ambac.com',
@@ -322,6 +342,11 @@ class DemoUserSeeder(BaseSeeder):
             'Operator': 'Operator',
             'Document Controller': 'Document Controller',
             'Engineering': 'Engineering',
+            'Planner': 'Planner',
+            'Purchasing': 'Purchasing',
+            'Receiving': 'Receiving',
+            'Shipping': 'Shipping',
+            'Auditor': 'Auditor',
             'Customer': 'Customer',
         }
 

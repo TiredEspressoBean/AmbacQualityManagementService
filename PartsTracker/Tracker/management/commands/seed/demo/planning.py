@@ -43,7 +43,9 @@ class DemoPlanningSeeder(BaseSeeder):
     def seed(self, users):
         self.log("Seeding the plan (releases, a new order, downtime, a solve)...")
         by_email = (users or {}).get('by_email', {})
-        self.planner = by_email.get('jennifer.mgr@demo.ambac.com')
+        # The planner releases work; the production manager if there's no planner.
+        self.planner = (by_email.get('sam.plan@demo.ambac.com')
+                        or by_email.get('jennifer.mgr@demo.ambac.com'))
         self.lead = by_email.get('casey.dual@demo.ambac.com')
         result = {
             'released': self._release_active_work(),
