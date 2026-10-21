@@ -157,12 +157,39 @@ class FrozenFenceTests(TenantContextMixin, TestCase):
         self.assertIn('machine_blocked', self._freed_codes(r2))
         self.assertEqual(r2.relaxed_pin_count, len(r2.frozen_freed))
 
-    def test_c_a_slot_that_passed_unstarted_frees_it(self):
+    def test_c_a_slot_that_passed_unstarted_slides_instead_of_freeing(self):
+        """Freeze the order, not the clock: work whose slot passed unstarted keeps its
+        machine and slides to now — it doesn't lose its place to the back of the queue."""
         r1, t = self._held_task()
         ScheduledTask.objects.filter(schedule=r1).update(
             start_time=timezone.now() - timedelta(hours=3), end_time=timezone.now() - timedelta(hours=2))
         r2 = self._solve()
-        self.assertIn('slot_past', self._freed_codes(r2))
+        self.assertNotIn('slot_past', self._freed_codes(r2))
+        t2 = r2.tasks.get(step=self.turn)
+        self.assertEqual(t2.machine_id, t.machine_id)
+        self.assertGreaterEqual(t2.start_time, timezone.now().replace(second=0, microsecond=0))
+
+    def test_b_a_re_solve_after_the_minute_rolls_keeps_held_work_in_order(self):
+        """The dev failure: a re-solve that crossed a minute freed work planned at "now",
+        and it queued behind the whole frozen window (3x lateness). Held work now keeps
+        its machine and its order and slides; nothing is freed, lateness no worse."""
+        for i in range(3):
+            self._wo(f"WO-R{i}", 2, due_days=4)
+        base = timezone.now().replace(second=0, microsecond=0)
+        with mock.patch.object(timezone, 'now', return_value=base + timedelta(seconds=10)):
+            r1 = solve_schedule(self.tenant, time_limit_seconds=10)
+        order = {}
+        for t in r1.tasks.filter(fence_zone='frozen').order_by('start_time'):
+            order.setdefault(t.machine_id, []).append((t.part_id, t.step_id))
+        with mock.patch.object(timezone, 'now', return_value=base + timedelta(minutes=3, seconds=5)):
+            r2 = solve_schedule(self.tenant, time_limit_seconds=10)
+        self.assertEqual(r2.frozen_freed, [])
+        self.assertLessEqual(r2.weighted_lateness, r1.weighted_lateness + 1)
+        for machine, seq in order.items():
+            later = [r2.tasks.get(part_id=p, step_id=st) for p, st in seq]
+            self.assertTrue(all(x.machine_id == machine for x in later), "held work changed machine")
+            starts = [x.start_time for x in later]
+            self.assertEqual(starts, sorted(starts), "held work changed order on its machine")
 
     def test_c_an_operator_off_the_crew_frees_it(self):
         r1, t = self._held_task()

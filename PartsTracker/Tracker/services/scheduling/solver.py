@@ -78,10 +78,14 @@ _OTWindow = _namedtuple('_OTWindow', ('start', 'end'))
 # The time fence (user decision 2026-10-21, after re-solves were measured compounding:
 # cold 0.8% gap / 1 late order vs 96% / 3 late on the same inputs).
 #
-# FROZEN and planner-PINNED operations are HARD: fixed start, machine and operator — no
-# penalty, no freedom — unless they can no longer happen where they are
-# (`_frozen_refusal`), when they go back to normal planning and are reported with the
-# reason. The soft pins they replace (10,000-100,000/min, 1,000,000 per machine change)
+# FROZEN and planner-PINNED operations keep their machine, their operator and their ORDER
+# on that machine — "freeze the order, not the clock" (user decision 2026-10-21). Their
+# start may only slide LATER, and only when what is ahead of them runs late: each minute
+# of slide costs `_SLIDE_WEIGHT_FACTOR` x the Urgent late penalty, so held work is never
+# moved to make room for anything. Fixed clock times made any work that slipped past its
+# slot — every re-solve runs minutes after the last — lose its place and queue behind
+# the whole frozen window (3x lateness on dev). Held work that can't happen on its
+# machine at all (`_frozen_refusal`) goes back to normal planning, reported with why. The soft pins they replace (10,000-100,000/min, 1,000,000 per machine change)
 # swamped lateness: each re-solve protected stale positions, pushed new work late, and
 # the next re-solve inherited it.
 #
@@ -89,6 +93,11 @@ _OTWindow = _namedtuple('_OTWindow', ('start', 'end'))
 # quarter of a Normal-priority late minute per minute, and changing its machine about
 # an hour of Normal lateness — so slushy work moves when that saves real lateness.
 SLUSHY_STICKINESS = 0.25
+_SLIDE_WEIGHT_FACTOR = 4
+
+# Seed each solve with a dispatch-rule plan (`_greedy_plan`) for the work the live plan
+# doesn't already hint. A module flag so a benchmark can compare with and without.
+USE_GREEDY_HINT = True
 _SLUSHY_MACHINE_MINUTES = 60
 # Blowing a max-time-between-ops window (cure/coat/pot-life) means the part scraps or
 # reworks — heavily penalized (flat, per violated edge) so the solver only relaxes it when
@@ -472,14 +481,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
 
             Only reasons it CAN'T happen there: its slot has passed unstarted; its order
             may not start yet or its material isn't in; its machine is out of service,
-            no longer eligible, blocked (downtime, closure, off-shift) or already taken by
-            other fixed work; its operator is off the crew, no longer qualified or not on
-            shift then; or its predecessor isn't held before it. A part that moved on,
+            no longer eligible or blocked (downtime, closure, off-shift); the crew on shift
+            is already taken; or its operator is off the crew, no longer qualified or not on
+            shift then. A slot that has passed, or a predecessor running late, is not a
+            reason: held work slides later in its order. A part that moved on,
             was scrapped or shipped, or whose order is held or cancelled, simply isn't
             in this solve, so its old slot isn't consulted at all."""
-            if prev_raw < 0:
-                return ('slot_past', "its slot has passed and it hadn't started")
-            ps = prev_raw
+            ps = max(0, prev_raw)   # a slot already passed slides to now
             if release_min and ps < release_min:
                 return ('not_released', "its order can't start that early")
             if mat_lb and ps < mat_lb:
@@ -493,21 +501,10 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                 if _overlaps(ps, ps + op_dur, _machine_gaps(eq)):
                     return ('machine_blocked',
                             "its machine is down, closed or off-shift in that slot")
-                if _overlaps(ps, ps + op_dur, fixed_by_machine.get(eq, ())):
-                    return ('machine_conflict', "other fixed work now takes its machine then")
             else:
                 op_dur = dur_free or 1
                 if _overlaps(ps, ps + op_dur, closure_gaps):
                     return ('closure', "the plant is closed in that slot")
-            for frm, to in prec:
-                if to != step_id:
-                    continue
-                pend = fixed_end.get(frm)
-                if pend is None:
-                    return ('predecessor_moved',
-                            "the operation before it isn't held, so it can't be held after it")
-                if pend + move_min > ps:
-                    return ('predecessor_late', "the operation before it now ends too late")
             att_len = front_len if front_len is not None else op_dur
             if lm != 'off' and att_len and crew_segs:
                 # The crew on shift is a hard cap on attended work at once. Held work
@@ -529,8 +526,63 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                             "its operator isn't on shift then (rota, leave or training)")
             return None
 
+        def _earliest_slot(est, d, blocked) -> int:
+            """First start >= est with [start, start+d) clear of every blocked interval."""
+            t = est
+            for bs, be in sorted(blocked):
+                if be <= t:
+                    continue
+                if bs >= t + d:
+                    break
+                t = be
+            return t
+
+        _gap_cache: dict = {}
+
+        def _greedy_plan(tasks) -> list:
+            """A quick dispatch-rule plan: `[(task, (start, end, machine))]`.
+
+            Operations are placed once their predecessors are, earliest due date first
+            (higher late penalty breaking ties), each on the eligible machine where it
+            finishes soonest — clear of that machine's downtime, closures and off-shift
+            time and of whatever is already on it. Held, running and at-vendor work
+            stays where it is. Crew limits, changeovers, gauges and fixtures are left to
+            CP-SAT, which repairs the hint where it doesn't fit; the point is a good
+            first plan in milliseconds, not a feasible one."""
+            plan: dict = {}
+            busy: dict = defaultdict(list)
+            by_id = {id(t): t for t in tasks}
+            for t in tasks:
+                if t.get('fixed_pos') is not None:
+                    plan[id(t)] = t['fixed_pos']
+                    if t['fixed_pos'][2] is not None:
+                        busy[t['fixed_pos'][2]].append(t['fixed_pos'][:2])
+            pending = [t for t in tasks if id(t) not in plan]
+            while pending:
+                ready = [t for t in pending if all(id(p) in plan for p in t['preds'])]
+                if not ready:          # a cycle can't happen on a resolved route; be safe
+                    ready = pending
+                t = min(ready, key=lambda x: (x['due'] if x['due'] is not None else 10 * H,
+                                              -(x['prio'] or 0)))
+                pending.remove(t)
+                est = max([t['est'] or 0] + [plan[id(p)][1] + move_min for p in t['preds']])
+                if t['durs']:
+                    best = None
+                    for eq, d in t['durs'].items():
+                        if eq not in _gap_cache:
+                            _gap_cache[eq] = _machine_gaps(eq)
+                        st = _earliest_slot(est, d, _gap_cache[eq] + busy[eq])
+                        if best is None or st + d < best[1]:
+                            best = (st, st + d, eq)
+                    plan[id(t)] = best
+                    busy[best[2]].append(best[:2])
+                else:
+                    d = t['dur_free'] or 1
+                    plan[id(t)] = (est, est + d, None)
+            return [(by_id[k], v) for k, v in plan.items()]
+
         def _build_and_solve(labor_override, machine_hints, tlimit, hard_fence=True,
-                             release=frozenset()):
+                             release=frozenset(), find_core=False):
             """`hard_fence=False` is the fallback when fixing every valid frozen/pinned
             operation made the model infeasible (fixed blocks that the changed world can
             no longer fit together): they are then held only by slushy stickiness and all
@@ -573,6 +625,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             fixed_by_operator: dict = defaultdict(list)  # user_id -> [(s, e)] attended, fixed
             fixed_attended: list = []   # [(s, e)] attended spans of held work (crew cap)
             holds: list = []   # (assumption_lit, (part_ids, step_id)) per held operation
+            slide_terms: list = []   # minutes each held operation slid past its planned start
+            held_on_machine: dict = defaultdict(list)  # equip -> [(planned, start, end, step, setup, wo, hold)]
             wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
             wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
             wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
@@ -665,7 +719,11 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                           'step_id': step_id, 'start': start, 'end': end,
                                           'choices': [], 'pinned': ret is not None,
                                           'planner_pinned': False, 'named_assign': [],
-                                          'requires_operator': False, 'in_progress': False})
+                                          'requires_operator': False, 'in_progress': False,
+                                          'durs': {}, 'dur_free': dur, 'est': release_min,
+                                          'due': due_minutes, 'prio': penalty, 'preds': [],
+                                          'fixed_pos': ((max(0, ret - dur), ret, None)
+                                                        if ret is not None else None)})
                             node_start[step_id] = start
                             node_end[step_id] = end
                             node_task[step_id] = tasks[-1]
@@ -707,7 +765,10 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                           'step_id': step_id, 'start': start, 'end': end,
                                           'choices': choices, 'pinned': True,
                                           'planner_pinned': False, 'named_assign': [],
-                                          'requires_operator': False, 'in_progress': True})
+                                          'requires_operator': False, 'in_progress': True,
+                                          'durs': {}, 'dur_free': remaining, 'est': 0,
+                                          'due': due_minutes, 'prio': penalty, 'preds': [],
+                                          'fixed_pos': (0, remaining, fixed_m)})
                             node_start[step_id] = start
                             node_end[step_id] = end
                             node_task[step_id] = tasks[-1]
@@ -818,6 +879,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                         pinned = False          # held fixed this solve
                         planner_pinned = False  # the DB is_pinned flag — planner lock ONLY
                         fixed_start_dt = None   # the live plan's exact start, for write-back
+                        held_pos = None         # (start, end, machine) when held, for the greedy hint
+                        warm_start = None       # the live plan's start when only hinted
                         prevts = [prev_map[(pid, step_id)] for pid in lot['part_ids']
                                   if (pid, step_id) in prev_map]
                         if prevts:
@@ -851,7 +914,15 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 op_dur = durs.get(fixed_m) if fixed_m else dur_free
                                 hold = model.NewBoolVar(f"hold_{key}")
                                 holds.append((hold, hold_key))
-                                model.Add(start == prev_start).OnlyEnforceIf(hold)
+                                model.Add(start >= prev_start).OnlyEnforceIf(hold)
+                                slide = model.NewIntVar(0, H, f"slide_{key}")
+                                model.Add(slide >= start - prev_start)
+                                slide_terms.append(slide)
+                                if fixed_m is not None:
+                                    held_on_machine[fixed_m].append(
+                                        (prev_start, start, end, step_id,
+                                         int(round(timing.setup_minutes)) if timing else 0,
+                                         wo.wo_id, hold))
                                 for lit, eqid in choices:
                                     model.Add(lit == (1 if eqid == fixed_m else 0)).OnlyEnforceIf(hold)
                                 # Keep its operator too — unless that person is already held
@@ -879,6 +950,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                         fixed_by_machine[fixed_m].append(
                                             (prev_start, prev_start + op_dur))
                                 pins.append((start, prev_start, rep.machine_id, choices))
+                                if op_dur is not None:
+                                    held_pos = (prev_start, prev_start + op_dur, fixed_m)
                                 pinned = True
                                 planner_pinned = any_pinned
                                 fixed_start_dt = rep.start_time
@@ -899,16 +972,25 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                             if eqid == rep.machine_id:
                                                 stick_terms.append(('mach', lit, slushy_machine_cost))
                                 warm_hints.append((start, prev_start))
+                                warm_start = prev_start
 
                         tasks.append({'part_ids': lot['part_ids'],
                                       'step_id': step_id,
                                       'start': start, 'end': end, 'choices': choices,
                                       'pinned': pinned, 'planner_pinned': planner_pinned,
                                       'fixed_start_dt': fixed_start_dt,
+                                      # Exact write-back only for a slot still ahead: one already
+                                      # passed was held at "now", and writing its old time back
+                                      # would put the plan in the past.
+                                      'held_minute': prev_start if (pinned and prev_raw >= 0) else None,
                                       'named_assign': named_assign,
                                       'requires_operator': lm != 'off',
                                       'material_short': mat_short,
-                                      'material_detail': mat_detail})
+                                      'material_detail': mat_detail,
+                                      'durs': durs, 'dur_free': dur_free,
+                                      'est': max(release_min, mat_lb), 'due': due_minutes,
+                                      'prio': penalty, 'preds': [], 'fixed_pos': held_pos,
+                                      'warm': warm_start})
                         node_start[step_id] = start
                         node_end[step_id] = end
                         node_task[step_id] = tasks[-1]
@@ -923,6 +1005,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     max_by_edge = {(e.from_step_id, e.to_step_id): e.max_minutes
                                    for e in wo.edges if e.max_minutes}
                     for from_id, to_id in prec:
+                        if from_id in node_task and to_id in node_task:
+                            node_task[to_id]['preds'].append(node_task[from_id])
                         if from_id in node_end and to_id in node_start:
                             model.Add(node_start[to_id] >= node_end[from_id] + move_min)
                             max_m = max_by_edge.get((from_id, to_id))
@@ -973,6 +1057,16 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                 model.AddMaxEquality(child_done, child_ends)
                 for ps in gated:
                     model.Add(ps >= child_done + staging_buffer)
+
+            # Held work keeps its order on its machine: each held operation starts after
+            # the one planned before it (plus the changeover between them), so a slide
+            # carries the queue along instead of reshuffling it.
+            for equipment_id, held in held_on_machine.items():
+                held.sort(key=lambda h: h[0])
+                for a, b in zip(held, held[1:]):
+                    gap = _transition(changeover, equipment_id, a[3], b[3], b[4],
+                                      a[5], b[5], job_change_min)
+                    model.Add(b[1] >= a[2] + gap).OnlyEnforceIf([a[6], b[6]])
 
             # Machine capacity. Lights-out machines (the default) run 24/7 and are blocked
             # only by their downtime — a lot-operation may span nights/weekends. Machines
@@ -1094,7 +1188,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                 model.AddMaxEquality(makespan, [t['end'] for t in tasks])
                 stickiness = (sum(w * v for kind, v, w in stick_terms if kind == 'dev')
                               + sum(w * (1 - v) for kind, v, w in stick_terms if kind == 'mach'))
-                obj = (sum(lateness_cost) + makespan + stickiness
+                urgent_per_min = max(1, _penalty_cents_per_min(config, 1))
+                slide_cost = _SLIDE_WEIGHT_FACTOR * urgent_per_min * sum(slide_terms)
+                obj = (sum(lateness_cost) + makespan + stickiness + slide_cost
                        + sum(affinity_cost) + sum(max_time_penalty))
                 if named_uncovered:
                     # Coverage-first (lexicographic-by-weight): one uncovered attended op is
@@ -1102,7 +1198,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     # the solver NEVER trades coverage for less lateness/makespan — pushing
                     # work late is always preferred to leaving it unstaffed.
                     max_pen = max((_penalty_cents_per_min(config, w.priority) for w in wos), default=0)
-                    stick_max = sum(w * (H if kind == 'dev' else 1) for kind, _v, w in stick_terms)
+                    stick_max = (sum(w * (H if kind == 'dev' else 1) for kind, _v, w in stick_terms)
+                                 + _SLIDE_WEIGHT_FACTOR * max(1, _penalty_cents_per_min(config, 1))
+                                 * H * len(slide_terms))
                     w_unc = (len(tasks) * 2 * H * max_pen + H + stick_max
                              + len(affinity_cost) * _AFFINITY_PENALTY_DEFAULT
                              + len(max_time_penalty) * _CURE_WINDOW_WEIGHT + 1)
@@ -1111,6 +1209,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
 
             for var, minute in warm_hints:            # warm-start from the previous schedule
                 model.AddHint(var, minute)
+
+            if machine_hints is None and USE_GREEDY_HINT and tasks:
+                # A dispatch-rule starting plan for every operation the live plan doesn't
+                # already hint (`_greedy_plan`) — CP-SAT then improves on it rather than
+                # searching from nothing, which is where run-to-run swings came from.
+                for t, (gs, ge, geq) in _greedy_plan(tasks):
+                    if t['fixed_pos'] is not None or t.get('warm') is not None:
+                        continue
+                    model.AddHint(t['start'], gs)
+                    model.AddHint(t['end'], ge)
+                    for lit, eqid in t['choices']:
+                        model.AddHint(lit, 1 if eqid == geq else 0)
 
             if machine_hints:
                 # Hint the MACHINE choice from the machine phase (that layout is good),
@@ -1125,7 +1235,14 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                         if _eqid == _h[1]:
                             model.AddHint(_lit, 1)
             if holds:
-                model.AddAssumptions([h for h, _k in holds])
+                if find_core:
+                    # Only to name an infeasible set: assumptions switch off much of
+                    # CP-SAT's presolve and neighbourhood search, so an ordinary solve
+                    # with them lands far worse (walk 2026-10-21: 1.2M vs 73k lateness).
+                    model.AddAssumptions([h for h, _k in holds])
+                else:
+                    for h, _k in holds:
+                        model.Add(h == 1)
             solver = cp_model.CpSolver()
             solver.parameters.max_time_in_seconds = tlimit
 
@@ -1150,11 +1267,11 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         machine_solve_ms = 0
         operator_solve_ms = 0
         _wt = lambda p: int(p['solver'].WallTime() * 1000) if p['tasks'] else 0
-        def _run(hard, release=frozenset()):
+        def _run(hard, release=frozenset(), find_core=False):
             ms_m = ms_o = 0
             if _match:
                 _ta = max(1, int(time_limit_seconds * 0.4))
-                _pa = _build_and_solve('pool', None, _ta, hard, release)
+                _pa = _build_and_solve('pool', None, _ta, hard, release, find_core)
                 if not _pa['solved']:
                     return _pa, _wt(_pa), 0
                 ms_m = _wt(_pa)
@@ -1164,10 +1281,10 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     _hints = {i: (_sa.Value(t['start']), _chosen_machine(t, _sa))
                               for i, t in enumerate(_pa['tasks'])}
                 _pb = _build_and_solve('named', _hints, max(1, time_limit_seconds - _ta), hard,
-                                       release)
+                                       release, find_core)
                 ms_o = _wt(_pb)
                 return (_pb if _pb['solved'] else _pa), ms_m, ms_o
-            out = _build_and_solve(None, None, time_limit_seconds, hard, release)
+            out = _build_and_solve(None, None, time_limit_seconds, hard, release, find_core)
             return out, _wt(out), 0
 
         _final, machine_solve_ms, operator_solve_ms = _run(True)
@@ -1176,8 +1293,15 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         # the whole fence. A few rounds; then the whole-fence fallback below.
         released: set = set()
         for _round in range(5):
-            if _final['solved'] or not _final['conflicts']:
+            if _final['solved'] or not _final['kept']:
                 break
+            if not _final['conflicts']:
+                # Infeasible with plain holds: re-solve once with assumptions so CP-SAT
+                # names the conflicting ones.
+                _final, machine_solve_ms, operator_solve_ms = _run(
+                    True, frozenset(released), find_core=True)
+                if _final['solved'] or not _final['conflicts']:
+                    break
             released |= set(_final['conflicts'])
             logger.info("Frozen fence: releasing %s conflicting held operation(s), round %s.",
                         len(_final['conflicts']), _round + 1)
@@ -1274,7 +1398,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                 machine_id = _chosen_machine(t, solver)
                 start_dt = horizon.start + timedelta(minutes=solver.Value(t['start']))
                 end_dt = horizon.start + timedelta(minutes=solver.Value(t['end']))
-                if t.get('fixed_start_dt') is not None:
+                if (t.get('fixed_start_dt') is not None
+                        and t.get('held_minute') == solver.Value(t['start'])):
                     # Held operations keep their exact time. Minutes are counted from a
                     # horizon that starts "now", so writing the minute back would creep
                     # each held task up to a minute earlier on every re-solve.
