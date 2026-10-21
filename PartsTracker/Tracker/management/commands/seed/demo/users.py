@@ -121,6 +121,26 @@ DEMO_USERS = [
         'export_control_verified': True,
         'purpose': 'Planner training - release, promise, schedule, calendar',
     },
+    # === ENGINEERING ===
+    # Engineering only: the Engineering track walks as them, so it shows where
+    # authoring stops and approving or releasing starts.
+    {
+        'email': 'jordan.eng@demo.ambac.com',
+        'password': 'demo123',
+        'first_name': 'Jordan',
+        'last_name': 'Reyes',
+        'role': 'Engineering',
+        'user_type': 'INTERNAL',
+        'is_staff': False,
+        'is_active': True,
+        'is_superuser': False,
+        'citizenship': 'USA',
+        'us_person': True,
+        'eu_authorized': False,
+        'uk_authorized': False,
+        'export_control_verified': True,
+        'purpose': 'Engineering training - routings, change control, measurements, instructions',
+    },
     # === OPERATORS ===
     {
         'email': 'mike.ops@demo.ambac.com',
