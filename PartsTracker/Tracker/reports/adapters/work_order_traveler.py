@@ -436,7 +436,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         # StepExecution + QualityReports history; otherwise cells stay blank
         # (the job-release form). tenant-safe: explicit tenant filter.
         target_part = self._resolve_part(wo, tenant, validated_params.get("part"))
-        exec_by_step, qr_by_step = self._history_maps(target_part, tenant)
+        exec_by_step, qr_by_step, inspected_by, out_of_spec = self._history_maps(target_part, tenant)
         trace_by_step = self._trace_maps(target_part, tenant)
         signoff_by_step = self._signoff_map(wo, tenant) if target_part else {}
 
@@ -459,9 +459,12 @@ class WorkOrderTravelerAdapter(ReportAdapter):
                     if getattr(m, "is_current_version", True)
                 ]
                 description = (step.description or "").strip() or None
+                execution = exec_by_step.get(step.id)
                 operator, inspector, acc_rej, remarks = self._step_actuals(
-                    exec_by_step.get(step.id), qr_by_step.get(step.id),
-                    signoff_by_step.get(step.id),
+                    execution, qr_by_step.get(step.id),
+                    _signoff_for_serial(signoff_by_step.get(step.id), execution),
+                    inspected_by=inspected_by.get(step.id),
+                    out_of_spec=step.id in out_of_spec,
                 )
                 trace = trace_by_step.get(step.id, {})
                 operations.append(TravelerOperation(
@@ -539,14 +542,30 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         def slot(step_id):
             return out.setdefault(step_id, {"recorded": [], "materials": [], "visits": 0, "overrides": []})
 
+        shipments: dict = {}   # outside-process shipment id -> the step its visit was at
         for ex in part.step_executions.all():
             slot(ex.step_id)["visits"] += 1
+            if ex.outside_process_shipment_id:
+                shipments[ex.outside_process_shipment_id] = ex.step_id
         # tenant-safe: every query below is keyed to the tenant-checked part.
         for m in (StepExecutionMeasurement.objects
                   .filter(tenant=tenant, step_execution__part=part)
                   .select_related("measurement_definition", "recorded_by", "step_execution")
                   .order_by("recorded_at")):
             slot(m.step_execution.step_id)["recorded"].append(_fmt_recorded(m))
+        # Readings taken at the return inspection are on the shipment's own execution.
+        if shipments:
+            from django.contrib.contenttypes.models import ContentType
+            from Tracker.models import OutsideProcessShipment
+            ct = ContentType.objects.get_for_model(OutsideProcessShipment)
+            for m in (StepExecutionMeasurement.objects
+                      .filter(tenant=tenant, step_execution__subject_content_type=ct,
+                              step_execution__subject_id__in=list(shipments))
+                      .select_related("measurement_definition", "recorded_by", "step_execution")
+                      .order_by("recorded_at")):
+                step_id = shipments.get(m.step_execution.subject_id)
+                if step_id is not None and m.step_execution.step_id == step_id:
+                    slot(step_id)["recorded"].append(_fmt_recorded(m))
         for u in (MaterialUsage.objects
                   .filter(tenant=tenant, part=part)
                   .select_related("lot__material", "lot__material_type", "harvested_component")
@@ -618,7 +637,7 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         """Prefetch a part's executions + quality reports keyed by step id
         (avoids per-row queries). Empty dicts when no part is resolved."""
         if part is None:
-            return {}, {}
+            return {}, {}, {}, set()
 
         from Tracker.models.qms import QualityReports
 
@@ -630,11 +649,12 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         ):
             exec_by_step[ex.step_id] = ex  # keep the latest visit
 
-        # Keep one report per step, preferring a decided verdict (PASS/FAIL)
-        # over a PENDING placeholder, and the latest among equals — so a real
-        # FAIL is never masked by a later auto-bound PENDING inspection QR.
+        # Keep one report per step: a decided verdict over a PENDING placeholder, and
+        # FAIL over REPAIR over PASS — a visit with a failed report failed, even if a
+        # later report on it passed (013's Flow Calibration printed ACC over its own
+        # FAIL). The latest wins among equals.
         def _rank(qr):
-            return 1 if getattr(qr, "status", None) in ("PASS", "FAIL") else 0
+            return {"FAIL": 3, "REPAIR": 2, "PASS": 1}.get(getattr(qr, "status", None), 0)
 
         qr_by_step: dict = {}
         for qr in (
@@ -648,7 +668,45 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             current = qr_by_step.get(qr.step_id)
             if current is None or _rank(qr) >= _rank(current):
                 qr_by_step[qr.step_id] = qr
-        return exec_by_step, qr_by_step
+
+        # An outside-process visit is inspected on its return, and that report is the
+        # shipment's (osp_shipment), not the part's — the link the advancement gate
+        # reads (advancement_gate._accepted_return_completions). Its inspector is who
+        # completed the shipment's inspection when the report itself names nobody.
+        inspected_by: dict = {}
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import OutsideProcessShipment, StepExecution, StepExecutionMeasurement
+        osp_ct = ContentType.objects.get_for_model(OutsideProcessShipment)
+        for step_id, ex in exec_by_step.items():
+            if not ex.outside_process_shipment_id:
+                continue
+            ret = (StepExecution.objects  # tenant-safe: explicit tenant filter
+                   .filter(tenant=tenant, subject_content_type=osp_ct,
+                           subject_id=ex.outside_process_shipment_id)
+                   .select_related("completed_by").order_by("-entered_at").first())
+            if ret is not None and ret.completed_by_id:
+                inspected_by[step_id] = ret.completed_by
+        for step_id, ex in exec_by_step.items():
+            if step_id in qr_by_step or not ex.outside_process_shipment_id:
+                continue
+            for qr in (
+                QualityReports.objects  # tenant-safe: explicit tenant filter
+                .filter(tenant=tenant, osp_shipment_id=ex.outside_process_shipment_id,
+                        step_id=step_id, archived=False)
+                .select_related("detected_by", "verified_by")
+                .order_by("created_at")
+            ):
+                current = qr_by_step.get(step_id)
+                if current is None or _rank(qr) >= _rank(current):
+                    qr_by_step[step_id] = qr
+
+        # A reading out of spec on the step's latest visit rejects it, whatever a report says.
+        out_of_spec = set(
+            StepExecutionMeasurement.objects  # tenant-safe: explicit tenant filter
+            .filter(tenant=tenant, step_execution_id__in=[e.id for e in exec_by_step.values()],
+                    is_within_spec=False)
+            .values_list("step_execution__step_id", flat=True))
+        return exec_by_step, qr_by_step, inspected_by, out_of_spec
 
     def _signoff_map(self, wo, tenant) -> dict:
         """The QA sign-off (QaApproval) of each step on this work order, by step id."""
@@ -658,7 +716,8 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             QaApproval.objects.filter(tenant=tenant, work_order=wo, archived=False)
             .select_related("qa_staff").order_by("created_at"))}
 
-    def _step_actuals(self, execution, quality_report, qa_signoff=None):
+    def _step_actuals(self, execution, quality_report, qa_signoff=None, *,
+                      inspected_by=None, out_of_spec=False):
         """(operator, inspector, acc_rej, remarks) for one routing row, from the
         step's latest StepExecution + QualityReports, else its QA sign-off. All None
         when absent.
@@ -671,16 +730,23 @@ class WorkOrderTravelerAdapter(ReportAdapter):
         if execution is not None:
             who = execution.completed_by or execution.assigned_to
             when = execution.exited_at or execution.started_at or execution.entered_at
-            operator = _join_person_date(who, when)
+            # Nobody on it (a visit that's only been entered) is no operator — printing
+            # its entry date alone read as a sign-off by "10/20".
+            operator = _join_person_date(who, when) if who is not None else None
 
         if quality_report is not None:
-            who = quality_report.verified_by or quality_report.detected_by
-            inspector = _join_person_date(who, quality_report.created_at)
+            who = quality_report.verified_by or quality_report.detected_by or inspected_by
+            # A date with no name reads as a sign-off by nobody; print neither.
+            inspector = _join_person_date(who, quality_report.created_at) if who is not None else None
             status = getattr(quality_report, "status", None)
             if status == "PASS":
                 acc_rej = "ACC"
             elif status == "FAIL":
                 acc_rej = "REJ"
+            elif status == "REPAIR":
+                # A reman check's planned-repair result: not a reject, not an accept.
+                # RPR is the repair code of MRB disposition shorthand (UAI/RWK/RPR/SCR).
+                acc_rej = "RPR"
             # Full text — the Remarks box grows to fit; clipping a
             # nonconformance finding mid-sentence loses traceability.
             desc = (quality_report.description or "").strip()
@@ -690,7 +756,23 @@ class WorkOrderTravelerAdapter(ReportAdapter):
             inspector = _join_person_date(qa_signoff.qa_staff, qa_signoff.created_at)
             acc_rej = "ACC"  # a QA sign-off is the step's acceptance
 
+        # An out-of-spec reading is a rejection on paper, whatever a report or sign-off
+        # says — the row must not print ACC next to "✗ OUT OF SPEC".
+        if out_of_spec and acc_rej == "ACC":
+            acc_rej = "REJ"
         return operator, inspector, acc_rej, remarks
 
     def get_filename(self, validated_params) -> str:
         return f"work_order_traveler_{validated_params.get('id', 'unknown')}.pdf"
+
+
+def _signoff_for_serial(signoff, execution):
+    """A step's QA sign-off, as it applies to one serial.
+
+    QaApproval is per work order and step, not per part — a first-piece buy-off on one
+    serial signs the step off for the job. On a serial's as-built row it counts only
+    once that serial has itself completed the step; a serial still pending there was
+    not inspected, and crediting it would put a name on work that hasn't happened."""
+    if signoff is None or execution is None:
+        return None
+    return signoff if execution.status == "COMPLETED" else None

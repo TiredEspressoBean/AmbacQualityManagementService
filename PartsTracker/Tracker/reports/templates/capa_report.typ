@@ -418,6 +418,19 @@
     field("Approved Date",   fmt-date(data.approval.approved_at)),
     field("",                none),
   )
+  // Said on paper, not just on screen: an auditor reading this copy must see that
+  // the approver and the requester were the same person, and why.
+  #if data.approval.self_approved [
+    #v(6pt)
+    #notice[
+      *Self-approved* — the requester approved their own request; nobody else was
+      eligible to approve it.
+      #if data.approval.self_approval_note != "" [
+        #linebreak()
+        Justification: #data.approval.self_approval_note
+      ]
+    ]
+  ]
 ]
 
 #v(20pt)

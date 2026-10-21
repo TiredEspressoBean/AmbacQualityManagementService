@@ -97,6 +97,10 @@ class ApprovalContext(BaseModel):
     approval_status: str = "NOT_REQUIRED"   # NOT_REQUIRED / PENDING / APPROVED / REJECTED
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None
+    # The requester approved their own request because nobody else was eligible
+    # (ApprovalResponse.self_approved); the justification is that response's comments.
+    self_approved: bool = False
+    self_approval_note: str = ""
 
 
 class CapaReportContext(BaseModel):
@@ -296,11 +300,14 @@ class CapaReportAdapter(ReportAdapter):
             )
 
         # ---- Approval ----
+        self_approval = _self_approval(capa)
         approval_ctx = ApprovalContext(
             approval_required=capa.approval_required,
             approval_status=capa.approval_status,
             approved_by=_user_name(capa.approved_by),
             approved_at=capa.approved_at,
+            self_approved=self_approval is not None,
+            self_approval_note=((self_approval.comments or "").strip() if self_approval else ""),
         )
 
         return CapaReportContext(
@@ -324,3 +331,19 @@ class CapaReportAdapter(ReportAdapter):
 
     def get_filename(self, validated_params) -> str:
         return f"capa_{validated_params.get('id', 'unknown')}.pdf"
+
+
+def _self_approval(capa):
+    """The approved, self-approved response on any of this CAPA's approval requests,
+    latest first — or None. Caller has tenant-checked the CAPA."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import ApprovalResponse
+
+    ct = ContentType.objects.get_for_model(capa.__class__)
+    # unscoped + explicit tenant, like the CAPA query above: reports also run outside a
+    # request (the email task), where .objects has no tenant context.
+    return (ApprovalResponse.unscoped  # tenant-safe: explicit tenant filter
+            .filter(tenant=capa.tenant, approval_request__content_type=ct,
+                    approval_request__object_id=str(capa.id),
+                    decision="APPROVED", self_approved=True)
+            .order_by("-decision_date").first())

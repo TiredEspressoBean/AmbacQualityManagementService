@@ -165,3 +165,48 @@ class CapaReportAdapterCrossTenantTests(TestCase):
             user=self.user_b,
         )
         self.assertTrue(pdf.startswith(b"%PDF"))
+
+
+class CapaSelfApprovalTests(TestCase):
+    """A self-approved CAPA plan says so on paper, with its justification (2026-10-20)."""
+
+    def setUp(self):
+        import datetime
+        from Tracker.models import Tenant, User
+        from Tracker.models.qms import CAPA
+        self.tenant = Tenant.objects.create(slug="capa-self", name="Self Co")
+        self.user = User.objects.create_user(username="capa-self", email="s@x.test",
+                                             password="x", tenant=self.tenant)
+        self.capa = CAPA.unscoped.create(
+            tenant=self.tenant, capa_number="CAPA-SELF-1", capa_type="CORRECTIVE",
+            severity="MINOR", status="OPEN", problem_statement="Self-approval test.",
+            initiated_date=datetime.date.today(), approval_required=True)
+
+    def _approval(self):
+        from Tracker.reports.adapters.capa_report import CapaReportAdapter
+        return CapaReportAdapter().build_context({"id": self.capa.id}, self.user, self.tenant).approval
+
+    def _respond(self, self_approved):
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import ApprovalRequest, ApprovalResponse
+        from Tracker.utils.tenant_context import tenant_context
+        # Saving a response fires the request's status recalculation, which reads
+        # through the scoped manager — so the fixture is built inside the tenant.
+        with tenant_context(self.tenant.id):
+            req = ApprovalRequest.unscoped.create(
+                tenant=self.tenant, approval_number="APR-SELF-1", approval_type="CAPA_APPROVAL",
+                content_type=ContentType.objects.get_for_model(self.capa),
+                object_id=str(self.capa.id), requested_by=self.user)
+            ApprovalResponse.unscoped.create(
+                tenant=self.tenant, approval_request=req, approver=self.user, decision="APPROVED",
+                self_approved=self_approved, comments="Only trained QA lead on site this week.")
+
+    def test_self_approval_and_its_justification_reach_the_report(self):
+        self._respond(self_approved=True)
+        approval = self._approval()
+        self.assertTrue(approval.self_approved)
+        self.assertEqual(approval.self_approval_note, "Only trained QA lead on site this week.")
+
+    def test_an_ordinary_approval_is_not_flagged(self):
+        self._respond(self_approved=False)
+        self.assertFalse(self._approval().self_approved)

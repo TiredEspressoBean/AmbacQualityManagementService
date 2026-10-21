@@ -260,7 +260,8 @@
       signoff(value: op.operator, h: 32pt),
       signoff(value: op.inspector, h: 32pt),
       signoff(value: if op.acc_rej == "ACC" { "✓" } else { none }, h: 32pt),
-      signoff(value: if op.acc_rej == "REJ" { "✗" } else { none }, h: 32pt),
+      // Needs repair is not an accept: it goes in the Rej column, said as RPR.
+      signoff(value: if op.acc_rej == "REJ" { "✗" } else if op.acc_rej == "RPR" { "RPR" } else { none }, h: 32pt),
       signoff(value: op.remarks, h: 32pt),
     )),
     column-gutter: 12pt,
