@@ -190,13 +190,26 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         if MaterialLot.objects.filter(owner__isnull=False).exists():
             return None
         owner = Companies.objects.filter(is_customer=True, name='Midwest Fleet Services').first()
-        lot = (MaterialLot.objects.filter(status='ACCEPTED', owner__isnull=True)
-               .order_by('lot_number').first())
-        if owner is None or lot is None:
+        template = (MaterialLot.objects.filter(status='ACCEPTED', owner__isnull=True)
+                    .order_by('lot_number').first())
+        if owner is None or template is None:
             return None
-        lot.owner = owner
-        lot.save(update_fields=['owner'])
-        self.log(f"  Customer property: {lot.lot_number} now owned by {owner.name}")
+        # Its own lot, supplied by the customer. Giving an owner to a lot bought from a
+        # supplier took that purchase out of the supplier's scorecard (customer property
+        # says nothing about a supplier), so Great Lakes read 0 lots accepted.
+        lot, _ = MaterialLot.objects.update_or_create(
+            tenant=self.tenant, lot_number='RCV-CUST-0001',
+            defaults={
+                'material_type': template.material_type, 'material': template.material,
+                'supplier': owner, 'owner': owner,
+                'supplier_lot_number': 'MWF-CONSIGN-01',
+                'received_date': template.received_date, 'received_by': template.received_by,
+                'quantity': template.quantity, 'quantity_remaining': template.quantity,
+                'unit_of_measure': template.unit_of_measure, 'status': 'ACCEPTED',
+                'heat_number': template.heat_number, 'location': template.location,
+            },
+        )
+        self.log(f"  Customer property: {lot.lot_number}, supplied by {owner.name}")
         return lot.lot_number
 
     # ------------------------------------------------------------------ #

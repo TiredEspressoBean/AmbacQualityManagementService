@@ -1,735 +1,376 @@
-# QA Manager Training Guide
+# QA Manager
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+The QA manager's slice of [the shop day](../shop-day.md): the decisions an inspector
+can't make alone. You decide dispositions, rule on what arrives at the dock, decide
+which nonconformances get corrective action, approve and verify CAPAs, act on a
+supplier's standing, and answer for the gauges, the sampling plans and the people's
+qualifications. Every exercise is on the training shop, and every record it names
+is one the training seed creates.
 
-**Duration:** 4-6 hours
-**Prerequisites:** QA Inspector training recommended
-**Goal:** Learn to oversee quality operations, approve dispositions, manage CAPAs, and analyze quality data
+**About 5 hours**, in two sittings. **Before you start:** take the [QA
+Inspector](qa-inspector.md) track, or know it. Most of what reaches you is an
+inspector's work, and you review it.
 
+!!! warning "On a training instance only"
+    Every exercise writes real records: a decision releases a part, an approval lets
+    corrective work start, a suspension holds a supplier's lots, and signatures can't
+    be undone. See the [training program](../index.md).
 
-!!! note "Training Data Setup"
-    Exercises in this guide reference sample data (e.g., "DISP-TRAIN-001", "CAPA-TRAIN-COMPLETE"). Your administrator should set up this training data before you begin. If specific records aren't available, create your own test records following the exercise patterns.
+## How a session runs
 
-!!! info "Demo Environment Login"
-    **Email:** maria.qa@demo.ambac.com
-    **Password:** `demo123`
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Try to break it.** Where a module has a refusal, something the system won't let
+   you do, do it on purpose and read what it says. The refusal is part of the
+   lesson, not an error.
+5. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
----
+!!! warning "One trainee per instance at a time"
+    Each exercise has one exhibit, and working it uses it up: a decided disposition
+    can't be decided again. Run trainees one at a time, or give each their own
+    instance.
 
-## Module 1: QA Manager Role Overview
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
-### Learning Objectives
+## Who you are
 
-By the end of this module, you will:
+| You log in as | When |
+|---------------|------|
+| **Maria Santos**, QA Manager, `maria.qa@demo.ambac.com` | Every module |
+| **Jennifer Walsh**, Production Manager, `jennifer.mgr@demo.ambac.com` | Approves a CAPA you raised, in module 4 |
 
-- [ ] Understand QA Manager responsibilities
-- [ ] Navigate management-level screens
-- [ ] Understand approval authority
-
-### 1.1 Your Role
-
-As a QA Manager, you:
-
-- Approve dispositions for non-conforming material
-- Manage CAPA investigations
-- Review and approve documents
-- Analyze quality trends
-- Configure quality processes
-- Oversee inspection team
-
-You have authority to make disposition decisions that affect product, cost, and customer relationships.
-
----
-
-### 1.2 Your Main Pages
-
-| Page | Location | Purpose |
-|------|----------|---------|
-| **Quality Dashboard** | Quality > Dashboard | KPIs and overview |
-| **CAPAs** | Quality > CAPAs | Corrective actions |
-| **Quality Reports** | Quality > Quality Reports | All NCRs |
-| **Inbox** | Personal > Inbox | Pending approvals and CAPA tasks |
-| **Approvals** | Approvals > Overview | All pending approval requests |
-| **Analytics** | Analytics | Trends |
-
-**Exercise 1.1:** Dashboard Review
-
-1. Navigate to Quality Dashboard in uqmes
-2. Review each KPI card
-3. Note current open CAPAs, NCRs
-4. Identify any critical items
+Every password is `demo123`. You are the shop's only QA manager. That matters twice:
+a decision that needs someone independent of you goes to the production manager, and
+work you did yourself is work you can't verify.
 
 ---
 
-### 1.3 Approval Authority
+## 1. Start of shift
 
-**You approve:**
+**You will:** read the QA manager's home page and know what each part of it asks of
+you.
 
-| Item | Threshold |
-|------|-----------|
-| Dispositions | All — there is no value threshold; the system gates Use As Is and Repair, which need a recorded approval reference |
-| Customer deviations | All |
-| Document revisions | Per template |
-| CAPA closures | All |
+Log in as Maria. The home page is a list of decisions waiting on you:
 
----
+- **Needs attention**: a whole-lot reject an inspector has asked for, a repair unit
+  waiting on its customer's answer, parts in quarantine, CAPAs waiting for their
+  effectiveness check.
+- **Quality**: open NCRs, parts under disposition, active and overdue CAPAs, first
+  pass yield.
+- **Overdue calibrations**: every gauge past its due date, shop-wide.
+- **Supplier qualifications expiring**, **Competency coverage** and **Training**.
+- **Approvals in flight**, and **My quality actions**: what is assigned to you.
 
-### Knowledge Check: Module 1
+**Exercise 1.1.** From the home page alone, say which gauges are overdue and by how
+long, which lot is waiting on your decision and why, and how many approvals are
+waiting for you. Don't open anything yet.
 
-1. What are the main approval responsibilities of a QA Manager?
-2. Where do you find items waiting for your approval?
-3. What does the Quality Dashboard show?
-
----
-
-## Module 2: Approving Dispositions
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Review disposition requests effectively
-- [ ] Make informed approval decisions
-- [ ] Use electronic signature properly
-
-### 2.1 The Approval Queue
-
-**Finding pending approvals:**
-
-1. Navigate to **Personal > Inbox**
-2. Look for "Disposition Approval" items
-3. Or go to **Quality Reports** and filter by "Pending Approval"
-
-**Exercise 2.1:** Review Approval Queue
-
-1. Go to Inbox
-2. Count disposition requests pending
-3. Identify the oldest pending item
-4. Note priority indicators
+**Exercise 1.2.** Open **Approvals**. **Awaiting my approval** lists what you
+decide; **My submitted requests** lists what you asked others for. Find
+`CAPA-2024-004` and say who raised it.
 
 ---
 
-### 2.2 Reviewing a Disposition Request
+## 2. Decide a disposition
 
-**Before approving, review:**
+**You will:** decide what happens to a nonconforming part, and record the evidence
+the decision rests on.
 
-1. **Original issue:** What was wrong?
-2. **Evidence:** Photos, measurements, data
-3. **Affected parts:** How many? Which ones?
-4. **Proposed disposition:** What's recommended?
-5. **Justification:** Why this disposition?
-6. **Cost impact:** Value of parts, rework cost
-7. **Customer impact:** Will it affect delivery?
+`INJ-QA-MANAGE-002`'s bore measured **4.007 mm** against a maximum of 4.005.
+Sarah failed it at Body Inspection, contained it (the other bodies from that grinder
+setup were re-checked) and assigned the decision to you. Find it in your **Inbox** >
+**Dispositions**.
 
-**Exercise 2.2:** Review Practice
+1. Open it. Read the failed report it carries: the reading, the limits, and the
+   defect Sarah recorded.
+2. The bore is 0.002 mm over, the seat finish is good, and engineering has issued
+   concession `ENG-CONC-0041`. Choose **Use As Is**.
 
-1. Open disposition request "DISP-TRAIN-001"
-2. Review all sections listed above
-3. Note any questions you would ask
+**Try to break it:** submit without a concession reference. Use As Is accepts a
+nonconforming part, so it is refused until a customer or design concession is
+recorded.
 
----
-
-### 2.3 Disposition Decisions
-
-| Decision | When to Use |
-|----------|-------------|
-| **Approve** | Disposition is appropriate and justified |
-| **Reject** | Need different disposition or more info |
-| **Request More Info** | Missing evidence or justification |
-
-**Rejection requires:** Clear comments explaining why and what's needed.
+3. Tick **Requires approval** and **Approval received**, enter `ENG-CONC-0041` as
+   the reference, and say in the resolution notes what the decision rests on.
+   Submit. The decision is recorded as yours, and the part leaves quarantine.
+4. Set **Current state** to **Closed** and submit. Closing records who resolved it,
+   and when.
 
 ---
 
-### 2.4 Electronic Signature
+## 3. Rule on what arrives
 
-**Signing a disposition:**
+**You will:** release a hold that needs judgement, and decide an inspector's request
+to reject a whole lot.
 
-1. Review complete
-2. Click **Submit Response** and choose **Approved** (or **Rejected**)
-3. Add comments (required for reject)
-4. Enter your password
-5. System records: your name, timestamp, decision
+**A whole-lot reject request:** `RCV-MAT-0007`, from **Needs attention**. Sarah found
+corrosion on every piece she sampled and asked to send all 300 back. Rejecting a
+whole lot is your decision, not hers, so the lot is held until you make it. The hold
+panel shows who asked and why.
 
-!!! warning "Signature Meaning"
-    Your signature means you've reviewed the information and agree with the disposition. This is a quality record.
+1. Read her reason and open the inspection behind it.
+2. You've looked at the cartons: the spotting is on the bottom layer only.
+   **Decline request…**, and say why. The lot goes back to inspection, where the
+   affected pieces can be rejected on their own.
 
-**Exercise 2.3:** Approve a Disposition
+Had the whole lot been bad, **Confirm: reject whole lot** would have rejected it
+back to the supplier.
 
-1. Open disposition "DISP-TRAIN-002"
-2. Review the request
-3. Click **Submit Response** and choose **Approved**
-4. Enter your password
-5. Observe the audit trail update
+**A judgement hold:** `RCV-MAT-HOLD` is held for two reasons, and each clears on its
+own. Its missing heat number is paperwork, and receiving can clear it. The other is
+yours: the lot comes from **Bargain Bolts LLC**, an unqualified supplier.
 
----
-
-### 2.5 High-Value Decisions
-
-**Extra scrutiny for:**
-
-- High-value scrap (your judgement — the system has no value threshold and
-  will not stop a scrap decision for you)
-- Customer deviation requests
-- Safety-related issues
-- Recurring problems
-
-These may require:
-
-- Additional approvers
-- Documentation
-- Management notification
-- Customer communication
+3. **Release this hold…** on the unqualified-supplier hold, with the basis: the
+   qualification audit is booked, and you accept this lot on its certificate and a
+   100% visual. The heat-number hold stays.
 
 ---
 
-### Knowledge Check: Module 2
+## 4. Which nonconformances get a CAPA
 
-1. What should you review before approving a disposition?
-2. When would you reject a disposition request?
-3. What does your electronic signature mean?
+**You will:** decide, for each failed report, whether it needs corrective action,
+and record why when it doesn't.
 
----
+ISO 9001 10.2.1(b) asks you to *evaluate* whether action is needed to stop a
+nonconformance recurring. The evaluation is the record. **Open NCRs** on your home page
+opens **NCR & Disposition Analysis**. **Awaiting a CAPA decision** lists failed reports nobody has
+decided on yet. **Repeat defects** lists defects on three or more failed reports in
+30 days.
 
-## Module 3: CAPA Management
+**A one-off:** `QR-0038-010-NI`, a spray angle of 20 degrees on a part that was
+scrapped.
 
-### Learning Objectives
+1. Open it. Under **CAPA decision**, choose **No CAPA needed** and say why: one
+   part, damaged in handling, with nothing like it since. **Record decision**. The
+   record keeps your name, the time and your reason, and the report leaves the
+   list.
 
-By the end of this module, you will:
+**A pattern:** **Repeat defects** shows *Flow rate out of spec*, three times at Flow
+Calibration.
 
-- [ ] Create and configure CAPAs
-- [ ] Monitor CAPA progress
-- [ ] Verify effectiveness and close CAPAs
+2. Open `QR-0042-017-FT` and **Create CAPA**. The report comes linked. Make it a
+   Major corrective action, state the problem (three injectors below the 100 mL/min
+   limit in 30 days), record the containment already in place, and assign it to
+   Jennifer.
 
-### 3.1 CAPA Overview
+A Major or Critical CAPA's plan is approved before work starts. Until then, only
+containment can be worked; corrective and preventive tasks and the root-cause
+analysis wait.
 
-**Corrective and Preventive Action (CAPA):** Systematic process to investigate problems, identify root causes, and prevent recurrence.
+**Try to break it:** open the new CAPA's **Approval** tab. You raised it, and a
+production manager can decide it, so you can't approve your own: the tab says it
+waits for them.
 
-**When to initiate CAPA:**
+3. Log in as Jennifer, open the CAPA, and **Submit Response** > **Approve**, with
+   signature and password. Log back in as Maria.
 
-- Significant quality issue
-- Recurring problem (same defect multiple times)
-- Customer complaint
-- Audit finding
-- Safety issue
-
----
-
-### 3.2 Creating a CAPA
-
-**Steps:**
-
-1. Navigate to **Quality** > **CAPAs**
-2. Click **New CAPAs**
-3. Fill in details:
-
-| Field | Description |
-|-------|-------------|
-| **Title** | Clear problem statement |
-| **Source** | Where issue originated |
-| **Severity** | Critical, Major, or Minor |
-| **Owner** | Person responsible |
-| **Due Date** | Target completion |
-| **Problem Description** | Detailed issue description |
-
-4. Link related quality reports
-5. Assign team members
-6. Save
-
-**Exercise 3.1:** Create a CAPA
-
-1. Go to **Quality > CAPAs**
-2. Click **New CAPAs**
-3. Create with:
-   - Title: "Recurring dimensional failures on part type PT-100"
-   - Priority: High
-   - Owner: (assign to yourself for training)
-   - Problem: "Over the past month, 15 parts of type PT-100 have failed dimensional inspection for outer diameter. Failures occurred across 3 work orders."
-4. Save
+A shop with no one else eligible lets the person who raised the CAPA approve it, with
+a written justification that stays on the record. Here, Jennifer is eligible.
 
 ---
 
-### 3.3 CAPA Tasks
+## 5. Approve, then verify, a CAPA
 
-**Typical CAPA phases:**
+**You will:** give a CAPA its go-ahead, approve its root cause, and decide whether it
+worked.
 
-1. **Containment:** Immediate actions to contain problem
-2. **Investigation:** Root cause analysis
-3. **Corrective Action:** Fix the problem
-4. **Preventive Action:** Prevent recurrence
-5. **Verification:** Confirm effectiveness
+**The go-ahead:** `CAPA-2024-004`, raised by Jennifer, is waiting for your approval.
+Its containment is already in progress, which is allowed.
 
-**Creating tasks:**
+1. Read the problem and the containment. **Approval** > **Submit Response** >
+   **Approve**, with your signature and password.
 
-1. Open CAPA
-2. Go to **Tasks** section
-3. Click **Add Task**
-4. Define: task description, assignee(s), due date
-5. For multi-person tasks, select **Completion Mode**:
-   - **Single Owner**: Only primary assignee works on task (default)
-   - **Any Assignee**: Task completes when any one assignee finishes
-   - **All Assignees**: Task completes only when all assignees finish
-6. Save
+**The root cause:** `CAPA-2024-003` is approved and in progress. Jennifer has
+finished a fishbone analysis.
 
-**Exercise 3.2:** Add CAPA Tasks
+2. **Root Cause** tab: read the six branches and the identified cause. **Approve**,
+   noting what you checked it against. Approving records you as the verifier. A
+   verified root cause is required before the CAPA can go to verification.
 
-Add these tasks to your training CAPA:
+**Effectiveness:** `CAPA-2024-002`'s actions are complete, and it waits on
+verification. Verification has two stages: the plan, then the result.
 
-1. "Containment: Quarantine all PT-100 parts in WIP" - Due: Today
-2. "Investigation: Analyze measurement data for trends" - Due: +3 days
-3. "Investigation: Interview operators" - Due: +3 days (try **All Assignees** mode with 2 people)
-4. "Root Cause: Complete 5-Why analysis" - Due: +5 days
+3. **Verification** > **Add Verification**: the method (review every receiving
+   inspection for 30 days) and what counts as success (no lot held for missing
+   paperwork).
+4. **Complete Verification** > **Effective – Confirmed**, with what you found. The
+   CAPA closes.
 
-!!! tip "Multi-Person Assignment"
-    For task #3, try adding two assignees and using "All Assignees" completion mode. This ensures both team members complete their interviews before the task is marked done.
+**Try to break it:** `CAPA-TRAIN-COMPLETE` is your own CAPA, raised and worked by
+you. Add a verification plan and try to complete it. Self-verification is refused
+unless the CAPA was set up to allow it.
 
 ---
 
-### 3.4 Monitoring Progress
+## 6. A supplier's standing
 
-**On CAPAs page:**
+**You will:** read a supplier's scorecard and act on it.
 
-- Status shows overall progress
-- Overdue tasks highlighted
-- Filter by owner, status, priority
+Open **Supply** > **Supplier Quality**. Each scorecard shows lots received,
+accepted and rejected, the reject rate, CoC compliance, on-time delivery and open
+SCARs. **Great Lakes Diesel** is rated C, with a recommendation to review for
+suspension.
 
-**Your oversight tasks:**
+1. Read why: a rejected lot, low CoC compliance and an open SCAR.
+2. **Suspend from the Approved Supplier List**, then from Great Lakes Diesel's row
+   menu, **Suspend…**, with the reason. Their lots waiting at the dock
+   (`RCV-MAT-0001` to `0004`) are held as *Unqualified supplier*, and so is anything
+   they deliver until they're requalified. Stock already accepted isn't touched. You
+   release a held lot on its merits, as in module 3.
 
-- Review open CAPAs weekly
-- Follow up on overdue items
-- Provide guidance to owners
-- Remove blockers
-
-**Exercise 3.3:** Monitor CAPAs
-
-1. Go to **Quality > CAPAs**
-2. Filter to "Open" status
-3. Identify any overdue tasks
-4. Note which CAPAs need attention
+The open SCAR, `CAPA-SU-2026-001`, is a CAPA of type Supplier: it takes the same
+go-ahead and effectiveness check as module 5.
 
 ---
 
-### 3.5 CAPA Verification
+## 7. Gauges
 
-**Before closing, verify:**
+**You will:** find everything a failed gauge measured, and record a calibration.
 
-- [ ] Root cause identified and documented
-- [ ] Corrective actions completed
-- [ ] Preventive actions implemented
-- [ ] Evidence of effectiveness collected
-- [ ] No recurrence of issue
+**A gauge that failed:** **Micrometer MIC-2** failed its calibration this morning
+(it reads 0.012 mm high). Everything it measured since its last good calibration
+may be wrong.
 
-**Verification evidence examples:**
+1. **Quality** > **Calibrations** > **View All Calibration Records**. Under MIC-2's
+   failed result, **What it measured** lists every quality report it was used on
+   since its last good calibration. Here, five bodies at Body Inspection.
+2. Say what you would do about each. The list doesn't act: re-inspecting, accepting
+   on other evidence, telling a customer or raising an NCR is your decision, made
+   outside it.
 
-- Measurement data showing improvement
-- Process audit results
-- Time period without recurrence
-- Training records
+**A gauge that's overdue:** **Torque Wrench TW-25** is past due (it's on your home
+page).
 
----
-
-### 3.6 Closing a CAPA
-
-There is no separate closure step and no closure approval. **Recording a
-*Confirmed Effective* verification closes the CAPA**, in the same action — the
-status goes to Closed, the completion date is set, and your verification notes
-are written into the transition.
-
-**Steps:**
-
-1. Open CAPA
-2. Review the completed tasks and the verification evidence
-3. Go to the **Verification** tab
-4. Record the outcome as **Confirmed Effective**, with your notes
-5. Submit — the CAPA is now closed
-
-!!! warning "You cannot verify a CAPA you initiated or were assigned"
-    The system refuses it. Effectiveness is judged by someone other than the
-    person who did the work, so if you assigned the CAPA to yourself, closing it
-    needs a colleague who holds `verify_capa`. They can co-sign in place with
-    their email and password, and the closure is attributed to them.
-
-**Exercise 3.4:** Close a CAPA
-
-1. Open CAPA "CAPA-TRAIN-COMPLETE" — check you are not its initiator or assignee
-2. Review all completed tasks
-3. Review verification evidence
-4. Open the **Verification** tab
-5. Record **Confirmed Effective** with notes: "Root cause identified as worn tooling. Tools replaced and inspection frequency increased. No recurrence in 30 days."
-6. Confirm the CAPA status is now **Closed**
+3. **Record New Calibration** for TW-25: today's date, the next due date, the result
+   (**Pass**), the as-found condition (**In tolerance**), who did it, the
+   certificate number and the standard used. It is back in calibration.
 
 ---
 
-### Knowledge Check: Module 3
+## 8. Sampling and the control chart
 
-1. What triggers a CAPA?
-2. What are the main phases of a CAPA?
-3. What must be verified before closing a CAPA?
+**You will:** answer why a part was or wasn't inspected, tighten a plan, and read a
+control chart.
 
----
+**Why wasn't that part inspected?** On `WO-QA-INSPECT-01`, `INJ-QA-INSPECT-004` was
+inspected at Body Inspection and `INJ-QA-INSPECT-002` wasn't.
 
-## Module 4: Document Approval
+1. On the work order, open each part's history (**Show history** on its row).
+   Under its traveler, **Sampling decisions** say why: 004 was
+   *selected by every 4th part*; 002 was *not selected: no rule in Standard
+   Inspection - Body chose it*. That is the answer an auditor wants for an
+   uninspected part.
 
-### Learning Objectives
+**Tighten a plan:** after the burr found at Body Inspection, you want every second
+body inspected, not every fourth.
 
-By the end of this module, you will:
+2. **Data Management** > **Sampling Rules**: open **Standard Inspection - Body** with
+   the edit button on its row. Change the **Every Nth part** rule's N from 4 to 2. Rule changes save as
+   you make them, and the next parts at Body Inspection are sampled under the new
+   rule.
 
-- [ ] Review documents for approval
-- [ ] Approve or reject with appropriate feedback
-- [ ] Understand document control requirements
+**A control chart:** **Analytics** > **SPC**.
 
-### 4.1 Documents Requiring Approval
+3. Choose Injector Build, Flow Calibration, Flow Rate. Read the chart: the centre
+   line, the control limits, and any point flagged against the rules. Control
+   limits are the process's voice; the specification limits are the customer's.
+   A point can be in spec and still out of control.
 
-**Types you may approve:**
-
-- Work instructions
-- Inspection procedures
-- Quality specifications
-- Process documents
-- CAPA documentation
-
----
-
-### 4.2 Reviewing Documents
-
-**Before approving, verify:**
-
-1. **Content accuracy:** Is information correct?
-2. **Completeness:** Are all sections filled?
-3. **Format:** Follows template?
-4. **Change notes:** What changed and why?
-5. **Impact:** Does this affect other processes?
+Here, SPC informs you; it doesn't stop work. With too little history, the page says
+capability can't be judged yet.
 
 ---
 
-### 4.3 Document Approval
+## 9. People's qualifications
 
-**Steps:**
+**You will:** find whose qualification lapses this month, and record a renewal.
 
-1. Open document from Inbox or Documents
-2. Read the document
-3. Review revision notes
-4. Check any linked items
-5. Approve or reject
-6. Enter password to sign
+1. **Quality** > **Training**. **Expiring Soon** lists qualifications expiring
+   within 30 days: Mike Rodriguez's Dimensional Inspection and Nozzle Inspection
+   certifications, both at level 1.
+2. **Training Matrix** shows every person's level in every skill, who falls short of
+   their role's requirement, and the skills only one person covers.
 
-**Exercise 4.1:** Approve a Document
+Mike has been reassessed on the CMM and now works to level 2, with his output still
+checked.
 
-1. Find document "WI-TRAIN-001" pending approval
-2. Review the content
-3. Check revision notes
-4. Approve with signature
+3. **Record New Training**: Mike, Dimensional Inspection Certification, today, level
+   2 (Assisted), with Sarah as trainer and a note of how he was assessed. The level
+   is what he showed he can do, not that he attended.
 
----
-
-### 4.4 Rejection with Feedback
-
-**When rejecting:**
-
-1. Be specific about issues
-2. Explain what needs to change
-3. Offer guidance
-4. Set expectations for resubmission
+A training record is what lets a person start a step that requires the training.
+See [Training Records](../../workflows/quality/training-records.md).
 
 ---
 
-## Module 5: Quality Analytics
+## 10. The record for one serial
 
-### Learning Objectives
+**You will:** produce the complete record of one part on demand.
 
-By the end of this module, you will:
+A customer asks what was done to `INJ-QA-INSPECT-013`. Open the part and print its
+**Traveler**: every step, who did it and when, what was measured, the lots it used,
+how many visits each step took, and any training override. 013 failed Flow
+Calibration and is waiting at Rework.
 
-- [ ] Interpret quality dashboards
-- [ ] Identify trends requiring action
-- [ ] Use data to drive improvement
-
-### 5.1 Dashboard Metrics
-
-**Key Performance Indicators:**
-
-| Metric | What It Tells You |
-|--------|-------------------|
-| **FPY** | First pass yield - efficiency |
-| **Open NCRs** | Current quality issues |
-| **NCR Age** | Time to resolve issues |
-| **Open CAPAs** | Systemic issues being addressed |
-| **CAPA Age** | Time to correct problems |
-| **Defect Rate** | Quality level |
+**Exercise 10.1.** From the Traveler alone, say who ran 013's Flow Calibration, what
+it read against what limit, and where the part is now.
 
 ---
 
-### 5.2 Trend Analysis
+## Final task — observed
 
-**Use Analytics page to:**
+Your trainer regenerates the data, logs you in as Maria, and says only: *"Your
+decisions are waiting."* Then they watch without helping. The work, in the order you
+judge right:
 
-- View defect trends over time
-- Pareto analysis of defect types
-- Process comparison
-- Supplier quality tracking
+- the whole-lot reject request on `RCV-MAT-0007`
+- the disposition on `INJ-QA-MANAGE-002`
+- the failed reports awaiting a CAPA decision, including the repeat flow-rate defect
+- `CAPA-2024-004`'s go-ahead, and `CAPA-2024-002`'s effectiveness
+- what MIC-2 measured before it failed, and what you'll do about it
 
-**Exercise 5.1:** Trend Analysis
+Your trainer is watching for:
 
-1. Go to Analytics
-2. View defect trend for past 90 days
-3. Identify top 3 defect types
-4. Note any increasing trends
+- [ ] You read the evidence (readings, reasons, reports) before deciding.
+- [ ] Each reason you wrote would make sense to an auditor who wasn't there.
+- [ ] You never approved or verified your own work.
+- [ ] When the system refused something, you read the refusal and acted on it.
+- [ ] You went to blocking work (a held lot, a held part) before reviews.
 
----
+## If your shop remanufactures
 
-### 5.3 SPC Review
+Everything above is new manufacture. A shop that also remanufactures adds this
+module; a new-build-only shop skips it. See the [shop day's reman
+moments](../shop-day.md#if-your-shop-remanufactures).
 
-!!! tip "SPC Training Resources"
-    - [SPC Fundamentals](spc-fundamentals.md) - Basic concepts (1-2 hours)
-    - [SPC Practitioner Guide](../../analysis/spc-practitioner-guide.md) - Investigation workflows, CAPA criteria, baseline management
+### R1. The customer's answer on extra work
 
-**QA Manager SPC responsibilities:**
+**You will:** record a customer's decision on repairs they didn't buy.
 
-| Task | Frequency | Action |
-|------|-----------|--------|
-| Review control charts | Weekly | Check for out-of-control signals |
-| Monitor Cpk values | Weekly | Flag any < 1.33 |
-| Approve baseline changes | As needed | Verify process is stable before freezing |
-| Trigger CAPA from SPC | As needed | When patterns indicate systemic issues |
+`CORE-240212-0009` is Great Lakes Diesel's own injector, sent for repair. Teardown
+passed its nozzle, but at the bench a hairline crack showed under magnification. A
+replacement nozzle isn't pre-approved and isn't part of the standard rebuild they
+bought, so the unit waits for their answer. UQMES doesn't price or quote the work: it
+records what was found and what the customer said.
 
-**Capability targets:**
+1. **Needs attention** on your home page opens the core. It shows **Awaiting
+   customer authorisation**.
+2. The customer's fleet manager emailed approval. **Approved…** lists the repairs
+   waiting on their answer (here, replacing the nozzle). Record who answered, how,
+   and the reference. The rebuild resumes.
 
-| Cpk | Status | Required Action |
-|-----|--------|-----------------|
-| ≥ 1.67 | Excellent | Maintain |
-| 1.33 - 1.67 | Capable | Monitor |
-| 1.0 - 1.33 | Marginal | Improvement plan |
-| < 1.0 | Not capable | Immediate action |
+Had they declined, **Declined…** would send the unit back unrepaired.
 
-**Exercise 5.2:** SPC Review
+## Recording your qualification
 
-1. Go to **Analytics**, then select the **SPC** tab
-2. Select Process: Common Rail Injector Remanufacturing
-3. Select Step: Flow Testing
-4. Select Measurement: Flow Rate @ 1000 bar
-5. Review the Cpk value and control chart
-6. Identify the Rule 2 violation (demo data includes this signal)
-
-!!! example "Demo: SPC-Triggered CAPA"
-    CAPA-2024-003 was initiated partly due to SPC data showing drift in nozzle measurements. This demonstrates the connection between statistical signals and corrective action.
-
----
-
-### 5.4 Taking Action on Data
-
-**When trends indicate problems:**
-
-1. Create CAPA for systemic issues
-2. Adjust sampling rules
-3. Initiate process improvement
-4. Brief management
-5. Update team
-
----
-
-### Knowledge Check: Module 5
-
-1. What does FPY measure?
-2. How do you identify a defect requiring CAPA?
-3. What action do you take when Cpk drops below threshold?
-
----
-
-## Module 6: Configuration Responsibilities
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Configure sampling rules
-- [ ] Manage error types
-- [ ] Set up approval templates
-
-### 6.1 Sampling Rules
-
-**Configure based on:**
-
-- Product risk level
-- Customer requirements
-- Historical quality
-- Regulatory requirements
-
-**Exercise 6.1:** Review Sampling Rules
-
-1. Go to Data Management > Sampling Rules
-2. Review current rules
-3. Understand AQL settings
-4. Note how sample sizes are calculated
-
----
-
-### 6.2 Error Types
-
-**Maintain defect categories:**
-
-- Clear, specific definitions
-- Appropriate hierarchy
-- Severity guidelines
-- Regular cleanup of unused types
-
----
-
-### 6.3 Approval Templates
-
-**Configure workflows for:**
-
-- Who approves what
-- Approval sequence
-- Required signatures
-- Escalation paths
-
----
-
-## Module 7: Team Management
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Monitor inspector performance
-- [ ] Balance workload
-- [ ] Identify training needs
-
-### 7.1 Inspector Oversight
-
-**Monitor:**
-
-- Inspection throughput
-- Quality of findings
-- Documentation completeness
-- Timeliness
-
----
-
-### 7.2 Workload Management
-
-**Balance work by:**
-
-- Monitoring queue depth
-- Assigning based on skill
-- Avoiding bottlenecks
-- Planning for peak loads
-
----
-
-### 7.3 Training and Development
-
-**Identify needs through:**
-
-- Inspection quality review
-- Feedback from audits
-- Employee requests
-- System changes
-
----
-
-## Practical Assessment
-
-### Task 1: Disposition Approval
-
-1. Find and review "DISP-ASSESS-001"
-2. Make approval decision
-3. Sign with appropriate comments
-
-### Task 2: CAPA Creation
-
-1. Create new CAPA for provided scenario
-2. Add appropriate tasks
-3. Assign to team members
-
-### Task 3: CAPA Closure
-
-1. Review "CAPA-ASSESS-READY"
-2. Verify completion criteria met
-3. Close the CAPA
-
-### Task 4: Analytics Review
-
-1. Review quality dashboard
-2. Identify the top concern
-3. Recommend action
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Demonstrated with senior manager
-
-### Competencies Verified
-
-- [ ] Can record and co-sign dispositions appropriately
-- [ ] Can create and manage CAPAs
-- [ ] Can approve documents
-- [ ] Understands quality metrics
-- [ ] Can configure quality settings
-- [ ] Can manage inspector team
-
----
-
-
-### Recording the qualification
-
-Ticking the boxes above is the *assessment*. It is not the record.
-
-A signed-off trainee is not yet qualified in the system, and the difference is
-operational, not clerical: training requirements gate who may start a step, so
-until the record exists the person is still refused the work they were just
-signed off to do. That refusal surfaces downstream as a part nobody can pick
-up — see [Parts stuck at a
-step](../../troubleshooting/common-issues.md).
-
-To close it out, create a **Training Record** for the trainee under **Quality**
-> **Training**:
-
-| Field | Set it to |
-|-------|-----------|
-| **Training type** | The qualification being awarded |
-| **Completed date** | The date of the assessment, not today |
-| **Level** | The competency level actually demonstrated |
-| **Trainer** | Whoever conducted and assessed it |
-| **Expires** | Leave blank only if the qualification genuinely never lapses |
-| **Documents** | Attach the signed sign-off sheet as evidence |
-
-!!! note "Level is an assessed result, not attendance"
-    The competency level is clause 7.2 evidence of what the person can actually
-    do. Recording everyone at the same level because they sat the course
-    defeats the control, and the training matrix that supervisors plan from
-    becomes fiction.
-
-## Quick Reference
-
-### Disposition Approval
-Inbox → Review request → Verify evidence → **Approve/Reject** → Sign
-
-### CAPA Creation
-CAPAs → **New CAPAs** → Fill details → Add tasks → Assign team → Save
-
-### CAPA Closure
-Open CAPA → Verify tasks complete → **Verification** tab → **Confirmed Effective** + notes → closes the CAPA
-
-### Document Approval
-Inbox → Review document → Check changes → **Approve/Reject** → Sign
-
----
-
-## Next Steps
-
-After completing this training:
-
-1. Shadow current QA Manager
-2. Handle approvals with oversight
-3. Lead CAPA with support
-4. Full independent responsibilities
-
+Passing the final task is the assessment. The record that lets you do the work is a
+**training record**, written by someone other than you. See [Training
+Records](../../workflows/quality/training-records.md).

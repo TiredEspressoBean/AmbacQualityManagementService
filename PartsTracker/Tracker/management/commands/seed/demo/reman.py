@@ -444,14 +444,14 @@ class DemoRemanSeeder(BaseSeeder):
                  and c.status == 'RECEIVED' and c.part_id and c.part.work_order_id is None]
         if not batch:
             return []
-        wo = start_teardown_batch(batch, employees[0])
+        wo = start_teardown_batch(batch, self._actor('casey.dual@demo.ambac.com', employees[0]))
 
         components = []
         for core in batch:
             data = config[core.core_number]
             if data['status'] == 'DISASSEMBLED':
                 core.refresh_from_db()
-                complete_core_disassembly(core, employees[1] if len(employees) > 1 else employees[0])
+                complete_core_disassembly(core, self._actor('dave.wilson@demo.ambac.com', employees[0]))
                 # A torn-down unit stands on its last teardown step — rebuild picks up at
                 # the step after it (release._first_rebuild_step). The batch put it at
                 # the route's first step; teardown itself isn't walked here.
@@ -480,6 +480,12 @@ class DemoRemanSeeder(BaseSeeder):
         if last is not None and core.part_id:
             Parts.objects.filter(pk=core.part_id).update(step=last.step)
             core.refresh_from_db()
+
+    def _actor(self, email, fallback):
+        """A named member of the cast, or `fallback`. employees[0] is the Tenant Admin
+        and employees[1] the QA Manager: neither receives or tears down cores."""
+        from Tracker.models import User
+        return User.objects.filter(email=email).first() or fallback
 
     def release_walked_cores(self, users):
         """The torn-down cores' exits, and a bench finding on the one in rebuild.
@@ -564,7 +570,7 @@ class DemoRemanSeeder(BaseSeeder):
         from Tracker.services.reman.teardown import start_teardown_batch
 
         employees = users.get('employees', []) if isinstance(users, dict) else []
-        user = employees[0] if employees else None
+        user = self._actor('casey.dual@demo.ambac.com', employees[0] if employees else None)
         if user is None:
             self.log("  Skipped teardown batch: no employees", warning=True)
             return None
@@ -807,8 +813,8 @@ class DemoRemanSeeder(BaseSeeder):
             timezone.datetime.combine(received_date, timezone.datetime.min.time())
         ) + timedelta(hours=9)  # 9 AM receipt
 
-        # Get a receiving employee
-        received_by = employees[0] if employees else None
+        # Received at the core dock by the shift lead, not employees[0] (the Tenant Admin)
+        received_by = self._actor('casey.dual@demo.ambac.com', employees[0] if employees else None)
 
         # Calculate disassembly timestamps if applicable
         disassembly_started_at = None
@@ -824,7 +830,7 @@ class DemoRemanSeeder(BaseSeeder):
             disassembly_completed_at = received_datetime + timedelta(
                 days=core_data['received_days_ago'] - core_data['disassembly_completed_days_ago']
             )
-            disassembled_by = employees[1] if len(employees) > 1 else employees[0]
+            disassembled_by = self._actor('dave.wilson@demo.ambac.com', employees[0])
 
         # Calculate core credit issued timestamp if applicable
         core_credit_issued_at = None
@@ -925,15 +931,15 @@ class DemoRemanSeeder(BaseSeeder):
         else:
             disassembled_at = timezone.now()
 
-        # Get disassembly operator
-        disassembled_by = employees[1] if len(employees) > 1 else employees[0]
+        # Torn down by an operator, not employees[1] (the QA Manager)
+        disassembled_by = self._actor('dave.wilson@demo.ambac.com', employees[0])
 
         # Determine scrap timestamps if scrapped
         scrapped_at = None
         scrapped_by = None
         if comp_data['is_scrapped']:
             scrapped_at = disassembled_at + timedelta(minutes=30)
-            scrapped_by = employees[2] if len(employees) > 2 else employees[0]
+            scrapped_by = self._actor('dave.wilson@demo.ambac.com', employees[0])
 
         # Create the component with ALL fields explicitly set
         component, _ = HarvestedComponent.objects.update_or_create(

@@ -32,6 +32,7 @@ Runs after the training phase, so the training gate has requirements to refuse o
 from __future__ import annotations
 
 from datetime import timedelta
+import zlib
 from decimal import Decimal
 
 from django.db import transaction
@@ -81,8 +82,16 @@ STEP_MINUTES = {'Machining': 40, 'Precision Grinding': 25, 'Wash': 25, 'Body Ins
                 'Final Test': 20, 'Rework': 30}
 GAP_MINUTES = 10
 
-# Fails its calibration in the seed, so naming it at capture is refused. Used by no other exhibit.
+# Fails its calibration this morning, so naming it at capture is refused. Yesterday's
+# Body Inspection on WO-QA-INSPECT-02 used it, which is what the QA Manager traces.
 FAILED_GAUGE = 'Micrometer MIC-2'
+
+# QA Manager, module 2: a disposition that is the QA Manager's to decide. A body's bore
+# is 0.002 mm over its 4.005 mm maximum; Sarah fails it, contains it, and leaves the
+# decision (a Use As Is needs a concession, and the QA Manager's authority) to Maria.
+MANAGER_WO = 'WO-QA-MANAGE-01'
+MANAGER_PARTS = ['INJ-QA-MANAGE-001', 'INJ-QA-MANAGE-002']
+OVERSIZE_BORE = 4.007
 
 OVERRIDE_REASON = 'Only operator free for the cell; first-piece run on my authority pending nozzle re-certification.'
 
@@ -152,6 +161,12 @@ class DemoQaWalkSeeder(BaseSeeder):
             self._space_out(wo, self.today - timedelta(minutes=50 + 15 * i))
             drills.append(wo)
 
+        with transaction.atomic():
+            wo = self._work_order(order, process, MANAGER_WO, len(MANAGER_PARTS))
+            parts = self._parts(wo, part_type, MANAGER_PARTS)
+            result['manager_disposition'] = self._walk_manager_disposition(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(hours=3))
+
         result['failed_gauge'] = self._fail_gauge()
 
         result['work_orders'] = [wo1, wo2] + drills
@@ -167,6 +182,9 @@ class DemoQaWalkSeeder(BaseSeeder):
                  f"({annotation.disposition_number if annotation else 'no disposition'}, unassigned)")
         self.log(f"  First-piece drills: {', '.join(DRILL_WOS)} "
                  f"({SELF_BUYOFF_WO}'s first piece run by Sarah)")
+        md = result.get('manager_disposition')
+        self.log(f"  {MANAGER_WO}: {MANAGER_PARTS[1]} bore oversize, "
+                 f"{md.disposition_number if md else 'no disposition'} waiting on Maria")
         self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
 
@@ -176,6 +194,12 @@ class DemoQaWalkSeeder(BaseSeeder):
         first, fresh, failing, spare, blocked = parts
         self._make_bodies(wo, parts, result)
 
+        # Body Inspection, measured with MIC-2 (still in calibration yesterday): the
+        # gauge fails its check this morning (_fail_gauge), so what it measured is the
+        # QA Manager's exposure exhibit.
+        production_gauge = self.equipment
+        self.equipment = (Equipments.objects.filter(tenant=self.tenant, name=FAILED_GAUGE).first()
+                          or production_gauge)
         # Body Inspection: first piece, Sarah buys it off, the rest follow.
         self._run_step_for([first], 'Body Inspection', result, advance=False)
         self._buy_off(wo, 'Body Inspection', first)
@@ -187,6 +211,7 @@ class DemoQaWalkSeeder(BaseSeeder):
                            defect=self._defect(BODY_DEFECT))
         result['annotation_disposition'] = (QuarantineDisposition.objects
                                             .filter(part=blocked, current_state='OPEN').first())
+        self.equipment = production_gauge
         parts = [first, fresh, failing, spare]
 
         self._nitride(parts)
@@ -222,6 +247,34 @@ class DemoQaWalkSeeder(BaseSeeder):
         self._run_step_for([first], 'Body Inspection', result, advance=False,
                            operator=runner)
         self._raise_fpi(wo, 'Body Inspection', first)
+
+    def _walk_manager_disposition(self, wo, parts, result):
+        """The first piece bought off; the second body's bore measures oversize. Sarah
+        fails it with the defect, contains it, and assigns the decision to Maria."""
+        from Tracker.services.qms.disposition import record_containment_complete
+        first, oversize = parts
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        self._run_step_for([oversize], 'Body Inspection', result, advance=False,
+                           out_of_spec='Bore Diameter', reading=OVERSIZE_BORE,
+                           defect=self._defect('Bore oversize'),
+                           defect_note={'location': 'Seat bore',
+                                        'notes': 'Bore 4.007 mm on the CMM, 0.002 over the '
+                                                 '4.005 maximum. Seat finish good.'})
+        disposition = (QuarantineDisposition.objects
+                       .filter(part=oversize, current_state='OPEN').first())
+        if disposition is None:
+            self.log(f"  Warning: no disposition opened for {oversize.ERP_id}.", warning=True)
+            return None
+        disposition.assigned_to = self.maria
+        disposition.containment_action = (
+            'Part tagged and moved to the hold rack. Bores of the other bodies from this '
+            'grinder setup re-checked on the CMM; all within 4.005.')
+        disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
+        record_containment_complete(disposition, self.sarah)
+        return disposition
 
     def _make_bodies(self, wo, parts, result):
         """Machining, grinding and the wash: a body made, up to its inspection."""
@@ -307,7 +360,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         return se
 
     def _run_step_for(self, parts, step_name, result, *, advance=True, out_of_spec=False,
-                      operator=None, defect=None):
+                      operator=None, defect=None, reading=None, defect_note=None):
         """Run the named step on each part: start, submit every per-part substep, then
         advance (PASS) unless told to stop. Returns the last inspection report written."""
         report = None
@@ -321,7 +374,8 @@ class DemoQaWalkSeeder(BaseSeeder):
             se = self._start(part, result, operator)
             for ss in self._substeps(part.step, scope='sampled'):
                 self._submit(ss, step_execution=se, out_of_spec=out_of_spec,
-                             signer=operator, defect=defect)
+                             signer=operator, defect=defect, reading=reading,
+                             defect_note=defect_note)
             report = (QualityReports.objects.filter(part=part, step=part.step)
                       .order_by('-created_at').first()) or report
             if advance:
@@ -412,11 +466,12 @@ class DemoQaWalkSeeder(BaseSeeder):
                 if (getattr(ss, 'scope', 'sampled') or 'sampled').lower() == scope]
 
     def _submit(self, substep, *, step_execution=None, batch_execution=None, out_of_spec=False,
-                signer=None, defect=None):
+                signer=None, defect=None, reading=None, defect_note=None):
         """Submit a value for every capture node through submit_substep, the path the
         runtime uses. Readings are at nominal; `out_of_spec` (a measurement label) puts that
-        reading below its lower limit; `defect` (an error type) fails the visual result and
-        records the defect, with readings left in spec."""
+        reading below its lower limit, or at `reading` when given; `defect` (an error type)
+        fails the visual result and records the defect (with `defect_note`), with readings
+        left in spec."""
         from Tracker.models import EquipmentRole
         from Tracker.services.dwi.operator_capture import submit_substep
 
@@ -432,9 +487,20 @@ class DemoQaWalkSeeder(BaseSeeder):
             if node_type == 'measurementInput':
                 nominal = attrs.get('nominal')
                 value = nominal
+                if nominal is not None:
+                    # Real readings vary: a deterministic spread within a quarter of the
+                    # tolerance, so the SPC charts see a process, not a constant (a
+                    # constant reads as sigma 0 and Cpk infinity).
+                    tol = min(Decimal(str(attrs.get('lower_tol') or 0)), Decimal(str(attrs.get('upper_tol') or 0)))
+                    # A shipment's return inspection has no part: key it by the execution.
+                    who = (step_execution.part.ERP_id if step_execution is not None and step_execution.part_id
+                           else str(getattr(step_execution, 'pk', '')))
+                    frac = Decimal(zlib.crc32(f"{who}:{node_id}".encode()) % 1000 - 500) / Decimal(2000)
+                    value = float(Decimal(str(nominal)) + tol * frac)
                 if out_of_spec and out_of_spec == attrs.get('label') and nominal is not None:
                     low = Decimal(str(attrs.get('lower_tol') or 0))
-                    value = float(Decimal(str(nominal)) - low - Decimal('2'))
+                    value = (reading if reading is not None
+                             else float(Decimal(str(nominal)) - low - Decimal('2')))
                 captures.append({'node_id': node_id, 'kind': 'measurement',
                                  'measurement_definition_id': attrs.get('measurement_definition_id'),
                                  'value_numeric': value,
@@ -453,12 +519,17 @@ class DemoQaWalkSeeder(BaseSeeder):
             elif node_type == 'errorTypesField' and defect is not None:
                 captures.append({'node_id': node_id, 'kind': 'defects',
                                  'rows': [{'error_type_id': str(defect.id), 'severity': 'MAJOR',
-                                           'location': 'Fuel passage breakout', 'count': 1,
-                                           'notes': 'Burr where the cross-drilling breaks into the bore.'}]})
+                                           'location': (defect_note or {}).get('location', 'Fuel passage breakout'),
+                                           'count': 1,
+                                           'notes': (defect_note or {}).get(
+                                               'notes', 'Burr where the cross-drilling breaks into the bore.')}]})
             elif node_type == 'equipmentRolesField' and self.equipment is not None:
+                # An instrument is recorded as the gauge it is, a machine as production.
+                is_gauge = any(w in self.equipment.name for w in ('Micrometer', 'Caliper', 'CMM', 'Gauge'))
                 captures.append({'node_id': node_id, 'kind': 'equipment_roles',
                                  'rows': [{'equipment_id': str(self.equipment.id),
-                                           'role': next(iter(EquipmentRole)).value}]})
+                                           'role': (EquipmentRole.GAUGE if is_gauge
+                                                    else EquipmentRole.PRODUCTION).value}]})
             elif node_type == 'partAnnotation':
                 captures.append({'node_id': node_id, 'kind': 'annotation', 'annotations': []})
             elif node_type == 'inspectionSignatures':

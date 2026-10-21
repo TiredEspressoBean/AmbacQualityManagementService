@@ -75,7 +75,8 @@ class DemoSupplierQualitySeeder(BaseSeeder):
 
         precision = supplier("Precision Castings Inc", "Castings supplier - qualification expiring soon.")
         forge = supplier("Midwest Forge Works", "Forgings supplier - conditionally approved.")
-        apex = supplier("Apex Plating Co", "Plating subcontractor - qualification lapsed.")
+        apex = supplier("Apex Plating Co", "Nitriding subcontractor - qualified for the special process.")
+        lakeshore = supplier("Lakeshore Seals Inc", "Seals supplier - qualification lapsed.")
         bargain = supplier("Bargain Bolts LLC", "Fasteners supplier - not yet qualified (held on receipt).")
 
         # --- ASL: SupplierQualification across the lifecycle ---
@@ -103,11 +104,21 @@ class DemoSupplierQualitySeeder(BaseSeeder):
             (great_lakes, "APPROVED", 730),    # qualified primary → standing badge surfaces
             (precision, "APPROVED", 18),        # expiring soon → reminder fires
             (forge, "CONDITIONAL", 365),
-            (apex, "EXPIRED", 0),
+            (lakeshore, "EXPIRED", 0),
         ):
             q = ensure_qual(supp, status=status, expiry_days=days)
             if q:
                 result["qualifications"].append(q)
+
+        # Apex nitrides the build route's bodies: a special-process qualification, which
+        # outside_process.send_parts_out requires for the Nitride Coating step.
+        if apex is not None and not SupplierQualification.objects.filter(
+                supplier=apex, scope_type=SupplierQualification.SCOPE_SPECIAL_PROCESS).exists():
+            nq = sq.open_qualification(
+                supplier=apex, scope_type=SupplierQualification.SCOPE_SPECIAL_PROCESS,
+                scope_label="Nitriding", basis="AUDIT", user=raiser)
+            sq.grant(nq, user=user, expiry_date=today + timedelta(days=365))
+            result["qualifications"].append(nq)
 
         # --- Part approvals (PPAP / FAI) ---
         def ensure_approval(supp, *, approval_type, status, expiry_days, reference):

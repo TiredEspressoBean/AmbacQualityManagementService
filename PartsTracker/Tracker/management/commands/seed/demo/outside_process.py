@@ -107,6 +107,9 @@ class DemoOutsideProcessSeeder(BaseSeeder):
                 "description": "Send injector bodies out for nitride coating, then inspect on return.",
                 "is_outside_process": True,
                 "outside_supplier": vendor,
+                # Nitriding is a special process: only a vendor qualified for it may do
+                # it, and send-out refuses one who isn't (outside_process.send_parts_out).
+                "outside_special_process": "Nitriding",
                 # Vendor turnaround for this OSP step (calendar days). Explicit so the
                 # solver uses 2 days here, not the tenant fallback (config default).
                 "outside_process_lead_days": 2,

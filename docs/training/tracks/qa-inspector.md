@@ -93,7 +93,7 @@ Inspection.
    then `WO-QA-INSPECT-01`) and, on *First piece waiting on QA*, **I'm on it** (the floor sees it
    has been picked up; it decides nothing), then **Sign off**. The same buttons sit
    on your home page's *First piece waiting* rows.
-2. Read the readings: *Bore Diameter 4 mm, limits 3.995–4.005*, taken by Mike on the CMM.
+2. Read the readings: *Bore Diameter*, inside its limits of 3.995–4.005, taken by Mike on the CMM.
 3. **Sign off** with a note of what you checked. The card clears and the run moves.
 
 **Fail one:** `WO-QA-INSPECT-04`, first piece `INJ-QA-INSPECT-031`.

@@ -566,5 +566,28 @@ class TrainingExercisesSeeder(BaseSeeder):
                         completed_by=assigned_user if task_config['completed'] else None,
                     )
 
+            self._give_go_ahead(capa)
             self._ensure_rca_for_verification_ready(capa, capa_config, assigned_user)
             self._capas[capa_config['number']] = capa
+
+    def _give_go_ahead(self, capa):
+        """Its corrective work is done, so its plan was approved first: the QA Manager
+        raised it, and a Production Manager (an eligible approver who isn't the
+        requester) approved it, through the approval service."""
+        from datetime import timedelta
+        from Tracker.models import ApprovalRequest, ApprovalDecision, ApprovalResponse, User
+        from Tracker.services.core.approval import submit_approval_response
+        request = ApprovalRequest.objects.filter(object_id=str(capa.id), status='PENDING').first()
+        approver = User.objects.filter(email='jennifer.mgr@demo.ambac.com').first()
+        if request is None or approver is None or not request.can_approve(approver):
+            self.log(f"  Warning: no go-ahead given for {capa.capa_number}", warning=True)
+            return
+        response = submit_approval_response(
+            request, approver, ApprovalDecision.APPROVED,
+            comments='Tooling plan and containment are adequate; proceed.',
+            signature_meaning='Approved')
+        from django.utils import timezone
+        when = timezone.now() - timedelta(days=10)
+        ApprovalResponse.objects.filter(pk=response.pk).update(decision_date=when, created_at=when)
+        ApprovalRequest.objects.filter(pk=request.pk).update(completed_at=when)
+        CAPA.objects.filter(pk=capa.pk).update(approved_at=when)

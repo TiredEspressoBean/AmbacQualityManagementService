@@ -18,6 +18,7 @@ IMPORTANT: All enum values must be UPPERCASE to match model choices:
 """
 
 import zlib
+import re
 from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
@@ -426,7 +427,9 @@ class DemoQualitySeeder(BaseSeeder):
 
         # Get QA staff and operators
         qa_users = users.get('qa_staff', [])
-        qa_inspector = qa_users[0] if qa_users else None
+        # Reports are filed by an inspector, not the QA Manager (the first of qa_staff).
+        manager = users.get('qa_manager')
+        qa_inspector = next((u for u in qa_users if u != manager), None) or (qa_users[0] if qa_users else None)
         # The floor's own people: `employees` starts with the Tenant Admin, who runs
         # no steps and decides no dispositions.
         operators = users.get('operators', [])[:2] or users.get('employees', [])[:2]
@@ -454,7 +457,7 @@ class DemoQualitySeeder(BaseSeeder):
             part = part_map.get(disp_data['part'])
 
             if qr and part:
-                disp = self._create_disposition(disp_data, qr, part, qa_inspector, step_map)
+                disp = self._create_disposition(disp_data, qr, part, manager or qa_inspector, step_map)
                 result['dispositions'].append(disp)
                 disp_map[disp_data['quality_report']] = disp
 
@@ -951,37 +954,35 @@ class DemoQualitySeeder(BaseSeeder):
             tolerance_range = upper_tol + lower_tol
             std_dev = tolerance_range / 6  # Cpk ~1.0 baseline
 
-            # Create measurements for quality reports that have this step
-            for i, qr in enumerate(quality_reports):
+            # A report carries the readings of its own step only, and agrees with its
+            # result: a FAIL report takes the value its finding states ("Spray angle 20
+            # degrees"), or none; a PASS report an in-spec value. Once every report got
+            # every definition, so a report failed for spray angle 20 read 14.88.
+            stated = re.compile(rf"{re.escape(md.label)}\s+(-?\d+(?:\.\d+)?)", re.IGNORECASE)
+            at_step = [qr for qr in quality_reports if qr.step_id == md.step_id]
+            for i, qr in enumerate(at_step):
+                if MeasurementResult.objects.filter(report=qr, definition=md).exists():
+                    continue  # walked through the runtime: its own reading stands
                 random.seed(zlib.crc32(f"{md.label}-{i}".encode()))  # Deterministic per definition+index
-
-                # Generate realistic values - mostly within spec
-                if i % 15 == 0:
-                    # Occasional out-of-spec (rule violation)
-                    value = round(nominal + upper_tol * 1.1, 2)
+                if qr.status == 'FAIL':
+                    found = stated.search(qr.description or '')
+                    if not found:
+                        continue
+                    value = float(found.group(1))
                 elif i % 7 == 0:
-                    # Some values trending high (Rule 2 pattern)
-                    value = round(nominal + std_dev * 1.5, 2)
+                    # Some values running high but in spec (a Rule 2 pattern)
+                    value = round(min(nominal + std_dev * 1.5, usl), 2)
                 else:
-                    # Normal variation around nominal
-                    variation = random.gauss(0, std_dev)
-                    value = round(nominal + variation, 2)
+                    value = round(min(max(nominal + random.gauss(0, std_dev), lsl), usl), 2)
 
-                # Calculate is_within_spec
                 is_within_spec = lsl <= value <= usl
-                value_pass_fail = 'PASS' if is_within_spec else 'FAIL'
-
-                mr, _ = MeasurementResult.objects.update_or_create(
-                    tenant=self.tenant,
-                    report=qr,
-                    definition=md,
-                    defaults={
-                        'value_numeric': value,
-                        'value_pass_fail': value_pass_fail,
-                        'is_within_spec': is_within_spec,
-                        'created_by': inspector,
-                    }
+                mr = MeasurementResult.objects.create(
+                    tenant=self.tenant, report=qr, definition=md,
+                    value_numeric=value,
+                    value_pass_fail='PASS' if is_within_spec else 'FAIL',
+                    is_within_spec=is_within_spec, created_by=inspector,
                 )
+                MeasurementResult.objects.filter(pk=mr.pk).update(created_at=qr.created_at)
                 results.append(mr)
 
         self.log(f"    Created {len(results)} SPC measurement results")

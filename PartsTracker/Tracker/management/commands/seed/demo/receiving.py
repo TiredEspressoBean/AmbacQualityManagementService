@@ -96,9 +96,13 @@ class DemoReceivingSeeder(BaseSeeder):
             ProcessStep.objects.filter(process=process, step=recv_step).delete()
 
         # --- Sampling rulesets on the step (default + supplier-specific) ---
+        # The rule set form requires a process. Purchased material is bought for new
+        # manufacture, so it names Injector Build, not whichever process came first.
+        from .routes import BUILD, process_named
+        rs_process = process_named(self.tenant, BUILD) or process
         default_rs, _ = SamplingRuleSet.objects.update_or_create(
             tenant=self.tenant, step=recv_step, supplier=None, name='Receiving C=0 (all suppliers)',
-            defaults={'part_type': part_type, 'process': process, 'active': True,
+            defaults={'part_type': part_type, 'process': rs_process, 'active': True,
                       'aql': Decimal('1.0'), 'inspection_level': 'II', 'severity': 'NORMAL', 'strategy': 'C0'},
         )
         SamplingRule.objects.get_or_create(
@@ -109,7 +113,7 @@ class DemoReceivingSeeder(BaseSeeder):
             tightened_rs, _ = SamplingRuleSet.objects.update_or_create(
                 tenant=self.tenant, step=recv_step, supplier=supplier,
                 name=f'Receiving C=0 ({supplier.name}, tightened)',
-                defaults={'part_type': part_type, 'process': process, 'active': True,
+                defaults={'part_type': part_type, 'process': rs_process, 'active': True,
                           'aql': Decimal('0.65'), 'inspection_level': 'III', 'severity': 'TIGHTENED', 'strategy': 'C0'},
             )
             SamplingRule.objects.get_or_create(

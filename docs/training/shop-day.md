@@ -52,8 +52,10 @@ their track is built.
 | Company | Is |
 |---------|----|
 | Midwest Fleet Services | The customer whose repair runs through the day |
-| Great Lakes Diesel, Northern Trucking Co | Other customers |
-| Apex Plating Co | The nitride-coating subcontractor, with a lapsed qualification |
+| Great Lakes Diesel | A customer, and the supplier of the purchased lots received at the dock |
+| Northern Trucking Co | Another customer |
+| Apex Plating Co | The nitride-coating subcontractor, qualified for nitriding |
+| Lakeshore Seals Inc | A seals supplier whose qualification has lapsed |
 | Precision Castings Inc, Midwest Forge Works, Bargain Bolts LLC | Material suppliers, at different stages of qualification |
 
 ## The day
@@ -99,7 +101,7 @@ the first piece, `INJ-QA-INSPECT-001`, and the run holds for a first-piece buy-o
 
 ### 08:30 — Sarah buys off the first piece
 
-Sarah reads the first piece's readings (Bore Diameter 4 mm against 3.995–4.005, taken
+Sarah reads the first piece's readings (Bore Diameter inside 3.995–4.005, taken
 by Mike) and signs it off. The run moves. Two other runs are waiting on first
 pieces too: one to fail, and one that repeats yesterday's setup and is waived. A
 third first piece's inspection was Sarah's own, so Casey signs it at Sarah's
