@@ -254,6 +254,34 @@ customer may take the short quantity), so a person decides.
 
 ---
 
+## 11. Is the crew enough?
+
+**You will:** say whether you have the people for the work, and where one absence
+would stop it.
+
+Two pages answer two different questions.
+
+**Scheduling** > **Capacity Planning** > **Capacity heatmap** asks *does the plan fit
+the month?* The headline says it: *Crew: enough for the planned work · busiest
+2026-10 at 42%*. The **Labor** row compares the operator hours the work needs (setup
+and the hands-on part of each operation, not a machine's whole run) with your crew's
+working hours left in each month. Under about 85% is comfortable; over 100% you're
+short.
+
+The rows under it ask the sharper question: *enough of the right people?* Each is a
+set of qualifications and how many people hold them. A row marked **one person**
+is a step only one operator can do: one absence stops it, however much crew you
+have. The headline counts them: *2 skills only one person can do*.
+
+**Scheduling** > **Schedule (Gantt)** > **People** asks *who is booked?* Each row is
+one operator's occupied time on the current plan. It doesn't tell you whether the
+month fits.
+
+**Exercise 11.1.** Say which two skills only one person can do, and what you'd do
+about it before someone's away.
+
+---
+
 ## Final task — observed
 
 Your trainer regenerates the data, logs you in as Jennifer, and says only: *"Great
