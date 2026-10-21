@@ -65,8 +65,18 @@ class OptimizationConfigSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+class FrozenFreedSerializer(serializers.Serializer):
+    """A frozen or planner-pinned operation that couldn't be held where it was."""
+    part = serializers.CharField()
+    step = serializers.CharField()
+    reason_code = serializers.CharField()
+    reason = serializers.CharField()
+    was_pinned = serializers.BooleanField()
+
+
 class ScheduleResultSerializer(serializers.ModelSerializer):
     task_count = serializers.SerializerMethodField()
+    frozen_freed = FrozenFreedSerializer(many=True, read_only=True)
 
     class Meta:
         model = ScheduleResult
@@ -74,6 +84,7 @@ class ScheduleResultSerializer(serializers.ModelSerializer):
             'id', 'horizon_start', 'horizon_end', 'solver_status', 'solve_time_ms',
             'machine_solve_ms', 'operator_solve_ms',
             'objective_value_cents', 'weighted_lateness', 'relaxed_pin_count', 'relative_gap',
+            'frozen_kept', 'frozen_freed', 'stickiness_cost',
             'infeasible_reason',
             'is_active', 'is_stale', 'is_draft', 'created_at', 'task_count',
         )

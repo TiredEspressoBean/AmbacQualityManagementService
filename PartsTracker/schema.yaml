@@ -56786,6 +56786,52 @@ components:
         * `PER_SHIFT` - Per Shift
         * `PER_EQUIPMENT` - Per Equipment
         * `PER_OPERATOR` - Per Operator
+    FrozenFreed:
+      type: object
+      description: A frozen or planner-pinned operation that couldn't be held where
+        it was.
+      properties:
+        part:
+          type: string
+        step:
+          type: string
+        reason_code:
+          type: string
+        reason:
+          type: string
+        was_pinned:
+          type: boolean
+      required:
+      - part
+      - reason
+      - reason_code
+      - step
+      - was_pinned
+    FrozenFreedRequest:
+      type: object
+      description: A frozen or planner-pinned operation that couldn't be held where
+        it was.
+      properties:
+        part:
+          type: string
+          minLength: 1
+        step:
+          type: string
+          minLength: 1
+        reason_code:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        was_pinned:
+          type: boolean
+      required:
+      - part
+      - reason
+      - reason_code
+      - step
+      - was_pinned
     FulfilmentModeEnum:
       enum:
       - EXCHANGE
@@ -76706,10 +76752,9 @@ components:
         objective_value_cents:
           type: integer
           readOnly: true
-          description: Raw CP-SAT objective (lateness + makespan + pin-stickiness
-            penalties). NOT money despite the legacy 'cents' name — the pin weights
-            dominate it. Kept for solve-to-solve comparison; surface weighted_lateness
-            to planners instead.
+          description: Raw CP-SAT objective (lateness + makespan + slushy stickiness
+            + tie-breakers). NOT money despite the legacy 'cents' name. Kept for solve-to-solve
+            comparison; surface weighted_lateness to planners.
         weighted_lateness:
           type: integer
           readOnly: true
@@ -76720,9 +76765,8 @@ components:
         relaxed_pin_count:
           type: integer
           readOnly: true
-          description: Frozen/planner-pinned tasks the solver had to move because
-            the world changed under them (machine down, shift edited). >0 means the
-            freeze couldn't be fully honored — surface for the planner.
+          description: Frozen/planner-pinned tasks re-planned because they could no
+            longer happen where they were (len(frozen_freed)).
         relative_gap:
           type: number
           format: double
@@ -76732,6 +76776,23 @@ components:
             0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means
             the solver proved the schedule is within that fraction of the best possible
             objective before the time limit. Null when nothing was solved.'
+        frozen_kept:
+          type: integer
+          readOnly: true
+          description: Frozen-zone and planner-pinned lot-operations held exactly
+            where the live plan had them (start, machine, operator). The fence is
+            hard.
+        frozen_freed:
+          type: array
+          items:
+            $ref: '#/components/schemas/FrozenFreed'
+          readOnly: true
+        stickiness_cost:
+          type: integer
+          readOnly: true
+          description: 'The objective''s slushy-zone term: what moving slushy work
+            off the live plan cost, on the lateness scale. Shown beside weighted_lateness
+            so the gap reads as plan quality.'
         infeasible_reason:
           type: string
           readOnly: true
@@ -76761,6 +76822,8 @@ components:
           readOnly: true
       required:
       - created_at
+      - frozen_freed
+      - frozen_kept
       - horizon_end
       - horizon_start
       - id
@@ -76775,6 +76838,7 @@ components:
       - relaxed_pin_count
       - solve_time_ms
       - solver_status
+      - stickiness_cost
       - task_count
       - weighted_lateness
     ScheduleSlot:

@@ -16683,7 +16683,7 @@ export type ScheduleResult = {
    */
   operator_solve_ms: number;
   /**
-   * Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead.
+   * Raw CP-SAT objective (lateness + makespan + slushy stickiness + tie-breakers). NOT money despite the legacy 'cents' name. Kept for solve-to-solve comparison; surface weighted_lateness to planners.
    */
   objective_value_cents: number;
   /**
@@ -16691,13 +16691,22 @@ export type ScheduleResult = {
    */
   weighted_lateness: number;
   /**
-   * Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner.
+   * Frozen/planner-pinned tasks re-planned because they could no longer happen where they were (len(frozen_freed)).
    */
   relaxed_pin_count: number;
   /**
    * CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
    */
   relative_gap: number | null;
+  /**
+   * Frozen-zone and planner-pinned lot-operations held exactly where the live plan had them (start, machine, operator). The fence is hard.
+   */
+  frozen_kept: number;
+  frozen_freed: Array<FrozenFreed>;
+  /**
+   * The objective's slushy-zone term: what moving slushy work off the live plan cost, on the lateness scale. Shown beside weighted_lateness so the gap reads as plan quality.
+   */
+  stickiness_cost: number;
   /**
    * Why the solve produced no plan, in the planner's terms (usually 'more work than the window holds', naming the short resource). CP-SAT reports INFEASIBLE with no explanation, and an empty board with no reason is the worst result the scheduler can give. Blank on any solve that produced a plan.
    */
@@ -16722,6 +16731,13 @@ export type SolverStatusEnum =
    * @enum OPTIMAL, FEASIBLE, INFEASIBLE, MODEL_INVALID, UNKNOWN
    */
   "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
+export type FrozenFreed = {
+  part: string;
+  step: string;
+  reason_code: string;
+  reason: string;
+  was_pinned: boolean;
+};
 export type ScheduleSlotRequest = {
   work_center: string;
   shift: string;
@@ -24469,6 +24485,13 @@ const SolverStatusEnum = z.enum([
   "MODEL_INVALID",
   "UNKNOWN",
 ]);
+const FrozenFreed = z.object({
+  part: z.string(),
+  step: z.string(),
+  reason_code: z.string(),
+  reason: z.string(),
+  was_pinned: z.boolean(),
+});
 const ScheduleResult = z.object({
   id: z.string().uuid(),
   horizon_start: z.string().datetime({ offset: true }),
@@ -24481,6 +24504,9 @@ const ScheduleResult = z.object({
   weighted_lateness: z.number().int(),
   relaxed_pin_count: z.number().int(),
   relative_gap: z.number().nullable(),
+  frozen_kept: z.number().int(),
+  frozen_freed: z.array(FrozenFreed),
+  stickiness_cost: z.number().int(),
   infeasible_reason: z.string(),
   is_active: z.boolean(),
   is_stale: z.boolean(),
@@ -28917,6 +28943,13 @@ const FiveWhysNested = z
     identified_root_cause: z.string().nullable(),
   })
   .partial();
+const FrozenFreedRequest = z.object({
+  part: z.string().min(1),
+  step: z.string().min(1),
+  reason_code: z.string().min(1),
+  reason: z.string().min(1),
+  was_pinned: z.boolean(),
+});
 const LotRefRequest = z.object({
   id: z.string().min(1),
   lot_number: z.string().min(1),
@@ -29629,6 +29662,7 @@ export const schemas = {
   MaterialLoad,
   CapacityLoad,
   SolverStatusEnum,
+  FrozenFreed,
   ScheduleResult,
   LaborModelEnum,
   ReleaseModeEnum,
@@ -30124,6 +30158,7 @@ export const schemas = {
   CapaTaskAssigneeRequest,
   FishboneNested,
   FiveWhysNested,
+  FrozenFreedRequest,
   LotRefRequest,
   ProcessStepRequest,
   QualityReportEquipmentRequest,

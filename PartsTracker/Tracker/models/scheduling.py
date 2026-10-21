@@ -488,10 +488,9 @@ class ScheduleResult(SecureModel):
     )
     objective_value_cents = models.BigIntegerField(
         default=0,
-        help_text="Raw CP-SAT objective (lateness + makespan + pin-stickiness "
-                  "penalties). NOT money despite the legacy 'cents' name — the pin "
-                  "weights dominate it. Kept for solve-to-solve comparison; surface "
-                  "weighted_lateness to planners instead.",
+        help_text="Raw CP-SAT objective (lateness + makespan + slushy stickiness + "
+                  "tie-breakers). NOT money despite the legacy 'cents' name. Kept for "
+                  "solve-to-solve comparison; surface weighted_lateness to planners.",
     )
     weighted_lateness = models.BigIntegerField(
         default=0,
@@ -509,10 +508,23 @@ class ScheduleResult(SecureModel):
     )
     relaxed_pin_count = models.PositiveIntegerField(
         default=0,
-        help_text="Frozen/planner-pinned tasks the solver had to move because the "
-                  "world changed under them (machine down, shift edited). >0 means the "
-                  "freeze couldn't be fully honored — surface for the planner.",
+        help_text="Frozen/planner-pinned tasks re-planned because they could no longer "
+                  "happen where they were (len(frozen_freed)).",
     )
+    frozen_kept = models.PositiveIntegerField(
+        default=0,
+        help_text="Frozen-zone and planner-pinned lot-operations held exactly where the "
+                  "live plan had them (start, machine, operator). The fence is hard.")
+    frozen_freed = models.JSONField(
+        default=list, blank=True,
+        help_text="Frozen/pinned operations that went back to normal planning because "
+                  "they couldn't happen where they were: [{part, step, reason_code, "
+                  "reason, was_pinned}]. A freed planner pin is released (unpinned).")
+    stickiness_cost = models.BigIntegerField(
+        default=0,
+        help_text="The objective's slushy-zone term: what moving slushy work off the "
+                  "live plan cost, on the lateness scale. Shown beside weighted_lateness "
+                  "so the gap reads as plan quality.")
     infeasible_reason = models.TextField(
         blank=True, default='',
         help_text="Why the solve produced no plan, in the planner's terms (usually "

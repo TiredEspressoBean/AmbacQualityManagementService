@@ -1083,6 +1083,33 @@ export function SchedulingGanttPage() {
                     DRAFT (what-if)
                   </Badge>
                 )}
+                {/* Plan quality first: late orders and lateness are what a planner acts
+                    on; the solver's proof of optimality follows. */}
+                {kpis.lateOrders > 0 ? (
+                  <Badge
+                    variant="destructive"
+                    title={kpis.lateCauseSummary || "Late orders — re-solve for causes"}
+                  >
+                    ⏰ {kpis.lateOrders} late order(s)
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-green-600/50 text-green-700 dark:text-green-400">
+                    No late orders
+                  </Badge>
+                )}
+                <span
+                  title="Priority-weighted lateness (Σ part late-minutes × the WO's priority penalty). Not a monetary value — the solver has no fiscal data."
+                >
+                  lateness{" "}
+                  {schedule.weighted_lateness > 0
+                    ? `${schedule.weighted_lateness.toLocaleString()} (priority-wtd)`
+                    : "none"}
+                  {schedule.stickiness_cost > 0 && (
+                    <span title="What moving slushy work off the live plan cost, on the same scale — kept separate so the gap reads as plan quality.">
+                      {" "}+ {schedule.stickiness_cost.toLocaleString()} for moving slushy work
+                    </span>
+                  )}
+                </span>
                 <Badge
                   variant="secondary"
                   title={
@@ -1102,14 +1129,6 @@ export function SchedulingGanttPage() {
                 </Badge>
                 <span>{schedule.task_count} tasks</span>
                 <span>· makespan {kpis.makespanH.toFixed(1)} h</span>
-                <span
-                  title="Priority-weighted lateness (Σ part late-minutes × the WO's priority penalty). Not a monetary value — the solver has no fiscal data."
-                >
-                  · lateness{" "}
-                  {schedule.weighted_lateness > 0
-                    ? `${schedule.weighted_lateness.toLocaleString()} (priority-wtd)`
-                    : "none"}
-                </span>
                 <span
                   title={
                     schedule.operator_solve_ms > 0
@@ -1132,14 +1151,6 @@ export function SchedulingGanttPage() {
                 )}
                 {kpis.materialShort > 0 && (
                   <Badge variant="destructive">▲ {kpis.materialShort} material-short</Badge>
-                )}
-                {kpis.lateOrders > 0 && (
-                  <Badge
-                    variant="destructive"
-                    title={kpis.lateCauseSummary || "Late orders — re-solve for causes"}
-                  >
-                    ⏰ {kpis.lateOrders} late order(s)
-                  </Badge>
                 )}
                 {schedule.is_stale && <Badge variant="outline">stale — re-solve</Badge>}
               </>
@@ -1439,18 +1450,30 @@ export function SchedulingGanttPage() {
           how you read everything below it, including those warnings. */}
       <ActiveRunBanner />
 
-      {schedule && schedule.relaxed_pin_count > 0 && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-          ⚠ {schedule.relaxed_pin_count} frozen task(s) had to move — the world changed under
-          the pinned plan. Review before committing.
-        </div>
+      {schedule && (schedule.frozen_freed ?? []).length > 0 && (
+        // Frozen work is held exactly; these couldn't happen where they were, so they
+        // were re-planned. A released pin is no longer pinned — say so.
+        <details className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+          <summary className="cursor-pointer">
+            {schedule.frozen_freed.length} frozen task(s) re-planned
+            {schedule.frozen_kept > 0 ? ` · ${schedule.frozen_kept} held` : ""}
+          </summary>
+          <ul className="mt-1.5 space-y-0.5 text-xs">
+            {schedule.frozen_freed.map((f, i) => (
+              <li key={`${f.part}-${f.step}-${i}`}>
+                {f.was_pinned ? "📌 pin released: " : ""}
+                <span className="font-medium">{f.part}</span> {f.step} — {f.reason}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       {schedule && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground">
           <span
             className="flex items-center gap-1.5"
-            title="Solver time-fence: how free the solver is to reschedule a task. Frozen stays put, Slushy resists moving, Liquid is fully re-plannable."
+            title="Solver time-fence. Frozen work is locked — it moves only when it can no longer happen where it is, and the board lists those. Slushy work stays put unless moving it saves lateness. Liquid is fully re-plannable."
           >
             <span className="font-medium text-foreground">Fence:</span>
             {Object.values(FENCE).map((z) => (
@@ -1459,9 +1482,20 @@ export function SchedulingGanttPage() {
                   className="inline-block h-2.5 w-2.5 rounded-sm"
                   style={{ backgroundColor: z.color }}
                 />
-                {z.name}
+                {z.name === "Frozen" && schedConfig
+                  ? `Frozen: next ${schedConfig.frozen_zone_days} day${schedConfig.frozen_zone_days === 1 ? "" : "s"} (locked)`
+                  : z.name === "Slushy" && schedConfig
+                    ? `Slushy: to day ${schedConfig.slushy_zone_days}`
+                    : z.name === "Liquid" && schedConfig
+                      ? `Liquid: plans ${schedConfig.horizon_days} days out`
+                      : z.name}
               </span>
             ))}
+            {canConfig && (
+              <button type="button" className="underline underline-offset-2" onClick={() => setSettingsOpen(true)}>
+                change
+              </button>
+            )}
           </span>
           <span className="text-border">|</span>
           <span className="flex items-center gap-1" title="Planner lock: a task the planner pinned so the solver must keep it fixed. Independent of the fence zone.">

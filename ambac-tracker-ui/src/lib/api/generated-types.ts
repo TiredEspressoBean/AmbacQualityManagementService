@@ -24378,6 +24378,22 @@ export interface components {
          * @enum {string}
          */
         FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
+        /** @description A frozen or planner-pinned operation that couldn't be held where it was. */
+        FrozenFreed: {
+            part: string;
+            step: string;
+            reason_code: string;
+            reason: string;
+            was_pinned: boolean;
+        };
+        /** @description A frozen or planner-pinned operation that couldn't be held where it was. */
+        FrozenFreedRequest: {
+            part: string;
+            step: string;
+            reason_code: string;
+            reason: string;
+            was_pinned: boolean;
+        };
         /**
          * @description * `EXCHANGE` - Exchange — customer gets a unit from stock
          *     * `REPAIR_RETURN` - Repair & return — this unit goes back to them
@@ -34851,17 +34867,22 @@ export interface components {
             readonly machine_solve_ms: number;
             /** @description Wall-clock of the named-operator (Layer-2 in-solve) phase (ms); 0 when match_operators is off and operators come from Dispatch. */
             readonly operator_solve_ms: number;
-            /** @description Raw CP-SAT objective (lateness + makespan + pin-stickiness penalties). NOT money despite the legacy 'cents' name — the pin weights dominate it. Kept for solve-to-solve comparison; surface weighted_lateness to planners instead. */
+            /** @description Raw CP-SAT objective (lateness + makespan + slushy stickiness + tie-breakers). NOT money despite the legacy 'cents' name. Kept for solve-to-solve comparison; surface weighted_lateness to planners. */
             readonly objective_value_cents: number;
             /** @description Priority-weighted lateness only (Σ part late-minutes × the WO's priority penalty) — the objective's lateness term, isolated from makespan and pin penalties. The 'how late, weighted by priority' signal shown in the UI. */
             readonly weighted_lateness: number;
-            /** @description Frozen/planner-pinned tasks the solver had to move because the world changed under them (machine down, shift edited). >0 means the freeze couldn't be fully honored — surface for the planner. */
+            /** @description Frozen/planner-pinned tasks re-planned because they could no longer happen where they were (len(frozen_freed)). */
             readonly relaxed_pin_count: number;
             /**
              * Format: double
              * @description CP-SAT proven optimality gap: (objective − best_bound) / |objective|. 0.0 = proven OPTIMAL; a small positive value on a FEASIBLE result means the solver proved the schedule is within that fraction of the best possible objective before the time limit. Null when nothing was solved.
              */
             readonly relative_gap: number | null;
+            /** @description Frozen-zone and planner-pinned lot-operations held exactly where the live plan had them (start, machine, operator). The fence is hard. */
+            readonly frozen_kept: number;
+            readonly frozen_freed: components["schemas"]["FrozenFreed"][];
+            /** @description The objective's slushy-zone term: what moving slushy work off the live plan cost, on the lateness scale. Shown beside weighted_lateness so the gap reads as plan quality. */
+            readonly stickiness_cost: number;
             /** @description Why the solve produced no plan, in the planner's terms (usually 'more work than the window holds', naming the short resource). CP-SAT reports INFEASIBLE with no explanation, and an empty board with no reason is the worst result the scheduler can give. Blank on any solve that produced a plan. */
             readonly infeasible_reason: string;
             readonly is_active: boolean;

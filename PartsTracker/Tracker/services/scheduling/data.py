@@ -177,6 +177,8 @@ class PreviousTaskData:
     start_time: datetime
     end_time: datetime
     is_pinned: bool
+    # The operator the live plan had on it, so a frozen task keeps its person too.
+    assigned_operator_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -1085,6 +1087,7 @@ def get_previous_schedule(tenant) -> PreviousScheduleData | None:
         PreviousTaskData(
             part_id=t.part_id, step_id=t.step_id, machine_id=t.machine_id,
             start_time=t.start_time, end_time=t.end_time, is_pinned=t.is_pinned,
+            assigned_operator_id=t.assigned_operator_id,
         )
         for t in sched.tasks.filter(part__isnull=False)   # core tasks: no pin/warm-start in v1
     )
