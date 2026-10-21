@@ -98,15 +98,30 @@ class DemoSeedFlowsTests(TestCase):
     def test_no_open_disposition_on_a_part_that_has_left(self):
         # A shipped or scrapped part's nonconformance was decided before it left.
         # The seed once left contradictory twins open on them (a Rework on a
-        # shipped part, a Use As Is on a scrapped one).
+        # shipped part, a Use As Is on a scrapped one). The one open record such a
+        # part may carry is the Scrap decision that scrapped it, waiting for its close
+        # (the Production Manager's exhibit, WO-PM-MAKEUP-01).
         from Tracker.models import QuarantineDisposition
         with tenant_context(self.tenant.id):
             stray = (QuarantineDisposition.objects.active()
                      .filter(is_current_version=True,
                              part__part_status__in=("SHIPPED", "COMPLETED", "SCRAPPED"))
                      .exclude(current_state="CLOSED")
+                     .exclude(disposition_type="SCRAP", part__part_status="SCRAPPED")
                      .values_list("disposition_number", "part__ERP_id"))
             self.assertEqual(list(stray), [])
+
+    def test_makeup_exhibit_is_one_short(self):
+        # The Production Manager tops up a job after scrap: one body scrapped through a
+        # decided, verified Scrap disposition, the job one good unit short.
+        from Tracker.models import QuarantineDisposition, WorkOrder
+        from Tracker.services.mes.makeup import work_order_shortfall
+        with tenant_context(self.tenant.id):
+            wo = WorkOrder.objects.get(ERP_id="WO-PM-MAKEUP-01")
+            self.assertEqual(work_order_shortfall(wo)["shortfall"], 1)
+            scrap = QuarantineDisposition.objects.get(part__work_order=wo)
+            self.assertEqual((scrap.disposition_type, scrap.current_state, scrap.scrap_verified),
+                             ("SCRAP", "IN_PROGRESS", True))
 
     def test_major_capas_route_through_the_severity_template(self):
         # The demo keeps a real tenant's approval templates, so a Major CAPA's go-ahead

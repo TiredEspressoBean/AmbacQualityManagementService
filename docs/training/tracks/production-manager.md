@@ -222,6 +222,29 @@ sheet.* A check never writes, and a load writes nothing unless every row loads.
 
 ---
 
+## 10. A job short after scrap
+
+**You will:** close a scrap decision, and top the job back up.
+
+`WO-PM-MAKEUP-01` was four bodies for Great Lakes. One turned undersize at
+Machining. QA decided **Scrap**, and the scrap has been verified. Closing the
+disposition, and replacing the body, are yours.
+
+1. **Production** > **WO Control Center** > **Exceptions**. The disposition for
+   `WO-PM-MAKEUP-01` is *In progress*: *Failed Machining: Body OD … (limits
+   5.99–6.01)*. **Open disposition**.
+2. Read the decision: **Scrap**, who authorised it, and the containment. Set
+   **Current State** to **Closed**, add your resolution notes, and **Update
+   Disposition**. Closing records who resolved it, and when.
+3. Open `WO-PM-MAKEUP-01`. The **Make-up** card says *0/4 good · 3 alive · 1
+   scrapped — 1 short of 4 good*. **Create 1 make-up part**: a new body starts at
+   Machining, and the card clears.
+
+Make-up is never automatic. A scrapped unit doesn't always need replacing (the
+customer may take the short quantity), so a person decides.
+
+---
+
 ## Final task — observed
 
 Your trainer regenerates the data, logs you in as Jennifer, and says only: *"Great

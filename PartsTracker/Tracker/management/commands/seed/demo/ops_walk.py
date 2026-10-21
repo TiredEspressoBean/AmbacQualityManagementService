@@ -9,6 +9,9 @@ The operator track's day is Mike Rodriguez's, on the new-build route (Injector B
 - WO-OPS-03: two bodies inspected (first piece bought off by Sarah) and back from the
   plater, waiting at Assembly: where Mike's component lots are drawn for him.
 - Two shift notes from Casey, one he must acknowledge at clock-in.
+- WO-PM-MAKEUP-01: the Production Manager's exhibit, a job one body short after a
+  scrap, its disposition decided and verified, waiting for the PM to close it and
+  top the job up.
 
 Reuses the QA walk's building blocks (DemoQaWalkSeeder), so every record is made
 the way the runtime makes it.
@@ -18,7 +21,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
-from Tracker.models import BatchExecution, Orders, OrdersStatus
+from Tracker.models import BatchExecution, Orders, OrdersStatus, QuarantineDisposition, WorkOrder
 
 from .qa_walk import DemoQaWalkSeeder, PROCESS_NAME
 
@@ -29,6 +32,11 @@ WASH_WO = 'WO-OPS-02'
 WASH_PARTS = ['INJ-OPS-011', 'INJ-OPS-012', 'INJ-OPS-013', 'INJ-OPS-014']
 ASSEMBLY_WO = 'WO-OPS-03'
 ASSEMBLY_PARTS = ['INJ-OPS-021', 'INJ-OPS-022']
+
+# A job one good unit short: its first body scrapped at Machining (the PM's make-up).
+MAKEUP_WO = 'WO-PM-MAKEUP-01'
+MAKEUP_PARTS = ['INJ-PMK-001', 'INJ-PMK-002', 'INJ-PMK-003', 'INJ-PMK-004']
+MAKEUP_DUE_DAYS = 12
 
 # Two cores Dave received, waiting at Disassembly for Mike to tear down and grade.
 GRADING_CORES = ['CORE-240220-0003', 'CORE-240220-0004']
@@ -106,6 +114,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
             result['work_orders'].append(wo)
         self._space_out(wo, self.today - timedelta(hours=2))
 
+        result['makeup'] = self._makeup_short_job(order, process, part_type, walk)
+
         result['teardown_cores'] = self._cores_to_teardown()
 
         result['shift_notes'] = self._shift_notes()
@@ -114,6 +124,48 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
                  f"{len(ASSEMBLY_PARTS)} bodies at Assembly; "
                  f"{len(result['shift_notes'])} shift notes")
         return result
+
+    def _makeup_short_job(self, order, process, part_type, walk):
+        """The Production Manager's make-up exhibit: a job one good unit short.
+
+        Dave machines the first body out of spec, its FAIL opens a disposition, Maria
+        decides SCRAP and Sarah verifies it. The close is left to the Production
+        Manager (close_disposition), as is the make-up. Only then do the
+        other three run Machining: the scrapped body is off the step by then, so the
+        lot moves without waiting on it. Low priority and a later date, so it doesn't
+        change what the operator track has up next."""
+        from Tracker.models import WorkOrderPriority
+        from Tracker.services.qms.disposition import (
+            decide_disposition, record_containment_complete, record_scrap_verification,
+        )
+        with transaction.atomic():
+            wo = self._work_order(order, process, MAKEUP_WO, len(MAKEUP_PARTS))
+            WorkOrder.objects.filter(pk=wo.pk).update(
+                priority=WorkOrderPriority.LOW,
+                expected_completion=(self.today + timedelta(days=MAKEUP_DUE_DAYS)).date())
+            parts = self._parts(wo, part_type, MAKEUP_PARTS)
+            bad, good = parts[0], parts[1:]
+            self._run_step_for([bad], 'Machining', walk, advance=False, operator=self.dave,
+                               out_of_spec='Body OD', reading=5.982)
+            disposition = (QuarantineDisposition.objects
+                           .filter(part=bad, current_state__in=['OPEN', 'IN_PROGRESS'])
+                           .order_by('-created_at').first())
+            if disposition is None:
+                self.log(f"  Warning: no disposition opened for {bad.ERP_id}; "
+                         "make-up exhibit skipped.", warning=True)
+                return wo
+            disposition.assigned_to = self.sarah
+            disposition.containment_action = (
+                'Bar stock lot checked: the other three bodies measure in spec.')
+            disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
+            record_containment_complete(disposition, self.sarah)
+            disposition = decide_disposition(
+                disposition, disposition_type='SCRAP', authorized_by=self.maria,
+                notes='Turned undersize; no material left to recover the diameter.')
+            record_scrap_verification(disposition, self.sarah, verified=True)
+            self._run_step_for(good, 'Machining', walk, operator=self.dave)
+        self._space_out(wo, self.today - timedelta(hours=3))
+        return wo
 
     def _work_order(self, order, process, erp_id, quantity):
         """A work order released the way a planner releases one (release_work_order),
