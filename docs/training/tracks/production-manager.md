@@ -134,9 +134,10 @@ scheduled* until the next solve.
 **You will:** solve the plan, and find out why work isn't on it.
 
 **Scheduling** > **Schedule (Gantt)** shows every machine's work, one row per
-machine. The header says how good the plan is (*FEASIBLE · within N %*), how many
+machine. The header says whether the solver found a plan (*FEASIBLE*), how many
 orders it makes late, and *stale — re-solve* when the shop has changed since it was
-solved.
+solved. Read the late orders, not *within N %*: on a re-solve that figure includes
+the cost of keeping work already under way in place, so it isn't a quality score.
 
 1. **Solve**. It runs in the background and can take a few minutes; the page says
    *Solving* until it's done.

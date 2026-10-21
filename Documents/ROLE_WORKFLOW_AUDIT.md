@@ -212,15 +212,15 @@ grants the view, not the permissions.
 
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | Produce a schedule | ✅ | ✅ | ✅ | ? | 2026-10-15 | Solve needs `add_scheduleresult` (Planner, Production Manager, Tenant Admin). It is a Celery task, and the board says so when no worker is running. **The seed doesn't solve** (arc). |
-| 2 | Find out why something is not on it | ✅ | ✅ | ✅ | ? | 2026-10-08 | *"Why isn't this scheduled?"* groups by cause with a remedy each, and admits what it can't explain. |
+| 1 | Produce a schedule | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | Walked as Sam (Planner persona, seeded c1c1db2). Solve runs on Celery; the seed solves. **⚠️:** a re-solve from the board reports *within ~100%* and much worse lateness than a cold solve (159k vs 44k); lead: frozen-window soft pins dominate the objective and the reported gap (experiment approved 2026-10-21). Tracks say to judge by late orders, not the gap. Track module 3. |
+| 2 | Find out why something is not on it | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Walked under manual release: on hold, not released (*Release it from the planning queue*), no units created yet, added since the last solve, waiting to ship. Track module 2. |
 | 3 | Dispatch people | ✅ | ✅ | ✅ | ? | 2026-10-08 | Dispatch reports coverage (*"259/265 covered"*). Uncovered work becomes a standing chip. |
-| 4 | Adjust by hand | ✅ | ✅ | ✅ | ? | 2026-10-08 | The task panel: Reassign, Pin, Merge into batch, Edit WO. |
+| 4 | Adjust by hand | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Pin from the task panel (*Task pinned*); the pin survived a full re-solve. Reassign limited to the crew. Track module 3. |
 | 5 | React to a disruption | ✅ | ✅ | ✅ | ? | 2026-10-08 | Staleness flags trip on demand, part and capacity changes, not on routine step advances. It's a hint, not an auto-solve. |
 | 6 | Test a change before committing | ✅ | ✅ | ✅ | ? | 2026-10-20 | **What-if** solves a draft and states trade-offs in both directions. Solves stop at a 66–99.6% optimality gap; the compare bar now shows each side's **solver gap** and warns when a difference is within it. Not walked. |
 | 7 | Get the plan to the floor | ✅ | ✅ | ✅ | ? | 2026-10-08 | Dispatch is the hand-off. The **Dispatch List** is a printable report, not an assignment surface. |
 | 8 | See whether the floor followed it | ✅ | ⚠️ | 🚧 | ? | 2026-10-19 | Actuals are capture-only by design and don't re-time the plan. There is no adherence view. Needs a solve followed by movement. |
-| 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | ✅ | ? | 2026-10-08 | Calendar exceptions and labour blocks. The solve honours them. |
+| 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Walked: Add closure → *stale — re-solve* → solve leaves the day at 0 tasks, next working day 45. Seeded closures were built in server UTC until 2026-10-21 (now plant time). Headcount counts the crew. Track module 4. |
 | R1 | Schedule work whose route isn't known until teardown | ✅ | ⚠️ | ✅ | ? | 2026-10-13 | Books the nominal route and re-solves when reality diverges. **⚠️ A deliberate simplification:** reman is tree-shaped. The user is waiting for real data before designing further. |
 
 The **frozen fence** is a soft penalty in the solver, but the board legend says
