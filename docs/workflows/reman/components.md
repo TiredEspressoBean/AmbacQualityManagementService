@@ -94,11 +94,18 @@ test, a valve seat that looked fine until it was cleaned.
 ### Recording one
 
 The rebuilder records it from the step player, as a **rebuild finding** capture.
-That is all an operator does — recording a finding changes nothing on its own.
+What happens next depends on the check it was recorded at:
+
+- **The repair is pre-approved at this check:** the finding applies at once. The
+  component is re-graded and the unit takes that repair. The approved process is
+  the standing authorisation.
+- **Anything else** (a repair that needs approval, or a component proposed for
+  scrap): the finding waits for a lead, and the unit holds at the check until it is
+  decided.
 
 ### Deciding one
 
-A lead applies or dismisses each finding on the [rebuild plan](rebuild.md) page.
+A lead applies or dismisses each finding that waits, on the [rebuild plan](rebuild.md) page.
 This needs the `accept_component` permission.
 
 | Decision | Effect |
@@ -117,7 +124,8 @@ time**.
     A finding changes the rebuild's scope — and on a repair-and-return unit,
     scope is the customer's bill. So the system separates the two acts
     deliberately: an operator *records* what they found, a lead *decides* what
-    it means.
+    it means. The one exception is a repair the process pre-approves at that
+    check: approving the process decided it in advance.
 
     It is kept human for now on purpose. Once there is data on how findings are
     actually decided, parts of it may be worth automating; until then the system

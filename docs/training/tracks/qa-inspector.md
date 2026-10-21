@@ -86,7 +86,7 @@ A first piece holds its run: no other part moves past the step until a second pe
 has judged it. The buy-off dialog shows the first piece's readings, who took them
 and when. **The readings are what you are signing.**
 
-**Watch, then do it:** `WO-QA-INSPECT-01`, first piece `INJ-QA-INSPECT-001` at Nozzle
+**Watch, then do it:** `WO-QA-INSPECT-01`, first piece `INJ-QA-INSPECT-001` at Body
 Inspection.
 
 1. Open the work order's **WO Control** (**Production** > **WO Control Center**,

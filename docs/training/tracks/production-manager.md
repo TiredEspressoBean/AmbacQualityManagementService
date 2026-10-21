@@ -1,659 +1,246 @@
-# Production Manager Training Guide
+# Production Manager
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+The production manager's slice of [the shop day](../shop-day.md): reading what's at
+risk, turning a customer's order into work, promising a date you can keep,
+releasing work to the floor, reading the plan, and deciding the quality questions
+that land on you. Every exercise is on the training shop, and every record it names
+is one the training seed creates.
 
-**Duration:** 3-5 hours
-**Prerequisites:** None
-**Goal:** Learn to create orders, manage work orders, monitor production, and coordinate with quality
+**About 3 hours**, in one sitting. **Before you start:** nothing. It helps to have
+watched the [Operator](operator.md) track, because the floor works to what you
+release.
 
+!!! warning "On a training instance only"
+    Every exercise writes real records: a planned line makes a work order, a release
+    puts work in front of operators, and an approval is signed. See the [training
+    program](../index.md).
 
-!!! note "Training Data Setup"
-    Exercises reference sample data (e.g., "TRAIN-PM-001", "TRAIN-BOTTLE"). Your administrator should set up training data, or you can create your own test records following the exercise patterns.
+## How a session runs
 
-!!! info "Demo Environment Login"
-    **Email:** jennifer.mgr@demo.ambac.com
-    **Password:** `demo123`
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Try to break it.** Where a module has a refusal, something the system won't let
+   you do, do it on purpose and read what it says. The refusal is part of the
+   lesson, not an error.
+5. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
----
+!!! warning "One trainee per instance at a time"
+    Each exercise has one exhibit, and working it uses it up: a planned line can't be
+    planned again. Run trainees one at a time, or give each their own instance.
 
-## Module 1: Production Manager Role Overview
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
-### Learning Objectives
+!!! note "The schedule needs its worker"
+    Solving and dispatching run in the background. On a training instance with no
+    worker running, the schedule page says *queued, waiting for a worker* and
+    nothing happens. Ask whoever runs the instance to start it before the session.
 
-By the end of this module, you will:
+## Who you are
 
-- [ ] Understand your production management responsibilities
-- [ ] Navigate production-specific screens
-- [ ] Understand the order-to-delivery flow
+| You log in as | When |
+|---------------|------|
+| **Jennifer Walsh**, Production Manager, `jennifer.mgr@demo.ambac.com` | Every module |
 
-### 1.1 Your Role
-
-As a Production Manager, you:
-
-- Create and manage customer orders
-- Create work orders and assign resources
-- Monitor production progress
-- Manage priorities
-- Coordinate with quality on holds
-- Track on-time delivery
-
----
-
-### 1.2 Your Main Pages
-
-| Page | Location | Purpose |
-|------|----------|---------|
-| **Work Orders** | Production > Work Orders | Main production management |
-| **Orders** | Data Management > Orders | Customer order management |
-| **Analytics** | Analytics | Production metrics |
-| **Inbox** | Personal > Inbox | CAPA tasks and approval requests |
-| **Tracker** | Tracker | Customer-facing order overview |
-
-**Exercise 1.1:** Navigation Tour
-
-1. Visit each page listed above
-2. Note the key information on each
-3. Identify where you'd create new items
+Every password is `demo123`. Sarah Chen, a QA inspector, raised the CAPA you decide
+in module 7.
 
 ---
 
-### 1.3 Order-to-Delivery Flow
+## 1. What needs you
 
-```
-Customer PO → Create Order → Add Parts → Create Work Order →
-Production → Quality → Ship → Complete
-```
+**You will:** read your home page and say what's at risk.
 
-You manage the first half; operators and QA handle execution.
+Log in as Jennifer. Your home page opens on **Needs attention**: a core awaiting the
+customer's authorisation, the parts in quarantine, and the CAPAs waiting for
+verification. Below it are quality figures, the work orders (most urgent first), the
+outside processing, supplier qualifications that are expiring, and your own quality
+actions and approvals.
 
----
-
-### Knowledge Check: Module 1
-
-1. Where do you create new orders?
-2. What is the difference between an Order and a Work Order?
-3. Where do you see overall production progress?
+**Exercise 1.1.** Say which work order is most at risk, and why it's ahead of the
+others.
 
 ---
 
-## Module 2: Creating Orders
+## 2. The order book
 
-### Learning Objectives
+**You will:** find the orders that still need planning.
 
-By the end of this module, you will:
+**Production** > **Orders** is the order book: every open customer order, with
+what's still unplanned, when it's promised against when the plan says it will
+finish, and what's blocking it. **On time, last 90 days** at the top counts what
+actually shipped against the date it was promised.
 
-- [ ] Create orders with complete information
-- [ ] Add parts to orders
-- [ ] Import orders in bulk
+- **Planning**: *N unplanned* means part of the order has no work order yet.
+- **Projected vs promised**: *on track*, *N d late*, or *not scheduled*.
+- **Blocked by**: a hold, quarantined parts, and anything else stopping the work.
+  Each links to where it's resolved.
 
-### 2.1 Order Information
+**Exercise 2.1.** Filter to **Needs planning**. `ORD-2024-0051` is Great Lakes
+Diesel's order for 6 injectors, due in three weeks, with nothing planned.
 
-**Order Name is the only required field.** Everything else — the company
-included — can be left blank and filled in later.
-
-| Field | Description | Required |
-|-------|-------------|----------|
-| **Order Name** | Your PO/SO reference | **Yes** |
-| **Customer** | Select from company list | No |
-| **Estimated completion** | Target date | No |
-| **Notes** | Special instructions | No |
-
-!!! note "Priority is set on the work order, not the order"
-    Orders have no priority field. Priority belongs to the work order, which is
-    what actually gets scheduled.
+**Exercise 2.2.** Find `TRAIN-HOLD`. Say what's blocking it.
 
 ---
 
-### 2.2 Creating an Order
+## 3. Promise a date
 
-**Steps:**
+**You will:** check you can take the work by the date the customer wants.
 
-1. Navigate to **Data Management** > **Orders**
-2. Click **New Orders**
-3. Fill in required fields
-4. Add notes if needed
-5. Save
+1. Open `ORD-2024-0051`. Its line is 6 × Common Rail Injector, due on the order's
+   promised date.
+2. **Check capacity** on the line. The capacity check opens with the line's part
+   type, quantity and date filled in. Press **Check capacity**.
+3. *Yes — capacity exists by …*, with the work content at each resource.
 
-**Exercise 2.1:** Create an Order
+**Try to break it:** change the quantity to **1000** and check again. It says no,
+names the resources that run out, ordered by how badly, and gives the earliest month
+the order would fit.
 
-1. Go to Orders
-2. Create new order:
-   - Order Name: "TRAIN-PM-001"
-   - Customer: Select training customer
-   - Estimated completion: 2 weeks from today
-3. Save
-
----
-
-### 2.3 Adding Parts
-
-!!! warning "Not from the order page"
-    The order detail page is read-only and has **no Add Parts control**. Parts
-    are added against the **work order**, so create one first.
-
-1. Go to **Production** > **WO Control Center**
-2. Tick exactly one work order — the bulk bar appears at the bottom
-3. Click **Add Parts**
-4. Configure:
-   - **Part Type** — shown, not chosen; it comes from the work order's process
-   - **Start Step** — which step the new parts begin at
-   - **Quantity** — number of parts to create
-   - **ERP ID Start** — the number the ERP IDs count up from
-5. Confirm
-
-ERP IDs are built as `<part type's prefix><counter padded to 4 digits>`. You do
-not type the prefix — it is set on the part type.
-
-**Exercise 2.2:** Add Parts
-
-1. Create a work order against "TRAIN-PM-001" with a process assigned
-2. Select it in **Production** > **WO Control Center** and click **Add Parts**
-3. Set Quantity: 10, ERP ID Start: 1
-4. Verify ten parts were created, numbered from the part type's prefix — a
-   prefix of `WA` gives `WA0001` through `WA0010`
+The check is rough-cut: it adds the order to everything already committed and
+compares that with the hours your shifts provide. It is the question to ask before
+you promise; the schedule (module 5) is the answer once the work is real.
 
 ---
 
-### 2.4 Bulk Import
+## 4. Turn the order into work, and release it
 
-**For multiple orders:**
+**You will:** make a work order from the order's line, and put it in front of the
+floor.
 
-1. Click **Import**
-2. Download CSV template
-3. Fill in order data in spreadsheet
-4. Upload CSV
-5. Review and confirm
+1. On `ORD-2024-0051`, **Plan 6**. A work order is created for the line's 6 units,
+   on the approved process for the part type, with a part for each unit. It appears
+   under **Work orders**, *pending · not released*, and the line shows nothing
+   remaining.
+2. Open the new work order and **Release**. Releasing is what puts its first step in
+   operators' queues. If the work isn't ready, the release is refused with what's
+   missing, and **Release anyway** needs a reason of your own.
+3. *Released — re-solve to plan it.* The schedule doesn't know about the work yet.
 
----
-
-### Knowledge Check: Module 2
-
-1. What are the required fields for an order?
-2. How do you specify the number of parts?
-3. What is the serial prefix used for?
-
----
-
-## Module 3: Work Orders
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Create work orders
-- [ ] Assign resources
-- [ ] Set priorities
-
-### 3.1 Work Order Purpose
-
-**Work orders:**
-
-- Link orders to manufacturing processes
-- Assign equipment and resources
-- Track production execution
-- Enable scheduling
-
-An order can have multiple work orders if needed.
+**Production** > **Orders** now shows `ORD-2024-0051` as planned and *not
+scheduled* until the next solve.
 
 ---
 
-### 3.2 Creating Work Orders
+## 5. The schedule
 
-**Steps:**
+**You will:** solve the plan, and find out why work isn't on it.
 
-1. Navigate to **Data Management** > **Work Orders**
-2. Click **New Work Orders**
-3. Select:
-   - Order (links to customer order)
-   - Process (manufacturing process)
-   - Priority
-   - Due date
-4. Optional: Assign equipment
-5. Save
+**Scheduling** > **Schedule (Gantt)** shows every machine's work, one row per
+machine. The header says how good the plan is (*FEASIBLE · within N %*), how many
+orders it makes late, and *stale — re-solve* when the shop has changed since it was
+solved.
 
-**Exercise 3.1:** Create Work Order
+1. **Solve**. It runs in the background and can take a few minutes; the page says
+   *Solving* until it's done.
+2. **Not scheduled** lists the work orders that aren't fully on the board, grouped
+   by why: added since the last solve, waiting to ship, no units created yet, on
+   hold. Each says what fixes it.
 
-1. Go to Work Orders
-2. Create new:
-   - Order: "TRAIN-PM-001"
-   - Process: Select training process
-   - Priority: Normal
-   - Due Date: Match order due date
-3. Save
+**Exercise 5.1.** Before solving, open **Not scheduled** and find your new work
+order. Say why it isn't there. Solve, and check again.
+
+**Exercise 5.2.** In **Not scheduled**, find `WO-2024-0048-A`. Say what's missing.
 
 ---
 
-### 3.3 Work Order Settings
+## 6. What to release next
 
-| Setting | Purpose |
-|---------|---------|
-| **Priority** | Affects queue position |
-| **Notes** | Special instructions for floor |
+**You will:** see which work must start soon to make its date.
 
-!!! note "Equipment Assignment"
-    Equipment assignment to work orders is planned for a future release. Currently, equipment is tracked at the process step level through step execution records.
+**Scheduling** > **Capacity Planning** > **What to release** works back from each
+order's due date to the day it has to start: run hours at each resource, vendor
+turnaround, and the queue measured on your floor.
 
----
+- **Late to release**: past its start date and not released. Release it, cut the
+  scope, or move the promise.
+- **Released, not started**: released in time but nothing has begun. Get it onto
+  the floor or re-sequence.
+- **Coming up**: what's due to start soon.
 
-### 3.4 Priority Levels
-
-| Level | Value | When to Use |
-|-------|-------|-------------|
-| **Urgent** | 1 | Emergency, expedite immediately |
-| **High** | 2 | Important customer, tight deadline |
-| **Normal** | 3 | Standard production (default) |
-| **Low** | 4 | Can wait, no deadline pressure |
-
-Lower number means higher priority for scheduling.
-
-**Changing priority:**
-
-1. Open work order
-2. Change priority field
-3. Save
-4. Communicate to floor if urgent
+*est.* means the date was derived; setting an earliest start on a work order
+overrides it. Nothing on this page changes an order; it suggests.
 
 ---
 
-### Knowledge Check: Module 3
+## 7. A Major CAPA's go-ahead
 
-1. What does a work order link together?
-2. When would you set priority to "Urgent"?
-3. How do you assign a work order to specific equipment?
+**You will:** approve the plan for a Major CAPA, and see why you can't approve your
+own.
 
----
+A Major or Critical CAPA's plan needs a go-ahead from a QA Manager or a Production
+Manager before its corrective work starts. Containment doesn't wait.
 
-## Module 4: Monitoring Production
+1. **Approvals** > **Overview** lists what's awaiting you. Open `CAPA-SU-2026-001`, Sarah's CAPA on
+   a supplier's receiving lot, and its **Approval** tab: *Waiting for a QA Manager
+   or Production Manager to approve the plan.*
+2. **Submit Response**, **Approve**, say what you approved, sign, and enter your
+   password. *This CAPA has been approved. Work may proceed.*
 
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Track order progress
-- [ ] Identify bottlenecks
-- [ ] Use the dashboard effectively
-
-### 4.1 Tracker Page
-
-**What you see:**
-
-- Order cards with progress bars
-- Color coding for on-time status
-- Expandable details
-- Search and filters
-
-**Progress colors:**
-
-| Color | Meaning |
-|-------|---------|
-| Green | On track |
-| Yellow | At risk |
-| Red | Behind schedule |
-
-**Exercise 4.1:** Review Production Status
-
-1. Go to Tracker
-2. Identify any red (behind) orders
-3. Expand an order to see part details
-4. Note which steps parts are at
+**Try to break it:** open `CAPA-2024-004`, which you raised. Its Approval tab
+offers you nothing: *You requested this approval; a QA Manager or Production
+Manager decides it.* Nobody approves their own plan while someone else can.
 
 ---
 
-### 4.2 Step Distribution
+## 8. How the shop is doing
 
-**Expanding an order shows:**
+**You will:** read delivery, yield and downtime.
 
-- Parts at each step
-- Step completion counts
-- Who's working on what
+- **Supply** > **Shipping**: *On time, last 90 days*, counted per order line shipped
+  against its due date. Anything with no date to judge is counted as unmeasured
+  rather than left out.
+- **Analytics**: first-pass yield against its target, scrap and rework rates, the
+  top defects, and **Downtime**: hours lost in the last 30 days, by cause and by machine.
 
-Use this to identify:
-
-- Bottleneck steps (many parts waiting)
-- Idle steps (nothing in queue)
-- Progress flow issues
+**Exercise 8.1.** Say which machine lost the most time, and to what.
 
 ---
 
-### 4.3 Identifying Problems
+## 9. Load the plant from a spreadsheet
 
-**Signs of trouble:**
+**You will:** check a workbook before anything is loaded.
 
-- Parts stuck at one step
-- No movement in 24+ hours
-- Growing WIP at a step
-- Quality holds blocking progress
+**Data Management** > **Master workbook** loads a plant from one spreadsheet, a sheet
+per table, in load order. **Every upload is checked first, and nothing is kept
+until every row loads.**
 
-**Exercise 4.2:** Find Bottlenecks
+1. **Filled in** downloads a workbook of what's in the system now.
+2. Upload it and **Check it**. Almost every row is *no change*, because it is what's
+   already there.
 
-1. Expand order "TRAIN-BOTTLE"
-2. Identify which step has most parts waiting
-3. Note how long parts have been there
-
----
-
-### 4.4 Analytics Dashboard
-
-**Key metrics to monitor:**
-
-- On-time delivery rate
-- Throughput by area
-- WIP levels
-- Cycle time trends
-
-Navigate to **Analytics** for detailed views.
+**Try to break it:** the sheets you aren't permitted to load (users, sampling
+rules, life limits) come back as errors: *You don't have permission to load this
+sheet.* A check never writes, and a load writes nothing unless every row loads.
 
 ---
 
-### 4.5 SPC Overview
+## Final task — observed
 
-!!! tip "Complete SPC Fundamentals Training"
-    For detailed SPC training, complete the [SPC Fundamentals](spc-fundamentals.md) module (1-2 hours).
+Your trainer regenerates the data, logs you in as Jennifer, and says only: *"Great
+Lakes wants six injectors in three weeks. Can we, and get it started."* Then they
+watch without helping:
 
-**As Production Manager, know:**
+- find the order in the order book
+- check capacity for its line
+- plan it, release it, and solve
+- say where it sits on the plan and whether it makes its date
 
-| Metric | Target | Action if Below |
-|--------|--------|-----------------|
-| Cpk | ≥ 1.33 | Process improvement needed |
-| Out-of-control signals | 0 | Investigate with QA |
+Your trainer is watching for:
 
-Navigate to **Analytics**, then select the **SPC** tab to see process capability across measurements.
+- [ ] You checked capacity before treating the date as promised.
+- [ ] You released only once the work was ready, or gave a reason to override.
+- [ ] You re-solved after releasing, and read the result.
+- [ ] When the system refused something, you read the refusal and acted on it.
 
-!!! example "Demo: SPC Impact"
-    In demo mode, CAPA-2024-003 was triggered partly by SPC data showing nozzle measurement drift. This demonstrates how SPC data drives corrective action decisions.
+## Recording your qualification
 
----
-
-### Knowledge Check: Module 4
-
-1. What does a red progress bar indicate?
-2. How do you identify a bottleneck step?
-3. Where do you find detailed production metrics?
-
----
-
-## Module 5: Handling Quality Issues
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Respond to quality holds
-- [ ] Coordinate with QA
-- [ ] Update schedules appropriately
-
-### 5.1 Quality Alerts
-
-**You'll be notified when:**
-
-- Parts are quarantined
-- Orders have quality holds
-- Dispositions affect schedule
-- First Piece Inspection (FPI) results are recorded
-
-Check **Inbox** for notifications.
-
-!!! tip "First Piece Inspection"
-    FPI status is visible on the Work Orders page (Production > Work Orders). When FPI fails, production should stop until the issue is resolved. Coordinate with QA to expedite FPI reviews for critical orders.
-
----
-
-### 5.2 Responding to Holds
-
-**When parts are held:**
-
-1. Understand the issue
-2. Assess impact on schedule
-3. Coordinate with QA on timing
-4. Update customer if needed
-5. Adjust other priorities
-
-**Exercise 5.1:** Handle a Quality Hold
-
-1. Find order "TRAIN-HOLD"
-2. Review which parts are quarantined
-3. Check the quality report
-4. Assess schedule impact
-
----
-
-### 5.3 Expediting with QA
-
-**For urgent orders:**
-
-- Contact QA Manager
-- Explain business impact
-- Request prioritized disposition
-- Don't pressure for bad decisions
-
----
-
-### 5.4 After Disposition
-
-**When parts are released:**
-
-- Return to production
-- May need rework step
-- Update schedule
-- Communicate to floor
-
----
-
-### Knowledge Check: Module 5
-
-1. Where do you see notifications about quality holds?
-2. What should you do when parts are quarantined on a rush order?
-3. What's the right way to request expedited QA review?
-
----
-
-## Module 6: Customer Communication
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Provide accurate status updates
-- [ ] Handle delay notifications professionally
-- [ ] Document customer interactions
-
-### 6.1 Status Inquiries
-
-**When customers ask:**
-
-1. Look up order on Tracker
-2. Check current progress
-3. Review any quality holds
-4. Calculate realistic ETD
-5. Provide honest update
-
----
-
-### 6.2 Delay Notification
-
-**When orders will be late:**
-
-1. Identify as early as possible
-2. Document the reason
-3. Calculate new estimate
-4. Notify customer proactively
-5. Update order notes
-
-**Don't wait until the due date!**
-
----
-
-### 6.3 Documentation
-
-**Record in order notes:**
-
-- Customer communications
-- Agreed changes
-- Delay reasons
-- New commitments
-
-This creates an audit trail.
-
----
-
-## Module 7: Daily Production Manager Workflow
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Follow an effective daily routine
-- [ ] Prioritize your activities
-- [ ] Communicate effectively
-
-### 7.1 Morning Review
-
-1. **Check Inbox** for overnight alerts
-2. **Review Tracker** for at-risk orders
-3. **Check quality holds** that need attention
-4. **Identify priorities** for the day
-5. **Brief team** on focus areas
-
----
-
-### 7.2 During Day
-
-- Monitor progress
-- Address issues as they arise
-- Coordinate with QA and shipping
-- Adjust priorities as needed
-- Update customers when required
-
----
-
-### 7.3 End of Day
-
-- Review day's progress
-- Note issues for next day
-- Update any at-risk orders
-- Prepare handoff if needed
-
----
-
-### 7.4 Weekly Tasks
-
-- [ ] Review order book
-- [ ] Check on-time delivery rate
-- [ ] Capacity planning for next week
-- [ ] Team scheduling
-- [ ] Management report
-
----
-
-## Practical Assessment
-
-### Task 1: Order Creation
-
-1. Create order "ASSESS-PM-001"
-2. Add 5 parts
-3. Set appropriate priority
-4. Add notes
-
-### Task 2: Work Order Setup
-
-1. Create work order for ASSESS-PM-001
-2. Select appropriate process
-3. Assign equipment
-
-### Task 3: Status Review
-
-1. Review Tracker page
-2. Identify the most at-risk order
-3. Determine the cause
-4. Propose action
-
-### Task 4: Quality Coordination
-
-1. Find order with quality hold
-2. Review the quality report
-3. Determine schedule impact
-4. Draft customer communication
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Demonstrated with supervisor
-
-### Competencies Verified
-
-- [ ] Can create orders correctly
-- [ ] Can add parts appropriately
-- [ ] Can create and configure work orders
-- [ ] Understands production monitoring
-- [ ] Can coordinate with quality
-- [ ] Communicates effectively about status
-
----
-
-
-### Recording the qualification
-
-Ticking the boxes above is the *assessment*. It is not the record.
-
-A signed-off trainee is not yet qualified in the system, and the difference is
-operational, not clerical: training requirements gate who may start a step, so
-until the record exists the person is still refused the work they were just
-signed off to do. That refusal surfaces downstream as a part nobody can pick
-up — see [Parts stuck at a
-step](../../troubleshooting/common-issues.md).
-
-To close it out, create a **Training Record** for the trainee under **Quality**
-> **Training**:
-
-| Field | Set it to |
-|-------|-----------|
-| **Training type** | The qualification being awarded |
-| **Completed date** | The date of the assessment, not today |
-| **Level** | The competency level actually demonstrated |
-| **Trainer** | Whoever conducted and assessed it |
-| **Expires** | Leave blank only if the qualification genuinely never lapses |
-| **Documents** | Attach the signed sign-off sheet as evidence |
-
-!!! note "Level is an assessed result, not attendance"
-    The competency level is clause 7.2 evidence of what the person can actually
-    do. Recording everyone at the same level because they sat the course
-    defeats the control, and the training matrix that supervisors plan from
-    becomes fiction.
-
-## Quick Reference
-
-### Create Order
-Data Management → Orders → **New Orders** → Order Name → Save
-
-### Create Work Order
-Data Management → Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save
-
-### Add Parts
-Production → WO Control Center → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start
-
-### Check Status
-Tracker → Find order → Review progress, holds
-
-### Change Priority
-Open work order → Change priority → Save → Notify floor
-
----
-
-## Next Steps
-
-After completing this training:
-
-1. Shadow current Production Manager
-2. Handle orders with oversight
-3. Manage section independently
-4. Full production responsibility
-
+Passing the final task is the assessment. The record is a **training record**, which
+your QA manager writes. See [Training Records](../../workflows/quality/training-records.md).

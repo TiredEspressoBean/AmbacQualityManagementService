@@ -266,8 +266,8 @@ Your trainer is watching for:
 
 ## If your shop remanufactures
 
-Everything above is new manufacture. A shop that also remanufactures adds this
-module; a new-build-only shop skips it. See the [shop day's reman
+Everything above is new manufacture. A shop that also remanufactures adds these
+modules; a new-build-only shop skips them. See the [shop day's reman
 moments](../shop-day.md#if-your-shop-remanufactures).
 
 ### R1. Tear down a core and grade what comes out
@@ -294,6 +294,35 @@ component must be graded or marked missing.
 
 5. **Complete step**. Each component is recorded with its grade, under your name.
    0003 waits for its lot-mate: tear down 0004 the same way.
+
+### R2. Clean a core when its lot-mate is held
+
+**You will:** clean a core in its own load, and know what to do when a held unit
+keeps it from moving on.
+
+`CORE-240210-0007` is a customer's own injector, torn down and released for rebuild.
+It waits at Cleaning with `CORE-240212-0009`, which is **on hold**: its rebuild
+needs work the customer hasn't agreed to yet.
+
+1. Scan `CORE-240210-0007` and **Start**. Cleaning is done by the load: **Start a
+   load** lists the units to load. 0009 is greyed out: a held unit can't be loaded.
+   Tick 0007 and **Start load**.
+2. Record the wash cycle once for the load: **Bath Temperature** (60 °C ± 5), tick
+   **Cycle complete**, and sign the **Cycle release**. **Confirm for batch**, then
+   **Seal batch**.
+3. Scan 0007 into the load and **Complete step**.
+
+You're told *Part didn't move: Done at Cleaning, the lot waits for CORE-240212-0009
+(on hold). Split it from the lot to let the rest move.* The units at a step move on
+together, and a held unit still counts. 0007 is done; it is waiting, not stuck.
+
+4. **Go to your lead.** Splitting a unit from its lot is their decision, and it is
+   recorded. Casey signs in, opens the work order's control page (**View in Control
+   Center**), **Split…**, chooses **Selected parts**, ticks 0009, says why, and
+   **Create child WO**.
+
+0009 moves to a work order of its own and keeps its hold. The message says what
+moved: *CORE-240210-0007 moved on to Nozzle Inspection*.
 
 ## Recording your qualification
 
