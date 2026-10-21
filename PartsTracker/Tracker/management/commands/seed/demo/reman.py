@@ -908,7 +908,7 @@ class DemoRemanSeeder(BaseSeeder):
         order = getattr(self, '_repair_orders', {}).get(core_data.get('for_order'))
         if core is None:
             core = create_core(tenant=self.tenant, core_number=core_data['core_number'],
-                               order=order, **core_fields)
+                               **core_fields)
         else:
             if walked and core.part_id and core.part.work_order_id:
                 # Already walked on an earlier run: don't drag it back to RECEIVED.

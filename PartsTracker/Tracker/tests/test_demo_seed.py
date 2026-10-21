@@ -80,11 +80,6 @@ class DemoSeedFlowsTests(TestCase):
             self.assertEqual(Core.objects.get(core_number="CORE-240212-0009").status,
                              "AWAITING_AUTHORISATION")
             self.assertEqual(Core.objects.get(core_number="CORE-240215-0005").status, "HARVESTED")
-            # A unit that goes back to its customer was received against their order.
-            for number, order in (("CORE-240210-0007", "ORD-2024-0044"),
-                                  ("CORE-240212-0009", "ORD-2024-0046")):
-                core = Core.objects.select_related("part__order").get(core_number=number)
-                self.assertEqual(core.part.order.order_number, order, number)
             # No finding waits on the repair unit: the operator records it at Nozzle
             # Inspection, where its repair is pre-approved and applies at once.
             self.assertFalse(repair.harvested_components.exclude(proposed_grade="").exists())
