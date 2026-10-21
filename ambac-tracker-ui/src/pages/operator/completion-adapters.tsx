@@ -121,7 +121,7 @@ export async function flushSubstepCaptures({
     // skipped as committed here. Only substeps with captures are sent: one with none
     // would only be refused for its required fields.
     const toSubmit = substeps.filter((s) =>
-        Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0);
+        s.scope !== "batch" && Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0);
     let failCount = 0;
     for (const s of toSubmit) {
         const body = { captures: buildCaptures(s.body_blocks, responsesBySubstepId[s.id] ?? {}) };
@@ -262,6 +262,10 @@ async function completePart(ctx: CompletionContext): Promise<void> {
         return;
     }
     const toSubmit = substeps.filter((s) => {
+        // A BATCH substep belongs to the load: captured, signed and sealed in the batch
+        // panel, and accepted for each part by the server's gate. Submitting it per part
+        // asked each part for the load's signature again (Operator walk 2026-10-21).
+        if (s.scope === "batch") return false;
         if (needsSignature(s)) return !committed.has(s.id);
         return Object.keys(responsesBySubstepId[s.id] ?? {}).length > 0;
     });

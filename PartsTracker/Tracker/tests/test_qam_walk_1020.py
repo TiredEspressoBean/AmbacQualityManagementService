@@ -248,3 +248,51 @@ class HeldUnitsNotLoadableTests(_Api):
         self.assertIn("CORE-HELD", resp.content.decode())
         body["parts"] = [str(ok.id)]
         self.assertEqual(self.client.post("/api/BatchExecutions/", body, format="json").status_code, 201)
+
+
+class ReCaptureAfterVoidTests(TenantTestCase):
+    """A substep voided and captured again: the new reading is the next version of the
+    old, which stays on file (unscoped) but no longer counts (user decision 2026-10-21).
+    It held two Body OD readings, 6.004 voided and 6.003, on one PASS report."""
+
+    def test_the_re_capture_supersedes_the_voided_reading(self):
+        from Tracker.models import (
+            MeasurementDefinition, MeasurementResult, StepExecutionMeasurement, SubstepCompletion)
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        from Tracker.tests.test_advancement_engine import _build_lot
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Body", ID_prefix="BOD")
+        lot = _build_lot(tenant=self.tenant_a, user=self.user_a, part_type=pt, wo_erp_id="WO-RC-1")
+        ex, substep = lot["execs"][0], lot["substeps_by_step"][0][0]
+        substep.is_inspection_point = True
+        substep.save(update_fields=["is_inspection_point"])
+        od = MeasurementDefinition.objects.create(tenant=self.tenant_a, label="Body OD", type="NUMERIC",
+                                                  unit="mm", nominal=6.0, upper_tol=0.01, lower_tol=0.01,
+                                                  step=substep.step)
+        record_dwi_measurement(step_execution=ex, substep=substep, measurement_definition=od,
+                               value=6.004, recorded_by=self.user_a)
+        SubstepCompletion.objects.create(tenant=self.tenant_a, step_execution=ex, substep=substep,
+                                         completed_by=self.user_a, is_voided=True)
+        record_dwi_measurement(step_execution=ex, substep=substep, measurement_definition=od,
+                               value=6.003, recorded_by=self.user_a)
+
+        current = list(StepExecutionMeasurement.objects.filter(step_execution=ex, measurement_definition=od))
+        self.assertEqual([float(m.value) for m in current], [6.003])
+        self.assertEqual(float(current[0].previous_version.value), 6.004)
+        self.assertEqual(StepExecutionMeasurement.unscoped.filter(step_execution=ex, measurement_definition=od).count(), 2)
+        report = MeasurementResult.objects.get(definition=od).report
+        self.assertEqual([r.value_numeric for r in report.measurements.all()], [6.003])
+        self.assertEqual(MeasurementResult.unscoped.filter(report=report).count(), 2)
+
+    def test_a_first_capture_appends_as_before(self):
+        from Tracker.models import MeasurementDefinition, StepExecutionMeasurement
+        from Tracker.services.qms.inline_capture import record_dwi_measurement
+        from Tracker.tests.test_advancement_engine import _build_lot
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Body2", ID_prefix="BOE")
+        lot = _build_lot(tenant=self.tenant_a, user=self.user_a, part_type=pt, wo_erp_id="WO-RC-2")
+        ex, substep = lot["execs"][0], lot["substeps_by_step"][0][0]
+        od = MeasurementDefinition.objects.create(tenant=self.tenant_a, label="OD", type="NUMERIC",
+                                                  nominal=6.0, upper_tol=0.01, lower_tol=0.01, step=substep.step)
+        for v in (6.004, 6.003):
+            record_dwi_measurement(step_execution=ex, substep=substep, measurement_definition=od,
+                                   value=v, recorded_by=self.user_a)
+        self.assertEqual(StepExecutionMeasurement.objects.filter(step_execution=ex).count(), 2)

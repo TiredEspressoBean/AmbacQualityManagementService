@@ -2,7 +2,7 @@
  * AttestationCheckpoint — checkbox confirmation OR inline signature gate.
  * In operator mode the capture is recorded against the substep's response store.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
     NodeViewWrapper,
@@ -112,17 +112,23 @@ function View(props: NodeViewProps) {
     const recordedId = (value && typeof value === "object"
         ? (value as { gate_signature_id?: string }).gate_signature_id
         : undefined) ?? null;
+    // setValue's identity changes every render (the runtime passes a fresh callback),
+    // so it's read through a ref: as a dependency it re-ran this on every render, and
+    // when the value couldn't settle that looped until the page froze.
+    const setValueRef = useRef(setValue);
+    setValueRef.current = setValue;
     useEffect(() => {
         if (!isOperator || kind !== "signature" || gates === undefined) return;
         if (signedId === recordedId) return;
-        setValue(signed
+        setValueRef.current(signed
             ? {
                 gate_signature_id: signed.id,
                 signer_name: signed.completed_by_name ?? undefined,
                 signed_at: signed.completed_at ?? undefined,
             }
             : undefined);
-    }, [isOperator, kind, gates, signedId, recordedId, signed, setValue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `signed` is derived from gates + signedId; setValue via ref (see above)
+    }, [isOperator, kind, gates, signedId, recordedId]);
     const { request, dialog } = useSignaturePrompt();
 
     // In the editor there is no part and no execution, so a signature has nowhere

@@ -1327,7 +1327,15 @@ def _response_from_stored(node_type, attrs, sr):
 def build_capture_state(step_execution) -> dict:
     """Return {substep_id: {node_id: response}} for a step execution's stored
     captures — the read-side inverse of `submit_substep`."""
-    from Tracker.models import Substep, SubstepResponse, StepExecutionMeasurement
+    from Tracker.models import Substep, SubstepCompletion, SubstepResponse, StepExecutionMeasurement
+
+    # A substep voided for re-capture comes back empty, not with the wrong values it
+    # was voided for — those pre-filled read "1 of 1 confirmed", as if nothing needed
+    # doing (Operator walk 2026-10-21). Its draft, if any, still overlays below.
+    done = SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped execution
+        step_execution=step_execution)
+    reopened = (set(done.filter(is_voided=True).values_list('substep_id', flat=True))
+                - set(done.filter(is_voided=False).values_list('substep_id', flat=True)))
 
     sr_by_key = {
         (str(sr.substep_id), str(sr.node_id)): sr
@@ -1341,6 +1349,8 @@ def build_capture_state(step_execution) -> dict:
 
     out: dict = {}
     for substep in Substep.objects.filter(archived=False, step=step_execution.step):
+        if substep.id in reopened:
+            continue
         nodes: list = []
         _collect_capture_nodes(substep.body_blocks, nodes)
         node_map: dict = {}

@@ -92,7 +92,14 @@ def record_dwi_measurement(
         # auto-evaluates is_within_spec from the definition. A reading targets
         # exactly one of step_execution / batch_execution (BATCH-scope readings
         # belong to the cycle, not to any one part).
-        sem = StepExecutionMeasurement.objects.create(
+        recapture = _is_recapture(substep, step_execution, batch_execution)
+        prior_sem = None
+        if recapture:
+            prior_sem = (StepExecutionMeasurement.objects
+                         .filter(step_execution=step_execution, batch_execution=batch_execution,
+                                 substep=substep, measurement_definition=measurement_definition)
+                         .order_by('-recorded_at').first())
+        sem = _supersede_or_create(StepExecutionMeasurement, prior_sem, dict(
             step_execution=step_execution,
             batch_execution=batch_execution,
             measurement_definition=measurement_definition,
@@ -101,7 +108,7 @@ def record_dwi_measurement(
             recorded_by=recorded_by,
             equipment=equipment,
             substep=substep,
-        )
+        ))
 
         # Tier 2: only when the substep is a binding inspection point.
         if substep.is_inspection_point:
@@ -116,9 +123,31 @@ def record_dwi_measurement(
                 equipment=equipment,
                 sample_number=sample_number,
                 batch_execution=batch_execution,
+                recapture=recapture,
             )
 
     return sem
+
+
+def _is_recapture(substep, step_execution, batch_execution) -> bool:
+    """This substep was voided on this execution and is being captured again (its
+    void reopened it for re-capture; no live completion yet)."""
+    from Tracker.models import SubstepCompletion
+    done = SubstepCompletion.objects.filter(  # tenant-safe: keyed to a scoped execution
+        substep=substep, step_execution=step_execution, batch_execution=batch_execution)
+    return done.filter(is_voided=True).exists() and not done.filter(is_voided=False).exists()
+
+
+def _supersede_or_create(model, prior, fields: dict):
+    """Write a reading; when it re-captures a voided one, as that reading's next version
+    (user decision 2026-10-21): the old row stays, linked by `previous_version`, and is
+    no longer current, so SPC, capability, pass/fail and the traveler read the new one.
+    Readings aren't opted into create_new_version (they are records, not specs), so the
+    chain is written directly."""
+    if prior is None:
+        return model.objects.create(**fields)
+    model.unscoped.filter(pk=prior.pk).update(is_current_version=False)  # tenant-safe: one row by pk
+    return model.objects.create(**fields, previous_version=prior, version=(prior.version or 1) + 1)
 
 
 def _promote_to_inspection_record(
@@ -133,6 +162,7 @@ def _promote_to_inspection_record(
     equipment: Optional[Equipments],
     sample_number: Optional[int] = None,
     batch_execution=None,
+    recapture: bool = False,
 ) -> None:
     """Find or create the QualityReports + create a MeasurementResult.
 
@@ -244,14 +274,18 @@ def _promote_to_inspection_record(
         # Part / single-pass DWI: multiple readings of one characteristic are legitimate
         # (re-measure, a late failing reading that flips the report to FAIL), so append.
         # (The operator runtime's flush-once guard covers retry duplication here.)
-        MeasurementResult.objects.create(
+        # A re-capture after a void supersedes this characteristic's reading on the
+        # report instead of adding a second one beside it.
+        prior_mr = (MeasurementResult.objects.filter(report=report, definition=measurement_definition)
+                    .order_by('-created_at').first()) if recapture else None
+        _supersede_or_create(MeasurementResult, prior_mr, dict(
             report=report,
             definition=measurement_definition,
             value_numeric=value,
             value_pass_fail=value_string if value_string in ("PASS", "FAIL") else None,
             created_by=recorded_by,
             sample_number=sample_number,
-        )
+        ))
 
     # Recompute report.status from the cumulative measurements: any out-of-
     # spec MeasurementResult → FAIL; otherwise PASS once any measurements

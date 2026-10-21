@@ -553,6 +553,18 @@ export function OperatorSubstepRuntimePage() {
                                     completion.Footer ? <completion.Footer ctx={completionCtx} /> : undefined
                                 }
                             />
+                        ) : current && current.scope === "batch" ? (
+                            // A BATCH substep is captured once for the load, in the panel
+                            // above — not per part. Rendering its inputs here asked each
+                            // part for the load's fields again (and could loop: a load-bound
+                            // node in a part's context never settles).
+                            <div className="rounded-lg border bg-muted/30 p-5 text-sm">
+                                <div className="font-medium">{current.title}</div>
+                                <p className="mt-1 text-muted-foreground">
+                                    This is done once for the load — capture and seal it in the batch
+                                    panel above. Nothing to record here for this part.
+                                </p>
+                            </div>
                         ) : current ? (
                             <SubstepStage
                                 substep={current}
@@ -786,10 +798,12 @@ function ActionBar({
     const isDeselected = outcome === "deselected";
     const missing = useMemo(
         () =>
-            isDeselected
+            // A BATCH substep's fields belong to the load (captured in the batch panel),
+            // so a part has none of its own to fill.
+            isDeselected || substep.scope === "batch"
                 ? []
                 : findMissingRequired(substep.body_blocks, responses),
-        [substep.body_blocks, responses, isDeselected],
+        [substep.body_blocks, substep.scope, responses, isDeselected],
     );
     const blocked = missing.length > 0;
 

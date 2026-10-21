@@ -1397,6 +1397,15 @@ class BuildCaptureStateTests(DwiPhase1BaseTestCase):
         self.assertEqual(sig["user_id"], self.user.pk)
         self.assertTrue(sig["signed_at"])
 
+    def test_a_substep_voided_for_re_capture_comes_back_empty(self):
+        """Its wrong values pre-filled read "1 of 1 confirmed" after the void
+        (Operator walk 2026-10-21); a re-capture starts blank."""
+        from Tracker.models import SubstepCompletion
+        from Tracker.services.dwi.operator_capture import build_capture_state
+        self.test_reconstructs_captured_responses()
+        SubstepCompletion.objects.filter(substep=self.substep, step_execution=self.step_execution)             .update(is_voided=True)
+        self.assertNotIn(str(self.substep.id), build_capture_state(self.step_execution))
+
     def test_empty_execution_returns_empty(self):
         from Tracker.services.dwi.operator_capture import build_capture_state
         self.assertEqual(build_capture_state(self.step_execution), {})

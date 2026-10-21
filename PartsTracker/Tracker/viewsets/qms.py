@@ -2551,10 +2551,15 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             return StepExecutionMeasurement.objects.none()
 
         # Call super() to apply tenant scoping from TenantScopedMixin
-        return super().get_queryset().select_related(
+        qs = super().get_queryset().select_related(
             'step_execution', 'step_execution__part', 'step_execution__step',
             'measurement_definition', 'recorded_by', 'equipment'
         )
+        # The list is the readings that stand; one superseded by a re-capture after a
+        # void stays retrievable by id (its history), not listed beside its successor.
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
+        return qs
 
     def perform_create(self, serializer):
         """Set recorded_by from request."""

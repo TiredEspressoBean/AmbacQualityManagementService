@@ -22,7 +22,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.conf import settings
 
-from .core import SecureModel, SecureManager, SecureQuerySet, User
+from .core import SecureModel, SecureManager, SecureQuerySet, UnscopedSecureManager, User
 
 
 class QualityErrorsList(SecureModel):
@@ -651,6 +651,28 @@ class QualityReports(SecureModel):
         return User.objects.filter(Q(pk__in=new_ids) | Q(pk__in=legacy_ids)).distinct()
 
 
+class CurrentReadingManager(SecureManager):
+    """Tenant-scoped readings, current versions only.
+
+    A reading re-captured after its substep was voided supersedes the earlier one
+    (`previous_version` chain, `is_current_version=False` on the old row) — user
+    decision 2026-10-21. Everything that reads readings (SPC, capability, a report's
+    pass/fail, the traveler) sees the reading that stands; `unscoped` still holds the
+    superseded ones, linked, for history."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_current_version=True)
+
+
+class CurrentReadingUnscopedManager(UnscopedSecureManager):
+    """The default manager for readings: what `report.measurements` and prefetches
+    use. Current versions only; not tenant-filtered (reverse relations are scoped by
+    their FK), like the `unscoped` manager it narrows."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_current_version=True)
+
+
 class MeasurementResult(SecureModel):
     """
     Records the result of a single measurement taken during quality inspection.
@@ -670,6 +692,17 @@ class MeasurementResult(SecureModel):
                   "if any of its results is out of spec.",
     )
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+
+    # Current versions only (see CurrentReadingManager); `unscoped` sees superseded.
+    objects = CurrentReadingManager()
+    current = CurrentReadingUnscopedManager()
+
+    class Meta(SecureModel.Meta):  # keeps SecureModel's tenant index
+        # Reverse relations (report.measurements) and prefetches use the default
+        # manager, so it's the current-only one. The base manager stays unfiltered:
+        # saves, cascades and previous_version must still reach superseded rows.
+        default_manager_name = 'current'
+        base_manager_name = 'unscoped'
 
     def save(self, *args, **kwargs):
         # Auto-calculate is_within_spec before saving
@@ -3334,10 +3367,17 @@ class StepExecutionMeasurement(SecureModel):
         ),
     )
 
+    # Current versions only (see CurrentReadingManager); `unscoped` sees superseded.
+    objects = CurrentReadingManager()
+    current = CurrentReadingUnscopedManager()
+
     class Meta:
         verbose_name = 'Step Execution Measurement'
         verbose_name_plural = 'Step Execution Measurements'
         ordering = ['recorded_at']
+        # See MeasurementResult.Meta: current-only default, unfiltered base.
+        default_manager_name = 'current'
+        base_manager_name = 'unscoped'
         indexes = [
             models.Index(fields=['step_execution', 'measurement_definition']),
             models.Index(fields=['substep', 'recorded_at'], name='dwi_sem_substep_time_idx'),
