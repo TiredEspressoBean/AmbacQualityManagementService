@@ -238,7 +238,7 @@ legend or the weight should change. Open.
 | 1 | See what is at risk | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Home: *Needs attention* (awaiting authorisation, quarantine, CAPAs pending verification), quality figures, work orders most urgent first. The order book adds projected vs promised and blocked-by per order. Track module 1–2. |
 | 2 | Release work | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | WO page **Release** → *Released — re-solve to plan it*; a failing check shows what's missing and **Release anyway** takes a reason. The seed now releases every active work order through the service (db431f6). *What to release* splits **Late to release** from **Released, not started** (2172b3d). Track modules 4, 6. |
 | 3 | Promise a date | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Walked: 6 × Common Rail Injector fits by its date; 1000 is refused with the binding resources and the earliest month. An order line's **Check capacity** prefills it. Rough-cut arithmetic checked by hand (2026-10-21). Track module 3. |
-| 4 | Resolve escalations | ✅ | ✅ | ❌ | — | 2026-10-21 | **Corrected 2026-10-21:** escalations are not on the Exceptions surface (its sources are downtime, quarantine dispositions and CAPAs). A visit-capped rework loop escalates by itself to its escalation step (`_check_cycle_limit`, *Visit N of M* banner); a decision point with no data is resolved by a lead's cosign in the step runtime (`resolve_step_decision`, `DecisionResolverPanel`). Both are the Shift Lead's to walk. **Demo ❌:** no part sits at a rework limit or an unresolved decision. Not in the PM track. |
+| 4 | Resolve escalations | ✅ | ✅ | ❌ | — | 2026-10-21 | **Corrected 2026-10-21:** escalations are not on the Exceptions surface (its sources are downtime, quarantine dispositions and CAPAs). A visit-capped rework loop escalates by itself to its escalation step (`_check_cycle_limit`, *Visit N of M* banner); a decision point with no data is resolved by a lead's cosign in the step runtime (`resolve_step_decision`, `DecisionResolverPanel`). A capped rework loop now escalates to **MRB Review**, where the QA manager decides the disposition (QA Manager row 16, exhibit `CORE-240219-0014`, 2026-10-22). **Demo ❌:** no step sits at an unresolved decision point. Not in the PM track. |
 | 5 | Balance capacity and staffing | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Capacity headline: *Crew: enough … busiest 2026-10 at 42% · Tightest skill … · 2 skills only one person can do*; the Labor row is attended hours needed vs crew hours left (the current month counted from the 1st until 2026-10-21, understating load, now from today); certified-pool rows marked **one person**. Schedule › People is occupied time per operator (lanes over-summed lot rows until 2026-10-21). The old 3,758 h vs 2,222 h claim was wrong. Track module 11. |
 | 6 | Close out a nonconformance decision, and know who decides a deviation | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Accepting nonconforming product (*Use As Is* / *Repair*) is a disposition: QA decides it (`approve_disposition`), and the PM closes it (`close_disposition`). Walked on `WO-PM-MAKEUP-01`'s scrap (seeded 2026-10-21): Control Center › Exceptions › **Open disposition**, Current State → Closed, **Update Disposition**. A scrapped part's disposition isn't on Quarantined Parts (it isn't quarantined). **⚠️:** the scrapped part's step execution stays IN_PROGRESS, so the traveler shows the step running (reported). A **planned** departure is a temporary change — see Engineering 8. |
 | 7 | Review OTD and throughput | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Customer OTD on Shipping and on the order book (same figure, per order line shipped against its due date, unmeasured counted). FPY and downtime on Analytics. No single throughput view. Track module 8. |
@@ -270,6 +270,7 @@ Built from the gates the QA Inspector pass hit: this is their other side.
 | 13 | Watch a control chart and respond to a signal | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | SPC drives no decisions yet (user, 10/20): reading the chart is the workflow. **⚠️:** with no variation the page reports Cpk = Infinity and a healthy process. |
 | 14 | Set or tighten a sampling plan, and answer "why wasn't that part inspected?" | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | The part's **Sampling decisions** answer the second half ("Not selected — no rule in Standard Inspection - Body chose it"). **⚠️:** a rule change saves silently and doesn't appear in the rule set's History (auditlog records it twice); the rule set's View page fails to load. |
 | 15 | Record a calibration result | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | TW-25 (overdue) recorded PASS and back in calibration. **⚠️:** Result defaults to PASS; next due isn't derived from the interval; the dashboard's buckets don't add up and leave out the failed MIC-2. |
+| 16 | Decide a unit that ran out of reworks (MRB) | ✅ | ⚠️ | ✅ | ✅ | 2026-10-22 | `CORE-240219-0014` failed Nozzle Inspection twice, was reworked twice, and hit the visit cap: quarantined at **MRB Review** with an open disposition. Walked: **Rework** sends it back to Rework. Track module R2. **⚠️ (fixed 96557fa, re-walk):** the disposition wouldn't save without a quality report and the escalation attached none; the second rework's disposition stayed IN_PROGRESS beside the MRB one. |
 | R1 | Record the customer's answer on over-and-above work | ✅ | ⚠️ | ✅ | ✅ | 2026-10-20 | `CORE-240212-0009`: the nozzle was found cracked at the bench and a replacement isn't pre-approved, so the unit waits. **Approved…** on the teardown work order's cores card resumes rebuild. **⚠️:** the dialog doesn't list the repairs being approved, and nothing outside that card shows the unit waiting. |
 
 ## Engineering
@@ -353,6 +354,71 @@ production roles (user, 2026-10-21).
 | 3 | Read one record's history | ✅ | ✅ | 🚧 | ? | 2026-10-21 | **Demo 🚧:** every seeded change was written outside a request, so none of the 4,435 entries has an actor. The API hides actor-less entries, so History reads *No audit history* on every seeded record. Changes trainees make carry their names. Fixing it means each seeded write takes its persona as actor; stamping one actor on all of them would misattribute the work. A decision for the user. |
 
 ---
+
+## Corrections
+
+The rows above walk the happy path. This table walks the other half: a person has
+recorded something wrong, and it's been committed. For each mistake, the question is
+whether there is a way to put it right, and what the record keeps of both.
+
+Inventoried from code 2026-10-22, not yet walked. **Code** uses the status key:
+✅ a page corrects it; ⚠️ a page does, with a catch; 🚧 the API allows it but no page
+does; ❌ no path. **Walked** stays `?` until the correction is done in the browser as
+the persona. Every model is in django-auditlog, so a plain field edit always leaves
+who, when and old→new, but never a reason.
+
+| # | Mistake | Role | Correction path | Code | Walked | Notes |
+|---|---------|------|-----------------|------|--------|-------|
+| 1 | Wrong reading, before **Complete step** | Operator | **Back** / **Edit** on the review screen; the draft is overwritten | ✅ | ? | |
+| 1b | Wrong reading, after **Complete step** | Operator → QA Inspector | **Void** on the step's completions (reason), then re-capture: the reading versions | ⚠️ | ⚠️ | Void walked 2026-10-22 (reason required, *"Completion voided"*); the re-capture also rewrites the linked report (see 8). The runtime's equipment row defaults silently to the first machine. Re-capture only while the part is still at the step; past it, the void is audit-only and needs a rollback (#3) |
+| 2 | Recorded on the wrong part | Operator → QA Inspector | Void on the wrong part, capture on the right one | ⚠️ | ? | Harvest/install rows can't be re-captured: "correct on the core's record" |
+| 3 | Advanced a part too early | Operator, Shift Lead | **Previous step** / bulk rewind on WO Control (`rollback_part_step`) | ⚠️ | ❌ | **Fixed 26fe076, re-walk:** asks for a reason, reports the real result. **Walked 2026-10-22 as Casey (`INJ-OPS-014`): refused,** *"No completed execution found for current step"*. `can_rollback_step` wants a COMPLETED execution at the step the part is *at*, which it only has after looping back. The page toasts *Parts rolled back* beside a *1 part(s) failed* banner with no reason. The button sends no reason while approval is required by default. Reported to f6 |
+| 4 | Wrong material lot consumed | Operator | None. Usage is read-only; **Adjust quantity** fixes the count, not the genealogy | ❌ | ? | |
+| 5 | Wrong clock times | Operator | PATCH time entry | 🚧 | ? | Not locked after approval |
+| 6 | Wrong part in a sealed batch | Operator | PATCH the batch's parts, or void the batch completion (every part in it) | 🚧 | ? | No unseal |
+| 7 | Report recorded PASS, should be FAIL | QA Inspector | Void the completion and re-capture as FAIL (as 1b) | ? | ? | Edit is refused: a recorded report is frozen (`approval_lock`) |
+| 8 | Report recorded FAIL, should be PASS | QA Inspector | Void the completion, re-capture as PASS; then the disposition | ❌ | ❌ | **Walked 2026-10-22 as Sarah (`INJ-QA-INSPECT-015`):** Edit is refused (frozen), but the re-capture **rewrote the FAIL report to PASS in place**; only auditlog keeps the FAIL. Its disposition stays OPEN and the part quarantined; Complete step is refused with *"FAIL recorded"* while the banner says PASS. No disposition type fits "never a nonconformance": Rework loops a good part, Use As Is wants a concession. **Decided 10/22:** a new close, *not a nonconformance*, by the QA manager with the void reason; the FAIL report kept and superseded by a new PASS report. Spec'd to f6 |
+| 9 | FPI passed wrongly | QA Inspector | None. A failed/waived FPI opens a new one | ❌ | ? | |
+| 10 | Wrong gauge on a reading | Operator, QA Inspector | Void and re-capture (as 1b) | ⚠️ | ? | |
+| 11 | Training override given wrongly | Shift Lead | Reassign; the override itself stays on the execution | ❌ | ? | |
+| 12 | Hold placed wrongly | Production Manager, Shift Lead | **Resume** | ⚠️ | ? | Reads as a real hold that was cleared; no hold void |
+| 13 | Downtime recorded wrongly | Shift Lead | PATCH | 🚧 | ? | |
+| 14 | Wrong training record | QA Manager | Edit, or delete (archives) | ✅ | ? | |
+| 15 | Wrong disposition decision | QA Manager | Decide again, until closed | ❌ | ❌ | **Walked 2026-10-22 as Maria (`DISP-2026-000013`):** Scrap went through with no confirm; re-deciding Rework moved the part to Rework but left it **SCRAPPED**, and replaced the Scrap note instead of appending. **Decided 10/22:** while open, a re-decide un-scraps, with a reason, both decisions kept. Spec'd to f6 |
+| 16 | CAPA verified wrongly | QA Manager | Not Effective reopens it; Closed is terminal | ⚠️ | ? | `verify` doesn't refuse re-verifying a decided verification (API) |
+| 17 | Wrong approval response | QA Manager, Production Manager | None; the request can be cancelled while pending | ❌ | ? | |
+| 18 | Supplier suspended wrongly | QA Manager | **Grant…**; a disqualified one needs a new qualification | ⚠️ | ? | Grant doesn't release lots the suspension held |
+| 19 | Wrong calibration result | QA Manager | Edit or delete; the gauge status re-applies | ✅ | ? | |
+| 20 | Wrong teardown grade | Shift Lead | A finding, then **Apply** | ✅ | ? | |
+| 21 | Core received under the wrong order/mode | Receiving | PATCH while RECEIVED | 🚧 | ? | None once teardown starts |
+| 22 | Customer's answer recorded wrongly | QA Manager, Production Manager | None | ❌ | ? | Declined can't be re-requested |
+| 23 | Wrong component installed | Operator | Remove (reason), install the right one | 🚧 | ? | Component status and reservation aren't restored |
+| 24 | Wrong received quantity | Receiving | **Adjust quantity** fixes what's left, not what was received | ❌ | ❌ | **Walked 2026-10-22 as Luis (`RCV-MAT-0005`, 120 keyed, 12 arrived):** adjusted to 12; the list reads *12 EA of 120*, and the ERP sheet still says received 120, accepted 120, *Ready to post*. **Decided 10/22:** a separate **Correct receipt** action with a reason, while nothing has been used; posted rows flag *Changed since posted*. Spec'd to f6 |
+| 25 | Wrong supplier, material or PO line on a lot | Receiving | PATCH | 🚧 | ? | No reason |
+| 26 | Lot accepted or rejected wrongly | Receiving, QA Manager | **Reject remainder**, or Use As Is on a concession; a pending whole-lot request can be declined | ✅ | ? | |
+| 27 | **That's all** chosen by mistake | Receiving | None; record a new expected receipt | ❌ | ? | |
+| 28 | Lot put in the wrong place | Receiving | **Move…** | ✅ | ? | |
+| 29 | Cycle count wrong | Receiving | Re-enter while open; once submitted, a new count or Adjust quantity | ⚠️ | ? | |
+| 30 | Marked posted to the ERP by mistake | Receiving | None | ❌ | ? | |
+| 31 | Shipment recorded by mistake | Shipping | **Void shipment**, then ship again | ✅ | ✅ | Shipping row 7 |
+| 32 | Wrong carrier or tracking | Shipping | **Edit paperwork** | ✅ | ? | |
+| 33 | Wrong quantity shipped from a lot | Shipping | Void and ship again | ⚠️ | ? | The split-off child lot isn't merged back |
+| 34 | Wrong quantity or date on an expected receipt | Purchasing | Cancel and re-record, or re-import; **Chase…** for the date | ⚠️ | ? | The first chase turns a typo'd promise into the "original promise" used for on-time scoring |
+| 35 | Wrong lead time or preferred supplier | Purchasing | Edit again | ✅ | ? | |
+| 36 | Work order released by mistake | Planner | **Withdraw release** (Gantt → task → **Edit WO**) | ⚠️ | ✅ | **Walked 2026-10-22 as Sam (`WO-OPS-02`):** withdrawn at once, *"Release withdrawn — re-solve to drop it"*, with four parts mid-Wash: no confirm, no reason, nothing said about the work on the floor. **Release** puts it back (*Ready to release*). Reported to f6 |
+| 37 | Wrong calendar closure | Planner | Delete and re-add; re-solve | ✅ | ? | |
+| 38 | What-if draft committed | Planner | None; re-solve | ❌ | ? | Undo reverses only the last manual move |
+| 39 | Wrong priority, pin or move | Planner, Shift Lead | Set again (reason) / unpin / **Undo** | ✅ | ? | |
+| 40 | Wrong WO quantity or date | Production Manager | Quantity (cancels unstarted parts only), edit the date, or cancel the WO | ✅ | ? | |
+| 41 | Disposition closed, or WO short-closed, by mistake | QA Manager, Production Manager | None; a new disposition or WO | ❌ | ? | |
+| 42 | Process change implemented by mistake | Engineering | None; a new change back | ❌ | ? | |
+| 43 | Wrong measurement definition | Engineering | A new draft of the process | ✅ | ? | |
+| 44 | Temporary change applied to the wrong WO | Engineering | **Move back to baseline** | ✅ | ? | |
+| 45 | Wrong revision released, or obsoleted by mistake | Document Controller | Revise → release; obsolete has no undo | ⚠️ | ? | |
+| 46 | Wrong classification | Document Controller | Edit in draft; otherwise revise | ✅ | ? | |
+| 47 | Wrong role, or suspended by mistake | Administrator | Remove from the group and add the right one / **Activate** | ✅ | ? | |
+
+**Walk first** (how often × how hard to undo): 3, 1b, 7–8, 15, 24, 36, 12, 34.
 
 ## Open findings
 

@@ -46,6 +46,10 @@ LEAD_FINDING = ('Injector Nozzle Assembly', 'SCRAP',
 # A customer's own unit walked through its whole rebuild: on the shipping board.
 REBUILT_CORE = 'CORE-240217-0013'
 
+# An exchange unit failed and reworked at Nozzle Inspection until the visit cap
+# sends it to MRB Review.
+CAPPED_CORE = 'CORE-240219-0014'
+
 # Two cores Dave received, waiting at Disassembly for Mike to tear down and grade.
 GRADING_CORES = ['CORE-240220-0003', 'CORE-240220-0004']
 
@@ -129,6 +133,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         result['lead_finding'] = self._finding_for_the_lead(walk)
 
         result['rebuilt_unit'] = self._rebuilt_unit(walk)
+
+        result['capped_unit'] = self._capped_unit(walk)
 
         result['shift_notes'] = self._shift_notes()
         self.log(f"  {UP_NEXT_WO}: {len(UP_NEXT_PARTS)} bodies waiting at Machining; "
@@ -277,18 +283,68 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         self.log(f"  {REBUILT_CORE}: rebuild walked to {core.get_status_display()}")
         return core
 
-    def _work_order(self, order, process, erp_id, quantity):
-        """A work order released the way a planner releases one (release_work_order),
-        overriding only if readiness blocks it, with the reason on record."""
+    def _capped_unit(self, walk):
+        """The escalation exhibit. Sarah finds the spray angle out at Nozzle Inspection
+        twice; each time the FAIL opens a disposition, Maria decides REWORK, and the
+        unit is reworked (by Mike, then Dave: Rework wants a different hand each
+        visit). Coming back from the second rework the check is at its visit cap, so
+        the route escalates to MRB Review, where the engine quarantines it and opens
+        a disposition for a person to decide."""
+        from Tracker.models import Core, ProcessStep
+        core = Core.objects.filter(tenant=self.tenant, core_number=CAPPED_CORE,
+                                   status='IN_REBUILD').first()
+        if core is None or not core.part_id:
+            self.log(f"  Warning: {CAPPED_CORE} not in rebuild; escalation skipped.",
+                     warning=True)
+            return None
+        part = core.part
+        wo = part.work_order
+        build_steps = self.step
+        self.step = {ps.step.name: ps.step for ps in
+                     ProcessStep.objects.filter(process=wo.process).select_related('step')}
+        try:
+            with transaction.atomic():
+                self._run_batch_step(wo, [part], 'Cleaning', walk)
+                for reworker in (self.mike, self.dave):
+                    report = self._run_step_for([part], 'Nozzle Inspection', walk,
+                                                advance=False, operator=self.sarah,
+                                                out_of_spec='Spray Angle')
+                    self._rework(part, report,
+                                 containment='Single unit; no other units at the check.',
+                                 notes='Spray angle wide: re-lap the seat and clear the holes.')
+                    # The decision leaves the rework visit with the inspector; the bench
+                    # takes it over through the reassignment gate, on the lead's say-so.
+                    from Tracker.models import StepExecution
+                    from Tracker.services.mes.lifecycle import start_execution
+                    part.refresh_from_db()
+                    se = StepExecution.get_current_execution(part)
+                    if se.assigned_to_id and se.assigned_to_id != reworker.id:
+                        start_execution(se, reworker, authorizer=self.casey,
+                                        reason='Rework goes to the bench, not QA.')
+                    self._run_step_for([part], 'Rework', walk, operator=reworker,
+                                       corrected=self._defect('Spray angle drift'))
+                part.refresh_from_db()
+        finally:
+            self.step = build_steps
+        self._space_out(wo, self.today - timedelta(minutes=40))
+        self.log(f"  {CAPPED_CORE}: at {part.step.name if part.step else 'no step'}, "
+                 f"{part.get_part_status_display()}")
+        return core
+
+    def _parts(self, wo, part_type, serials):
+        """The units, then the release the way a planner releases one
+        (release_work_order): once the units exist, since a work order with none
+        isn't ready. Overrides only if readiness still blocks it, with the reason on
+        record."""
         from Tracker.services.mes.release import ReleaseBlocked, release_work_order
-        wo = super()._work_order(order, process, erp_id, quantity)
+        parts = super()._parts(wo, part_type, serials)
         try:
             release_work_order(wo, self.casey)
         except ReleaseBlocked as e:
             release_work_order(wo, self.casey, override_reason=(
                 f"Released for the operator exhibits; blockers noted: {e}")[:500])
         wo.refresh_from_db()
-        return wo
+        return parts
 
     def _cores_to_teardown(self):
         """The reman addition's exhibit: two cores Dave received, signed off at Core

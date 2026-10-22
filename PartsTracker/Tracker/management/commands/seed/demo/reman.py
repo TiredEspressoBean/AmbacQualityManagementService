@@ -452,6 +452,39 @@ DEMO_CORES = [
              'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
         ],
     },
+    {
+        # Escalation exhibit (Shift Lead, QA Manager, Production Manager): an exchange
+        # unit that fails Nozzle Inspection, is reworked, fails again, is reworked
+        # again, and on its way back to the check hits the visit cap and lands in
+        # MRB Review, quarantined with a disposition waiting (ops_walk._capped_unit).
+        'core_number': 'CORE-240219-0014',
+        'own_teardown': True,
+        'serial_number': 'SN-CRI-T52B09E4',
+        'received_days_ago': 9,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 8,
+        'disassembly_completed_days_ago': 7,
+        'condition_grade': 'B',
+        'condition_notes': 'Good condition. Spray pattern uneven on the bench check.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-46171',
+        'customer_name': 'Great Lakes Diesel',
+        'fulfilment_mode': 'EXCHANGE',
+        'core_credit_value': Decimal('60.00'),
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'components': [
+            {'component_name': 'Injector Body', 'condition_grade': 'A', 'disposition': 'REUSE',
+             'condition_notes': 'Within new-part limits.', 'position': '',
+             'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Injector Nozzle Assembly', 'condition_grade': 'B',
+             'disposition': 'REUSE', 'condition_notes': 'Tip wear; spray holes look clear.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Control Valve Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Passes dimensional checks.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+        ],
+    },
     # Scrapped core
     {
         'core_number': 'CORE-240218-0008',

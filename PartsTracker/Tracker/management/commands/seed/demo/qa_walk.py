@@ -360,7 +360,7 @@ class DemoQaWalkSeeder(BaseSeeder):
         return se
 
     def _run_step_for(self, parts, step_name, result, *, advance=True, out_of_spec=False,
-                      operator=None, defect=None, reading=None, defect_note=None):
+                      operator=None, defect=None, reading=None, defect_note=None, corrected=None):
         """Run the named step on each part: start, submit every per-part substep, then
         advance (PASS) unless told to stop. Returns the last inspection report written."""
         report = None
@@ -375,7 +375,7 @@ class DemoQaWalkSeeder(BaseSeeder):
             for ss in self._substeps(part.step, scope='sampled'):
                 self._submit(ss, step_execution=se, out_of_spec=out_of_spec,
                              signer=operator, defect=defect, reading=reading,
-                             defect_note=defect_note)
+                             defect_note=defect_note, corrected=corrected)
             report = (QualityReports.objects.filter(part=part, step=part.step)
                       .order_by('-created_at').first()) or report
             if advance:
@@ -426,7 +426,7 @@ class DemoQaWalkSeeder(BaseSeeder):
                  identity_verified=True)
         return fpi
 
-    def _rework(self, part, report):
+    def _rework(self, part, report, *, containment=None, notes=None):
         """The FAIL opened a disposition. Maria decides REWORK, which splits the part
         to the Rework step for re-inspection."""
         from Tracker.services.qms.disposition import (
@@ -439,14 +439,14 @@ class DemoQaWalkSeeder(BaseSeeder):
             self.log(f"  Warning: no disposition opened for {part.ERP_id}.", warning=True)
             return None
         disposition.assigned_to = self.sarah
-        disposition.containment_action = (
+        disposition.containment_action = containment or (
             'Remaining parts at Flow Calibration re-checked on the second flow bench; '
             'none below the lower limit.')
         disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
         record_containment_complete(disposition, self.sarah)
         disposition = decide_disposition(
             disposition, disposition_type='REWORK', authorized_by=self.maria,
-            notes='Low flow traced to a partly blocked spray hole; clean and re-test.')
+            notes=notes or 'Low flow traced to a partly blocked spray hole; clean and re-test.')
         # Maria co-signs at Sarah's terminal: the decision is Maria's, the act Sarah's,
         # so the split (and the rework visit it assigns) is Sarah's — not left on Maria's
         # name, where Sarah's re-inspection would need a supervisor to reassign it.
@@ -466,7 +466,7 @@ class DemoQaWalkSeeder(BaseSeeder):
                 if (getattr(ss, 'scope', 'sampled') or 'sampled').lower() == scope]
 
     def _submit(self, substep, *, step_execution=None, batch_execution=None, out_of_spec=False,
-                signer=None, defect=None, reading=None, defect_note=None):
+                signer=None, defect=None, reading=None, defect_note=None, corrected=None):
         """Submit a value for every capture node through submit_substep, the path the
         runtime uses. Readings are at nominal; `out_of_spec` (a measurement label) puts that
         reading below its lower limit, or at `reading` when given; `defect` (an error type)
@@ -516,6 +516,12 @@ class DemoQaWalkSeeder(BaseSeeder):
             elif node_type == 'qualityStatusField':
                 captures.append({'node_id': node_id, 'kind': 'status',
                                  'status': 'FAIL' if fails_here else 'PASS'})
+            elif node_type == 'errorTypesField' and defect is None and corrected is not None:
+                # A rework records the defect it corrected; its result still passes.
+                captures.append({'node_id': node_id, 'kind': 'defects',
+                                 'rows': [{'error_type_id': str(corrected.id), 'severity': 'MAJOR',
+                                           'location': 'Nozzle seat', 'count': 1,
+                                           'notes': 'Seat re-lapped and spray holes cleared.'}]})
             elif node_type == 'errorTypesField' and defect is not None:
                 captures.append({'node_id': node_id, 'kind': 'defects',
                                  'rows': [{'error_type_id': str(defect.id), 'severity': 'MAJOR',

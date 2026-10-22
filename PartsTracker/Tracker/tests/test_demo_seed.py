@@ -12,7 +12,9 @@ from django.test import TestCase
 
 import json
 
-from Tracker.models import Core, Parts, Processes, Steps, Substep, Tenant, WorkOrder
+from Tracker.models import (
+    Core, Parts, Processes, QuarantineDisposition, Steps, Substep, Tenant, WorkOrder,
+)
 from Tracker.services.mes.shipping import is_ship_step, ready_to_ship
 from Tracker.utils.tenant_context import tenant_context
 
@@ -303,3 +305,15 @@ class DemoSeedDarkExhibitTests(TestCase):
             nozzle = next(s for s in plan.slots if s.component_type_name == "Injector Nozzle Assembly")
             self.assertEqual(nozzle.resolution, REPLACE_POOL)
             self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})
+
+    def test_a_unit_that_used_up_its_reworks_waits_in_mrb(self):
+        """Shift Lead / PM escalation (2026-10-22): two reworks at Nozzle Inspection hit
+        the visit cap, so the unit sits quarantined at MRB Review with an open decision."""
+        with tenant_context(self.tenant.id):
+            part = Parts.objects.get(ERP_id="CORE-240219-0014")
+            self.assertEqual(part.step.name, "MRB Review")
+            self.assertEqual(part.part_status, "QUARANTINED")
+            mrb = QuarantineDisposition.objects.get(part=part, current_state="OPEN")
+            self.assertEqual(mrb.escalated_from_step.name, "Nozzle Inspection")
+            self.assertFalse(QuarantineDisposition.objects.filter(
+                part=part, current_state="IN_PROGRESS").exists())
