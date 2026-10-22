@@ -383,13 +383,13 @@ who, when and old→new, but never a reason.
 | 11 | Training override given wrongly | Shift Lead | Reassign; the override itself stays on the execution | ❌ | ? | **Decided 2026-10-22:** flag the override for QA review (it stays), with a reason. Spec'd to f6.  |
 | 12 | Hold placed wrongly | Production Manager, Shift Lead | **Resume**, saying it was placed in error | ✅ | ✅ | **Walked 2026-10-22 as Jennifer (`WO-OPS-03`):** a Quality hold, then **Resume**; *What resolved it* is required, so the record says *"Placed in error…"* in **Hold history**. Honest without a void. Minor: placing a hold takes a category only, so a Quality hold carries no word on the concern Taught: Shift Lead 4. |
 | 13 | Downtime recorded wrongly | Shift Lead | PATCH | 🚧 | ? | **Decided 2026-10-22:** a page, with a reason. Spec'd to f6.  |
-| 14 | Wrong training record | QA Manager | Edit, or delete (archives) | ✅ | ? | |
+| 14 | Wrong training record | QA Manager | Edit, or delete (archives) | ✅ | ⚠️ | **Walked 2026-10-22 as Maria:** Mike's Dimensional Inspection record Level 1 → 2, *Training record updated successfully!*. **⚠️:** no reason asked, no History on the form (audit log only). Reported.  |
 | 15 | Wrong disposition decision | QA Manager | Decide again, until closed | ✅ | ✅ | **Re-walked 2026-10-22 on 5a53e88 as Maria (`DISP-2026-000015`):** Scrap asks *"Scrap INJ-QA-MANAGE-002? … can be changed, with a reason, which un-scraps it"*; changing to Rework asks a reason; the part leaves SCRAPPED for Rework, and the notes keep both: *"Decision changed from Scrap to Rework by Maria Santos; the part was un-scrapped. Reason: …"*. (Decided 10/22. First walk: no confirm, part left SCRAPPED, note replaced.) Taught: QA Manager 2. |
 | 16 | CAPA verified wrongly | QA Manager | Not Effective reopens it; Closed is terminal | ✅ | ? | **Fixed da1f497 (tested):** a decided verification, or a closed CAPA, refuses re-verification. `verify` doesn't refuse re-verifying a decided verification (API) |
 | 17 | Wrong approval response | QA Manager, Production Manager | None; the request can be cancelled while pending | ❌ | ? | **Decided 2026-10-22:** change your own response while the request is open, with a reason. Spec'd to f6.  |
 | 18 | Supplier suspended wrongly | QA Manager | **Grant…**; a disqualified one needs a new qualification | ✅ | ✅ | **Walked 2026-10-22 as Maria on da1f497:** Suspend… held Great Lakes Diesel's four dock lots (*SUPPLIER_UNQUALIFIED*); **Grant…** released them back to inspection, leaving RCV-MAT-0007's own whole-lot hold. Grant doesn't release lots the suspension held |
-| 19 | Wrong calibration result | QA Manager | Edit or delete; the gauge status re-applies | ✅ | ? | |
-| 20 | Wrong teardown grade | Shift Lead | A finding, then **Apply** | ✅ | ? | |
+| 19 | Wrong calibration result | QA Manager | Edit or delete; the gauge status re-applies | ✅ | ⚠️ | **Walked 2026-10-22 as Maria:** MIC-2's FAIL corrected to PASS; the gauge returns IN_SERVICE. **⚠️:** the edit form doesn't load the stored result, so saving any other change silently does nothing; no reason asked. Reported.  |
+| 20 | Wrong teardown grade | Shift Lead | A finding, then **Apply** | ✅ | ✅ | **2026-10-22:** Shift Lead R1 (a finding, then Apply).  |
 | 21 | Core received under the wrong order/mode | Receiving | PATCH while RECEIVED | 🚧 | ? | **Decided 2026-10-22:** a page, before teardown, with a reason. Spec'd to f6. None once teardown starts |
 | 22 | Customer's answer recorded wrongly | QA Manager, Production Manager | None | ❌ | ? | **Decided 2026-10-22:** correct the answer until the repair starts, with a reason. Spec'd to f6. Declined can't be re-requested |
 | 23 | Wrong component installed | Operator | Remove (reason), install the right one | 🚧 | ? | **Decided 2026-10-22:** a Remove button, with a reason. Spec'd to f6. **2026-10-22:** installing changes neither status nor reservation, so removal has nothing to restore; the real gap (one component installed twice) is now refused. Component status and reservation aren't restored |
@@ -397,26 +397,26 @@ who, when and old→new, but never a reason.
 | 25 | Wrong supplier, material or PO line on a lot | Receiving | PATCH | 🚧 | ? | **Decided 2026-10-22:** a page, while nothing is used, with a reason. Spec'd to f6. No reason |
 | 26 | Lot accepted or rejected wrongly | Receiving, QA Manager | **Reject remainder**, or Use As Is on a concession; a pending whole-lot request can be declined | ✅ | ? | |
 | 27 | **That's all** chosen by mistake | Receiving | None; record a new expected receipt | ❌ | ? | **Decided 2026-10-22:** reopen the remainder on its original PO line, with a reason. Spec'd to f6.  |
-| 28 | Lot put in the wrong place | Receiving | **Move…** | ✅ | ? | |
+| 28 | Lot put in the wrong place | Receiving | **Move…** | ✅ | ✅ | **Walked 2026-10-22 as Luis:** **Move…** to Receiving Dock and back; History lists both moves. Minor: the To field suggests nothing while typing; each move also appears as a raw UUID change. Reported.  |
 | 29 | Cycle count wrong | Receiving | Re-enter while open; once submitted, a new count or Adjust quantity | ⚠️ | ? | |
 | 30 | Marked posted to the ERP by mistake | Receiving | None | ❌ | ? | **Decided 2026-10-22:** unmark posted, with a reason. Spec'd to f6.  |
 | 31 | Shipment recorded by mistake | Shipping | **Void shipment**, then ship again | ✅ | ✅ | Shipping row 7 |
-| 32 | Wrong carrier or tracking | Shipping | **Edit paperwork** | ✅ | ? | |
+| 32 | Wrong carrier or tracking | Shipping | **Edit paperwork** | ✅ | ✅ | **Walked 2026-10-22 as Rosa:** **Edit paperwork** tracking 1Z-DEMO-0042 → EST-4471288, in History (after a reload; the panel doesn't refresh on save, reported).  |
 | 33 | Wrong quantity shipped from a lot | Shipping | Void and ship again | ⚠️ | ? | The split-off child lot isn't merged back |
 | 34 | Wrong quantity or date on an expected receipt | Purchasing | **Cancel expected receipt…** (reason), then **Add expected delivery** again | ⚠️ | ✅ | **Walked 2026-10-22 as Priya (`PO-2026-0101`, 11/03 keyed as 10/03):** the past date was accepted without a word (late on arrival). Cancel + re-record gives `…-02` with a clean first promise; the cancelled one isn't scored. **Chase…** is the wrong tool (*"What they said"*): it keeps the typo as the first promise the scorecard judges. Teach Cancel. Since 5a53e88 a past date warns inline: *"That date has passed — the delivery counts as late from the start."* Taught: Purchasing 2. |
-| 35 | Wrong lead time or preferred supplier | Purchasing | Edit again | ✅ | ? | |
+| 35 | Wrong lead time or preferred supplier | Purchasing | Edit again | ✅ | ✅ | **2026-10-22:** the same edit as Purchasing module 4 (walked 10/21).  |
 | 36 | Work order released by mistake | Planner | **Withdraw release** (Gantt → task → **Edit WO**) | ✅ | ✅ | **Walked 2026-10-22 as Sam (`WO-OPS-02`, four parts mid-Wash).** Since 5a53e88 it confirms: *"Work has started on this order. Withdrawing the release takes its remaining work off the plan at the next solve — the parts on the floor stop being scheduled. Release it again to bring them back."* Dismiss keeps it released; **Release** puts a withdrawn one back. Taught: Planner 2. |
-| 37 | Wrong calendar closure | Planner | Delete and re-add; re-solve | ✅ | ? | |
+| 37 | Wrong calendar closure | Planner | Delete and re-add; re-solve | ⚠️ | ✅ | **Walked 2026-10-22 as Sam:** the seeded *Plant maintenance day* removed from Oct 26 and added on Oct 27. **⚠️:** removal is one click on an unlabelled icon, no confirm. Reported.  |
 | 38 | What-if draft committed | Planner | None; re-solve | ❌ | ? | **Decided 2026-10-22:** restore the previous live plan, with a reason. Spec'd to f6. Undo reverses only the last manual move |
-| 39 | Wrong priority, pin or move | Planner, Shift Lead | Set again (reason) / unpin / **Undo** | ✅ | ? | |
+| 39 | Wrong priority, pin or move | Planner, Shift Lead | Set again (reason) / unpin / **Undo** | ✅ | ✅ | **2026-10-22:** Shift Lead module 5 (priority with a reason) and the Gantt Undo.  |
 | 40 | Wrong WO quantity or date | Production Manager | Quantity (cancels unstarted parts only), edit the date, or cancel the WO | ✅ | ? | |
 | 41 | Disposition closed, or WO short-closed, by mistake | QA Manager, Production Manager | None; a new disposition or WO | ❌ | ? | **Decided 2026-10-22:** a manager reopens it, with a reason. Spec'd to f6.  |
 | 42 | Process change implemented by mistake | Engineering | None; a new change back | ❌ | ? | **Decided 2026-10-22:** no revert: a new change back (nothing to build), with a reason. Spec'd to f6.  |
-| 43 | Wrong measurement definition | Engineering | A new draft of the process | ✅ | ? | |
-| 44 | Temporary change applied to the wrong WO | Engineering | **Move back to baseline** | ✅ | ? | |
+| 43 | Wrong measurement definition | Engineering | A new draft of the process | ✅ | ✅ | **2026-10-22:** Engineering module 3, a definition changed in a new draft.  |
+| 44 | Temporary change applied to the wrong WO | Engineering | **Move back to baseline** | ✅ | ✅ | **2026-10-22:** Engineering module 5; Move back to baseline now confirms (da1f497).  |
 | 45 | Wrong revision released, or obsoleted by mistake | Document Controller | Revise → release; obsolete has no undo | ⚠️ | ? | **Decided 2026-10-22:** the document controller reinstates it if nothing replaced it, with a reason. Spec'd to f6.  |
 | 46 | Wrong classification | Document Controller | Edit in draft; otherwise revise | ✅ | ? | |
-| 47 | Wrong role, or suspended by mistake | Administrator | Remove from the group and add the right one / **Activate** | ✅ | ? | |
+| 47 | Wrong role, or suspended by mistake | Administrator | Remove from the group and add the right one / **Activate** | ✅ | ✅ | **Walked 2026-10-22 as Alex (non-staff):** roles swapped and a suspend/reactivate, each in Access changes with who and when.  |
 
 **Walk first** (how often × how hard to undo): 3, 1b, 7–8, 15, 24, 36, 12, 34.
 
