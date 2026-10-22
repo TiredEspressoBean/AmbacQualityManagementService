@@ -603,6 +603,13 @@ class StorageLocationViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixi
         super().perform_destroy(instance)
 
 
+# One instance for both status codes: two inline_serializers of one name collide.
+_RAISE_SCAR_RESPONSE = inline_serializer(name="RaiseScarResponse", fields={
+    "capa_id": serializers.UUIDField(), "capa_number": serializers.CharField(),
+    "already_open": serializers.BooleanField(),
+})
+
+
 # `inspection_pending` is read straight off query_params in get_queryset rather
 # than declared in filterset_fields, so drf-spectacular cannot see it and the
 # generated client didn't know the param existed. Callers had to cast the
@@ -1146,22 +1153,23 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
 
     @extend_schema(
         request=None,
-        responses={201: inline_serializer(name="RaiseScarResponse", fields={
-            "capa_id": serializers.UUIDField(), "capa_number": serializers.CharField(),
-        })},
+        responses={201: _RAISE_SCAR_RESPONSE, 200: _RAISE_SCAR_RESPONSE},
         description="Raise a Supplier Corrective Action (SCAR) for this lot's supplier, "
-                    "linking the lot's receiving inspection report.",
+                    "linking the lot's receiving inspection report. If one is already "
+                    "open on the lot, returns it (200, already_open) instead.",
     )
     @action(detail=True, methods=['post'])
     def raise_scar(self, request, pk=None):
-        from Tracker.services.qms.scar import open_scar_for_lot
+        from Tracker.services.qms.scar import open_scar_for_lot, open_scar_on_lot
         lot = self.get_object()
+        existing = open_scar_on_lot(lot)
         try:
             capa = open_scar_for_lot(lot, user=request.user)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'capa_id': capa.id, 'capa_number': capa.capa_number},
-                        status=status.HTTP_201_CREATED)
+        return Response({'capa_id': capa.id, 'capa_number': capa.capa_number,
+                         'already_open': existing is not None},
+                        status=status.HTTP_200_OK if existing else status.HTTP_201_CREATED)
 
     # JSON only: the viewset's default multipart makes the generated client post form
     # data, which sends a null rejected_quantity (a whole-lot reject) as the string "null".

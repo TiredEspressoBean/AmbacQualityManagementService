@@ -2758,6 +2758,7 @@ export type Documents = {
   is_due_for_review: boolean;
   days_until_review: number | null;
   is_past_retention: boolean;
+  superseded_by_version: number | null;
   itar_controlled?: /**
    * Document contains ITAR-controlled technical data (22 CFR 120-130)
    */
@@ -20332,6 +20333,7 @@ const Documents = z.object({
   is_due_for_review: z.boolean(),
   days_until_review: z.number().int().nullable(),
   is_past_retention: z.boolean(),
+  superseded_by_version: z.number().int().nullable(),
   itar_controlled: z.boolean().optional(),
   eccn: z.string().max(20).optional(),
   export_control_reason: z.string().max(100).optional(),
@@ -21702,6 +21704,7 @@ const MoveLotRequestRequest = z.object({
 const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
   capa_number: z.string(),
+  already_open: z.boolean(),
 });
 const ReceiveExpectedLotRequest = z
   .object({
@@ -41278,7 +41281,7 @@ Query params:
     method: "post",
     path: "/api/MaterialLots/:id/raise_scar/",
     alias: "api_MaterialLots_raise_scar_create",
-    description: `Raise a Supplier Corrective Action (SCAR) for this lot&#x27;s supplier, linking the lot&#x27;s receiving inspection report.`,
+    description: `Raise a Supplier Corrective Action (SCAR) for this lot&#x27;s supplier, linking the lot&#x27;s receiving inspection report. If one is already open on the lot, returns it (200, already_open) instead.`,
     requestFormat: "json",
     parameters: [
       {

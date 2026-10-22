@@ -373,10 +373,13 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold">Root Cause Analysis Records</h3>
-                    <Button variant="outline" size="sm" onClick={handleOpenDialog}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add RCA
-                    </Button>
+                    {/* Only for those who may create one — a read-only role was offered it. */}
+                    {hasPerm("add_rcarecord") && (
+                        <Button variant="outline" size="sm" onClick={handleOpenDialog}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add RCA
+                        </Button>
+                    )}
                 </div>
 
                 {rcaRecords.map((rca: any) => (

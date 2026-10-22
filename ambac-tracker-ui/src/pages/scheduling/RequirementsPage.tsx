@@ -307,6 +307,10 @@ export function RequirementsPage() {
               </td>
               <td className="p-3 text-muted-foreground">
                 {r.incoming_date ? `due ${fmt(r.incoming_date)}` : "none"}
+                {/* Due after it's needed: it doesn't count toward the shortfall above. */}
+                {r.incoming_date && r.need_by && r.incoming_date > r.need_by && (
+                  <Badge variant="outline" className="ml-2">after need</Badge>
+                )}
               </td>
             </tr>
           ))}

@@ -549,7 +549,8 @@ def uninvited_users(tenant):
     password yet — the staff a migration workbook loads ahead of go-live
     (`invite=False`, created with an unusable password the invitation sets). Someone
     given a password directly needs no invitation; a user whose access here was removed
-    (membership suspended) is left out."""
+    (membership suspended) is left out, and so is an outside contact (`contact_role`
+    set) — a name to send SCARs and chases to, not someone who signs in."""
     from Tracker.models import TenantMembership, User
     suspended = TenantMembership.objects.filter(  # tenant-safe: explicit tenant filter
         tenant=tenant, status=TenantMembership.Status.SUSPENDED).values('user_id')
@@ -557,7 +558,8 @@ def uninvited_users(tenant):
     return (User.objects.filter(tenant=tenant, is_active=True, last_login__isnull=True,  # tenant-safe: explicit tenant filter
                                 invitations__isnull=True,
                                 password__startswith=UNUSABLE_PASSWORD_PREFIX)
-            .exclude(id__in=suspended).order_by('email').distinct())
+            .filter(contact_role='').exclude(id__in=suspended)
+            .order_by('email').distinct())
 
 
 def invite_uninvited(tenant, *, acting_user) -> int:

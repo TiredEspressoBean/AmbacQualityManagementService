@@ -259,6 +259,11 @@ class MasterWorkbookTests(APITestCase):
         self.assertTrue(self._run(wb, dry_run=False).json()["loaded"])
         # Removed before go-live: never invited by the bulk action.
         suspend_membership(User.objects.get(email="lee@x.test"), self.tenant, by=self.admin)
+        # An outside contact is a name to send SCARs to, not someone who signs in.
+        contact = User(email="sam@supplier.test", username="sam@supplier.test",
+                       tenant=self.tenant, contact_role="QUALITY")
+        contact.set_unusable_password()
+        contact.save()
         listed = self.client.get("/api/User/uninvited/").json()
         self.assertEqual(listed["emails"], ["kim@x.test"])
         resp = self.client.post("/api/User/invite-uninvited/")

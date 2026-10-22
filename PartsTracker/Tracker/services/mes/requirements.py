@@ -127,19 +127,23 @@ def work_order_material_requirements(work_order) -> dict:
             on_hand = float(MaterialLot.objects.filter(archived=False,
                 tenant=tenant, **item_q, status__in=_ON_HAND_LOT_STATUSES)
                 .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
-            incoming = float(MaterialLot.objects.filter(archived=False,
+            need_by = sched.get((work_order.id, line.consumed_at_step_id)) or wo_need
+            incoming_qs = (MaterialLot.objects.filter(archived=False,
                 tenant=tenant, **item_q,
                 promised_date__isnull=False, quantity_remaining__gt=0)
-                .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
-                .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
+                .exclude(status__in=_NOT_INCOMING_LOT_STATUSES))  # not already on-hand or terminal
+            incoming = float(incoming_qs.aggregate(s=Sum('quantity_remaining'))['s'] or 0)
+            # Only a delivery due by the need date covers it; one due after leaves the
+            # job short on the day, however much is on its way.
+            in_time = float(incoming_qs.filter(promised_date__lte=need_by)
+                            .aggregate(s=Sum('quantity_remaining'))['s'] or 0)
             # Safety stock is held back from planning, so coverage nets against what is
             # free to commit — not the whole shelf. `on_hand` still reports the physical
             # count; a report that quietly shrinks it would have the picker and the
             # planner disagreeing about the same bin.
             safety = buy.safety_stock
-            short = max(0.0, required - (on_hand - safety) - incoming)
+            short = max(0.0, required - (on_hand - safety) - in_time)
             lead = buy.lead_time_days
-            need_by = sched.get((work_order.id, line.consumed_at_step_id)) or wo_need
             order_by = (need_by - timedelta(days=lead)) if lead else need_by
             # The RECOVER lane: what the core bank could yield of this component.
             # REPORTED, never netted into `short_qty` — teardown has not happened, so
@@ -254,6 +258,7 @@ def sourcing_requirements(tenant) -> dict:
 
     incoming: dict = {}
     incoming_date: dict = {}
+    incoming_lots: dict = {}    # (kind, id) -> [(promised_date, qty)]
     for lot in (MaterialLot.objects.filter(archived=False, tenant=tenant, promised_date__isnull=False,
                                            quantity_remaining__gt=0, owner__isnull=True)
                 .exclude(status__in=_NOT_INCOMING_LOT_STATUSES)  # not already on-hand or terminal
@@ -263,6 +268,8 @@ def sourcing_requirements(tenant) -> dict:
         if k is None:
             continue
         incoming[k] = incoming.get(k, 0.0) + float(lot['quantity_remaining'] or 0)
+        incoming_lots.setdefault(k, []).append(
+            (lot['promised_date'], float(lot['quantity_remaining'] or 0)))
         if k not in incoming_date or lot['promised_date'] < incoming_date[k]:
             incoming_date[k] = lot['promised_date']
 
@@ -282,6 +289,7 @@ def sourcing_requirements(tenant) -> dict:
         return bom_cache[pt_id]
 
     demand: dict = {}       # (kind, id) -> firm qty needed
+    demand_dates: dict = {}  # (kind, id) -> [(need-by, firm qty)], for time-phased netting
     # Expected replacements on repair-and-return units not yet opened. Kept apart from
     # `demand` — nobody knows which parts a unit loses until it is torn down — and
     # reported beside the buy figure, never inside it. See services/reman/demand.py.
@@ -336,6 +344,7 @@ def sourcing_requirements(tenant) -> dict:
             k = buy.key
             if firm:
                 demand[k] = demand.get(k, 0.0) + firm
+                demand_dates.setdefault(k, []).append((nb, firm))
                 if wo_customer is not None:
                     dk = (k, wo_customer)
                     demand_by_customer[dk] = demand_by_customer.get(dk, 0.0) + firm
@@ -371,13 +380,22 @@ def sourcing_requirements(tenant) -> dict:
         # A customer's own stock covers their demand for it, up to what they need.
         owned_cover = sum(min(qty, demand_by_customer.get((key, cid), 0.0))
                           for (key, cid), qty in owned_onhand.items() if key == k)
-        cover = (onhand.get(k, 0.0) - safety) + incoming.get(k, 0.0) + owned_cover
+        base = (onhand.get(k, 0.0) - safety) + owned_cover
+        cover = base + incoming.get(k, 0.0)
         firm = demand.get(k, 0.0)
+        # Time-phased: at each need date, what is wanted by then against stock plus
+        # what is promised by then. A delivery due after a need doesn't cover it, so a
+        # late receipt can't hide a shortage on the day; the worst date is the shortfall.
         short = firm - cover
+        wanted = 0.0
+        for d, q in sorted(demand_dates.get(k, []), key=lambda e: e[0]):
+            wanted += q
+            arrived = sum(qty for pd, qty in incoming_lots.get(k, []) if pd <= d)
+            short = max(short, wanted - base - arrived)
         # What ELSE would be short if the forecast came true — the part of the
         # forecast that current cover does not already absorb. Purchasing can buy
         # ahead on it; nothing here makes them.
-        forecast_short = max(0.0, firm + forecast.get(k, 0.0) - cover) - max(0.0, short)
+        forecast_short = max(0.0, max(0.0, firm + forecast.get(k, 0.0) - cover) - max(0.0, short))
         if short <= 0 and forecast_short <= 0:
             continue
         nb = need_by.get(k, h_date)

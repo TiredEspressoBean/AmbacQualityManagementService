@@ -43,3 +43,21 @@ class DocumentReleaseTests(TenantTestCase):
         self.doc.refresh_from_db()
         self.assertEqual(self.doc.status, "OBSOLETE")
         self.assertIsNotNone(self.doc.obsolete_date)
+
+    def test_releasing_a_new_revision_supersedes_the_old(self):
+        """Two released revisions invite use of the old one (ISO 9001 7.5.3)."""
+        self._as(['view_documents', 'release_documents', 'full_tenant_access'])
+        self.client.post(f"/api/Documents/{self.doc.id}/release/", {}, format="json")
+        self.doc.refresh_from_db()
+        retention = self.doc.retention_until
+        v2 = self.doc.create_new_version(user=self.user_a, change_description="rev B")
+        v2.status = "APPROVED"
+        v2.save()
+        r = self.client.post(f"/api/Documents/{v2.id}/release/", {}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.doc.refresh_from_db()
+        self.assertEqual(self.doc.status, "OBSOLETE")
+        self.assertIsNotNone(self.doc.obsolete_date)
+        self.assertEqual(self.doc.retention_until, retention)
+        r = self.client.get(f"/api/Documents/{self.doc.id}/")
+        self.assertEqual(r.json()["superseded_by_version"], v2.version)

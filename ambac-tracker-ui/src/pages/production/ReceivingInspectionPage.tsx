@@ -472,8 +472,10 @@ export function ReceivingInspectionPage() {
                             {lot.status === "REJECTED" && lot.supplier && canInitiateCapa && (
                                 <Button variant="outline" disabled={scarMut.isPending}
                                     onClick={() => scarMut.mutate({ id: lotId }, {
-                                        onSuccess: (r: { capa_number?: string }) =>
-                                            toast.success(`SCAR raised${r?.capa_number ? ` (${r.capa_number})` : ""}`),
+                                        onSuccess: (r: { capa_number?: string; already_open?: boolean }) =>
+                                            r?.already_open
+                                                ? toast.info(`A SCAR is already open on this lot (${r.capa_number})`)
+                                                : toast.success(`SCAR raised${r?.capa_number ? ` (${r.capa_number})` : ""}`),
                                         onError: () => toast.error("Could not raise SCAR"),
                                     })}>
                                     Raise SCAR

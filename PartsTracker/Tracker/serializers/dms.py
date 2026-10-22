@@ -87,6 +87,7 @@ class DocumentsSerializer(SecureModelMixin):
     is_due_for_review = serializers.BooleanField(read_only=True)
     days_until_review = serializers.IntegerField(read_only=True, allow_null=True)
     is_past_retention = serializers.BooleanField(read_only=True)
+    superseded_by_version = serializers.SerializerMethodField()
 
     class Meta:
         model = Documents
@@ -99,6 +100,7 @@ class DocumentsSerializer(SecureModelMixin):
                   # DMS Compliance fields
                   'effective_date', 'review_date', 'obsolete_date', 'retention_until',
                   'is_due_for_review', 'days_until_review', 'is_past_retention',
+                  'superseded_by_version',
                   # ITAR / Export Control fields
                   'itar_controlled', 'eccn', 'export_control_reason',
                   'created_at', 'updated_at')
@@ -108,7 +110,12 @@ class DocumentsSerializer(SecureModelMixin):
             'previous_version', 'is_current_version',
             # DMS Compliance - these are calculated on release, not editable
             'effective_date', 'review_date', 'obsolete_date', 'retention_until',
-            'is_due_for_review', 'days_until_review', 'is_past_retention')
+            'is_due_for_review', 'days_until_review', 'is_past_retention', 'superseded_by_version')
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_superseded_by_version(self, obj):
+        from Tracker.services.core.documents import superseded_by_version
+        return superseded_by_version(obj)
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_file_url(self, obj):

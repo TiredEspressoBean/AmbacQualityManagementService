@@ -93,7 +93,9 @@ export function DocumentDetailPage() {
                             </Badge>
                             <StatusBadge
                                 status={document.status}
-                                label={document.status_display || document.status}
+                                label={document.superseded_by_version
+                                    ? `Superseded by v${document.superseded_by_version}`
+                                    : document.status_display || document.status}
                             />
                             <StatusBadge
                                 status={document.classification?.toUpperCase()}

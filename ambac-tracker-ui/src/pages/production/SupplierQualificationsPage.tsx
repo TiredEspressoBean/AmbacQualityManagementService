@@ -20,6 +20,7 @@ import {
 } from "@/hooks/useSupplierQualifications";
 import type { QualificationListParams } from "@/hooks/useSupplierQualifications";
 import { parseDateOnly } from "@/lib/date-only";
+import { BASIS_LABELS } from "@/pages/production/SupplierQualificationFormPage";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     APPROVED: "default", CONDITIONAL: "secondary", PENDING: "outline",
@@ -149,7 +150,7 @@ export function SupplierQualificationsPage() {
                                 <TableCell>{q.supplier_name}</TableCell>
                                 <TableCell>{q.scope_display}</TableCell>
                                 <TableCell><Badge variant={STATUS_TONE[q.status] ?? "outline"}>{q.status_display ?? q.status}</Badge></TableCell>
-                                <TableCell className="text-muted-foreground">{q.basis || "—"}</TableCell>
+                                <TableCell className="text-muted-foreground">{q.basis ? (BASIS_LABELS[q.basis] ?? q.basis) : "—"}</TableCell>
                                 <TableCell className={expiryTone(q.expiry_date)}>{q.expiry_date ?? "—"}</TableCell>
                                 <TableCell>
                                     <DropdownMenu>

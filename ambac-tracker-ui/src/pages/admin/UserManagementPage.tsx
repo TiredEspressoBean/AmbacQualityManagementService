@@ -74,13 +74,14 @@ import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 // Status derivation
 // ---------------------------------------------------------------------------
 
-type UserStatus = "active" | "inactive" | "pending_invite" | "expired_invite";
+type UserStatus = "active" | "inactive" | "pending_invite" | "expired_invite" | "contact";
 
 const STATUS_LABEL: Record<UserStatus, string> = {
     active: "Active",
     inactive: "Inactive",
     pending_invite: "Pending invite",
     expired_invite: "Expired invite",
+    contact: "Contact",
 };
 
 const STATUS_VARIANT: Record<UserStatus, "default" | "secondary" | "destructive" | "outline"> = {
@@ -88,6 +89,7 @@ const STATUS_VARIANT: Record<UserStatus, "default" | "secondary" | "destructive"
     inactive: "secondary",
     pending_invite: "outline",
     expired_invite: "destructive",
+    contact: "secondary",
 };
 
 /** Derive a status from User fields. "inactive" reflects the per-tenant
@@ -97,9 +99,13 @@ function deriveStatus(user: {
     is_active?: boolean | null;
     last_login?: string | null;
     tenant_membership_status?: string | null;
+    contact_role?: string | null;
 }): UserStatus {
     if (user.tenant_membership_status === "SUSPENDED") return "inactive";
     if (user.is_active === false) return "inactive";
+    // An outside contact (a supplier's quality person) is a name to send things to,
+    // not someone waiting on an invitation.
+    if (!user.last_login && user.contact_role) return "contact";
     if (!user.last_login) return "pending_invite";
     return "active";
 }
@@ -114,6 +120,7 @@ const STATUS_FILTERS: { key: UserStatus | "all"; label: string }[] = [
     { key: "pending_invite", label: "Pending invite" },
     { key: "expired_invite", label: "Expired invite" },
     { key: "inactive", label: "Inactive" },
+    { key: "contact", label: "Contacts" },
 ];
 
 export function UserManagementPage() {
@@ -165,6 +172,7 @@ export function UserManagementPage() {
                 _status: deriveStatus({
                     is_active: u.is_active,
                     last_login: u.last_login ?? null,
+                    contact_role: u.contact_role ?? null,
                 }),
                 _groupNames: ((u as { groups?: { name?: string }[] }).groups ?? [])
                     .map((g) => g?.name)
@@ -346,11 +354,13 @@ export function UserManagementPage() {
             inactive: 0,
             pending_invite: 0,
             expired_invite: 0,
+            contact: 0,
         };
         for (const u of users) {
             const s = deriveStatus({
                 is_active: u.is_active,
                 last_login: u.last_login ?? null,
+                contact_role: u.contact_role ?? null,
             });
             c[s]++;
         }

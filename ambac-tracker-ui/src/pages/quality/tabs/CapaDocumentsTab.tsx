@@ -3,12 +3,14 @@ import { useRetrieveDocuments } from "@/hooks/useRetrieveDocuments"
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes"
 import DocumentsSection from "@/pages/detail pages/DocumentsSection"
 import { DocumentUploader } from "@/pages/editors/forms/DocumentUploader"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 
 type CapaDocumentsTabProps = {
     capa: any
 }
 
 export function CapaDocumentsTab({ capa }: CapaDocumentsTabProps) {
+    const canUpload = usePermissionSet().has("add_documents")
     // Get content type ID for CAPA
     const { data: contentTypes, isLoading: contentTypesLoading } = useRetrieveContentTypes({})
     // contentTypes is now an array (unpaginated) or has .results if paginated
@@ -40,8 +42,9 @@ export function CapaDocumentsTab({ capa }: CapaDocumentsTabProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Upload Section */}
-                {contentTypesLoading ? (
+                {/* Upload Section — only for those who may add a document; a read-only
+                    role (Auditor) was offered it and refused. */}
+                {!canUpload ? null : contentTypesLoading ? (
                     <p className="text-sm text-muted-foreground">Loading...</p>
                 ) : capaContentType ? (
                     <DocumentUploader

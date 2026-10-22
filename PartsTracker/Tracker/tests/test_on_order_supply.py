@@ -176,6 +176,33 @@ class OnOrderCountsAsSupplyTests(_MaterialFixture):
                 if r['material'] == "O-Ring"]
         self.assertEqual(rows[0]['qty_short'], 6)
 
+    def test_a_delivery_due_after_the_need_does_not_cover_it(self):
+        """Ten due a week after the job starts leaves the job ten short on the day."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=10))   # demand 10
+        record_expected_receipt(
+            tenant=self.tenant, material=self.oring, quantity=Decimal(10),
+            promised_date=date.today() + timedelta(days=17))
+
+        rows = [r for r in sourcing_requirements(self.tenant)['source']
+                if r['material'] == "O-Ring"]
+        self.assertEqual(rows[0]['qty_short'], 10)
+        wo = WorkOrder.objects.get(ERP_id="WO-5")
+        from Tracker.services.mes.requirements import work_order_material_requirements
+        line = work_order_material_requirements(wo)['rows'][0]
+        self.assertEqual((line['short_qty'], line['incoming']), (10, 10))
+
+    def test_a_later_job_is_covered_by_a_delivery_before_it(self):
+        """Time-phased: the late delivery still covers the job that needs it later."""
+        self._work_order(qty=5, start=date.today() + timedelta(days=10))   # 10, day 10
+        self._work_order(qty=3, start=date.today() + timedelta(days=30))   # 6, day 30
+        record_expected_receipt(
+            tenant=self.tenant, material=self.oring, quantity=Decimal(16),
+            promised_date=date.today() + timedelta(days=20))
+
+        rows = [r for r in sourcing_requirements(self.tenant)['source']
+                if r['material'] == "O-Ring"]
+        self.assertEqual(rows[0]['qty_short'], 10)
+
     def test_on_order_stock_is_not_available_to_consume(self):
         """It must count as *incoming*, never as usable. Consumption and staging filter
         on an allowlist of ACCEPTED/IN_USE, which is what makes this safe."""

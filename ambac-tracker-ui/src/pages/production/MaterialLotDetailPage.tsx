@@ -97,6 +97,14 @@ export function MaterialLotDetailPage() {
                             {l.status === "QUARANTINE" ? "Review hold" : "Inspect"}
                         </Button>
                     )}
+                    {/* The decided inspection stays reachable: its record, and Raise SCAR
+                        on a rejected lot, live there. */}
+                    {!l.holds_cores && (l.status === "ACCEPTED" || l.status === "REJECTED") && (
+                        <Button size="sm" variant="outline"
+                            onClick={() => navigate({ to: "/production/receiving-inspection/$lotId", params: { lotId } })}>
+                            Inspection
+                        </Button>
+                    )}
                     {l.status !== "ON_ORDER" && (
                         <Button size="sm" variant="outline"
                             onClick={() => void downloadReport("material_lot_label", { lot_ids: [lotId], copies: 1, layout: "thermal" })}>

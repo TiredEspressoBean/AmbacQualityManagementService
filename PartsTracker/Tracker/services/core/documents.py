@@ -31,14 +31,34 @@ def release_document(document, user, effective_date=None):
     Raises:
         ValueError: document is not in APPROVED status.
     """
+    from django.db import transaction
+
     if document.status != 'APPROVED':
         raise ValueError(
             f"Cannot release document with status {document.status}. Must be approved."
         )
 
-    document.status = 'RELEASED'
-    document.calculate_compliance_dates(effective_date)
-    document.save()
+    with transaction.atomic():
+        document.status = 'RELEASED'
+        document.calculate_compliance_dates(effective_date)
+        document.save()
+        # A new revision supersedes the one in force: two released revisions of one
+        # document invite use of the old one (ISO 9001 7.5.3). Retention dates stay.
+        for earlier in document.get_version_history():
+            if earlier.pk != document.pk and earlier.version < document.version \
+                    and earlier.status == 'RELEASED':
+                mark_document_obsolete(earlier, user)
+
+
+def superseded_by_version(document):
+    """The later revision that replaced an obsolete document, or None (obsoleted
+    with nothing to replace it, or not obsolete at all)."""
+    if document.status != 'OBSOLETE':
+        return None
+    for later in document.get_version_history():
+        if later.version > document.version and later.status in ('RELEASED', 'OBSOLETE'):
+            return later.version
+    return None
 
 
 def mark_document_obsolete(document, user):

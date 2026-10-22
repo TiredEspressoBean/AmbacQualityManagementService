@@ -51,11 +51,26 @@ def open_scar(*, supplier, problem_statement, severity="MAJOR",
     return capa
 
 
+def open_scar_on_lot(lot):
+    """The SCAR still open against this lot (linked through one of its receiving
+    reports), or None. Closed and cancelled ones don't count — a recurrence after
+    closure is a new SCAR."""
+    from Tracker.models import CAPA
+    return (CAPA.objects.filter(tenant_id=lot.tenant_id, capa_type="SUPPLIER",
+                                quality_reports__in=lot.quality_reports.all())
+            .exclude(status__in=["CLOSED", "CANCELLED"])
+            .order_by("created_at").first())
+
+
 def open_scar_for_lot(lot, user=None, severity="MAJOR"):
     """Convenience: raise a SCAR for a rejected/received lot's supplier, linking the
-    lot's most recent receiving QualityReport."""
+    lot's most recent receiving QualityReport. One open SCAR per lot: if one is
+    already open it is returned rather than a second raised."""
     if lot.supplier_id is None:
         raise ValueError("Lot has no supplier; cannot raise a SCAR.")
+    existing = open_scar_on_lot(lot)
+    if existing is not None:
+        return existing
     report = lot.quality_reports.order_by("-created_at").first()
     problem = (
         f"Receiving inspection issue on lot {lot.lot_number} "

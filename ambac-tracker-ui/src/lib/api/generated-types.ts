@@ -5889,7 +5889,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Raise a Supplier Corrective Action (SCAR) for this lot's supplier, linking the lot's receiving inspection report. */
+        /** @description Raise a Supplier Corrective Action (SCAR) for this lot's supplier, linking the lot's receiving inspection report. If one is already open on the lot, returns it (200, already_open) instead. */
         post: operations["api_MaterialLots_raise_scar_create"];
         delete?: never;
         options?: never;
@@ -23414,6 +23414,7 @@ export interface components {
             readonly is_due_for_review: boolean;
             readonly days_until_review: number | null;
             readonly is_past_retention: boolean;
+            readonly superseded_by_version: number | null;
             /** @description Document contains ITAR-controlled technical data (22 CFR 120-130) */
             itar_controlled?: boolean;
             /** @description Export Control Classification Number (e.g., EAR99, 3A001, 9A004.a) */
@@ -33388,6 +33389,7 @@ export interface components {
             /** Format: uuid */
             capa_id: string;
             capa_number: string;
+            already_open: boolean;
         };
         RcaApproveInputRequest: {
             /** @description Justification, required (10+ characters) when the RCA's conductor approves it and the CAPA allows self-verification. */
@@ -51213,6 +51215,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RaiseScarResponse"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;

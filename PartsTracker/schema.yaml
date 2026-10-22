@@ -15252,7 +15252,8 @@ paths:
     post:
       operationId: api_MaterialLots_raise_scar_create
       description: Raise a Supplier Corrective Action (SCAR) for this lot's supplier,
-        linking the lot's receiving inspection report.
+        linking the lot's receiving inspection report. If one is already open on the
+        lot, returns it (200, already_open) instead.
       parameters:
       - in: path
         name: id
@@ -15268,6 +15269,12 @@ paths:
       - tokenAuth: []
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RaiseScarResponse'
+          description: ''
+        '200':
           content:
             application/json:
               schema:
@@ -54776,6 +54783,10 @@ components:
         is_past_retention:
           type: boolean
           readOnly: true
+        superseded_by_version:
+          type: integer
+          nullable: true
+          readOnly: true
         itar_controlled:
           type: boolean
           description: Document contains ITAR-controlled technical data (22 CFR 120-130)
@@ -54821,6 +54832,7 @@ components:
       - retention_until
       - review_date
       - status_display
+      - superseded_by_version
       - updated_at
       - upload_date
       - uploaded_by_info
@@ -73678,7 +73690,10 @@ components:
           format: uuid
         capa_number:
           type: string
+        already_open:
+          type: boolean
       required:
+      - already_open
       - capa_id
       - capa_number
     RcaApproveInputRequest:

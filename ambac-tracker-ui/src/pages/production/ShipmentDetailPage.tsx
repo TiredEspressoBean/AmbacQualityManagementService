@@ -77,7 +77,7 @@ export function ShipmentDetailPage() {
 
             {s.is_voided && (
                 <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
-                    Voided{s.voided_at ? ` on ${new Date(s.voided_at).toLocaleDateString()}` : ""}: {s.void_reason}. Its parts went back to where they waited.
+                    Voided{s.voided_at ? ` on ${new Date(s.voided_at).toLocaleDateString()}` : ""}: {(s.void_reason ?? "").trim().replace(/[.!?]+$/, "")}. Its parts went back to where they waited.
                 </p>
             )}
 

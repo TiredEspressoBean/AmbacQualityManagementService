@@ -553,10 +553,12 @@ export default function UserFormPage() {
                                         </FormControl>
                                         <div className="space-y-1 leading-none">
                                             <FormLabel>
-                                                Staff Status
+                                                Platform support access
                                             </FormLabel>
                                             <FormDescription>
-                                                Designates whether the user can log into the admin site.
+                                                Lets this account into the platform's own admin site, for
+                                                support. Not a role in this company — leave it off for
+                                                everyone here; roles and positions set what they can do.
                                             </FormDescription>
                                         </div>
                                     </FormItem>

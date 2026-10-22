@@ -68,12 +68,10 @@ export default function TrackerPage() {
     // Flatten all pages of data
     const allOrders = data?.pages.flatMap(page => page.results) ?? []
 
-    // Filter orders to only show those with gate info or production stages
-    const visibleOrders = allOrders.filter(order => {
-        const hasGateInfo = order.gate_info !== null && order.gate_info !== undefined
-        const hasProductionStages = order.process_stages && order.process_stages.length > 0
-        return hasGateInfo || hasProductionStages
-    })
+    // Every order shows, including one with no work order yet (a repair received and
+    // waiting): the customer still needs to see it arrived. The card says it hasn't
+    // started rather than drawing stages.
+    const visibleOrders = allOrders
 
     if (visibleOrders.length === 0 && !hasNextPage) {
         return (

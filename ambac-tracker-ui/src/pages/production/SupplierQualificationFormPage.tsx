@@ -22,7 +22,16 @@ const SCOPE_TYPES = [
     { value: "COMMODITY", label: "Commodity" },
     { value: "SPECIAL_PROCESS", label: "Special Process" },
 ];
-const BASES = ["AUDIT", "PPAP", "FAI", "SURVEY", "HISTORICAL", "CERTIFICATION"];
+// Labels match the backend's BASIS_CHOICES.
+export const BASIS_LABELS: Record<string, string> = {
+    AUDIT: "Audit",
+    PPAP: "PPAP",
+    FAI: "First Article",
+    SURVEY: "Survey",
+    HISTORICAL: "Historical",
+    CERTIFICATION: "Certification",
+};
+const BASES = Object.keys(BASIS_LABELS);
 // A certificate the supplier holds: one qualification record per certificate, so its
 // expiry drives the same reminders and sweeps as any other qualification.
 const CERTIFICATIONS: { value: string; label: string }[] = [
@@ -199,7 +208,7 @@ export function SupplierQualificationFormPage() {
                                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="NONE">—</SelectItem>
-                                    {BASES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                                    {BASES.map((b) => <SelectItem key={b} value={b}>{BASIS_LABELS[b]}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>

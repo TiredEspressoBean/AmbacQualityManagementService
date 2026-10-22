@@ -181,6 +181,17 @@ export function ExpandableOrderTracker({
                     )}
                 </div>
 
+                {/* No work order yet (e.g. a repair waiting to be worked): say where it
+                    stands rather than drawing an empty progress bar. */}
+                {stages.length === 0 && !gateInfo?.is_in_progress && (
+                    <p className="mb-3 text-xs text-muted-foreground">
+                        {orderStatus === "COMPLETED" ? "Completed."
+                            : orderStatus === "CANCELLED" ? "Cancelled."
+                            : orderStatus === "ON_HOLD" ? "On hold."
+                            : "Work hasn't started yet."}
+                    </p>
+                )}
+
                 {/* Progress Section */}
                 {stages.length > 0 && (
                     <div className="mb-3">

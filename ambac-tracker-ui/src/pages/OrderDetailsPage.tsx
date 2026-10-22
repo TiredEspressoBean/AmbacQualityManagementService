@@ -179,7 +179,9 @@ export function OrderDetailsPage() {
     const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
 
     const { data, isLoading, error, refetch } = useOrderDetails(orderNumber);
-    const canChangeOrders = usePermissionSet().has("change_orders");
+    const perms = usePermissionSet();
+    const canChangeOrders = perms.has("change_orders");
+    const canAddNotes = perms.has("add_orders");
 
     // Mutation for adding notes
     const addNoteMutation = useMutation({
@@ -346,14 +348,18 @@ export function OrderDetailsPage() {
                         <UserPlus className="h-4 w-4 mr-2" />
                         Invite
                     </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate({ to: `/orders/${orderNumber}/edit` })}
-                    >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                    </Button>
+                    {/* Offered only to those the server lets save it — a customer
+                        was shown Edit and got a 403 on save. */}
+                    {canChangeOrders && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate({ to: `/orders/${orderNumber}/edit` })}
+                        >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -475,8 +481,9 @@ export function OrderDetailsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Add Note Form */}
-                            <QuickComposer
+                            {/* Add Note Form — the note action takes add_orders (the
+                                POST default); a customer was offered it and refused. */}
+                            {canAddNotes && <QuickComposer
                                 placeholder="Add a note..."
                                 submitting={addNoteMutation.isPending}
                                 onSubmit={(message) => addNoteMutation.mutate({ message, visibility: noteVisibility })}
@@ -490,7 +497,7 @@ export function OrderDetailsPage() {
                                         {noteVisibility === "VISIBLE" ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                                     </Button>
                                 }
-                            />
+                            />}
 
                             {/* Notes Timeline */}
                             {notes_timeline && notes_timeline.length > 0 ? (

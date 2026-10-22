@@ -506,6 +506,11 @@ class SupplierQualityTests(_ReceivingFixtureMixin, TenantTestCase):
         capa = open_scar_for_lot(lot, user=self.user_a)
         self.assertEqual(capa.supplier_id, self.supplier.id)
         self.assertIn(report, capa.quality_reports.all())
+        # One open SCAR per lot: a second raise returns the first.
+        self.assertEqual(open_scar_for_lot(lot, user=self.user_a).id, capa.id)
+        # Closed, a recurrence is a new SCAR.
+        capa.status = "CLOSED"; capa.save(update_fields=["status"])
+        self.assertNotEqual(open_scar_for_lot(lot, user=self.user_a).id, capa.id)
 
 
 class DefectiveCountGateTests(_ReceivingFixtureMixin, TenantTestCase):

@@ -26,6 +26,7 @@ import { toast } from "sonner"
 import { matchKey } from "@/lib/query-filters";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { parseDateOnly } from "@/lib/date-only";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 type CapaTasksTabProps = {
     capa: any
@@ -61,6 +62,12 @@ const initialFormData: TaskFormData = {
 }
 
 export function CapaTasksTab({ capa }: CapaTasksTabProps) {
+    // Offer only what the server will accept — a read-only role (Auditor) was shown
+    // Add Task and the row edit/delete icons, then refused on save.
+    const { has } = usePermissionSet()
+    const canAddTask = has("add_capatasks")
+    const canChangeTask = has("change_capatasks")
+    const canDeleteTask = has("delete_capatasks")
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingTask, setEditingTask] = useState<any>(null)
     const [formData, setFormData] = useState<TaskFormData>(initialFormData)
@@ -238,12 +245,18 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                                     Overdue
                                 </Badge>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(task)}>
-                                <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(task.id)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canChangeTask && (
+                                <Button variant="ghost" size="icon" aria-label="Edit task"
+                                        onClick={() => handleOpenDialog(task)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {canDeleteTask && (
+                                <Button variant="ghost" size="icon" aria-label="Delete task"
+                                        onClick={() => handleDelete(task.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
                     </div>
 
@@ -480,10 +493,12 @@ export function CapaTasksTab({ capa }: CapaTasksTabProps) {
                             {tasks.filter((t: { status?: string }) => t.status === "COMPLETED").length} completed
                         </CardDescription>
                     </div>
-                    <Button onClick={() => handleOpenDialog()}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Task
-                    </Button>
+                    {canAddTask && (
+                        <Button onClick={() => handleOpenDialog()}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Task
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {tasks.length === 0 ? (
