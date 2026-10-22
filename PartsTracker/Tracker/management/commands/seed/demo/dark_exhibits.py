@@ -226,7 +226,7 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         shelf life, and refuses another customer's property. Writing rows directly
         would produce usages that reconcile against no stock.
         """
-        from Tracker.models import Parts, Steps
+        from Tracker.models import MaterialUsage, Parts, Steps
         from Tracker.services.mes.consumption import consume_for_step
 
         operator = self._pick_user(users, 'mike.ops@demo.ambac.com')
@@ -252,10 +252,14 @@ class DemoDarkExhibitSeeder(BaseSeeder):
                 # Only for work the part has actually reached or passed.
                 if not part.step_executions.filter(step=step).exists():
                     continue
+                # Advancing a part past the step draws its material already (the seed
+                # walks advance through the real service), so only backfill what was
+                # never drawn. Drawing again booked every assembled unit's lots twice.
+                if MaterialUsage.objects.filter(part=part, step=step).exists():
+                    continue
                 res = consume_for_step(part, step, operator, bom_cache=cache)
                 drawn += len(getattr(res, 'usages', []) or [])
 
-        from Tracker.models import MaterialUsage
         self.log(f"  Material usage: {MaterialUsage.objects.count()} rows ({drawn} drawn now)")
         return drawn
 

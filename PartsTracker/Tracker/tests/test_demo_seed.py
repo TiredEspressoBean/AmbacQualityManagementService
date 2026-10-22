@@ -306,6 +306,18 @@ class DemoSeedDarkExhibitTests(TestCase):
             self.assertEqual(nozzle.resolution, REPLACE_POOL)
             self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})
 
+    def test_an_assembled_unit_draws_its_material_once(self):
+        """Auditor walk (2026-10-22): the material-usage backfill drew again for parts
+        whose advance had already drawn, so a traveler listed every lot twice."""
+        from django.apps import apps
+        MaterialUsage = apps.get_model("Tracker", "MaterialUsage")
+        with tenant_context(self.tenant.id):
+            part = Parts.objects.get(ERP_id="INJ-QA-INSPECT-011")
+            lots = list(MaterialUsage.objects.filter(part=part, step__name="Assembly")
+                        .values_list("lot_id", flat=True))
+            self.assertTrue(lots)
+            self.assertEqual(len(lots), len(set(lots)))
+
     def test_the_tenant_admin_is_not_platform_staff(self):
         """Administrator track (2026-10-22): is_staff grants cross-tenant read access, so
         the customer's admin persona must not hold it; only the platform admin does."""

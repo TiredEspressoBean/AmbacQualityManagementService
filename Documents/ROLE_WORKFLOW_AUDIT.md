@@ -385,14 +385,14 @@ who, when and old→new, but never a reason.
 | 13 | Downtime recorded wrongly | Shift Lead | PATCH | 🚧 | ? | |
 | 14 | Wrong training record | QA Manager | Edit, or delete (archives) | ✅ | ? | |
 | 15 | Wrong disposition decision | QA Manager | Decide again, until closed | ✅ | ✅ | **Re-walked 2026-10-22 on 5a53e88 as Maria (`DISP-2026-000015`):** Scrap asks *"Scrap INJ-QA-MANAGE-002? … can be changed, with a reason, which un-scraps it"*; changing to Rework asks a reason; the part leaves SCRAPPED for Rework, and the notes keep both: *"Decision changed from Scrap to Rework by Maria Santos; the part was un-scrapped. Reason: …"*. (Decided 10/22. First walk: no confirm, part left SCRAPPED, note replaced.) Taught: QA Manager 2. |
-| 16 | CAPA verified wrongly | QA Manager | Not Effective reopens it; Closed is terminal | ⚠️ | ? | `verify` doesn't refuse re-verifying a decided verification (API) |
+| 16 | CAPA verified wrongly | QA Manager | Not Effective reopens it; Closed is terminal | ✅ | ? | **Fixed da1f497 (tested):** a decided verification, or a closed CAPA, refuses re-verification. `verify` doesn't refuse re-verifying a decided verification (API) |
 | 17 | Wrong approval response | QA Manager, Production Manager | None; the request can be cancelled while pending | ❌ | ? | |
-| 18 | Supplier suspended wrongly | QA Manager | **Grant…**; a disqualified one needs a new qualification | ⚠️ | ? | Grant doesn't release lots the suspension held |
+| 18 | Supplier suspended wrongly | QA Manager | **Grant…**; a disqualified one needs a new qualification | ✅ | ✅ | **Walked 2026-10-22 as Maria on da1f497:** Suspend… held Great Lakes Diesel's four dock lots (*SUPPLIER_UNQUALIFIED*); **Grant…** released them back to inspection, leaving RCV-MAT-0007's own whole-lot hold. Grant doesn't release lots the suspension held |
 | 19 | Wrong calibration result | QA Manager | Edit or delete; the gauge status re-applies | ✅ | ? | |
 | 20 | Wrong teardown grade | Shift Lead | A finding, then **Apply** | ✅ | ? | |
 | 21 | Core received under the wrong order/mode | Receiving | PATCH while RECEIVED | 🚧 | ? | None once teardown starts |
 | 22 | Customer's answer recorded wrongly | QA Manager, Production Manager | None | ❌ | ? | Declined can't be re-requested |
-| 23 | Wrong component installed | Operator | Remove (reason), install the right one | 🚧 | ? | Component status and reservation aren't restored |
+| 23 | Wrong component installed | Operator | Remove (reason), install the right one | 🚧 | ? | **2026-10-22:** installing changes neither status nor reservation, so removal has nothing to restore; the real gap (one component installed twice) is now refused. Component status and reservation aren't restored |
 | 24 | Wrong received quantity | Receiving | **Correct receipt…** on the lot menu (reason), while nothing has been taken | ✅ | ✅ | **Re-walked 2026-10-22 as Luis (`RCV-MAT-0005`, 120 keyed, 12 arrived):** *Lot RCV-MAT-0005 receipt corrected to 12 EA*; the ERP sheet reads received 12, accepted 12. (Decided 10/22. First walk: only **Adjust quantity**, which left the sheet at 120.) Taught: Receiving 2. |
 | 25 | Wrong supplier, material or PO line on a lot | Receiving | PATCH | 🚧 | ? | No reason |
 | 26 | Lot accepted or rejected wrongly | Receiving, QA Manager | **Reject remainder**, or Use As Is on a concession; a pending whole-lot request can be declined | ✅ | ? | |

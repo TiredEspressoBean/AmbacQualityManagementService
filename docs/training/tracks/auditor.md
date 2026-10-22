@@ -19,9 +19,8 @@ and every record it names is one the training seed creates.
 
 The password is `demo123`.
 
-Alex holds view permissions across the whole shop and nothing else. A few pages still
-show a button for changing something. Pressing one is refused: the role can't write,
-whatever the page offers.
+Alex holds view permissions across the whole shop and nothing else: the pages show
+what's recorded, without the buttons for changing it.
 
 ---
 
