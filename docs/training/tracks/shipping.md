@@ -153,11 +153,15 @@ work.
 2. Tick it, **Ship 1…**, give the carrier, **Ship**.
 
 The core's record now reads *returned unrepaired*, with the shipment number as its
-return reference.
+return reference. The shipment offers **Returned as received** in place of a CoC: it
+says the unit goes back without repair at the customer's request, who declined and
+how, and the findings behind the work they declined. Nothing is certified.
 
 The usual case is a unit that's been rebuilt. `ORD-2024-0047` (Northern Trucking)
 lists `CORE-240217-0013`: *Rebuilt — ready to return*. Ship it the same way. The
-shipment offers the **Packing list** and a **CoC**, and the core reads *returned*.
+shipment offers the **Packing list** and a **CoC**, and the core reads *returned*. The
+CoC names the customer's own serial, says the unit was *repaired*, and leaves the
+authorised-by line for QA to sign.
 Either way the customer gets their own property back, by the same dispatch.
 
 ---
