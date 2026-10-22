@@ -369,6 +369,30 @@ records what was found and what the customer said.
 
 Had they declined, **Declined…** would send the unit back unrepaired.
 
+### R2. A unit out of reworks
+
+**You will:** decide a unit the routing has stopped retrying.
+
+`CORE-240219-0014` failed Nozzle Inspection on spray angle twice, and was reworked
+twice. The routing allows two visits to that check, so after the second rework the
+unit didn't go back to it: it went to **MRB Review**, quarantined, with a disposition
+opened for you. MRB Review is a holding step. Nothing runs there; your decision
+moves the unit on.
+
+1. **Dispositions to take** on your home page lists it, tagged **MRB**: *Visit cap
+   reached at Nozzle Inspection (2 visit(s)). Decide: scrap, use as is on a
+   concession, or one more rework.* Nobody has taken it yet. **Take it**: it leaves
+   the queue for your **Inbox** > **Dispositions**. Open it from there.
+2. It carries the last failed report, the finding that sent the unit round the loop.
+   Read it, and the unit's earlier failures: what was out, by how much, and what each
+   rework did. The second rework's own disposition is closed, pointing at this one.
+3. Choose the decision:
+   - **Rework** gives the unit one more try: it goes back to Rework.
+   - **Use As Is**, on a concession, continues the unit past the check.
+   - **Scrap** ends it.
+4. Say in the resolution notes what the decision rests on, and update the
+   disposition.
+
 ## Recording your qualification
 
 Passing the final task is the assessment. The record that lets you do the work is a
