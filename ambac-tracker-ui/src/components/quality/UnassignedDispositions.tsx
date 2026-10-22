@@ -47,13 +47,17 @@ export function UnassignedDispositions({ userPk }: { userPk: number }) {
     return (
         <div className="mt-3">
             <div className="text-xs text-muted-foreground">
-                Unassigned dispositions — opened by a failed inspection, nobody has taken them:
+                Unassigned dispositions — opened by a failed inspection or a part held at MRB; nobody has taken them:
             </div>
             {rows.map((d) => (
                 <div key={d.id} className="mt-1 flex items-center gap-3 rounded-lg border border-dashed p-2.5">
                     <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <Link to="/production/dispositions/$id/edit" params={{ id: d.id }} className="min-w-0 flex-1">
                         <span className="block truncate text-sm">
+                            {/* An MRB hold: a visit cap or a failed check sent the part there. */}
+                            {d.escalated_from_step && (
+                                <span className="mr-1.5 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">MRB</span>
+                            )}
                             {d.disposition_number}{d.part_erp_id ? ` · ${d.part_erp_id}` : ""}{d.work_order_erp_id ? ` · ${d.work_order_erp_id}` : ""}{d.description ? ` · ${d.description}` : ""}
                         </span>
                     </Link>

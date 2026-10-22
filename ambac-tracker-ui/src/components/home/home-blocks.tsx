@@ -65,6 +65,7 @@ import {
 import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { parseDateOnly } from "@/lib/date-only";
+import { UnassignedDispositions, unassignedDispositionsOptions } from "@/components/quality/UnassignedDispositions";
 
 /** Normalize a list endpoint's envelope (paginated `{count,results}` or a bare
  *  array) to a row count — the change-control hooks return an untyped envelope. */
@@ -357,6 +358,21 @@ function InspectionQueueBlock() {
                         Start inspecting <ArrowRight className="ml-1 h-4 w-4" />
                     </Button>
                 </Link>
+            </CardContent>
+        </Card>
+    );
+}
+
+function UnassignedDispositionsBlock({ userPk }: { userPk: number }) {
+    const { data: rows = [] } = useQuery(unassignedDispositionsOptions());
+    if (rows.length === 0) return null;
+    return (
+        <Card>
+            <CardHeader className="pb-1">
+                <CardTitle className="text-base">Dispositions to take ({rows.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <UnassignedDispositions userPk={userPk} />
             </CardContent>
         </Card>
     );
@@ -1539,6 +1555,9 @@ const BLOCKS: BlockDef[] = [
     // Full-width so it dominates the top of the stack, operator-hero styled.
     { id: "shift-lead-hero", size: "full", groups: ["Shift Lead", "Tenant Admin"], Component: () => <ShiftLeadHeroBlock /> },
     // Triage banner — wide, 4 tiles.
+    // The QA queue: dispositions nobody has taken, MRB holds marked (walk 2026-10-22 —
+    // a held part's decision was findable only through the dispositions list).
+    { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedDispositionsBlock userPk={user.pk} /> },
     { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
     // KPI strip — 5 stat tiles; wants the room.
     { id: "quality-kpis", size: "full", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },

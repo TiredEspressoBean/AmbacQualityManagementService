@@ -216,5 +216,12 @@ class RepeatFailureReachesMrbTests(TenantContextMixin, VectorTestCase):
         # A third look at the check is past its cap of 2: MRB, held, with a decision.
         self.assertEqual((self.part.step, self.part.part_status),
                          (self.mrb, PartsStatus.QUARANTINED))
-        self.assertTrue(QuarantineDisposition.objects.filter(
-            part=self.part, escalated_from_step=self.inspect, current_state="OPEN").exists())
+        mrb = QuarantineDisposition.objects.get(
+            part=self.part, escalated_from_step=self.inspect, current_state="OPEN")
+        # The rework decision the escalation ends is closed, pointing at the MRB one: the
+        # part never returns to the check that would have closed it.
+        self.assertFalse(QuarantineDisposition.objects.filter(
+            part=self.part, current_state="IN_PROGRESS").exists())
+        superseded = QuarantineDisposition.objects.filter(
+            part=self.part, disposition_type="REWORK").order_by("-created_at").first()
+        self.assertIn(mrb.disposition_number, superseded.resolution_notes)

@@ -47,7 +47,8 @@ def open_for_escalation(part, *, capped_step, visits: int):
     advance once the part has moved there. Unassigned: the QA queue takes it."""
     return _hold(part, capped_step,
                  f"Visit cap reached at {capped_step.name} ({visits} visit(s)). "
-                 f"Decide: scrap, use as is on a concession, or one more rework.")
+                 f"Decide: scrap, use as is on a concession, or one more rework.",
+                 supersede_rework=True)
 
 
 def open_for_failure(part, *, failed_step):
@@ -72,14 +73,41 @@ def open_for_failure(part, *, failed_step):
                  f"Decide: scrap, use as is on a concession, or rework.")
 
 
-def _hold(part, from_step, description):
-    from Tracker.models import PartsStatus, QuarantineDisposition
+def _hold(part, from_step, description, *, supersede_rework=False):
+    import logging
+    from Tracker.models import PartsStatus, QualityReports, QuarantineDisposition
 
     part.part_status = PartsStatus.QUARANTINED
     part.save(update_fields=['part_status'])
-    return QuarantineDisposition.objects.create(
+    disposition = QuarantineDisposition.objects.create(
         tenant=part.tenant, part=part, step=part.step, assigned_to=None,
         escalated_from_step=from_step, description=description)
+    # The evidence: the last failed report on the part, which is what sent it round
+    # the loop that ran out. A disposition is about a finding, and the edit form
+    # rightly refuses one with none (MRB walk 2026-10-22).
+    last_fail = (QualityReports.objects  # tenant-safe: scoped by the part FK
+                 .filter(part=part, status='FAIL').order_by('-created_at').first())
+    if last_fail is not None:
+        disposition.quality_reports.add(last_fail)
+    # The rework decision this escalation ends: its part never returns to the check
+    # that would close it, so close it here, pointing at the decision that replaces it.
+    reworks = (QuarantineDisposition.objects.none() if not supersede_rework else
+               QuarantineDisposition.objects  # tenant-safe: scoped by the part FK
+               .filter(part=part, archived=False, current_state='IN_PROGRESS',
+                       disposition_type__in=('REWORK', 'REPAIR'))
+               .exclude(pk=disposition.pk))
+    for open_rework in reworks:
+        note = (f"Superseded: the part reached the visit cap at {from_step.name} and "
+                f"went to MRB under {disposition.disposition_number}.")
+        open_rework.resolution_notes = (f"{open_rework.resolution_notes}\n{note}".strip()
+                                        if open_rework.resolution_notes else note)
+        open_rework.current_state = 'CLOSED'
+        try:
+            open_rework.save(update_fields=['resolution_notes', 'current_state', 'updated_at'])
+        except ValueError:  # pending annotations: leave it for a person
+            logging.getLogger(__name__).info(
+                "Rework disposition %s left open on escalation", open_rework.pk)
+    return disposition
 
 
 def route_after_decision(disposition, user) -> None:
