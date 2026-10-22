@@ -53599,6 +53599,9 @@ components:
           items:
             $ref: '#/components/schemas/ShipmentLot'
           readOnly: true
+        unrepaired_units:
+          type: integer
+          readOnly: true
         is_voided:
           type: boolean
           readOnly: true
@@ -53637,6 +53640,7 @@ components:
       - shipped_at
       - shipped_by
       - shipped_by_name
+      - unrepaired_units
       - updated_at
       - void_reason
       - voided_at
@@ -56300,6 +56304,17 @@ components:
             additionalProperties: {}
       required:
       - data
+    FailedSolve:
+      type: object
+      properties:
+        solved_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+      required:
+      - reason
+      - solved_at
     FenceZoneEnum:
       enum:
       - frozen
@@ -58435,6 +58450,38 @@ components:
       description: |-
         * `ONCE` - One-off (dated)
         * `WEEKLY` - Weekly (recurring)
+    LapsingInHorizon:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/LapsingInHorizonKindEnum'
+        name:
+          type: string
+        what:
+          type: string
+        lapses_on:
+          type: string
+          format: date
+        steps:
+          type: array
+          items:
+            type: string
+      required:
+      - kind
+      - lapses_on
+      - name
+      - steps
+      - what
+    LapsingInHorizonKindEnum:
+      enum:
+      - operator
+      - machine
+      - gauge
+      type: string
+      description: |-
+        * `operator` - operator
+        * `machine` - machine
+        * `gauge` - gauge
     LateDelivery:
       type: object
       description: An expected receipt past, or near, its promised date, and the work
@@ -73446,6 +73493,11 @@ components:
           items:
             type: string
             format: uuid
+        escalated_from_step:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         affected_parts:
           type: array
           items:
@@ -73509,6 +73561,7 @@ components:
       - decision_authorized_by
       - decision_authorized_by_name
       - disposition_number
+      - escalated_from_step
       - id
       - material_lot_number
       - part_erp_id
@@ -76845,6 +76898,11 @@ components:
         task_count:
           type: integer
           readOnly: true
+        last_failed_solve:
+          allOf:
+          - $ref: '#/components/schemas/FailedSolve'
+          nullable: true
+          readOnly: true
       required:
       - created_at
       - frozen_freed
@@ -76856,6 +76914,7 @@ components:
       - is_active
       - is_draft
       - is_stale
+      - last_failed_solve
       - machine_solve_ms
       - objective_value_cents
       - operator_solve_ms
@@ -84363,6 +84422,10 @@ components:
           type: object
           additionalProperties:
             type: integer
+        lapsing:
+          type: array
+          items:
+            $ref: '#/components/schemas/LapsingInHorizon'
         work_orders:
           type: array
           items:
@@ -84372,6 +84435,7 @@ components:
       - horizon_end
       - horizon_start
       - is_stale
+      - lapsing
       - open_units
       - open_work_orders
       - schedule_id

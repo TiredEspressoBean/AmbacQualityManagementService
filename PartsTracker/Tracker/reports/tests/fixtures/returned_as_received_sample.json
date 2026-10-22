@@ -1,0 +1,21 @@
+{
+  "our_org": "Demo Company",
+  "shipment_number": "SHP-2026-000004",
+  "shipped_date": "2026-10-22",
+  "customer_name": "Northern Trucking Co",
+  "units": [
+    {
+      "serial": "SN-CRI-M08C51B2",
+      "core_number": "CORE-240215-0011",
+      "part_type": "Common Rail Injector",
+      "order": "ORD-2024-0046",
+      "findings": ["Replace injector nozzle: Cracked nozzle body at the seat, found after cleaning."],
+      "answered_on": "2026-10-20",
+      "answered_by": "J. Buyer",
+      "method": "phone",
+      "reference": "PO-123"
+    }
+  ],
+  "issued_by": "Rosa Kim",
+  "issued_date": "2026-10-22"
+}

@@ -52,6 +52,9 @@ class CustomerShipmentSerializer(SecureModelMixin):
     # For a voided shipment: the units it had, so the record still says what was on it.
     parts = serializers.SerializerMethodField()
     lots = serializers.SerializerMethodField()
+    # Customer units going back unrepaired: they get the "returned as received" note,
+    # not a CoC.
+    unrepaired_units = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomerShipment
@@ -59,7 +62,7 @@ class CustomerShipmentSerializer(SecureModelMixin):
             'id', 'shipment_number', 'customer', 'customer_name', 'requires_coc',
             'shipped_at', 'shipped_by', 'shipped_by_name',
             'carrier', 'tracking_number', 'reference', 'expected_delivery', 'notes',
-            'quantity', 'parts', 'lots',
+            'quantity', 'parts', 'lots', 'unrepaired_units',
             'is_voided', 'voided_at', 'void_reason',
             'created_at', 'updated_at', 'archived',
         )
@@ -78,6 +81,11 @@ class CustomerShipmentSerializer(SecureModelMixin):
     @extend_schema_field(serializers.IntegerField())
     def get_quantity(self, obj):
         return obj.parts.count()
+
+    @extend_schema_field(serializers.IntegerField())
+    def get_unrepaired_units(self, obj):
+        from Tracker.reports.adapters.returned_as_received import unrepaired_cores
+        return len(unrepaired_cores(obj))
 
     @extend_schema_field(ShipmentLotSerializer(many=True))
     def get_lots(self, obj):

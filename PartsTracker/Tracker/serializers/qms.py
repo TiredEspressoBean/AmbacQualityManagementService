@@ -894,6 +894,8 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'part', 'material_lot', 'material_lot_number', 'quantity',
             'batch_execution', 'step', 'step_info', 'rework_attempt_at_step',
             'rework_limit_exceeded', 'quality_reports',
+            # MRB: the step whose visit cap sent the part here (set by the engine)
+            'escalated_from_step',
             # Batch dispositions: the member parts of the affected load
             'affected_parts',
             # WO denormalization (for frontend exception → WO linking)
@@ -912,7 +914,7 @@ class QuarantineDispositionSerializer(SecureModelMixin):
             'disposition_number', 'assignee_name', 'choices_data', 'step_info', 'rework_limit_exceeded',
             'annotation_status', 'can_be_completed', 'completion_blockers',
             'severity_display', 'containment_completed_by_name', 'scrap_verified_by_name',
-            'work_order_id', 'work_order_erp_id', 'affected_parts',
+            'work_order_id', 'work_order_erp_id', 'affected_parts', 'escalated_from_step',
             # Decision authority is recorded by the `decide` service, never by a
             # direct write.
             'decision_authorized_by', 'decision_authorized_at', 'decision_authorized_by_name',
@@ -1035,11 +1037,19 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         closes it then). Idempotent + best-effort: a routing failure (e.g. the
         rework step lacks an inspection substep, per 2d) must not fail the save —
         the part stays REWORK_NEEDED for manual routing via the control page."""
-        if instance.disposition_type not in ('REWORK', 'REPAIR'):
-            return
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user is None:
+            return
+        if instance.escalated_from_step_id:
+            # A part at MRB Review: the decision routes it out (rework or use as is).
+            from Tracker.services.qms.mrb import route_after_decision
+            try:
+                route_after_decision(instance, user)
+            except Exception:
+                logger.exception("MRB routing failed for disposition %s", instance.pk)
+            return
+        if instance.disposition_type not in ('REWORK', 'REPAIR'):
             return
         from Tracker.services.qms.disposition import route_part_to_rework_if_needed
         try:

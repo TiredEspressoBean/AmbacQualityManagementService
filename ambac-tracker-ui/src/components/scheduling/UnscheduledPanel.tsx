@@ -31,6 +31,7 @@ const TONE: Record<UnscheduledReason, string> = {
   no_routing: "border-l-red-500",
   no_timings: "border-l-red-500",
   unstaffable: "border-l-red-500",
+  machine_down: "border-l-red-500",
   outside_horizon: "border-l-sky-500",
   material_gated: "border-l-amber-500",
   material_short: "border-l-amber-500",
@@ -158,7 +159,10 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
                           to work — the detail line already says so. */}
                       {r.open_units > 0 && (
                         <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
-                          {r.scheduled_units}/{r.open_units} placed
+                          {/* Every unit has tasks, but only up to the uncovered step. */}
+                          {(r.reason === "unstaffable" || r.reason === "machine_down") && r.scheduled_units >= r.open_units
+                            ? "placed up to the gap"
+                            : `${r.scheduled_units}/${r.open_units} placed`}
                         </span>
                       )}
                     </div>
@@ -173,6 +177,40 @@ export function UnscheduledPanel({ open, onOpenChange, onOpenWorkOrder }: Props)
                 ))}
               </section>
             ))}
+
+            {/* Not a reason on its own row: a lapse makes work late or uncovered past
+                its date, whichever order it lands on. */}
+            {(data?.lapsing ?? []).length > 0 && (
+              <section className="space-y-2">
+                <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Lapsing inside the horizon
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    {data!.lapsing.length}
+                  </Badge>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Past these dates the plan can&rsquo;t use them, so work there goes late or
+                  without an operator.
+                </p>
+                {data!.lapsing.map((l) => (
+                  <div key={`${l.kind}-${l.name}-${l.what}`}
+                    className="rounded-md border border-l-4 border-l-amber-500 bg-card p-3 text-xs">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-medium">{l.name}</span>
+                      <span className="text-muted-foreground">
+                        {l.kind === "operator" ? l.what : `${l.kind} ${l.what}`}
+                      </span>
+                      <span className="ml-auto shrink-0 tabular-nums">
+                        until {shortDate(l.lapses_on)}
+                      </span>
+                    </div>
+                    {l.steps.length > 0 && (
+                      <p className="mt-1 text-muted-foreground">{l.steps.join(", ")}</p>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
           </div>
         </div>
       </SheetContent>

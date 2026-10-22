@@ -77,7 +77,16 @@ def _make_approved_process(tenant, user, part_type, *, name='Injector Assembly')
     ProcessStep.objects.create(
         process=process, step=step, order=1, is_entry_point=True,
     )
+    _add_terminal(process, part_type)
     return process, step
+
+
+def _add_terminal(process, part_type, order=99):
+    """A routing must end at a Terminal step to be approvable (approve_process
+    refuses flow errors), so fixture routings carry one after their last step."""
+    done = Steps.objects.create(name='Done', part_type=part_type, is_terminal=True)
+    ProcessStep.objects.create(process=process, step=done, order=order)
+    return done
 
 
 def _make_workorder(tenant, process, *, status=WorkOrderStatus.IN_PROGRESS, erp='WO-001'):
@@ -442,6 +451,7 @@ class PcrRebaseTestCase(TenantTestCase):
         ProcessStep.objects.create(
             process=self.baseline, step=self.milling, order=2,
         )
+        _add_terminal(self.baseline, self.part_type)
         _make_pcr_template(self.tenant_a)
         _make_pco_template(self.tenant_a)
 
@@ -1012,6 +1022,7 @@ class RegulatedModeEndToEndTestCase(TenantTestCase):
         )
         step = Steps.objects.create(name='S1', part_type=self.part_type, pass_threshold=1.0)
         ProcessStep.objects.create(process=self.baseline, step=step, order=1)
+        _add_terminal(self.baseline, self.part_type)
 
         tpl = _make_pcr_template(self.tenant_a)
         tpl.approval_flow_type = 'ALL_REQUIRED'

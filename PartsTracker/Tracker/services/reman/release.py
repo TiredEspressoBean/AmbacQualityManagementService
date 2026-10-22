@@ -217,7 +217,13 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
     core.status = 'IN_REBUILD' if approved else 'DECLINED'
     core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) | set(codes))
     core.condition_notes = f"{core.condition_notes}\n{line}".strip()
-    core.save(update_fields=['status', 'approved_repair_codes', 'condition_notes', 'updated_at'])
+    core.authorisation_answered_at = timezone.now()
+    core.authorisation_contact = contact.strip()
+    core.authorisation_method = method.strip()
+    core.authorisation_reference = reference.strip()
+    core.save(update_fields=['status', 'approved_repair_codes', 'condition_notes',
+                             'authorisation_answered_at', 'authorisation_contact',
+                             'authorisation_method', 'authorisation_reference', 'updated_at'])
     sync_part_status(core)
     return core
 

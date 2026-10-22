@@ -303,7 +303,12 @@ export function RebuildPlanPage() {
                         <CardTitle className="flex flex-wrap items-baseline gap-3">
                             <span>Slots</span>
                             <span className="text-sm font-normal text-muted-foreground tabular-nums">
-                                {needing.length} need a decision · {settled.length} settled
+                                {/* A recorded decision is decided, even while its row stays in view. */}
+                                {needing.filter((s) => !s.is_overridden).length} need a decision
+                                {needing.some((s) => s.is_overridden)
+                                    ? ` · ${needing.filter((s) => s.is_overridden).length} decided`
+                                    : ""}
+                                {" "}· {settled.length} settled
                             </span>
                         </CardTitle>
                         <CardDescription>
@@ -349,9 +354,12 @@ export function RebuildPlanPage() {
                                                             </Badge>
                                                             {slot.is_overridden && (
                                                                 <span className="text-xs text-muted-foreground">
-                                                                    overridden &mdash; proposed{" "}
-                                                                    {RESOLUTION_LABEL[slot.proposed_resolution] ??
-                                                                        slot.proposed_resolution}
+                                                                    {/* Recording the proposal confirms it; only a different choice overrides. */}
+                                                                    {slot.resolution === slot.proposed_resolution
+                                                                        ? "confirmed"
+                                                                        : <>overridden &mdash; proposed{" "}
+                                                                            {RESOLUTION_LABEL[slot.proposed_resolution] ??
+                                                                                slot.proposed_resolution}</>}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -437,7 +445,7 @@ export function RebuildPlanPage() {
                             {editing?.position ? ` · ${editing.position}` : ""}
                         </DialogTitle>
                         <DialogDescription>
-                            Teardown found: {editing?.finding}. The system proposed{" "}
+                            Teardown found: {(editing?.finding ?? "").trim().replace(/[.!?]+$/, "")}. The system proposed{" "}
                             {RESOLUTION_LABEL[
                                 (editing?.is_overridden
                                     ? editing?.proposed_resolution

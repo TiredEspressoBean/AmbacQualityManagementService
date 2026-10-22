@@ -676,6 +676,96 @@ def get_step_operator_pools(tenant) -> dict[UUID, frozenset]:
     return pools
 
 
+def get_unrunnable_steps(tenant, horizon: HorizonData) -> dict:
+    """Machine-bound steps that can't run anywhere in the horizon: every eligible
+    schedulable machine is down for all of it (open-ended downtime, say).
+    `step_id -> "why"`. Like an uncovered certification, the solver plans up to such
+    a step rather than failing the whole plan, and Not scheduled says why."""
+    from Tracker.models import DowntimeEvent, Equipments
+
+    downtime = get_machine_downtime(tenant, horizon)
+
+    def dead(eid):
+        spans = sorted(downtime.get(eid, ()))
+        # Downtime reported "now" starts a moment after the horizon does; a sliver
+        # that short can't run anything.
+        cursor = horizon.start + timedelta(minutes=15)
+        for s, e in spans:
+            if s > cursor:
+                return False
+            cursor = max(cursor, e)
+        return cursor >= horizon.end
+
+    out: dict = {}
+    names: dict = {}
+    for sid, affs in get_step_equipment_affinities(tenant).items():
+        eligible = [a.equipment_id for a in affs if a.is_schedulable]
+        if eligible and all(dead(e) for e in eligible):
+            if not names:
+                names.update(Equipments.objects.filter(  # tenant-safe: explicit tenant filter
+                    tenant=tenant).values_list('id', 'name'))
+            reasons = []
+            for e in eligible:
+                ev = (DowntimeEvent.objects.filter(  # tenant-safe: explicit tenant filter
+                          archived=False, tenant=tenant, equipment_id=e,
+                          start_time__lt=horizon.end)
+                      .order_by('-start_time').first())
+                why = f" ({ev.reason})" if ev is not None and ev.reason else ""
+                until = (f" until {timezone.localtime(ev.end_time):%b %d}"
+                         if ev is not None and ev.end_time else "")
+                reasons.append(f"{names.get(e, 'a machine')} is down{until}{why}")
+            out[sid] = "; ".join(reasons)
+    return out
+
+
+def get_operator_qualification_lapses(tenant, horizon: HorizonData) -> dict:
+    """When a qualified operator's certification for a gated step runs out inside the
+    horizon: `step_id -> {user_id: (lapse datetime, training name)}`. Qualification is
+    judged on today, so without this an operator whose cert expires next week could be
+    planned onto the step the week after. Valid through the expiry date; lapsed from
+    the next day — the same convention as machine calibration."""
+    from datetime import time as _time
+    from Tracker.models import Steps, TrainingRecord
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.services.training import (
+        _lineage_ids, get_required_training, training_type_lineage,
+    )
+
+    pools = get_step_operator_pools(tenant)
+    if not pools:
+        return {}
+    today = tenant_today(tenant)
+    lineage = training_type_lineage(tenant.id)
+    out: dict = {}
+    for step in Steps.objects.filter(tenant=tenant, id__in=list(pools)):
+        members = pools[step.id]
+        if not members:
+            continue
+        for tt, min_level in get_required_training(step).items():
+            # Each member's longest-lasting in-date record at the level; None = no expiry.
+            best: dict = {}
+            for r in (TrainingRecord.objects.filter(  # tenant-safe: ids from the tenant-filtered lineage
+                          archived=False, user_id__in=members, level__gte=min_level,
+                          training_type_id__in=_lineage_ids(lineage, tt.id))
+                      .values('user_id', 'expires_date')):
+                d = r['expires_date']
+                if d is not None and d < today:
+                    continue
+                cur = best.get(r['user_id'], 'unset')
+                if cur == 'unset' or (cur is not None and (d is None or d > cur)):
+                    best[r['user_id']] = d
+            for uid, d in best.items():
+                if d is None:
+                    continue
+                lapse = timezone.make_aware(datetime.combine(d + timedelta(days=1), _time.min))
+                if lapse >= horizon.end:
+                    continue
+                prev = out.setdefault(step.id, {}).get(uid)
+                if prev is None or lapse < prev[0]:
+                    out[step.id][uid] = (lapse, tt.name)
+    return out
+
+
 def get_attended_only_machines(tenant) -> frozenset:
     """Machines that CANNOT run lights-out: their Layer-1 work is confined to the shift
     calendar (an operator must be present). Everything else runs 24/7, gated only by

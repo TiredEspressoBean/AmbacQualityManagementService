@@ -37,6 +37,11 @@ import { parseDateOnly } from '@/lib/date-only';
 import { usePermissionSet } from '@/hooks/useMyPermissions';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
+import { apiErrorMessage } from '@/lib/api/describeApiError';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DEMO_REMANUFACTURING_PROCESS,
   DEMO_STEP_EDGES,
@@ -139,6 +144,7 @@ export default function ProcessFlowPage() {
   // Mutations for process actions
   const updateProcess = useUpdateProcess();
   const approveProcess = useApproveProcess();
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
   const deprecateProcess = useDeprecateProcess();
   const duplicateProcess = useDuplicateProcess();
 
@@ -722,7 +728,8 @@ export default function ProcessFlowPage() {
       setEditMode(false);
     } catch (error) {
       console.error('Failed to approve process:', error);
-      toast.error('Failed to approve process');
+      // The server names what's wrong with the routing; show it.
+      toast.error(apiErrorMessage(error) ?? 'Failed to approve process');
     }
   }, [processId, approveProcess]);
 
@@ -1165,7 +1172,7 @@ export default function ProcessFlowPage() {
                     {/* Approve - only for draft */}
                     {processStatus === 'DRAFT' && (
                       <DropdownMenuItem
-                        onClick={handleApprove}
+                        onClick={() => setApproveConfirmOpen(true)}
                         disabled={approveProcess.isPending || hasChanges || hasValidationErrors}
                       >
                         <ShieldCheck className="h-4 w-4 mr-2 text-green-600" />
@@ -1302,6 +1309,35 @@ export default function ProcessFlowPage() {
               </div>
             </div>
           )}
+          {/* Approving locks the routing for production: always confirm, and show any
+              warnings the editor still has open. Errors block it outright (menu + server). */}
+          <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Approve this routing for production?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Work orders can run it once it's approved, and it can no longer be edited —
+                  changes go through a change request.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              {validation.warnings.length > 0 && (
+                <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                  <p className="font-medium">
+                    {validation.warnings.length} warning{validation.warnings.length === 1 ? '' : 's'} still open:
+                  </p>
+                  <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
+                    {validation.warnings.map((w, i) => <li key={i}>{w.message}</li>)}
+                  </ul>
+                </div>
+              )}
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void handleApprove()}>
+                  {validation.warnings.length > 0 ? 'Approve anyway' : 'Approve'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {linkedPcr && (
             <SubmitPcrDialog
               open={submitDialogOpen}

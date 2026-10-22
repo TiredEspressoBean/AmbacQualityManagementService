@@ -82,8 +82,60 @@ def find_unstaffable_steps(tenant) -> list[dict]:
                 'step_id': str(sid),
                 'step_name': step.name,
                 'process': proc.name if proc else None,
+                'process_id': pid,
                 'required_training': sorted(tt.name for tt in required),
                 'parts_affected': n,
+                'holders': _holder_notes(tenant, required, op_ids),
             })
     gaps.sort(key=lambda g: -g['parts_affected'])
     return gaps
+
+
+def _holder_notes(tenant, required: dict, op_ids: set) -> list[str]:
+    """Everyone with a record against a required training, and why they don't count —
+    "<name> (inactive)", "<name> (<cert> expired Oct 29)". The planner's fix is
+    usually one of these people, so naming them beats naming only the cert."""
+    from django.db.models import Q
+    from Tracker.models import TenantMembership, TrainingRecord, User
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.services.training import _lineage_ids, training_type_lineage
+
+    today = tenant_today(tenant)
+    lineage = training_type_lineage(tenant.id)
+    active = set(TenantMembership.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, status='ACTIVE').values_list('user_id', flat=True))
+    why: dict = {}
+    for tt, min_level in required.items():
+        recs = (TrainingRecord.objects.filter(  # tenant-safe: ids from the tenant-filtered lineage
+                    archived=False, training_type_id__in=_lineage_ids(lineage, tt.id))
+                .values('user_id', 'level', 'expires_date'))
+        best: dict = {}
+        for r in recs:
+            cur = best.get(r['user_id'])
+            in_date = r['expires_date'] is None or r['expires_date'] >= today
+            key = (in_date, r['level'] >= min_level)
+            if cur is None or key > cur[0]:
+                best[r['user_id']] = (key, r)
+        for uid, ((in_date, level_ok), r) in best.items():
+            if not level_ok:
+                reason = f"below the level {tt.name} requires"
+            elif not in_date:
+                reason = f"{tt.name} expired {r['expires_date']:%b %d}"
+            else:
+                reason = None   # holds it; the account or roster decides
+            # First disqualifying reason across the required types wins.
+            why[uid] = why.get(uid) or reason
+    users = {u.id: u for u in User.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in=why)}
+    notes = []
+    for uid, reason in why.items():
+        u = users.get(uid)
+        if u is None:
+            continue
+        if not u.is_active or uid not in active:
+            reason = "inactive"
+        elif reason is None and uid not in op_ids:
+            reason = "not on the shop-floor roster"
+        if reason:
+            notes.append(f"{u.display_name} ({reason})")
+    return sorted(notes)

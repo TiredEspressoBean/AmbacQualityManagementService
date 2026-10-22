@@ -3622,10 +3622,12 @@ class Parts(SecureModel):
             return target_step
 
         current_visits = StepExecution.get_attempt_count(self, target_step)
+        # Each MRB rework decision buys the capped step one more visit.
+        from Tracker.services.qms.mrb import extra_visits
+        allowed = target_step.max_visits + extra_visits(self, target_step)
 
-        if current_visits >= target_step.max_visits:
-            # Limit exceeded - route to escalation (e.g., scrap decision)
-            # Get escalation edge from StepEdge
+        if current_visits >= allowed:
+            # Limit exceeded - route to escalation (MRB Review)
             process = self.work_order.process if self.work_order else None
             if process:
                 escalation_edge = StepEdge.objects.filter(
@@ -3634,9 +3636,17 @@ class Parts(SecureModel):
                     edge_type=EdgeType.ESCALATION
                 ).first()
                 if escalation_edge:
+                    # Read by advance_part_step: it holds the part there and opens
+                    # the decision (services/qms/mrb.py).
+                    self._escalated_from = (target_step, current_visits)
                     return escalation_edge.to_step
-            # No escalation defined - return None to trigger completion/error
-            return None
+            # No escalation route: refuse. Returning None here read as "end of the
+            # route", so a part failing rework past its cap was marked COMPLETED (or,
+            # held, left with no next step and no message).
+            raise ValueError(
+                f"{target_step.name} has been visited {current_visits} time(s), its limit, "
+                f"and the process has no escalation route from it. A lead must decide "
+                f"what happens to this part (disposition it, or add an escalation route).")
 
         return target_step
 

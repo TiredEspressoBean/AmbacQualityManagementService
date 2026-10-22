@@ -29,6 +29,7 @@ REASON_ORDER = (
     'no_routing',
     'no_timings',
     'unstaffable',
+    'machine_down',
     'outside_horizon',
     'material_gated',
     'material_short',
@@ -45,7 +46,8 @@ REASON_LABELS = {
     'no_open_units': "Nothing left to work",
     'no_routing': "No routing to schedule",
     'no_timings': "No timings authored",
-    'unstaffable': "No trained operator",
+    'unstaffable': "No qualified operator rostered",
+    'machine_down': "No machine available",
     'material_short': "Material short",
     'material_gated': "Waiting on material",
     'outside_horizon': "Starts past the horizon",
@@ -102,6 +104,8 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     release_keys, short_keys, gate_detail = data.get_material_gates(tenant, horizon)
     # `find_unstaffable_steps` keys by str(step_id); route ids are UUIDs.
     unstaffable = {g['step_id']: g for g in find_unstaffable_steps(tenant)}
+    # Steps every eligible machine is down for the whole horizon: the solve plans up to them.
+    unrunnable = data.get_unrunnable_steps(tenant, horizon)
 
     # Material gates key on (wo_id, step_id | None); collapse to per-WO for reporting.
     short_by_wo: dict = defaultdict(list)
@@ -137,6 +141,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
 
     rows = []
     total_open = 0
+    open_route: set = set()   # every step some open unit still has to pass
     for wo in wos:
         live = [p for p in wo.parts.all()
                 if p.part_status not in data._UNSCHEDULABLE_PART_STATUSES]
@@ -154,13 +159,21 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         # while it still looks covered — "why did my work vanish?" asked in advance is
         # exactly what this panel is for.
         doomed = manual_release and wo.released_at is None
-        if open_units and covered >= open_units and not doomed:
+        wo_route: set = set()
+        if wo.process_id is not None:
+            for p in open_parts:
+                wo_route.update(resolve_route(p.step_id, *_graph(wo.process_id))[0])
+        open_route |= wo_route
+        # The solve plans a unit only up to a step nobody rostered can run, so a unit
+        # with tasks can still have the rest of its route waiting — report it.
+        cut_short = any(str(sid) in unstaffable or sid in unrunnable for sid in wo_route)
+        if open_units and covered >= open_units and not doomed and not cut_short:
             continue  # fully on the board — nothing to explain
 
         reason, detail, fix = _classify(
             wo, open_parts, open_units, covered, schedule, horizon_end_date,
             timings, unstaffable, short_by_wo, gated_by_wo, _graph, resolve_route,
-            manual_release, at_end=at_end,
+            manual_release, at_end=at_end, unrunnable=unrunnable,
         )
         rows.append({
             'work_order_id': str(wo.id),
@@ -199,12 +212,73 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         'unscheduled_work_orders': len(rows),
         'counts': dict(counts),
         'work_orders': rows,
+        'lapsing': _lapsing_in_horizon(tenant, horizon, open_route),
     }
+
+
+def _lapsing_in_horizon(tenant, horizon, route_step_ids: set) -> list[dict]:
+    """Certifications and calibrations that run out inside the horizon on resources
+    the open work needs: an operator's training for a gated step, a machine's or a
+    measurement gauge's calibration. Past that date the solver can't use them, so
+    work there goes late or uncovered — this names the cause.
+    `[{kind, name, what, lapses_on, steps[]}]`, soonest first."""
+    from datetime import timedelta
+    from Tracker.models import Equipments, MeasurementDefinition, Steps, StepEquipmentAffinity, User
+    from Tracker.services.core.clock import tenant_today
+    from Tracker.services.scheduling import data
+
+    if not route_step_ids:
+        return []
+    today = tenant_today(tenant)
+    end = horizon.end.date()
+    step_names = dict(Steps.objects.filter(tenant=tenant, id__in=route_step_ids)  # tenant-safe: explicit tenant filter
+                      .values_list('id', 'name'))
+    out: dict = {}
+
+    def add(kind, key, name, what, lapses_on, step_id):
+        row = out.setdefault((kind, key, what), {
+            'kind': kind, 'name': name, 'what': what, 'lapses_on': lapses_on, 'steps': set()})
+        row['steps'].add(step_names.get(step_id, ''))
+
+    lapses = data.get_operator_qualification_lapses(tenant, horizon)
+    names = {u.id: u.display_name for u in User.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in={uid for by in lapses.values() for uid in by})}
+    for sid, by_op in lapses.items():
+        if sid in route_step_ids:
+            for uid, (lapse, training) in by_op.items():
+                add('operator', uid, names.get(uid, ''), training,
+                    (lapse - timedelta(days=1)).date(), sid)
+
+    # Machines eligible for the open steps, and the gauges those steps measure with.
+    eq_steps: dict = defaultdict(set)
+    for a in StepEquipmentAffinity.objects.filter(  # tenant-safe: explicit tenant filter
+            archived=False, tenant=tenant, step_id__in=route_step_ids).values('equipment_id', 'step_id'):
+        eq_steps[('machine', a['equipment_id'])].add(a['step_id'])
+    for md in MeasurementDefinition.objects.filter(  # tenant-safe: explicit tenant filter
+            archived=False, tenant=tenant, step_id__in=route_step_ids,
+            default_equipment__isnull=False).values('default_equipment_id', 'step_id'):
+        eq_steps[('gauge', md['default_equipment_id'])].add(md['step_id'])
+    # `requires_calibration` is a property (type default + per-unit override).
+    eqs = {e.id: e for e in Equipments.objects.filter(  # tenant-safe: explicit tenant filter
+        tenant=tenant, id__in={k[1] for k in eq_steps}).select_related('equipment_type')}
+    for (kind, eid), sids in eq_steps.items():
+        e = eqs.get(eid)
+        if e is None or not e.requires_calibration:
+            continue
+        due = e.next_calibration_due
+        if due is None or not (today <= due < end):
+            continue
+        for sid in sids:
+            add(kind, eid, e.name, "calibration", due, sid)
+
+    rows = [{**r, 'steps': sorted(s for s in r['steps'] if s)} for r in out.values()]
+    rows.sort(key=lambda r: (r['lapses_on'], r['kind'], r['name']))
+    return rows
 
 
 def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
               timings, unstaffable, short_by_wo, gated_by_wo, graph, resolve_route,
-              manual_release, at_end: int = 0):
+              manual_release, at_end: int = 0, unrunnable=None):
     """The single most actionable reason this WO isn't (fully) on the board.
 
     Returns `(reason_code, detail, fix)`. Order matters — see `REASON_ORDER`.
@@ -281,10 +355,24 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
     if blocked:
         g = blocked[0]
         more = f" (+{len(blocked) - 1} more step(s))" if len(blocked) > 1 else ""
+        holders = (f" Holders: {', '.join(g['holders'])}." if g.get('holders')
+                   else " Nobody holds it.")
         return ('unstaffable',
-                f"“{g['step_name']}” needs {'/'.join(g['required_training'])} and no "
-                f"rostered operator holds it{more}.",
+                f"No qualified operator rostered: “{g['step_name']}” needs "
+                f"{'/'.join(g['required_training'])}{more}. Planned up to the step before "
+                f"it; it and what follows wait.{holders}",
                 "Certify or roster a qualified operator, or set the step's labor model to off.")
+
+    down = [(sid, (unrunnable or {})[sid]) for sid in route_ids if sid in (unrunnable or {})]
+    if down:
+        from Tracker.models import Steps
+        sid, why = down[0]
+        name = Steps.objects.filter(pk=sid).values_list('name', flat=True).first() or 'A step'  # tenant-safe: pk from this tenant's routing
+        return ('machine_down',
+                f"“{name}” has no machine to run on: {why}. Planned up to the step before "
+                f"it; it and what follows wait.",
+                "Bring the machine back (close the downtime), or make another machine "
+                "eligible for the step.")
 
     # Release date beyond the horizon is a harder cause than a material gate: the work
     # has nowhere to go regardless of stock, so report it first.

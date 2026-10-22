@@ -55,6 +55,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, time as dtime, timedelta
 from decimal import Decimal
+from uuid import UUID
 
 from django.utils import timezone
 
@@ -358,18 +359,18 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
     )
 
     with tenant_context(str(tenant.id)):
-        # Refuse up front if any step in the active work requires a certification no
-        # rostered operator holds — that work could never be executed, so we don't emit
-        # a plan pretending it can. (Scarce-but-present skills are handled by the labor
-        # capacity below: they serialize and push work late, not blocked.)
-        from Tracker.services.scheduling.preflight import (
-            LaborInfeasible, find_unstaffable_steps,
-        )
-        gaps = find_unstaffable_steps(tenant)
-        if gaps:
-            raise LaborInfeasible(gaps)
+        # A step in the active work that needs a certification no rostered operator
+        # holds can't be executed, so nothing is planned from it onward — but the rest
+        # of the shop still gets a plan (user decision 2026-10-22: one leaver or one
+        # lapsed cert used to refuse every solve). Not scheduled reports the cut work
+        # with who holds the cert and why they don't count. (Scarce-but-present skills
+        # are handled by the labor capacity below: they serialize and push work late.)
+        from Tracker.services.scheduling.preflight import find_unstaffable_steps
+        unstaffable = {(UUID(g['step_id']), g['process_id'])
+                       for g in find_unstaffable_steps(tenant)}
 
         horizon = data.get_schedule_horizon(tenant)
+        unrunnable = data.get_unrunnable_steps(tenant, horizon)  # every machine down
         H = max(1, int((horizon.end - horizon.start).total_seconds() // 60))
         wos = data.get_active_workorders(tenant)
         timings = data.get_step_timings(tenant)
@@ -382,6 +383,11 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         material_release, material_short, material_detail = data.get_material_gates(tenant, horizon)  # buy-side
         op_windows = data.get_operator_shift_windows(tenant, horizon)  # rostered crew
         skill_pools = data.get_step_operator_pools(tenant)  # gated step -> qualified crew
+        # step -> {op: minute their cert for it lapses}, for lapses inside the horizon.
+        qual_lapse = {
+            sid: {uid: max(0, int((lapse - horizon.start).total_seconds() // 60))
+                  for uid, (lapse, _name) in by_op.items()}
+            for sid, by_op in data.get_operator_qualification_lapses(tenant, horizon).items()}
         labor_models = data.get_step_labor_models(tenant)  # step -> off|pool|named
         all_op_ids = frozenset(o.user_id for o in data.get_dispatchable_operators(tenant))
         secondary = data.get_step_secondary_resources(tenant)   # step_id -> {gauge_id}
@@ -685,6 +691,23 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     # A core under rebuild books the main line like any part: nothing on
                     # it is skipped (services/reman/repair_routing).
                     route_ids, prec = resolve_route(lot['step'], wo.steps, wo.edges)
+                    # Plan up to a step nobody rostered can run, not past it: that step
+                    # and everything after it on this lot wait, and Not scheduled says why
+                    # (diagnostics). A running op is already staffed, so it stays.
+                    # Same for a step whose every machine is down for the whole horizon.
+                    cut = {sid for sid in route_ids
+                           if ((sid, wo.process_id) in unstaffable or sid in unrunnable)
+                           and not (lot.get('in_progress') and sid == lot['step'])}
+                    if cut:
+                        frontier = list(cut)
+                        while frontier:
+                            here = frontier.pop()
+                            for a, b in prec:
+                                if a == here and b not in cut:
+                                    cut.add(b)
+                                    frontier.append(b)
+                        route_ids = [sid for sid in route_ids if sid not in cut]
+                        prec = [(a, b) for a, b in prec if a not in cut and b not in cut]
                     node_start: dict = {}
                     node_end: dict = {}
                     node_task: dict = {}   # step_id -> task dict (to flag cure-window violations)
@@ -715,6 +738,16 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 fixed_end[step_id] = ret
                             else:
                                 model.Add(end == start + dur)
+                                # Frozen and not yet sent: like any held op it may slide
+                                # later but never earlier — shipping out sooner is a shop
+                                # act (packing, a truck) the fence promised not to move.
+                                osp_prev = [prev_map[(pid, step_id)] for pid in lot['part_ids']
+                                            if (pid, step_id) in prev_map]
+                                if osp_prev:
+                                    first = min(pt.start_time for pt in osp_prev)
+                                    raw = -int(-(first - horizon.start).total_seconds() // 60)
+                                    if 0 <= raw < frozen_min:
+                                        model.Add(start >= min(raw, max(0, H - dur)))
                             tasks.append({'part_ids': lot['part_ids'],
                                           'step_id': step_id, 'start': start, 'end': end,
                                           'choices': [], 'pinned': ret is not None,
@@ -749,6 +782,14 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                 repm = min(prev_here, key=lambda pt: pt.start_time).machine_id
                                 if repm and any(a.equipment_id == repm for a in eligible):
                                     fixed_m = repm
+                            # The machine it's running on went down: it isn't running
+                            # there any more, so don't hold the remainder on it (that
+                            # made the whole model infeasible — walk 2026-10-22).
+                            if fixed_m is not None:
+                                run_end = horizon.start + timedelta(minutes=remaining)
+                                if any(s < run_end and e > horizon.start
+                                       for s, e in machine_downtime.get(fixed_m, ())):
+                                    fixed_m = None
                             choices = []
                             if fixed_m is not None:
                                 lit = model.NewBoolVar(f"ip_{key}_{fixed_m}")
@@ -856,8 +897,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                     pool = skill_pools.get(step_id)
                                     qualified = (pool if pool is not None else all_op_ids) & all_op_ids
                                     assign_lits = []
+                                    lapses = qual_lapse.get(step_id, {})
                                     for op in qualified:
                                         lit = model.NewBoolVar(f"na_{key}_{op}")
+                                        if op in lapses:
+                                            # Their cert runs out mid-horizon: only work
+                                            # finished by then is theirs to take.
+                                            model.Add(end <= lapses[op]).OnlyEnforceIf(lit)
                                         if full:
                                             oiv = model.NewOptionalIntervalVar(start, asz, end, lit, f"noi_{key}_{op}")
                                         else:
@@ -880,6 +926,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                         planner_pinned = False  # the DB is_pinned flag — planner lock ONLY
                         fixed_start_dt = None   # the live plan's exact start, for write-back
                         held_pos = None         # (start, end, machine) when held, for the greedy hint
+                        op_unfixed = None       # held op whose operator couldn't be kept
                         warm_start = None       # the live plan's start when only hinted
                         prevts = [prev_map[(pid, step_id)] for pid in lot['part_ids']
                                   if (pid, step_id) in prev_map]
@@ -941,6 +988,9 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                         for op, lit in named_assign:
                                             model.Add(lit == (1 if op == op_id else 0)).OnlyEnforceIf(hold)
                                         fixed_by_operator[op_id].append(span)
+                                    else:
+                                        # Reported if the plan does give it to someone else.
+                                        op_unfixed = op_id
                                 held_att = front_len if front_len is not None else op_dur
                                 if lm != 'off' and held_att:
                                     fixed_attended.append((prev_start, prev_start + held_att))
@@ -983,6 +1033,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                                       # passed was held at "now", and writing its old time back
                                       # would put the plan in the past.
                                       'held_minute': prev_start if (pinned and prev_raw >= 0) else None,
+                                      'op_unfixed': op_unfixed,
                                       'named_assign': named_assign,
                                       'requires_operator': lm != 'off',
                                       'material_short': mat_short,
@@ -1323,7 +1374,24 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
 
         # The fence report: what was held, and what had to be re-planned and why.
         frozen_kept = _final['kept']
-        frozen_freed = _freed_report(_final['freed'])
+        # A held op keeps its time and machine, and its operator unless that person is
+        # already held on other fixed work then. When the plan does hand it to someone
+        # else, say so — a held op quietly changing hands read as the fence leaking.
+        reassigned = []
+        if tasks and solved:
+            for t in tasks:
+                was = t.get('op_unfixed')
+                if was is None or not t['pinned']:
+                    continue
+                now = next((op for op, lit in t['named_assign'] if solver.Value(lit)), None)
+                if now != was:
+                    reassigned.append({
+                        'part_ids': t['part_ids'], 'step_id': t['step_id'],
+                        'reason_code': 'operator_changed',
+                        'reason': "kept its time and machine, but its operator is already "
+                                  "held on other fixed work then, so someone else takes it",
+                        'was_pinned': t['planner_pinned']})
+        frozen_freed = _freed_report(_final['freed'] + reassigned)
         stickiness_cost = 0
         if tasks and solved:
             for kind, v, w in _final['stick_terms']:
@@ -1361,10 +1429,16 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             except Exception:  # noqa: BLE001 - advisory only
                 logger.exception("Infeasibility diagnosis failed; reporting without it.")
 
+        # A solve that found no plan never replaces the live one: the floor keeps the
+        # last good plan (marked stale), and the failed result is kept beside it with
+        # its reason (walk 2026-10-22 — one downtime emptied the board).
+        failed = bool(tasks) and not solved
         if draft:
             # A draft is a reviewable what-if; it never supersedes the live schedule.
             # Replace only the prior draft (scratch — cascade-deletes its tasks).
             ScheduleResult.objects.filter(tenant=tenant, is_draft=True).delete()
+        elif failed:
+            ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(is_stale=True)
         else:
             ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
                 is_active=False, is_stale=True)
@@ -1378,13 +1452,13 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             operator_solve_ms=operator_solve_ms,
             objective_value_cents=int(solver.ObjectiveValue()) if (tasks and solved) else 0,
             weighted_lateness=weighted_lateness,
-            relaxed_pin_count=len(frozen_freed),
+            relaxed_pin_count=len(_final['freed']),
             frozen_kept=frozen_kept,
             frozen_freed=frozen_freed,
             stickiness_cost=stickiness_cost,
             relative_gap=relative_gap,
             infeasible_reason=infeasible_reason,
-            is_active=not draft,
+            is_active=not draft and not failed,
             is_draft=draft,
         )
 

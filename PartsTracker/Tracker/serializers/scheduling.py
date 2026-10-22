@@ -5,7 +5,7 @@ and `ScheduledTask` (the Gantt rows, with resolved display names). Nullable meth
 fields are annotated `allow_null=True` so the generated FE zod client accepts nulls
 (a part-vs-core task, an unassigned operator, an unattended step).
 """
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 
 from Tracker.serializers.core import SecureModelMixin
@@ -87,12 +87,34 @@ class ScheduleResultSerializer(serializers.ModelSerializer):
             'frozen_kept', 'frozen_freed', 'stickiness_cost',
             'infeasible_reason',
             'is_active', 'is_stale', 'is_draft', 'created_at', 'task_count',
+            'last_failed_solve',
         )
         read_only_fields = fields
+
+    last_failed_solve = serializers.SerializerMethodField()
 
     @extend_schema_field(serializers.IntegerField())
     def get_task_count(self, obj) -> int:
         return obj.tasks.count()
+
+    @extend_schema_field(inline_serializer(name='FailedSolve', fields={
+        'solved_at': serializers.DateTimeField(),
+        'reason': serializers.CharField(),
+    }, allow_null=True))
+    def get_last_failed_solve(self, obj):
+        """On the live plan: a later solve that found no plan, if any. It didn't replace
+        this one (a failed solve never does), so the board shows it beside the plan."""
+        if not obj.is_active:
+            return None
+        failed = (ScheduleResult.objects.filter(  # tenant-safe: same tenant as obj
+                      tenant_id=obj.tenant_id, is_draft=False, is_active=False,
+                      created_at__gt=obj.created_at,
+                      solver_status__in=['INFEASIBLE', 'MODEL_INVALID', 'UNKNOWN'])
+                  .order_by('-created_at').first())
+        if failed is None:
+            return None
+        return {'solved_at': failed.created_at,
+                'reason': failed.infeasible_reason or "The solver found no plan."}
 
 
 class ScheduledTaskSerializer(serializers.ModelSerializer):

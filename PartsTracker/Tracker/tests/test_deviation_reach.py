@@ -45,6 +45,9 @@ class DeviationReachTests(TenantTestCase):
         self.inspect = add_step_to_process(self.v1, order=3, name='Inspect')
         StepEdge.objects.create(process=self.v1, from_step=self.grind, to_step=self.assemble)
         StepEdge.objects.create(process=self.v1, from_step=self.assemble, to_step=self.inspect)
+        # A routing ends at a Terminal step, or it can't be approved.
+        done = add_step_to_process(self.v1, order=4, name='Done', is_terminal=True)
+        StepEdge.objects.create(process=self.v1, from_step=self.inspect, to_step=done)
 
         # v2 changes Inspect, implemented with KEEP_ALL: v1's work stays on v1.
         self.wo_v1 = _make_workorder(self.tenant_a, self.v1, erp='WO-ON-V1')
@@ -120,8 +123,8 @@ class DeviationReachTests(TenantTestCase):
         self.assertEqual(steps[self.grind.identity_id].id, drafted[self.grind.identity_id].id)
         # …and v1 keeps its own Inspect, not v2's.
         self.assertEqual(steps[self.inspect.identity_id].id, self.inspect.id)
-        # The flow is still Grind → Assemble → Inspect.
-        self.assertEqual(StepEdge.objects.filter(process=on_v1).count(), 2)
+        # The flow is still Grind → Assemble → Inspect → Done.
+        self.assertEqual(StepEdge.objects.filter(process=on_v1).count(), 3)
 
         # Neither base version moved: v2 is still current, v1 still approved.
         self.v2.refresh_from_db()

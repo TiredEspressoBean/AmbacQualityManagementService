@@ -682,7 +682,7 @@ export function useRecordPick() {
  *  row carrying the single most actionable reason and the fix for it. */
 export type UnscheduledReason =
   | "on_hold" | "not_released" | "no_process" | "no_units" | "awaiting_shipment" | "no_open_units" | "no_routing" | "no_timings"
-  | "unstaffable" | "outside_horizon" | "material_gated" | "material_short"
+  | "unstaffable" | "machine_down" | "outside_horizon" | "material_gated" | "material_short"
   | "stale_schedule" | "not_solved";
 export type UnscheduledRow = {
   work_order_id: string; erp_id: string; part_type: string | null;
@@ -697,6 +697,9 @@ export type UnscheduledDiagnosis = {
   open_work_orders: number; open_units: number; unscheduled_work_orders: number;
   counts: Record<string, number>;
   work_orders: UnscheduledRow[];
+  /** Certs and calibrations running out inside the horizon on resources open work needs. */
+  lapsing: { kind: "operator" | "machine" | "gauge"; name: string; what: string;
+             lapses_on: string; steps: string[] }[];
 };
 export const unscheduledOptions = (enabled = true) =>
   queryOptions({

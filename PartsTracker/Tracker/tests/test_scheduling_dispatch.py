@@ -255,16 +255,96 @@ class DispatchTests(TenantContextMixin, TestCase):
         self.assertEqual(find_unstaffable_steps(self.tenant), [],
                          "ungated steps with a rostered operator are staffable")
 
-    def test_solve_refuses_when_a_required_step_has_no_trained_operator(self):
-        # A required-training step with nobody certified can't be executed → the solve
-        # refuses rather than emitting a plan with permanently uncoverable work.
-        from Tracker.services.scheduling.preflight import LaborInfeasible
+    def test_solve_plans_up_to_a_step_no_trained_operator_can_run(self):
+        # A required-training step with nobody certified can't be executed: the plan
+        # stops before it on that work, and the rest of the shop is still planned
+        # (user decision 2026-10-22 — one leaver used to refuse every solve).
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
         cert = TrainingType.objects.create(tenant=self.tenant, name="Rare cert")
-        self._require(self.step1, cert)
+        self._require(self.step2, cert)
         self._operator("op-nocert")     # rostered, but nobody holds the cert
         self._wo("WO-BLOCK", 1)
-        with self.assertRaises(LaborInfeasible):
-            solve_schedule(self.tenant)
+        result = solve_schedule(self.tenant)
+        steps = set(result.tasks.values_list('step_id', flat=True))
+        self.assertIn(self.step1.id, steps, "the step before the gap is planned")
+        self.assertNotIn(self.step2.id, steps, "the uncovered step is not")
+        rows = {r['erp_id']: r for r in diagnose_unscheduled(self.tenant)['work_orders']}
+        self.assertEqual(rows["WO-BLOCK"]['reason'], 'unstaffable')
+        self.assertIn("Rare cert", rows["WO-BLOCK"]['detail'])
+
+    def test_the_gap_names_who_holds_the_cert_and_why_they_dont_count(self):
+        from Tracker.services.scheduling.preflight import find_unstaffable_steps
+        cert = TrainingType.objects.create(tenant=self.tenant, name="Rare cert")
+        self._require(self.step2, cert)
+        self._operator("op-nocert")
+        leaver = self._operator("op-leaver")
+        self._cert(leaver, cert)
+        leaver.is_active = False
+        leaver.save(update_fields=["is_active"])
+        self._wo("WO-LEAVER", 1)
+        gap = next(g for g in find_unstaffable_steps(self.tenant) if g['step_name'] == "Mill")
+        self.assertEqual(gap['holders'], [f"{leaver.display_name} (inactive)"])
+
+    def test_a_cert_lapsing_inside_the_horizon_is_listed(self):
+        from datetime import timedelta
+        from Tracker.services.scheduling import data
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
+        cert = TrainingType.objects.create(tenant=self.tenant, name="Short cert")
+        self._require(self.step2, cert)
+        op = self._operator("op-lapsing")
+        TrainingRecord.objects.create(
+            tenant=self.tenant, user=op, training_type=cert, level=CompetencyLevel.QUALIFIED,
+            completed_date=timezone.now().date(),
+            expires_date=timezone.now().date() + timedelta(days=3))
+        self._wo("WO-LAPSE", 1)
+        horizon = data.get_schedule_horizon(self.tenant)
+        self.assertIn(op.id, data.get_operator_qualification_lapses(self.tenant, horizon)
+                      .get(self.step2.id, {}))
+        lapsing = diagnose_unscheduled(self.tenant)['lapsing']
+        self.assertEqual([(r['kind'], r['what'], r['steps']) for r in lapsing],
+                         [("operator", "Short cert", ["Mill"])])
+
+    def test_a_step_whose_only_machine_is_down_is_planned_up_to(self):
+        """Walk 2026-10-22: open-ended downtime on the only machine a step can use made
+        the whole solve INFEASIBLE. Now the plan stops before that step."""
+        from Tracker.models import DowntimeEvent
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
+        m2 = Equipments.objects.create(tenant=self.tenant, name="CNC-2", is_schedulable=True)
+        StepEquipmentAffinity.objects.filter(step=self.step1).update(equipment=m2)
+        op = self._operator("op1")
+        self._wo("WO-DOWN", 1)
+        DowntimeEvent.objects.create(
+            tenant=self.tenant, equipment=self.machine, category="UNPLANNED",
+            reason="Spindle failed", start_time=timezone.now(), end_time=None,
+            reported_by=op)
+        result = solve_schedule(self.tenant)
+        self.assertIn(result.solver_status, ("OPTIMAL", "FEASIBLE"))
+        steps = set(result.tasks.values_list('step_id', flat=True))
+        self.assertEqual(steps, {self.step1.id})
+        row = next(r for r in diagnose_unscheduled(self.tenant)['work_orders']
+                   if r['erp_id'] == "WO-DOWN")
+        self.assertEqual(row['reason'], 'machine_down')
+        self.assertIn("Spindle failed", row['detail'])
+
+    def test_a_failed_solve_never_replaces_the_live_plan(self):
+        from unittest import mock
+        from ortools.sat.python import cp_model
+        from Tracker.serializers.scheduling import ScheduleResultSerializer
+        self._operator("op1")
+        self._wo("WO-LIVE", 1)
+        good = solve_schedule(self.tenant)
+        with mock.patch.object(cp_model.CpSolver, "Solve", return_value=cp_model.INFEASIBLE), \
+                mock.patch.object(cp_model.CpSolver, "SufficientAssumptionsForInfeasibility",
+                                  return_value=[]), \
+                mock.patch.object(cp_model.CpSolver, "WallTime", return_value=0.0):
+            bad = solve_schedule(self.tenant)
+        good.refresh_from_db()
+        bad.refresh_from_db()
+        self.assertTrue(good.is_active)
+        self.assertTrue(good.is_stale)
+        self.assertFalse(bad.is_active)
+        shown = ScheduleResultSerializer(good).data['last_failed_solve']
+        self.assertIsNotNone(shown)
 
     def test_off_labor_model_step_is_not_a_staffing_blocker(self):
         # A training-gated step set to labor_model=OFF imposes no crew constraint, so a

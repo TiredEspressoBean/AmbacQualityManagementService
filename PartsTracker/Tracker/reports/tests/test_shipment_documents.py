@@ -24,3 +24,13 @@ class TestShipmentCocAdapter(ReportAdapterTestMixin, SimpleTestCase):
 
     def test_cross_tenant_id_is_rejected(self):
         self.skipTest(_SKIP)
+
+
+class TestReturnedAsReceivedAdapter(ReportAdapterTestMixin, SimpleTestCase):
+    """A customer's unit going back unrepaired: this note, not a CoC."""
+    from Tracker.reports.adapters.returned_as_received import ReturnedAsReceivedAdapter
+    adapter_class = ReturnedAsReceivedAdapter
+    fixture_name = "returned_as_received_sample"
+
+    def test_cross_tenant_id_is_rejected(self):
+        self.skipTest(_SKIP)

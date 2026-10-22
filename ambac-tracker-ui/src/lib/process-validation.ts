@@ -201,6 +201,26 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
   const terminalNodes = nodes.filter(isTerminalNode);
   const terminalIds = new Set(terminalNodes.map(n => n.id));
 
+  // An MRB hold: reached only by escalation ("Max Exceeded") or fail edges, with no
+  // edges out. The engine holds the part there and routes it out on the disposition
+  // (services/qms/mrb.py `is_hold_step` — keep the two rules in step), so it's a
+  // legitimate end for path checks, not a dead end.
+  const isHoldEdge = (e: Edge) => {
+    const t = (e.data as { edge_type?: string } | undefined)?.edge_type;
+    return t === 'ESCALATION' || t === 'ALTERNATE' || e.id.endsWith('-esc') ||
+      e.id.endsWith('-alt') || e.sourceHandle === 'fail';
+  };
+  const mrbHoldIds = new Set(
+    nodes
+      .filter(n => {
+        const incoming = edges.filter(e => e.target === n.id);
+        return !isTerminalNode(n) && incoming.length > 0 && incoming.every(isHoldEdge) &&
+          !edges.some(e => e.source === n.id);
+      })
+      .map(n => n.id),
+  );
+  const endIds = new Set([...terminalIds, ...mrbHoldIds]);
+
   if (terminalNodes.length === 0) {
     issues.push({
       type: 'error',
@@ -261,7 +281,7 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
           nodeId: node.id,
           nodeName: getNodeName(node),
         });
-      } else if (outgoing === 0) {
+      } else if (outgoing === 0 && !mrbHoldIds.has(node.id)) {
         issues.push({
           type: 'warning',
           message: `Step "${getNodeName(node)}" has no outgoing connections (dead end)`,
@@ -371,7 +391,7 @@ export function validateProcessFlow(nodes: Node[], edges: Edge[]): ValidationRes
     // Check all paths terminate
     if (terminalNodes.length > 0) {
       const memo = new Map<string, boolean>();
-      if (!allPathsTerminate(startNodes[0].id, adj, terminalIds, memo)) {
+      if (!allPathsTerminate(startNodes[0].id, adj, endIds, memo)) {
         // Find specific non-terminating paths
         for (const node of nodes) {
           if (reachable.has(node.id) && !isTerminalNode(node)) {

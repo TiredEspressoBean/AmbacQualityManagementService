@@ -193,6 +193,13 @@ class Core(SecureModel):
         help_text="Repair codes approved for this unit that its process doesn't "
                   "pre-approve.",
     )
+    # The customer's last answer on an authorisation request, as recorded by
+    # record_authorisation: who answered, how, and their reference. A declined unit's
+    # "returned as received" note prints them (user decision 2026-10-22).
+    authorisation_answered_at = models.DateTimeField(null=True, blank=True)
+    authorisation_contact = models.CharField(max_length=200, blank=True)
+    authorisation_method = models.CharField(max_length=100, blank=True)
+    authorisation_reference = models.CharField(max_length=200, blank=True)
     status = models.CharField(
         max_length=30,
         choices=CORE_STATUS_CHOICES,

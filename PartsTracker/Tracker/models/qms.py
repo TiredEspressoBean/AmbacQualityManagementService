@@ -938,6 +938,12 @@ class QuarantineDisposition(SecureModel):
     quality_reports = models.ManyToManyField('QualityReports', related_name='dispositions')
     documents = GenericRelation('Documents')
 
+    # MRB: set when a part was escalated here by a step's visit cap — the step whose
+    # cap it hit. The decision routes the part out (services/qms/mrb.py), and each
+    # rework decision buys that step one more visit (user decision 2026-10-22).
+    escalated_from_step = models.ForeignKey(
+        'Steps', on_delete=models.PROTECT, null=True, blank=True, related_name='+')
+
     # Rework tracking
     rework_attempt_at_step = models.IntegerField(default=1)
     """Which rework attempt this is at the specific step (1st, 2nd, 3rd, etc.)"""

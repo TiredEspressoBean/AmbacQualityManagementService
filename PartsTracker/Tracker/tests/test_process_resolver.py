@@ -39,6 +39,9 @@ class ProcessResolverTests(TenantContextMixin, TestCase):
         # A process can't be approved without steps; the revision copies v1's.
         step = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Bore")
         ProcessStep.objects.create(process=self.v1, step=step, order=1)
+        done = Steps.objects.create(tenant=self.tenant, part_type=self.pt, name="Done",
+                                    is_terminal=True)
+        ProcessStep.objects.create(process=self.v1, step=done, order=2)
         draft = create_new_process_version(self.v1, user=None, change_description="Tweak")
         approve_process(draft)
         self.assertEqual(_build_process(self.pt), (draft, None))

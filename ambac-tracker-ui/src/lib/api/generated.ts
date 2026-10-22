@@ -2498,6 +2498,7 @@ export type CustomerShipment = {
   quantity: number;
   parts: Array<ShipmentPart>;
   lots: Array<ShipmentLot>;
+  unrepaired_units: number;
   /**
    * Whether this record has been voided
    */
@@ -3837,6 +3838,22 @@ export type LaborCalendarBlockRequest = Partial<{
   reason: string;
   is_active: boolean;
 }>;
+export type LapsingInHorizon = {
+  kind: LapsingInHorizonKindEnum;
+  name: string;
+  what: string;
+  lapses_on: string;
+  steps: Array<string>;
+};
+export type LapsingInHorizonKindEnum =
+  /**
+   * * `operator` - operator
+   * `machine` - machine
+   * `gauge` - gauge
+   *
+   * @enum operator, machine, gauge
+   */
+  "operator" | "machine" | "gauge";
 export type LateDelivery = {
   lot_id: string;
   lot_number: string;
@@ -8545,6 +8562,7 @@ export type QuarantineDisposition = {
   number | undefined;
   rework_limit_exceeded: boolean;
   quality_reports: Array<string>;
+  escalated_from_step: string | null;
   affected_parts: Array<DispositionAffectedPart>;
   work_order_id: string | null;
   work_order_erp_id: string | null;
@@ -16725,6 +16743,7 @@ export type ScheduleResult = {
   is_draft: boolean;
   created_at: string;
   task_count: number;
+  last_failed_solve: FailedSolve;
 };
 export type SolverStatusEnum =
   /**
@@ -16743,6 +16762,10 @@ export type FrozenFreed = {
   reason_code: string;
   reason: string;
   was_pinned: boolean;
+};
+export type FailedSolve = {
+  solved_at: string;
+  reason: string;
 };
 export type ScheduleSlotRequest = {
   work_center: string;
@@ -18081,6 +18104,7 @@ export type UnscheduledDiagnosis = {
   open_units: number;
   unscheduled_work_orders: number;
   counts: {};
+  lapsing: Array<LapsingInHorizon>;
   work_orders: Array<UnscheduledWorkOrder>;
 };
 export type UnscheduledWorkOrder = {
@@ -19965,6 +19989,7 @@ const CustomerShipment = z.object({
   quantity: z.number().int(),
   parts: z.array(ShipmentPart),
   lots: z.array(ShipmentLot),
+  unrepaired_units: z.number().int(),
   is_voided: z.boolean(),
   voided_at: z.string().datetime({ offset: true }).nullable(),
   void_reason: z.string(),
@@ -23666,6 +23691,7 @@ const QuarantineDisposition = z.object({
     .optional(),
   rework_limit_exceeded: z.boolean(),
   quality_reports: z.array(z.string().uuid()),
+  escalated_from_step: z.string().uuid().nullable(),
   affected_parts: z.array(DispositionAffectedPart),
   work_order_id: z.string().uuid().nullable(),
   work_order_erp_id: z.string().nullable(),
@@ -24500,6 +24526,10 @@ const FrozenFreed = z.object({
   reason: z.string(),
   was_pinned: z.boolean(),
 });
+const FailedSolve = z.object({
+  solved_at: z.string().datetime({ offset: true }),
+  reason: z.string(),
+});
 const ScheduleResult = z.object({
   id: z.string().uuid(),
   horizon_start: z.string().datetime({ offset: true }),
@@ -24521,6 +24551,7 @@ const ScheduleResult = z.object({
   is_draft: z.boolean(),
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
+  last_failed_solve: FailedSolve.nullable(),
 });
 const LaborModelEnum = z.enum(["off", "pool", "named"]);
 const ReleaseModeEnum = z.enum(["auto", "manual"]);
@@ -24714,6 +24745,14 @@ const SourcingRequirements = z.object({
   recover: z.array(RecoverRequirement),
   tooling: z.array(ToolingRequirement),
 });
+const LapsingInHorizonKindEnum = z.enum(["operator", "machine", "gauge"]);
+const LapsingInHorizon = z.object({
+  kind: LapsingInHorizonKindEnum,
+  name: z.string(),
+  what: z.string(),
+  lapses_on: z.string(),
+  steps: z.array(z.string()),
+});
 const UnscheduledWorkOrder = z.object({
   work_order_id: z.string(),
   erp_id: z.string(),
@@ -24741,6 +24780,7 @@ const UnscheduledDiagnosis = z.object({
   open_units: z.number().int(),
   unscheduled_work_orders: z.number().int(),
   counts: z.record(z.number().int()),
+  lapsing: z.array(LapsingInHorizon),
   work_orders: z.array(UnscheduledWorkOrder),
 });
 const WorkingWindow = z.object({
@@ -29676,6 +29716,7 @@ export const schemas = {
   CapacityLoad,
   SolverStatusEnum,
   FrozenFreed,
+  FailedSolve,
   ScheduleResult,
   LaborModelEnum,
   ReleaseModeEnum,
@@ -29697,6 +29738,8 @@ export const schemas = {
   RecoverRequirement,
   ToolingRequirement,
   SourcingRequirements,
+  LapsingInHorizonKindEnum,
+  LapsingInHorizon,
   UnscheduledWorkOrder,
   UnscheduledDiagnosis,
   WorkingWindow,

@@ -28,6 +28,75 @@ from Tracker.models.mes_lite import EdgeType
 _UNSET = object()
 
 
+def process_flow_errors(process: Processes) -> list[str]:
+    """The routing problems that make a process unfit to lock for production — the
+    ERRORS of the flow editor's validator (ambac-tracker-ui/src/lib/process-validation.ts),
+    enforced here so no path (direct approve, PCR, temporary change) can approve one.
+    Warnings stay advisory in the editor. Keep the two in step.
+
+    Node kinds follow the editor's adapter: an explicit non-TASK `step_type` wins, else
+    terminal / decision flags, else START for the entry step."""
+    pss = list(process.process_steps.select_related('step').order_by('order'))
+    if not pss:
+        return ["Process has no steps."]
+    edges = list(StepEdge.objects.filter(process=process))  # tenant-safe: scoped by process
+    if not edges:
+        # The editor draws an order-chain when no edges are stored.
+        edges = [StepEdge(from_step_id=a.step_id, to_step_id=b.step_id, edge_type=EdgeType.DEFAULT)
+                 for a, b in zip(pss, pss[1:]) if not a.step.is_terminal]
+    targets = {e.to_step_id for e in edges}
+
+    def kind(i, ps):
+        s = ps.step
+        if s.step_type and s.step_type != 'TASK':
+            return s.step_type
+        if s.is_terminal:
+            return 'TERMINAL'
+        if s.is_decision_point:
+            return 'DECISION'
+        if ps.is_entry_point or (i == 0 and s.id not in targets):
+            return 'START'
+        return 'TASK'
+
+    out_by = {}
+    in_by = {}
+    for e in edges:
+        out_by.setdefault(e.from_step_id, []).append(e)
+        in_by.setdefault(e.to_step_id, []).append(e)
+    kinds = {ps.step_id: kind(i, ps) for i, ps in enumerate(pss)}
+    names = {ps.step_id: ps.step.name for ps in pss}
+
+    errors = []
+    starts = [sid for sid, k in kinds.items() if k == 'START']
+    if len(starts) != 1:
+        errors.append("The routing needs exactly one Start step "
+                      f"(it has {len(starts)}).")
+    if not any(k == 'TERMINAL' for k in kinds.values()):
+        errors.append("The routing needs at least one Terminal step.")
+    for sid, k in kinds.items():
+        outs, ins = out_by.get(sid, []), in_by.get(sid, [])
+        name = names[sid]
+        if k == 'START' and not outs:
+            errors.append(f"Start step “{name}” leads nowhere.")
+        elif k == 'TERMINAL' and not ins:
+            errors.append(f"Terminal step “{name}” can't be reached.")
+        elif k not in ('START', 'TERMINAL') and not outs and not ins:
+            errors.append(f"Step “{name}” isn't connected to the routing.")
+        if k == 'DECISION':
+            types = {e.edge_type for e in outs}
+            if EdgeType.DEFAULT not in types:
+                errors.append(f"Decision step “{name}” has no Pass connection.")
+            if EdgeType.ALTERNATE not in types:
+                errors.append(f"Decision step “{name}” has no Fail connection.")
+        if k == 'REPAIR':
+            step = next(ps.step for ps in pss if ps.step_id == sid)
+            if not step.repair_code_id:
+                errors.append(f"Repair step “{name}” has no repair code.")
+            if not outs:
+                errors.append(f"Repair step “{name}” doesn't lead back into the flow.")
+    return errors
+
+
 def approve_process(process: Processes, user=None, *, temporary_until=None) -> Processes:
     """Approve a draft or pending process for production use.
 
@@ -45,6 +114,12 @@ def approve_process(process: Processes, user=None, *, temporary_until=None) -> P
 
     if process.process_steps.count() == 0:
         raise ValueError("Cannot approve process with no steps.")
+
+    # Approving locks the routing for production: a broken one (a dead decision branch,
+    # a step nothing reaches) must not get there by any path (user decision 2026-10-22).
+    errors = process_flow_errors(process)
+    if errors:
+        raise ValueError("Fix the routing before approving it: " + " ".join(errors))
 
     with transaction.atomic():
         # Step the predecessor down. Two things happen in one pass:

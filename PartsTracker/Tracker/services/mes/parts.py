@@ -266,6 +266,7 @@ def advance_part_step(
     # 2e: remember whether the part is leaving a rework step, so a successful
     # advance (rework + re-inspection passed) can auto-close its open disposition.
     leaving_rework_step = part.step.step_type == 'REWORK'
+    leaving_step = part.step  # for a fail edge into an MRB hold: the check that failed
 
     current_execution = StepExecution.get_current_execution(part)
 
@@ -276,6 +277,12 @@ def advance_part_step(
         )
         if not can_advance:
             raise ValueError(f"Cannot advance: {', '.join(blockers)}")
+
+    # A reman check with Repair nodes routes inside get_next_step (repair_routing):
+    # every op on the main line runs, and a repair is a branch the unit takes or not.
+    # Resolved before anything is written: it refuses (ValueError) when a visit cap is
+    # reached with no escalation route, and that must leave the part untouched.
+    next_step = part.get_next_step(decision_result)
 
     if current_execution:
         current_execution.exited_at = timezone.now()
@@ -288,10 +295,6 @@ def advance_part_step(
     # actually used it. Deliberately after the gate check and execution close, and
     # deliberately un-raising: bookkeeping must never strand a finished part.
     _consume_step_material(part, part.step, operator)
-
-    # A reman check with Repair nodes routes inside get_next_step (repair_routing):
-    # every op on the main line runs, and a repair is a branch the unit takes or not.
-    next_step = part.get_next_step(decision_result)
 
     if next_step is None:
         # Preserve HELD statuses at the terminal boundary. A QUARANTINED or
@@ -439,6 +442,19 @@ def advance_part_step(
             evaluate_substep_sampling(se)
             _stamp_production_equipment(se)
 
+        # A visit cap moved the cohort to MRB Review: each unit is held for a decision.
+        escalated_from = getattr(part, '_escalated_from', None)
+        if escalated_from is not None:
+            from Tracker.services.qms.mrb import open_for_escalation
+            for p in ready_parts:
+                open_for_escalation(p, capped_step=escalated_from[0], visits=escalated_from[1])
+            return "escalated"
+        from Tracker.services.qms.mrb import is_hold_step, open_for_failure
+        if is_hold_step(part.work_order.process, next_step):
+            for p in ready_parts:
+                open_for_failure(p, failed_step=leaving_step)
+            return "escalated"
+
         return "escalated" if was_escalated else "advanced"
 
     # Individual part advancement. Lock the target step's executions for this
@@ -487,6 +503,18 @@ def advance_part_step(
 
     StepTransitionLog.objects.create(part=part, step=next_step, operator=operator, authorized_by=authorizer)
     reman.after_advance(part)
+
+    # Escalated by a visit cap, or sent by a failed check, to an MRB hold: held there
+    # with a decision opened (services/qms/mrb.py).
+    escalated_from = getattr(part, '_escalated_from', None)
+    if escalated_from is not None:
+        from Tracker.services.qms.mrb import open_for_escalation
+        open_for_escalation(part, capped_step=escalated_from[0], visits=escalated_from[1])
+        return "escalated"
+    from Tracker.services.qms.mrb import is_hold_step, open_for_failure
+    if part.work_order_id and is_hold_step(part.work_order.process, next_step):
+        open_for_failure(part, failed_step=leaving_step)
+        return "escalated"
 
     if leaving_rework_step:
         _close_open_rework_disposition(part, operator)

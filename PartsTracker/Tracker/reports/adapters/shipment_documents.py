@@ -44,6 +44,12 @@ class ShipmentDocumentContext(BaseModel):
     total_units: int = 0
     shipped_by: Optional[str] = None
     issued_by: Optional[str] = None
+    # The CoC's signer: the issuer only when they hold quality authority; else blank,
+    # for a QA signature. A shipping clerk pressing Ship isn't the quality authority.
+    authorized_by: Optional[str] = None
+    # What was done to the units, for the certification sentence: "manufactured",
+    # "repaired", "remanufactured" — joined when a shipment mixes them.
+    work_done: str = "manufactured"
     issued_date: date
 
 
@@ -71,19 +77,40 @@ def _name(user) -> Optional[str]:
     return (user.get_full_name() or "").strip() or getattr(user, "email", None)
 
 
-def build_shipment_document_context(shipment, tenant, user=None) -> ShipmentDocumentContext:
-    """Caller is responsible for tenant filtering on the shipment query."""
+def build_shipment_document_context(shipment, tenant, user=None, *,
+                                    certifiable_only=False) -> ShipmentDocumentContext:
+    """Caller is responsible for tenant filtering on the shipment query.
+
+    `certifiable_only` (the CoC): leave out a customer's unit going back unrepaired —
+    nothing was done to it to certify; it gets the "returned as received" note."""
+    from Tracker.reports.adapters.returned_as_received import UNREPAIRED_STATUSES
     groups: dict = {}
     orders: list[str] = []
+    kinds: list[str] = []
     for p in (shipment.parts.select_related(  # tenant-safe: reverse FK from a scoped shipment
-            "part_type", "order", "work_order__related_order", "work_order__order_line")
+            "part_type", "order", "work_order__related_order", "work_order__order_line",
+            "core_role")
             .order_by("ERP_id")):
+        core = getattr(p, "core_role", None)
+        if certifiable_only and core is not None and core.status in UNREPAIRED_STATUSES:
+            continue
         wo = p.work_order
         order = p.order or (wo.related_order if wo is not None else None)
         order_no = (order.order_number or order.name) if order is not None else None
         line = wo.order_line.line_number if wo is not None and wo.order_line_id else None
         key = (order_no or "", line or 0, p.part_type.name if p.part_type_id else "—")
-        groups.setdefault(key, []).append(p.ERP_id)
+        if core is not None and core.fulfilment_mode == "REPAIR_RETURN":
+            # Their own unit coming back: they know it by its serial, not our number.
+            label = (f"{core.serial_number} ({core.core_number})"
+                     if core.serial_number else core.core_number)
+            kind = "repaired"
+        elif core is not None:
+            label, kind = p.ERP_id, "remanufactured"
+        else:
+            label, kind = p.ERP_id, "manufactured"
+        if kind not in kinds:
+            kinds.append(kind)
+        groups.setdefault(key, []).append(label)
         if order_no and order_no not in orders:
             orders.append(order_no)
     items = [ShipmentItem(order=k[0] or None, line=k[1] or None, part_type=k[2],
@@ -112,6 +139,9 @@ def build_shipment_document_context(shipment, tenant, user=None) -> ShipmentDocu
         total_units=units,
         shipped_by=_name(shipment.shipped_by),
         issued_by=_name(user),
+        authorized_by=(_name(user) if user is not None
+                       and user.has_tenant_perm('approve_disposition', tenant) else None),
+        work_done=" or ".join(kinds) if kinds else "manufactured",
         issued_date=tenant_today(tenant),
     )
 
@@ -146,6 +176,20 @@ class ShipmentCocAdapter(_ShipmentAdapter):
     name = "shipment_coc"
     title = "Certificate of Conformance"
     template_path = "shipment_coc.typ"
+
+    def build_context(self, validated_params, user, tenant) -> ShipmentDocumentContext:
+        from Tracker.models import CustomerShipment
+        # tenant-safe: explicit tenant filter (defense-in-depth)
+        shipment = (CustomerShipment.unscoped.filter(tenant=tenant)
+                    .select_related("customer", "shipped_by")
+                    .get(id=validated_params["shipment_id"]))
+        ctx = build_shipment_document_context(shipment, tenant, user, certifiable_only=True)
+        if not ctx.items:
+            raise serializers.ValidationError(
+                "Nothing on this shipment can be certified: its units are going back "
+                "unrepaired at the customer's request. Issue the \"returned as received\" "
+                "note instead.")
+        return ctx
 
     def get_filename(self, validated_params) -> str:
         return f"coc_{validated_params.get('shipment_id', 'unknown')}.pdf"

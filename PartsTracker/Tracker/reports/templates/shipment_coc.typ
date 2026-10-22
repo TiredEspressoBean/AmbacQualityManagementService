@@ -46,7 +46,7 @@
 #v(10pt)
 
 #info-box[
-  We certify that the items listed above were manufactured, inspected and tested in
+  We certify that the items listed above were #data.work_done, inspected and tested in
   accordance with the requirements of the order(s) referenced, and conform to those
   requirements. Records supporting this certification are retained by #data.our_org
   and are available on request.
@@ -55,6 +55,8 @@
 #v(22pt)
 
 #signature-block(
-  ((role: [Authorized by (#data.our_org)], name: data.issued_by, caption: "Quality · Signature · Date"), none),
+  // Signed by quality, never by whoever happened to issue it: blank for a QA signature
+  // unless the issuer holds that authority.
+  ((role: [Authorized by (#data.our_org)], name: data.authorized_by, caption: "Quality · Signature · Date"), none),
   heading: none,
 )

@@ -553,6 +553,16 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             'open_units': serializers.IntegerField(),
             'unscheduled_work_orders': serializers.IntegerField(),
             'counts': serializers.DictField(child=serializers.IntegerField()),
+            # Certifications / calibrations running out inside the horizon on resources
+            # the open work needs — the cause when work there goes late or uncovered.
+            'lapsing': inline_serializer(
+                name='LapsingInHorizon', many=True, fields={
+                    'kind': serializers.ChoiceField(choices=['operator', 'machine', 'gauge']),
+                    'name': serializers.CharField(),
+                    'what': serializers.CharField(),
+                    'lapses_on': serializers.DateField(),
+                    'steps': serializers.ListField(child=serializers.CharField()),
+                }),
             'work_orders': inline_serializer(
                 name='UnscheduledWorkOrder', many=True, fields={
                     'work_order_id': serializers.CharField(),

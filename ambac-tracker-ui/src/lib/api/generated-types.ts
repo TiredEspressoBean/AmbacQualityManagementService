@@ -22831,6 +22831,7 @@ export interface components {
             readonly quantity: number;
             readonly parts: components["schemas"]["ShipmentPart"][];
             readonly lots: components["schemas"]["ShipmentLot"][];
+            readonly unrepaired_units: number;
             /** @description Whether this record has been voided */
             readonly is_voided: boolean;
             /**
@@ -24148,6 +24149,11 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        FailedSolve: {
+            /** Format: date-time */
+            solved_at: string;
+            reason: string;
+        };
         /**
          * @description * `frozen` - Frozen
          *     * `slushy` - Slushy
@@ -25121,6 +25127,21 @@ export interface components {
          * @enum {string}
          */
         LaborRecurrenceEnum: "ONCE" | "WEEKLY";
+        LapsingInHorizon: {
+            kind: components["schemas"]["LapsingInHorizonKindEnum"];
+            name: string;
+            what: string;
+            /** Format: date */
+            lapses_on: string;
+            steps: string[];
+        };
+        /**
+         * @description * `operator` - operator
+         *     * `machine` - machine
+         *     * `gauge` - gauge
+         * @enum {string}
+         */
+        LapsingInHorizonKindEnum: "operator" | "machine" | "gauge";
         /** @description An expected receipt past, or near, its promised date, and the work it holds up. */
         LateDelivery: {
             lot_id: string;
@@ -33274,6 +33295,8 @@ export interface components {
             rework_attempt_at_step?: number;
             readonly rework_limit_exceeded: boolean;
             quality_reports: string[];
+            /** Format: uuid */
+            readonly escalated_from_step: string | null;
             readonly affected_parts: components["schemas"]["DispositionAffectedPart"][];
             /** Format: uuid */
             readonly work_order_id: string | null;
@@ -34899,6 +34922,7 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
             readonly task_count: number;
+            readonly last_failed_solve: components["schemas"]["FailedSolve"] | null;
         };
         /** @description Production schedule slot serializer */
         ScheduleSlot: {
@@ -38670,6 +38694,7 @@ export interface components {
             counts: {
                 [key: string]: number;
             };
+            lapsing: components["schemas"]["LapsingInHorizon"][];
             work_orders: components["schemas"]["UnscheduledWorkOrder"][];
         };
         UnscheduledWorkOrder: {

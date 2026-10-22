@@ -1450,13 +1450,37 @@ export function SchedulingGanttPage() {
           how you read everything below it, including those warnings. */}
       <ActiveRunBanner />
 
+      {/* A later solve found no plan. It didn't replace this one — the floor keeps
+          working to the last good plan — so say what failed beside it. */}
+      {schedule?.last_failed_solve && (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <div>
+            <p className="font-medium">
+              The solve at {new Date(schedule.last_failed_solve.solved_at).toLocaleString(undefined, {
+                month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} found no plan,
+              so this earlier plan is still the one in use.
+            </p>
+            <p className="text-xs text-muted-foreground">{schedule.last_failed_solve.reason}</p>
+          </div>
+        </div>
+      )}
+
       {schedule && (schedule.frozen_freed ?? []).length > 0 && (
         // Frozen work is held exactly; these couldn't happen where they were, so they
         // were re-planned. A released pin is no longer pinned — say so.
         <details className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
           <summary className="cursor-pointer">
-            {schedule.frozen_freed.length} frozen task(s) re-planned
-            {schedule.frozen_kept > 0 ? ` · ${schedule.frozen_kept} held` : ""}
+            {(() => {
+              // An operator change keeps the slot; only the rest were re-planned.
+              const changed = schedule.frozen_freed.filter((f) => f.reason_code === "operator_changed").length;
+              const replanned = schedule.frozen_freed.length - changed;
+              return [
+                replanned > 0 ? `${replanned} frozen task(s) re-planned` : null,
+                changed > 0 ? `${changed} held task(s) changed operator` : null,
+                schedule.frozen_kept > 0 ? `${schedule.frozen_kept} held` : null,
+              ].filter(Boolean).join(" · ");
+            })()}
           </summary>
           <ul className="mt-1.5 space-y-0.5 text-xs">
             {schedule.frozen_freed.map((f, i) => (

@@ -61,9 +61,18 @@ export function ShipmentDetailPage() {
                             <Button size="sm" variant="outline" onClick={() => void downloadReport("packing_list", { shipment_id: s.id })}>
                                 <FileText className="mr-1 h-4 w-4" /> Packing list
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => void downloadReport("shipment_coc", { shipment_id: s.id })}>
-                                <FileCheck2 className="mr-1 h-4 w-4" /> CoC
-                            </Button>
+                            {/* A unit going back unrepaired gets no CoC — nothing was done
+                                to it to certify — but the note saying so. */}
+                            {(s.unrepaired_units ?? 0) < s.parts.length + s.lots.length && (
+                                <Button size="sm" variant="outline" onClick={() => void downloadReport("shipment_coc", { shipment_id: s.id })}>
+                                    <FileCheck2 className="mr-1 h-4 w-4" /> CoC
+                                </Button>
+                            )}
+                            {(s.unrepaired_units ?? 0) > 0 && (
+                                <Button size="sm" variant="outline" onClick={() => void downloadReport("returned_as_received", { shipment_id: s.id })}>
+                                    <FileText className="mr-1 h-4 w-4" /> Returned as received
+                                </Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
                                 <Pencil className="mr-1 h-4 w-4" /> Edit paperwork
                             </Button>
