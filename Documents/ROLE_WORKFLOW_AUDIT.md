@@ -381,7 +381,7 @@ who, when and old→new, but never a reason.
 | 9 | FPI passed wrongly | QA Inspector | None. A failed/waived FPI opens a new one | ❌ | ? | |
 | 10 | Wrong gauge on a reading | Operator, QA Inspector | Void and re-capture (as 1b) | ⚠️ | ? | |
 | 11 | Training override given wrongly | Shift Lead | Reassign; the override itself stays on the execution | ❌ | ? | |
-| 12 | Hold placed wrongly | Production Manager, Shift Lead | **Resume** | ⚠️ | ? | Reads as a real hold that was cleared; no hold void |
+| 12 | Hold placed wrongly | Production Manager, Shift Lead | **Resume**, saying it was placed in error | ✅ | ✅ | **Walked 2026-10-22 as Jennifer (`WO-OPS-03`):** a Quality hold, then **Resume**; *What resolved it* is required, so the record says *"Placed in error…"* in **Hold history**. Honest without a void. Minor: placing a hold takes a category only, so a Quality hold carries no word on the concern |
 | 13 | Downtime recorded wrongly | Shift Lead | PATCH | 🚧 | ? | |
 | 14 | Wrong training record | QA Manager | Edit, or delete (archives) | ✅ | ? | |
 | 15 | Wrong disposition decision | QA Manager | Decide again, until closed | ❌ | ❌ | **Walked 2026-10-22 as Maria (`DISP-2026-000013`):** Scrap went through with no confirm; re-deciding Rework moved the part to Rework but left it **SCRAPPED**, and replaced the Scrap note instead of appending. **Decided 10/22:** while open, a re-decide un-scraps, with a reason, both decisions kept. Spec'd to f6 |
@@ -403,7 +403,7 @@ who, when and old→new, but never a reason.
 | 31 | Shipment recorded by mistake | Shipping | **Void shipment**, then ship again | ✅ | ✅ | Shipping row 7 |
 | 32 | Wrong carrier or tracking | Shipping | **Edit paperwork** | ✅ | ? | |
 | 33 | Wrong quantity shipped from a lot | Shipping | Void and ship again | ⚠️ | ? | The split-off child lot isn't merged back |
-| 34 | Wrong quantity or date on an expected receipt | Purchasing | Cancel and re-record, or re-import; **Chase…** for the date | ⚠️ | ? | The first chase turns a typo'd promise into the "original promise" used for on-time scoring |
+| 34 | Wrong quantity or date on an expected receipt | Purchasing | **Cancel expected receipt…** (reason), then **Add expected delivery** again | ⚠️ | ✅ | **Walked 2026-10-22 as Priya (`PO-2026-0101`, 11/03 keyed as 10/03):** the past date was accepted without a word (late on arrival). Cancel + re-record gives `…-02` with a clean first promise; the cancelled one isn't scored. **Chase…** is the wrong tool (*"What they said"*): it keeps the typo as the first promise the scorecard judges. Teach Cancel. Past-date warning reported to f6 |
 | 35 | Wrong lead time or preferred supplier | Purchasing | Edit again | ✅ | ? | |
 | 36 | Work order released by mistake | Planner | **Withdraw release** (Gantt → task → **Edit WO**) | ⚠️ | ✅ | **Walked 2026-10-22 as Sam (`WO-OPS-02`):** withdrawn at once, *"Release withdrawn — re-solve to drop it"*, with four parts mid-Wash: no confirm, no reason, nothing said about the work on the floor. **Release** puts it back (*Ready to release*). Reported to f6 |
 | 37 | Wrong calendar closure | Planner | Delete and re-add; re-solve | ✅ | ? | |
