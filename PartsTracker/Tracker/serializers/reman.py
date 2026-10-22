@@ -212,6 +212,10 @@ class CoreListSerializer(SecureModelMixin):
     usable_component_count = serializers.IntegerField(read_only=True)
     pending_finding_count = serializers.IntegerField(
         read_only=True, help_text="Findings waiting on a lead's decision; the unit holds until each is decided.")
+    rebuild_decisions_open = serializers.SerializerMethodField(
+        help_text="Rebuild-plan slots proposed for something other than reuse with no "
+                  "recorded decision yet. Only computed when the list is asked for it "
+                  "(`?with_plan=true`, the Ready to Rebuild queue); null otherwise.")
 
     class Meta:
         model = Core
@@ -228,11 +232,27 @@ class CoreListSerializer(SecureModelMixin):
             # `received_date` next to a teardown-ordered list just reads as broken.
             'disassembly_completed_at',
             'harvested_component_count', 'usable_component_count', 'pending_finding_count',
+            'rebuild_decisions_open',
             # The part this core IS, so a list row can open the unit in the operator
             # runtime without a second fetch.
             'part',
         )
         read_only_fields = ('part',)
+
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_rebuild_decisions_open(self, obj):
+        request = self.context.get('request')
+        if request is None or request.query_params.get('with_plan') != 'true':
+            return None
+        if obj.status != 'IN_REBUILD':
+            return None
+        from Tracker.services.reman.rebuild import resolve_rebuild_plan
+        try:
+            plan = resolve_rebuild_plan(obj)
+        except Exception:  # noqa: BLE001 - a plan that can't build is shown on its page
+            return None
+        return sum(1 for s in plan.slots if s.needs_decision and not s.is_overridden)
 
 
 class CoreScrapSerializer(serializers.Serializer):

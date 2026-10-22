@@ -857,3 +857,23 @@ class BulkCoreLotTests(_RecoverableFixture):
         self.assertEqual(teardown_banks(self.tenant)[self.core_type.id].lot_units, 0)
         with self.assertRaisesRegex(ValueError, "not a lot of cores"):
             assign_core_identity(bought, user=self.user, condition_grade="B")
+
+
+class RebuildQueuePlanStatusTests(_RecoverableFixture):
+    """The Ready to Rebuild queue reads each core's open plan decisions, so a unit
+    whose slots are all decided reads as planned (PM walk 2026-10-22)."""
+
+    def _open(self, core, with_plan=True):
+        from rest_framework.request import Request
+        from rest_framework.test import APIRequestFactory
+        from Tracker.serializers.reman import CoreListSerializer
+        request = Request(APIRequestFactory().get(
+            "/api/Cores/", {"with_plan": "true"} if with_plan else {}))
+        return CoreListSerializer(core, context={"request": request}).data["rebuild_decisions_open"]
+
+    def test_a_proposed_buy_is_an_open_decision_until_recorded(self):
+        from Tracker.models import Core
+        self._rebuild(cores=1)
+        core = Core.objects.get(core_number="RB-1-0")
+        self.assertEqual(self._open(core), 1)
+        self.assertIsNone(self._open(core, with_plan=False))

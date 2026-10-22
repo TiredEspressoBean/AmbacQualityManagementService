@@ -28,18 +28,23 @@ export function RebuildQueuePage() {
         status: "IN_REBUILD",
         ordering: "disassembly_completed_at",
         limit: 100,
+        with_plan: true,
     });
 
-    const cores = data?.results ?? [];
+    // Units with plan decisions still open first (oldest first within each), so the
+    // queue reads as the work it is: a planned unit is on the floor, not waiting on you.
+    const cores = [...(data?.results ?? [])].sort(
+        (a, b) => Number((b.rebuild_decisions_open ?? 0) > 0) - Number((a.rebuild_decisions_open ?? 0) > 0));
+    const toDecide = cores.filter((c) => (c.rebuild_decisions_open ?? 0) > 0).length;
 
     return (
         <div className="max-w-6xl mx-auto py-10 space-y-6">
             <div>
                 <h1 className="text-2xl font-bold">Ready to rebuild</h1>
                 <p className="text-muted-foreground">
-                    Units released into rebuild and not yet planned. Oldest first — a core
-                    sitting here is capital on a shelf. Cores are released on their
-                    teardown work order.
+                    Units released into rebuild. Those with plan decisions still open come
+                    first, oldest first — a core sitting here is capital on a shelf. Cores
+                    are released on their teardown work order.
                 </p>
             </div>
 
@@ -48,7 +53,7 @@ export function RebuildQueuePage() {
                     <CardTitle className="flex items-baseline gap-3">
                         <span>Queue</span>
                         <span className="text-sm font-normal text-muted-foreground tabular-nums">
-                            {cores.length}
+                            {toDecide > 0 ? `${toDecide} to plan · ${cores.length} in rebuild` : `${cores.length} in rebuild, all planned`}
                         </span>
                     </CardTitle>
                     <CardDescription>
@@ -93,6 +98,13 @@ export function RebuildQueuePage() {
                                             <TableRow key={id}>
                                                 <TableCell className="font-mono text-sm font-medium">
                                                     {core.core_number}
+                                                    {(core.rebuild_decisions_open ?? 0) > 0 ? (
+                                                        <Badge variant="outline" className="ml-2 font-sans">
+                                                            {core.rebuild_decisions_open} slot{core.rebuild_decisions_open === 1 ? "" : "s"} to decide
+                                                        </Badge>
+                                                    ) : core.rebuild_decisions_open === 0 ? (
+                                                        <span className="ml-2 font-sans text-xs text-muted-foreground">planned</span>
+                                                    ) : null}
                                                     {(core.pending_finding_count ?? 0) > 0 && (
                                                         // Held at its check until a lead decides.
                                                         <Link to="/reman/cores/$id/rebuild" params={{ id }} className="ml-2">

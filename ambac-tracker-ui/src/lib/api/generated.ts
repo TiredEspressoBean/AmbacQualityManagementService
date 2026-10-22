@@ -1958,6 +1958,10 @@ export type CoreList = {
    */
   pending_finding_count: number;
   /**
+   * Rebuild-plan slots proposed for something other than reuse with no recorded decision yet. Only computed when the list is asked for it (`?with_plan=true`, the Ready to Rebuild queue); null otherwise.
+   */
+  rebuild_decisions_open: number | null;
+  /**
    * The part this core is. Its part_status is derived from `status`.
    */
   part: string;
@@ -19678,6 +19682,7 @@ const CoreList = z.object({
   harvested_component_count: z.number().int(),
   usable_component_count: z.number().int(),
   pending_finding_count: z.number().int(),
+  rebuild_decisions_open: z.number().int().nullable(),
   part: z.string().uuid(),
 });
 const PaginatedCoreListList = z.object({
@@ -33971,6 +33976,11 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
             "SHIPPED",
           ])
           .optional(),
+      },
+      {
+        name: "with_plan",
+        type: "Query",
+        schema: z.boolean().optional(),
       },
     ],
     response: PaginatedCoreListList,

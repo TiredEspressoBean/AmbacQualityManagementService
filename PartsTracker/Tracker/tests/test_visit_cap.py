@@ -139,3 +139,82 @@ class VisitCapTests(TenantContextMixin, VectorTestCase):
         d = self._escalate()
         self._decide(d, "SCRAP")
         self.assertEqual(self.part.part_status, PartsStatus.SCRAPPED)
+
+
+class RepeatFailureReachesMrbTests(TenantContextMixin, VectorTestCase):
+    """fail → rework → fail → rework → cap → MRB, through the real routing.
+
+    The second REWORK decision used to strand the part at the check (REWORK_NEEDED):
+    routing skipped any part already split off its lot, and the first rework split it
+    for good. So the inspection's visit cap could never be reached (walk 2026-10-22).
+    """
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import Substep, SubstepScope
+        self.tenant = Tenant.objects.create(name="Repeat", slug="repeat-fail", tier="PRO")
+        self.set_tenant_context(self.tenant)
+        self.user = get_user_model().objects.create_user(
+            username="qa", email="qa@x.test", password="x", tenant=self.tenant)
+        pt = PartTypes.objects.create(tenant=self.tenant, name="Injector")
+        self.process = Processes.objects.create(tenant=self.tenant, name="P-REP", part_type=pt)
+        mk = lambda name, **kw: Steps.objects.create(tenant=self.tenant, part_type=pt, name=name, **kw)
+        self.inspect = mk("Nozzle Inspection", step_type="TASK", max_visits=2)
+        self.rework = mk("Rework", step_type="REWORK", max_visits=3)
+        self.pack = mk("Pack", step_type="TASK")
+        self.mrb = mk("MRB Review", step_type="TASK")
+        for i, s in enumerate((self.inspect, self.pack, self.rework, self.mrb), start=1):
+            ProcessStep.objects.create(process=self.process, step=s, order=i)
+        E = lambda a, b, t: StepEdge.objects.create(process=self.process, from_step=a, to_step=b, edge_type=t)
+        E(self.inspect, self.pack, EdgeType.DEFAULT)
+        E(self.rework, self.inspect, EdgeType.DEFAULT)
+        E(self.inspect, self.mrb, EdgeType.ESCALATION)
+        E(self.rework, self.mrb, EdgeType.ESCALATION)
+        # A rework target must re-inspect (split_part_from_lot refuses one that doesn't).
+        Substep.objects.create(tenant=self.tenant, step=self.rework, order=0, title="Re-inspect",
+                               scope=SubstepScope.SAMPLED, is_inspection_point=True)
+        wo = WorkOrder.objects.create(tenant=self.tenant, ERP_id="WO-REP",
+                                      workorder_status=WorkOrderStatus.IN_PROGRESS,
+                                      quantity=1, process=self.process)
+        self.part = Parts.objects.create(tenant=self.tenant, ERP_id="P-REP", part_type=pt,
+                                         work_order=wo, step=self.inspect,
+                                         part_status=PartsStatus.IN_PROGRESS)
+        StepExecution.objects.create(tenant=self.tenant, part=self.part, step=self.inspect,
+                                     visit_number=1, status="IN_PROGRESS",
+                                     training_authorization={'authorized': True})
+
+    def _fail_and_rework(self):
+        """The check fails: the part is held, QA decides rework, the decision routes it."""
+        from Tracker.models import QuarantineDisposition
+        from Tracker.services.qms.disposition import decide_disposition, route_part_to_rework_if_needed
+        self.part.refresh_from_db()
+        self.part.part_status = PartsStatus.QUARANTINED
+        self.part.save(update_fields=["part_status"])
+        d = QuarantineDisposition.objects.create(tenant=self.tenant, part=self.part,
+                                                 step=self.part.step)
+        decide_disposition(d, disposition_type="REWORK", authorized_by=self.user)
+        route_part_to_rework_if_needed(d, self.user)
+        self.part.refresh_from_db()
+
+    def _finish_rework(self):
+        """Rework done: the part goes back to the check (or, past its cap, to MRB)."""
+        result = advance_part_step(self.part, operator=self.user, skip_gate_check=True)
+        self.part.refresh_from_db()
+        return result
+
+    def test_a_second_failure_is_reworked_and_the_third_visit_escalates(self):
+        from Tracker.models import QuarantineDisposition
+        self._fail_and_rework()
+        self.assertEqual(self.part.step, self.rework, "first failure goes to rework")
+        self._finish_rework()
+        self.assertEqual(self.part.step, self.inspect, "back to the check, visit 2")
+
+        self._fail_and_rework()
+        self.assertEqual(self.part.step, self.rework,
+                         "the second failure is routed too, not stranded at the check")
+        self.assertEqual(self._finish_rework(), "escalated")
+        # A third look at the check is past its cap of 2: MRB, held, with a decision.
+        self.assertEqual((self.part.step, self.part.part_status),
+                         (self.mrb, PartsStatus.QUARANTINED))
+        self.assertTrue(QuarantineDisposition.objects.filter(
+            part=self.part, escalated_from_step=self.inspect, current_state="OPEN").exists())

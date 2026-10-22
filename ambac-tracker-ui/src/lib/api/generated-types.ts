@@ -22354,6 +22354,8 @@ export interface components {
             readonly usable_component_count: number;
             /** @description Findings waiting on a lead's decision; the unit holds until each is decided. */
             readonly pending_finding_count: number;
+            /** @description Rebuild-plan slots proposed for something other than reuse with no recorded decision yet. Only computed when the list is asked for it (`?with_plan=true`, the Ready to Rebuild queue); null otherwise. */
+            readonly rebuild_decisions_open: number | null;
             /**
              * Format: uuid
              * @description The part this core is. Its part_status is derived from `status`.
@@ -43721,6 +43723,8 @@ export interface operations {
                  *     * `SCRAPPED` - Scrapped
                  */
                 status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED" | "SHIPPED";
+                /** @description Also compute each core's open rebuild-plan decisions (`rebuild_decisions_open`). Costs a plan per row: the queue asks, lists don't. */
+                with_plan?: boolean;
             };
             header?: never;
             path?: never;

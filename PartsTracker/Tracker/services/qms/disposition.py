@@ -461,13 +461,20 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
     (2e closes it then). Per AS9100, a rework/repair isn't resolved until
     re-inspection passes, so the NCR-decision record stays open until verified.
 
-    No-op unless: the type is REWORK/REPAIR, the part exists and isn't already
-    split, and the process has exactly ONE rework step (zero or ambiguous → leave
-    it REWORK_NEEDED for manual routing via the control page, 2c). Idempotent."""
+    A part already split off (its first rework did that, for good) is moved straight
+    to the rework step — no split needed. It used to be skipped, so a SECOND failure
+    stranded at the check and the visit cap could never send it to MRB (walk
+    2026-10-22). The move honours the rework step's own visit cap: past it, the part
+    escalates instead.
+
+    No-op unless: the type is REWORK/REPAIR, the part exists, and the process has
+    exactly ONE rework step (zero or ambiguous → leave it REWORK_NEEDED for manual
+    routing via the control page, 2c). Idempotent: a part already at the rework step
+    stays put."""
     if disposition.disposition_type not in ('REWORK', 'REPAIR'):
         return
     part = disposition.part
-    if part is None or part.split_from_lot:
+    if part is None:
         return
     process = part.work_order.process if part.work_order_id else None
     if process is None:
@@ -486,6 +493,11 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
 
     from Tracker.services.mes.splits import split_part_from_lot
     target = next(iter(rework_steps.values()))
+    if part.step_id == target.id:
+        return  # already there
+    if part.split_from_lot:
+        _move_split_part_to_rework(part, target, user, disposition)
+        return
     split_part_from_lot(
         part=part,
         reason=PartSplitReason.REWORK,
@@ -497,6 +509,41 @@ def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> 
         "Routed part %s to rework step %s from disposition %s",
         part.id, target.id, disposition.pk,
     )
+
+
+def _move_split_part_to_rework(part, target, user, disposition) -> None:
+    """Move a part that is already off its lot to the rework step, the way the split
+    path does (its open visit ends ROLLED_BACK, a new visit opens at the target), after
+    the rework step's visit cap: past it the part goes along the escalation route to
+    MRB instead, held with a decision. With no escalation route the cap refuses and
+    the part stays REWORK_NEEDED for a person to route."""
+    from Tracker.models import StepExecution, StepTransitionLog
+    from Tracker.services.qms.mrb import open_for_escalation
+
+    try:
+        dest = part._check_cycle_limit(target)
+    except ValueError:
+        logger.info("Part %s past the rework cap with no escalation route; left for "
+                    "manual routing (disposition %s)", part.id, disposition.pk)
+        return
+    with transaction.atomic():
+        StepExecution.objects.filter(  # tenant-safe: scoped by the part FK
+            part=part, exited_at__isnull=True,
+            status__in=['PENDING', 'CLAIMED', 'IN_PROGRESS']).update(
+                status='ROLLED_BACK', exited_at=timezone.now())
+        part.step = dest
+        part.save(update_fields=['step'])
+        visit = StepExecution.get_visit_count_for_update(part, dest) + 1
+        new_exec = StepExecution.objects.create(
+            part=part, step=dest, visit_number=visit, assigned_to=user, status='PENDING')
+        from Tracker.services.dwi.sampling_decisions import evaluate_substep_sampling
+        evaluate_substep_sampling(new_exec)
+        StepTransitionLog.objects.create(part=part, step=dest, operator=user)
+        escalated = getattr(part, '_escalated_from', None)
+        if escalated is not None:
+            open_for_escalation(part, capped_step=escalated[0], visits=escalated[1])
+    logger.info("Routed split part %s to %s from disposition %s",
+                part.id, dest.id, disposition.pk)
 
 
 def record_containment_complete(disposition, user) -> None:

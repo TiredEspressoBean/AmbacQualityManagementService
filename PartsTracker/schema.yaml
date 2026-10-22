@@ -5369,6 +5369,12 @@ paths:
           * `RETURNED_UNREPAIRED` - Returned unrepaired
           * `HARVESTED` - Harvested to inventory
           * `SCRAPPED` - Scrapped
+      - in: query
+        name: with_plan
+        schema:
+          type: boolean
+        description: 'Also compute each core''s open rebuild-plan decisions (`rebuild_decisions_open`).
+          Costs a plan per row: the queue asks, lists don''t.'
       tags:
       - api
       security:
@@ -52526,6 +52532,13 @@ components:
           readOnly: true
           description: Findings waiting on a lead's decision; the unit holds until
             each is decided.
+        rebuild_decisions_open:
+          type: integer
+          nullable: true
+          readOnly: true
+          description: Rebuild-plan slots proposed for something other than reuse
+            with no recorded decision yet. Only computed when the list is asked for
+            it (`?with_plan=true`, the Ready to Rebuild queue); null otherwise.
         part:
           type: string
           format: uuid
@@ -52540,6 +52553,7 @@ components:
       - id
       - part
       - pending_finding_count
+      - rebuild_decisions_open
       - received_date
       - usable_component_count
     CoreLot:

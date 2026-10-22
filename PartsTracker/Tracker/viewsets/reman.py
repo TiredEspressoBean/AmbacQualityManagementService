@@ -7,7 +7,8 @@ ViewSets for remanufacturing models:
 """
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -66,6 +67,10 @@ class _CoreImport(BaseCSVImportSerializer):
         return create_core(tenant=self.tenant, received_by=self.user, **data)
 
 
+@extend_schema_view(list=extend_schema(parameters=[OpenApiParameter(
+    name='with_plan', type=OpenApiTypes.BOOL, required=False,
+    description="Also compute each core's open rebuild-plan decisions "
+                "(`rebuild_decisions_open`). Costs a plan per row: the queue asks, lists don't.")]))
 class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.ModelViewSet):
     """
     Remanufacturing core management with disassembly workflow.

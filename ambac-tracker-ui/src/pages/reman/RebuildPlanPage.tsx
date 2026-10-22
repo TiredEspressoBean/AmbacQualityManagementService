@@ -26,6 +26,7 @@ import { Pencil, Undo2 } from "lucide-react";
 import { useRebuildPlan } from "@/hooks/useRebuildPlan";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
+import { useMyPermissions } from "@/hooks/useMyPermissions";
 import { PendingFindingsCard } from "@/components/reman/PendingFindingsCard";
 import {
     useCreateSlotOverride, useDeleteSlotOverride, useUpdateSlotOverride,
@@ -67,6 +68,11 @@ const SOURCE_LABEL: Record<string, string> = {
 export function RebuildPlanPage() {
     const { id } = useParams({ from: "/reman/cores/$id/rebuild" });
     const { data: core } = useRetrieveCore(id);
+    // The floor (Operator / Shift Lead) works the unit; everyone else plans it. Same
+    // split as the home page's scan box.
+    const { data: me } = useMyPermissions();
+    const groupNames = new Set((me?.groups ?? []).map((g) => String((g as { name?: string }).name ?? "")));
+    const isFloor = groupNames.has("Operator") || groupNames.has("Shift Lead");
     const { data: plan, isLoading, isError, error } = useRebuildPlan(id, { enabled: !!id });
 
     // The screen opens on the decisions. Twenty-eight slots resolved "reuse as-is"
@@ -199,8 +205,28 @@ export function RebuildPlanPage() {
                         </div>
                     </div>
                     {/* The rebuild is run in the DWI operator runtime, at the step the
-                        unit is at; this page is the plan, not the bench. */}
-                    {core && <WorkThisUnit core={core} />}
+                        unit is at; this page is the plan, not the bench. Only the floor
+                        goes there. A planner's next move is the next unit in the queue,
+                        or where this one is now (walk 2026-10-22). */}
+                    {core && (isFloor ? (
+                        <WorkThisUnit core={core} />
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {core.work_order && (
+                                <Button variant="outline" asChild>
+                                    <Link to="/workorder/$workOrderId" params={{ workOrderId: String(core.work_order) }}>
+                                        Work order
+                                    </Link>
+                                </Button>
+                            )}
+                            <Button asChild>
+                                <Link to="/reman/rebuild-queue">
+                                    <ArrowLeft className="mr-1 h-4 w-4" />
+                                    Back to Ready to rebuild
+                                </Link>
+                            </Button>
+                        </div>
+                    ))}
                 </div>
 
                 {/* Findings from the bench wait here for a lead before they touch the plan. */}
@@ -366,6 +392,14 @@ export function RebuildPlanPage() {
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground">
                                                         {slot.reason}
+                                                        {/* A buy counts as demand on Requirements;
+                                                            it shows there as a shortage if stock
+                                                            doesn't already cover it. */}
+                                                        {slot.resolution === "REPLACE_BUY" && (
+                                                            <Link to="/production/requirements" className="mt-1 block text-xs underline underline-offset-2">
+                                                                Check coverage on Requirements
+                                                            </Link>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="whitespace-nowrap">
                                                         <Button
