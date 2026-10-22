@@ -393,7 +393,7 @@ who, when and old→new, but never a reason.
 | 21 | Core received under the wrong order/mode | Receiving | PATCH while RECEIVED | 🚧 | ? | None once teardown starts |
 | 22 | Customer's answer recorded wrongly | QA Manager, Production Manager | None | ❌ | ? | Declined can't be re-requested |
 | 23 | Wrong component installed | Operator | Remove (reason), install the right one | 🚧 | ? | Component status and reservation aren't restored |
-| 24 | Wrong received quantity | Receiving | **Adjust quantity** fixes what's left, not what was received | ❌ | ❌ | **Walked 2026-10-22 as Luis (`RCV-MAT-0005`, 120 keyed, 12 arrived):** adjusted to 12; the list reads *12 EA of 120*, and the ERP sheet still says received 120, accepted 120, *Ready to post*. **Decided 10/22:** a separate **Correct receipt** action with a reason, while nothing has been used; posted rows flag *Changed since posted*. Spec'd to f6 |
+| 24 | Wrong received quantity | Receiving | **Correct receipt…** on the lot menu (reason), while nothing has been taken | ✅ | ✅ | **Re-walked 2026-10-22 as Luis (`RCV-MAT-0005`, 120 keyed, 12 arrived):** *Lot RCV-MAT-0005 receipt corrected to 12 EA*; the ERP sheet reads received 12, accepted 12. (Decided 10/22. First walk: only **Adjust quantity**, which left the sheet at 120.) Taught: Receiving 2. |
 | 25 | Wrong supplier, material or PO line on a lot | Receiving | PATCH | 🚧 | ? | No reason |
 | 26 | Lot accepted or rejected wrongly | Receiving, QA Manager | **Reject remainder**, or Use As Is on a concession; a pending whole-lot request can be declined | ✅ | ? | |
 | 27 | **That's all** chosen by mistake | Receiving | None; record a new expected receipt | ❌ | ? | |

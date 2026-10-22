@@ -83,6 +83,13 @@ A heat number is required where the material needs one: without it the lot is he
 until it's entered (module 4). Photograph the CoC and packing slip into the dialog at
 the dock, while they're in your hand.
 
+**Keyed the quantity wrong?** `RCV-MAT-0005` was booked in as 120; the packing slip
+says 12. On its row's menu, **Correct receipt…**, enter what actually arrived and
+why. The receipt itself changes, and what's on hand with it, so the sheet for the
+ERP (module 8) carries 12. It's offered only while nothing has been taken from the
+lot. **Adjust quantity…** is something else: stock that's gone missing since it
+arrived, where the receipt was right.
+
 ---
 
 ## 3. Inspect it
