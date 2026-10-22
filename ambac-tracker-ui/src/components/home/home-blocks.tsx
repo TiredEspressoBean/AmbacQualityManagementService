@@ -1600,7 +1600,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
     { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
     { group: "Shift Lead", order: ["shift-lead-hero", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
@@ -1610,7 +1610,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "Receiving", order: ["launchpad-receiving", "scan", "late-deliveries"] },
     { group: "Shipping", order: ["launchpad-shipping", "scan", "production-osp"] },
     { group: "Auditor", order: ["launchpad-auditor", "capa-status", "ncr-aging"] },
-    { group: "Tenant Admin", order: ["needs-attention", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses
