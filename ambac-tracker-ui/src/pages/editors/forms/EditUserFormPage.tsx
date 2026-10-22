@@ -485,7 +485,14 @@ export default function UserFormPage() {
                                 <FormLabel>Position</FormLabel>
                                 <Select
                                     value={field.value ?? "__none__"}
-                                    onValueChange={(v) => field.onChange(v === "__none__" ? null : v)}
+                                    // Radix reports "" when handed a value none of its items
+                                    // match yet — the user loads before the positions list —
+                                    // and taking that cleared the position, so Save failed
+                                    // "must be a valid ID" and suspending a leaver didn't save.
+                                    onValueChange={(v) => {
+                                        if (v === "") return;
+                                        field.onChange(v === "__none__" ? null : v);
+                                    }}
                                 >
                                     <FormControl>
                                         <SelectTrigger>

@@ -3274,6 +3274,9 @@ class Documents(SecureModel):
             ("view_restricted_documents", "Can view restricted classification documents"),
             ("view_secret_documents", "Can view secret classification documents"),
             ("classify_documents", "Can change document classification level"),
+            # Release and obsolete are the document controller's acts (ISO 9001 7.5.3):
+            # approval says the content is right; release puts it in force from a date.
+            ("release_documents", "Can release or obsolete a controlled document"),
         ]
         indexes = [
             models.Index(fields=['content_type', 'object_id'], name='documents_content_object_idx'),

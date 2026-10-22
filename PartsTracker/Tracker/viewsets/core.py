@@ -1268,8 +1268,12 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
     action_permissions = {
         'attach': ['add_documentlink'],
         'detach': ['delete_documentlink'],
+        # Putting an approved document in force, and retiring one, are the document
+        # controller's acts — not anyone who can upload (the POST default).
+        'release': ['release_documents'],
+        'mark_obsolete': ['release_documents'],
     }
-    crud_exempt_actions = {'attach', 'detach'}
+    crud_exempt_actions = {'attach', 'detach', 'release', 'mark_obsolete'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

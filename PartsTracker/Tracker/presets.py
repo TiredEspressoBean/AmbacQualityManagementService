@@ -698,7 +698,7 @@ GROUP_PRESETS = {
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',
             # Secret document tier + classification authority
-            'view_secret_documents', 'classify_documents',
+            'view_secret_documents', 'classify_documents', 'release_documents',
             # User management within tenant (view perms come from the staff
             # view base; membership is the UserRole model)
             'add_user', 'change_user', 'delete_user',
@@ -751,6 +751,8 @@ GROUP_PRESETS = {
             'full_tenant_access',
             # Classification authority (no secret tier)
             'classify_documents',
+            # Puts approved documents in force, and retires them (with the DC)
+            'release_documents',
             # Resolve MANUAL decision-point routing (4a)
             *DECISION_RESOLUTION_PERMISSIONS,
             # Sign off (buy off) First Piece Inspections
@@ -921,6 +923,8 @@ GROUP_PRESETS = {
             'full_tenant_access',
             # Secret document tier + classification authority
             'view_secret_documents', 'classify_documents',
+            # Puts approved documents in force, and retires them
+            'release_documents',
         ],
     },
 

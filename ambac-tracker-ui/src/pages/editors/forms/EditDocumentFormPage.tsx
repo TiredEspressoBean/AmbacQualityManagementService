@@ -194,16 +194,18 @@ export default function DocumentFormPage() {
 
     useEffect(() => {
         if (mode === "edit" && document) {
-            form.setValue("classification", document.classification ?? "");
-            form.setValue("ai_readable", document.ai_readable ?? false);
-            form.setValue("document_type", document.document_type ?? null);
-
-            if (document.content_type != null) {
-                form.setValue("content_type", String(document.content_type));
-            }
-            if (document.object_id != null) {
-                form.setValue("object_id", String(document.object_id));
-            }
+            // reset(), not field-by-field setValue: the record IS the form's starting
+            // state. The select showed "Select classification level" over an INTERNAL
+            // document, inviting someone to re-pick — and a wrong pick on save changes
+            // who may see it.
+            form.reset({
+                file: undefined,
+                classification: document.classification ?? "",
+                ai_readable: document.ai_readable ?? false,
+                document_type: document.document_type ?? null,
+                content_type: document.content_type != null ? String(document.content_type) : undefined,
+                object_id: document.object_id != null ? String(document.object_id) : undefined,
+            } as FormValues);
         }
     }, [mode, document, form]);
 
@@ -263,7 +265,9 @@ export default function DocumentFormPage() {
             }
 
             const payload: any = {
-                classification: values.classification,
+                // On an edit, classification goes only when it was changed on purpose.
+                ...(mode === "create" || form.formState.dirtyFields.classification
+                    ? { classification: values.classification } : {}),
                 ai_readable: values.ai_readable ?? false,
                 ...(values.document_type && { document_type: values.document_type }),
                 ...(values.content_type && { content_type: values.content_type }),
@@ -501,7 +505,9 @@ export default function DocumentFormPage() {
                                 <FormLabel required={required.classification}>Classification Level</FormLabel>
                                 <Select
                                     value={field.value}
-                                    onValueChange={field.onChange}
+                                    // Ignore Radix's "" for a value it can't match yet, so the
+                                    // stored classification is never blanked behind the user.
+                                    onValueChange={(v) => { if (v !== "") field.onChange(v); }}
                                 >
                                     <FormControl>
                                         <SelectTrigger className="w-full">

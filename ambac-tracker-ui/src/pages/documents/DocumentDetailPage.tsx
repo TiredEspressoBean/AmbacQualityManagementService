@@ -21,6 +21,7 @@ import { DocumentVersionsTab } from "./tabs/DocumentVersionsTab"
 import { DocumentApprovalTab } from "./tabs/DocumentApprovalTab"
 import { DocumentAuditTab } from "./tabs/DocumentAuditTab"
 import { DocumentRevisionModal } from "@/components/document-revision-modal"
+import { DocumentLifecycleActions } from "@/components/documents/DocumentLifecycleActions"
 
 export function DocumentDetailPage() {
     const { id } = useParams({ from: "/documents/$id" })
@@ -102,6 +103,7 @@ export function DocumentDetailPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <DocumentLifecycleActions document={document} />
                         <Button variant="outline" onClick={handleDownload}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
