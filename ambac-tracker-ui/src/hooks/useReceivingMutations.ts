@@ -415,6 +415,19 @@ export const useAdjustLotQuantity = () => {
     });
 };
 
+/** Correct the quantity RECEIVED (a mis-keyed receipt), with a reason — while nothing
+ *  has been taken from the lot. Distinct from adjusting what's left (shrinkage). */
+export const useCorrectReceipt = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; quantity: string; reason: string }) =>
+            api.api_MaterialLots_correct_receipt_create(
+                { quantity: vars.quantity, reason: vars.reason },
+                { params: { id: vars.id }, headers: csrf() }),
+        onSuccess: () => invalidateSupply(queryClient),
+    });
+};
+
 /** Save a lot field (heat number) — PATCH, which also re-checks a hold waiting on it. */
 export const useUpdateLotHeatNumber = () => {
     const queryClient = useQueryClient();

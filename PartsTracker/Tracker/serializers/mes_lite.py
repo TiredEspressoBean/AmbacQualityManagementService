@@ -635,10 +635,24 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
             return None
         return ex.assigned_to.get_full_name() or ex.assigned_to.username
 
+    awaiting_recapture = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_awaiting_recapture(self, obj) -> bool:
+        """Held, but a result at its step was voided and not yet taken again: it may be
+        started for that re-capture only, so the new result is on record before QA
+        closes the disposition (user decision 2026-10-22: re-inspect first, then close)."""
+        if obj.part_status != 'QUARANTINED' or not obj.step_id:
+            return False
+        from Tracker.models import QualityReports
+        return QualityReports.objects.filter(  # tenant-safe: FK-correlated to a scoped part
+            part=obj, step_id=obj.step_id, superseded_at__isnull=False,
+            replaced_by__isnull=True).exists()
+
     class Meta:
         model = Parts
         fields = ('id', 'ERP_id', 'part_status', 'requires_sampling', 'needs_qa', 'qa_completed',
-                  'current_operator_name',
+                  'current_operator_name', 'awaiting_recapture',
                   'order', 'part_type', 'part_type_info', 'step', 'step_info', 'work_order', 'quality_info',
                   'created_at', 'updated_at', 'has_error', 'part_type_name', 'process_name', 'order_name',
                   'step_name', 'step_description', 'work_order_erp_id', 'sampling_rule',
@@ -659,7 +673,7 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
         read_only_fields = (
             'created_at', 'updated_at', 'requires_sampling', 'needs_qa', 'qa_completed', 'quality_info',
             'part_type_info', 'step_info', 'has_error', 'part_type_name', 'process_name', 'order_name',
-            'step_name', 'step_description', 'work_order_erp_id', 'process',
+            'step_name', 'step_description', 'work_order_erp_id', 'process', 'awaiting_recapture',
             'total_rework_count', 'step',  # Step changes must go through increment action for validation
             # Lot-split state is driven by split_from_lot / rejoin_to_lot services, not direct writes.
             # (lot_split_reason is a SerializerMethodField below, inherently read-only.)

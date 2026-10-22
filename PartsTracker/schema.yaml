@@ -15136,6 +15136,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
           description: ''
+  /api/MaterialLots/{id}/correct-receipt/:
+    post:
+      operationId: api_MaterialLots_correct_receipt_create
+      description: |-
+        Correct the quantity RECEIVED (a mis-keyed receipt), with a reason — while
+        nothing has been taken from the lot. Not shrinkage: that's adjust-quantity.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustQuantityRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/evaluate_receiving/:
     get:
       operationId: api_MaterialLots_evaluate_receiving_retrieve
@@ -65790,6 +65828,9 @@ components:
           type: string
           nullable: true
           readOnly: true
+        awaiting_recapture:
+          type: boolean
+          readOnly: true
         order:
           type: string
           format: uuid
@@ -65968,6 +66009,7 @@ components:
           readOnly: true
       required:
       - ERP_id
+      - awaiting_recapture
       - core_role
       - created_at
       - current_operator_name

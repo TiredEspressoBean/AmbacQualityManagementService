@@ -398,9 +398,12 @@ export default function EditDispositionFormPage() {
 
         try {
             if (mode === "edit" && dispositionId) {
-                if (typeChanged) await authorizeDecision(values, undefined, note)
-                await savePatch(values)
-                toast.success("Disposition updated")
+                const decided = typeChanged ? await authorizeDecision(values, undefined, note) : null
+                // A decision that closes the record (Not a nonconformance) leaves nothing
+                // to edit — the lock refuses the follow-up save, which showed a
+                // successful close as an error (walk 2026-10-22).
+                if (decided?.current_state !== "CLOSED") await savePatch(values)
+                toast.success(decided?.current_state === "CLOSED" ? "Disposition closed" : "Disposition updated")
                 queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
             } else {
                 const result = await api.api_QuarantineDispositions_create(values, {
@@ -423,8 +426,8 @@ export default function EditDispositionFormPage() {
         setCosignPending(true)
         setCosignError(null)
         try {
-            await authorizeDecision(pendingDecision, creds, pendingNote)
-            await savePatch(pendingDecision)
+            const decided = await authorizeDecision(pendingDecision, creds, pendingNote)
+            if (decided?.current_state !== "CLOSED") await savePatch(pendingDecision)
             setCosignOpen(false)
             setPendingDecision(null)
             toast.success("Disposition updated")

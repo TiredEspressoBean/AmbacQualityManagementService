@@ -563,6 +563,53 @@ def adjust_quantity(lot, *, new_quantity: Decimal, reason: str, user):
     return lot
 
 
+def correct_receipt(lot, *, new_quantity: Decimal, reason: str, user):
+    """Correct what was RECEIVED — keyed 120, really 12 — as distinct from adjusting
+    what's left (shrinkage). Changes the delivery's `quantity` and what's left with it,
+    so the receipts sheet carries the true figure (user decision 2026-10-22: Adjust
+    quantity read as 108 used, and the ERP would have been keyed with the typo).
+
+    Allowed while nothing has been taken from the lot: no split, nothing used or
+    adjusted (what's left still equals what was received). A delivery already posted
+    reads "Changed since posted" on the sheet, so the ERP gets corrected too."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the received quantity is being corrected")
+    new_quantity = Decimal(str(new_quantity))
+    if new_quantity <= 0:
+        raise ValueError("A received quantity must be more than nothing; cancel or "
+                         "reject a delivery that didn't arrive")
+    with transaction.atomic():
+        locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
+        if locked.status in ("ON_ORDER", "CANCELLED"):
+            raise ValueError(f"Lot {locked.lot_number} hasn't been received; change the "
+                             f"expected quantity instead.")
+        if locked.parent_lot_id is not None:
+            raise ValueError(f"Lot {locked.lot_number} was split from another lot; correct "
+                             f"the delivery it came from.")
+        split = MaterialLot.all_tenants.filter(parent_lot=locked).exists()  # tenant-safe: by the lot's own FK
+        if split or locked.quantity_remaining != locked.quantity:
+            raise ValueError(f"Some of lot {locked.lot_number} has already been used, split "
+                             f"or adjusted, so its receipt can't be corrected any more. "
+                             f"Adjust what's left instead.")
+        old = locked.quantity
+        if old == new_quantity:
+            return locked
+        RecordEdit.objects.create(
+            tenant=locked.tenant,
+            content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=locked.id, field_name="quantity",
+            old_value=str(old), new_value=str(new_quantity), reason=reason, edited_by=user)
+        locked.quantity = new_quantity
+        locked.quantity_remaining = new_quantity
+        locked.save(update_fields=["quantity", "quantity_remaining", "updated_at"])
+    lot.refresh_from_db()
+    return lot
+
+
 def chase_expected_receipt(lot, *, user, note: str, promised_date=None):
     """The buyer chased a late (or soon due) delivery: record what they were told, and a
     new promise if one was given. The first promise stays as it was — on-time delivery

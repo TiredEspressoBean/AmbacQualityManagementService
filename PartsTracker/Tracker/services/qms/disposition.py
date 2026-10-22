@@ -408,6 +408,12 @@ def decide_disposition(
             raise ValueError(
                 "You recorded or voided this finding, so someone else must close it as "
                 "not a nonconformance.")
+        # Re-inspect first, then close (user decision 2026-10-22): the good result is on
+        # record before the finding is written off.
+        if any(r.replaced_by is None or r.replaced_by.status != 'PASS' for r in reports):
+            raise ValueError(
+                "Re-inspect first: the voided result hasn't been captured again with a PASS. "
+                "Close this once the re-inspection is on record.")
         reasons = "; ".join(sorted({r.superseded_reason.strip().rstrip(".!?")
                                     for r in reports if r.superseded_reason}))
         notes = f"Not a nonconformance — the result was voided: {reasons}." + (

@@ -350,7 +350,8 @@ export function OperatorSubstepRuntimePage() {
                     // A held unit (quarantined, or on hold — e.g. a core awaiting the
                     // customer's answer) isn't loadable: sealing the load would carry it
                     // past its hold. Shown, disabled, with why — as Start Work does.
-                    held: p.part_status === "QUARANTINED" ? "quarantined — waiting on its disposition"
+                    // A voided result is re-captured before QA closes its disposition.
+                    held: p.part_status === "QUARANTINED" && !p.awaiting_recapture ? "quarantined — waiting on its disposition"
                         : p.part_status === "ON_HOLD" ? "on hold" : undefined,
                 })),
         [cohortPartsData],

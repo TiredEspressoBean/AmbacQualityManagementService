@@ -104,6 +104,7 @@ export function MaterialsPage() {
     const [importOpen, setImportOpen] = useState(false);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
     const [adjustLot, setAdjustLot] = useState<Lot | null>(null);
+    const [correctLot, setCorrectLot] = useState<Lot | null>(null);
     const [moveLot, setMoveLot] = useState<Lot | null>(null);
     const [chaseLot, setChaseLot] = useState<Lot | null>(null);
     const [cancelLot, setCancelLot] = useState<Lot | null>(null);
@@ -339,6 +340,12 @@ export function MaterialsPage() {
                                     {inStock && (
                                         <DropdownMenuItem onSelect={() => setAdjustLot(l)}>Adjust quantity…</DropdownMenuItem>
                                     )}
+                                    {/* A mis-keyed receipt, while nothing's been taken from it — not
+                                        shrinkage, which reads as stock used. */}
+                                    {l.status !== "CANCELLED" && !l.parent_lot
+                                        && l.quantity != null && l.quantity_remaining === l.quantity && (
+                                        <DropdownMenuItem onSelect={() => setCorrectLot(l)}>Correct receipt…</DropdownMenuItem>
+                                    )}
                                     {/* The retained evidence of release (ISO 9001 §8.6). */}
                                     <DropdownMenuItem onSelect={() => void downloadReport("receiving_inspection_record",
                                         { lot_id: String(l.id) })}>
@@ -422,6 +429,18 @@ export function MaterialsPage() {
                 unitOfMeasure={adjustLot.unit_of_measure}
                 open={adjustLot !== null}
                 onOpenChange={(o) => { if (!o) setAdjustLot(null); }}
+            />
+        )}
+        {correctLot && (
+            <AdjustLotQuantityDialog
+                key={`correct-${String(correctLot.id)}`}
+                mode="correct"
+                lotId={String(correctLot.id)}
+                lotNumber={correctLot.lot_number}
+                remaining={correctLot.quantity}
+                unitOfMeasure={correctLot.unit_of_measure}
+                open={correctLot !== null}
+                onOpenChange={(o) => { if (!o) setCorrectLot(null); }}
             />
         )}
         {shipLot && (

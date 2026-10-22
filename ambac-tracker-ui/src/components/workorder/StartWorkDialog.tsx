@@ -79,6 +79,11 @@ const PARKED: Record<string, string> = {
 
 /** `step_info` is schema-typed as a loose dict; `order` is the ProcessStep
  *  order within the WO's process (null when the WO has no locked process). */
+/** Why a part can't be started, or undefined when it can. A held part whose result was
+ *  voided may be started for that re-capture only (user decision 2026-10-22). */
+const parkedReason = (p: { part_status?: string | null; awaiting_recapture?: boolean }) =>
+    p.awaiting_recapture ? undefined : PARKED[p.part_status ?? ""];
+
 const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
     const raw = p.step_info?.order;
     return typeof raw === "number" ? raw : Number.MAX_SAFE_INTEGER;
@@ -149,7 +154,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
         const part = allParts.find((p) => String(p.id) === initialPartId);
         if (!part) return;
         scannedRef.current = initialPartId;
-        if (!PARKED[part.part_status ?? ""]) setSelectedIds([initialPartId]);
+        if (!parkedReason(part)) setSelectedIds([initialPartId]);
         setOpen(true);
     }, [initialPartId, blockedReason, allParts]);
 
@@ -380,7 +385,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                     ) : (
                         partsByStep.map(([stepId, { stepName, parts }]) => {
                             const stepPartIds = parts
-                                .filter((p) => !PARKED[p.part_status ?? ""])
+                                .filter((p) => !parkedReason(p))
                                 .map((p) => String(p.id));
                             const selectedInStep = stepPartIds.filter((id) =>
                                 selectedIds.includes(id),
@@ -420,7 +425,7 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
                                     const id = String(p.id);
                                     const orderIdx = selectedIds.indexOf(id);
                                     const checked = orderIdx !== -1;
-                                    const parked = PARKED[p.part_status ?? ""];
+                                    const parked = parkedReason(p);
                                     return (
                                         <label
                                             key={id}

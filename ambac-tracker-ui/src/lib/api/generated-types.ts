@@ -5812,6 +5812,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/correct-receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Correct the quantity RECEIVED (a mis-keyed receipt), with a reason — while
+         *     nothing has been taken from the lot. Not shrinkage: that's adjust-quantity.
+         */
+        post: operations["api_MaterialLots_correct_receipt_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/evaluate_receiving/": {
         parameters: {
             query?: never;
@@ -29003,6 +29023,7 @@ export interface components {
             readonly needs_qa: boolean;
             readonly qa_completed: boolean;
             readonly current_operator_name: string | null;
+            readonly awaiting_recapture: boolean;
             /** Format: uuid */
             order?: string | null;
             /** Format: uuid */
@@ -51130,6 +51151,34 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_correct_receipt_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["AdjustQuantityRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdjustQuantityRequest"];
+                "application/json": components["schemas"]["AdjustQuantityRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {

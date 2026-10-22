@@ -340,3 +340,40 @@ class PostedToErpTests(_Fixture):
         resp = self.client.post("/api/Receipts/mark-posted/", {"lot_ids": [str(done.id)]}, format="json")
         self.assertEqual(resp.json()["marked"], 1)
         self.assertNotIn("PX-1", {r["Our Lot"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)})
+
+
+class CorrectReceiptTests(_Fixture):
+    """A mis-keyed receipt (120 keyed, 12 arrived) is corrected at the receipt, not as
+    shrinkage — Adjust quantity read as 108 used and left the sheet saying 120
+    (user decision 2026-10-22)."""
+
+    def _row(self, lot_number):
+        from Tracker.services.mes.receipt_export import receipt_rows
+        today = date.today()
+        return next(r for r in receipt_rows(self.tenant, today, today) if r["Our Lot"] == lot_number)
+
+    def test_correcting_changes_received_and_what_is_left(self):
+        lot = self._lot("CR-1", qty="120", erp_po_number="88", erp_po_line="1")
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/correct-receipt/",
+                                {"quantity": "12", "reason": "Keyed 120, box holds 12"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        lot.refresh_from_db()
+        self.assertEqual((lot.quantity, lot.quantity_remaining), (Decimal(12), Decimal(12)))
+        row = self._row("CR-1")
+        self.assertEqual((row["Received Qty"], row["Accepted"]), (Decimal(12), Decimal(12)))
+
+    def test_a_posted_receipt_shows_changed_since_posted(self):
+        lot = self._lot("CR-2", qty="120", erp_po_number="88", erp_po_line="2")
+        self.client.post("/api/Receipts/mark-posted/", {"lot_ids": [str(lot.id)]}, format="json")
+        self.client.post(f"/api/MaterialLots/{lot.id}/correct-receipt/",
+                         {"quantity": "12", "reason": "Keyed 120, box holds 12"}, format="json")
+        self.assertEqual(self._row("CR-2")["ERP Status"], "Changed since posted")
+
+    def test_not_once_anything_has_been_taken(self):
+        from Tracker.services.mes.material_lot import adjust_quantity
+        lot = self._lot("CR-3", qty="120")
+        adjust_quantity(lot, new_quantity=Decimal(100), reason="Used 20", user=self.user)
+        resp = self.client.post(f"/api/MaterialLots/{lot.id}/correct-receipt/",
+                                {"quantity": "12", "reason": "Keyed wrong"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("already been used", resp.json()["detail"])

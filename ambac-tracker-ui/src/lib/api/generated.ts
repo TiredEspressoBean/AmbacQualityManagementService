@@ -7154,6 +7154,7 @@ export type Parts = {
   needs_qa: boolean;
   qa_completed: boolean;
   current_operator_name: string | null;
+  awaiting_recapture: boolean;
   order?: (string | null) | undefined;
   part_type: string;
   part_type_info: {
@@ -22952,6 +22953,7 @@ const Parts = z.object({
   needs_qa: z.boolean(),
   qa_completed: z.boolean(),
   current_operator_name: z.string().nullable(),
+  awaiting_recapture: z.boolean(),
   order: z.string().uuid().nullish(),
   part_type: z.string().uuid(),
   part_type_info: z
@@ -41277,6 +41279,27 @@ Query params:
     response: MaterialLot,
   },
   {
+    method: "post",
+    path: "/api/MaterialLots/:id/correct-receipt/",
+    alias: "api_MaterialLots_correct_receipt_create",
+    description: `Correct the quantity RECEIVED (a mis-keyed receipt), with a reason — while
+nothing has been taken from the lot. Not shrinkage: that&#x27;s adjust-quantity.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: AdjustQuantityRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
     method: "get",
     path: "/api/MaterialLots/:id/evaluate_receiving/",
     alias: "api_MaterialLots_evaluate_receiving_retrieve",
@@ -44489,7 +44512,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/Orders/:id/set-milestone/",
@@ -44515,10 +44541,7 @@ a push to HubSpot.`,
       },
     ],
     response: Orders,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Orders/:id/step-distribution/",
@@ -50145,7 +50168,10 @@ approving it (review_rca) completes the review.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/RcaRecords/export/:export_format/",
@@ -50175,10 +50201,7 @@ approving it (review_rca) completes the review.`,
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/RcaRecords/metadata/",
@@ -55755,7 +55778,10 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepTimings/",
@@ -55796,10 +55822,7 @@ from. One row per step (the step is the key).`,
       },
     ],
     response: PaginatedStepTimingRecordList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepTimings/",
@@ -60510,7 +60533,10 @@ Stores the selected tenant in the session.`,
     description: `Users never invited and never signed in — those a migration workbook loaded ahead of go-live.`,
     requestFormat: "json",
     response: UninvitedUsers,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/UserInvitations/",
@@ -60556,10 +60582,7 @@ Provides endpoints for:
       },
     ],
     response: PaginatedUserInvitationList,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/UserInvitations/",

@@ -669,6 +669,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     action_permissions = {
         'release_hold': ['approve_disposition'],
         'adjust_quantity': ['change_materiallot'],
+        'correct_receipt': ['change_materiallot'],
         # The whole-lot decisions. Rejecting a lot under inspection is open to
         # inspectors (the service holds a whole-lot reject as a request without it).
         'confirm_whole_lot_reject': ['reject_whole_lot'],
@@ -803,6 +804,22 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         from Tracker.services.mes.material_lot import adjust_quantity
         try:
             lot = adjust_quantity(lot, new_quantity=ser.validated_data['quantity'],
+                                  reason=ser.validated_data['reason'], user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=AdjustQuantitySerializer, responses={200: MaterialLotSerializer})
+    @action(detail=True, methods=['post'], url_path='correct-receipt')
+    def correct_receipt(self, request, pk=None):
+        """Correct the quantity RECEIVED (a mis-keyed receipt), with a reason — while
+        nothing has been taken from the lot. Not shrinkage: that's adjust-quantity."""
+        lot = self.get_object()
+        ser = AdjustQuantitySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        from Tracker.services.mes.material_lot import correct_receipt
+        try:
+            lot = correct_receipt(lot, new_quantity=ser.validated_data['quantity'],
                                   reason=ser.validated_data['reason'], user=request.user)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -180,11 +180,15 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
     // LIVE — clock state: my one open time entry (end_time is null).
     const queryClient = useQueryClient();
-    const { data: openEntryPage } = useQuery(openTimeEntryOptions(user.pk));
+    const { data: openEntryPage, isSuccess: clockKnown } = useQuery(openTimeEntryOptions(user.pk));
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
-    const clockText = !openEntry
+    // Unknown is not "out": a failed or pending fetch (a server reload) read as Not
+    // clocked in and offered Clock in to someone already on the clock (walk 2026-10-22).
+    const clockText = !clockKnown
+        ? "Checking the clock…"
+        : !openEntry
         ? "Not clocked in"
         : paused
             ? `On ${onLunch ? "lunch" : "break"} · ${formatDistanceToNow(new Date(openEntry.start_time))}`
@@ -346,7 +350,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" /> {clockText}
                     </span>
-                    {!openEntry ? (
+                    {!clockKnown ? null : !openEntry ? (
                         <Button size="lg" className="h-12" disabled={clockAction.isPending}
                             onClick={() => clockAction.mutate({ kind: "clockin" })}>
                             Clock in

@@ -66,6 +66,13 @@ class FalseFailCorrectionTests(TenantContextMixin, VectorTestCase):
         void_completion(self.completion, self.inspector, "Misread: burr was a smudge")
         self.fail.refresh_from_db()
 
+    def _recapture_pass(self):
+        """The re-inspection, on record before the close (re-inspect first, then close)."""
+        from Tracker.services.dwi.operator_capture import _apply_status, ensure_quality_report
+        fresh = ensure_quality_report(self.substep, self.execution, self.inspector)
+        _apply_status(fresh, {"status": "PASS"})
+        return fresh
+
     def test_a_recorded_verdict_is_not_rewritten_in_place(self):
         from Tracker.services.dwi.operator_capture import _apply_status
         with self.assertRaises(ValidationError):
@@ -92,6 +99,7 @@ class FalseFailCorrectionTests(TenantContextMixin, VectorTestCase):
     def test_the_manager_closes_it_as_not_a_nonconformance_and_the_part_carries_on(self):
         from Tracker.services.qms.disposition import decide_disposition
         self._void()
+        self._recapture_pass()
         decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
                            authorized_by=self.manager)
         self.ncr.refresh_from_db()
@@ -188,8 +196,25 @@ class NotNonconformanceCloseTests(FalseFailCorrectionTests):
         self.ncr.containment_action = ""
         self.ncr.save(update_fields=["severity", "containment_action"])
         self._void()
+        self._recapture_pass()
         decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
                            authorized_by=self.manager)
         self.ncr.refresh_from_db()
         self.assertEqual(self.ncr.current_state, "CLOSED")
         self.assertNotIn("..", self.ncr.resolution_notes)
+
+
+class ReinspectFirstTests(FalseFailCorrectionTests):
+    def test_not_a_nonconformance_waits_for_the_re_inspection(self):
+        from Tracker.services.qms.disposition import decide_disposition
+        from Tracker.serializers.mes_lite import PartsSerializer
+        self._void()
+        # Held, but startable for its re-capture.
+        self.assertTrue(PartsSerializer(self.part).data["awaiting_recapture"])
+        with self.assertRaisesMessage(ValueError, "Re-inspect first"):
+            decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
+                               authorized_by=self.manager)
+        self._recapture_pass()
+        self.assertFalse(PartsSerializer(self.part).data["awaiting_recapture"])
+        decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
+                           authorized_by=self.manager)
