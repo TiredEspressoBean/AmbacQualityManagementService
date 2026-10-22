@@ -1,797 +1,183 @@
-# Document Controller Training Guide
+# Document Controller
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+The document controller's slice of [the shop day](../shop-day.md): bringing a
+document under control, routing it for approval, putting it into force, replacing it
+with a revision, and withdrawing it. Every exercise is on the training shop, and
+every record it names is one the training seed creates.
 
-**Duration:** 3-4 hours
-**Prerequisites:** None
-**Goal:** Learn to manage controlled documents, revisions, approvals, and document compliance
+**About 1½ hours**, in one sitting. **Before you start:** nothing.
 
+!!! warning "On a training instance only"
+    Every exercise writes real records: a document you release is the one people
+    work to. See the [training program](../index.md).
 
-!!! note "Training Data Setup"
-    Exercises reference sample documents (e.g., "WI-TRAIN-001", "DOC-REJECT-TRAIN"). Your administrator should set up training data, or you can create test documents following the exercise patterns.
+## How a session runs
 
-!!! info "Demo Environment Login"
-    **Email:** lisa.docs@demo.ambac.com
-    **Password:** `demo123`
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Try to break it.** Where a module has a refusal, something the system won't let
+   you do, do it on purpose and read what it says. The refusal is part of the
+   lesson, not an error.
+5. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
----
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
-## Module 1: Document Controller Role Overview
+## Who you are
 
-### Learning Objectives
+| You log in as | When |
+|---------------|------|
+| **Lisa Park**, Document Controller, `lisa.docs@demo.ambac.com` | Every module except 3 |
+| **Maria Santos**, QA Manager, `maria.qa@demo.ambac.com` | Module 3, to approve |
 
-By the end of this module, you will:
-
-- [ ] Understand document control responsibilities
-- [ ] Navigate document management screens
-- [ ] Understand compliance requirements
-
-### 1.1 Your Role
-
-As a Document Controller, you:
-
-- Upload and manage documents
-- Control document revisions
-- Route documents for approval
-- Maintain document compliance
-- Manage distribution
-- Ensure proper retention
-
-Document control is critical for quality certifications (ISO, AS9100, etc.).
+Every password is `demo123`.
 
 ---
 
-### 1.2 Your Home page
+## 1. Your desk
 
-Home answers *what needs me right now*. Walked 2026-10-12 as Lisa:
+**You will:** read the document controller's home page.
 
-| Block | What it showed |
-|-------|----------------|
-| **Approvals in flight** | **5** — APR-2026-0003…0007, each with its type and due date |
-| **Documents** | Needs my approval **0** · Pending approval **1** · Due for review **0** · Released **2** |
-| **Training** | Current **22** · Expiring soon **1** · Expired **1** |
+Log in as Lisa. **Approvals in flight** lists every approval under way in the shop,
+with its type: most are *CAPA Major*, and one is a *Document Release*. Read the type
+before you open one. In flight isn't the same as yours to decide.
 
-Every figure is a link into what it counts, and there is a scan box for looking up
-a work order, serial, lot or location.
+**Documents** counts what *Needs my approval*, what's *Pending approval*, what's *Due
+for review* and what's *Released*. **Training** counts records current, expiring and
+expired. Each figure opens what it counts.
 
-!!! important "Your approvals queue is mostly not documents"
-    Of those five in flight, **four were CAPA Approvals** and one was a Document
-    Release. That is the normal shape: a Document Controller is an **approvals
-    operator**, not only a document operator.
-
-    Read the **type** on every row before you work it. The habit of assuming the
-    queue is yours-and-document-shaped is how a CAPA approval sits for a week.
-
-### 1.3 Your Main Pages
-
-| Page | Location | Purpose |
-|------|----------|---------|
-| **Documents** | Documents | Document dashboard |
-| **Document List** | `/documents/list` | The full library, with status and classification |
-| **Inbox** | Personal > Inbox | Pending approvals |
-| **Approval History** | Approvals > History | Approval records |
-
-**Exercise 1.1:** Read your Home
-
-1. Count your approvals in flight, and say how many are **documents**
-2. Open the Documents block — how many are pending approval, and how many are
-   due for review?
-3. Find one person whose training has expired
+**Documents** in the sidebar is the library, with uploads, recent changes and counts
+by classification.
 
 ---
 
-### 1.4 Document States
+## 2. Bring a document under control
 
-| State | Meaning |
-|-------|---------|
-| **Draft** | Being created, not yet submitted |
-| **Under Review** | Submitted, approvers responding |
-| **Approved** | Approvals complete — decided, but not yet in force |
-| **Released** | In force; the revision people must work to |
-| **Obsolete** | Superseded, kept for history |
+**You will:** upload a new work instruction and route it for approval.
 
-!!! warning "Approved is not Released"
-    A document can be approved and still not be the one the floor works to.
-    Release is the separate act that puts it into force — which is what lets
-    you approve a revision ahead of the training or tooling it depends on.
+1. **Documents** > **Upload Document**. Choose the file. Its file name becomes the
+   document's name, so name the file properly first (`WI-1004 Seat loupe check`).
+   There's no separate title or number field.
+2. **Document Type**: Work Instruction. **Classification Level**: Internal (module
+   7). **Upload Document**: *Document created successfully!* It's *v1 · Draft*.
+3. On its **Approval** tab, **Submit for Approval**. It's *Under Review*, and the
+   **Assigned Approvers** are named by the document type's approval template: here,
+   the QA manager. *You are not assigned as an approver for this document.*
 
----
-
-### Knowledge Check: Module 1
-
-1. What is the purpose of document control?
-2. What states can a document be in?
-3. Where do you find documents pending approval?
+You route documents; the people the template names approve them.
 
 ---
 
-## Module 2: Uploading Documents
+## 3. Approve it (as the QA manager)
 
-### Learning Objectives
+**You will:** see what an approver does.
 
-By the end of this module, you will:
+Log in as Maria and open the document. **Approval** > **Submit Response**: choose
+**Approve**, add a comment, draw your signature, tick the confirmation, enter your
+password, and **Submit Approval**. The document is now *Approved*.
 
-- [ ] Upload documents with proper metadata
-- [ ] Categorize documents correctly
-- [ ] Set appropriate visibility
-
-### 2.1 Document Metadata
-
-**Required fields:**
-
-| Field | Description |
-|-------|-------------|
-| **File** | The document itself |
-| **Classification Level** | Who may see it |
-
-**Optional fields:**
-
-- Document Type (WI, Spec, Drawing)
-- Link To — the record this document belongs to
-
-!!! warning "There is no title field"
-    The document's name is taken from **the file you upload**, so name the file
-    properly before you upload it. There is no title, description or
-    document-number field to fill in.
+The signature and password make it an electronic signature: the record says who
+approved it, when, and that it was really them.
 
 ---
 
-### 2.2 Uploading a New Document
+## 4. Put it into force
 
-**Steps:**
+**You will:** release an approved document.
 
-1. Navigate to **Documents**
-2. Click **Upload Document**
-3. Select file from your computer — **its filename becomes the document's name**
-4. Set the **Classification Level**
-5. Pick a **Document Type** if one applies
-6. Click **Upload**
+Approved isn't in force. Releasing is the separate act that puts it in front of the
+people who work to it, so an approved revision can wait for the training or tooling
+it depends on.
 
-**Exercise 2.1:** Upload a Document
+1. Log in as Lisa and open `WI-1001 Injector Disassembly v3.2` (*Approved*).
+2. **Release**: *It comes into force on the effective date, and its review and
+   retention dates are set from its document type.* Leave the effective date blank
+   for today, then **Release**.
 
-1. Go to **Documents**
-2. Click **Upload Document**
-3. Rename the training file to `WI-TRAIN-001 Widget Assembly` before selecting
-   it — the filename is the only name the document gets
-4. Select it
-5. Set Classification Level: Internal, Type: Work Instruction
-6. Upload
+It's *Released*. Its review date is a year out (the work instruction type's review
+period), and the **Due for review** count will find it then.
 
 ---
 
-### 2.3 Document Numbering
+## 5. Replace it with a revision
 
-**Follow your scheme consistently:**
+**You will:** revise a released document and put the revision into force.
 
-Examples:
-- Work Instructions: WI-XXX-NNN
-- Specifications: SPEC-XXX-NNN
-- Drawings: DWG-XXX-NNN
-- Forms: FRM-XXX-NNN
-
-**Tips:**
-
-- Use leading zeros for sorting
-- Include department or product codes
-- Keep it meaningful but concise
+1. Open `WI-1002 Nozzle Inspection v2.1` (*Released*). **Create Revision**: give the
+   change justification (*Rev 2.2: add the 10x loupe seat check*). Attach the new
+   file, or leave it empty to keep the current one. You get *v2 · Draft*.
+2. Submit v2 for approval, approve it as Maria (module 3), and release it as Lisa
+   (module 4).
+3. **Versions** lists both. Releasing v2 superseded v1: v1 is *Obsolete*, and its
+   page says what replaced it. Nobody can work to the old revision by mistake.
 
 ---
 
-### 2.4 Classification
+## 6. Withdraw a document
 
-**Classification is yours**, and you hold the top of it. Two different
-permissions, and they are not held by the same people:
+**You will:** mark a document obsolete.
 
-| Permission | Held by |
-|------------|---------|
-| `classify_documents` — set a document's tier | Tenant Admin, **QA Manager**, Document Controller |
-| `view_secret_documents` — read the top tier | Tenant Admin, **Document Controller** |
+Open a released document that's no longer needed. **Mark obsolete**: *It is withdrawn
+from use from today and kept for its retention period. This can't be undone; a new
+revision is how a document comes back.* Confirm.
 
-There are **five** tiers, not three:
+It stays in the library as *Obsolete*, readable for the record. Deleting is not how a
+controlled document ends.
+
+---
+
+## 7. Who can see it
+
+**You will:** choose a classification.
 
 | Tier | Who can see it |
 |------|----------------|
-| **Public** | Everyone, including customers |
-| **Internal** | All staff |
-| **Confidential** | All staff (`view_confidential_documents`) |
-| **Restricted** | All staff (`view_restricted_documents`) |
-| **Secret** | **Tenant Admin and you** |
+| **Public** | Everyone, including a customer, if it's attached to their order |
+| **Internal**, **Confidential**, **Restricted** | Staff |
+| **Secret** | Tenant admin and document controller |
 
-!!! warning "Confidential and Restricted are not manager-only"
-    Every internal role — Operator and the dock included — holds both. Those
-    tiers separate staff from **customers and auditors**, not managers from the
-    floor. **Secret is the only tier that narrows it within the shop**, and you
-    are one of only two roles that can read it.
-
-!!! important "A QA Manager can classify Secret and then not be able to open it"
-    They have `classify_documents` but not `view_secret_documents`. If someone
-    says a document vanished after they filed it, this is why.
-
-!!! important "Classification filters the queryset, not just the screen"
-    A document above someone's tier is **excluded from their results**. They do
-    not see it greyed out or get an error — it simply is not there.
-
-    So "I can't find the drawing" from an engineer may be classification working
-    exactly as designed. Check the tier before assuming something is lost.
-
-!!! warning "An auditor is deliberately not given the top tiers"
-    External auditors may not be authorised persons for export-controlled
-    technical data, so the Auditor role gets neither `view_secret_documents` nor
-    the export-control tier. If an auditor cannot see a document, that is the
-    control, not a permissions mistake — find them a reader with the right
-    clearance rather than reclassifying the document.
-
-!!! note "You cannot practise the upper tiers on demo data"
-    All four demo documents are **Internal**, so nothing exercises the filtering.
-    You can set a classification and see it on the row; you cannot watch it hide
-    a document from someone until your own data has tiers in it.
+A customer sees only Public documents attached to their own order, its work orders
+or parts: that's how a certificate reaches them. A document above someone's tier
+isn't greyed out for them; it isn't there. When someone says a document vanished,
+check its tier first.
 
 ---
 
-### Knowledge Check: Module 2
+## What isn't yours
 
-1. What metadata is required when uploading?
-2. Why is consistent document numbering important?
-3. When would you set a document to "Confidential"?
-
----
-
-## Module 3: Document Revisions
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Create document revisions properly
-- [ ] Document changes clearly
-- [ ] Maintain revision history
-
-### 3.1 When to Create a Revision
-
-**Create a new revision when:**
-
-- Content changes (any text, images)
-- Process updates
-- Corrections needed
-- Format changes
-
-**Don't overwrite!** Always create a new revision.
+| Not yours | Whose |
+|-----------|-------|
+| Approve a document | The approvers its template names (here, the QA manager) |
+| Approve a CAPA in your approvals list | QA manager |
+| Write the content | Its author, usually engineering or quality |
 
 ---
 
-### 3.2 Creating a Revision
+## Final task — observed
 
-**Steps:**
+Your trainer regenerates the data, logs you in as Lisa, and says only: *"The seat
+check needs to go into the nozzle inspection instruction, and it's in force from
+Monday."* Then they watch without helping:
 
-1. Open existing document
-2. Click **Create Revision**
-3. Upload a new file **if the content changed** — keeping the existing file is
-   allowed, for a revision that only changes metadata or approval
-4. Enter the **reason for the revision** — the one required field
-5. Submit for approval
+- revise `WI-1002`, with a justification
+- route it for approval (your trainer approves it as Maria)
+- release it effective Monday
+- show that the old revision can no longer be worked to
 
-**Exercise 3.1:** Create a Revision
+Your trainer is watching for:
 
-1. Open document "WI-TRAIN-001"
-2. Click **Create Revision**
-3. Upload the revised file
-4. Reason: "Added safety note to step 3, per safety review recommendation"
-5. Submit
+- [ ] The change went in as a revision, not a new document.
+- [ ] You routed it and didn't try to approve it yourself.
+- [ ] The release carried the effective date you were given.
 
----
+## Recording your qualification
 
-### 3.3 Revision Best Practices
-
-**Good change summary:**
-"Updated torque specifications in Section 4.2 per Engineering Change EC-2024-015. Changed measurement tolerance in Table 3."
-
-**Bad change summary:**
-"Updated"
-
-**Always include:**
-
-- What sections changed
-- What the change was
-- Reference to change request (if applicable)
-
----
-
-### 3.4 Revision Sequences
-
-**Common schemes:**
-
-| Scheme | Example | Usage |
-|--------|---------|-------|
-| Letters | A, B, C | Pre-release drafts |
-| Numbers | 1, 2, 3 | Released versions |
-| Combined | A1, A2, B1 | Draft within release |
-
-Follow your organization's standard.
-
----
-
-### Knowledge Check: Module 3
-
-1. When should you create a revision vs. editing in place?
-2. What makes a good change summary?
-3. What happens to the old revision when a new one is approved?
-
----
-
-## Module 4: Approval Workflow
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Submit documents for approval
-- [ ] Track approval status
-- [ ] Handle rejections
-
-### 4.0 Working a mixed queue
-
-Before the document-specific steps: **your approvals queue is not document-only.**
-
-Walked 2026-10-12 — of five approvals in flight, **four were CAPA Approvals**
-(APR-2026-0004…0007, all due the next day) and **one was a Document Release**
-(APR-2026-0003).
-
-| Read first | Then |
-|-----------|------|
-| The **type** on the row | Whether it is yours to decide or yours to chase |
-| The **due date** | Four sharing one due date is a batch, not a coincidence |
-
-!!! warning "The commonest failure in this role is queue blindness"
-    Assuming everything in the queue is a document means CAPA approvals age
-    quietly. They carry the same urgency and the same audit consequence.
-
-### 4.1 Submitting for Approval
-
-**Steps:**
-
-1. Open document (Draft or new revision)
-2. Verify content is complete
-3. Click **Submit for Approval**
-
-That is the whole action. You do not pick the approval template — it is chosen
-by approval *type*, not by the submitter.
-
-**What happens:**
-
-- Document status changes to "Pending Approval"
-- Approvers are notified
-- Workflow begins
-
-**Exercise 4.1:** Submit for Approval
-
-1. Open document revision created earlier
-2. Click **Submit for Approval**
-3. Select "Standard Review" template
-4. Add note: "Ready for review"
-5. Submit
-
----
-
-### 4.2 Tracking Approval
-
-**View approval status:**
-
-1. Open document
-2. Go to **Approvals** section
-3. See status for each approver:
-   - Pending: Not yet reviewed
-   - Approved: Signed off
-   - Rejected: Returned with comments
-
----
-
-### 4.3 Following Up
-
-**If approval is delayed:**
-
-1. Check who hasn't approved
-2. Send reminder (per your process)
-3. Escalate if needed
-4. Document any delays
-
----
-
-### 4.4 Handling Rejections
-
-**When a document is rejected:**
-
-1. Review rejection comments
-2. Understand required changes
-3. Make corrections
-4. Create new revision
-5. Resubmit for approval
-
-**Exercise 4.2:** Review Rejection
-
-1. Open document "DOC-REJECT-TRAIN"
-2. Review rejection comments
-3. Note what needs to change
-
----
-
-### Knowledge Check: Module 4
-
-1. What happens when you submit for approval?
-2. How do you see who has approved?
-3. What do you do when a document is rejected?
-
----
-
-## Module 5: Managing the Library
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Organize documents effectively
-- [ ] Find documents quickly
-- [ ] Manage obsolete documents
-
-### 5.1 Document Organization
-
-**Organize by:**
-
-- Document type
-- Product line
-- Department
-- Process
-
-Use consistent naming and metadata for easy finding.
-
----
-
-### 5.2 Searching Documents
-
-**Search methods:**
-
-1. **Quick search:** Title or number
-2. **Filters:** Type, status, date, author
-3. **Browse:** By category
-
-**Exercise 5.1:** Finding Documents
-
-1. Search for "inspection"
-2. Filter to only "Released" documents
-3. Filter to "Work Instruction" type
-4. Find the most recent
-
----
-
-### 5.3 Obsolete Documents
-
-**Marking a document obsolete is always a deliberate act.** Creating or
-approving a new revision does **not** do it for you — if the superseded document
-should be withdrawn, you have to withdraw it.
-
-**Handling obsolete:**
-
-- Still visible in the library alongside everything else — obsolete documents
-  are **not** hidden
-- Marked clearly as obsolete
-- Kept for historical reference
-- Available for audits
-
-!!! warning "Obsoleting is yours to remember"
-    Nothing prompts you. A superseded revision stays live and findable until
-    somebody marks it obsolete.
-
----
-
-### 5.4 Periodic Review
-
-**Many standards require periodic review:**
-
-1. Set review intervals per document type
-2. **Nothing notifies you** — the review queue is pull-only, so you have to go
-   and look
-3. Review and either:
-   - Confirm current (re-approve)
-   - Update (new revision)
-4. Document the review
-
-Home carries a **Due for review** tile, and a list of the documents themselves,
-so the backlog is visible in one place — but only when you open Home.
-
-!!! note "Dark on demo data"
-    *Due for review* reads **0** in the demo, because no document has a review
-    interval set. The loop is real; there is just nothing in it to show you. Set
-    an interval on one of your own documents to see it populate.
-
-### 5.5 Removing a document
-
-Every row offers **Delete Document**, behind a confirmation. It is manager-tier
-authority that you hold.
-
-!!! warning "Deleting is archiving, and that is the point"
-    uqmes soft-deletes — the record and its history stay, and an auditor can
-    still reach them. What you are doing is taking it **out of circulation**, not
-    destroying evidence.
-
-    For a superseded document prefer **Obsolete**, which says *why* it left
-    circulation. Reach for delete when something should never have been in the
-    library at all — the wrong file, a duplicate, a test upload.
-
----
-
-### Knowledge Check: Module 5
-
-1. How do you filter to see only released documents?
-2. What happens to old revisions when new one is released?
-3. Why do we keep obsolete documents?
-
----
-
-## Module 6: Compliance and Audits
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Understand compliance requirements
-- [ ] Prepare for audits
-- [ ] Generate compliance reports
-
-### 6.1 Document Control Requirements
-
-**Standards require:**
-
-- Version control
-- Approval records
-- Change history
-- Availability of current versions
-- Prevention of unintended use of obsolete
-
-uqmes handles these automatically.
-
----
-
-### 6.2 Audit Preparation
-
-**Be ready with:**
-
-- Complete document inventory
-- Revision histories
-- Approval records
-- Distribution evidence
-- Review records
-
-All available in the system.
-
----
-
-### 6.3 Compliance Reports
-
-**Available compliance information:**
-
-1. Documents filtered by type and status
-2. Pending reviews (via filtering)
-3. Approval audit trail (on document detail pages)
-4. Recent changes (via activity history)
-
-!!! note "Reports Feature"
-    Dedicated compliance report generation is planned for a future release. Currently, use the document library filters and export functionality to gather audit information.
-
-**Exercise 6.1:** Gather Audit Information
-
-1. Go to Documents
-2. Filter to document type of interest
-3. Review status and approval history
-4. Export the filtered list if needed
-
----
-
-### 6.4 Common Audit Questions
-
-| Question | Where to Find Answer |
-|----------|---------------------|
-| "What revision is current?" | Document detail page |
-| "Who approved it?" | Approval history |
-| "What changed in this revision?" | Revision notes |
-| "When was it last reviewed?" | Review records |
-
----
-
-## Module 7: Daily Workflow
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Follow an effective daily routine
-- [ ] Manage multiple requests
-- [ ] Stay compliant
-
-### 7.1 Daily Tasks
-
-1. **Read Home** — approvals in flight, and how many are documents
-2. **Check Inbox** for pending approvals (if you approve)
-3. **Process upload requests** in queue
-4. **Monitor pending approvals** on submitted docs
-5. **Follow up** on stalled items
-6. **Glance at Training** — expiring and expired
-
-### 7.1a Training records are yours too
-
-You hold the same training-record authority as a Shift Lead or QA Manager, and
-Home shows **Current / Expiring soon / Expired** because of it.
-
-This is not a stray permission. Competence evidence (ISO 9001 §7.2) is a
-controlled record like any other, and it sits with the people who control
-records. Writing one certifies somebody — so the **level** must be what they
-actually demonstrated, not attendance.
-
-See [Training Matrix](../../workflows/tracking/training-matrix.md).
-
----
-
-### 7.2 Managing Requests
-
-**When users request documents:**
-
-1. Verify requirements
-2. Check if document exists
-3. Upload or revise as needed
-4. Submit for approval
-5. Track to completion
-
----
-
-### 7.3 Weekly Tasks
-
-- [ ] Review pending reviews due
-- [ ] Check for expired documents
-- [ ] Update document inventory
-- [ ] Clear approval backlogs
-- [ ] Audit compliance status
-
----
-
-## Practical Assessment
-
-### Task 1: Document Upload
-
-1. Upload new document "WI-ASSESS-001"
-2. Complete all metadata correctly
-3. Set appropriate visibility
-
-### Task 2: Create Revision
-
-1. Open existing document "DOC-ASSESS-REV"
-2. Create new revision
-3. Document changes properly
-4. Submit for approval
-
-### Task 3: Track Approval
-
-1. Find document pending approval
-2. Identify pending approvers
-3. Check approval history
-
-### Task 4: Audit Readiness
-
-1. Generate document status report
-2. Find all documents due for review
-3. Export approval history for a document
-
-### Task 5: Read your queue (row 4)
-
-Open Home. Report how many approvals are in flight, **how many are documents and
-how many are CAPAs**, and which you would work first.
-
-### Task 6: Classify (row 7)
-
-Set a classification on a document and say who can now see it and who cannot.
-Then explain what an engineer would experience if a drawing were above their
-tier — and why an auditor is deliberately not given the top tiers.
-
-### Task 7: Remove something (row C1)
-
-A duplicate file has been uploaded by mistake. Decide between **Obsolete** and
-**Delete**, do it, and justify the choice. Say what survives either way.
-
-### Task 8: Certify someone (row 8)
-
-Create a training record. Explain why the **level** field is an assessed result
-rather than a record of attendance.
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Demonstrated with supervisor
-
-### Competencies Verified
-
-- [ ] Can upload documents correctly
-- [ ] Can create revisions properly
-- [ ] Understands approval workflow
-- [ ] Can maintain document library
-- [ ] Understands compliance requirements
-
----
-
-
-### Recording the qualification
-
-Ticking the boxes above is the *assessment*. It is not the record.
-
-A signed-off trainee is not yet qualified in the system, and the difference is
-operational, not clerical: training requirements gate who may start a step, so
-until the record exists the person is still refused the work they were just
-signed off to do. That refusal surfaces downstream as a part nobody can pick
-up — see [Parts stuck at a
-step](../../troubleshooting/common-issues.md).
-
-To close it out, create a **Training Record** for the trainee under **Quality**
-> **Training**:
-
-| Field | Set it to |
-|-------|-----------|
-| **Training type** | The qualification being awarded |
-| **Completed date** | The date of the assessment, not today |
-| **Level** | The competency level actually demonstrated |
-| **Trainer** | Whoever conducted and assessed it |
-| **Expires** | Leave blank only if the qualification genuinely never lapses |
-| **Documents** | Attach the signed sign-off sheet as evidence |
-
-!!! note "Level is an assessed result, not attendance"
-    The competency level is clause 7.2 evidence of what the person can actually
-    do. Recording everyone at the same level because they sat the course
-    defeats the control, and the training matrix that supervisors plan from
-    becomes fiction.
-
-## Quick Reference
-
-### Upload Document
-Documents → **Upload Document** → Select file → Fill metadata → **Upload**
-
-### Create Revision
-Open document → **Create Revision** → Upload new file → Fill change notes → **Submit**
-
-### Submit for Approval
-Open document (in Draft) → **Approval** tab → **Submit for Approval**
-
-### Check Status
-Open document → **Approvals** section → View status
-
-### Classification tiers
-Public → Internal → Confidential → Restricted → **Secret**
-You and QA Manager hold the top tier. It **filters the queryset** — people don't
-see a locked document, they see no document.
-
-### Your queue is mixed
-Read the **type** on every row. Most of what's in flight is usually **CAPA
-approvals**, not documents.
-
-### Obsolete vs Delete
-**Obsolete** — superseded, says why it left circulation.
-**Delete** — it should never have been there. Soft-delete: history survives.
-
-### Approved ≠ Released
-Approved is decided. **Released** is in force. That gap is what lets you approve
-a revision ahead of the training or tooling it depends on.
-
----
-
-## Next Steps
-
-After completing this training:
-
-1. Shadow current Document Controller
-2. Handle uploads with oversight
-3. Manage revisions independently
-4. Full document control responsibility
-
+Passing the final task is the assessment. The record is a **training record**, which
+your QA manager writes. See [Training Records](../../workflows/quality/training-records.md).
