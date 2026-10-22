@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useParams, Link } from "@tanstack/react-router"
 import { useRetrieveDocument } from "@/hooks/useRetrieveDocument"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -29,8 +30,11 @@ export function DocumentDetailPage() {
     const { data: document, isLoading, error } = useRetrieveDocument(documentId)
     const [showRevisionModal, setShowRevisionModal] = useState(false)
 
-    // Can create revision if document is current version
-    const canCreateRevision = document?.is_current_version !== false
+    const { has: hasPerm } = usePermissionSet()
+    // Can create revision if document is current version — and the reader may write
+    // documents (a view-only auditor saw both buttons, and the server refused them).
+    const canCreateRevision = document?.is_current_version !== false && hasPerm("add_documents")
+    const canEdit = hasPerm("change_documents")
 
     if (isLoading) {
         return (
@@ -116,12 +120,14 @@ export function DocumentDetailPage() {
                                 Create Revision
                             </Button>
                         )}
-                        <Link to="/documents/$id/edit" params={{ id: String(documentId) }}>
-                            <Button variant="outline">
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                            </Button>
-                        </Link>
+                        {canEdit && (
+                            <Link to="/documents/$id/edit" params={{ id: String(documentId) }}>
+                                <Button variant="outline">
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

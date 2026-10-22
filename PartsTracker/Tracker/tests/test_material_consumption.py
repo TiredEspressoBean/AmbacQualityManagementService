@@ -190,6 +190,31 @@ class MaterialConsumptionTests(TenantContextMixin, TestCase):
         self.assertEqual(MaterialUsage.objects.filter(part=self.part).count(), 1)
         self.assertEqual(lot.quantity_remaining, Decimal('8'))
 
+    def test_a_lot_through_the_operator_path_draws_once_per_part(self):
+        """Seed walk INJ-QA-INSPECT-011 showed two draws per part on a lot step. The
+        operator path: each part's "done" (complete_step), then the lot advance."""
+        from Tracker.models import StepExecution
+        from Tracker.services.mes.advancement import try_advance_lot
+        lot = self._lot(20)
+        second = Parts.objects.create(
+            tenant=self.tenant, ERP_id="WO-MC-P1", part_type=self.pt,
+            work_order=self.wo, step=self.step1)
+        for p in (self.part, second):
+            StepExecution.objects.create(tenant=self.tenant, part=p, step=self.step1,
+                                         visit_number=1, status="IN_PROGRESS",
+                                         assigned_to=self.operator)
+        args = dict(work_order_id=str(self.wo.id), step_id=str(self.step1.id),
+                    tenant_id=self.tenant.id, operator=self.operator)
+        for _ in (self.part, second):
+            try_advance_lot(**args)
+        try_advance_lot(**args)
+        for p in (self.part, second):
+            p.refresh_from_db()
+            self.assertEqual(p.step_id, self.step2.id)
+            self.assertEqual(MaterialUsage.objects.filter(part=p).count(), 1, p.ERP_id)
+        lot.refresh_from_db()
+        self.assertEqual(lot.quantity_remaining, Decimal('16'))
+
 
 class PurchasedPartKittingTests(TenantContextMixin, TestCase):
     """A bought PART is kitted and consumed like a raw material.

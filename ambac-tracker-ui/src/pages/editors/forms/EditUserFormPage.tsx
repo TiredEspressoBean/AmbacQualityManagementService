@@ -1,5 +1,6 @@
 "use client";
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
+import { AccessHistoryCard } from "@/components/users/AccessHistoryCard";
 
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useState } from "react";
@@ -556,9 +557,10 @@ export default function UserFormPage() {
                                                 Platform support access
                                             </FormLabel>
                                             <FormDescription>
-                                                Lets this account into the platform's own admin site, for
-                                                support. Not a role in this company — leave it off for
-                                                everyone here; roles and positions set what they can do.
+                                                Platform support: read access across every tenant — all
+                                                users, records, files and exports — plus the platform&rsquo;s
+                                                own admin site. Not a role in this company; leave it off for
+                                                everyone here. Roles and positions set what they can do.
                                             </FormDescription>
                                         </div>
                                     </FormItem>
@@ -587,6 +589,7 @@ export default function UserFormPage() {
             {mode === "edit" && userId && (
                 <div className="max-w-3xl mx-auto py-6">
                     <RecordHistoryCard endpoint="User" id={String(userId)} model="user" />
+                    <div className="mt-6"><AccessHistoryCard userId={String(userId)} /></div>
                 </div>
             )}
         </div>

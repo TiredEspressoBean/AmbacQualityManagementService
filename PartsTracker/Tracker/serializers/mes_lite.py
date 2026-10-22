@@ -642,12 +642,8 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
         """Held, but a result at its step was voided and not yet taken again: it may be
         started for that re-capture only, so the new result is on record before QA
         closes the disposition (user decision 2026-10-22: re-inspect first, then close)."""
-        if obj.part_status != 'QUARANTINED' or not obj.step_id:
-            return False
-        from Tracker.models import QualityReports
-        return QualityReports.objects.filter(  # tenant-safe: FK-correlated to a scoped part
-            part=obj, step_id=obj.step_id, superseded_at__isnull=False,
-            replaced_by__isnull=True).exists()
+        from Tracker.services.qms.report_supersede import awaiting_recapture
+        return awaiting_recapture(obj)
 
     class Meta:
         model = Parts
@@ -1846,11 +1842,16 @@ class StepSerializer(SecureModelMixin):
     # A Repair node's code, for the editor's label and picker.
     repair_code_code = serializers.CharField(source="repair_code.code", read_only=True, allow_null=True)
     repair_code_name = serializers.CharField(source="repair_code.name", read_only=True, allow_null=True)
+    # The solver's setup/cycle for the step. The flow editor reads steps through this
+    # serializer and it was missing, so every step read "Not set — taking no time" while
+    # StepTiming held real figures (Engineering walk).
+    timing = StepTimingSerializer(read_only=True, allow_null=True)
 
     class Meta:
         model = Steps
         fields = [
             "id", "name", "operation_number", "description", "part_type", "part_type_name", "expected_duration",
+            "timing", "labor_model",
             # QA settings
             "requires_qa_signoff", "qa_signoff_assurance", "sampling_required", "min_sampling_rate",
             "block_on_quarantine", "pass_threshold",

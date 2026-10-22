@@ -189,6 +189,8 @@ export default function ProcessFlowPage() {
         repair_code: step.repair_code as string | null,
         repair_code_code: step.repair_code_code as string | null,
         repair_code_name: step.repair_code_name as string | null,
+        labor_model: (step.labor_model ?? null) as StepData['labor_model'],
+        timing: (step.timing ?? undefined) as StepData['timing'],
       };
     });
   }, [isDemo, processWithSteps?.process_steps]);
@@ -415,6 +417,8 @@ export default function ProcessFlowPage() {
           outsideProcessLeadDays: updatedStep.outside_process_lead_days,
           repairCode: updatedStep.repair_code_code ?? null,
           repairCodeName: updatedStep.repair_code_name ?? null,
+          timing: updatedStep.timing ?? undefined,
+          labor_model: updatedStep.labor_model ?? undefined,
         },
       };
     });

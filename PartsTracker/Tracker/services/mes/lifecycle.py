@@ -256,7 +256,11 @@ def assert_startable(part, work_order) -> None:
         from Tracker.services.reman.core_steps import assert_workable
         assert_workable(part)
         from Tracker.models import PartsStatus
-        if part.part_status == PartsStatus.QUARANTINED:
+        from Tracker.services.qms.report_supersede import awaiting_recapture
+        # A voided result is re-captured before QA closes the disposition — the one
+        # piece of work a held part may take (re-walk 2026-10-22: the UI allowed it,
+        # this gate refused the claim).
+        if part.part_status == PartsStatus.QUARANTINED and not awaiting_recapture(part):
             from Tracker.models import QuarantineDisposition
             disp = (QuarantineDisposition.objects  # tenant-safe: FK-correlated to a scoped part
                     .filter(part=part, archived=False).exclude(current_state='CLOSED')

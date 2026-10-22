@@ -432,6 +432,20 @@ class UserSerializer(SecureModelMixin):
     tenant_membership_status = serializers.SerializerMethodField()
     # Primary job role / position — drives the required-competency profile.
     job_role_name = serializers.SerializerMethodField()
+    # Where an invitation stands: "pending" (sent, not accepted, in date), "expired", or
+    # null when none was ever sent. "Pending invite" was read off last_login alone, so a
+    # seeded or imported person who was never invited read as invited (Admin walk).
+    invitation_state = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.ChoiceField(choices=['pending', 'expired'], allow_null=True))
+    def get_invitation_state(self, obj):
+        from django.utils import timezone
+        from Tracker.models import UserInvitation
+        inv = (UserInvitation.objects.filter(user=obj, accepted_at__isnull=True)  # tenant-safe: by the user FK
+               .order_by('-sent_at').first())
+        if inv is None:
+            return None
+        return 'pending' if inv.expires_at > timezone.now() else 'expired'
 
     class Meta:
         model = User
@@ -439,12 +453,12 @@ class UserSerializer(SecureModelMixin):
             'id', 'username', 'first_name', 'last_name', 'email', 'full_name', 'is_staff', 'is_active', 'date_joined',
             'last_login', 'parent_company', 'parent_company_id', 'contact_role', 'groups',
             'tenant', 'user_type', 'user_type_display', 'tenant_membership_status',
-            'job_role', 'job_role_name',
+            'job_role', 'job_role_name', 'invitation_state',
             # Crew rostering: the shift this person works (drives the scheduling
             # calendar's crew lens + the solver's operator windows).
             'default_shift')
         read_only_fields = ('date_joined', 'last_login', 'full_name', 'tenant', 'user_type', 'user_type_display',
-                            'tenant_membership_status', 'job_role_name')
+                            'tenant_membership_status', 'job_role_name', 'invitation_state')
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):

@@ -119,7 +119,6 @@ import "@xyflow/react/dist/style.css";
 import { useExceptions } from "./useExceptions";
 import type {
     TravelerStepEntry,
-    ProcessStep,
     StepEdge,
 } from "@/lib/api/generated";
 import type { Schema as ApiSchema } from "@/lib/api/types";
@@ -161,8 +160,8 @@ function adaptWorkOrderDetail(w: WorkOrder): MockWorkOrder {
 function adaptProcessSteps(proc: ProcessRecord): { steps: MockStep[]; edges: MockStepEdge[] } {
     const steps: MockStep[] = (proc.process_steps ?? [])
         .slice()
-        .sort((a: ProcessStep, b: ProcessStep) => a.order - b.order)
-        .map((ps: ProcessStep) => ({
+        .sort((a, b) => a.order - b.order)
+        .map((ps) => ({
             id: ps.step.id,
             order: ps.order,
             name: ps.step.name,

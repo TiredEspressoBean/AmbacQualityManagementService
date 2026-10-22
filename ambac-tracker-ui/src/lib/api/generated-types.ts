@@ -15639,6 +15639,23 @@ export interface paths {
         patch: operations["api_User_partial_update"];
         trace?: never;
     };
+    "/api/User/{id}/access-history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A person's access changes here: role grants and removals, and membership changes (suspend / reinstate). */
+        get: operations["api_User_access_history_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/User/bulk-activate/": {
         parameters: {
             query?: never;
@@ -24970,6 +24987,12 @@ export interface components {
          * @enum {string}
          */
         IntegrationSyncStatusEnum: "IDLE" | "SYNCING" | "ERROR";
+        /**
+         * @description * `pending` - pending
+         *     * `expired` - expired
+         * @enum {string}
+         */
+        InvitationStateEnum: "pending" | "expired";
         InviteError: {
             detail: string;
         };
@@ -35488,6 +35511,15 @@ export interface components {
             part_type?: string | null;
             readonly part_type_name: string | null;
             expected_duration?: string | null;
+            readonly timing: components["schemas"]["StepTiming"] | null;
+            /**
+             * @description How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             requires_qa_signoff?: boolean;
             qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
@@ -36084,6 +36116,14 @@ export interface components {
             /** Format: uuid */
             part_type?: string | null;
             expected_duration?: string | null;
+            /**
+             * @description How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+             *
+             *     * `off` - Off (no crew constraint)
+             *     * `pool` - Pool (cap at qualified crew)
+             *     * `named` - Named (assign a specific operator)
+             */
+            labor_model?: (components["schemas"]["LaborModelEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             requires_qa_signoff?: boolean;
             qa_signoff_assurance?: components["schemas"]["QaSignoffAssuranceEnum"];
             sampling_required?: boolean;
@@ -38800,6 +38840,7 @@ export interface components {
              */
             job_role?: string | null;
             readonly job_role_name: string | null;
+            readonly invitation_state: (components["schemas"]["InvitationStateEnum"] | components["schemas"]["NullEnum"]) | null;
             /**
              * Format: uuid
              * @description The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
@@ -68435,6 +68476,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    api_User_access_history_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this User. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLog"][];
                 };
             };
         };

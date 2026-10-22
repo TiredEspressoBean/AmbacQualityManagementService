@@ -442,6 +442,31 @@ class UserViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         return Response({"detail": f"Assigned {updated_count} users to {'company' if company else 'no company'}",
                          "updated_count": updated_count, "company_name": company.name if company else None})
 
+    @extend_schema(responses={200: AuditLogSerializer(many=True)},
+                   description="A person's access changes here: role grants and removals, "
+                               "and membership changes (suspend / reinstate).")
+    @action(detail=True, methods=['get'], url_path='access-history', pagination_class=None,
+            filter_backends=[])
+    def access_history(self, request, pk=None):
+        """Roles live on UserRole and suspension on TenantMembership, so neither shows
+        in the User record's own audit trail — a person's History read "No recorded
+        changes" after a grant, a removal and a suspend (Administrator walk)."""
+        from django.contrib.contenttypes.models import ContentType
+        from django.db.models import Q
+        from Tracker.models import TenantMembership, UserRole
+        user = self.get_object()  # visibility of the person decides visibility of this
+        ur_ct = ContentType.objects.get_for_model(UserRole)
+        tm_ct = ContentType.objects.get_for_model(TenantMembership)
+        uid = str(user.id)
+        memberships = [str(pk) for pk in TenantMembership.objects.filter(  # tenant-safe: explicit tenant filter
+            tenant=self.tenant, user=user).values_list('id', flat=True)]
+        entries = (LogEntry.objects.filter(actor__tenant=self.tenant)
+                   .filter(Q(content_type=ur_ct, changes__user__0=uid)
+                           | Q(content_type=ur_ct, changes__user__1=uid)
+                           | Q(content_type=tm_ct, object_pk__in=memberships))
+                   .select_related('actor').order_by('-timestamp')[:200])
+        return Response(AuditLogSerializer(entries, many=True).data)
+
     @extend_schema(
         responses={200: inline_serializer(name="UninvitedUsers", fields={
             "count": serializers.IntegerField(),

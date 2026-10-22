@@ -199,26 +199,29 @@ def route_received_lot(lot, user, *, waive=()):
         return None  # leave RECEIVED → visible in the queue
 
 
-def _held_for_unqualified_supplier(lot) -> bool:
-    """Soft-hold a received lot whose part type requires supplier qualification and
-    whose supplier has no active qualification covering it. Quarantines + emits
-    `supplier.unqualified`. Returns True when the lot was held."""
+def _supplier_unqualified_for(lot) -> bool:
+    """Whether ``lot``'s item requires supplier qualification and its supplier has no
+    active qualification covering it."""
     from Tracker.services.qms.supplier_qualification import is_supplier_qualified
     part_type = lot.material_type if lot.material_type_id else None
     material = lot.material if lot.material_id else None
     if part_type is not None:
-        if not getattr(part_type, "requires_supplier_qualification", False):
-            return False
-        if is_supplier_qualified(supplier=lot.supplier, part_type=part_type):
-            return False
-    elif material is not None:
+        return (getattr(part_type, "requires_supplier_qualification", False)
+                and not is_supplier_qualified(supplier=lot.supplier, part_type=part_type))
+    if material is not None:
         # Bulk stock qualifies a supplier by commodity; with none set, any active
         # qualification of the supplier will do.
-        if not material.requires_supplier_qualification:
-            return False
-        if is_supplier_qualified(supplier=lot.supplier, commodity=material.commodity or None):
-            return False
-    else:
+        return (material.requires_supplier_qualification
+                and not is_supplier_qualified(supplier=lot.supplier,
+                                              commodity=material.commodity or None))
+    return False
+
+
+def _held_for_unqualified_supplier(lot) -> bool:
+    """Soft-hold a received lot whose part type requires supplier qualification and
+    whose supplier has no active qualification covering it. Quarantines + emits
+    `supplier.unqualified`. Returns True when the lot was held."""
+    if not _supplier_unqualified_for(lot):
         return False
 
     lot_holds.hold(lot, HOLD_SUPPLIER_UNQUALIFIED)
@@ -247,6 +250,31 @@ def hold_supplier_lots_at_dock(supplier) -> list:
         if _held_for_unqualified_supplier(lot):
             held.append(lot)
     return held
+
+
+def release_supplier_lots_at_dock(supplier, user=None) -> list:
+    """The supplier was (re)qualified: lots held at the dock only because it wasn't
+    qualified come off that hold once a qualification covers them — the inverse of
+    hold_supplier_lots_at_dock (corrections #18: a grant after a suspension left them
+    held). Other holds stay; a lot with none left goes back to its inspection, or is
+    routed on as if just received. Returns the lots released."""
+    from Tracker.models import MaterialLot
+    released = []
+    for lot in (MaterialLot.objects  # tenant-safe: .objects auto-scopes
+                .filter(status="QUARANTINE", archived=False, supplier=supplier)
+                .exclude(hold_reason="")
+                .select_related("material_type", "material")):
+        if HOLD_SUPPLIER_UNQUALIFIED not in lot_holds.holds(lot) or _supplier_unqualified_for(lot):
+            continue
+        with transaction.atomic():
+            if not lot_holds.remove_hold(lot, HOLD_SUPPLIER_UNQUALIFIED):
+                if receiving_execution(lot) is not None:
+                    inventory.return_to_inspection(lot)
+                else:
+                    inventory.release_hold(lot)
+                    route_received_lot(lot, user, waive=_released_by_a_person(lot))
+        released.append(lot)
+    return released
 
 
 def _emit_supplier_unqualified(lot) -> None:

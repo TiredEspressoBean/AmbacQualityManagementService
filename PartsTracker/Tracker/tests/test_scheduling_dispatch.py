@@ -333,7 +333,7 @@ class DispatchTests(TenantContextMixin, TestCase):
         self._operator("op1")
         self._wo("WO-LIVE", 1)
         good = solve_schedule(self.tenant)
-        with mock.patch.object(cp_model.CpSolver, "Solve", return_value=cp_model.INFEASIBLE), \
+        with mock.patch.object(cp_model.CpSolver, "solve", return_value=cp_model.INFEASIBLE), \
                 mock.patch.object(cp_model.CpSolver, "SufficientAssumptionsForInfeasibility",
                                   return_value=[]), \
                 mock.patch.object(cp_model.CpSolver, "WallTime", return_value=0.0):

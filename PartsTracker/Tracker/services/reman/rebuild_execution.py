@@ -49,6 +49,17 @@ def install_component(core, *, harvested=None, part=None, user, bom_line=None, s
         # read here rather than restated.
         assert_work_order_allowed(part, core.part.work_order)
 
+    # One component is in one unit at a time; removing it (AssemblyUsage.remove) frees it.
+    fitted = (AssemblyUsage.objects  # tenant-safe: .objects auto-scopes
+              .filter(removed_at__isnull=True)
+              .filter(**({'component_harvested': harvested} if harvested is not None
+                         else {'component': part}))
+              .select_related('assembly').first())
+    if fitted is not None:
+        raise ValidationError(
+            f"{harvested or part} is already installed in {fitted.assembly}. Remove it "
+            "there first.")
+
     return AssemblyUsage.objects.create(
         tenant=core.tenant,
         # The unit being rebuilt is the core's part.

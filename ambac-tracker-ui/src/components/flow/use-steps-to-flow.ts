@@ -197,6 +197,9 @@ export function buildNodesAndEdges(steps: StepData[], stepEdges?: StepEdgeInput[
         // Repair node
         repairCode: step.repair_code_code ?? null,
         repairCodeName: step.repair_code_name ?? null,
+        // Routing / timing (the step panel reads and edits these)
+        timing: step.timing ?? undefined,
+        labor_model: step.labor_model ?? undefined,
         // 4c — live overlay (always-on when present; not demo-gated).
         liveMetrics: step.liveMetrics,
       },

@@ -244,6 +244,17 @@ def verify_capa_effectiveness(
     """
     capa = verification.capa
 
+    # A decided verification is the record of that decision: re-verifying it rewrote the
+    # result and, via the API, could reopen a CLOSED CAPA (Corrections #16). A new check
+    # is a new verification.
+    if verification.effectiveness_decided_at is not None:
+        raise ValidationError(
+            "This verification has already been decided "
+            f"({verification.get_effectiveness_result_display()}). Record a new verification "
+            "rather than changing this one.")
+    if capa.status == CapaStatus.CLOSED:
+        raise ValidationError("This CAPA is closed; its effectiveness has been decided.")
+
     # Effectiveness is checked against a verified cause — recording it here closed or
     # reopened the CAPA whatever its RCA said, so the transition gate alone was
     # walkable-around.

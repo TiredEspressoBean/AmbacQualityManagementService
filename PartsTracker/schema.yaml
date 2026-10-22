@@ -39216,6 +39216,32 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/User/{id}/access-history/:
+    get:
+      operationId: api_User_access_history_list
+      description: 'A person''s access changes here: role grants and removals, and
+        membership changes (suspend / reinstate).'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this User.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLog'
+          description: ''
   /api/User/bulk-activate/:
     post:
       operationId: api_User_bulk_activate_create
@@ -58169,6 +58195,14 @@ components:
         * `IDLE` - Idle
         * `SYNCING` - Syncing
         * `ERROR` - Error
+    InvitationStateEnum:
+      enum:
+      - pending
+      - expired
+      type: string
+      description: |-
+        * `pending` - pending
+        * `expired` - expired
     InviteError:
       type: object
       properties:
@@ -78169,6 +78203,23 @@ components:
         expected_duration:
           type: string
           nullable: true
+        timing:
+          allOf:
+          - $ref: '#/components/schemas/StepTiming'
+          readOnly: true
+          nullable: true
+        labor_model:
+          nullable: true
+          description: |-
+            How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+          oneOf:
+          - $ref: '#/components/schemas/LaborModelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         requires_qa_signoff:
           type: boolean
         qa_signoff_assurance:
@@ -78289,6 +78340,7 @@ components:
       - part_type_name
       - repair_code_code
       - repair_code_name
+      - timing
     StepDistributionResponse:
       type: object
       properties:
@@ -79240,6 +79292,18 @@ components:
         expected_duration:
           type: string
           nullable: true
+        labor_model:
+          nullable: true
+          description: |-
+            How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+
+            * `off` - Off (no crew constraint)
+            * `pool` - Pool (cap at qualified crew)
+            * `named` - Named (assign a specific operator)
+          oneOf:
+          - $ref: '#/components/schemas/LaborModelEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         requires_qa_signoff:
           type: boolean
         qa_signoff_assurance:
@@ -84687,6 +84751,12 @@ components:
           type: string
           nullable: true
           readOnly: true
+        invitation_state:
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/InvitationStateEnum'
+          - $ref: '#/components/schemas/NullEnum'
         default_shift:
           type: string
           format: uuid
@@ -84699,6 +84769,7 @@ components:
       - full_name
       - groups
       - id
+      - invitation_state
       - job_role_name
       - last_login
       - parent_company

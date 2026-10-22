@@ -97,6 +97,10 @@ export function RecordHistoryCard({ endpoint, id, model }: {
         queries: versions.map((v) => ({
             ...auditLogOptions({ content_type: contentType, object_pk: String(v.id), ordering: "timestamp", limit: 100 }),
             enabled: contentType !== undefined,
+            // A change made on this page must appear without a reload — a cached empty
+            // trail read "No recorded changes" after an edit (Administrator walk).
+            staleTime: 0,
+            refetchOnMount: "always" as const,
         })),
         combine: (results) => results.map((r) => r.data?.results ?? []),
     });

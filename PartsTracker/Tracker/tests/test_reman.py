@@ -1898,6 +1898,15 @@ class RebuildLifecycleTests(TenantTestCase):
         with self.assertRaises(ValidationError):
             install_component(self.core, harvested=theirs, user=self.user_a)
 
+    def test_a_fitted_component_is_not_installed_twice_until_removed(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.rebuild_execution import install_component
+        usage = install_component(self.core, harvested=self.hc, user=self.user_a)
+        with self.assertRaisesMessage(ValidationError, 'already installed'):
+            install_component(self.core, harvested=self.hc, user=self.user_a)
+        usage.remove(user=self.user_a, reason='wrong slot')
+        install_component(self.core, harvested=self.hc, user=self.user_a)
+
     def test_a_scrapped_component_cannot_go_back_in(self):
         from django.core.exceptions import ValidationError
         from Tracker.services.reman.harvested_component import scrap_component

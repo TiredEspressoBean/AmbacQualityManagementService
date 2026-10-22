@@ -60,3 +60,15 @@ def link_replacement(new_report) -> None:
              replaced_by__isnull=True, **pair)
      .exclude(pk=new_report.pk)
      .update(replaced_by=new_report))
+
+
+def awaiting_recapture(part) -> bool:
+    """Held, but a result at its step was voided and not yet taken again. Such a part
+    may be started for that re-capture only, so the new result is on record before QA
+    closes its disposition (user decision 2026-10-22: re-inspect first, then close)."""
+    from Tracker.models import PartsStatus, QualityReports
+    if part is None or part.part_status != PartsStatus.QUARANTINED or not part.step_id:
+        return False
+    return QualityReports.objects.filter(  # tenant-safe: FK-correlated to a scoped part
+        part=part, step_id=part.step_id, superseded_at__isnull=False,
+        replaced_by__isnull=True).exists()

@@ -124,6 +124,10 @@ def grant(qualification, *, user=None, conditional=False, effective_date=None, e
     if user and getattr(user, 'is_authenticated', False):
         qualification.qualified_by = user
     qualification.save(update_fields=['status', 'effective_date', 'expiry_date', 'qualified_by', 'updated_at'])
+    # Lots a suspension (or the missing qualification) held at the dock come off that
+    # hold now that this covers them.
+    from Tracker.services.qms.receiving_inspection import release_supplier_lots_at_dock
+    release_supplier_lots_at_dock(qualification.supplier, user if getattr(user, 'is_authenticated', False) else None)
     return qualification
 
 

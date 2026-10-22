@@ -43,6 +43,7 @@ import {
     type OverrideCredentials,
 } from "@/hooks/useEnsureStepExecution";
 import { useWorkAuthorization, type WorkAuthRow } from "@/hooks/useWorkAuthorization";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 type StartWorkDialogProps = {
     workOrderId: string;
@@ -91,6 +92,7 @@ const stepOrderOf = (p: { step_info?: Record<string, unknown> | null }) => {
 
 export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: StartWorkDialogProps) {
     const navigate = useNavigate();
+    const { has: hasPerm, isLoading: permsLoading } = usePermissionSet();
     const [open, setOpen] = useState(false);
     // Insertion-ordered: the order an operator checks parts is the order
     // they're worked. Using an array (not a Set) preserves that order.
@@ -333,6 +335,12 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
             setOverriding(false);
         }
     };
+
+    // Starting opens or claims a step execution; a reader who can't (a view-only
+    // auditor) is not offered it — the server refused it anyway.
+    if (permsLoading || !hasPerm("add_stepexecution")) {
+        return null;
+    }
 
     if (blockedReason) {
         // A disabled button fires no hover, so the reason rides on a wrapper.

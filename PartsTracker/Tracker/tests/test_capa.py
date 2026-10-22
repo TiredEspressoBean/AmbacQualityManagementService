@@ -1141,6 +1141,28 @@ class RcaAuthorAndApprovalTests(TenantTestCase):
             verify_capa_effectiveness(verification, self.reviewer, confirmed=True,
                                       notes='Checked a month of production')
 
+    def test_a_decided_verification_or_closed_capa_is_not_re_verified(self):
+        """Corrections #16: re-verifying rewrote the recorded result and could reopen a
+        CLOSED CAPA. A new check is a new verification."""
+        from django.core.exceptions import ValidationError
+        from django.utils import timezone
+        from Tracker.models import CapaVerification
+        from Tracker.services.qms.capa import verify_capa_effectiveness
+        rca = self._rca()
+        decided = CapaVerification.objects.create(
+            tenant=self.tenant_a, capa=rca.capa, verification_method='Audit',
+            verification_criteria='No recurrence in 30 days',
+            effectiveness_decided_at=timezone.now())
+        with self.assertRaisesMessage(ValidationError, 'already been decided'):
+            verify_capa_effectiveness(decided, self.reviewer, confirmed=False, notes='Recurred')
+        rca.capa.status = 'CLOSED'
+        rca.capa.save(update_fields=['status'])
+        fresh = CapaVerification.objects.create(
+            tenant=self.tenant_a, capa=rca.capa, verification_method='Audit',
+            verification_criteria='No recurrence in 30 days')
+        with self.assertRaisesMessage(ValidationError, 'closed'):
+            verify_capa_effectiveness(fresh, self.reviewer, confirmed=False, notes='Recurred')
+
     def test_a_blank_root_cause_summary_is_not_a_complete_rca(self):
         rca = self._rca()
         rca.root_cause_summary = '   '

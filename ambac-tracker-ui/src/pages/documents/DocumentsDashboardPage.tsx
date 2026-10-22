@@ -13,11 +13,13 @@ import {
     AlertTriangle,
 } from "lucide-react"
 import { useDocumentStats } from "@/hooks/useDocumentStats"
+import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRecentDocuments } from "@/hooks/useRecentDocuments"
 import { useDocumentsPendingApproval, type PendingDocumentApproval } from "@/hooks/useDocumentsPendingApproval"
 
 export function DocumentsDashboardPage() {
     const { data: stats, isLoading: statsLoading } = useDocumentStats()
+    const { has: hasPerm } = usePermissionSet()
     const { data: recentDocs, isLoading: recentLoading } = useRecentDocuments()
     const { data: pendingApprovals, isLoading: approvalsLoading } = useDocumentsPendingApproval()
 
@@ -99,16 +101,18 @@ export function DocumentsDashboardPage() {
                             </div>
                             <div className="text-sm text-muted-foreground ml-6">Browse and search documents</div>
                         </Link>
-                        <Link
-                            to="/documents/new"
-                            className="block p-3 rounded-lg border hover:bg-accent transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <Upload className="h-4 w-4" />
-                                <div className="font-medium">Upload Document</div>
-                            </div>
-                            <div className="text-sm text-muted-foreground ml-6">Add a new document to the system</div>
-                        </Link>
+                        {hasPerm("add_documents") && (
+                            <Link
+                                to="/documents/new"
+                                className="block p-3 rounded-lg border hover:bg-accent transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Upload className="h-4 w-4" />
+                                    <div className="font-medium">Upload Document</div>
+                                </div>
+                                <div className="text-sm text-muted-foreground ml-6">Add a new document to the system</div>
+                            </Link>
+                        )}
                         {(stats?.needs_my_approval ?? 0) > 0 && (
                             <Link
                                 to="/documents/list"

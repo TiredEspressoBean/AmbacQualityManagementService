@@ -421,3 +421,33 @@ class SweepFixes1022Tests(_Api):
         ids = {str(r.get("id") or r.get("user_id")) for r in rows}
         self.assertIn(str(op.id), ids)
         self.assertFalse(any("buyer" in str(e) for e in emails))
+
+
+class PersonAccessHistoryTests(_Api):
+    perms = ['view_user', 'full_tenant_access']
+
+    def test_role_grants_removals_and_suspension_show_on_the_person(self):
+        """Administrator walk: they live on UserRole / TenantMembership, so the person's
+        own History read "No recorded changes"."""
+        from auditlog.context import set_actor
+        from Tracker.models import User, UserRole
+        from Tracker.services.core.tenant_membership import suspend_membership
+        from Tracker.services.core.user import add_user_to_tenant_group
+        dave = User.objects.create(tenant=self.tenant_a, username="dave@x.test",
+                                   email="dave@x.test", user_type="INTERNAL")
+        with set_actor(self.user_a):
+            add_user_to_tenant_group(dave, "Operator", tenant=self.tenant_a, granted_by=self.user_a)
+            UserRole.objects.filter(user=dave).delete()
+            suspend_membership(dave, self.tenant_a, by=self.user_a)
+        rows = self.client.get(f"/api/User/{dave.id}/access-history/").json()
+        seen = {(r["content_type_name"].lower().replace(" ", ""), r["action"]) for r in rows}
+        self.assertIn(("userrole", 0), seen)      # granted
+        self.assertIn(("userrole", 2), seen)      # removed
+        self.assertIn(("tenantmembership", 1), seen)  # suspended
+
+    def test_never_invited_is_not_a_pending_invite(self):
+        from Tracker.models import User
+        u = User.objects.create(tenant=self.tenant_a, username="seeded@x.test",
+                                email="seeded@x.test", user_type="INTERNAL")
+        row = self.client.get(f"/api/User/{u.id}/").json()
+        self.assertIsNone(row["invitation_state"])

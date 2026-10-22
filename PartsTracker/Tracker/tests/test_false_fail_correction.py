@@ -208,9 +208,16 @@ class ReinspectFirstTests(FalseFailCorrectionTests):
     def test_not_a_nonconformance_waits_for_the_re_inspection(self):
         from Tracker.services.qms.disposition import decide_disposition
         from Tracker.serializers.mes_lite import PartsSerializer
+        from django.core.exceptions import ValidationError
+        from Tracker.services.mes.lifecycle import assert_startable
+        # Held and not voided: the start gate refuses.
+        with self.assertRaises(ValidationError):
+            assert_startable(self.part, None)
         self._void()
-        # Held, but startable for its re-capture.
+        # Held, but startable for its re-capture — the UI flag and the server gate agree
+        # (re-walk: the UI ticked it and the claim refused).
         self.assertTrue(PartsSerializer(self.part).data["awaiting_recapture"])
+        assert_startable(self.part, None)
         with self.assertRaisesMessage(ValueError, "Re-inspect first"):
             decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
                                authorized_by=self.manager)

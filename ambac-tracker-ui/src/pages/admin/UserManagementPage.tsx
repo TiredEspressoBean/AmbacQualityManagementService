@@ -74,13 +74,14 @@ import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
 // Status derivation
 // ---------------------------------------------------------------------------
 
-type UserStatus = "active" | "inactive" | "pending_invite" | "expired_invite" | "contact";
+type UserStatus = "active" | "inactive" | "pending_invite" | "expired_invite" | "never_signed_in" | "contact";
 
 const STATUS_LABEL: Record<UserStatus, string> = {
     active: "Active",
     inactive: "Inactive",
     pending_invite: "Pending invite",
     expired_invite: "Expired invite",
+    never_signed_in: "Never signed in",
     contact: "Contact",
 };
 
@@ -89,6 +90,7 @@ const STATUS_VARIANT: Record<UserStatus, "default" | "secondary" | "destructive"
     inactive: "secondary",
     pending_invite: "outline",
     expired_invite: "destructive",
+    never_signed_in: "outline",
     contact: "secondary",
 };
 
@@ -100,13 +102,18 @@ function deriveStatus(user: {
     last_login?: string | null;
     tenant_membership_status?: string | null;
     contact_role?: string | null;
+    invitation_state?: string | null;
 }): UserStatus {
     if (user.tenant_membership_status === "SUSPENDED") return "inactive";
     if (user.is_active === false) return "inactive";
     // An outside contact (a supplier's quality person) is a name to send things to,
     // not someone waiting on an invitation.
     if (!user.last_login && user.contact_role) return "contact";
-    if (!user.last_login) return "pending_invite";
+    // Invited only if an invitation exists: seeded and imported people who were never
+    // sent one read as "Pending invite" off last_login alone (Admin walk).
+    if (!user.last_login && user.invitation_state === "pending") return "pending_invite";
+    if (!user.last_login && user.invitation_state === "expired") return "expired_invite";
+    if (!user.last_login) return "never_signed_in";
     return "active";
 }
 
@@ -119,6 +126,7 @@ const STATUS_FILTERS: { key: UserStatus | "all"; label: string }[] = [
     { key: "active", label: "Active" },
     { key: "pending_invite", label: "Pending invite" },
     { key: "expired_invite", label: "Expired invite" },
+    { key: "never_signed_in", label: "Never signed in" },
     { key: "inactive", label: "Inactive" },
     { key: "contact", label: "Contacts" },
 ];
@@ -173,6 +181,8 @@ export function UserManagementPage() {
                     is_active: u.is_active,
                     last_login: u.last_login ?? null,
                     contact_role: u.contact_role ?? null,
+                    invitation_state: u.invitation_state ?? null,
+                    tenant_membership_status: u.tenant_membership_status ?? null,
                 }),
                 _groupNames: ((u as { groups?: { name?: string }[] }).groups ?? [])
                     .map((g) => g?.name)
@@ -354,6 +364,7 @@ export function UserManagementPage() {
             inactive: 0,
             pending_invite: 0,
             expired_invite: 0,
+            never_signed_in: 0,
             contact: 0,
         };
         for (const u of users) {
@@ -361,6 +372,8 @@ export function UserManagementPage() {
                 is_active: u.is_active,
                 last_login: u.last_login ?? null,
                 contact_role: u.contact_role ?? null,
+                invitation_state: u.invitation_state ?? null,
+                tenant_membership_status: u.tenant_membership_status ?? null,
             });
             c[s]++;
         }
@@ -608,10 +621,10 @@ export function UserManagementPage() {
                                                         <Edit className="h-4 w-4 mr-2" />
                                                         Edit profile
                                                     </DropdownMenuItem>
-                                                    {u._status === "pending_invite" || u._status === "expired_invite" ? (
+                                                    {u._status === "pending_invite" || u._status === "expired_invite" || u._status === "never_signed_in" ? (
                                                         <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>
                                                             <Mail className="h-4 w-4 mr-2" />
-                                                            Resend invitation
+                                                            {u._status === "never_signed_in" ? "Send invitation" : "Resend invitation"}
                                                         </DropdownMenuItem>
                                                     ) : null}
                                                     <DropdownMenuItem onClick={() => handleInviteLink(u.id, u.email ?? "")}>

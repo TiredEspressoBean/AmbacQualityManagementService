@@ -7854,6 +7854,17 @@ export type Step = {
   part_type?: (string | null) | undefined;
   part_type_name: string | null;
   expected_duration?: (string | null) | undefined;
+  timing: StepTiming;
+  labor_model?:
+    | /**
+     * How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+    (LaborModelEnum | BlankEnum | NullEnum | null)
+    | undefined;
   requires_qa_signoff?: boolean | undefined;
   qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
@@ -7942,6 +7953,49 @@ export type Step = {
     | undefined;
   revisit_assignment?: RevisitAssignmentEnum | undefined;
 };
+export type StepTiming = Partial<{
+  /**
+   * Internal (machine-stopped) setup / changeover minutes.
+   *
+   * @minimum 0
+   */
+  setup_minutes: number;
+  /**
+   * Deterministic per-piece machine cycle time (minutes).
+   *
+   * @minimum 0
+   */
+  cycle_time_minutes: number;
+  /**
+   * Operator touch time to load/unload one piece (minutes).
+   *
+   * @minimum 0
+   */
+  load_unload_per_piece: number;
+  /**
+     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
+    
+    * `full` - Full attention (operator tied to the machine)
+    * `load_unload` - Load/unload only (machine runs unattended between)
+    * `unattended` - Unattended (robot/cobot fed — setup only)
+     */
+  attention_type: AttentionTypeEnum;
+  /**
+   * SMED external setup that can overlap the previous op's run time.
+   *
+   * @minimum 0
+   */
+  external_setup_minutes: number;
+}>;
+export type AttentionTypeEnum =
+  /**
+   * * `full` - Full attention (operator tied to the machine)
+   * `load_unload` - Load/unload only (machine runs unattended between)
+   * `unattended` - Unattended (robot/cobot fed — setup only)
+   *
+   * @enum full, load_unload, unattended
+   */
+  "full" | "load_unload" | "unattended";
 export type QaSignoffAssuranceEnum =
   /**
    * * `NONE` - Check off - recorded under their login
@@ -10039,15 +10093,6 @@ export type StepTimingRecord = {
   number | undefined;
   archived?: boolean | undefined;
 };
-export type AttentionTypeEnum =
-  /**
-   * * `full` - Full attention (operator tied to the machine)
-   * `load_unload` - Load/unload only (machine runs unattended between)
-   * `unattended` - Unattended (robot/cobot fed — setup only)
-   *
-   * @enum full, load_unload, unattended
-   */
-  "full" | "load_unload" | "unattended";
 export type PaginatedStepsList = {
   /**
    * @example 123
@@ -10210,40 +10255,6 @@ export type Steps = {
   version: number;
   is_current_version: boolean;
 };
-export type StepTiming = Partial<{
-  /**
-   * Internal (machine-stopped) setup / changeover minutes.
-   *
-   * @minimum 0
-   */
-  setup_minutes: number;
-  /**
-   * Deterministic per-piece machine cycle time (minutes).
-   *
-   * @minimum 0
-   */
-  cycle_time_minutes: number;
-  /**
-   * Operator touch time to load/unload one piece (minutes).
-   *
-   * @minimum 0
-   */
-  load_unload_per_piece: number;
-  /**
-     * Whether the operator is tied to the machine (full) or only loads/unloads (enables multi-machine tending in Layer 2).
-    
-    * `full` - Full attention (operator tied to the machine)
-    * `load_unload` - Load/unload only (machine runs unattended between)
-    * `unattended` - Unattended (robot/cobot fed — setup only)
-     */
-  attention_type: AttentionTypeEnum;
-  /**
-   * SMED external setup that can overlap the previous op's run time.
-   *
-   * @minimum 0
-   */
-  external_setup_minutes: number;
-}>;
 export type StepProcessRef = {
   id: string;
   name: string;
@@ -11733,6 +11744,7 @@ export type User = {
     (string | null)
     | undefined;
   job_role_name: string | null;
+  invitation_state: InvitationStateEnum | NullEnum | null;
   default_shift?:
     | /**
      * The shift this operator is rostered to. Layer-2 dispatch only assigns work during this shift's windows; an operator with no shift is not dispatchable.
@@ -11766,6 +11778,14 @@ export type TenantMembershipStatusEnum =
    * @enum ACTIVE, SUSPENDED, NONE
    */
   "ACTIVE" | "SUSPENDED" | "NONE";
+export type InvitationStateEnum =
+  /**
+   * * `pending` - pending
+   * `expired` - expired
+   *
+   * @enum pending, expired
+   */
+  "pending" | "expired";
 export type PaginatedUserSelectList = {
   /**
    * @example 123
@@ -17129,6 +17149,16 @@ export type StepRequest = {
   description?: (string | null) | undefined;
   part_type?: (string | null) | undefined;
   expected_duration?: (string | null) | undefined;
+  labor_model?:
+    | /**
+     * How the scheduler constrains this step's operators. Null inherits the tenant's OptimizationConfig.default_labor_model. POOL caps concurrent attended work at the qualified crew; OFF drops the constraint; NAMED assigns a specific operator in the solve — reserve NAMED for specialist bottlenecks (e.g. a step only one certified operator can run).
+    
+    * `off` - Off (no crew constraint)
+    * `pool` - Pool (cap at qualified crew)
+    * `named` - Named (assign a specific operator)
+     */
+    (LaborModelEnum | BlankEnum | NullEnum | null)
+    | undefined;
   requires_qa_signoff?: boolean | undefined;
   qa_signoff_assurance?: QaSignoffAssuranceEnum | undefined;
   sampling_required?: boolean | undefined;
@@ -23380,6 +23410,17 @@ const ProcessesCategoryEnum = z.enum([
   "NPI",
   "DOCUMENT",
 ]);
+const AttentionTypeEnum = z.enum(["full", "load_unload", "unattended"]);
+const StepTiming = z
+  .object({
+    setup_minutes: z.number().gte(0),
+    cycle_time_minutes: z.number().gte(0),
+    load_unload_per_piece: z.number().gte(0),
+    attention_type: AttentionTypeEnum,
+    external_setup_minutes: z.number().gte(0),
+  })
+  .partial();
+const LaborModelEnum = z.enum(["off", "pool", "named"]);
 const QaSignoffAssuranceEnum = z.enum(["NONE", "PASSWORD"]);
 const FpiScopeEnum = z.enum([
   "PER_WORKORDER",
@@ -23422,6 +23463,8 @@ const Step = z.object({
   part_type: z.string().uuid().nullish(),
   part_type_name: z.string().nullable(),
   expected_duration: z.string().nullish(),
+  timing: StepTiming.nullable(),
+  labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   requires_qa_signoff: z.boolean().optional(),
   qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
@@ -24577,7 +24620,6 @@ const ScheduleResult = z.object({
   task_count: z.number().int(),
   last_failed_solve: FailedSolve.nullable(),
 });
-const LaborModelEnum = z.enum(["off", "pool", "named"]);
 const ReleaseModeEnum = z.enum(["auto", "manual"]);
 const ReleasePolicyEnum = z.enum(["wlc", "constraint"]);
 const AutoResolveEnum = z.enum(["off", "live"]);
@@ -25227,7 +25269,6 @@ const StepOverrideRequest = z.object({
   reason: z.string().min(1),
   archived: z.boolean().optional(),
 });
-const AttentionTypeEnum = z.enum(["full", "load_unload", "unattended"]);
 const StepTimingRecord = z.object({
   id: z.string().uuid(),
   step: z.string().uuid(),
@@ -25263,15 +25304,6 @@ const PatchedStepTimingRecordRequest = z
     attention_type: AttentionTypeEnum,
     external_setup_minutes: z.number().gte(0),
     archived: z.boolean(),
-  })
-  .partial();
-const StepTiming = z
-  .object({
-    setup_minutes: z.number().gte(0),
-    cycle_time_minutes: z.number().gte(0),
-    load_unload_per_piece: z.number().gte(0),
-    attention_type: AttentionTypeEnum,
-    external_setup_minutes: z.number().gte(0),
   })
   .partial();
 const StepProcessRef = z.object({
@@ -26748,6 +26780,7 @@ const TenantMinimal = z.object({
   slug: z.string().regex(/^[-a-zA-Z0-9_]+$/),
 });
 const TenantMembershipStatusEnum = z.enum(["ACTIVE", "SUSPENDED", "NONE"]);
+const InvitationStateEnum = z.enum(["pending", "expired"]);
 const User = z.object({
   id: z.number().int(),
   username: z
@@ -26771,6 +26804,7 @@ const User = z.object({
   tenant_membership_status: TenantMembershipStatusEnum,
   job_role: z.string().uuid().nullish(),
   job_role_name: z.string().nullable(),
+  invitation_state: z.union([InvitationStateEnum, NullEnum]).nullable(),
   default_shift: z.string().uuid().nullish(),
 });
 const PaginatedUserList = z.object({
@@ -26813,6 +26847,31 @@ const PatchedUserRequest = z
     default_shift: z.string().uuid().nullable(),
   })
   .partial();
+const AuditLogActionEnum = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+]);
+const AuditChange = z.object({
+  field: z.string(),
+  old: z.string().nullable(),
+  new: z.string().nullable(),
+});
+const AuditLog = z.object({
+  id: z.number().int(),
+  object_pk: z.string().max(255),
+  object_repr: z.string(),
+  content_type: z.number().int(),
+  content_type_name: z.string(),
+  actor: z.number().int().nullish(),
+  actor_info: UserSelect.nullable(),
+  remote_addr: z.string().nullish(),
+  timestamp: z.string().datetime({ offset: true }),
+  action: AuditLogActionEnum,
+  changes: z.unknown().nullish(),
+  changes_display: z.array(AuditChange),
+});
 const BulkUserActivationInputRequest = z.object({
   user_ids: z.array(z.number().int()),
   is_active: z.boolean(),
@@ -27557,31 +27616,6 @@ const VectorSearchRequestRequest = z.object({
   doc_ids: z.array(z.string().uuid()).optional(),
 });
 const VectorSearchResponse = z.object({ results: z.array(z.unknown()) });
-const AuditLogActionEnum = z.union([
-  z.literal(0),
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-]);
-const AuditChange = z.object({
-  field: z.string(),
-  old: z.string().nullable(),
-  new: z.string().nullable(),
-});
-const AuditLog = z.object({
-  id: z.number().int(),
-  object_pk: z.string().max(255),
-  object_repr: z.string(),
-  content_type: z.number().int(),
-  content_type_name: z.string(),
-  actor: z.number().int().nullish(),
-  actor_info: UserSelect.nullable(),
-  remote_addr: z.string().nullish(),
-  timestamp: z.string().datetime({ offset: true }),
-  action: AuditLogActionEnum,
-  changes: z.unknown().nullish(),
-  changes_display: z.array(AuditChange),
-});
 const PaginatedAuditLogList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -29078,6 +29112,7 @@ const StepRequest = z.object({
   description: z.string().nullish(),
   part_type: z.string().uuid().nullish(),
   expected_duration: z.string().nullish(),
+  labor_model: z.union([LaborModelEnum, BlankEnum, NullEnum]).nullish(),
   requires_qa_signoff: z.boolean().optional(),
   qa_signoff_assurance: QaSignoffAssuranceEnum.optional(),
   sampling_required: z.boolean().optional(),
@@ -29619,6 +29654,9 @@ export const schemas = {
   PatchedPlantCalendarExceptionRequest,
   ProcessStatusEnum,
   ProcessesCategoryEnum,
+  AttentionTypeEnum,
+  StepTiming,
+  LaborModelEnum,
   QaSignoffAssuranceEnum,
   FpiScopeEnum,
   StepTypeEnum,
@@ -29743,7 +29781,6 @@ export const schemas = {
   FrozenFreed,
   FailedSolve,
   ScheduleResult,
-  LaborModelEnum,
   ReleaseModeEnum,
   ReleasePolicyEnum,
   AutoResolveEnum,
@@ -29812,12 +29849,10 @@ export const schemas = {
   StepOverride,
   PaginatedStepOverrideList,
   StepOverrideRequest,
-  AttentionTypeEnum,
   StepTimingRecord,
   PaginatedStepTimingRecordList,
   StepTimingRecordRequest,
   PatchedStepTimingRecordRequest,
-  StepTiming,
   StepProcessRef,
   Steps,
   PaginatedStepsList,
@@ -29950,10 +29985,14 @@ export const schemas = {
   ContactRoleEnum,
   TenantMinimal,
   TenantMembershipStatusEnum,
+  InvitationStateEnum,
   User,
   PaginatedUserList,
   UserRequest,
   PatchedUserRequest,
+  AuditLogActionEnum,
+  AuditChange,
+  AuditLog,
   BulkUserActivationInputRequest,
   BulkCompanyAssignmentInputRequest,
   BulkReconcileRowRequest,
@@ -30058,9 +30097,6 @@ export const schemas = {
   KeywordSearchResponse,
   VectorSearchRequestRequest,
   VectorSearchResponse,
-  AuditLogActionEnum,
-  AuditChange,
-  AuditLog,
   PaginatedAuditLogList,
   ContentType,
   CAPAStatusResponse,
@@ -60310,6 +60346,21 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     response: z.void(),
   },
   {
+    method: "get",
+    path: "/api/User/:id/access-history/",
+    alias: "api_User_access_history_list",
+    description: `A person&#x27;s access changes here: role grants and removals, and membership changes (suspend / reinstate).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.array(AuditLog),
+  },
+  {
     method: "post",
     path: "/api/User/bulk-activate/",
     alias: "api_User_bulk_activate_create",
@@ -60527,7 +60578,10 @@ Stores the selected tenant in the session.`,
         schema: z.unknown(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/uninvited/",
@@ -60535,10 +60589,7 @@ Stores the selected tenant in the session.`,
     description: `Users never invited and never signed in — those a migration workbook loaded ahead of go-live.`,
     requestFormat: "json",
     response: UninvitedUsers,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/UserInvitations/",

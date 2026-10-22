@@ -249,3 +249,28 @@ class SuspensionReachesTheDockTests(_Fixture):
         suspend(qual, user=self.user, reason="Audit finding")
         lot.refresh_from_db()
         self.assertEqual(set(lot_holds.holds(lot)), {"WHOLE_LOT_REJECT_REQUESTED", "SUPPLIER_UNQUALIFIED"})
+
+    def test_a_grant_after_the_suspension_releases_what_it_held(self):
+        """Corrections #18: re-granting left the lots the suspension held at the dock.
+        Only the supplier hold comes off; another hold on the same lot stays."""
+        from Tracker.models import MaterialLot, SupplierQualification
+        from Tracker.services.qms import lot_holds
+        from Tracker.services.qms.supplier_qualification import grant, suspend
+        qual = SupplierQualification.objects.create(
+            tenant=self.tenant, supplier=self.acme, scope_type="COMMODITY", scope_label="Elastomer seals",
+            status="APPROVED")
+        waiting = MaterialLot.objects.get(pk=self._receive(material=str(self.seal.id), quantity="50",
+                                                           lot_number="S-4").json()["id"])
+        MaterialLot.objects.filter(pk=waiting.pk).update(status="AWAITING_INSPECTION")
+        other = MaterialLot.objects.get(pk=self._receive(material=str(self.seal.id), quantity="50",
+                                                         lot_number="S-5").json()["id"])
+        lot_holds.hold(other, "WHOLE_LOT_REJECT_REQUESTED")
+        suspend(qual, user=self.user, reason="Audit finding")
+        qual.refresh_from_db()
+        grant(qual, user=self.user)
+        waiting.refresh_from_db()
+        other.refresh_from_db()
+        self.assertNotIn("SUPPLIER_UNQUALIFIED", lot_holds.holds(waiting))
+        self.assertNotEqual(waiting.status, "QUARANTINE")
+        self.assertEqual(lot_holds.holds(other), ["WHOLE_LOT_REJECT_REQUESTED"])
+        self.assertEqual(other.status, "QUARANTINE")
