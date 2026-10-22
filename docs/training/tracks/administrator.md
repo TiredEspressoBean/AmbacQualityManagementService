@@ -1,847 +1,142 @@
-# Administrator Training Guide
+# Administrator
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
+The tenant administrator's slice of [the shop day](../shop-day.md): giving people the
+access their job needs, taking it away when they leave, and finding out who changed
+what. Every exercise is on the training shop, and every record it names is one the
+training seed creates.
+
+**About 1 hour**, in one sitting. **Before you start:** skim the
+[role tracks](../index.md): you'll be choosing between them.
+
+!!! warning "On a training instance only"
+    Every exercise writes real records: a user you create can log in. See the
     [training program](../index.md).
 
-**Duration:** 6-8 hours
-**Prerequisites:** Understanding of all user roles
-**Goal:** Learn to configure the system, manage users, set up processes, and maintain system health
+## How a session runs
 
+1. **Watch.** Your trainer works the modules on the training instance, saying what
+   they look at and why.
+2. **Regenerate.** Your trainer puts every exhibit back as it was (below).
+3. **Do it with help.** You work the same modules on the same exhibits, with your
+   trainer beside you.
+4. **Alone.** After another regenerate, the [final task](#final-task-observed),
+   with your trainer watching and not helping.
 
-!!! info "Demo Environment Login"
-    **Email:** admin@demo.ambac.com
-    **Password:** `demo123`
+**Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
+demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+on the training tenant, and replaces **everyone's** work on the instance. It runs in
+the background and takes a few minutes; the card stops waiting after five, so if it
+hasn't finished by then, reload the page later rather than pressing it again.
 
----
+## Who you are
 
-## Module 1: Administrator Role Overview
+| You log in as | When |
+|---------------|------|
+| **Alex Demo**, Tenant Admin, `admin@demo.ambac.com` | Every module |
 
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Understand administrator responsibilities
-- [ ] Navigate administration screens
-- [ ] Understand the impact of configuration changes
-
-### 1.1 Your Role
-
-As an Administrator, you:
-
-- Manage user accounts and permissions
-- Configure processes and workflows
-- Set up system master data
-- Maintain integrations
-- Monitor system health
-- Support users with access issues
-
-Your configuration decisions affect all users.
+The password is `demo123`.
 
 ---
 
-### 1.2 Administration Pages
+## 1. Your desk
 
-| Page | Location | Purpose |
-|------|----------|---------|
-| **Data Management** | Admin > Data Management | All editors |
-| **Users** | Admin > User Management | User accounts, invites, bulk actions |
-| **Groups** | Data Management > User Groups | Permission groups |
-| **Settings** | Admin > Settings | System configuration |
-| **Audit Log** | Admin > Audit Log | Activity monitoring |
+**You will:** find the admin pages.
 
-**Exercise 1.1:** Navigate Admin Pages
+Log in as Alex. Home shows every role's blocks at once: what needs attention,
+quality, jobs going late, the inspection queue, approvals in flight, and the docks.
+That's a Tenant Admin seeing everything, not a job to do all of it.
 
-1. Visit each administration page
-2. Note available options on each
-3. Identify what can be configured
+The **Admin** section of the sidebar holds **Settings**, **User Management**, **Data
+Management** and **Audit Log**.
 
 ---
 
-### 1.3 Configuration Impact
+## 2. Add a user
 
-!!! warning "Changes Affect Everyone"
-    Configuration changes take effect immediately and affect all users. Test in training environment first when possible.
+**You will:** give a new operator a login.
 
----
+1. **User Management** > **Add user**. Username (the login, usually their email),
+   first and last name, email.
+2. **Role**: tick **Operator**. A role is what the person can do in the app; tick
+   more than one when someone covers two jobs (`Casey Cross` is QA Inspector and
+   Shift Lead).
+3. **Position**: **Assembler**. Position is separate from role: it's the job they
+   hold, and it decides which competencies the training matrix expects of them.
+4. Leave **Company** and **Contact for** empty: those are for people at a customer
+   or supplier. **Create User**.
 
-### Knowledge Check: Module 1
-
-1. What are the main responsibilities of an administrator?
-2. Where do you manage user accounts?
-3. Why is it important to understand the impact of configuration changes?
-
----
-
-## Module 2: User Management
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Create user accounts
-- [ ] Assign users to groups
-- [ ] Deactivate users properly
-
-### 2.1 User Account Fields
-
-| Field | Description | Required |
-|-------|-------------|----------|
-| **Username** | Login identifier, must be unique | Yes |
-| **First Name** | Given name | No |
-| **Last Name** | Family name | No |
-| **Email** | Contact email | No |
-| **Company** | Company, for customer users | No |
-| **Role** | Which role the user holds | No |
+The new user is listed as *Pending invite* until they accept and set a password.
 
 ---
 
-### 2.2 Creating a User
+## 3. Change what someone can do
 
-**Steps:**
+**You will:** correct a role.
 
-1. Navigate to **Admin** > **User Management**
-2. Click **Add user**
-3. Fill in:
-   - Username (the login identifier)
-   - First and last name, and email
-   - Role — **Customer** for external users, one of the internal roles
-     otherwise
-   - Company, for customer users
-4. Click **Create User**
+Open the user > **Edit**. Untick the role that's wrong, tick the right one, and
+**Save Changes**: *User updated successfully!*
 
-!!! note "No separate user type"
-    There is no Internal/Portal switch. **Role** carries that distinction:
-    a user with the Customer role gets the customer view of their own
-    company's orders.
-
-**What happens:**
-
-- User account created
-- Invitation email sent
-- User sets password via link
-
-**Exercise 2.1:** Create a User
-
-1. Go to Users
-2. Create new user:
-   - Email: trainee1@example.com
-   - First Name: Training
-   - Last Name: User One
-   - User Type: Internal
-   - Groups: Add to "Operator" group
-3. Save
+Every change to a user is in that user's **History**, and in the audit log (module 5).
 
 ---
 
-### 2.3 User Types
+## 4. Someone leaves
 
-| User Type | Purpose | Access |
-|-----------|---------|--------|
-| **Internal** | Internal employees (staff) | Full internal access based on groups |
-| **Portal** | External customers | Limited portal access, their data only |
+**You will:** suspend a user.
 
-Choose carefully - this limits available permissions.
+Open the user > **Edit**, untick **Active User** (*Uncheck this instead of deleting
+accounts*), and **Save Changes**.
 
-!!! note "Auditor Access"
-    There is no separate "Auditor" user type. Auditor access is achieved by creating an Internal user and assigning them to a group with read-only audit permissions.
-
----
-
-### 2.4 Deactivating Users
-
-**When employees leave:**
-
-1. Open user record
-2. Uncheck **Active**
-3. Save
-
-**What happens:**
-
-- User cannot log in
-- History and audit trail preserved
-- Account can be reactivated if needed
-
-**Don't delete users** - always deactivate to preserve history.
+They can no longer log in. Their name stays on every record they signed, and they
+can be reactivated. Users are never deleted: the record of who did the work is
+evidence.
 
 ---
 
-### 2.5 Password Resets
+## 5. Who changed what
 
-**If user forgets password:**
+**You will:** read the audit log.
 
-1. Direct them to "Forgot Password" on login
-2. Or: Open user record → **Reset Password**
-3. User receives reset email
+**Audit Log** lists every change made through the app, newest first: when, who, what
+action, which record, and the fields before and after. Your last few minutes are
+there: the user created, the role removed and added, *Is Active: True → False*.
 
-**With SSO:** Password is managed by identity provider, not in uqmes.
-
----
-
-### Knowledge Check: Module 2
-
-1. What's the difference between Internal and Portal user types?
-2. Why do you deactivate instead of delete users?
-3. How does a user set their initial password?
+**Settings** > **Roles & Permissions** lists the role groups, how many people are in
+each and how many permissions each holds. **View** on one shows exactly what it can
+do.
 
 ---
 
-## Module 3: Groups and Permissions
+## What isn't yours
 
-### Learning Objectives
+| Not yours | Whose |
+|-----------|-------|
+| Decide whether a person is competent for a step | QA manager (training records) |
+| Approve a routing, a CAPA or a document | The approver its template names |
+| Change a routing or a measurement | Engineering, under change control |
 
-By the end of this module, you will:
-
-- [ ] Create permission groups
-- [ ] Assign permissions to groups
-- [ ] Follow principle of least privilege
-
-### 3.1 Permission Model
-
-```
-Users → Groups → Permissions
-```
-
-- Users belong to one or more groups
-- Groups have permissions assigned
-- User gets all permissions from all their groups
+Holding every permission makes you able to do these. It doesn't make them your
+decision.
 
 ---
 
-### 3.2 Creating Groups
+## Final task — observed
 
-**Steps:**
+Your trainer regenerates the data, logs you in as Alex, and says only: *"Jamie Ortiz
+starts Monday as an inspector who'll also cover the shift lead. And Dave Wilson has
+left."* Then they watch without helping:
 
-1. Navigate to **Data Management** > **User Groups**
-2. Click **New User Groups**
-3. Name the group (e.g., "Operators", "QA Inspectors")
-4. Add description
-5. Save
-6. Assign permissions
+- create Jamie with both roles and a position
+- suspend Dave, without deleting him
+- show in the audit log what you just did
 
-**Exercise 3.1:** Create a Group
+Your trainer is watching for:
 
-1. Go to Groups
-2. Create new:
-   - Name: "Training Operators"
-   - Description: "Operators in training, limited access"
-3. Save
+- [ ] Jamie has exactly the two roles asked for, and a position.
+- [ ] Dave is inactive, not deleted.
+- [ ] You found your own changes in the audit log.
 
----
+## Recording your qualification
 
-### 3.3 Assigning Permissions
-
-**On group detail page:**
-
-1. Go to **Permissions** section
-2. Browse available permissions
-3. Check permissions to grant
-4. Save
-
-**Permission categories:**
-
-| Category | Examples |
-|----------|----------|
-| **View** | Can see data |
-| **Add** | Can create records |
-| **Change** | Can edit records |
-| **Delete** | Can remove records |
-
-**Exercise 3.2:** Assign Permissions
-
-1. Open "Training Operators" group
-2. Add permissions:
-   - View orders (yes)
-   - View parts (yes)
-   - Record measurement results (yes)
-   - Create orders (no)
-3. Save
-
----
-
-### 3.4 Principle of Least Privilege
-
-**Best practice:** Give users only the permissions they need.
-
-**Why:**
-
-- Reduces risk of mistakes
-- Limits security exposure
-- Easier to audit
-- Compliance requirement
-
----
-
-### 3.5 Common Group Templates
-
-| Group | Typical Permissions |
-|-------|---------------------|
-| **Operator** | View orders/parts, create parts |
-| **QA Inspector** | Above + quality reports, initiate CAPAs, conduct RCA |
-| **QA Manager** | Above + approve dispositions, manage CAPAs, approvals |
-| **Production Manager** | Manage orders, work orders, view all |
-| **Document Controller** | Manage documents, revisions, classifications |
-| **Admin** | Full system access |
-
----
-
-### Knowledge Check: Module 3
-
-1. How do users get permissions?
-2. What is the principle of least privilege?
-3. Why assign permissions to groups rather than users?
-
----
-
-## Module 4: Process Configuration
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Create manufacturing processes
-- [ ] Configure process steps
-- [ ] Set up measurement requirements
-
-### 4.1 Process Structure
-
-```
-Process → Steps → Requirements (Measurements, Documents, Training)
-```
-
-Processes define how parts move through production.
-
----
-
-### 4.2 Creating a Process
-
-**Steps:**
-
-1. Navigate to **Production** > **Processes**
-2. Click **New Process**
-3. Fill in:
-   - Name: Descriptive name
-   - Description: What this process is for
-   - Version: Start at 1.0
-4. Save (draft created)
-5. Add steps
-
-**Exercise 4.1:** Create a Process
-
-1. Go to Processes
-2. Create new:
-   - Name: "Training Widget Assembly"
-   - Description: "Assembly process for training widgets"
-3. Save
-
----
-
-### 4.3 Adding Steps
-
-**For each step:**
-
-1. In the **Process Flow** editor with **Edit Mode** on, click **Add Step**
-2. Click the step to open its properties and configure:
-   - Name: Step name (e.g., "Machining")
-   - Operation number: Order in the routing
-   - Description: What happens here
-   - Work center: Where it runs
-   - Timing: setup and cycle time per piece
-3. Use **Advanced** for QA signoff, first-piece inspection, sampling, and
-   rework limits
-
-**Exercise 4.2:** Add Steps
-
-Add these steps to your training process:
-
-1. "Receiving" - Sequence 1
-2. "Machining" - Sequence 2
-3. "Finishing" - Sequence 3
-4. "Final Inspection" - Sequence 4
-5. "Packaging" - Sequence 5
-
----
-
-### 4.4 Measurement Requirements
-
-**For each step requiring measurements:**
-
-1. Open step
-2. Go to **Measurements** section
-3. Click **Add Measurement**
-4. Configure:
-   - Name: What's measured
-   - Type: Numeric, Pass/Fail, etc.
-   - Target value (if applicable)
-   - Tolerance (if applicable)
-5. Save
-
-**Exercise 4.3:** Add Measurements
-
-For "Final Inspection" step:
-
-1. Add measurement "Outer Diameter"
-   - Type: Numeric
-   - Target: 25.0
-   - Unit: mm
-   - Tolerance: ±0.05
-
----
-
-### 4.5 Process Approval
-
-**Before use, process needs approval:**
-
-1. Review all steps and requirements
-2. Click **Submit for Approval**
-3. Approvers review
-4. Once approved, process is released
-
----
-
-### Knowledge Check: Module 4
-
-1. What defines how parts move through production?
-2. What can you configure for each step?
-3. Can a process be used before it's approved?
-
----
-
-## Module 5: Master Data Setup
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Set up companies (customers/suppliers)
-- [ ] Configure part types
-- [ ] Set up equipment and error types
-
-### 5.1 Companies
-
-**Creating customers/suppliers:**
-
-1. Navigate to **Data Management** > **Companies**
-2. Click **New Companies**
-3. Fill in:
-   - Name
-   - Type (Customer, Supplier, Both)
-   - Contact information
-4. Save
-
-**Exercise 5.1:** Create a Company
-
-Create training customer:
-- Name: "Training Customer Inc."
-- Type: Customer
-- Industry: Manufacturing
-
----
-
-### 5.2 Part Types
-
-**Setting up products:**
-
-1. Navigate to **Data Management** > **Part Types**
-2. Click **New Part Types**
-3. Fill in:
-   - Name: Product name
-   - Part Number: Your numbering
-   - Default Process: Which process to use
-4. Save
-
----
-
-### 5.3 Equipment
-
-**Registering equipment:**
-
-1. Navigate to **Data Management** > **Equipment**
-2. Create equipment records
-3. Set equipment types
-4. Configure calibration tracking if needed
-
----
-
-### 5.4 Error Types
-
-**Defining defect categories:**
-
-1. Navigate to **Data Management** > **Error Types**
-2. Create defect categories:
-   - Name: Clear description
-   - Severity default: Minor/Major/Critical
-3. Keep categories specific but not too narrow
-
----
-
-### 5.5 Document Types
-
-**Categories for documents:**
-
-1. Navigate to **Data Management** > **Document Types**
-2. Create types:
-   - Work Instruction
-   - Specification
-   - Drawing
-   - Certificate
-3. Configure approval requirements per type
-
----
-
-### Knowledge Check: Module 5
-
-1. What information is needed to create a part type?
-2. Why define error types?
-3. How are document types used?
-
----
-
-## Module 6: System Settings
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Configure organization settings
-- [ ] Set up integrations
-- [ ] Manage system preferences
-
-### 6.1 Organization Settings
-
-**Navigate to Settings:**
-
-- Organization name
-- Timezone
-- Date/number formats
-- Branding (logo, colors)
-
----
-
-### 6.2 Integration Settings
-
-!!! warning "Coming Soon"
-    Integration configuration UI is under development. Currently, integrations are configured via backend settings.
-
-**Planned integrations:**
-
-- SSO / Microsoft Entra ID: Single sign-on
-- HubSpot: CRM integration
-- API access: For custom integrations
-
-**Exercise 6.1:** Review Settings
-
-1. Go to Admin > Settings
-2. Review organization settings
-3. Review branding settings
-4. Note what can be configured
-
----
-
-### 6.3 Notification Settings
-
-**Configure:**
-
-- Email templates
-- Notification triggers
-- Default preferences
-
----
-
-## Module 7: Monitoring and Maintenance
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Monitor system activity
-- [ ] Review audit logs
-- [ ] Perform regular maintenance
-
-### 7.1 Audit Log Review
-
-**Navigate to Admin > Audit Log:**
-
-- View all system activity
-- Filter by user, action, date
-- Export for compliance
-
-**Look for:**
-
-- Permission changes
-- Unusual patterns
-- Configuration changes
-
-!!! note "Failed logins are not recorded"
-    A rejected sign-in leaves no trace in the audit log, so do not go looking
-    for one. The audit log records what happened to data, not what was tried
-    against the door.
-
-**Exercise 7.1:** Review Audit Log
-
-1. Go to **Admin > Audit Log**
-2. Filter to last 7 days
-3. Find permission changes
-4. Export a report
-
----
-
-### 7.2 System Health
-
-**Monitor:**
-
-- User adoption metrics
-- Performance issues
-- Error patterns
-- Storage usage
-
----
-
-### 7.3 Periodic Tasks
-
-**Weekly:**
-
-- [ ] Review new user requests
-- [ ] Check pending access issues
-- [ ] Monitor system alerts
-
-**Monthly:**
-
-- [ ] Permission audit
-- [ ] Deactivate stale accounts
-- [ ] Review group configurations
-- [ ] Check integration health
-
-**Quarterly:**
-
-- [ ] Full permission review
-- [ ] Process configuration audit
-- [ ] User training needs assessment
-
----
-
-## Module 8: Security and Compliance
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Follow security best practices
-- [ ] Support compliance requirements
-- [ ] Handle security incidents
-
-### 8.1 Security Best Practices
-
-- Regular permission reviews
-- Prompt user deactivation when leaving
-- Strong password policies (or SSO)
-- Audit log monitoring
-- Principle of least privilege
-
----
-
-### 8.2 Compliance Support
-
-For audits, maintain:
-
-- Up-to-date user list
-- Clear permission documentation
-- Audit trails
-- Training records
-
----
-
-### 8.3 Incident Response
-
-**If security issue discovered:**
-
-1. Document the issue
-2. Contain if possible (deactivate accounts)
-3. Report to management
-4. Investigate
-5. Remediate
-6. Document lessons learned
-
----
-
-## Module 9: Troubleshooting
-
-### Learning Objectives
-
-By the end of this module, you will:
-
-- [ ] Diagnose common user issues
-- [ ] Resolve access problems
-- [ ] Know when to escalate
-
-### 9.1 User Can't Log In
-
-**Check:**
-
-1. Account is active
-2. Password not expired (or SSO working)
-3. Account not locked
-4. Correct URL
-
----
-
-### 9.2 Permission Issues
-
-**When user can't do something:**
-
-1. Check their groups
-2. Verify group has permission
-3. Check the user's role — a Customer-role user only sees their own company's orders
-4. Confirm tenant assignment (if multi-tenant)
-
-**Exercise 9.1:** Troubleshoot Access
-
-1. Find user "noaccess@example.com" (training data)
-2. Identify why they can't view orders
-3. Fix the issue
-
----
-
-### 9.3 When to Escalate
-
-There is no vendor support line to escalate to — as the administrator, you
-are the escalation point for this deployment.
-
-What that means in practice:
-
-- **Platform, performance, and integration failures** land with whoever
-  maintains the deployment. Capture the error text, the time, and what was
-  running; these are rarely reproducible from a description alone.
-- **Security concerns** go to whoever owns the infrastructure, immediately,
-  and should be written down rather than investigated by reproducing them.
-- **Questions about intended behaviour** are usually faster to settle in these
-  docs than by debugging — a large share of "broken" reports are permissions
-  or assignment.
-
----
-
-## Practical Assessment
-
-### Task 1: User Setup
-
-1. Create new user account
-2. Assign appropriate groups
-3. Verify permissions are correct
-
-### Task 2: Group Configuration
-
-1. Create new group for "Senior Operators"
-2. Assign permissions (more than regular operators)
-3. Add a user to the group
-
-### Task 3: Process Creation
-
-1. Create a simple 3-step process
-2. Add measurement to one step
-3. Submit for approval
-
-### Task 4: Audit Review
-
-1. Review audit log for today
-2. Find all user creations
-3. Export report
-
-### Task 5: Troubleshooting
-
-1. User "trainee-broken@example.com" reports their parts aren't advancing
-2. Diagnose the issue — check their permissions and training for the step, and
-   whether another part in the same lot still has outstanding work
-3. Fix and verify
-
----
-
-## Training Completion
-
-### Sign-Off Requirements
-
-- [ ] Completed all modules
-- [ ] Passed knowledge checks
-- [ ] Completed practical assessment
-- [ ] Demonstrated with senior administrator
-
-### Competencies Verified
-
-- [ ] Can manage users correctly
-- [ ] Can configure groups and permissions
-- [ ] Can set up processes
-- [ ] Can configure master data
-- [ ] Understands system monitoring
-- [ ] Can troubleshoot common issues
-
----
-
-
-### Recording the qualification
-
-Ticking the boxes above is the *assessment*. It is not the record.
-
-A signed-off trainee is not yet qualified in the system, and the difference is
-operational, not clerical: training requirements gate who may start a step, so
-until the record exists the person is still refused the work they were just
-signed off to do. That refusal surfaces downstream as a part nobody can pick
-up — see [Parts stuck at a
-step](../../troubleshooting/common-issues.md).
-
-To close it out, create a **Training Record** for the trainee under **Quality**
-> **Training**:
-
-| Field | Set it to |
-|-------|-----------|
-| **Training type** | The qualification being awarded |
-| **Completed date** | The date of the assessment, not today |
-| **Level** | The competency level actually demonstrated |
-| **Trainer** | Whoever conducted and assessed it |
-| **Expires** | Leave blank only if the qualification genuinely never lapses |
-| **Documents** | Attach the signed sign-off sheet as evidence |
-
-!!! note "Level is an assessed result, not attendance"
-    The competency level is clause 7.2 evidence of what the person can actually
-    do. Recording everyone at the same level because they sat the course
-    defeats the control, and the training matrix that supervisors plan from
-    becomes fiction.
-
-## Quick Reference
-
-### Create User
-Users → **New Users** → Fill details → Assign groups → **Save**
-
-### Create Group
-Groups → **New User Groups** → Name group → **Save** → Assign permissions
-
-### Deactivate User
-Open user → Uncheck **Active** → **Save**
-
-### Review Audit Log
-Admin → Audit Log → Filter as needed → Export if required
-
-### Troubleshoot Access
-Check: User active? → In groups? → Group has permission? → User type allows?
-
----
-
-## Next Steps
-
-After completing this training:
-
-1. Shadow current administrator
-2. Handle user requests with oversight
-3. Configure non-critical items independently
-4. Full administrative responsibility
-
----
-
-## Emergency Contacts
-
-Document these for your organization:
-
-- **Platform support:** [Your support channel]
-- **IT escalation:** [IT contact]
-- **Management:** [Management contact]
-- **Security incidents:** [Security contact]
-
+Passing the final task is the assessment. The record is a **training record**, which
+your QA manager writes. See [Training Records](../../workflows/quality/training-records.md).
