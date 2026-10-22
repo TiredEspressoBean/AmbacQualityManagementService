@@ -284,6 +284,36 @@ behind it is a broken record, not a finished one.
 
 ---
 
+## 10. A FAIL that shouldn't have been
+
+**You will:** put right a failed inspection that was wrong, without losing the
+record of it.
+
+`INJ-QA-INSPECT-052` was failed at Body Inspection for a burr in the bore. You look
+under the loupe: it was a reflection off the bore edge, and the bore is clean. Its
+disposition is open and the part is quarantined.
+
+1. **WO Control Center**, open `WO-QA-INSPECT-06`. Open the part's history, the
+   Body Inspection checks, and **Void** the visual inspection. The dialog says what
+   happens: the recorded result is marked superseded and kept as recorded, with your
+   reason; the re-capture writes a new report; the disposition stays open for QA.
+   Give the reason. *Completion voided.*
+2. Open the work order, **Start Work**, tick `INJ-QA-INSPECT-052` (quarantined, but
+   startable for its re-capture) and **Start**. Mike recorded the inspection, so it's
+   his: a supervisor signs in to give it to you, with the reason.
+3. Inspect it again: **Pass**, the equipment you used, your sign-off. **Complete
+   step**: *Part held — its disposition is still open.* The part waits for QA.
+4. Once the QA manager has closed the disposition ([QA Manager](qa-manager.md),
+   module 2), open the step again and **Complete step**: the part moves on.
+
+**Try to break it:** close the disposition yourself as *Not a nonconformance*. You
+voided the finding, so you can't also be the one to clear it: a QA manager signs.
+
+The FAIL report is still there, marked superseded, with your reason and the new PASS
+report beside it. Nothing about the mistake is lost; it's just no longer the answer.
+
+---
+
 ## Final task — observed
 
 Your trainer regenerates the data, logs you in as Sarah, and says only: *"It's

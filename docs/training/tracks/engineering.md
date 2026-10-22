@@ -180,7 +180,31 @@ Once it's approved, changing it goes through change control like any other routi
 
 ---
 
-## 7. What isn't yours
+## 7. How long a step takes
+
+**You will:** give the schedule the times it plans with.
+
+The planner's schedule is only as good as the times on each step. A step with none
+is planned as taking no time.
+
+1. Open `Injector Build` and select **Wash**. **Timing** reads *15 min setup · 30 min
+   per piece*: setup once per batch, cycle for each piece.
+2. Times are part of the routing, so they change inside a change: **Process
+   Actions** > **Propose Change**, **Edit Mode**, select **Wash**.
+3. The **Timing** fields: **Setup**, **Cycle, per piece**, and **Operator
+   attention**. Wash needs a person only to load and unload (*Load / unload only*,
+   2 min a piece), so the rest of the cycle doesn't tie up the crew. **Needs an
+   operator** off is for a cell that runs with nobody.
+4. Set **Cycle, per piece** to `25` and **Save**: *Process saved successfully*. The
+   draft has the new time; the approved routing keeps 30 until the change is
+   approved, and the schedule plans with whichever is in force.
+
+Time a step from the floor, not from the brochure: take the setup and cycle from a
+few real runs.
+
+---
+
+## 8. What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|

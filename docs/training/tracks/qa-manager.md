@@ -104,6 +104,13 @@ recorded.
 4. Set **Current state** to **Closed** and submit. Closing records who resolved it,
    and when.
 
+**A finding that wasn't.** `INJ-QA-INSPECT-052` was failed for a burr that turned
+out to be a reflection. Sarah voided the finding and re-inspected it as a pass ([QA
+Inspector](qa-inspector.md), module 10). Its disposition is yours: open it and
+choose **Not a nonconformance (result voided)**. It closes with Sarah's void reason in
+the notes and releases the part. It's refused until the re-inspection is on record as
+a pass, so the close rests on evidence, not on the inspector's word.
+
 **Decided wrong?** Until it's closed, a decision can be changed. **Scrap** asks you
 to confirm, because the part is scrapped as soon as you save. Change a Scrap to
 another decision and you're asked why: the part comes back out of scrap, and both
