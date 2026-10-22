@@ -19,3 +19,11 @@ import { parseISO } from "date-fns";
 export function parseDateOnly(value: string): Date {
     return parseISO(value);
 }
+
+/** Today as a local `YYYY-MM-DD`, for comparing against date-only inputs. Not
+ *  `toISOString().slice(0, 10)`, which is the UTC date and is tomorrow by evening. */
+export function todayLocal(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}

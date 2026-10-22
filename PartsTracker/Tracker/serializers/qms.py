@@ -234,13 +234,16 @@ class QualityReportsSerializer(SecureModelMixin):
                   "step_execution", "substep", "batch_execution",  # Inspection-event provenance (which visit/batch, which substep)
                   "equipment_links", "personnel_links",  # New role-tagged shape
                   "part_info", "part_display", "step_info", "machine_info", "operators_info", "errors_info", "file_info", "archived",
-                  "capa_decision", "capa_decision_note", "capa_decided_by", "capa_decided_by_name", "capa_decided_at"]
+                  "capa_decision", "capa_decision_note", "capa_decided_by", "capa_decided_by_name", "capa_decided_at",
+                  # Withdrawn by a voided capture: kept as recorded, replaced by a new report.
+                  "superseded_at", "superseded_by", "superseded_reason", "replaced_by"]
         # Provenance is written by the capture services (inline_capture /
         # operator_capture), never by an API client hand-filing a report.
         read_only_fields = ("report_number", "created_at",
                             "material_lot", "osp_shipment", "sample_size", "accept_number", "reject_number",
                             "step_execution", "substep", "batch_execution",
-                            "capa_decision_note", "capa_decided_by", "capa_decided_at")
+                            "capa_decision_note", "capa_decided_by", "capa_decided_at",
+                            "superseded_at", "superseded_by", "superseded_reason", "replaced_by")
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_capa_decided_by_name(self, obj):
@@ -998,6 +1001,18 @@ class QuarantineDispositionSerializer(SecureModelMixin):
         # `disposition_type` is read-only here, so DRF used to drop a changed type and
         # answer 200 with it unchanged — the edit looked saved. Refuse it instead; the
         # same value (a form re-sending the record) passes.
+        # Resolution notes are the decision's record: added to, never replaced. A
+        # re-decision's note used to overwrite the reasoning for the first one, leaving
+        # only the audit log to say why it was once Scrap (walk 2026-10-22). Text that
+        # keeps what was there (the form re-sends it with an addition) passes as is.
+        if 'resolution_notes' in validated_data:
+            old = (instance.resolution_notes or '').strip()
+            new = (validated_data['resolution_notes'] or '').strip()
+            if old and new != old and not new.startswith(old):
+                # A stale copy (the form re-sending what it loaded, before Decide
+                # appended to it) is already in there: keep what's stored.
+                validated_data['resolution_notes'] = (
+                    old if (not new or old.startswith(new)) else f"{old}\n{new}")
         sent = (getattr(self, 'initial_data', None) or {}).get('disposition_type')
         if sent not in (None, '') and sent != (instance.disposition_type or ''):
             raise serializers.ValidationError({'disposition_type': [

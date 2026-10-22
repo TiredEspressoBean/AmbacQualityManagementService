@@ -1,3 +1,4 @@
+import { todayLocal } from "@/lib/date-only";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -142,6 +143,11 @@ export function ExpectFromShortagesDialog({ rows, open, onOpenChange, onDone }: 
                                     <Label className="text-xs" htmlFor={`efs-d-${i}`}>Promised</Label>
                                     <Input id={`efs-d-${i}`} type="date"
                                         value={d.promised} onChange={(e) => update(i, { promised: e.target.value })} />
+                                    {d.promised && d.promised < todayLocal() && (
+                                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                                            Already passed — counts as late from the start.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="col-span-2 space-y-1 sm:col-span-1">
                                     <Label className="text-xs">Supplier</Label>

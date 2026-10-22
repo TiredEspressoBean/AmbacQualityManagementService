@@ -37,6 +37,11 @@ import { ArrowLeft, Calendar as CalendarIcon, ChevronDown, Loader2, AlertTriangl
 
 import { ReportButton } from "@/components/reports/ReportButton"
 import { SecondPersonCosignDialog } from "@/components/second-person-cosign-dialog"
+import { ReasonPromptDialog } from "@/components/change-control/ReasonPromptDialog"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+    AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { usePermissionSet } from "@/hooks/useMyPermissions"
 import { useRetrieveDisposition } from "@/hooks/useRetrieveDisposition"
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor"
@@ -117,6 +122,8 @@ const dispositionTypeLabels: Record<string, string> = {
     SCRAP: "Scrap",
     USE_AS_IS: "Use As Is",
     RETURN_TO_SUPPLIER: "Return to Supplier",
+    // Only for a withdrawn finding (its capture voided); closes the record.
+    NOT_NONCONFORMANCE: "Not a nonconformance (result voided)",
 }
 
 const severityLabels: Record<string, string> = {
@@ -332,7 +339,7 @@ export default function EditDispositionFormPage() {
     }
 
     // Authorize the disposition_type decision via the co-signable `decide` action.
-    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }) => {
+    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }, note?: string) => {
         // `decide` requires a real disposition type; the form's field allows ""
         // and undefined. Both call sites are already behind `typeChanged`, which
         // tests `!!values.disposition_type` -- this states that invariant instead
@@ -346,12 +353,32 @@ export default function EditDispositionFormPage() {
             disposition_type: dispositionType,
             customer_approval_reference: values.customer_approval_reference || undefined,
             customer_approval_date: values.customer_approval_date || undefined,
+            ...(note ? { notes: note } : {}),
             ...(cosign ? { cosign_email: cosign.email, cosign_password: cosign.password } : {}),
         }, { params: { id: dispositionId! }, headers: csrf() })
     }
 
-    // Form submission
+    // Scrap can't be taken back casually, so it confirms; changing a Scrap decision
+    // un-scraps the part and says why (user decision 2026-10-22).
+    const [decisionGate, setDecisionGate] = useState<{ values: FormValues; kind: "scrap" | "unscrap" } | null>(null)
+    const [pendingNote, setPendingNote] = useState<string | undefined>(undefined)
+
     const onSubmit = async (values: FormValues) => {
+        const changing = mode === "edit" && !!values.disposition_type
+            && values.disposition_type !== disposition?.disposition_type
+        if (changing && values.disposition_type === "SCRAP") {
+            setDecisionGate({ values, kind: "scrap" })
+            return
+        }
+        if (changing && disposition?.disposition_type === "SCRAP") {
+            setDecisionGate({ values, kind: "unscrap" })
+            return
+        }
+        await proceed(values)
+    }
+
+    // Form submission (after any confirm above)
+    const proceed = async (values: FormValues, note?: string) => {
         // Closing is checked by the server, which names every blocker at once (decision,
         // containment, annotations). A client check for one of them pre-empted that, so
         // the inspector fixed one thing, tried again, and met the next.
@@ -363,6 +390,7 @@ export default function EditDispositionFormPage() {
         // Can't authorize it yourself → collect a co-signature, then replay.
         if (typeChanged && !canApproveDisposition) {
             setPendingDecision(values)
+            setPendingNote(note)
             setCosignError(null)
             setCosignOpen(true)
             return
@@ -370,7 +398,7 @@ export default function EditDispositionFormPage() {
 
         try {
             if (mode === "edit" && dispositionId) {
-                if (typeChanged) await authorizeDecision(values)
+                if (typeChanged) await authorizeDecision(values, undefined, note)
                 await savePatch(values)
                 toast.success("Disposition updated")
                 queryClient.invalidateQueries(matchKey(["disposition", dispositionId]))
@@ -395,7 +423,7 @@ export default function EditDispositionFormPage() {
         setCosignPending(true)
         setCosignError(null)
         try {
-            await authorizeDecision(pendingDecision, creds)
+            await authorizeDecision(pendingDecision, creds, pendingNote)
             await savePatch(pendingDecision)
             setCosignOpen(false)
             setPendingDecision(null)
@@ -1099,6 +1127,47 @@ export default function EditDispositionFormPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Scrap ends the part's life here — confirm it. */}
+            <AlertDialog open={decisionGate?.kind === "scrap"} onOpenChange={(o) => { if (!o) setDecisionGate(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Scrap {disposition?.part_erp_id ?? "this part"}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The part is scrapped as soon as this is saved. While the disposition is
+                            still open, the decision can be changed, with a reason, which un-scraps it.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                const v = decisionGate?.values
+                                setDecisionGate(null)
+                                if (v) void proceed(v)
+                            }}
+                        >
+                            Scrap
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Changing a Scrap decision un-scraps the part: the reason goes on the record. */}
+            <ReasonPromptDialog
+                open={decisionGate?.kind === "unscrap"}
+                onOpenChange={(o) => { if (!o) setDecisionGate(null) }}
+                title="Change the Scrap decision?"
+                description="The part comes back out of scrap and the new decision applies. Both decisions and your reason stay on the disposition."
+                placeholder="Why the scrap decision was wrong"
+                confirmLabel="Change decision"
+                onSubmit={(reason) => {
+                    const v = decisionGate?.values
+                    setDecisionGate(null)
+                    if (v) void proceed(v, reason.trim())
+                }}
+            />
 
             <SecondPersonCosignDialog
                 open={cosignOpen}

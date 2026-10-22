@@ -8356,6 +8356,10 @@ export type QualityReports = {
   capa_decided_by: number | null;
   capa_decided_by_name: string | null;
   capa_decided_at: string | null;
+  superseded_at: string | null;
+  superseded_by: number | null;
+  superseded_reason: string;
+  replaced_by: string | null;
 };
 export type QualityReportStatusEnum =
   /**
@@ -8596,10 +8600,16 @@ export type DispositionTypeEnum =
    * `SCRAP` - Scrap
    * `USE_AS_IS` - Use As Is
    * `RETURN_TO_SUPPLIER` - Return to Supplier
+   * `NOT_NONCONFORMANCE` - Not a nonconformance
    *
-   * @enum REWORK, REPAIR, SCRAP, USE_AS_IS, RETURN_TO_SUPPLIER
+   * @enum REWORK, REPAIR, SCRAP, USE_AS_IS, RETURN_TO_SUPPLIER, NOT_NONCONFORMANCE
    */
-  "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+  | "REWORK"
+  | "REPAIR"
+  | "SCRAP"
+  | "USE_AS_IS"
+  | "RETURN_TO_SUPPLIER"
+  | "NOT_NONCONFORMANCE";
 export type DispositionAffectedPart = {
   id: string;
   erp_id: string;
@@ -21698,6 +21708,10 @@ const QualityReports = z.object({
   capa_decided_by: z.number().int().nullable(),
   capa_decided_by_name: z.string().nullable(),
   capa_decided_at: z.string().datetime({ offset: true }).nullable(),
+  superseded_at: z.string().datetime({ offset: true }).nullable(),
+  superseded_by: z.number().int().nullable(),
+  superseded_reason: z.string(),
+  replaced_by: z.string().uuid().nullable(),
 });
 const AdjustQuantityRequest = z.object({
   quantity: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
@@ -23639,6 +23653,7 @@ const DispositionTypeEnum = z.enum([
   "SCRAP",
   "USE_AS_IS",
   "RETURN_TO_SUPPLIER",
+  "NOT_NONCONFORMANCE",
 ]);
 const DispositionAffectedPart = z.object({
   id: z.string().uuid(),
@@ -23790,6 +23805,7 @@ const api_QuarantineDispositions_decide_create_Body = z.object({
     "SCRAP",
     "USE_AS_IS",
     "RETURN_TO_SUPPLIER",
+    "NOT_NONCONFORMANCE",
   ]),
   notes: z.string().optional(),
   customer_approval_reference: z.string().optional(),
@@ -49591,6 +49607,7 @@ Usage:
         type: "Query",
         schema: z
           .enum([
+            "NOT_NONCONFORMANCE",
             "REPAIR",
             "RETURN_TO_SUPPLIER",
             "REWORK",

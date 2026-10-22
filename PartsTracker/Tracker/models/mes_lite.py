@@ -3849,7 +3849,8 @@ class Parts(SecureModel):
 
     def has_quality_errors(self):
         """Check if part has any quality errors"""
-        return self.error_reports.filter(status='FAIL').exists()
+        # A superseded FAIL was withdrawn (its capture voided); it isn't a standing error.
+        return self.error_reports.filter(status='FAIL', superseded_at__isnull=True).exists()
 
     def get_latest_quality_status(self):
         """Get the most recent quality report status"""

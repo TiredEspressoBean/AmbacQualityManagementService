@@ -337,8 +337,14 @@ async function completePart(ctx: CompletionContext): Promise<void> {
             // to read; the operator stays on the step (below) so they can act on it.
             const hold = { description, duration: 12000 };
             const heading = holdHeading(reasonList);
+            // Quarantine is the hold an open disposition puts on the part — not proof a
+            // FAIL was just recorded (a re-captured PASS still waits on the old NCR).
+            const onlyQuarantine = hasHardFail && reasonList.every((r) =>
+                /quarantined/i.test(r) || !/out of specification|Sampling inspection failed|not qualified|Manual decision required/i.test(r));
             if (heading) {
                 toast.warning(heading, hold);
+            } else if (onlyQuarantine) {
+                toast.warning("Part held — its disposition is still open", hold);
             } else if (hasHardFail) {
                 toast.error("FAIL recorded — part held for disposition", hold);
             } else if (hasSignoffPending) {

@@ -23170,9 +23170,10 @@ export interface components {
          *     * `SCRAP` - Scrap
          *     * `USE_AS_IS` - Use As Is
          *     * `RETURN_TO_SUPPLIER` - Return to Supplier
+         *     * `NOT_NONCONFORMANCE` - Not a nonconformance
          * @enum {string}
          */
-        DispositionTypeEnum: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+        DispositionTypeEnum: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER" | "NOT_NONCONFORMANCE";
         /** @description Receiving's own numbers over the last `days` days. */
         DockMetrics: {
             days: number;
@@ -33175,6 +33176,12 @@ export interface components {
             readonly capa_decided_by_name: string | null;
             /** Format: date-time */
             readonly capa_decided_at: string | null;
+            /** Format: date-time */
+            readonly superseded_at: string | null;
+            readonly superseded_by: number | null;
+            readonly superseded_reason: string;
+            /** Format: uuid */
+            readonly replaced_by: string | null;
         };
         /** @description Quality reports serializer */
         QualityReportsRequest: {
@@ -57739,8 +57746,9 @@ export interface operations {
                  *     * `SCRAP` - Scrap
                  *     * `USE_AS_IS` - Use As Is
                  *     * `RETURN_TO_SUPPLIER` - Return to Supplier
+                 *     * `NOT_NONCONFORMANCE` - Not a nonconformance
                  */
-                disposition_type?: "REPAIR" | "RETURN_TO_SUPPLIER" | "REWORK" | "SCRAP" | "USE_AS_IS";
+                disposition_type?: "NOT_NONCONFORMANCE" | "REPAIR" | "RETURN_TO_SUPPLIER" | "REWORK" | "SCRAP" | "USE_AS_IS";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -57943,7 +57951,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    disposition_type: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER";
+                    disposition_type: "REWORK" | "REPAIR" | "SCRAP" | "USE_AS_IS" | "RETURN_TO_SUPPLIER" | "NOT_NONCONFORMANCE";
                     /** @description Optional decision rationale */
                     notes?: string;
                     /** @description Required for USE_AS_IS / REPAIR — the concession/deviation reference */

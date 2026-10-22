@@ -1,3 +1,4 @@
+import { todayLocal } from "@/lib/date-only";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -147,6 +148,13 @@ export function ExpectedReceiptDialog({ open, onOpenChange }: Props) {
                                 value={promisedDate}
                                 onChange={(e) => setPromisedDate(e.target.value)}
                             />
+                            {/* Back-recording a known-late delivery is legitimate, so warn,
+                                don't refuse — a mistyped month counts as late from day one. */}
+                            {promisedDate && promisedDate < todayLocal() && (
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    That date has passed — the delivery counts as late from the start.
+                                </p>
+                            )}
                         </div>
                     </div>
 

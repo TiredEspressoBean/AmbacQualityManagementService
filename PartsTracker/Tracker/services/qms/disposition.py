@@ -205,6 +205,8 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         # is a decision, not routing; the operator completes the step as usual.
         'USE_AS_IS': PartsStatus.IN_PROGRESS,
         'RETURN_TO_SUPPLIER': PartsStatus.CANCELLED,
+        # A withdrawn finding: the part was never nonconforming and carries on.
+        'NOT_NONCONFORMANCE': PartsStatus.IN_PROGRESS,
     }
 
     # QMS design intent: a disposition is a *documented decision*, not a
@@ -267,7 +269,7 @@ def apply_disposition_to_part(disposition: QuarantineDisposition, *, user=None) 
         # keeps it held (walk 2026-10-20 — a use-as-is on one disposition put the part
         # back in production while its twin was OPEN). The last decision releases it.
         # Terminal decisions (scrap, return) don't wait.
-        if disposition.disposition_type in ('USE_AS_IS', 'REWORK', 'REPAIR'):
+        if disposition.disposition_type in ('USE_AS_IS', 'REWORK', 'REPAIR', 'NOT_NONCONFORMANCE'):
             undecided_elsewhere = (QuarantineDisposition.objects  # tenant-safe: part FK
                                    .filter(part_id=part.pk, archived=False,
                                            current_state__in=['OPEN', 'IN_PROGRESS'])
@@ -366,6 +368,47 @@ def decide_disposition(
                 f"{'scrap' if disposition_type == 'SCRAP' else 'return to a supplier'} "
                 "— handle it as a customer return.")
 
+    # Changing a Scrap decision while the disposition is open un-scraps the part, with
+    # a reason; both decisions stay on the record (user decision 2026-10-22). It used to
+    # half-apply: the part moved to Rework but stayed SCRAPPED.
+    unscrap = None
+    if (disposition.disposition_type == 'SCRAP' and disposition_type != 'SCRAP'
+            and disposition.part_id):
+        from Tracker.models import Parts, PartsStatus
+        part = Parts.objects.get(pk=disposition.part_id)  # tenant-safe: by the disposition's FK
+        if part.part_status == PartsStatus.SCRAPPED:
+            if not (notes or '').strip():
+                raise ValueError("Changing a Scrap decision un-scraps the part: say why.")
+            from Tracker.services.reman.core_steps import core_of
+            if core_of(part) is not None:
+                raise ValueError(
+                    "This unit is a core; a scrapped core is reinstated from its core page, "
+                    "not by changing the disposition.")
+            unscrap = part
+            who = (authorized_by.get_full_name() or authorized_by.get_username()) if authorized_by else 'someone'
+            notes = (f"Decision changed from Scrap to {valid[disposition_type]} by {who}; "
+                     f"the part was un-scrapped. Reason: {notes.strip()}")
+
+    if disposition_type == 'NOT_NONCONFORMANCE':
+        # Only for a finding that was withdrawn: its capture voided, its report
+        # superseded. And not by whoever recorded or voided it — the inspector
+        # doesn't clear their own NCR (user decision 2026-10-22).
+        reports = list(disposition.quality_reports.all())
+        if not reports or any(r.superseded_at is None for r in reports):
+            raise ValueError(
+                "The finding still stands: its inspection report hasn't been superseded. "
+                "If the result was wrong, void the capture first; the re-capture records "
+                "a new report.")
+        involved = ({r.superseded_by_id for r in reports}
+                    | {r.detected_by_id for r in reports}) - {None}
+        if authorized_by is not None and authorized_by.pk in involved:
+            raise ValueError(
+                "You recorded or voided this finding, so someone else must close it as "
+                "not a nonconformance.")
+        reasons = "; ".join(sorted({r.superseded_reason for r in reports if r.superseded_reason}))
+        notes = f"Not a nonconformance — the result was voided: {reasons}." + (
+            f" {notes.strip()}" if (notes or '').strip() else "")
+
     if disposition_type in _APPROVAL_REQUIRED_TYPES:
         reference = str((customer_approval or {}).get('reference') or '').strip()
         if not reference:
@@ -380,6 +423,17 @@ def decide_disposition(
             (customer_approval or {}).get('date') or tenant_today(disposition.tenant)
         )
 
+    if unscrap is not None:
+        # Back to held so the new decision applies from where a fresh one would; its
+        # visit was ended by the scrap, so it gets an open one at its step again.
+        from Tracker.models import PartsStatus, StepExecution
+        unscrap.part_status = PartsStatus.QUARANTINED
+        unscrap.save(update_fields=['part_status'])
+        if unscrap.step_id and StepExecution.get_current_execution(unscrap) is None:
+            StepExecution.objects.create(
+                part=unscrap, step=unscrap.step, status='PENDING',
+                visit_number=StepExecution.get_visit_count(unscrap, unscrap.step) + 1)
+
     disposition.disposition_type = disposition_type
     disposition.decision_authorized_by = authorized_by
     disposition.decision_authorized_at = timezone.now()
@@ -389,6 +443,14 @@ def decide_disposition(
 
     disposition.save()
     disposition.refresh_from_db()
+    if disposition_type == 'NOT_NONCONFORMANCE':
+        # Nothing to carry out: the decision is the resolution.
+        disposition.resolution_completed = True
+        disposition.resolution_completed_by = authorized_by
+        disposition.resolution_completed_at = timezone.now()
+        disposition.current_state = 'CLOSED'
+        disposition.save(update_fields=['resolution_completed', 'resolution_completed_by',
+                                        'resolution_completed_at', 'current_state', 'updated_at'])
     # A material lot's disposition moves the lot (accepted on concession / scrapped);
     # a part's is applied by the model's own cascade.
     if disposition.material_lot_id:

@@ -401,6 +401,17 @@ class QualityReports(SecureModel):
     sampling_method = models.CharField(max_length=50, default="manual")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
 
+    # Superseded: the capture behind this report was voided and taken again. The report
+    # stays exactly as recorded — a recorded result is frozen — and the re-capture
+    # writes a new one (`replaced_by`). User decision 2026-10-22: a false FAIL used to
+    # be rewritten to PASS in place, leaving only the audit log to say it ever failed.
+    superseded_at = models.DateTimeField(null=True, blank=True)
+    superseded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    superseded_reason = models.TextField(blank=True)
+    replaced_by = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replaces')
+
     is_first_piece = models.BooleanField(
         default=False,
         help_text="If True, this inspection is a First Piece Inspection (FPI) for setup verification"
@@ -537,14 +548,16 @@ class QualityReports(SecureModel):
             # capture behind them (receiving, OSP, hand-logged) leave both null.
             models.UniqueConstraint(
                 fields=['step_execution', 'substep'],
-                condition=models.Q(step_execution__isnull=False) & models.Q(substep__isnull=False),
+                condition=(models.Q(step_execution__isnull=False) & models.Q(substep__isnull=False)
+                           & models.Q(superseded_at__isnull=True)),
                 name='qualityreport_exec_substep_uniq',
             ),
             # Batch counterpart: one report per (batch, substep) inspection event.
             # BATCH-scope substeps key here instead of on step_execution.
             models.UniqueConstraint(
                 fields=['batch_execution', 'substep'],
-                condition=models.Q(batch_execution__isnull=False) & models.Q(substep__isnull=False),
+                condition=(models.Q(batch_execution__isnull=False) & models.Q(substep__isnull=False)
+                           & models.Q(superseded_at__isnull=True)),
                 name='qualityreport_batch_substep_uniq',
             ),
             # The two provenance modes are exclusive: a report is per-part
@@ -762,6 +775,11 @@ class StepTransitionLog(SecureModel):
                                                 "the operator who performed it (co-signed routing). Null otherwise.")
     """ForeignKey to the `User` who authorized a co-signed transition (else null)."""
 
+    reason = models.TextField(
+        blank=True,
+        help_text="Why, for a transition someone had to justify — a rollback's reason. The "
+                  "WO Control dialog asked for it and the record dropped it (walk 2026-10-22).")
+
     timestamp = models.DateTimeField(auto_now_add=True,
                                      help_text="Timestamp automatically recorded at the time of transition.")
     """Datetime when the step transition occurred (auto-generated)."""
@@ -834,6 +852,9 @@ class QuarantineDisposition(SecureModel):
         ('SCRAP', 'Scrap'),
         ('USE_AS_IS', 'Use As Is'),
         ('RETURN_TO_SUPPLIER', 'Return to Supplier'),
+        # The finding was never real: its capture was voided and its report superseded.
+        # Closes the record; the part carries on (user decision 2026-10-22).
+        ('NOT_NONCONFORMANCE', 'Not a nonconformance'),
     ]
 
     SEVERITY_CHOICES = [

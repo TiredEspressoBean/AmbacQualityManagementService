@@ -193,7 +193,8 @@ def _promote_to_inspection_record(
         }
         report = (
             QualityReports.objects
-            .filter(archived=False, batch_execution=batch_execution, substep=substep)
+            .filter(archived=False, batch_execution=batch_execution, substep=substep,
+                    superseded_at__isnull=True)  # a superseded report stays as recorded
             .first()
         )
     elif step_execution is not None and step_execution.part_id is not None:
@@ -207,7 +208,8 @@ def _promote_to_inspection_record(
         }
         report = (
             QualityReports.objects
-            .filter(archived=False, step_execution=step_execution, substep=substep)
+            .filter(archived=False, step_execution=step_execution, substep=substep,
+                    superseded_at__isnull=True)  # a superseded report stays as recorded
             .first()
         )
     else:
@@ -249,6 +251,8 @@ def _promote_to_inspection_record(
             status="PENDING",  # set properly after the MeasurementResult is in
             **report_fields,
         )
+        from Tracker.services.qms.report_supersede import link_replacement
+        link_replacement(report)
 
     # Capture the report's status BEFORE adding the new measurement so we
     # can detect a PASS/PENDING → FAIL transition.

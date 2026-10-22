@@ -24446,6 +24446,7 @@ paths:
         schema:
           type: string
           enum:
+          - NOT_NONCONFORMANCE
           - REPAIR
           - RETURN_TO_SUPPLIER
           - REWORK
@@ -24457,6 +24458,7 @@ paths:
           * `SCRAP` - Scrap
           * `USE_AS_IS` - Use As Is
           * `RETURN_TO_SUPPLIER` - Return to Supplier
+          * `NOT_NONCONFORMANCE` - Not a nonconformance
       - name: limit
         required: false
         in: query
@@ -24852,6 +24854,7 @@ paths:
                   - SCRAP
                   - USE_AS_IS
                   - RETURN_TO_SUPPLIER
+                  - NOT_NONCONFORMANCE
                 notes:
                   type: string
                   description: Optional decision rationale
@@ -54308,6 +54311,7 @@ components:
       - SCRAP
       - USE_AS_IS
       - RETURN_TO_SUPPLIER
+      - NOT_NONCONFORMANCE
       type: string
       description: |-
         * `REWORK` - Rework
@@ -54315,6 +54319,7 @@ components:
         * `SCRAP` - Scrap
         * `USE_AS_IS` - Use As Is
         * `RETURN_TO_SUPPLIER` - Return to Supplier
+        * `NOT_NONCONFORMANCE` - Not a nonconformance
     DockMetrics:
       type: object
       description: Receiving's own numbers over the last `days` days.
@@ -73236,6 +73241,23 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        superseded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        superseded_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        superseded_reason:
+          type: string
+          readOnly: true
+        replaced_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - accept_number
       - batch_execution
@@ -73259,6 +73281,7 @@ components:
       - part_info
       - personnel_links
       - reject_number
+      - replaced_by
       - report_number
       - sample_size
       - status
@@ -73266,6 +73289,9 @@ components:
       - step_execution
       - step_info
       - substep
+      - superseded_at
+      - superseded_by
+      - superseded_reason
       - verified_by_info
     QualityReportsRequest:
       type: object

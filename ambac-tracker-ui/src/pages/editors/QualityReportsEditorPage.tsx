@@ -78,7 +78,15 @@ export function QualityReportsEditorPage() {
                 col({
                     header: "Status",
                     renderCell: (qr) => (
-                        <StatusBadge status={qr.status} label={qr.status_display} />
+                        <span className="inline-flex items-center gap-1.5">
+                            <StatusBadge status={qr.status} label={qr.status_display} />
+                            {/* Withdrawn by a voided capture: kept as recorded, replaced by a new report. */}
+                            {qr.superseded_at && (
+                                <span className="text-xs text-muted-foreground" title={qr.superseded_reason || undefined}>
+                                    superseded
+                                </span>
+                            )}
+                        </span>
                     ),
                 }),
                 col({

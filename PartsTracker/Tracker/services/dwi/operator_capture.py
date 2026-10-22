@@ -669,9 +669,12 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
     """
     if batch_execution is not None:
         # BATCH-scope inspection — one report per (batch_execution, substep).
-        report, _ = QualityReports.objects.get_or_create(
+        # A superseded report (its capture voided) stays as recorded; the re-capture
+        # gets a new one (services/qms/report_supersede.py).
+        report, created = QualityReports.objects.get_or_create(
             batch_execution=batch_execution,
             substep=substep,
+            superseded_at__isnull=True,
             defaults={
                 "step": batch_execution.step,
                 "detected_by": user,
@@ -679,6 +682,9 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
                 "status": "PENDING",
             },
         )
+        if created:
+            from Tracker.services.qms.report_supersede import link_replacement
+            link_replacement(report)
         return report
 
     if step_execution is None:
@@ -689,6 +695,7 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
         report, created = QualityReports.objects.get_or_create(
             step_execution=step_execution,
             substep=substep,
+            superseded_at__isnull=True,
             defaults={
                 "step": step_execution.step,
                 "part": step_execution.part,
@@ -701,6 +708,9 @@ def ensure_quality_report(substep, step_execution=None, user=None, *, batch_exec
         # (the personnel roster; the flat `operators` M2M is deprecated). The report
         # recorded only who detected, so "operator on the job" was blank on every
         # captured report.
+        if created:
+            from Tracker.services.qms.report_supersede import link_replacement
+            link_replacement(report)
         if created and step_execution.assigned_to_id:
             QualityReportPersonnel.objects.get_or_create(
                 quality_report=report, user_id=step_execution.assigned_to_id,
@@ -872,6 +882,14 @@ def _apply_status(report: QualityReports, cap) -> None:
     prior = report.status
     if prior == raw:
         return
+    # A recorded verdict is frozen: correcting it is a void, which supersedes this
+    # report and gives the re-capture a new one. Rewriting it here turned a FAIL into
+    # a PASS with only the audit log to say otherwise (walk 2026-10-22).
+    if prior in ("PASS", "FAIL", "REPAIR"):
+        from django.core.exceptions import ValidationError
+        raise ValidationError(
+            f"{report.report_number or 'This report'} is recorded as {prior}. To correct "
+            "it, void the capture; the re-capture records a new report.")
     report.status = raw
     report.save(update_fields=["status"])
     from Tracker.services.qms.quality_report import on_report_failed

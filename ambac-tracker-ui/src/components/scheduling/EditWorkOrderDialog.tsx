@@ -148,7 +148,16 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
               {released ? (
                 <Button
                   size="sm" variant="outline"
-                  onClick={() => workOrderId && unrelease.mutate(workOrderId)}
+                  onClick={() => {
+                    if (!workOrderId) return;
+                    // Under manual release the next solve drops its remaining work from
+                    // the plan; with parts already on the floor, say so first.
+                    const started = wo.workorder_status === "IN_PROGRESS";
+                    const msg = started
+                      ? "Work has started on this order. Withdrawing the release takes its remaining work off the plan at the next solve — the parts on the floor stop being scheduled. Release it again to bring them back. Withdraw?"
+                      : "Withdraw the release? The next solve takes this order off the plan until it is released again.";
+                    if (window.confirm(msg)) unrelease.mutate(workOrderId);
+                  }}
                   disabled={unrelease.isPending}
                 >
                   Withdraw release

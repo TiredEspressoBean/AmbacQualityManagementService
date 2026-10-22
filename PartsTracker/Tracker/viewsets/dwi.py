@@ -543,7 +543,10 @@ class SubstepCompletionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet)
                  'void_reason': completion.void_reason},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        completion.void(request.user, reason)
+        # Voiding also supersedes the report the capture recorded: it stays as recorded,
+        # and the re-capture writes a new one (services/qms/report_supersede.py).
+        from Tracker.services.qms.report_supersede import void_completion
+        void_completion(completion, request.user, reason)
         return Response({
             'id': str(completion.id),
             'is_voided': completion.is_voided,

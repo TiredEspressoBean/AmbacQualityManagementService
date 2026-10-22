@@ -730,6 +730,7 @@ def rollback_part_step(
         part=part,
         step=previous_step,
         operator=operator,
+        reason=(reason or '').strip(),
     )
 
     return {

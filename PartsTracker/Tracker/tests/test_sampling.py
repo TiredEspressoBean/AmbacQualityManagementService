@@ -1101,6 +1101,10 @@ class RollbackTestCase(TenantTestCase):
         self.part.refresh_from_db()
         self.assertTrue(result['success'], result)
         self.assertEqual(self.part.step, self.step1)
+        # The reason the dialog demanded is on the record, not dropped.
+        from Tracker.models import StepTransitionLog
+        log = StepTransitionLog.objects.filter(part=self.part).order_by('-timestamp').first()
+        self.assertEqual(log.reason, "Advanced the wrong unit")
 
 
 class StepOverrideTestCase(TenantTestCase):
