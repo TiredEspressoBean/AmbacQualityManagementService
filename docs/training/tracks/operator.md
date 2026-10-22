@@ -63,7 +63,9 @@ Log in as Mike. Your home page says *Not clocked in*.
 2. **Shift notes** shows the rest of what your lead left. Notes that don't need an
    acknowledgement can be dismissed with **Got it** once read.
 
-**Break**, **Lunch** and **Clock out** are beside the clock, and your lead approves
+**Break**, **Lunch** and **Clock out** are beside the clock. On a break the clock
+reads *On break*, with **End break** to come back. **Clock out** ends the shift at
+once, so finish or hand over a running step first: it doesn't ask. Your lead approves
 your hours.
 
 ---

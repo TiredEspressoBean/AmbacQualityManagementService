@@ -180,6 +180,24 @@ That isn't yours: tell the planner.
 
 ---
 
+## 8. Hand the receipts to the ERP
+
+**You will:** produce the sheet the ERP is keyed from, and mark it done.
+
+The ERP holds the purchase orders, so it needs to know what arrived. **Materials** >
+**Receipts for ERP**: *One row per delivery, by PO line: what was received,
+accepted, rejected or is still awaiting a decision. Key it into the ERP, then mark it
+posted here.*
+
+1. **Download** the sheet and key it into the ERP.
+2. **Mark N as posted**: *deliveries marked as posted to the ERP.* The next sheet
+   holds only what's new.
+
+Deliveries still *awaiting a decision* stay off the sheet until inspection decides
+them.
+
+---
+
 ## R. Cores (reman shops)
 
 !!! info "Skip this section if your shop doesn't reman"

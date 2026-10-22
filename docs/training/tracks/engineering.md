@@ -155,7 +155,32 @@ change extends it or it moves back.
 
 ---
 
-## 6. What isn't yours
+## 6. A routing for a new product
+
+**You will:** add a new part type and give it its own routing.
+
+Change control (modules 2–5) revises a routing that's in force. A new product has no
+routing yet, so it starts from a copy instead.
+
+1. **Data Management** > **Part Types** > **New**. **Name** *Unit Injector*, **ERP ID
+   Prefix** `UI`, **ERP ID** `UI-200`, and how it's sourced: **Made in-house**.
+   **Create Part Type**.
+2. Open `Injector Build`. **Process Actions** (⋮) > **Duplicate as Template**: *Clone
+   for a new product (no change trail)*. You get *Injector Build (Copy)*, a draft.
+3. Turn on **Edit Mode**. In **Process Settings**, rename it *Unit Injector Build* and
+   set **Part Type** to *Unit Injector*. Change the steps the new product needs,
+   then **Save**.
+4. Read the **Validation Issues** panel before you go further: it names any step
+   with no way out and any path that never reaches a terminal step.
+5. **Process Actions** > **Approve — Lock for production use**. In *Simplified*
+   mode you can approve your own routing; a *Regulated* shop routes it for someone
+   else's signature.
+
+Once it's approved, changing it goes through change control like any other routing.
+
+---
+
+## 7. What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|
