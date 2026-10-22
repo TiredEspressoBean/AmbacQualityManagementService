@@ -208,8 +208,8 @@ something else did, not because you decided where they go.
     the next solve to resolve, rather than blocking the move.
 
     Global constraints (machine no-overlap, changeover, cumulative capacity,
-    operator shifts) are re-checked then, and your pin is relaxed if it turns
-    out to be infeasible.
+    operator shifts) are re-checked then. If your pin can't stand, it's released
+    with its reason, like any held task.
 
 ### Undo
 
@@ -292,37 +292,33 @@ measured from the moment of the solve:
 
 | Zone | When it starts | What it means |
 |------|----------------|---------------|
-| **Frozen** | Within the frozen window — **2 days** by default | Committed. The solver strongly prefers to leave these where they are on a re-solve |
-| **Slushy** | After that, within the slushy window — **7 further days** by default | Moves are discouraged. The solver may still move one, but it is the next thing to resist |
+| **Frozen** | Within the frozen window — **2 days** by default | Held. A re-solve keeps its machine, its operator and its place in the machine's queue |
+| **Slushy** | After that, within the slushy window — **7 further days** by default | Moves cost something. The solver moves one only when that buys a real improvement, and the header shows what moving slushy work cost |
 | **Liquid** | Everything later | Freely re-planned on every solve |
 
 Both windows are settings, not constants — a shop that commits further ahead
 widens the frozen zone.
 
-!!! note "Frozen is why a re-solve doesn't churn tomorrow"
-    Without it, every solve would re-plan the work people are already set up for.
-    The frozen zone is what makes a schedule something the floor can act on
-    rather than a figure that changes under them.
+!!! note "Frozen holds the order, not the clock"
+    A held task keeps its machine, operator and order, but its start can slide
+    **later** when the work ahead of it runs late. It never jumps ahead of the
+    queue to fill a gap. That's what lets the floor act on tomorrow's plan: the
+    sequence people set up for doesn't change under them on a re-solve.
+
+A held task is let go only for a reason the plan can't work around: its machine
+is down or out of service, the crew on shift is already full, its operator is off,
+off shift or no longer qualified, or its work order isn't released. The header
+counts them (*1 frozen task(s) re-planned · 85 held*), and each one says why.
 
 !!! warning "A what-if can still move frozen tasks, and it tells you"
-    A draft that disturbs committed work warns before you commit it — *"⚠ 59
-    frozen task(s) had to move — the world changed under the pinned plan. Review
-    before committing."* That count is the real cost of the change; read it
-    beside the lateness figure, not after it.
+    A draft that disturbs committed work warns before you commit it, with the
+    number of frozen tasks that had to move. That count is the real cost of the
+    change; read it beside the late orders, not after them.
 
-A **planner pin** (📌) is different: it is a manual lock you place, and it is
-respected on re-solves regardless of zone. See [Moving a task by
-hand](#moving-a-task-by-hand).
-
-!!! important "Pins are strong preferences, not hard constraints"
-    Both the frozen zone and your own planner pins are weighted in the solver's
-    objective rather than enforced absolutely — a pin the hard constraints make
-    impossible would otherwise leave the whole solve with no answer at all. So
-    the solver will pay a large cost to honour a pin, and move it when it must.
-
-    When it has to, it says so: the solve reports **how many pins it relaxed**,
-    alongside the frozen-task warning above. A relaxed pin is the plan telling
-    you the pin no longer fits, not the pin being ignored.
+A **planner pin** (📌) is a lock you place yourself, and it's held the same way,
+whatever zone the task is in. See [Moving a task by hand](#moving-a-task-by-hand).
+When something makes a pin impossible, it's released with its reason like any held
+task.
 
 ## Why the schedule goes stale
 

@@ -93,9 +93,10 @@ The second is a staffing or training problem wearing a scheduling costume, and
 no amount of re-solving fixes it.
 
 **As needed — move things by hand.** A manual move pins the task, and the next
-solve honours the pin — but softly: if the move turns out infeasible against the
-global constraints, the solve relaxes it rather than failing. Use it when you
-know something the model doesn't, and check it survived.
+solve holds it: same machine, same operator, same place in the queue. If
+something makes it impossible (the machine goes down, the operator's off), the
+solve releases it and says why rather than failing. Use it when you know
+something the model doesn't, and check it survived.
 
 ## Running the board
 
