@@ -3903,15 +3903,12 @@ class Parts(SecureModel):
         if not self.step:
             return (False, "Part has no current step", False)
 
-        # Get the most recent completed execution for current step
-        current_execution = StepExecution.objects.filter(
-            part=self,
-            step=self.step,
-            status='COMPLETED'
-        ).order_by('-exited_at').first()
-
-        if not current_execution:
-            return (False, "No completed execution found for current step", False)
+        # The visit the part is on now — what a rollback ends. It looked for a COMPLETED
+        # visit at the current step, which a part sitting at a step never has, so
+        # rollback could not succeed in normal use (walk 2026-10-22).
+        current_execution = StepExecution.get_current_execution(self)
+        if current_execution is None or current_execution.step_id != self.step_id:
+            return (False, "The part has no open visit at its step to roll back", False)
 
         # Get the previous step execution (the one that led to current)
         previous_execution = StepExecution.objects.filter(
@@ -3935,10 +3932,10 @@ class Parts(SecureModel):
                 return (False, "Cannot rollback from the first step", False)
             return (False, "No previous step execution found", False)
 
-        # Check undo window
+        # Undo window: from when the previous step was completed — the advance being undone.
         undo_window_minutes = getattr(self.step, 'undo_window_minutes', 15)
-        if current_execution.exited_at:
-            elapsed = timezone.now() - current_execution.exited_at
+        if previous_execution.exited_at:
+            elapsed = timezone.now() - previous_execution.exited_at
             elapsed_minutes = elapsed.total_seconds() / 60
 
             if elapsed_minutes > undo_window_minutes:

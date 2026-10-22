@@ -635,11 +635,8 @@ def rollback_part_step(
     if not can_rollback:
         raise ValueError(f"Cannot rollback: {message}")
 
-    current_execution = StepExecution.objects.filter(archived=False,
-        part=part,
-        step=part.step,
-        status='COMPLETED',
-    ).order_by('-exited_at').first()
+    # The open visit at the part's step — what the rollback ends (see can_rollback_step).
+    current_execution = StepExecution.get_current_execution(part)
 
     previous_execution = StepExecution.objects.filter(archived=False,
         part=part,

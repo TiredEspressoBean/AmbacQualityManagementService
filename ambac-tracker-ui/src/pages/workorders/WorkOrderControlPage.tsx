@@ -124,6 +124,8 @@ import type {
 } from "@/lib/api/generated";
 import type { Schema as ApiSchema } from "@/lib/api/types";
 import { parseDateOnly } from "@/lib/date-only";
+import { toast } from "sonner";
+import { ReasonPromptDialog } from "@/components/change-control/ReasonPromptDialog";
 // `useRetrieveProcessWithSteps` returns the with-steps payload; this is the
 // shape adaptProcessSteps consumes.
 type ProcessRecord = ApiSchema<"ProcessWithSteps">;
@@ -921,7 +923,7 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
 
 type Action =
     | { kind: "advance" }
-    | { kind: "rewind" }
+    | { kind: "rewind"; reason: string }
     | { kind: "move"; stepId: string }
     | { kind: "status"; status: MockPartStatus }
     | { kind: "scrap"; reason: string }
@@ -1243,6 +1245,8 @@ export function WorkOrderControlPage() {
     const updatePart = useUpdatePart();
     const bulkIncrementMutation = useBulkIncrementParts();
     const bulkRollbackMutation = useBulkRollbackParts();
+    // Parts waiting on a reason before they're rolled back (null = no prompt open).
+    const [rewindIds, setRewindIds] = useState<string[] | null>(null);
     const bulkSetStatusMutation = useBulkSetStatusParts();
     const splitPart = useSplitPartFromLot();
     const rejoinPart = useRejoinPartToLot();
@@ -1276,7 +1280,10 @@ export function WorkOrderControlPage() {
     }
 
     function applyToIds(ids: string[], action: Action) {
-        setParts((prev) => prev.map((p) => (ids.includes(p.id) ? applyAction(p, wo?.steps ?? [], action) : p)));
+        // No optimistic move for a rollback: it may wait on approval, or be refused.
+        if (action.kind !== "rewind") {
+            setParts((prev) => prev.map((p) => (ids.includes(p.id) ? applyAction(p, wo?.steps ?? [], action) : p)));
+        }
         if (action.kind === "advance") {
             // Privileged emergency action; the engine is event-driven for the
             // default operator flow. Guarded at the UI by `canForceAdvance` and
@@ -1312,10 +1319,17 @@ export function WorkOrderControlPage() {
                 setBulkErrorBanner(`One or more parts couldn't rejoin their lot (no cohort siblings at their step yet).`);
             });
         } else if (action.kind === "rewind") {
-            bulkRollbackMutation.mutate(ids, {
+            bulkRollbackMutation.mutate({ ids, reason: action.reason }, {
                 onSuccess: (data) => {
-                    const failures = (data.results as { ok?: boolean; error?: string; id?: string }[]).filter((r) => !r.ok);
-                    if (failures.length > 0) setBulkErrorBanner(`${failures.length} part(s) failed to roll back.`);
+                    // Say what actually happened: rolled back, sent for approval, or refused
+                    // — a 200 alone used to read as success beside a failure banner.
+                    const rows = (data.results ?? []) as { ok?: boolean; error?: string }[];
+                    const done = rows.filter((r) => r.ok).length;
+                    const pendingApproval = rows.filter((r) => !r.ok && /approval/i.test(r.error ?? "") && !/expired/i.test(r.error ?? "")).length;
+                    if (done > 0) toast.success(`${done} part(s) rolled back.`);
+                    if (pendingApproval > 0) toast.info(`${pendingApproval} rollback(s) sent for approval.`);
+                    const refused = rows.filter((r) => !r.ok && !(/approval/i.test(r.error ?? "") && !/expired/i.test(r.error ?? "")));
+                    if (refused.length > 0) reportBulkFailures({ results: refused }, "could not be rolled back");
                 },
             });
         } else if (action.kind === "status") {
@@ -1628,6 +1642,27 @@ export function WorkOrderControlPage() {
                     </Button>
                 </div>
             )}
+
+            {/* A rollback undoes a recorded completion, so it says why — and a step set
+                to need approval sends the request with this reason. */}
+            <ReasonPromptDialog
+                open={rewindIds !== null}
+                onOpenChange={(o) => { if (!o) setRewindIds(null); }}
+                title={`Roll back ${rewindIds?.length ?? 0} part(s) to the previous step?`}
+                description="The completed step is reopened. If the step needs approval for a rollback, this sends the request instead."
+                placeholder="What went wrong — e.g. advanced the wrong unit (at least 10 characters)"
+                confirmLabel="Roll back"
+                pending={bulkRollbackMutation.isPending}
+                onSubmit={(reason) => {
+                    if (reason.trim().length < 10) {
+                        toast.error("Give a reason of at least 10 characters.");
+                        return;
+                    }
+                    const ids = rewindIds ?? [];
+                    setRewindIds(null);
+                    applyToIds(ids, { kind: "rewind", reason: reason.trim() });
+                }}
+            />
 
             {bulkErrorBanner && (
                 <div className="flex items-center gap-2 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -2025,7 +2060,7 @@ export function WorkOrderControlPage() {
                                                         size="icon"
                                                         variant="ghost"
                                                         disabled={isFirst}
-                                                        onClick={() => applyToIds([p.id], { kind: "rewind" })}
+                                                        onClick={() => setRewindIds([p.id])}
                                                         title="Previous step"
                                                     >
                                                         <ChevronLeft className="h-4 w-4" />
@@ -2141,7 +2176,7 @@ export function WorkOrderControlPage() {
                     <Card className="border-primary shadow-lg">
                         <CardContent className="flex items-center gap-2 p-3">
                             <div className="mr-2 border-r pr-2 text-sm font-medium">{selected.size} selected</div>
-                            <Button size="sm" variant="outline" onClick={() => applyToSelected({ kind: "rewind" })}>
+                            <Button size="sm" variant="outline" onClick={() => setRewindIds(Array.from(selected))}>
                                 <ChevronLeft className="mr-1 h-4 w-4" />
                                 Previous step
                             </Button>

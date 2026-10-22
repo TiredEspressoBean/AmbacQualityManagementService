@@ -1014,15 +1014,15 @@ class RollbackTestCase(TenantTestCase):
             exited_at=timezone.now() - timedelta(minutes=5),
             next_step=self.step2
         )
+        # The part is AT step 2: its visit there is open, as an advance leaves it.
         exec2 = StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='COMPLETED',
-            exited_at=timezone.now() - timedelta(minutes=1)
+            status='PENDING',
         )
 
         can_rollback, reason, requires_approval = self.part.can_rollback_step(self.user)
-        self.assertTrue(can_rollback)
+        self.assertTrue(can_rollback, reason)
         self.assertFalse(requires_approval)
 
     def test_cannot_rollback_outside_window(self):
@@ -1038,8 +1038,7 @@ class RollbackTestCase(TenantTestCase):
         exec2 = StepExecution.objects.create(
             part=self.part,
             step=self.step2,
-            status='COMPLETED',
-            exited_at=timezone.now() - timedelta(minutes=30)
+            status='IN_PROGRESS',
         )
 
         can_rollback, reason, requires_approval = self.part.can_rollback_step(self.user)
@@ -1055,8 +1054,7 @@ class RollbackTestCase(TenantTestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step1,
-            status='COMPLETED',
-            exited_at=timezone.now() - timedelta(minutes=1)
+            status='IN_PROGRESS',
         )
 
         can_rollback, reason, requires_approval = self.part.can_rollback_step(self.user)
@@ -1078,14 +1076,31 @@ class RollbackTestCase(TenantTestCase):
         StepExecution.objects.create(
             part=self.part,
             step=self.step3_approval_required,
-            status='COMPLETED',
-            exited_at=timezone.now() - timedelta(minutes=1)
+            status='PENDING',
         )
 
         can_rollback, reason, requires_approval = self.part.can_rollback_step(self.user)
-        # Either can_rollback is True with requires_approval, or rollback is allowed
-        if can_rollback:
-            self.assertTrue(requires_approval)
+        self.assertTrue(can_rollback, reason)
+        self.assertTrue(requires_approval)
+
+    def test_a_part_just_advanced_can_be_rolled_back(self):
+        """End to end, through the real advance: it used to refuse with "No completed
+        execution found for current step" because a part at a step never has one
+        (walk 2026-10-22)."""
+        from Tracker.services.mes.parts import advance_part_step, rollback_part_step
+        StepEdge.objects.create(process=self.process, from_step=self.step1, to_step=self.step2,
+                                edge_type=EdgeType.DEFAULT)
+        self.part.step = self.step1
+        self.part.save()
+        StepExecution.objects.create(part=self.part, step=self.step1, status='IN_PROGRESS',
+                                     training_authorization={'authorized': True})
+        advance_part_step(self.part, operator=self.user, skip_gate_check=True)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.step, self.step2)
+        result = rollback_part_step(self.part, self.user, reason="Advanced the wrong unit")
+        self.part.refresh_from_db()
+        self.assertTrue(result['success'], result)
+        self.assertEqual(self.part.step, self.step1)
 
 
 class StepOverrideTestCase(TenantTestCase):

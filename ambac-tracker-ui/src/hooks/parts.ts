@@ -275,12 +275,14 @@ export const bulkIncrementPartsMutationOptions = (queryClient: QueryClient) =>
     });
 
 export const bulkRollbackPartsMutationOptions = (queryClient: QueryClient) =>
-    mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_rollback_create>>, unknown, string[]>({
+    mutationOptions<Awaited<ReturnType<typeof api.api_Parts_bulk_rollback_create>>, unknown, { ids: string[]; reason: string }>({
         mutationKey: partsMutationKeys.bulkRollback,
-        mutationFn: (ids) =>
-            api.api_Parts_bulk_rollback_create({ ids }, { headers: csrfHeaders() }),
+        mutationFn: ({ ids, reason }) =>
+            api.api_Parts_bulk_rollback_create({ ids, reason }, { headers: csrfHeaders() }),
         onSuccess: () => invalidateAllParts(queryClient),
-        meta: { errorMessage: "Couldn't roll back parts", successMessage: "Parts rolled back" },
+        // No success toast: the response is per part (rolled back / sent for approval /
+        // refused), and the caller reports which.
+        meta: { errorMessage: "Couldn't roll back parts" },
     });
 
 export const bulkSetStatusPartsMutationOptions = (queryClient: QueryClient) =>
