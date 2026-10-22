@@ -1,157 +1,152 @@
-# Auditor Orientation
+# Auditor
 
-!!! warning "This track is being rebuilt"
-    It predates the current product, and its exercises may not match what you
-    see. It will be rebuilt against [the shop day](../shop-day.md). See the
-    [training program](../index.md).
+An orientation for an auditor: where the evidence for a question lives, and how to
+read it without anyone fetching it for you. Every exercise is on the training shop,
+and every record it names is one the training seed creates.
 
-**Duration:** 1 hour
-**Prerequisites:** None
-**Goal:** Find the evidence you need without needing anyone to fetch it for you
-
-!!! note "Role Name"
-    This is for the **Auditor** role in the system.
-
-!!! info "Demo Environment Login"
-    **Email:** admin@demo.ambac.com
-    **Password:** `demo123`
-
-    The demo has no read-only auditor account. Alex Demo is **Tenant Admin** and
-    can change things — so in the demo, look but don't touch.
+**About an hour.** It assumes you know what you're auditing against (see
+[ISO 9001](../../compliance/iso9001.md)), not how this shop works.
 
 !!! tip "This is orientation, not training"
-    An auditor holds **no write permission of any kind**. There is nothing to
-    practise and nothing you can break. This page exists to show you where the
-    evidence lives.
+    An auditor changes nothing. There's nothing to practise and nothing you can
+    break, so there's no final task: this page shows you where the evidence is.
+
+## Who you are
+
+| You log in as | When |
+|---------------|------|
+| **Alex Morgan**, Auditor, `alex.audit@demo.ambac.com` | Every module |
+
+The password is `demo123`.
+
+Alex holds view permissions across the whole shop and nothing else. A few pages still
+show a button for changing something. Pressing one is refused: the role can't write,
+whatever the page offers.
 
 ---
 
-## Module 1: What You Hold
+## 1. Your desk
 
-### 1.1 The whole permission set is "view"
+**You will:** find where each kind of evidence starts.
 
-You get the staff view permissions and full-tenant visibility. Not a comment, not
-a status, not a note. There is nothing you can touch that would later need
-explaining — which is the point: **audit independence is a property of the
-system here, not a promise.**
+Log in as Alex. The home page is a list of where to look:
 
-### 1.2 Sensitive data is not masked
+- **Audit log**: every change, who made it, and when.
+- **CAPAs**, **Calibration records**, **Training records**, **Documents**.
+- **Approvals**: signed decisions.
 
-!!! warning "Read-only is not anonymised"
-    You see real customer names, real people's names on records, real quantities.
-    Treat this as you would any access to a shop's live records.
-
-### 1.3 One thing you are not given
-
-**The classified document tiers.** An auditor is not granted
-`view_secret_documents`, so the classified tiers stay invisible.
-
-!!! note "Export control is not part of the role"
-    If your deployment uses the ITAR/EAR filtering at all, it keys off two
-    flags on the **user record** — *US person* and *ITAR authorized* — not off
-    group membership. So the Auditor group is not what decides it either way.
-    See [Export Controls](../../compliance/export-controls.md).
-
-!!! note "An invisible document is the control working"
-    Ask your host for a reader with the right clearance rather than asking to be
-    given the tier.
+Below them are the CAPAs by state and how old the open nonconformances are.
 
 ---
 
-## Module 2: Where the Evidence Is
+## 2. One unit, start to finish
 
-| Question | Where |
-|----------|-------|
-| Who did what, when, to which record | [Audit Trails](../../compliance/audit-trails.md) |
-| Was the person qualified | [Training Matrix](../../workflows/tracking/training-matrix.md) |
-| Was the equipment in calibration | Quality → Calibrations |
-| What happened to this nonconformance | [Dispositions](../../workflows/quality/dispositions.md) |
-| Was the corrective action effective | [CAPA Verification](../../workflows/capa/verification.md) |
-| What was this unit actually built to | [Part History](../../workflows/tracking/part-history.md) |
-| Which revision was in force then | [Document Revisions](../../workflows/documents/revisions.md) |
-| Who signed, and was it really them | [Signatures](../../compliance/signatures.md) |
+**You will:** read everything recorded about one serial.
 
----
+`INJ-QA-INSPECT-013` failed flow calibration and is waiting to be reworked.
 
-## Module 3: Four Things That Will Mislead You
+1. Open work order `WO-QA-INSPECT-02`, then **Parts**, then the part's **View Part
+   Details**. The part page lists its quality reports, its disposition
+   (`DISP-2026-000014`, Rework) and why it can't move on yet.
+2. **Traveler** > **Download PDF** prints this serial's record. Each operation shows
+   who did it and when, every reading against its specification (*Flow Rate 98
+   mL/min ✗ OUT OF SPEC*), the material lots fitted at assembly, and the
+   nonconformance with who authorised its disposition (*authorised Maria S.*).
 
-These are properties of the system that look like findings if you don't know
-them.
-
-!!! tip "1. Records are voided, not deleted"
-    uqmes soft-deletes. A voided record stays readable with its reason and its
-    author. **An empty list rarely means something was destroyed** — check
-    whether you are filtering voided rows out.
-
-!!! tip "2. A version is the same entity, updated"
-    A new version of a process, document or supplier record is not a new thing.
-    History stays attached and forward links follow. Don't read a version bump as
-    a replacement.
-
-!!! tip "3. Overrides are recorded where they happened"
-    A supervisor authorising past the training gate signs in separately, and the
-    reason lands on the **step execution itself**, not in a separate log. Same
-    for release overrides on a work order. The exception is stored next to the
-    thing it excepted — so look at the record, not for a register.
-
-    Read these as *the record hadn't caught up*, not as *unqualified work* — the
-    gate can only see what is recorded, and the authorisation already carries a
-    second person's name. What is worth sampling is an authorisation with **no
-    training record following it**.
-
-!!! tip "4. Steps are shared across process versions"
-    This is deliberate structural sharing so date snapshots resolve. A step
-    appearing under two process versions is correct, not a data integrity fault.
+The traveler says *Uncontrolled when printed*: the system is the record, and the PDF
+is a copy of it on the day you printed it.
 
 ---
 
-## Module 4: Separation of Duties
+## 3. Was the person qualified, and was the gauge good?
 
-The pattern worth checking, because it is what the design is built around:
+**You will:** check the two things a reading depends on.
 
-**Many roles can raise; few can approve.**
+1. **Quality** > **Training** > **Matrix**. Hover a cell for the person, the skill,
+   the level and its expiry (*Dimensional Inspection Certification: Trainee —
+   expires 2026-10-29*).
+2. **Calibration records**. The micrometer `MIC-2` failed its check this morning.
+   Open that record's exposure: **What Micrometer MIC-2 measured** lists every
+   report it was used for since it last passed, `INJ-QA-INSPECT-013`'s bore among
+   them. The page lists them; deciding what to do about them is the QA manager's.
 
-- Any staff role may initiate a CAPA or raise a supplier qualification — only
-  **QA Manager** approves one
-- The dock can reject pieces — only QA rejects a whole lot or approves a
-  disposition
-- A Shift Lead can override a training gate — and **cannot** void the quality
-  record of work someone else signed
-- Engineering authors a specification — **Document Controller** releases the
-  document that carries it
-
-See [Role Comparison](../../roles/index.md#what-tells-the-roles-apart) for the full
-matrix, generated from the permission presets.
-
----
-
-## Module 5: Standards
-
-uqmes is built against **ISO 9001** today, with IATF 16949 as a later target once
-PPAP support is complete.
-
-- [ISO 9001](../../compliance/iso9001.md)
-- [Compliance Overview](../../compliance/overview.md)
-- [Compliance Reports](../../compliance/reports.md)
-- [Audit Trails](../../compliance/audit-trails.md)
+Where someone worked a step without the training on record, the authorisation sits
+on the step itself: who allowed it and why. Read it as *the record hadn't caught
+up*, not as unqualified work. What's worth sampling is an authorisation with no
+training record after it.
 
 ---
 
-## Orientation Checklist
+## 4. A problem and its corrective action
 
-- [ ] Logged in and confirmed you cannot edit anything
-- [ ] Found an audit trail entry naming a person and a record
-- [ ] Found a training record and the matrix it feeds
-- [ ] Traced one unit's as-built history
-- [ ] Found a disposition and the CAPA it led to
-- [ ] Found a document's revision history
-- [ ] Exported something to take away
+**You will:** follow a CAPA from the problem to its approval.
+
+Open **CAPAs** > `CAPA-2024-003`, *Elevated Nozzle Rejection Rate*.
+
+- **Overview**: the problem and the containment.
+- **Root Cause**: the analysis, its method and who did it.
+- **Approval**: a Major CAPA needs management approval before work starts. Maria
+  Santos approved it, with her comment and the time.
+
+Many roles can raise a CAPA; only a QA manager or production manager approves one,
+and not their own when someone else can.
 
 ---
 
-## Next Steps
+## 5. Which revision was in force
 
-- [Auditor role guide](../../roles/auditor.md)
-- [Audit Trails](../../compliance/audit-trails.md)
-- [Signatures](../../compliance/signatures.md)
-- [Exporting](../../analysis/exporting.md) — taking evidence with you
+**You will:** find a document's revisions, and see what's withheld from you.
+
+**Documents** lists the controlled documents you may read. Open
+`WI-1002 Nozzle Inspection` and its **Versions**: each revision with who uploaded
+it, when, its status and why it changed (*Rev 2.1: Updated spray angle tolerance per
+CAPA-2024-003*). When a revision is released, the one before it is marked
+superseded and stays readable here.
+
+Drawings marked confidential, restricted or secret don't appear at all. An auditor
+isn't given the classified tiers. That's the control working: ask your host for a
+reader with the clearance rather than to be given it.
+
+---
+
+## 6. Who changed what
+
+**You will:** find a change, who made it, and what it was before.
+
+Before this module your trainer, logged in as one of the shop's people, changes
+something: records a calibration, say, or a training record.
+
+**Audit log**: newest first, each row with the time, the person, what they did,
+the record, and the fields before → after. Your own looking is recorded too: the
+traveler you printed in module 2 is there as *Accessed*.
+
+A record's own **History** tab shows the same trail for that record. On the training
+shop, records that were loaded when it was set up show *No audit history*: nobody
+worked them here. Records your trainer changes show every change.
+
+---
+
+## Things that look like findings and aren't
+
+!!! tip "Voided isn't deleted"
+    A record put right is voided, with who, when and why, and stays readable. A
+    corrected inspection result is kept as recorded and marked superseded, with the
+    new result beside it. An empty list rarely means something was destroyed.
+
+!!! tip "A new version is the same thing, updated"
+    A new version of a process, document or supplier record isn't a replacement.
+    Its history stays attached.
+
+!!! tip "Steps are shared across process versions"
+    A step appearing under two versions of a process is deliberate, so older work
+    still reads against the step it ran.
+
+---
+
+## Orientation checklist
+
+- [ ] Read one serial's record and printed its traveler
+- [ ] Checked a person's qualification and a gauge's calibration behind a reading
+- [ ] Followed a CAPA to its approval
+- [ ] Found a document's revisions
+- [ ] Found a change in the audit log, with who and what it was before
