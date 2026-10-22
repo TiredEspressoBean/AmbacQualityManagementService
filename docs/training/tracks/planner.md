@@ -85,6 +85,11 @@ may now take machine and operator time.
    released* (*Release it from the planning queue*); `WO-TRAIN-HOLD` is *on hold*;
    `WO-2024-0048-A` has *no units created yet*.
 
+**Released the wrong one?** Open the work order from its task on the board or its
+row in **Not scheduled**, and **Withdraw release**. If work has started, you're told
+so first: the parts on the floor stop being scheduled at the next solve. **Release**
+puts it back.
+
 ---
 
 ## 3. Solve, and pin what must stay put

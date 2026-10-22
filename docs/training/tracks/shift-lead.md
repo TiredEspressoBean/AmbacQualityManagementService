@@ -132,6 +132,9 @@ A quarantine or a CAPA is raised on its own form, not here.
 4. Write what resolved it and **Clear hold**. The order goes back to where it was,
    and **Hold history** keeps the hold, who cleared it and your note.
 
+A hold put on the wrong order comes off the same way: **Resume**, and say it was
+placed in error. The history keeps both.
+
 ---
 
 ## 5. Jump a job to the front
@@ -197,7 +200,27 @@ entry: shift, break, lunch, or production against a work order. **Approve** one,
 
 ---
 
-## 8. What isn't yours
+## 8. Send a part back a step
+
+**You will:** undo a step that was finished too soon.
+
+Have Mike finish Machining on all four bodies of `WO-OPS-01` (they move on to
+Precision Grinding together), then find out the micrometer he used was overdue: one
+body needs measuring again.
+
+1. **Production** > **WO Control Center**, open `WO-OPS-01`. On `INJ-OPS-001`'s row,
+   **Previous step**.
+2. *Roll back 1 part(s) to the previous step?* Give the reason. **Roll back**.
+3. *1 part(s) rolled back.* The body is back at Machining on a second visit; its
+   Grinding visit is marked rolled back, not deleted. The other three wait at
+   Grinding: the lot moves together, so it waits for this one.
+
+A step can be undone within an hour of finishing it. After that, or where the step
+requires it, the rollback is sent for approval instead, and the page says so.
+
+---
+
+## 9. What isn't yours
 
 | Not yours | Whose |
 |-----------|-------|

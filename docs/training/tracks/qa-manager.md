@@ -104,6 +104,12 @@ recorded.
 4. Set **Current state** to **Closed** and submit. Closing records who resolved it,
    and when.
 
+**Decided wrong?** Until it's closed, a decision can be changed. **Scrap** asks you
+to confirm, because the part is scrapped as soon as you save. Change a Scrap to
+another decision and you're asked why: the part comes back out of scrap, and both
+decisions and your reason stay in the resolution notes. Once closed, it can't be
+changed.
+
 ---
 
 ## 3. Rule on what arrives

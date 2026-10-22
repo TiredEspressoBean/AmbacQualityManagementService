@@ -82,6 +82,12 @@ The line leaves the list: the shortage is now covered by something expected. Unt
 an order is recorded here, nothing can tell anyone it's late, and the shortage
 surprises the floor instead.
 
+**Keyed it wrong?** A promised date already past warns you: *That date has passed —
+the delivery counts as late from the start.* If one gets through, don't fix it with
+**Chase…**: a chase records what the supplier said, and the scorecard keeps judging
+them against your typo. On the expected receipt's menu, **Cancel expected receipt…**
+with the reason, then record it again. The cancelled one isn't scored.
+
 ---
 
 ## 3. Chase a late delivery
