@@ -222,8 +222,11 @@ class DemoSeedDarkExhibitTests(TestCase):
         the role is most distinctively for, and both were dark."""
         from Tracker.models import Documents
         with tenant_context(self.tenant):
-            self.assertTrue(Documents.objects.filter(review_date__isnull=False).exists(),
+            from django.utils import timezone
+            self.assertTrue(Documents.objects.filter(review_date__lt=timezone.now().date()).exists(),
                             "nothing is due for review — the tile reads 0 forever")
+            self.assertTrue(Documents.objects.filter(classification="SECRET").exists(),
+                            "nothing at the Secret tier — the top of the filter is unobservable")
             above_internal = Documents.objects.exclude(
                 classification__in=["", "public", "internal", "PUBLIC", "INTERNAL"])
             self.assertTrue(above_internal.exists(),
@@ -282,3 +285,21 @@ class DemoSeedDarkExhibitTests(TestCase):
         from Tracker.services.mes.requirements import sourcing_requirements
         with tenant_context(self.tenant.id):
             self.assertTrue(sourcing_requirements(self.tenant)["source"])
+
+    def test_a_rebuilt_unit_waits_to_go_back(self):
+        """Shipping R2 (2026-10-22): a customer's own unit walked through its whole
+        rebuild by the real flow, on the shipping board under its order."""
+        with tenant_context(self.tenant.id):
+            core = Core.objects.get(core_number="CORE-240217-0013")
+            self.assertEqual(core.status, "REBUILT")
+            self.assertIn("ORD-2024-0047", {g["order_number"] for g in ready_to_ship(self.tenant)})
+
+    def test_an_exchange_unit_has_a_harvest_or_buy_choice(self):
+        """PM R2 (2026-10-22): an exchange unit in rebuild whose scrapped nozzle can come
+        from recovered stock or be bought."""
+        from Tracker.services.reman.rebuild import REPLACE_POOL, resolve_rebuild_plan
+        with tenant_context(self.tenant.id):
+            plan = resolve_rebuild_plan(Core.objects.get(core_number="CORE-240216-0012"))
+            nozzle = next(s for s in plan.slots if s.component_type_name == "Injector Nozzle Assembly")
+            self.assertEqual(nozzle.resolution, REPLACE_POOL)
+            self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})

@@ -344,14 +344,15 @@ class DemoDarkExhibitSeeder(BaseSeeder):
         if not docs:
             return touched
 
-        overdue = docs[0]
-        if overdue.review_date is None:
-            overdue.review_date = (self.today - timedelta(days=14)).date()
-            overdue.save(update_fields=['review_date'])
-            touched.append(f"{overdue.file_name} due for review")
+        # A released drawing whose review date has passed, named rather than "the
+        # first document": a new document sorting ahead of it once took the exhibit.
+        overdue = next((d for d in docs if d.file_name == 'DWG-CRI-8800'), docs[0])
+        overdue.review_date = (self.today - timedelta(days=14)).date()
+        overdue.save(update_fields=['review_date'])
+        touched.append(f"{overdue.file_name} due for review")
 
         if len(docs) > 1:
-            classified = docs[1]
+            classified = next((d for d in docs if d.file_name == 'DWG-CRI-8800'), docs[1])
             if (classified.classification or '').lower() in ('', 'internal', 'public'):
                 classified.classification = ClassificationLevel.CONFIDENTIAL
                 classified.save(update_fields=['classification'])

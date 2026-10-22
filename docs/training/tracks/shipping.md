@@ -153,8 +153,12 @@ work.
 2. Tick it, **Ship 1…**, give the carrier, **Ship**.
 
 The core's record now reads *returned unrepaired*, with the shipment number as its
-return reference. A declined unit takes the same dispatch as a rebuilt one: the
-customer gets their property back either way.
+return reference.
+
+The usual case is a unit that's been rebuilt. `ORD-2024-0047` (Northern Trucking)
+lists `CORE-240217-0013`: *Rebuilt — ready to return*. Ship it the same way. The
+shipment offers the **Packing list** and a **CoC**, and the core reads *returned*.
+Either way the customer gets their own property back, by the same dispatch.
 
 ---
 

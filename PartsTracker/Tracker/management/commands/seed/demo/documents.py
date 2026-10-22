@@ -186,6 +186,17 @@ DEMO_DOCUMENTS = [
         'classification': 'PUBLIC',
         'attach_to_order': 'ORD-2024-0042',
     },
+    # The top tier, so classification can be seen working (Document Controller
+    # module 7): Lisa and the tenant admin read it; nobody else finds it at all.
+    {
+        'file_name': 'DWG-CRI-8800-N Nozzle seat geometry',
+        'type': 'Drawing',
+        'status': 'RELEASED',
+        'created_days_ago': 200,
+        'effective_days_ago': 150,
+        'change_justification': 'Proprietary nozzle seat geometry; held at Secret.',
+        'classification': 'SECRET',
+    },
 ]
 
 
@@ -235,7 +246,9 @@ class DemoDocumentsSeeder(BaseSeeder):
 
         # Create documents
         for doc_data in DEMO_DOCUMENTS:
-            doc_type = type_map.get(doc_data['type'])
+            # Types this seeder doesn't own (Drawing, from the showcase) by name.
+            doc_type = (type_map.get(doc_data['type'])
+                        or DocumentType.objects.filter(name=doc_data['type']).first())
             doc = self._create_document(doc_data, doc_type, user_map)
             result['documents'].append(doc)
 

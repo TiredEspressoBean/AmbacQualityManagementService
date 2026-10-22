@@ -535,6 +535,16 @@ class DemoQaWalkSeeder(BaseSeeder):
             elif node_type == 'inspectionSignatures':
                 captures.append({'node_id': node_id, 'kind': 'signatures',
                                  'detected': {'user_id': str(signer.id), 'signed_at': stamp}})
+            elif node_type == 'componentInstallCapture' and step_execution is not None:
+                # A rebuild's as-built: the unit's own serviceable components back into
+                # the slots they came out of (what Reassembly records on a unit whose
+                # plan reuses everything).
+                from Tracker.services.reman.core_steps import core_of
+                core = core_of(step_execution.part)
+                rows = ([{'harvested_id': str(h.id), 'position': h.position}
+                         for h in core.harvested_components.filter(is_scrapped=False)]
+                        if core is not None else [])
+                captures.append({'node_id': node_id, 'kind': 'component_install', 'rows': rows})
             elif node_type == 'scanInput' and step_execution is not None:
                 captures.append({'node_id': node_id, 'kind': 'scan',
                                  'value_text': step_execution.part.ERP_id})

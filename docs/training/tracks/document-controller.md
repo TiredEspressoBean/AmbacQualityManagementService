@@ -148,6 +148,11 @@ or parts: that's how a certificate reaches them. A document above someone's tier
 isn't greyed out for them; it isn't there. When someone says a document vanished,
 check its tier first.
 
+`DWG-CRI-8800-N Nozzle seat geometry` is held at **Secret**. As Lisa it's in the
+library. Log in as Jordan (Engineering) or Maria (QA manager) and it isn't: no row,
+no greyed-out name. The QA manager can set a document's tier, including Secret,
+and then not be able to open it.
+
 ---
 
 ## What isn't yours

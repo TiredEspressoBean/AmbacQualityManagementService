@@ -43,6 +43,9 @@ LEAD_FINDING_CORE = 'CORE-240214-0010'
 LEAD_FINDING = ('Injector Nozzle Assembly', 'SCRAP',
                 'Seat eroded through at the needle guide; leaks down on the spray test.')
 
+# A customer's own unit walked through its whole rebuild: on the shipping board.
+REBUILT_CORE = 'CORE-240217-0013'
+
 # Two cores Dave received, waiting at Disassembly for Mike to tear down and grade.
 GRADING_CORES = ['CORE-240220-0003', 'CORE-240220-0004']
 
@@ -124,6 +127,8 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         result['teardown_cores'] = self._cores_to_teardown()
 
         result['lead_finding'] = self._finding_for_the_lead(walk)
+
+        result['rebuilt_unit'] = self._rebuilt_unit(walk)
 
         result['shift_notes'] = self._shift_notes()
         self.log(f"  {UP_NEXT_WO}: {len(UP_NEXT_PARTS)} bodies waiting at Machining; "
@@ -212,6 +217,64 @@ class DemoOpsWalkSeeder(DemoQaWalkSeeder):
         finally:
             self.step = build_steps
         self._space_out(wo, self.today - timedelta(minutes=50))
+        return core
+
+    def _rebuilt_unit(self, walk):
+        """Shipping R2: a customer's own unit taken through every rebuild step to the
+        end of its route. Mike runs the work steps; Sarah, certified for the checks,
+        runs them and Maria signs them off; Sarah inspects the nitride load's return.
+        The last advance ends the route, the core is REBUILT, and it waits on the
+        shipping board under its order."""
+        from Tracker.models import Core, ProcessStep
+        from Tracker.services.qms.step_signoff import sign_off_step
+        core = Core.objects.filter(tenant=self.tenant, core_number=REBUILT_CORE,
+                                   status='IN_REBUILD').first()
+        if core is None or not core.part_id:
+            self.log(f"  Warning: {REBUILT_CORE} not in rebuild; rebuilt unit skipped.",
+                     warning=True)
+            return None
+        part = core.part
+        wo = part.work_order
+        build_steps = self.step
+        self.step = {ps.step.name: ps.step for ps in
+                     ProcessStep.objects.filter(process=wo.process).select_related('step')}
+        try:
+            # One pass per step, bounded: a step that won't let the unit go is logged,
+            # not looped on.
+            for _ in range(len(self.step) + 2):
+                part.refresh_from_db()
+                core.refresh_from_db()
+                if core.status != 'IN_REBUILD' or part.step is None:
+                    break
+                step = part.step
+                with transaction.atomic():
+                    if step.requires_batch_completion:
+                        self._run_batch_step(wo, [part], step.name, walk)
+                    elif step.name == 'Nitride Coating':
+                        self._nitride([part])
+                    elif step.requires_qa_signoff:
+                        # A check: Sarah (certified for it) runs it and Maria signs it
+                        # off. The sign-off moves the lot itself; advance only if not.
+                        self._run_step_for([part], step.name, walk, advance=False,
+                                           operator=self.sarah)
+                        sign_off_step(wo, step, self.maria, password='demo123')
+                        part.refresh_from_db()
+                        if part.step_id == step.id:
+                            self._advance(part, 'PASS')
+                    else:
+                        self._run_step_for([part], step.name, walk)
+                part.refresh_from_db()
+                if part.step_id == step.id and core.status == 'IN_REBUILD':
+                    core.refresh_from_db()
+                    if core.status == 'IN_REBUILD':
+                        self.log(f"  Warning: {REBUILT_CORE} stuck at {step.name}; "
+                                 "rebuilt unit incomplete.", warning=True)
+                        return core
+        finally:
+            self.step = build_steps
+        self._space_out(wo, self.today - timedelta(hours=1))
+        core.refresh_from_db()
+        self.log(f"  {REBUILT_CORE}: rebuild walked to {core.get_status_display()}")
         return core
 
     def _work_order(self, order, process, erp_id, quantity):

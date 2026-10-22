@@ -327,6 +327,29 @@ than the rebuild they bought. The unit waits, *Awaiting customer authorisation*.
 
 **Declined…** records a refusal the same way.
 
+### R2. Recovered stock or buy new
+
+**You will:** decide what goes back into an exchange unit, and say why.
+
+`CORE-240216-0012` is an exchange unit (it becomes shop stock, not a customer's own
+unit), released into rebuild. Its nozzle was scrapped at the bench.
+
+1. **Remanufacturing** > **Ready to Rebuild**: *Units released into rebuild and not
+   yet planned. Oldest first — a core sitting here is capital on a shelf.* On
+   `CORE-240216-0012`, **Plan rebuild**.
+2. The plan is *Proposed, not committed: nothing here is reserved or ordered.* The
+   nozzle slot reads *scrapped at the bench — Tip eroded through*, proposed
+   **Replace — recovered stock**, *1 in recovered stock*. The other slots are
+   settled: the unit's own parts are serviceable.
+3. **Change** the nozzle slot. The choices are **Reuse as-is**, **Recondition**,
+   **Replace — recovered stock** and **Replace — buy**. A recovered grade B nozzle
+   meets the exchange standard, so keep recovered stock. Write the reason: *This is
+   the row that answers why the unit was built this way when somebody asks in six
+   months.* **Record decision**.
+
+The choice exists only on an exchange unit. A customer's own unit (R1) keeps its own
+parts and is never offered another core's.
+
 ## Recording your qualification
 
 Passing the final task is the assessment. The record is a **training record**, which

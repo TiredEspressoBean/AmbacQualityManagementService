@@ -383,6 +383,75 @@ DEMO_CORES = [
              'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
         ],
     },
+    {
+        # Production Manager R2 exhibit: an exchange unit in rebuild whose nozzle was
+        # scrapped at the bench. Recovered stock holds a serviceable nozzle (from
+        # CORE-240215-0005), so its rebuild plan is a real choice: draw the recovered
+        # one or buy new. An exchange unit may take recovered stock; a customer's own
+        # unit may not, which is why the walked units never showed the choice.
+        'core_number': 'CORE-240216-0012',
+        'own_teardown': True,
+        'serial_number': 'SN-CRI-P44E07C1',
+        'received_days_ago': 10,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 9,
+        'disassembly_completed_days_ago': 8,
+        'condition_grade': 'B',
+        'condition_notes': 'Good condition. Nozzle tip eroded.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-46150',
+        'customer_name': 'Great Lakes Diesel',
+        'fulfilment_mode': 'EXCHANGE',
+        'core_credit_value': Decimal('60.00'),
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'components': [
+            {'component_name': 'Injector Body', 'condition_grade': 'A', 'disposition': 'REUSE',
+             'condition_notes': 'Within new-part limits.', 'position': '',
+             'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Injector Nozzle Assembly', 'condition_grade': 'SCRAP',
+             'disposition': 'SCRAP', 'condition_notes': 'Tip eroded through; spray holes oversize.',
+             'position': '', 'original_part_number': '', 'is_scrapped': True,
+             'scrap_reason': 'Tip eroded through'},
+            {'component_name': 'Control Valve Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Seat clean, passes dimensional checks.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+        ],
+    },
+    {
+        # Shipping R2 exhibit: Northern Trucking's own unit, rebuilt and ready to go
+        # back. Torn down on its own work order and released into rebuild here; the
+        # operator walk (ops_walk._rebuilt_unit) takes it through every rebuild step
+        # to Complete, so it reaches the shipping board the way a real one does.
+        'core_number': 'CORE-240217-0013',
+        'for_order': 'ORD-2024-0047',
+        'own_teardown': True,
+        'serial_number': 'SN-CRI-R21A66D9',
+        'received_days_ago': 14,
+        'status': 'DISASSEMBLED',
+        'disassembly_started_days_ago': 13,
+        'disassembly_completed_days_ago': 12,
+        'condition_grade': 'A',
+        'condition_notes': 'Good condition. Light carbon on the tip.',
+        'source_type': 'CUSTOMER_RETURN',
+        'source_reference': 'RMA-46088',
+        'customer_name': 'Northern Trucking Co',
+        'fulfilment_mode': 'REPAIR_RETURN',
+        'core_credit_value': None,
+        'core_credit_issued': False,
+        'release': 'REBUILD',
+        'components': [
+            {'component_name': 'Injector Body', 'condition_grade': 'A', 'disposition': 'REUSE',
+             'condition_notes': 'Within new-part limits.', 'position': '',
+             'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Injector Nozzle Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Spray holes clear after cleaning.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+            {'component_name': 'Control Valve Assembly', 'condition_grade': 'A',
+             'disposition': 'REUSE', 'condition_notes': 'Seat clean, passes dimensional checks.',
+             'position': '', 'original_part_number': '', 'is_scrapped': False, 'scrap_reason': ''},
+        ],
+    },
     # Scrapped core
     {
         'core_number': 'CORE-240218-0008',
