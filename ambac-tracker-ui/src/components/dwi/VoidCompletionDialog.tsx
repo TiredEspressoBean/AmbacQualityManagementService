@@ -119,6 +119,11 @@ export function VoidCompletionDialog({
                         The advancement gate will block any part downstream that depends
                         on this completion until a fresh one lands.
                     </p>
+                    <p className="text-sm text-muted-foreground">
+                        Any inspection result it recorded is marked superseded, kept as recorded
+                        with your reason; the re-capture writes a new report. A disposition the
+                        result opened stays open for QA to close.
+                    </p>
                     <div className="space-y-1">
                         <Label htmlFor="void-reason" className="text-xs">
                             Reason (required)

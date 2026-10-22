@@ -3703,8 +3703,9 @@ class Parts(SecureModel):
                 # Use latest QualityReport result if not provided
                 if decision_result is None:
                     from .qms import QualityReports
+                    # Not a superseded report: its capture was voided and taken again.
                     latest_qr = QualityReports.objects.filter(
-                        part=self, step=current
+                        part=self, step=current, superseded_at__isnull=True
                     ).order_by('-created_at').first()
                     if not latest_qr:
                         raise DecisionDataMissing(

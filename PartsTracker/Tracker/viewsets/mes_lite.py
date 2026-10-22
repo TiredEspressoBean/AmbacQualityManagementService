@@ -446,7 +446,9 @@ class PartsViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataExp
             from Tracker.models import StepExecution
             from Tracker.models.qms import QualityReports
             ex = StepExecution.get_current_execution(part)
-            reports = QualityReports.objects.filter(part=part, step=step, archived=False)
+            # A superseded report was withdrawn by a voided capture; its re-capture speaks.
+            reports = QualityReports.objects.filter(part=part, step=step, archived=False,
+                                                    superseded_at__isnull=True)
             if ex is not None and ex.step_id == step.id:
                 reports = reports.filter(step_execution=ex)
             statuses = set(reports.values_list('status', flat=True))

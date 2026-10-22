@@ -162,3 +162,18 @@ class ScrapRedecisionTests(FalseFailCorrectionTests):
         self.ncr.refresh_from_db()
         self.assertIn("too deep", self.ncr.resolution_notes)
         self.assertIn("A new note.", self.ncr.resolution_notes)
+
+
+class SupersededReportGateTests(FalseFailCorrectionTests):
+    def test_a_superseded_report_needs_no_annotation_to_close(self):
+        """Closing as not a nonconformance must not demand the withdrawn defect be
+        annotated — that would record a defect that wasn't there (re-walk 2026-10-22)."""
+        from Tracker.models import QualityErrorsList, QualityReportDefect
+        et = QualityErrorsList.objects.create(tenant=self.tenant, error_name="Burr",
+                                              error_example="Burr in bore",
+                                              part_type=self.part.part_type,
+                                              requires_3d_annotation=True)
+        QualityReportDefect.objects.create(report=self.fail, error_type=et)
+        self.assertTrue(self.ncr.has_pending_annotations()[0])
+        self._void()
+        self.assertFalse(self.ncr.has_pending_annotations()[0])

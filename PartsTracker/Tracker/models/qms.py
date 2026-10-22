@@ -1071,7 +1071,9 @@ class QuarantineDisposition(SecureModel):
         """
         pending_reports = []
 
-        for report in self.quality_reports.all():
+        # A superseded report was withdrawn (its capture voided): annotating the defect it
+        # claimed would record one that wasn't there (walk 2026-10-22).
+        for report in self.quality_reports.filter(superseded_at__isnull=True):
             # Check if any error type on this report requires 3D annotation
             requires_annotation = report.errors.filter(requires_3d_annotation=True).exists()
 
