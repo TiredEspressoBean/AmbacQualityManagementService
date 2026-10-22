@@ -107,8 +107,10 @@ function CellButton({ op, column, cell }: { op: Operator; column: Column; cell: 
                     aria-label={`${op.name} — ${column.name}: ${LEVEL_META[level].label}${
                         status === "EXPIRED" ? `, expired ${cell?.expires_date ?? ""}`
                             : status === "EXPIRING_SOON" ? `, expires ${cell?.expires_date ?? ""}` : ""}`}
-                    title={status === "EXPIRED" ? `Expired ${cell?.expires_date ?? ""}`
-                        : status === "EXPIRING_SOON" ? `Expires ${cell?.expires_date ?? ""}` : undefined}
+                    // Name the skill and the level, not only the date (Shift Lead walk).
+                    title={`${column.name}: ${LEVEL_META[level].label}${
+                        status === "EXPIRED" ? ` — expired ${cell?.expires_date ?? ""}`
+                            : status === "EXPIRING_SOON" ? ` — expires ${cell?.expires_date ?? ""}` : ""}`}
                 >
                     <LevelPie level={level} />
                     <ExpiryDot status={status} />
@@ -242,7 +244,7 @@ export function TrainingMatrixPage() {
         <div className="container mx-auto p-6">
             <h1 className="mb-1 text-2xl font-bold">Training Matrix</h1>
             <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
-                Operator competency across training types. Each cell is the current level
+                Competency of everyone with training on record or required by their role. Each cell is the current level
                 (max in-date); a red edge marks a skill below the operator's role
                 requirement. The footer shows how many people can cover each skill —
                 single-coverage is a staffing risk.
@@ -250,7 +252,7 @@ export function TrainingMatrixPage() {
 
             {/* Summary */}
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <SummaryTile label="Operators" value={operators.length} />
+                <SummaryTile label="People" value={operators.length} />
                 <SummaryTile label="People with role gaps" value={operators.filter((o) => o.gap_count > 0).length} tone={operators.some((o) => o.gap_count > 0) ? "warn" : "ok"} />
                 <SummaryTile label="Skills at coverage risk" value={stats.spof} tone={stats.spof ? "danger" : "ok"} />
                 <SummaryTile label="Expiring soon" value={stats.expiring} tone={stats.expiring ? "warn" : "ok"} />

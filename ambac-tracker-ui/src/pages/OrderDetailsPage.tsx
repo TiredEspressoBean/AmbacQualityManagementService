@@ -84,7 +84,10 @@ function PartTypeGroup({
     );
 
     const typeDocuments = typeDocsData?.results || [];
-    const groupCompleted = parts.filter(p => p.part_status === "COMPLETED").length;
+    // Done includes gone: a shipped unit (or one in stock / awaiting pickup) is finished,
+    // and "0/30 completed" with 10 shipped read as no progress (Customer walk).
+    const DONE = new Set(["COMPLETED", "SHIPPED", "IN_STOCK", "AWAITING_PICKUP"]);
+    const groupCompleted = parts.filter(p => DONE.has(p.part_status ?? "")).length;
     const groupWithIssues = parts.filter(p => p.has_error || p.quality_info?.has_errors).length;
 
     return (

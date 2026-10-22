@@ -374,3 +374,50 @@ class StagedPartIsWaitingNotMovedTests(TenantTestCase):
         done.refresh_from_db()
         self.assertNotEqual(done.step_id, step.id)
         self.assertEqual([m[0] for m in moved], [done.ERP_id])
+
+
+class SweepFixes1022Tests(_Api):
+    """Known-catches sweep, 2026-10-22."""
+    perms = ['view_companies', 'view_orders', 'change_orders', 'add_orderviewer', 'full_tenant_access']
+
+    def test_customer_property_does_not_make_a_customer_a_supplier(self):
+        customer = Companies.objects.create(tenant=self.tenant_a, name="Midwest Fleet",
+                                            is_customer=True)
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Their part")
+        MaterialLot.objects.create(tenant=self.tenant_a, lot_number="CUST-1", supplier=customer,
+                                   owner=customer, material_type=pt, quantity=1,
+                                   quantity_remaining=1, received_date=timezone.now().date(),
+                                   unit_of_measure="EA")
+        names = {c["name"] for c in self.client.get("/api/Companies/", {"supplying": "true"}).json()["results"]}
+        self.assertNotIn(customer.name, names)
+
+    def test_a_customer_invite_is_a_portal_user_with_a_pending_invitation(self):
+        from Tracker.models import Orders, User, UserInvitation
+        company = Companies.objects.create(tenant=self.tenant_a, name="Great Lakes Diesel",
+                                           is_customer=True)
+        order = Orders.objects.create(tenant=self.tenant_a, name="ORD-INV", company=company,
+                                      customer=self.user_a)
+        resp = self.client.post(f"/api/TrackerOrders/{order.id}/invite/",
+                                {"email": "buyer@gld.test"}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.content)
+        u = User.objects.get(email="buyer@gld.test")
+        self.assertEqual((u.user_type, u.parent_company_id, u.is_active, u.has_usable_password()),
+                         ("PORTAL", company.id, True, False))
+        self.assertTrue(UserInvitation.objects.filter(user=u, accepted_at__isnull=True).exists())
+
+    def test_the_matrix_lists_people_with_training_at_stake(self):
+        from Tracker.models import TrainingRecord, TrainingType, User
+        from Tracker.services.training import build_training_matrix
+        tt = TrainingType.objects.create(tenant=self.tenant_a, name="Wash")
+        op = User.objects.create(tenant=self.tenant_a, username="op@x.test", email="op@x.test",
+                                 user_type="INTERNAL")
+        User.objects.create(tenant=self.tenant_a, username="buyer@x.test", email="buyer@x.test",
+                            user_type="INTERNAL")
+        TrainingRecord.objects.create(tenant=self.tenant_a, user=op, training_type=tt,
+                                      completed_date=timezone.now().date(), level=3)
+        matrix = build_training_matrix(self.tenant_a)
+        rows = matrix.get("operators") or matrix.get("users") or matrix.get("rows") or []
+        emails = {r.get("email") or r.get("name") for r in rows}
+        ids = {str(r.get("id") or r.get("user_id")) for r in rows}
+        self.assertIn(str(op.id), ids)
+        self.assertFalse(any("buyer" in str(e) for e in emails))

@@ -132,7 +132,7 @@ export default function EditTrainingRecordFormPage() {
                 user: record.user ?? undefined,
                 training_type: record.training_type ?? undefined,
                 completed_date: record.completed_date ?? "",
-                level: record.level ?? 3,
+                level: record.level ?? undefined,
                 expires_date: record.expires_date ?? null,
                 trainer: record.trainer ?? null,
                 notes: record.notes ?? "",
@@ -291,8 +291,9 @@ export default function EditTrainingRecordFormPage() {
                             <FormItem className="flex flex-col">
                                 <FormLabel>Competency Level *</FormLabel>
                                 <Select
-                                    value={field.value != null ? String(field.value) : "3"}
-                                    onValueChange={(v) => field.onChange(Number(v))}
+                                    // Empty until chosen: showing "3" made it look picked.
+                                    value={field.value != null ? String(field.value) : ""}
+                                    onValueChange={(v) => { if (v !== "") field.onChange(Number(v)); }}
                                 >
                                     <FormControl>
                                         <SelectTrigger>

@@ -122,7 +122,13 @@ export function TemporaryChangeCard({ pcrId, artifactNumber, info }: {
                                             variant="ghost"
                                             size="sm"
                                             disabled={moveBack.isPending}
-                                            onClick={() => moveBack.mutate(w.id)}
+                                            // It changes the routing the work order runs on — say
+                                            // so first (Engineering walk: it went straight through).
+                                            onClick={() => {
+                                                if (window.confirm(`Move ${w.erp_id} back to the baseline routing? Its remaining steps follow the baseline, not the temporary change.`)) {
+                                                    moveBack.mutate(w.id);
+                                                }
+                                            }}
                                         >
                                             Move back to baseline
                                         </Button>

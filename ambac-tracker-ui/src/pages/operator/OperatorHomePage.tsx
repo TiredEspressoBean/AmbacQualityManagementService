@@ -201,6 +201,15 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // Must-acknowledge shift notes are read at clock-in (audit row 11): clocking in
     // opens them, and the dialog closes once each is acknowledged.
     const [ackAtClockIn, setAckAtClockIn] = useState(false);
+    // Clocking out with a step still running leaves that run open on the floor: say so
+    // first (Operator walk — it went straight through).
+    const clockOut = () => {
+        const running = runs.find((r) => r.status === "IN_PROGRESS");
+        if (running && !window.confirm(
+            `${running.step_name ?? "A step"}${running.part_erp_id ? ` on ${running.part_erp_id}` : ""} is still running. ` +
+            "Clocking out leaves it open for the next shift to pick up. Clock out anyway?")) return;
+        clockAction.mutate({ kind: "clockout" });
+    };
     // runtime when the operator Starts/Resumes work.
     const clockAction = useMutation({
         mutationFn: async (
@@ -362,7 +371,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                 End {onLunch ? "lunch" : "break"}
                             </Button>
                             <Button variant="ghost" size="lg" className="h-12" disabled={clockAction.isPending}
-                                onClick={() => clockAction.mutate({ kind: "clockout" })}>
+                                onClick={clockOut}>
                                 Clock out
                             </Button>
                         </>
@@ -377,7 +386,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                 Lunch
                             </Button>
                             <Button variant="outline" size="lg" className="h-12" disabled={clockAction.isPending}
-                                onClick={() => clockAction.mutate({ kind: "clockout" })}>
+                                onClick={clockOut}>
                                 Clock out
                             </Button>
                         </>

@@ -356,12 +356,15 @@ export function CapaRcaTab({ capa }: CapaRcaTabProps) {
                         <CardTitle>Root Cause Analysis</CardTitle>
                         <CardDescription>No root cause analysis has been performed yet</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <Button onClick={handleOpenDialog}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Start RCA
-                        </Button>
-                    </CardContent>
+                    {/* Gated like Add RCA below — a read-only role (Auditor) was offered it. */}
+                    {hasPerm("add_rcarecord") && (
+                        <CardContent>
+                            <Button onClick={handleOpenDialog}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Start RCA
+                            </Button>
+                        </CardContent>
+                    )}
                 </Card>
                 {rcaDialog}
             </>

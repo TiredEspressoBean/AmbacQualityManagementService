@@ -21,6 +21,7 @@ import {
 import type { QualificationListParams } from "@/hooks/useSupplierQualifications";
 import { parseDateOnly } from "@/lib/date-only";
 import { BASIS_LABELS } from "@/pages/production/SupplierQualificationFormPage";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     APPROVED: "default", CONDITIONAL: "secondary", PENDING: "outline",
@@ -52,6 +53,11 @@ export function SupplierQualificationsPage() {
     });
 
     const grant = useGrantQualification();
+    // The menu offers what the server will do for this user: granting is the approval
+    // tier's; suspend/disqualify need change rights (walk: Purchasing was offered Grant).
+    const perms = usePermissionSet();
+    const canGrant = perms.has("approve_supplierqualification");
+    const canChange = perms.has("change_supplierqualification");
     const suspend = useSuspendQualification();
     const disqualify = useDisqualifyQualification();
 
@@ -163,14 +169,16 @@ export function SupplierQualificationsPage() {
                                             </DropdownMenuItem>
                                             {/* Only what applies to the qualification's state: an approved
                                                 one isn't granted again; a suspended one isn't suspended again. */}
-                                            {q.status !== "APPROVED" && q.status !== "DISQUALIFIED" && (
+                                            {canGrant && q.status !== "APPROVED" && q.status !== "DISQUALIFIED" && (
                                                 <DropdownMenuItem onClick={() => openDialog("grant", String(q.id), q.supplier_name)}>Grant…</DropdownMenuItem>
                                             )}
-                                            {(q.status === "APPROVED" || q.status === "CONDITIONAL") && (
+                                            {canChange && (q.status === "APPROVED" || q.status === "CONDITIONAL") && (
                                                 <DropdownMenuItem onClick={() => openDialog("suspend", String(q.id), q.supplier_name)}>Suspend…</DropdownMenuItem>
                                             )}
-                                            <DropdownMenuItem className="text-destructive"
-                                                onClick={() => openDialog("disqualify", String(q.id), q.supplier_name)}>Disqualify…</DropdownMenuItem>
+                                            {canChange && q.status !== "DISQUALIFIED" && (
+                                                <DropdownMenuItem className="text-destructive"
+                                                    onClick={() => openDialog("disqualify", String(q.id), q.supplier_name)}>Disqualify…</DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>

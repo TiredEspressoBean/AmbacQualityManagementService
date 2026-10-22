@@ -161,13 +161,21 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         if existing_user:
             user = existing_user
         else:
+            # A customer's person: a PORTAL user under the order's company, active with
+            # no password until they accept — as a staff invite is — so People shows a
+            # pending invite. It was created INTERNAL with no company, read as Inactive
+            # (Customer walk).
             user = User.objects.create(
                 username=email,
                 email=email,
-                is_active=False,
+                is_active=True,
                 is_staff=False,
+                user_type=User.UserType.PORTAL,
+                parent_company=order.company,
                 tenant=request.user.tenant,  # Assign to requesting user's tenant
             )
+            user.set_unusable_password()  # the invitation sets it on accept
+            user.save(update_fields=["password"])
             # Grant Customer role within tenant
             if request.user.tenant:
                 add_user_to_tenant_group(
@@ -180,7 +188,8 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
         # Create and send invitation if user needs to activate
         invitation_id = None
-        if not user.is_active:
+        if user_created or (not user.is_active) or (
+                user.last_login is None and not user.has_usable_password()):
             pending = UserInvitation.objects.filter(
                 user=user,
                 accepted_at__isnull=True,

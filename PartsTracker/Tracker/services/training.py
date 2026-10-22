@@ -501,7 +501,16 @@ def build_training_matrix(tenant=None):
     def _column(type_id):
         return column_for_root.get(lineage.get(type_id, type_id), type_id)
 
-    users_qs = User.objects.filter(user_type='INTERNAL')
+    # People with competence at stake: the shop floor (an untrained operator is the
+    # gap the matrix exists to show), plus anyone holding a training record or in a role
+    # that requires training. Every INTERNAL user made the auditor, the buyer and the
+    # dock rows of a matrix about who may do the work (Shift Lead walk).
+    from django.db.models import Q
+    users_qs = (User.objects.filter(user_type='INTERNAL', is_active=True)
+                .filter(Q(user_roles__group__name__in=('Operator', 'Shift Lead', 'QA Inspector'))
+                        | Q(training_records__archived=False)
+                        | Q(job_role__training_requirements__isnull=False))
+                .distinct())
     if tenant:
         users_qs = users_qs.filter(tenant=tenant)
     else:

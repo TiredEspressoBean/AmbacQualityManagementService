@@ -554,6 +554,12 @@ class TrainingMatrixServiceTests(TrainingModuleTestCase):
         from Tracker.models import Tenant, User
         from Tracker.utils.tenant_context import tenant_context
 
+        # The matrix lists people with competence at stake (a record, a requiring role,
+        # or the shop floor), so give the operator a record.
+        TrainingRecord.objects.create(
+            user=self.operator, training_type=self.cmm_training,
+            completed_date=date.today(), level=CompetencyLevel.QUALIFIED, tenant=self.tenant,
+        )
         other = Tenant.objects.create(name="Other Tenant", slug="other-tenant")
         ghost = User.objects.create_user(
             username="ghost", email="ghost@other.com", password="x", tenant=other,

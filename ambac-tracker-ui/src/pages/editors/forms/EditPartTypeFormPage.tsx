@@ -22,7 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {useParams} from "@tanstack/react-router";
+import {useNavigate, useParams} from "@tanstack/react-router";
 
 import {useRetrievePartType} from "@/hooks/useRetrievePartType";
 import {useCreatePartType} from "@/hooks/useCreatePartType";
@@ -159,6 +159,8 @@ export default function PartTypeFormPage() {
     const createPartType = useCreatePartType();
     const updatePartType = useUpdatePartType();
 
+    const navigate = useNavigate();
+
     function onSubmit(raw: FormValues) {
         const values = {...raw, preferred_supplier: supplierId, ...receiving} as FormValues;
         if (mode === "edit" && partTypeId) {
@@ -172,9 +174,13 @@ export default function PartTypeFormPage() {
             });
         } else {
             createPartType.mutate(values, {
-                onSuccess: () => {
+                onSuccess: (created) => {
                     toast.success("Part Type created successfully!");
-                    form.reset();
+                    // Go to the new record — staying on /new with a blank form read as
+                    // if nothing had been saved (Engineering walk).
+                    const id = (created as { id?: string | number } | undefined)?.id;
+                    if (id != null) navigate({to: "/editor/part-types/$id/edit", params: {id: String(id)}});
+                    else form.reset();
                 }, onError: (error) => {
                     console.error("Failed to create part type:", error);
                     toast.error("Failed to create the part type.");

@@ -64,6 +64,12 @@ const STANDING_STYLE: Record<string, { label: string; className: string }> = {
     REVIEW_RESTORE: { label: "Review: restore", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
 };
 
+const REVIEW_ACTION: Record<string, string> = {
+    REVIEW_SUSPEND: "Suspend from the Approved Supplier List",
+    REVIEW_CONDITIONAL: "Re-grant as conditional on the Approved Supplier List",
+    REVIEW_RESTORE: "Restore (grant) on the Approved Supplier List",
+};
+
 function StandingBadge({ action, reason }: { action?: string; reason?: string }) {
     if (!action || action === "NONE") return null;
     const cfg = STANDING_STYLE[action];
@@ -92,9 +98,10 @@ function ScorecardCard({ id, name }: { id: string; name: string }) {
                         {name}
                         {sc && <RatingBadge rating={sc.rating} reason={sc.rating_reason} />}
                         {sc && <StandingBadge action={sc.recommended_action} reason={sc.recommendation_reason} />}
-                        {sc && sc.recommended_action === "REVIEW_SUSPEND" && (
+                        {/* Every recommendation says where it's acted on — only suspend did. */}
+                        {sc && REVIEW_ACTION[sc.recommended_action ?? ""] && (
                             <Link to="/production/supplier-qualifications" className="text-xs font-normal underline underline-offset-2">
-                                Suspend from the Approved Supplier List
+                                {REVIEW_ACTION[sc.recommended_action ?? ""]}
                             </Link>
                         )}
                         <QualificationBadge supplierId={id} />

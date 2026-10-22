@@ -1389,7 +1389,17 @@ export function SchedulingGanttPage() {
             </>
           )}
           {canTouch && (
-            <Button variant="secondary" onClick={dispatch.run} disabled={dispatch.isRunning || !live}>
+            <Button
+              variant="secondary"
+              // Dispatch hands work to named operators on the floor — it goes out to their
+              // queues, so it confirms first (Scheduler walk: it ran on a stray click).
+              onClick={() => {
+                if (window.confirm("Dispatch assigns operators to the live plan's operations and puts the work in their queues. Dispatch now?")) {
+                  dispatch.run();
+                }
+              }}
+              disabled={dispatch.isRunning || !live}
+            >
               {dispatch.isRunning ? "Dispatching…" : "Dispatch"}
             </Button>
           )}

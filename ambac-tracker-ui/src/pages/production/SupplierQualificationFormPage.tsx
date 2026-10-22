@@ -229,7 +229,7 @@ export function SupplierQualificationFormPage() {
 
                     {!isEdit && (
                         <p className="text-xs text-muted-foreground">
-                            Created as PENDING. Grant it (or submit for approval) from the list once reviewed.
+                            Created as PENDING. Someone with grant authority (a quality manager) grants it from the list once it&rsquo;s reviewed.
                         </p>
                     )}
 

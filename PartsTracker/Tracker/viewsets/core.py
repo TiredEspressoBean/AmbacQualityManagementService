@@ -980,8 +980,14 @@ class CompanyViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, 
         # qualification, or outside processing. is_supplier defaults to true, so it named
         # every customer and the tenant's own company as a supplier on the scorecard.
         if self.request.query_params.get('supplying') == 'true':
-            from django.db.models import Q
-            qs = qs.filter(Q(supplied_lots__isnull=False) | Q(qualifications__isnull=False)
+            from django.db.models import Exists, OuterRef, Q
+            from Tracker.models import MaterialLot
+            # A lot counts as supply only when we bought it: a customer's own property
+            # (owned by them, sent for their job) and returned cores are recorded with
+            # the customer as supplier, which put customers on the scorecard.
+            bought = MaterialLot.objects.filter(  # tenant-safe: correlated to a scoped company
+                supplier=OuterRef('pk'), owner__isnull=True, holds_cores=False)
+            qs = qs.filter(Q(Exists(bought)) | Q(qualifications__isnull=False)
                            | Q(outside_process_shipments__isnull=False)).distinct()
         return qs
 

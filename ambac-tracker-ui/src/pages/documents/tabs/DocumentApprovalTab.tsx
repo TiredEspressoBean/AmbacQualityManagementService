@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,11 +59,13 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
     const canRespond = isUserAnApprover(currentUserId, userGroupIds, pendingApprovalRequest) &&
         !hasUserResponded(currentUserId, pendingApprovalRequest?.responses || []);
 
+    // Submitting locks the draft for review and notifies the approvers — confirm, then
+    // say it happened (Document Controller walk: no confirm, no toast).
     const handleSubmitForApproval = () => {
+        if (!window.confirm("Submit this document for approval? The draft locks for review and the approvers are notified.")) return;
         submitForApproval(undefined, {
-            onSuccess: () => {
-                // Refresh will happen via query invalidation
-            },
+            onSuccess: () => toast.success("Submitted for approval — the approvers have been notified."),
+            onError: (err: unknown) => toast.error(apiErrorMessage(err) ?? "Couldn't submit for approval"),
         });
     };
 

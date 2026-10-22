@@ -273,7 +273,7 @@ export default function MeasurementDefinitionForm({
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
                     </FormControl>
-                    <FormDescription>Maximum value</FormDescription>
+                    <FormDescription>Allowed above nominal (+), as a positive amount</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -295,7 +295,7 @@ export default function MeasurementDefinitionForm({
                         onChange={(e) => field.onChange(e.target.value || null)}
                       />
                     </FormControl>
-                    <FormDescription>Minimum value</FormDescription>
+                    <FormDescription>Allowed below nominal (−), as a positive amount</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

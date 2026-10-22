@@ -96,7 +96,8 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
       if (measurement.unit) parts[0] += ` ${measurement.unit}`;
     }
     if (measurement.lower_tol && measurement.upper_tol) {
-      parts.push(`(${measurement.lower_tol} / +${measurement.upper_tol})`);
+      // Both are amounts either side of nominal (lower = nominal − lower_tol).
+      parts.push(`(−${String(measurement.lower_tol).replace(/^-/, '')} / +${measurement.upper_tol})`);
     }
     return parts.join(' ') || measurement.unit || '-';
   };
