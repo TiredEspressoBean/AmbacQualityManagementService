@@ -62,6 +62,10 @@ said.
 **Exercise 1.1.** Say which inbound delivery is late, and what the supplier said
 when it was last chased.
 
+**Requirements** lists what open work is short of, with need-by and order-by dates:
+*Control Valve Assembly · short 8 · order now*. Ordering it is Purchasing's; your
+part is knowing which jobs it holds up when you plan.
+
 ---
 
 ## 2. Release work
@@ -97,12 +101,41 @@ may now take machine and operator time.
 3. Open the task again: it's where you pinned it. **Not scheduled** no longer lists
    the work you released.
 
-**Dispatch** puts named operators on the plan's work, and **What-if** solves a
-draft beside it to compare: see the Production Manager track, module 5.
+---
+
+## 4. Try it before you commit it
+
+**You will:** solve a draft beside the live plan, compare, and keep or drop it.
+
+1. **What-if**. It solves a draft in the background while the board keeps showing
+   the live plan: *Running a what-if… The board below is the previous result until
+   it lands.*
+2. When it lands, the header reads *DRAFT (what-if)* and **What-if draft — review vs
+   live** compares the two: makespan, lateness and how many tasks it moves.
+3. Read the note under it: *Differences this small are within the solvers' gap —
+   they may not be real.* A draft that's only slightly better hasn't proved
+   anything.
+4. **Commit draft** makes it the live plan; **Discard** drops it (*Draft
+   discarded*). With nothing changed, discard it.
 
 ---
 
-## 4. The calendar the plan is built on
+## 5. Put people on the plan
+
+**You will:** dispatch operators to the plan's work.
+
+**Dispatch** puts a named, qualified operator on each operation the plan holds:
+*Assigned 224 of 243 operations · 19 have no qualified operator free.* The header
+then counts the operations without an operator, and **People** shows each
+operator's work.
+
+The ones left without an operator are a staffing or training problem, not a
+scheduling one: a step nobody free is qualified for. Take the count to the
+production manager.
+
+---
+
+## 6. The calendar the plan is built on
 
 **You will:** close the plant for a day and check the plan moved around it.
 
@@ -121,7 +154,31 @@ the calendar.
 
 ---
 
-## 5. Stage tomorrow's work
+## 7. A machine goes down
+
+**You will:** re-plan around a breakdown, and read what it can't plan.
+
+1. **Production** > **WO Control Center** > **Exceptions** > **Report exception**.
+   Type **Downtime**, the machine (**Flow Test Stand #1**), *Unplanned /
+   breakdown*, a reason (*Pressure transducer failed*). **Record downtime**: it
+   starts now. (On the floor the shift lead usually records it; what follows is
+   yours.)
+2. The schedule reads *stale — re-solve*. **Solve**.
+3. The plan carries on around it. **Not scheduled** lists **No machine available**:
+   *"Nozzle Inspection" has no machine to run on: Flow Test Stand #1 is down
+   (Pressure transducer failed). Planned up to the step before it; it and what
+   follows wait.* Its advice: bring the machine back, or make another machine
+   eligible for the step.
+4. When the machine is fixed, **Resolve** the downtime and solve again.
+
+Held work on the downed machine is let go with that reason. Work its step could do
+on another eligible machine moves there. A solve that can't produce any plan never
+replaces the one in use: the board keeps the last good plan, marked stale, and says
+why the new one failed.
+
+---
+
+## 8. Stage tomorrow's work
 
 **You will:** see what each bench needs before the operator gets there.
 

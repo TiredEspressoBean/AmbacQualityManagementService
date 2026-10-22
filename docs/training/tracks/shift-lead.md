@@ -74,7 +74,15 @@ preview: it shows you the operator's home, not the operator's permissions.
 
 ## 2. Cover a job
 
-**You will:** put a different person on a task.
+**You will:** find who can cover an absence, and put them on the work.
+
+Dave Wilson has called in sick. Before you move his work, find out who can do it.
+
+**Quality** > **Training** > **Matrix**: one row per person, one column per skill.
+Hover a cell to read it: *Dave Wilson — Assembly Certification: Qualified*. The
+footer counts how many people are qualified (L3 and up) for each skill, so a column
+with one is a single point of failure. A cell marked *Expires 2026-10-29* lapses
+then, and after that date the plan won't give that person the step.
 
 **Scheduling** > **Schedule (Gantt)**, then **People**: one row per operator, with
 the work the plan gives them, and **— Unassigned —** for work nobody could be given.
@@ -181,6 +189,11 @@ part's steps.
    Operators get a must-acknowledge note at clock-in and can't dismiss it unread.
 
 A note is not a quality record: a part that looked wrong goes in a quality report.
+
+Then approve the shift's hours: **Scheduling** > **Operator Hours**. It shows on-shift
+and direct (job) hours per operator, and **Awaiting approval** lists each finished
+entry: shift, break, lunch, or production against a work order. **Approve** one, or
+**Approve all**. Your own entries read *Your time*: someone else approves those.
 
 ---
 

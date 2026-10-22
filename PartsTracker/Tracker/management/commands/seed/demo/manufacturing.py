@@ -208,8 +208,29 @@ DEMO_PROCESS = {
             'requires_batch_completion': False,
             'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
         },
+        # Where a unit goes when it hits a visit cap (user decision 2026-10-22). A
+        # holding step: the engine quarantines the unit on arrival and a disposition
+        # decides scrap, use as is, or one more rework; it routes out, so no edges
+        # leave it. Reached only by the ESCALATION edges in _create_step_edges.
+        {
+            'name': 'MRB Review', 'order': 14,
+            'description': 'Material review: a lead or QA decides a unit that hit its visit cap',
+            'pass_threshold': 1.0, 'expected_duration': None,
+            'block_on_quarantine': False, 'requires_qa_signoff': False,
+            'sampling_required': False, 'min_sampling_rate': 0.0,
+            'requires_first_piece_inspection': False, 'fpi_scope': 'PER_WORKORDER',
+            'block_on_measurement_failure': False, 'block_on_spc_violation': False,
+            'override_expiry_hours': 24, 'undo_window_minutes': 30, 'rollback_requires_approval': True,
+            'requires_batch_completion': False,
+            'max_visits': None, 'revisit_assignment': 'ANY', 'revisit_role_name': None,
+        },
     ],
 }
+
+# The steps with a visit cap escalate to MRB Review, per route.
+MRB_STEP = 'MRB Review'
+REMAN_ESCALATE_FROM = ['Nozzle Inspection', 'Flow Testing', 'Final Test', 'Rework']
+BUILD_ESCALATE_FROM = ['Body Inspection', 'Flow Calibration', 'Final Test', 'Rework']
 
 # Which of Nozzle Inspection's repairs are pre-approved there — part of the approved
 # process. Reconditioning a nozzle is routine; replacing one adds cost, so it waits for
@@ -285,6 +306,10 @@ DEMO_BUILD_PROCESS = {
          'description': 'Rework station for failed parts',
          'rollback_requires_approval': True,
          'max_visits': 3, 'revisit_assignment': 'DIFFERENT'},
+        # See the reman route's MRB Review: same holding step, same rule.
+        {**_BUILD_STEP, 'name': 'MRB Review', 'order': 12,
+         'description': 'Material review: a lead or QA decides a part that hit its visit cap',
+         'rollback_requires_approval': True},
     ],
     'route': ['Machining', 'Precision Grinding', 'Wash', 'Body Inspection', 'Nitride Coating',
               'Assembly', 'Flow Calibration', 'Final Test', 'Marking & Packaging', 'Ship'],
@@ -823,9 +848,14 @@ class DemoManufacturingSeeder(BaseSeeder):
         ProcessStep.objects.update_or_create(
             process=process, step=step_map['Rework'],
             defaults={'order': len(route) + 1, 'is_entry_point': False, 'is_exit_point': False})
+        ProcessStep.objects.update_or_create(
+            process=process, step=step_map[MRB_STEP],
+            defaults={'order': len(route) + 2, 'is_entry_point': False, 'is_exit_point': False})
+        Steps.objects.filter(pk=step_map[MRB_STEP].pk).update(labor_model='off')
         edges = [(a, b, EdgeType.DEFAULT) for a, b in zip(route, route[1:])]
         edges += [(name, 'Rework', EdgeType.ALTERNATE) for name in cfg['rework_from']]
         edges += [('Rework', cfg['rework_reentry'], EdgeType.DEFAULT)]
+        edges += [(name, MRB_STEP, EdgeType.ESCALATION) for name in BUILD_ESCALATE_FROM]
         for frm, to, edge_type in edges:
             StepEdge.objects.update_or_create(
                 process=process, from_step=step_map[frm], to_step=step_map[to], edge_type=edge_type,
@@ -858,7 +888,14 @@ class DemoManufacturingSeeder(BaseSeeder):
             ('Rework', 'Nozzle Inspection', EdgeType.DEFAULT),  # Re-enter inspection after rework
         ]
 
-        all_edges = [(a, b, t, False) for a, b, t in linear_edges + rework_edges]
+        escalation_edges = [(name, MRB_STEP, EdgeType.ESCALATION) for name in REMAN_ESCALATE_FROM]
+        # A failed arrival or grade can't be reworked (Rework re-enters after cleaning):
+        # it goes to MRB Review for a person to decide (user decision 2026-10-22).
+        escalation_edges += [(name, MRB_STEP, EdgeType.ALTERNATE)
+                             for name in ('Core Receiving', 'Component Grading')]
+        Steps.objects.filter(pk=step_map[MRB_STEP].pk).update(labor_model='off')
+
+        all_edges = [(a, b, t, False) for a, b, t in linear_edges + rework_edges + escalation_edges]
         # Repair branches: check → Repair node (an offshoot, drawn as ALTERNATE), and
         # Repair node → where it rejoins the main line.
         for check, repair, pre_approved, rejoin in DEMO_REPAIR_BRANCHES:
