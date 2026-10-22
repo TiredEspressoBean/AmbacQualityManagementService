@@ -9747,6 +9747,7 @@ export type StepExecutionList = {
     | undefined;
   part_erp_id: string | null;
   part_status: string | null;
+  work_order: string | null;
   /**
    * The step being executed
    */
@@ -25027,6 +25028,7 @@ const StepExecutionList = z.object({
   part: z.string().uuid().nullish(),
   part_erp_id: z.string().nullable(),
   part_status: z.string().nullable(),
+  work_order: z.string().nullable(),
   step: z.string().uuid(),
   step_name: z.string(),
   step_order: z.number().int().nullable(),

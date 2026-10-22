@@ -35790,6 +35790,7 @@ export interface components {
             part?: string | null;
             readonly part_erp_id: string | null;
             readonly part_status: string | null;
+            readonly work_order: string | null;
             /**
              * Format: uuid
              * @description The step being executed

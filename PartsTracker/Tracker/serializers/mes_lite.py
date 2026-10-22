@@ -1793,6 +1793,9 @@ class StepExecutionListSerializer(SecureModelMixin):
     # otherwise the zod client rejects the response the first time part is None.
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
     part_status = serializers.CharField(source='part.part_status', read_only=True, allow_null=True)
+    # The run's work order, so Resume can open a batch step with its batch panel (it
+    # needs the work order; without it the operator was stuck — walk 2026-10-22).
+    work_order = serializers.CharField(source='part.work_order_id', read_only=True, allow_null=True)
     step_name = serializers.CharField(source='step.name', read_only=True)
     step_order = serializers.SerializerMethodField()
     assigned_to_name = serializers.SerializerMethodField()
@@ -1800,7 +1803,7 @@ class StepExecutionListSerializer(SecureModelMixin):
     class Meta:
         model = StepExecution
         fields = (
-            'id', 'part', 'part_erp_id', 'part_status',
+            'id', 'part', 'part_erp_id', 'part_status', 'work_order',
             'step', 'step_name', 'step_order', 'visit_number',
             'entered_at', 'exited_at', 'status',
             'assigned_to', 'assigned_to_name', 'decision_result'

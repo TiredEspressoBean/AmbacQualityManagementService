@@ -102,6 +102,16 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
     ordering = ['-calibration_date']
     pagination_class = LimitOffsetPagination
 
+    @staticmethod
+    def _latest(qs):
+        """The latest calibration per equipment within `qs`. The viewset's base is
+        `unscoped`, whose queryset lacks latest_per_equipment; a hasattr fallback here
+        silently used EVERY record, so an old pass made an overdue gauge read current and
+        the dashboard's buckets summed past the equipment count (QA Manager sweep
+        2026-10-22)."""
+        # tenant-safe: ids from the tenant-scoped viewset queryset
+        return CalibrationRecord.objects.filter(id__in=qs.values('id')).latest_per_equipment()
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return CalibrationRecord.objects.none()
@@ -147,9 +157,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         today = tenant_today(self.tenant)
         cutoff = today + timedelta(days=days)
 
-        qs = self.get_queryset()
-        if hasattr(qs, 'latest_per_equipment'):
-            qs = qs.latest_per_equipment()
+        qs = self._latest(self.get_queryset())
         qs = qs.filter(due_date__lte=cutoff, due_date__gte=today).exclude(result='FAIL')
         qs = qs.order_by('due_date')
 
@@ -170,9 +178,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         """Return all overdue calibration records (latest per equipment)."""
         today = tenant_today(self.tenant)
 
-        qs = self.get_queryset()
-        if hasattr(qs, 'latest_per_equipment'):
-            qs = qs.latest_per_equipment()
+        qs = self._latest(self.get_queryset())
         qs = qs.filter(due_date__lt=today)
         qs = qs.order_by('due_date')
 
@@ -197,8 +203,7 @@ class CalibrationRecordViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMi
         # Get base queryset with tenant scoping
         qs = self.get_queryset()
 
-        # Get latest calibration per equipment for accurate counts
-        latest_per_equipment = qs.latest_per_equipment() if hasattr(qs, 'latest_per_equipment') else qs
+        latest_per_equipment = self._latest(qs)
 
         # Count equipment with calibration records
         # tenant-safe: qs is tenant-scoped via self.get_queryset()

@@ -36,6 +36,27 @@ class CalibrationFailedBucketTests(_Api):
         stats = self.client.get("/api/CalibrationRecords/stats/").json()
         self.assertEqual((stats["current_calibrations"], stats["failed"], stats["overdue"]), (1, 1, 0))
 
+    def test_only_the_latest_calibration_counts(self):
+        """Sweep 2026-10-22: the viewset's base queryset lacked latest_per_equipment, so
+        every record counted — an older one with a later due date made an overdue gauge
+        read current, and the buckets summed past the equipment count."""
+        gauge_type = EquipmentType.objects.create(tenant=self.tenant_a, name="Torque wrench",
+                                                  requires_calibration=True)
+        today = timezone.now().date()
+        eq = Equipments.objects.create(tenant=self.tenant_a, name="TW-25", equipment_type=gauge_type)
+        CalibrationRecord.objects.create(tenant=self.tenant_a, equipment=eq, result="PASS",
+                                         calibration_date=today - timedelta(days=100),
+                                         due_date=today + timedelta(days=100))
+        CalibrationRecord.objects.create(tenant=self.tenant_a, equipment=eq, result="PASS",
+                                         calibration_date=today - timedelta(days=30),
+                                         due_date=today - timedelta(days=5))
+        stats = self.client.get("/api/CalibrationRecords/stats/").json()
+        self.assertEqual((stats["total_equipment"], stats["current_calibrations"],
+                          stats["overdue"], stats["failed"]), (1, 0, 1, 0))
+        overdue = self.client.get("/api/CalibrationRecords/overdue/").json()
+        rows = overdue["results"] if isinstance(overdue, dict) else overdue
+        self.assertEqual(len(rows), 1)
+
 
 class SupplyingCompaniesTests(_Api):
     perms = ['view_companies', 'full_tenant_access']

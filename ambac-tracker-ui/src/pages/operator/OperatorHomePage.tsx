@@ -492,6 +492,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                                         // part is nullable on receiving/OSP-return-inspection
                                         // runs; the runtime resolves those from execution alone.
                                         part: activeRun.part ? String(activeRun.part) : undefined,
+                                        // A batch step's panel needs the work order.
+                                        workOrder: activeRun.work_order ? String(activeRun.work_order) : undefined,
                                         execution: String(activeRun.id),
                                     },
                                 })}
