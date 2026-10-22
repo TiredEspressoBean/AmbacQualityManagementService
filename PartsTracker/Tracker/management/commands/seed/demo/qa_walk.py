@@ -93,6 +93,13 @@ MANAGER_WO = 'WO-QA-MANAGE-01'
 MANAGER_PARTS = ['INJ-QA-MANAGE-001', 'INJ-QA-MANAGE-002']
 OVERSIZE_BORE = 4.007
 
+# QA Inspector / QA Manager corrections: a FAIL that shouldn't have been. The second
+# body was failed at Body Inspection for a burr that was a reflection off the bore
+# edge; its disposition is open. The inspector voids the finding and re-inspects, and
+# the QA Manager closes the disposition as not a nonconformance.
+FALSE_FAIL_WO = 'WO-QA-INSPECT-06'
+FALSE_FAIL_PARTS = ['INJ-QA-INSPECT-051', 'INJ-QA-INSPECT-052']
+
 OVERRIDE_REASON = 'Only operator free for the cell; first-piece run on my authority pending nozzle re-certification.'
 
 
@@ -167,6 +174,12 @@ class DemoQaWalkSeeder(BaseSeeder):
             result['manager_disposition'] = self._walk_manager_disposition(wo, parts, result)
         self._space_out(wo, self.today - timedelta(hours=3))
 
+        with transaction.atomic():
+            wo = self._work_order(order, process, FALSE_FAIL_WO, len(FALSE_FAIL_PARTS))
+            parts = self._parts(wo, part_type, FALSE_FAIL_PARTS)
+            result['false_fail_disposition'] = self._walk_false_fail(wo, parts, result)
+        self._space_out(wo, self.today - timedelta(hours=2, minutes=30))
+
         result['failed_gauge'] = self._fail_gauge()
 
         result['work_orders'] = [wo1, wo2] + drills
@@ -185,6 +198,9 @@ class DemoQaWalkSeeder(BaseSeeder):
         md = result.get('manager_disposition')
         self.log(f"  {MANAGER_WO}: {MANAGER_PARTS[1]} bore oversize, "
                  f"{md.disposition_number if md else 'no disposition'} waiting on Maria")
+        ff = result.get('false_fail_disposition')
+        self.log(f"  {FALSE_FAIL_WO}: {FALSE_FAIL_PARTS[1]} failed for a burr that wasn't "
+                 f"there, {ff.disposition_number if ff else 'no disposition'} open")
         self.log(f"  Training-gate overrides recorded: {result['override_count']}")
         return result
 
@@ -274,6 +290,25 @@ class DemoQaWalkSeeder(BaseSeeder):
             'grinder setup re-checked on the CMM; all within 4.005.')
         disposition.save(update_fields=['assigned_to', 'containment_action', 'updated_at'])
         record_containment_complete(disposition, self.sarah)
+        return disposition
+
+    def _walk_false_fail(self, wo, parts, result):
+        """The first piece bought off; the second body failed for a burr in the bore
+        that wasn't there. Its disposition is left open and unassigned."""
+        first, failed = parts
+        self._make_bodies(wo, parts, result)
+        self._run_step_for([first], 'Body Inspection', result, advance=False)
+        self._buy_off(wo, 'Body Inspection', first)
+        self._advance(first, 'PASS')
+        self._run_step_for([failed], 'Body Inspection', result, advance=False,
+                           defect=self._defect(BODY_DEFECT),
+                           defect_note={'location': 'Bore entry',
+                                        'notes': 'Bright line at the bore entry under the '
+                                                 'bench light.'})
+        disposition = (QuarantineDisposition.objects
+                       .filter(part=failed, current_state='OPEN').first())
+        if disposition is None:
+            self.log(f"  Warning: no disposition opened for {failed.ERP_id}.", warning=True)
         return disposition
 
     def _make_bodies(self, wo, parts, result):

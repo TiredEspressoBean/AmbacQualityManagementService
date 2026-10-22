@@ -306,6 +306,18 @@ class DemoSeedDarkExhibitTests(TestCase):
             self.assertEqual(nozzle.resolution, REPLACE_POOL)
             self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})
 
+    def test_a_false_fail_waits_to_be_put_right(self):
+        """QA Inspector / QA Manager corrections (2026-10-22): a body failed at Body
+        Inspection for a burr that wasn't there, quarantined with an open disposition
+        over its FAIL report."""
+        with tenant_context(self.tenant.id):
+            part = Parts.objects.get(ERP_id="INJ-QA-INSPECT-052")
+            self.assertEqual(part.step.name, "Body Inspection")
+            self.assertEqual(part.part_status, "QUARANTINED")
+            disposition = QuarantineDisposition.objects.get(part=part, current_state="OPEN")
+            self.assertEqual(list(disposition.quality_reports.values_list("status", flat=True)),
+                             ["FAIL"])
+
     def test_a_unit_that_used_up_its_reworks_waits_in_mrb(self):
         """Shift Lead / PM escalation (2026-10-22): two reworks at Nozzle Inspection hit
         the visit cap, so the unit sits quarantined at MRB Review with an open decision."""
