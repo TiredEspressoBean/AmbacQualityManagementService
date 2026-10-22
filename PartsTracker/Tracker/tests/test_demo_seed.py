@@ -306,6 +306,12 @@ class DemoSeedDarkExhibitTests(TestCase):
             self.assertEqual(nozzle.resolution, REPLACE_POOL)
             self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})
 
+    def test_the_tenant_admin_is_not_platform_staff(self):
+        """Administrator track (2026-10-22): is_staff grants cross-tenant read access, so
+        the customer's admin persona must not hold it; only the platform admin does."""
+        from Tracker.models import User
+        self.assertFalse(User.objects.get(email="admin@demo.ambac.com").is_staff)
+
     def test_a_false_fail_waits_to_be_put_right(self):
         """QA Inspector / QA Manager corrections (2026-10-22): a body failed at Body
         Inspection for a burr that wasn't there, quarantined with an open disposition

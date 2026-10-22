@@ -331,14 +331,14 @@ Walked as Tom Bradley (`tom.bradley`, Midwest Fleet Services, portal user).
 
 ## Administrator
 
-Walked 2026-10-21 as Alex Demo (Tenant Admin).
+Walked 2026-10-21 as Alex Demo (Tenant Admin). **Re-walked 2026-10-22 with Alex as a plain tenant admin:** the seed had made Alex platform staff (`is_staff`, cross-tenant read access), so the first walk ran with powers a customer's admin doesn't have.
 
 | # | Workflow | Docs | Code | Demo | Training | Checked | Notes |
 |---|----------|------|------|------|----------|---------|-------|
-| 1 | Add a user with roles and a position | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **User Management › Add user**: role checkboxes (multi-role allowed), Position for the training matrix, Company and *Contact for* for outside people. **⚠️:** the form shows Django's *Staff Status* (admin-site login). Reported to -4f. |
-| 2 | Change a user's roles | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Edit › roles › Save; each grant and removal is in the user's History and the audit log. |
-| 3 | Suspend a leaver | ✅ | ✅ | ✅ | ✅ | 2026-10-22 | Untick **Active User** (users are never deleted). Re-walked on 0ad5261: `Dave Wilson`'s Position loads (*Flow Test Technician*), Save → *User updated successfully!*, inactive with the position kept. |
-| 4 | Find who changed what | ✅ | ✅ | 🚧 | ✅ | 2026-10-21 | **Audit Log**: time, user, action, object, before → after. Changes made in the app are all there. **Demo 🚧:** seeded changes have no actor and don't show (see Auditor 3). |
+| 1 | Add a user with roles and a position | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | **Re-walked 2026-10-22 (non-staff):** the *Platform support access* toggle shows only to platform staff (by decision; the server ignored it from anyone else). The user list loads. **Finding:** *Pending invite* is derived from never having signed in, so seeded and imported users read Pending invite with **Resend invitation** though none was sent. Reported to f6. **User Management › Add user**: role checkboxes (multi-role allowed), Position for the training matrix, Company and *Contact for* for outside people. **⚠️:** the form shows Django's *Staff Status* (admin-site login). Reported to -4f. |
+| 2 | Change a user's roles | ✅ | ⚠️ | ✅ | ✅ | 2026-10-21 | **Re-walked 2026-10-22 (non-staff): ⚠️** the role change saves and is on the Audit Log with Alex as actor, but the user's own **History** panel says *No recorded changes*. Reported to f6. Edit › roles › Save; each grant and removal is in the user's History and the audit log. |
+| 3 | Suspend a leaver | ✅ | ✅ | ✅ | ✅ | 2026-10-22 | **Re-walked 2026-10-22 (non-staff):** untick Active → *User updated successfully!*, logged with Alex as actor; the user's History panel shows nothing (see 2). Untick **Active User** (users are never deleted). Re-walked on 0ad5261: `Dave Wilson`'s Position loads (*Flow Test Technician*), Save → *User updated successfully!*, inactive with the position kept. |
+| 4 | Find who changed what | ✅ | ✅ | 🚧 | ✅ | 2026-10-21 | **Re-walked 2026-10-22 (non-staff):** the Audit Log shows Alex's changes with before → after. **Audit Log**: time, user, action, object, before → after. Changes made in the app are all there. **Demo 🚧:** seeded changes have no actor and don't show (see Auditor 3). |
 | 5 | Read what a role can do | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | **Settings › Roles & Permissions** lists 14 groups with member and permission counts. **View** shows members and permissions. |
 | 6 | Keep outside contacts out of the invite flow | — | ✅ | ✅ | — | 2026-10-21 | **Swept 2026-10-22 (walked):** Dana Fischer and Rob Lindqvist read *Contact*, with a Contacts filter; not counted as pending invites. Supplier contacts (contact_role users) list as *Pending invite*, and **Invite N not yet invited** would invite them. Customer contacts live in a separate model (Settings › External Contacts). Reported to -4f. |
 

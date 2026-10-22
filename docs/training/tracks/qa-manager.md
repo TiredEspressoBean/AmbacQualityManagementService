@@ -35,7 +35,7 @@ inspector's work, and you review it.
     instance.
 
 **Regenerating** (for the trainer): **Settings** > **Organization** > **Regenerate
-demo data**, then type `REGENERATE` to confirm. It needs a staff login, appears only
+demo data**, then type `REGENERATE` to confirm. It needs a Tenant Admin login, appears only
 on the training tenant, and replaces **everyone's** work on the instance. It runs in
 the background and takes a few minutes; the card stops waiting after five, so if it
 hasn't finished by then, reload the page later rather than pressing it again.

@@ -37,7 +37,10 @@ DEMO_USERS = [
         'last_name': 'Demo',
         'role': 'Tenant Admin',
         'user_type': 'INTERNAL',  # UPPERCASE enum value
-        'is_staff': True,
+        # A customer's admin, not platform staff: is_staff grants cross-tenant read
+        # access, which would let the Administrator track show powers a real tenant
+        # admin doesn't have. The platform admin is seed_demo's own superuser.
+        'is_staff': False,
         'is_active': True,
         'is_superuser': False,
         'citizenship': 'USA',
