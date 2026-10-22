@@ -313,6 +313,9 @@ _APPROVAL_REQUIRED_TYPES = {'USE_AS_IS', 'REPAIR'}
 _OFF_SITE_REFUSED_TYPES = {'SCRAP', 'RETURN_TO_SUPPLIER'}
 
 
+# All or nothing: a decision whose consequences fail (a NOT_NONCONFORMANCE close that
+# can't close) must not stay half-applied — decided, part released, record still open.
+@transaction.atomic
 def decide_disposition(
     disposition: QuarantineDisposition,
     *,
@@ -405,7 +408,8 @@ def decide_disposition(
             raise ValueError(
                 "You recorded or voided this finding, so someone else must close it as "
                 "not a nonconformance.")
-        reasons = "; ".join(sorted({r.superseded_reason for r in reports if r.superseded_reason}))
+        reasons = "; ".join(sorted({r.superseded_reason.strip().rstrip(".!?")
+                                    for r in reports if r.superseded_reason}))
         notes = f"Not a nonconformance — the result was voided: {reasons}." + (
             f" {notes.strip()}" if (notes or '').strip() else "")
 

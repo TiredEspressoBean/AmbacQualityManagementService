@@ -177,3 +177,19 @@ class SupersededReportGateTests(FalseFailCorrectionTests):
         self.assertTrue(self.ncr.has_pending_annotations()[0])
         self._void()
         self.assertFalse(self.ncr.has_pending_annotations()[0])
+
+
+class NotNonconformanceCloseTests(FalseFailCorrectionTests):
+    def test_a_major_withdrawn_finding_needs_no_containment_to_close(self):
+        """Re-walk 2026-10-22: the close demanded a containment action for a
+        nonconformance that never existed."""
+        from Tracker.services.qms.disposition import decide_disposition
+        self.ncr.severity = "MAJOR"
+        self.ncr.containment_action = ""
+        self.ncr.save(update_fields=["severity", "containment_action"])
+        self._void()
+        decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE",
+                           authorized_by=self.manager)
+        self.ncr.refresh_from_db()
+        self.assertEqual(self.ncr.current_state, "CLOSED")
+        self.assertNotIn("..", self.ncr.resolution_notes)

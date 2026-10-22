@@ -1101,7 +1101,9 @@ class QuarantineDisposition(SecureModel):
 
         # Containment (AS9100, Level 1): a CRITICAL/MAJOR disposition must record a
         # containment action before it can be completed.
-        if self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip():
+        # A withdrawn finding (NOT_NONCONFORMANCE) had nothing to contain (re-walk 2026-10-22).
+        if (self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip()
+                and self.disposition_type != 'NOT_NONCONFORMANCE'):
             return False
 
         return True
@@ -1122,7 +1124,9 @@ class QuarantineDisposition(SecureModel):
             blockers.append(f"3D annotations required for {len(pending_reports)} quality report(s)")
 
         # Containment (AS9100, Level 1): high-severity dispositions need containment.
-        if self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip():
+        # A withdrawn finding (NOT_NONCONFORMANCE) had nothing to contain (re-walk 2026-10-22).
+        if (self.severity in ('CRITICAL', 'MAJOR') and not (self.containment_action or '').strip()
+                and self.disposition_type != 'NOT_NONCONFORMANCE'):
             blockers.append("Containment action required before closing a CRITICAL/MAJOR disposition")
 
         return blockers
