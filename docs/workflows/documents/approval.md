@@ -25,7 +25,7 @@ Your administrator configures which types require approval.
 └──────────┘     └──────────┘     └──────────┘     └──────────┘
                       │                                  │
                       ▼                                  ▼
-                 (rejected —                        ┌──────────┐
+             (rejected or withdrawn —               ┌──────────┐
                   back to Draft)                    │ Obsolete │
                                                     └──────────┘
 ```
@@ -34,11 +34,13 @@ The five statuses are **Draft**, **Under Review**, **Approved**, **Released**
 and **Obsolete**. *Approved* and *Released* are distinct: approval is the
 signature, release is putting it into force.
 
-!!! note "Obsolete is always a deliberate act"
-    Nothing retires a document automatically. Approving a new version does not
-    obsolete the old one — the old one simply stops being current and keeps
-    whatever status it had. If your procedure says superseded documents must
-    read Obsolete, that is a step on somebody's checklist.
+!!! note "What makes a document Obsolete"
+    **Releasing** a new revision obsoletes the released revision it replaces,
+    so two revisions of one document are never in force at once. Approving one
+    does not: until the new revision is released, the old one stays in force.
+    A document withdrawn without a replacement is obsoleted by hand, with **Mark
+    obsolete** — see [Taking a document out of
+    circulation](library.md#taking-a-document-out-of-circulation).
 
 ## Submitting for Approval
 
@@ -70,17 +72,14 @@ After submission:
 1. Document status changes to **Under Review**
 2. Approvers are notified
 3. Document appears in approvers' queues
-4. The document stays editable — both metadata and the file
+4. The document is **locked** — neither its details nor its file can change
 
-!!! warning "Review does not lock the document"
-    Nothing is locked while a document is under review. The file stops being
-    swappable only once the document reaches **Approved** or **Released** —
-    until then an editor can replace the very file the approvers are reading,
-    and nothing tells them it changed.
-
-    If your process requires that what was approved is what was reviewed, that
-    is a convention to hold to, not a rule the system enforces. The safe habit
-    is to re-check the file before signing.
+!!! important "What is approved is what was reviewed"
+    While approvers are looking at a document, nobody can change it. The edit
+    page says so up front — *Under review — can't be changed while approvers are
+    looking at it* — and won't save. To change a document under review, the
+    person who asked for the approval [withdraws the
+    request](#withdrawing-a-request), edits the draft and submits again.
 
 ### Viewing Pending Documents
 
@@ -120,6 +119,15 @@ Approving and rejecting are one action, not two buttons:
 
 4. Add comments, and sign if the approval template requires it
 5. Submit the response
+
+### Changing your response
+
+Answered too soon, or the wrong way? While the request is still **open**, **Change
+my response** takes your answer back, with a required reason. You are waiting on
+again, and answer anew when you're ready. The approval history shows what you had
+answered, that you withdrew it and why, and your new answer.
+
+Once the request is decided, its responses stand.
 
 !!! warning "Only assigned approvers see the button"
     **Submit Response** appears only if you are an assigned approver on the
@@ -207,19 +215,18 @@ On the document:
    - Date/time of action
    - Comments
 
-## Recalling a Submission
+## Withdrawing a request
 
-!!! note "Not available"
-    There is no recall or withdraw control on the document approval tab. A
-    submitted document stays under review until the assigned approvers respond.
+Submitted with a mistake in it? The person who asked for the approval can take it
+back: **Withdraw request** on the document's **Approval** tab, or on the request's
+row under **Approvals** > *My Submitted Requests*. Give a reason.
 
-    If a submission was made in error, ask an approver to **reject** it — the
-    document returns to the owner and can be revised and resubmitted.
+- The approvers are no longer asked to decide.
+- The request reads **Cancelled**, and keeps the reason.
+- The document goes back to **Draft**, so it can be corrected and submitted again.
 
-Use when:
-- Errors found after submission
-- Need to make additional changes
-- Wrong template selected
+Only the requester can withdraw, and only while the request is still pending.
+Approvers don't need to reject a submission that was simply made too early.
 
 ## Approval History
 

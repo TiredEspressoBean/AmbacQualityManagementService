@@ -144,6 +144,20 @@ Two different acts, and the difference matters to an auditor:
     **Revisions are never deleted** at all, only archived, so a document's
     history stays intact regardless.
 
+**Mark obsolete** asks you to confirm. It takes effect from today, and the document
+is kept for its retention period.
+
+#### Obsoleted by mistake
+
+**Reinstate** on the obsolete document puts it back in force, with a required
+reason. It is released again if it had been released, or approved if it hadn't, and
+its obsolete date clears. The change and the reason show under *Corrections* on the
+document's **Audit Trail**.
+
+A revision that a later revision replaced can't be reinstated. The newer one is in
+force, so revise that instead. Reinstating needs the same permission as releasing
+(`release_documents`).
+
 Deleting needs `delete_documents`, by default held by **Document Controller, QA Manager,
 Production Manager, Engineering and Tenant Admin** — the authoring and manager
 tiers. Operators, inspectors, the dock and auditors cannot.

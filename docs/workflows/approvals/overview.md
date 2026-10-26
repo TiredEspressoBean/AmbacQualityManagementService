@@ -128,6 +128,17 @@ Your response records your identity, the decision, a timestamp, the
 verification method used, and your comments. See [Electronic
 Signatures](../../compliance/signatures.md).
 
+## Putting a response or a request right
+
+| Mistake | Who | What to do |
+|---------|-----|------------|
+| You answered too soon, or the wrong way | The approver | **Change my response**, with a reason, while the request is open. Your answer is taken back and you answer anew |
+| A request went out with a mistake in it | The requester | **Withdraw request**, with a reason, from the record or **Approvals** > *My Submitted Requests*. It reads **Cancelled**, and a document goes back to Draft to be corrected and resubmitted |
+
+Both are possible only while the request is **pending**. A decided request and its
+responses stand. Each change, and its reason, stays in the request's history next
+to what it replaced.
+
 ## Due dates and escalation
 
 A template sets **due days** from when the request is raised, and optionally
