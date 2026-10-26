@@ -49454,6 +49454,8 @@ components:
           format: uuid
         state:
           $ref: '#/components/schemas/AdherenceOpStateEnum'
+        judged:
+          type: boolean
         planned_start:
           type: string
           format: date-time
@@ -49491,6 +49493,7 @@ components:
       - actual_end
       - actual_start
       - id
+      - judged
       - machine_name
       - operator_name
       - part_erp

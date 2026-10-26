@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 MAX_DAYS = 31
@@ -48,9 +49,12 @@ def adherence_ops(tenant, *, days: int = 7, now=None) -> list[dict]:
             .filter(tenant=tenant, schedule__is_draft=False, part_id__isnull=False)
             .select_related('part__work_order', 'step', 'machine', 'assigned_operator', 'schedule'))
 
-    # Started in the window: the latest visit per part and step, a finished row first.
+    # Started in the window — or still running on the live schedule, however long ago it
+    # started: the latest visit per part and step, a finished row first.
     started: dict[tuple, object] = {}
-    for t in base.filter(actual_start__gte=since).order_by('actual_start', 'schedule__created_at'):
+    in_window = Q(actual_start__gte=since) | Q(
+        actual_start__isnull=False, actual_end__isnull=True, schedule__is_active=True)
+    for t in base.filter(in_window).order_by('actual_start', 'schedule__created_at'):
         key = (t.part_id, t.step_id)
         held = started.get(key)
         if held is None or t.actual_start > held.actual_start or (
@@ -61,6 +65,9 @@ def adherence_ops(tenant, *, days: int = 7, now=None) -> list[dict]:
     for t in started.values():
         out.append({
             'id': str(t.id), 'state': 'done' if t.actual_end else 'running',
+            # False: it started before any schedule had it, so there is no plan to judge
+            # it by — the board shows it uncoloured and leaves it out of adherence.
+            'judged': t.planned_end_at_start is not None,
             'planned_start': t.planned_start_at_start or t.start_time,
             'planned_end': t.planned_end_at_start or t.end_time,
             'actual_start': t.actual_start, 'actual_end': t.actual_end,
@@ -88,7 +95,7 @@ def adherence_ops(tenant, *, days: int = 7, now=None) -> list[dict]:
             missed[key] = t   # a later schedule's miss replaces an earlier one
     for t in missed.values():
         out.append({
-            'id': str(t.id), 'state': 'missed',
+            'id': str(t.id), 'state': 'missed', 'judged': True,
             'planned_start': t.start_time, 'planned_end': t.end_time,
             'actual_start': None, 'actual_end': None,
             **_unit(t),

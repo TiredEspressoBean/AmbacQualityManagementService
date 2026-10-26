@@ -211,6 +211,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         responses={200: inline_serializer(name='AdherenceOp', many=True, fields={
             'id': serializers.UUIDField(),
             'state': serializers.ChoiceField(choices=['done', 'running', 'missed']),
+            'judged': serializers.BooleanField(),
             'planned_start': serializers.DateTimeField(),
             'planned_end': serializers.DateTimeField(),
             'actual_start': serializers.DateTimeField(allow_null=True),

@@ -125,6 +125,28 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
         ops = adherence_ops(self.tenant)
         self.assertEqual([(o['state'], o['part_erp']) for o in ops], [('done', 'P-A')])
 
+    def test_work_running_before_the_first_solve_shows_running_and_unjudged(self):
+        from Tracker.services.scheduling.actuals import carry_running_actuals
+        from Tracker.services.scheduling.adherence import adherence_ops
+        se = self._exec()   # entered before any schedule existed
+        s1 = self._schedule()
+        now = timezone.now()
+        task = ScheduledTask.objects.create(
+            tenant=self.tenant, schedule=s1, part=self.part, step=self.step, in_progress=True,
+            start_time=now, end_time=now + timedelta(hours=1))
+        carry_running_actuals(s1)
+        task.refresh_from_db()
+        self.assertEqual((task.actual_start, task.planned_end_at_start), (se.entered_at, None))
+        self.assertEqual([(o['state'], o['judged']) for o in adherence_ops(self.tenant)],
+                         [('running', False)])
+        # Finishing it doesn't invent a plan: no schedule had it when it started.
+        se.exited_at = timezone.now()
+        se.save(update_fields=['exited_at'])
+        task.refresh_from_db()
+        self.assertIsNone(task.planned_end_at_start)
+        self.assertEqual([(o['state'], o['judged']) for o in adherence_ops(self.tenant)],
+                         [('done', False)])
+
     def test_an_op_due_and_never_started_is_missed(self):
         from Tracker.services.scheduling.adherence import adherence_ops
         sched = self._schedule()

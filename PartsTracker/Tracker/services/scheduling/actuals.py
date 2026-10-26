@@ -47,9 +47,9 @@ def record_execution_actuals(step_execution) -> None:
                               schedule__created_at__lte=step_execution.entered_at, **unit)
                       .order_by('-schedule__created_at')
                       .values('start_time', 'end_time').first())
-        if started_on is None:
-            # Started before any plan had it (or the plan was solved after): the live one.
-            started_on = live.values('start_time', 'end_time').first()
+        # None: it started before any plan had it. There is no honest plan to judge it
+        # against — the live task was solved around it — so the plan stays unset and the
+        # board shows the op uncoloured, outside the adherence figure.
         if started_on is not None:
             live.filter(planned_end_at_start__isnull=True).update(
                 planned_start_at_start=started_on['start_time'],
@@ -59,12 +59,16 @@ def record_execution_actuals(step_execution) -> None:
 def carry_running_actuals(schedule) -> None:
     """After a re-solve: a task the solver marked running (`in_progress`) gets its real
     start, and the plan it started on, from the schedule it ran under — otherwise the new
-    task has no actuals until the op finishes, and plan-vs-actual loses it meanwhile."""
+    task has no actuals until the op finishes, and plan-vs-actual loses it meanwhile.
+
+    Work already running before any schedule had it (a shop's first solve, a regenerate)
+    has no prior task: its start comes from the open step execution, with no plan."""
+    from Tracker.models import StepExecution
     from Tracker.models.scheduling import ScheduledTask
 
     for task in ScheduledTask.all_tenants.filter(  # tenant-safe: one schedule's own rows
             schedule=schedule, in_progress=True, part_id__isnull=False):
-        prior = (ScheduledTask.all_tenants
+        prior = (ScheduledTask.all_tenants  # tenant-safe: explicit tenant_id filter
                  .filter(tenant_id=task.tenant_id, part_id=task.part_id, step_id=task.step_id,
                          schedule__is_draft=False, actual_start__isnull=False)
                  .exclude(schedule=schedule)
@@ -72,6 +76,13 @@ def carry_running_actuals(schedule) -> None:
                  .values('actual_start', 'planned_start_at_start', 'planned_end_at_start')
                  .first())
         if prior is None:
+            entered = (StepExecution.all_tenants  # tenant-safe: explicit tenant_id filter
+                       .filter(tenant_id=task.tenant_id, part_id=task.part_id, step_id=task.step_id,
+                               exited_at__isnull=True)
+                       .order_by('-entered_at').values_list('entered_at', flat=True).first())
+            if entered is not None:
+                ScheduledTask.all_tenants.filter(pk=task.pk).update(  # tenant-safe: by pk of a scoped row
+                    actual_start=entered)
             continue
         ScheduledTask.all_tenants.filter(pk=task.pk).update(  # tenant-safe: by pk of a scoped row
             actual_start=prior['actual_start'],

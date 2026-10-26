@@ -8,6 +8,9 @@
  *    (frozen server-side, so a re-solve can't hide a slip): green within ±tolerance,
  *    blue early beyond it, amber late, red very late.
  *  - Due but never started: a red dashed outline at its planned slot.
+ *  - Started before any schedule had it (work in hand at a first solve or a
+ *    regenerate): drawn at its actual times, uncoloured, outside the adherence figure —
+ *    there is no plan to judge it by.
  *  - Ops still to come: from the live schedule, as the board draws them.
  *  - Optional (off by default): a mark on ops started well ahead of their planned start.
  *
@@ -46,6 +49,8 @@ type LiveTask = {
 type AdherenceOp = {
     id: string;
     state: "done" | "running" | "missed";
+    /** False: started before any schedule had it — no plan to judge it by. */
+    judged: boolean;
     planned_start: string;
     planned_end: string;
     actual_start: string | null;
@@ -57,7 +62,8 @@ type AdherenceOp = {
     operator_name: string | null;
 };
 
-type Kind = "ontime" | "early" | "late" | "verylate" | "missed" | "running" | "future";
+// unplanned: finished, but started before any schedule had it — drawn, never judged.
+type Kind = "ontime" | "early" | "late" | "verylate" | "missed" | "running" | "unplanned" | "future";
 
 type Op = {
     id: string;
@@ -70,6 +76,7 @@ type Op = {
     actualEnd: Date | null;
     kind: Kind;
     deviation: number | null;
+    judged: boolean;
     outOfOrder: boolean;
     isLate: boolean;
 };
@@ -96,6 +103,7 @@ const STYLE: Record<Kind, string> = {
     verylate: "bg-red-200 text-red-950 ring-1 ring-inset ring-red-500 dark:bg-red-950 dark:text-red-200",
     missed: "bg-transparent text-red-600 shadow-none border-2 border-dashed border-red-500",
     running: "bg-violet-100 text-violet-900 ring-2 ring-inset ring-violet-500 dark:bg-violet-950 dark:text-violet-200",
+    unplanned: "bg-muted text-muted-foreground ring-1 ring-inset ring-border",
     future: "",
 };
 
@@ -106,6 +114,7 @@ const LEGEND: { kind: Kind; label: string }[] = [
     { kind: "verylate", label: "Very late" },
     { kind: "missed", label: "Due, never started" },
     { kind: "running", label: "Running" },
+    { kind: "unplanned", label: "Started before planned" },
 ];
 
 export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
@@ -140,6 +149,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
         type Unit = {
             id: string; lane: string; what: string; step: string; ps: number; pe: number;
             as: number | null; ae: number | null; state: "done" | "running" | "missed" | "future"; late: boolean;
+            judged: boolean;
         };
         const units: Unit[] = [];
         const seen = new Set<string>();
@@ -151,6 +161,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 step: a.step_name ?? "", ps: new Date(a.planned_start).getTime(), pe: new Date(a.planned_end).getTime(),
                 as: a.actual_start ? new Date(a.actual_start).getTime() : null,
                 ae: a.actual_end ? new Date(a.actual_end).getTime() : null, state: a.state, late: false,
+                judged: a.judged,
             });
         }
         for (const t of liveTasks) {
@@ -159,13 +170,13 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 id: t.id, lane: laneOf(t.machine_name, t.operator_name),
                 what: groupBy === "machine" ? (t.work_order ?? t.part_erp ?? t.core_number ?? "job") : (t.machine_name ?? "—"),
                 step: t.step_name ?? "", ps: new Date(t.start_time).getTime(), pe: new Date(t.end_time).getTime(),
-                as: null, ae: null, state: "future", late: t.is_late,
+                as: null, ae: null, state: "future", late: t.is_late, judged: true,
             });
         }
         const cycles = new Map<string, Unit[]>();
         for (const u of units) {
             // A cycle shares its slot: the same planned start, or the same actual start.
-            const key = `${u.lane}::${u.what}::${u.step}::${u.state}::${u.as ?? u.ps}`;
+            const key = `${u.lane}::${u.what}::${u.step}::${u.state}::${u.judged}::${u.as ?? u.ps}`;
             (cycles.get(key) ?? cycles.set(key, []).get(key)!).push(u);
         }
         return [...cycles.entries()].map(([key, us]) => {
@@ -177,11 +188,13 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
                 label: `${u.what} · ${u.step}${us.length > 1 ? ` ×${us.length}` : ""}`,
                 plannedStart: new Date(u.ps), plannedEnd: new Date(pe),
                 actualStart: u.as != null ? new Date(u.as) : null, actualEnd: ae != null ? new Date(ae) : null,
-                kind: "future", deviation: null, outOfOrder: false, isLate: us.some((x) => x.late),
+                kind: "future", deviation: null, judged: u.judged, outOfOrder: false,
+                isLate: us.some((x) => x.late),
             };
             if (u.state === "missed") return { ...op, kind: "missed" };
-            const early = u.as != null && u.as < u.ps - Math.max(60, 2 * tolerance) * MIN;
+            const early = u.judged && u.as != null && u.as < u.ps - Math.max(60, 2 * tolerance) * MIN;
             if (u.state === "running") return { ...op, kind: "running", outOfOrder: early };
+            if (u.state === "done" && !u.judged) return { ...op, kind: "unplanned" };
             if (u.state === "done" && ae != null) {
                 const deviation = (ae - pe) / MIN;
                 return { ...op, deviation, kind: classify(deviation, tolerance, redAfter), outOfOrder: early };
@@ -191,9 +204,13 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [adherence, liveTasks, groupBy, tolerance, redAfter]);
 
+    // The window's first midnight, fixed for the life of the view: a moving boundStart
+    // re-runs the provider's initial scroll and throws the view back to the start.
+    const [windowStart] = useState(() => startOfDay(Date.now() - WINDOW_DAYS * DAY));
+    // Work running since before the window is drawn from the window's start.
     const drawn = (o: Op) => (o.kind === "missed" || o.kind === "future"
         ? { startAt: o.plannedStart, endAt: o.plannedEnd }
-        : { startAt: o.actualStart!, endAt: o.actualEnd ?? new Date(now) });
+        : { startAt: new Date(Math.max(o.actualStart!.getTime(), windowStart)), endAt: o.actualEnd ?? new Date(now) });
 
     const lanes = useMemo(() => {
         const m = new Map<string, Op[]>();
@@ -215,33 +232,28 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
 
     // The headline covers everything due in the window, on screen or not.
     const counts = useMemo(() => {
-        const c: Record<Kind, number> = { ontime: 0, early: 0, late: 0, verylate: 0, missed: 0, running: 0, future: 0 };
+        const c: Record<Kind, number> = {
+            ontime: 0, early: 0, late: 0, verylate: 0, missed: 0, running: 0, unplanned: 0, future: 0,
+        };
         ops.forEach((o) => { c[o.kind] += 1; });
         const due = c.ontime + c.early + c.late + c.verylate + c.missed;
         return { ...c, due, adherence: due ? Math.round(((c.ontime + c.early) / due) * 100) : null };
     }, [ops]);
 
-    const bounds = useMemo(() => {
-        const ends = ops.map((o) => o.plannedEnd.getTime());
-        return {
-            start: new Date(startOfDay(now - WINDOW_DAYS * DAY)),
-            end: new Date(Math.max(now + DAY, ...ends) + 30 * MIN),
-        };
+    const boundEndMs = useMemo(
+        () => Math.max(now + DAY, ...ops.map((o) => o.plannedEnd.getTime())) + 30 * MIN,
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ops]);
+        [ops]);
+    const bounds = useMemo(() => ({ start: new Date(windowStart), end: new Date(boundEndMs) }),
+        [windowStart, boundEndMs]);
+    const [openedAt] = useState(() => new Date());
 
     // Virtualize: render only bars in the visible time window (+ one screen each side).
     const dayPx = (720 * zoom) / 100;
     const [viewport, setViewport] = useState({ scrollLeft: 0, clientWidth: 4000 });
-    const opened = useRef(false);
     useEffect(() => {
         const el = rootRef.current?.querySelector(".gantt") as HTMLElement | null;
         if (!el) return;
-        // Open centred on now, once — the provider lands on the window's first morning.
-        if (!opened.current && el.clientWidth > 0) {
-            el.scrollLeft = ((now - bounds.start.getTime()) / DAY) * dayPx - el.clientWidth / 2;
-            opened.current = true;
-        }
         const read = () => setViewport((v) => {
             const clientWidth = el.clientWidth || v.clientWidth;
             return v.scrollLeft === el.scrollLeft && v.clientWidth === clientWidth ? v : { scrollLeft: el.scrollLeft, clientWidth };
@@ -252,7 +264,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
         ro.observe(el);
         return () => { el.removeEventListener("scroll", read); ro.disconnect(); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoading, bounds.start.getTime()]);
+    }, [isLoading]);
     const inView = (o: Op) => {
         const { startAt, endAt } = drawn(o);
         const origin = bounds.start.getTime();
@@ -264,6 +276,10 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
     const describe = (o: Op) => {
         const planned = `planned ${fmtTime(o.plannedStart)}–${fmtTime(o.plannedEnd)}`;
         if (o.kind === "missed") return `${planned} · never started`;
+        if (!o.judged && o.actualStart) {
+            const ran = `started ${fmtTime(o.actualStart)}${o.actualEnd ? `, finished ${fmtTime(o.actualEnd)}` : ", running"}`;
+            return `${ran} · started before it was planned, so not judged`;
+        }
         if (o.kind === "running" && o.actualStart) return `${planned} · started ${fmtTime(o.actualStart)}, running`;
         if (o.actualStart && o.actualEnd && o.deviation != null)
             return `${planned} · actual ${fmtTime(o.actualStart)}–${fmtTime(o.actualEnd)} · ${fmtDev(o.deviation)}`;
@@ -316,6 +332,7 @@ export function PlanVsActualView({ liveTasks, groupBy, zoom }: {
             )}
 
             <GanttProvider range="hourly" zoom={zoom} boundStart={bounds.start} boundEnd={bounds.end}
+                initialCenter={openedAt}
                 className="min-h-0 flex-1 rounded-lg border">
                 <div data-roadmap-ui="gantt-sidebar"
                     className="sticky left-0 z-30 h-max min-h-full overflow-clip border-r border-border/50 bg-background/90 backdrop-blur-md">

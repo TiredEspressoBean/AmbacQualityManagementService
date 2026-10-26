@@ -87,6 +87,7 @@ export type VisibilityEnum =
 export type AdherenceOp = {
   id: string;
   state: AdherenceOpStateEnum;
+  judged: boolean;
   planned_start: string;
   planned_end: string;
   actual_start: string | null;
@@ -24655,6 +24656,7 @@ const AdherenceOpStateEnum = z.enum(["done", "running", "missed"]);
 const AdherenceOp = z.object({
   id: z.string().uuid(),
   state: AdherenceOpStateEnum,
+  judged: z.boolean(),
   planned_start: z.string().datetime({ offset: true }),
   planned_end: z.string().datetime({ offset: true }),
   actual_start: z.string().datetime({ offset: true }).nullable(),

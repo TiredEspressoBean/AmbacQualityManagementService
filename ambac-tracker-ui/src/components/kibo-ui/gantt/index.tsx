@@ -1500,6 +1500,9 @@ export type GanttProviderProps = {
   // 3-year grid — required to make the minute-scale hourly view perform + navigate.
   boundStart?: Date;
   boundEnd?: Date;
+  // Bounded mode: open centred on this moment instead of on boundStart's time-of-day
+  // (a window that reaches back into history opens on "now", not its first morning).
+  initialCenter?: Date;
 };
 
 export const GanttProvider: FC<GanttProviderProps> = ({
@@ -1510,6 +1513,7 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   className,
   boundStart,
   boundEnd,
+  initialCenter,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   // Live zoom, readable by handlers/helpers without making the context value change
@@ -1556,7 +1560,11 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       // Bounded (horizon) mode lands on horizon-start's time-of-day (where the work
       // begins) — columns start at midnight, so scrolling to 0 would show empty
       // pre-shift hours. The unbounded 3-year grid centres on today.
-      if (bounded && boundStart) {
+      if (bounded && boundStart && initialCenter) {
+        const dayPx = (columnWidth * zoom) / 100;
+        const days = (initialCenter.getTime() - startOfDay(boundStart).getTime()) / 86_400_000;
+        scrollRef.current.scrollLeft = Math.max(0, days * dayPx - scrollRef.current.clientWidth / 2);
+      } else if (bounded && boundStart) {
         const dayPx = (columnWidth * zoom) / 100;
         const minutes = boundStart.getHours() * 60 + boundStart.getMinutes();
         scrollRef.current.scrollLeft = Math.max(0, (minutes / (60 * 24)) * dayPx - 48);

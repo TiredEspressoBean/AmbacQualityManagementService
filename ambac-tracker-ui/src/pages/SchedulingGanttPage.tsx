@@ -442,6 +442,23 @@ export function SchedulingGanttPage() {
     };
     zoomRaf.current = requestAnimationFrame(tick);
   }, []);
+  // Plan vs actual opens at the hours scale; leaving it puts the board's zoom back.
+  const boardZoom = useRef<number | null>(null);
+  const jumpZoom = (z: number) => {
+    targetZoom.current = appliedZoom.current = z;
+    setZoom(z);
+  };
+  const enterPlanVsActual = () => {
+    if (planVsActual) return;
+    boardZoom.current = targetZoom.current;
+    jumpZoom(400);
+    setPlanVsActual(true);
+  };
+  const leavePlanVsActual = () => {
+    if (!planVsActual) return;
+    if (boardZoom.current != null) jumpZoom(boardZoom.current);
+    setPlanVsActual(false);
+  };
   const nudgeZoom = useCallback(
     (factor: number) => {
       targetZoom.current = clampZoom(targetZoom.current * factor);
@@ -1277,7 +1294,7 @@ export function SchedulingGanttPage() {
                 variant={groupBy === mode && !showPlanVsActual ? "secondary" : "ghost"}
                 size="sm"
                 className="h-7 px-2 text-xs"
-                onClick={() => { setGroupBy(mode); setPlanVsActual(false); }}
+                onClick={() => { setGroupBy(mode); leavePlanVsActual(); }}
               >
                 {label}
               </Button>
@@ -1291,7 +1308,7 @@ export function SchedulingGanttPage() {
                 ? "Plan vs actual compares the live schedule with what happened — switch to Live."
                 : "What happened against the plan, the last 7 days"}
               onClick={() => {
-                setPlanVsActual(true);
+                enterPlanVsActual();
                 if (groupBy === "workorder") setGroupBy("machine");
               }}
             >

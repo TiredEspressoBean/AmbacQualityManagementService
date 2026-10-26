@@ -20870,6 +20870,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             state: components["schemas"]["AdherenceOpStateEnum"];
+            judged: boolean;
             /** Format: date-time */
             planned_start: string;
             /** Format: date-time */
