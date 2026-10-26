@@ -202,6 +202,54 @@ anything is broken.
 
 ---
 
+## 9. Did the floor follow the plan?
+
+**You will:** read how this morning went against the plan it was given.
+
+This morning's plan had five urgent bodies on **CNC Lathe HL-1**, `WO-PLAN-01` to
+`WO-PLAN-05`, each one Machining slot. The floor ran four of them, not all to plan,
+and never got to the fifth.
+
+1. On the schedule, **Plan vs actual** (at the end of Machines / People / Work
+   orders). It opens on the hour scale, on now. Finished work is drawn **where it
+   actually ran**, not where it was planned.
+2. Find the five on the lathe's row and read their colours:
+
+    | Colour | Means | Here |
+    |--------|-------|------|
+    | Green | Finished within the tolerance of its planned end | `WO-PLAN-01` |
+    | Blue | Finished **early**, beyond the tolerance | `WO-PLAN-02` |
+    | Amber | Finished late | `WO-PLAN-03` |
+    | Red | Finished very late | `WO-PLAN-04` |
+    | Red dashed outline, at the planned slot | Due, and never started | `WO-PLAN-05` |
+
+3. Click `WO-PLAN-04`: *planned … · actual … · +N min*. That is the whole story of
+   the slip, in one line.
+4. Read the headline: the counts, and *Adherence: N% of M ops due in the last 7 days
+   finished on time or early*. Most of the outlines are the bodies' next steps:
+   machined, then left waiting at the grinder past their slots. A part waiting past
+   its slot counts as missed.
+5. Change **On time within ±** from 15 to 45. `WO-PLAN-02` and `WO-PLAN-03` turn
+   green, and the adherence figure jumps, with nothing on the floor any different.
+   The tolerance is your shop's definition of on time, so set it once and keep it.
+   Put it back to 15.
+
+!!! important "Each op is judged on the plan it started on"
+    Re-solving moves the plan, so judging the floor against the latest plan would
+    make every slip disappear the moment you solved again. Plan vs actual keeps, for
+    each op, the planned finish as it stood when the work **started**, and judges it
+    against that. Work already under way before any plan had it can't be judged: it
+    shows in the running colour, then grey as *Started before planned*, and stays
+    out of the percentage.
+
+**Early isn't automatically good.** Blue means the plan and the floor disagreed. It
+can mean the floor jumped the sequence (an easier job run ahead of the planned one,
+which then runs late), or that the step's standard time is padded. **Mark
+out-of-order starts** flags ops started well ahead of plan. Padded times are
+Engineering's, and worth telling them about.
+
+---
+
 ## Final task — observed
 
 Your trainer regenerates the data, logs you in as Sam, and says only: *"Close the

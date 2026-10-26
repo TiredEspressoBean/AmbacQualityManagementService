@@ -259,21 +259,42 @@ reality once a part fails or a repair is raised.
 
 ## Did the floor follow the plan?
 
-Each scheduled task records an **actual start** and **actual end** as a unit
-enters and leaves its step.
+Each scheduled task records an **actual start**, when work on the step is started
+(not when the unit arrives and waits), and an **actual end** when it leaves the
+step. Click a bar on the live board and the task panel shows them beside the plan.
 
-**Where to see it:** click a bar. The task detail panel shows the actual start
-and end beside the planned ones, with the variance between them — a task still
-running reads *in progress*.
+### Plan vs actual
 
-!!! note "One bar at a time, not across the board"
-    That panel is the only place actuals surface. There is **no adherence view**
-    — nothing aggregates them into how closely the shop followed the schedule,
-    which lines drifted, or how many starts were late.
+**Plan vs actual**, at the end of Machines / People / Work orders, shows the last 7
+days against the plan, opening on the hour scale at now. **By machine** or **By
+person** chooses the rows. It shows the live plan only, not a draft.
 
-    So you can answer *"did this task run to plan?"* for any task you click, and
-    you cannot answer *"did the floor follow the plan?"* without clicking
-    through them. The data is all captured; the summary is what is missing.
+| On the board | Means |
+|--------------|-------|
+| A bar drawn where the work **actually** ran, coloured by its finish against its planned end | Green: within **On time within ±**. Blue: finished early, beyond it. Amber: late. Red: later than **Very late after** |
+| A bar from its actual start to now (▶) | Running |
+| A red dashed outline at the planned slot | **Due, never started**: its slot has passed and the work wasn't started. A unit that arrived and is waiting counts here |
+| Grey, *Started before planned* | Work already under way before any plan had it. It can't be judged, so it's left out of the figure |
+| Uncoloured, to the right of now | To come, from the live plan |
+
+The headline counts each kind, and gives *Adherence: N% of M ops due in the last 7
+days finished on time or early*. Click a bar for the detail, for example *planned
+9:00–9:45 · actual 10:20–11:05 · +80 min*. A cycle several units shared is one bar,
+*×N*.
+
+!!! important "Each op is judged on the plan it started on"
+    A re-solve moves the plan, and a running op is re-placed at "now", so judging
+    work against the latest plan would make every slip vanish at the next solve.
+    Each op instead keeps its planned finish as it stood **when it started**, and
+    is judged against that. Finished work stays on the view after a re-solve too:
+    it is drawn from every plan that was live while it ran.
+
+**Early is a deviation too.** Blue can mean the floor ran something ahead of its
+turn, so the job that should have run then is late, or that the step's standard time
+is padded. **Mark out-of-order starts** flags ops started well ahead of plan.
+
+The two thresholds are your shop's definition of on time. Set them once and leave
+them, or the percentage moves for reasons that have nothing to do with the floor.
 
 !!! important "Capture records; it does not react"
     Stamping an actual deliberately **does not** re-time the plan or mark the
@@ -281,16 +302,11 @@ running reads *in progress*.
     solves, and a drift recorded on every single advance would leave the
     staleness flag permanently on — and therefore meaningless.
 
-!!! warning "Empty actuals usually mean the sequence, not a fault"
-    Actuals only accrue for work that moves **after** a solve. A schedule solved
-    today, over a shop whose activity happened last week, shows nothing — there
-    was nothing left to capture.
-
-    To see it work: **solve, then advance a unit through a step, then look
-    again.** That order is the whole requirement.
-
-A task still in progress has an actual **start** and no actual end, which is
-correct rather than missing data.
+!!! warning "An empty view usually means the sequence, not a fault"
+    Work can only be judged against a plan that existed when it started. The
+    first plan a shop solves has nothing behind it, so work already running then
+    shows as *Started before planned*, and the view fills as work starts after a
+    solve.
 
 ## Fence zones — how near-term work is protected
 
