@@ -188,6 +188,19 @@ The lot is chosen in this order:
 
 **Remaining quantity updates automatically** as lots are drawn.
 
+### A draw recorded against the wrong lot
+
+When the record says a unit drew from one lot but it really came from another,
+open the lot it was **recorded** against. Under what it reached, each draw from
+this lot has **Wrong lot?**. Choose the **lot actually used**, which must be the
+same item with enough in stock, and give a reason. **Move the draw** gives the
+quantity back to this lot, draws it from the right one, and keeps both lots'
+records and the reason. The unit's trace then names the right lot.
+
+It needs the stock-correction permission held by leads (`apply_cyclecount`). This
+fixes the genealogy. **Adjust quantity** only fixes a count, and leaves the unit
+traced to the wrong lot.
+
 ### Splitting Lots
 
 To divide a lot:

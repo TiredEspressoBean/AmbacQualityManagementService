@@ -141,6 +141,18 @@ captured in the audit trail.
     **Migrate All** suits a change that fixes something wrong with the process
     itself.
 
+### Implemented by mistake
+
+An implemented change has no undo. **Propose a new change back**, the same way:
+a PCR against the current version that restores what was there, naming the
+mistaken PCR in its *why*. Both changes stay on the process's record, so anyone
+reading it later sees what happened, when, and why it was reversed, which is what
+an auditor expects of a controlled process. Decide the in-flight work orders for
+the change back as you would for any change.
+
+The same goes for a **measurement definition** set wrong on an approved process:
+it is corrected in a new draft of the process, through change control.
+
 ## PCN — Process Change Notice
 
 Distribution and effectiveness verification for an implemented PCO.
