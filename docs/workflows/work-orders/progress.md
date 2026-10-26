@@ -131,7 +131,7 @@ Guides](../../roles/index.md).
 | **Release** | Not yet released, and not on hold | Releases the job — the readiness check runs, and if it refuses, *Not ready to release* lists the blockers and asks for a **reason to release anyway**. It does **not** change the status |
 | **Un-release** | Released | Withdraws the authorisation |
 | **Hold** (*Place on hold* on the control page) | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
-| **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending** |
+| **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending**. A quality or tooling hold needs **What resolved it** before it clears |
 | **Cancel Work Order** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
 | **Short-close** | Not on hold, with something finished | Completes it short, deciding each unfinished unit — see [Short-closing](basics.md#short-closing-a-work-order) |
 
@@ -145,6 +145,16 @@ Guides](../../roles/index.md).
 
 See [Releasing](../scheduling/releasing.md) for what release decides and the
 other places it can be done.
+
+### Undoing one by mistake
+
+| Mistake | Put right with |
+|---------|----------------|
+| Held the wrong work order | **Resume**, saying it was placed in error. **Hold history** keeps both the hold and why it came off |
+| Released one that wasn't ready | **Un-release** |
+| Short-closed one by mistake | **Reopen** — see [Short-closed by mistake](basics.md#short-closed-by-mistake) |
+
+A cancelled work order has no way back. Raise a new one for the work.
 
 ## Progress figures
 

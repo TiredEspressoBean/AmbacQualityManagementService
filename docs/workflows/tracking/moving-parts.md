@@ -154,6 +154,39 @@ When a step is configured for batch processing:
 2. System waits for other parts in the batch
 3. When batch conditions are met, all parts advance together
 
+## Sending a part back a step
+
+A part moved on too soon (a step finished before it should have been, a reading
+taken with an overdue gauge) is sent back on **WO Control**: tick it and press
+**Previous step**, with a required reason. Its last visit is marked **rolled
+back**, not deleted, and the part returns to the step it came from on a new visit.
+The rest of its lot waits for it, since unsplit parts move together.
+
+Each step sets **how long** a rollback can be done directly after the part left
+it, and whether it always needs approval:
+
+| | What happens |
+|---|---|
+| Within the step's window, no approval required | Rolled back at once |
+| The step requires approval, or the window has passed | A **rollback request** goes to QA instead, and the page says so |
+
+A rollback request lands with the bypass requests (see [Requesting a
+bypass](#requesting-a-bypass)), marked *Step Rollback*. **Approving it carries the
+rollback out** there and then, so nobody has to press anything again. A refused
+request leaves the part where it is.
+
+### The wrong part in a shared cycle
+
+When one cycle ran several parts together (a washer load, an oven batch), a part
+loaded by mistake is taken out from its own history: open the part on WO Control,
+and under the step's *Shared cycle*, **Take this part out**, with a reason. The
+cycle stands for the other parts. The part goes back to that step for its own
+run, and the reason is kept on the batch.
+
+If the part has already moved on, taking it out steps it back too, so the same
+window and approval rules apply. When approval is needed, the request goes to QA,
+and you take the part out once it is approved.
+
 ## Transition Permissions
 
 | Permission | Allows |
@@ -205,11 +238,12 @@ These can't:
 - **Training.** Use the supervisor override when the work starts.
 - **Life limits.** These need a limit extension.
 
-Requests land in the QA inbox under **Bypass requests**. A holder of
-`approve_stepoverride` (by default QA Manager and Tenant Admin) **Approves** or
-**Refuses**; a refusal needs a reason. Nobody can decide their own request.
-Approving tries to advance the part straight away. An approved bypass clears
-its block only until the step's override expiry, 24 hours by default.
+Requests land under **Bypass requests**, on the QA inbox and on the QA Manager's
+and Tenant Admin's home pages. A holder of `approve_stepoverride` (by default QA
+Manager and Tenant Admin) **Approves** or **Refuses**; a refusal needs a reason.
+Nobody can decide their own request. Approving a bypass tries to advance the part
+straight away. An approved bypass clears its block only until the step's override
+expiry, 24 hours by default.
 
 ### "No parts at step"
 

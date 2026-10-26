@@ -258,6 +258,18 @@ Short-close is refused:
   customer
 - for scrapping a quarantined unit, or one out at a vendor. Moving them is fine.
 
+### Short-closed by mistake
+
+**Reopen**, beside the **Short-closed** badge, takes the work order back to **In
+Progress**, with its order if the close had completed it. It needs the same
+permission as short-closing and a required reason, kept on the work order.
+
+- Units the close **scrapped stay scrapped**, and units it **moved stay where they
+  went**. Reopening undoes the closing, not the decisions made in it. Where scrap
+  left the work order short, its **Make-up** card offers make-up parts.
+- Units it gave back to the order line are no longer counted there as well, so
+  the line doesn't plan them twice.
+
 ## Work Order Permissions
 
 | Permission | Allows |
