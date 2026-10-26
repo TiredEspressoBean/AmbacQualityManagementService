@@ -250,6 +250,29 @@ voided one has to be redone.
 
     Retracting a record is itself a recorded event. Nothing is deleted.
 
+### Capturing it again
+
+A part with a voided completion is redone at that step: start it again with
+**Start Work** and capture what was voided. This works even when the part is
+**quarantined** because of the voided result, since that re-capture is the one
+piece of work a held part may take. If the person who did the work isn't the one
+to redo it, a lead reassigns it the usual way. The new capture is a new record; the
+voided one stays beside it.
+
+**An inspection result** is the same, with its report:
+
+- Voiding the capture **supersedes** its quality report. The report is kept,
+  marked superseded, with the void's reason, and the re-capture records a **new**
+  report.
+- If the voided result was a **FAIL** that opened a disposition, re-inspecting does
+  not close it. The part stays held until the disposition is decided. When the
+  finding was simply wrong and the new result is a PASS, a QA manager (not the
+  inspector who recorded or voided it) closes it as **Not a nonconformance** —
+  see [Dispositions](../quality/dispositions.md#when-the-finding-was-wrong-not-a-nonconformance).
+
+**The wrong part:** a capture recorded against the wrong unit is voided on that
+unit, and captured on the right one.
+
 ## Reman captures
 
 Three substep types exist only for remanufacturing work. They look like any
