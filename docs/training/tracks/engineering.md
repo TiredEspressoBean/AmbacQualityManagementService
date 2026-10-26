@@ -85,6 +85,10 @@ control so there's a record of what changed, why, and who agreed.
    on the old one. A **change notice** (*PCN*) is released. Open it and **Close**
    it with the evidence the change took hold: who was briefed, what was checked.
 
+**Implemented the wrong change?** There's no undo. Propose a new change back, the
+same way, and name the mistaken PCR in *why*. Both changes stay on the routing's
+record, so anyone reading it later sees what happened and when.
+
 ---
 
 ## 3. Define what's measured

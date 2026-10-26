@@ -355,6 +355,13 @@ unit), released into rebuild. Its nozzle was scrapped at the bench.
 The choice exists only on an exchange unit. A customer's own unit (R1) keeps its own
 parts and is never offered another core's.
 
+**Fitted the wrong part?** The core's **As built** card lists each component fitted,
+by whom and when. **Remove** the wrong one, with a reason: it's struck through on the
+record, not deleted, and is free to go in elsewhere. If the unit was already
+*Rebuilt*, it goes back to *In Rebuild*, not ready to ship until the slot is filled
+again through the rebuild. Once a unit has gone back to its customer, it can't be
+removed here.
+
 ## Recording your qualification
 
 Passing the final task is the assessment. The record is a **training record**, which

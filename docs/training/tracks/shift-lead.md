@@ -226,7 +226,14 @@ body needs measuring again.
 
 A step can be undone directly for a short while after it's finished; each step sets
 how long. After that, or where the step requires it, the rollback is sent for
-approval instead, and the page says so.
+approval instead, and the page says so. The QA manager approves it under **Bypass
+requests** on their home, and the part steps back then.
+
+**The wrong part in a shared cycle** (a washer load, say): open the part's history
+from its row, and under the step's *Shared cycle*, **Take this part out**, with a
+reason. It leaves the cycle, and the cycle stands for the other parts. The part goes
+back to that step for its own run. If it has already moved on, taking it out steps
+it back too, so the same approval may apply.
 
 ---
 
