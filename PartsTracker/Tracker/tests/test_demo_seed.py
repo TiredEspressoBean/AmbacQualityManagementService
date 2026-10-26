@@ -335,6 +335,34 @@ class DemoSeedDarkExhibitTests(TestCase):
         from Tracker.models import User
         self.assertFalse(User.objects.get(email="admin@demo.ambac.com").is_staff)
 
+    def test_the_planner_sees_how_the_morning_ran(self):
+        """Planner module 8 (2026-10-26): this morning's plan, four bodies run against
+        it (on time, early, late, very late, each judged on the plan it started on) and
+        one slot nobody took; today's plan then solves over everything."""
+        from datetime import timedelta
+        from Tracker.models.scheduling import ScheduleResult
+        from Tracker.services.scheduling.adherence import adherence_ops
+        with tenant_context(self.tenant.id):
+            live = ScheduleResult.objects.filter(is_active=True, is_draft=False).first()
+            self.assertIsNotNone(live)
+            self.assertNotEqual(live.solver_status, 'INFEASIBLE')
+            ops = [o for o in adherence_ops(self.tenant)
+                   if (o['work_order'] or '').startswith('WO-PLAN-') and o['step_name'] == 'Machining']
+        by_wo = {o['work_order']: o for o in ops}
+        tolerance = timedelta(minutes=15)
+
+        def drift(wo):
+            o = by_wo[wo]
+            self.assertEqual(o['state'], 'done', wo)
+            self.assertTrue(o['judged'], f"{wo} wasn't judged against the plan it started on")
+            return o['actual_end'] - o['planned_end']
+
+        self.assertLessEqual(abs(drift('WO-PLAN-01')), tolerance)
+        self.assertLess(drift('WO-PLAN-02'), -tolerance)
+        self.assertTrue(tolerance < drift('WO-PLAN-03') <= timedelta(minutes=60))
+        self.assertGreater(drift('WO-PLAN-04'), timedelta(minutes=60))
+        self.assertEqual(by_wo['WO-PLAN-05']['state'], 'missed')
+
     def test_a_decided_verification_carries_when_it_was_decided(self):
         """Corrections #16 (2026-10-26): the lock that freezes a decided CAPA verification
         reads effectiveness_decided_at. A seeded Confirmed result without it was editable."""
