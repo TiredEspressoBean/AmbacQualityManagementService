@@ -293,27 +293,28 @@ class DemoDarkExhibitSeeder(BaseSeeder):
             return None
 
         count = cc.start_count(self.tenant, loc.name, counter, blind=True)
-        entries = self._count_entries(loc)
+        entries = self._count_entries(count)
         if entries:
             cc.record_count(count, entries)
         cc.submit_count(count, counter)
         self.log(f"  Cycle count: {count.count_number} submitted at {loc.name} (awaiting apply)")
         return count.count_number
 
-    def _count_entries(self, loc):
-        """Count two lots, one of them deliberately short — a variance to work.
+    def _count_entries(self, count):
+        """Count every line on the sheet, the first lot deliberately short — a variance
+        to work. A line left blank isn't a count; leaving three of five blank made them
+        read as missing stock.
 
         Entry shape is the service's own: ``{kind, id, counted, note}``.
         """
-        from Tracker.models import MaterialLot
-        lots = list(MaterialLot.objects.filter(location=loc)[:2])
         entries = []
-        for i, lot in enumerate(lots):
-            on_hand = Decimal(str(lot.quantity_remaining or 0))
-            short = i == 0 and on_hand > 1
+        lines = sorted(count.lines, key=lambda l: l.get('label') or '')
+        for i, line in enumerate(lines):
+            on_hand = Decimal(str(line.get('expected') or 0))
+            short = i == 0 and line.get('kind') == 'LOT' and on_hand > 1
             entries.append({
-                'kind': 'LOT',
-                'id': str(lot.id),
+                'kind': line.get('kind'),
+                'id': line.get('id'),
                 'counted': on_hand - 1 if short else on_hand,
                 'note': 'One short on the shelf.' if short else '',
             })

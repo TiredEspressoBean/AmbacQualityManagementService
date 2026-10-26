@@ -306,6 +306,17 @@ class DemoSeedDarkExhibitTests(TestCase):
             self.assertEqual(nozzle.resolution, REPLACE_POOL)
             self.assertLessEqual({"HARVESTED_POOL", "PURCHASED"}, {c.kind for c in nozzle.candidates})
 
+    def test_the_seeded_count_has_one_deliberate_difference(self):
+        """Receiving (2026-10-26): the seeded count counted two of five lots, and the
+        other three read as missing stock. Every line is counted; one is a lot short."""
+        from Tracker.models import CycleCount
+        from Tracker.services.mes.cycle_count import variances
+        with tenant_context(self.tenant.id):
+            count = CycleCount.objects.get(count_number="CC-2026-0001")
+            diffs = variances(count)
+            self.assertEqual(len(diffs), 1, diffs)
+            self.assertTrue(all(line.get("counted") is not None for line in count.lines))
+
     def test_an_assembled_unit_draws_its_material_once(self):
         """Auditor walk (2026-10-22): the material-usage backfill drew again for parts
         whose advance had already drawn, so a traveler listed every lot twice."""
