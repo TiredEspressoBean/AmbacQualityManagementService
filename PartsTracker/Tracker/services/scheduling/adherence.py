@@ -79,8 +79,11 @@ def adherence_ops(tenant, *, days: int = 7, now=None) -> list[dict]:
     schedules = list(ScheduleResult.objects  # tenant-safe: explicit tenant filter
                      .filter(tenant=tenant, is_draft=False, created_at__lte=now)
                      .order_by('created_at').values_list('id', 'created_at'))
+    # Started, not merely arrived: a part waiting in the queue past its slot is missed.
+    # A visit advanced without ever being started counts as worked.
     entered = set(StepExecution.objects  # tenant-safe: explicit tenant filter
-                  .filter(tenant=tenant, part_id__isnull=False, entered_at__lte=now)
+                  .filter(Q(started_at__lte=now) | Q(exited_at__lte=now),
+                          tenant=tenant, part_id__isnull=False)
                   .values_list('part_id', 'step_id'))
     missed: dict[tuple, object] = {}
     for i, (sid, created) in enumerate(schedules):

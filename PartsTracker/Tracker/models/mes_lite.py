@@ -1902,6 +1902,16 @@ class StepExecution(SecureModel):
         # subject_content_type/subject_id fields (e.g. a MaterialLot at a RECEIVING
         # step). The old part-XOR-core check went when cores became parts.
 
+    def save(self, *args, **kwargs):
+        # Auto-fill: the moment work began is the first save as IN_PROGRESS. Arrival
+        # (entered_at) is not a start — a PENDING row is a part waiting in the queue.
+        if self.status == 'IN_PROGRESS' and self.started_at is None:
+            self.started_at = timezone.now()
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                kwargs['update_fields'] = {*update_fields, 'started_at'}
+        super().save(*args, **kwargs)
+
     @property
     def subject_object(self):
         """Resolve the polymorphic subject (subject_content_type + subject_id), if set."""

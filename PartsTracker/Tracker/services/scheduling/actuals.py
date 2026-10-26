@@ -1,6 +1,6 @@
 """Capture execution actuals onto the schedule (capture-only).
 
-When a part/core enters or exits a step, stamp the matching active-schedule
+When work on a part starts or finishes at a step, stamp the matching active-schedule
 `ScheduledTask` with the real start/end. This is planned-vs-actual data for the
 board and variance reporting — it deliberately does NOT re-time the plan or mark
 the schedule stale: the solver already pins in-progress ops at solve time, and
@@ -10,9 +10,20 @@ signals in `Tracker/signals.py`).
 from __future__ import annotations
 
 
+def execution_start(step_execution):
+    """When work began: `started_at`. A visit finished without ever being started (an
+    advance straight from the queue) falls back to its arrival — the best there is."""
+    if step_execution.started_at is not None:
+        return step_execution.started_at
+    return step_execution.entered_at if step_execution.exited_at is not None else None
+
+
 def record_execution_actuals(step_execution) -> None:
     """Stamp `actual_start` / `actual_end` on the live schedule's task for this
-    part/core + step, from the StepExecution's entry/exit times.
+    part/core + step, from the StepExecution's start/exit times.
+
+    The start is `started_at`, when work began — not `entered_at`, which is arrival: a
+    PENDING execution is a part waiting in the queue, and waiting is not running.
 
     No-op when there is no live schedule or no matching task. Bulk `.update()`
     (so no ScheduledTask post_save / auditlog / staleness) — capture only.
@@ -33,18 +44,16 @@ def record_execution_actuals(step_execution) -> None:
         tenant_id=tenant_id, step_id=step_execution.step_id,
         schedule__is_active=True, schedule__is_draft=False, **unit,
     )
-    live.update(
-        actual_start=step_execution.entered_at,
-        actual_end=step_execution.exited_at,
-    )
+    started = execution_start(step_execution)
+    live.update(actual_start=started, actual_end=step_execution.exited_at)
     # Freeze the plan as it stood when the op started: the task in the schedule that was
     # live at its start, which a re-solve since may have replaced — a running op is
     # re-pinned at "now" with a new end, and the finish is judged against the old one.
-    if step_execution.entered_at is not None:
+    if started is not None:
         started_on = (ScheduledTask.all_tenants
                       .filter(tenant_id=tenant_id, step_id=step_execution.step_id,
                               schedule__is_draft=False,
-                              schedule__created_at__lte=step_execution.entered_at, **unit)
+                              schedule__created_at__lte=started, **unit)
                       .order_by('-schedule__created_at')
                       .values('start_time', 'end_time').first())
         # None: it started before any plan had it. There is no honest plan to judge it
@@ -76,13 +85,13 @@ def carry_running_actuals(schedule) -> None:
                  .values('actual_start', 'planned_start_at_start', 'planned_end_at_start')
                  .first())
         if prior is None:
-            entered = (StepExecution.all_tenants  # tenant-safe: explicit tenant_id filter
+            started = (StepExecution.all_tenants  # tenant-safe: explicit tenant_id filter
                        .filter(tenant_id=task.tenant_id, part_id=task.part_id, step_id=task.step_id,
-                               exited_at__isnull=True)
-                       .order_by('-entered_at').values_list('entered_at', flat=True).first())
-            if entered is not None:
+                               exited_at__isnull=True, started_at__isnull=False)
+                       .order_by('-started_at').values_list('started_at', flat=True).first())
+            if started is not None:
                 ScheduledTask.all_tenants.filter(pk=task.pk).update(  # tenant-safe: by pk of a scoped row
-                    actual_start=entered)
+                    actual_start=started)
             continue
         ScheduledTask.all_tenants.filter(pk=task.pk).update(  # tenant-safe: by pk of a scoped row
             actual_start=prior['actual_start'],

@@ -47,16 +47,30 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
             tenant=self.tenant, schedule=schedule, part=self.part, step=self.step,
             start_time=now, end_time=now + timedelta(hours=1))
 
-    def _exec(self):
+    def _exec(self, status='IN_PROGRESS'):
         return StepExecution.objects.create(
-            tenant=self.tenant, part=self.part, step=self.step)
+            tenant=self.tenant, part=self.part, step=self.step, status=status)
 
-    def test_entry_stamps_actual_start(self):
+    def test_start_stamps_actual_start(self):
         task = self._task(self._schedule())
         se = self._exec()
+        self.assertIsNotNone(se.started_at)
         task.refresh_from_db()
-        self.assertEqual(task.actual_start, se.entered_at)
+        self.assertEqual(task.actual_start, se.started_at)
         self.assertIsNone(task.actual_end)
+
+    def test_arrival_is_not_a_start(self):
+        """A PENDING execution is a part waiting in the queue — not running."""
+        task = self._task(self._schedule())
+        se = self._exec(status='PENDING')
+        task.refresh_from_db()
+        self.assertIsNone(task.actual_start)
+        se.status = 'IN_PROGRESS'
+        se.save(update_fields=['status'])   # how start_execution-like saves look
+        se.refresh_from_db()
+        task.refresh_from_db()
+        self.assertIsNotNone(se.started_at)
+        self.assertEqual(task.actual_start, se.started_at)
 
     def test_exit_stamps_actual_end(self):
         task = self._task(self._schedule())
@@ -105,7 +119,7 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
         s2, t2 = self._resolve(end_in_hours=5)
         carry_running_actuals(s2)
         t2.refresh_from_db()
-        self.assertEqual((t2.actual_start, t2.planned_end_at_start), (se.entered_at, t1.end_time))
+        self.assertEqual((t2.actual_start, t2.planned_end_at_start), (se.started_at, t1.end_time))
         se.exited_at = timezone.now()
         se.save(update_fields=['exited_at'])
         t2.refresh_from_db()
@@ -128,7 +142,7 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
     def test_work_running_before_the_first_solve_shows_running_and_unjudged(self):
         from Tracker.services.scheduling.actuals import carry_running_actuals
         from Tracker.services.scheduling.adherence import adherence_ops
-        se = self._exec()   # entered before any schedule existed
+        se = self._exec()   # started before any schedule existed
         s1 = self._schedule()
         now = timezone.now()
         task = ScheduledTask.objects.create(
@@ -136,7 +150,7 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
             start_time=now, end_time=now + timedelta(hours=1))
         carry_running_actuals(s1)
         task.refresh_from_db()
-        self.assertEqual((task.actual_start, task.planned_end_at_start), (se.entered_at, None))
+        self.assertEqual((task.actual_start, task.planned_end_at_start), (se.started_at, None))
         self.assertEqual([(o['state'], o['judged']) for o in adherence_ops(self.tenant)],
                          [('running', False)])
         # Finishing it doesn't invent a plan: no schedule had it when it started.
@@ -155,3 +169,12 @@ class ScheduleActualsCaptureTests(TenantContextMixin, TestCase):
                                      start_time=past, end_time=past + timedelta(hours=1))
         ops = adherence_ops(self.tenant)
         self.assertEqual([o['state'] for o in ops], ['missed'])
+
+    def test_a_part_waiting_past_its_slot_is_missed(self):
+        from Tracker.services.scheduling.adherence import adherence_ops
+        sched = self._schedule()
+        past = timezone.now() - timedelta(hours=3)
+        ScheduledTask.objects.create(tenant=self.tenant, schedule=sched, part=self.part, step=self.step,
+                                     start_time=past, end_time=past + timedelta(hours=1))
+        self._exec(status='PENDING')   # arrived, never started
+        self.assertEqual([o['state'] for o in adherence_ops(self.tenant)], ['missed'])
