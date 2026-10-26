@@ -84,6 +84,14 @@ both.
 retention is manager tier. **No shop-floor supervisor grants** — FPI sign-off,
 training overrides and shift notes belong to [Shift Lead](shift-lead.md).
 
+## If you got something wrong
+
+An expected delivery keyed with the wrong quantity or date is cancelled with
+**Cancel expected receipt…** (a reason is required) and added again. Don't use
+**Chase…** to correct it: a chase records what the supplier said. A wrong lead time
+or preferred supplier is simply edited again. See [Putting a Mistake
+Right](../workflows/fixing-mistakes.md#receiving-and-stock).
+
 ## Next Steps
 
 - [Supply](../workflows/supply/overview.md) — the full reference

@@ -349,6 +349,12 @@ work and adjudicating the record are different jobs.
 Nothing is deleted — the original record and the void both stay. See [Voiding a
 completion](../workflows/dwi/running.md#voiding-a-completion).
 
+- **A part moved on too soon**, the **wrong part loaded into a cycle**, or **your
+  clock times are wrong**: tell your shift lead. Those corrections are theirs.
+
+Everything that can be put right, and who does it, is on [Putting a Mistake
+Right](../workflows/fixing-mistakes.md).
+
 ## Troubleshooting
 
 ### "Cannot move forward"

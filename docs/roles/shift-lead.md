@@ -139,6 +139,21 @@ These are the default groups an organisation starts with. Group permissions can 
 Home shows you the **Operator** landing as well as your own, so you can see what
 your crew sees. See [Role Guides](index.md#your-home-page-follows-your-role).
 
+## If you got something wrong
+
+Most floor corrections are yours, each with a reason:
+
+- A part moved on too soon: **Previous step**. A wrong part in a shared cycle:
+  **Take this part out**. Past the step's window, both go to QA for approval.
+- A draw against the wrong lot: **Wrong lot?** on that lot's page.
+- Clock times: **Correct times**, before you approve them.
+- Downtime recorded wrong: **Correct…** in Exceptions.
+- An override you shouldn't have given: **Flag for QA review**.
+- A hold placed in error: **Resume**, and say so.
+
+The full list, including what isn't yours, is [Putting a Mistake
+Right](../workflows/fixing-mistakes.md#on-the-floor).
+
 ## Next Steps
 
 - [Operator](operator.md) — the base this role builds on

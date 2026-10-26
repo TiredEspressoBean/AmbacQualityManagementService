@@ -126,6 +126,13 @@ These are the default groups an organisation starts with. Group permissions can 
     of your work-order editing, so you can release work orders. What you cannot
     do is **solve the schedule** — that is the Planner's.
 
+## If you got something wrong
+
+An implemented change has no undo. **Propose a change back** through change
+control, naming the mistaken one in its *why*, so both stay on the record. A
+temporary change on the wrong work order is undone with **Move back to
+baseline**. See [Change Control](../workflows/change-control/overview.md#implemented-by-mistake).
+
 ## Next Steps
 
 - [Processes Overview](../admin/processes/overview.md)

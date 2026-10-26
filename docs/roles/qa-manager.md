@@ -380,6 +380,19 @@ Templates](../admin/setup/approval-templates.md).
 | Approve document | Inbox → Document → **Submit Response** → Approved |
 | View analytics | Analytics |
 
+## Putting records right
+
+Many corrections need your authority:
+
+- A disposition decided wrong: decide again while open. Closed by mistake:
+  **Reopen**. A false FAIL, once re-inspected: **Not a nonconformance**.
+- Late rollbacks and bypasses wait for you under **Bypass requests** on your
+  home. Approving a rollback carries it out.
+- Training and calibration records: edit them; the form asks for a reason.
+- A supplier suspended by mistake: **Grant…** again.
+
+The full list is [Putting a Mistake Right](../workflows/fixing-mistakes.md).
+
 ## Related Documentation
 
 - [CAPA Overview](../workflows/capa/overview.md)

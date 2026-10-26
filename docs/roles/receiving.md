@@ -113,6 +113,19 @@ received, what is waiting, median days to a decision, rejects and PPM, over 30,
     and the second is hours, material is waiting for someone to start — which is
     a scheduling problem, not an inspection one.
 
+## If you got something wrong
+
+| Keyed wrong | Put right with |
+|-------------|----------------|
+| The quantity received | **Correct receipt…**, while nothing has been taken |
+| The supplier, item, PO or line | **Correct receipt details** under *Came from* |
+| *That's all*, when more is coming | **Reopen the rest** |
+| Marked posted to the ERP too soon | **Unmark** |
+| Put away in the wrong place | **Move…** again |
+| A core's mode or order | **Correct receipt…** on the core, while it is Received |
+
+See [Putting a Mistake Right](../workflows/fixing-mistakes.md#receiving-and-stock).
+
 ## Next Steps
 
 - [Supply Overview](../workflows/supply/overview.md) — the full reference

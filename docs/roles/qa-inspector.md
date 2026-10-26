@@ -454,6 +454,20 @@ Either way, tell whoever owns calibration.
 - Ensure parts are selected
 - Verify you have permission
 
+## If a result was wrong
+
+- **Void** the capture with a reason, and capture it again. A held part can be
+  started for that re-capture. See [Voiding a
+  completion](../workflows/dwi/running.md#voiding-a-completion).
+- A FAIL that should have passed: void it and re-inspect. The disposition it
+  opened is then closed as **Not a nonconformance** by someone other than you —
+  see [Dispositions](../workflows/quality/dispositions.md#when-the-finding-was-wrong-not-a-nonconformance).
+- A first piece passed in error: **Void pass**, and the run holds until it is
+  re-inspected.
+
+The full list is [Putting a Mistake
+Right](../workflows/fixing-mistakes.md#quality).
+
 ## Related Documentation
 
 - [Quality Reports](../workflows/quality/quality-reports.md)

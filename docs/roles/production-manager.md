@@ -350,6 +350,16 @@ material for one.
 | Close a job short | Work order → **Short-close** → decide each unfinished unit, give a reason, answer the quantity questions |
 | Approve time | Operator Hours → **Awaiting approval** → **Approve** |
 
+## If you got something wrong
+
+- A work order short-closed by mistake: **Reopen**, with a reason.
+- Held or released by mistake: **Resume** saying it was in error, or **Un-release**.
+- A customer's answer recorded wrong on a reman unit: **Correct customer's
+  answer…**, until the repair starts.
+- The wrong component fitted: **Remove** on the core's *As built* card.
+
+The full list is [Putting a Mistake Right](../workflows/fixing-mistakes.md).
+
 ## Related Documentation
 
 - [Creating Orders](../workflows/orders/creating-orders.md)

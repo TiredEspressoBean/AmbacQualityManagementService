@@ -335,6 +335,7 @@ When you can't resolve:
 | Configure process | Data Management > Processes, then Process Flow |
 | View audit log | Admin > Audit Log |
 | System settings | Admin > Settings |
+| Put back someone suspended by mistake | User Management → their row menu → **Activate** |
 
 ## Related Documentation
 

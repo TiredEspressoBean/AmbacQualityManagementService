@@ -322,6 +322,8 @@ Matrix](../workflows/tracking/training-matrix.md).
 | Create revision | Open doc → **Create Revision** → file (optional) → reason → Submit |
 | Submit for approval | Open doc (Draft) → **Approval** tab → **Submit for Approval** |
 | Check approval status | Open doc → View Approvals section |
+| Take back a submission | Open doc → **Approval** tab → **Withdraw request** → reason |
+| Undo a mistaken obsolete | Open doc → **Reinstate** → reason |
 
 ## Related Documentation
 

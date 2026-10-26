@@ -288,6 +288,15 @@ already overrides its own ceilings for a gating resource with no committed work
 staleness; act on that rather than working from a board you last solved a week
 ago.
 
+## If you got something wrong
+
+- A what-if committed by mistake: **Restore the previous plan**, one step back.
+- A task moved or pinned by mistake: **Undo** the last move, or unpin it.
+- A work order released by mistake: **Un-release** it.
+- A calendar entry made wrong: **Remove** it, add it again, and re-solve.
+
+See [Putting a Mistake Right](../workflows/fixing-mistakes.md#planning).
+
 ## Related
 
 - [Releasing Work](../workflows/scheduling/releasing.md)

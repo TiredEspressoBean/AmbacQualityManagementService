@@ -78,7 +78,8 @@ those customers, so you know before you pack.
 - **Shipped** lists past shipments, with a data export
 - A shipment's page (`/production/shipments/$shipmentId`) keeps its paperwork
   editable
-- **Void…** reverses one, with a reason, and puts the units and lots back
+- **Void…** reverses one, with a reason, and puts the units and lots back. A lot
+  split to ship part of it rejoins the lot it came from
 
 !!! warning "Void a mistake; don't ship a correction"
     Voiding restores the record. Shipping again to patch an error leaves two
