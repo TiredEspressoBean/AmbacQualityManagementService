@@ -549,6 +549,22 @@ class DemoShowcaseSeeder(BaseSeeder):
                     hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
                     status="ACCEPTED"))
 
+        # A second, newer nozzle lot on the same shelf (Corrections #4, 2026-10-26): draws
+        # take the older lot first, so nothing else changes, and a lead has a lot to move
+        # a draw to when the operator took from this bin but the record says the other.
+        nozzle = buy_parts.get("Injector Nozzle Assembly")
+        if nozzle is not None:
+            MaterialLot.objects.get_or_create(
+                tenant=self.tenant, lot_number=f"STOCK-{nozzle.ERP_id}-B",
+                defaults=dict(
+                    material_type=nozzle, material_description="On-hand stock: Injector Nozzle Assembly",
+                    supplier_lot_number="GLD-NZL-0921", erp_po_number="PO-STOCK",
+                    received_date=(self.today - timedelta(days=5)).date(),
+                    received_by=admin_user, quantity=Decimal("60"),
+                    quantity_remaining=Decimal("60"), unit_of_measure="EA",
+                    hold_reason="", location=seed_location(self.tenant, "Main Stores", kind="WAREHOUSE"),
+                    status="ACCEPTED"))
+
         bom = BOM.objects.filter(
             tenant=self.tenant, part_type=part_type, revision="A", bom_type="ASSEMBLY",
         ).first()
