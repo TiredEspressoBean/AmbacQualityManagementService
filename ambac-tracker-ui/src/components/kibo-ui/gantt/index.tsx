@@ -308,6 +308,21 @@ const getWidth = (
   );
 };
 
+/**
+ * A marker's left edge as a CSS length. Hourly columns are whole days, so the marker is
+ * placed by time of day within its day column, through the --gantt-column-width
+ * variable — the same arithmetic the bars use (getOffset), and it follows zoom.
+ * The generic inner offset (day-of-month over hours-in-day) put "Today" more than a
+ * column late in this view: on the 26th, 26/23 of a day to the right.
+ */
+const markerTransform = (date: Date, range: Range, columns: number, innerPx: number) => {
+  if (range === "hourly") {
+    const fraction = differenceInMinutes(date, startOfDay(date)) / (60 * 24);
+    return `translateX(calc(var(--gantt-column-width) * ${columns + fraction}))`;
+  }
+  return `translateX(calc(var(--gantt-column-width) * ${columns} + ${innerPx}px))`;
+};
+
 const calculateInnerOffset = (
   date: Date,
   range: Range,
@@ -1439,7 +1454,7 @@ export const GanttMarker: FC<
       className="pointer-events-none absolute top-0 left-0 z-20 flex h-full select-none flex-col items-center justify-center overflow-visible"
       style={{
         width: 0,
-        transform: `translateX(calc(var(--gantt-column-width) * ${offset} + ${innerOffset}px))`,
+        transform: markerTransform(date, gantt.range, offset, innerOffset),
       }}
     >
       <ContextMenu>
@@ -1964,9 +1979,18 @@ export type GanttTodayProps = {
 };
 
 export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
-  const label = "Today";
-  const date = useMemo(() => new Date(), []);
   const gantt = useContext(GanttContext);
+  // Moves with the clock: it was fixed at the moment the board opened, so a board left
+  // open drifted behind real time.
+  const [date, setDate] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setDate(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  // In the hourly view the marker is a time, not a day.
+  const label = gantt.range === "hourly"
+    ? `Now ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    : "Today";
   const differenceIn = useMemo(
     () => getDifferenceIn(gantt.range),
     [gantt.range]
@@ -2002,7 +2026,7 @@ export const GanttToday: FC<GanttTodayProps> = ({ className }) => {
       className="pointer-events-none absolute top-0 left-0 z-20 flex h-full select-none flex-col items-center justify-center overflow-visible"
       style={{
         width: 0,
-        transform: `translateX(calc(var(--gantt-column-width) * ${offset} + ${innerOffset}px))`,
+        transform: markerTransform(date, gantt.range, offset, innerOffset),
       }}
     >
       <div
