@@ -337,7 +337,8 @@ def correct_lot_source(lot, *, user, reason: str, changes: dict):
     """A lot's supplier, item or PO line recorded wrong at receipt: correct it, with a
     reason, while nothing has been taken from it (user decision 2026-10-26, Corrections
     #25) — once used, split or adjusted, the trace already names it. Each change and
-    the reason are kept as an edit of its field.
+    the reason are kept as an edit of its field. A back-ordered remainder still on order
+    for the same line is corrected with it.
 
     ``changes`` maps names in SOURCE_FIELDS to the new value (a model instance for the
     FKs). Raises ValueError naming why it can't."""
@@ -364,15 +365,27 @@ def correct_lot_source(lot, *, user, reason: str, changes: dict):
             if (material is None) == (material_type is None):
                 raise ValueError("A lot is one item: a material or a bought part, not both or neither.")
         ct = ContentType.objects.get_for_model(MaterialLot)
-        for field, value in changes.items():
-            old = getattr(locked, field)
-            if old == value:
-                continue
-            RecordEdit.objects.create(
-                tenant=locked.tenant, content_type=ct, object_id=locked.id, field_name=field,
-                old_value=str(old or ""), new_value=str(value or ""), reason=reason, edited_by=user)
-            setattr(locked, field, value)
-        locked.save()
+        # The rest of a short delivery, still on order, shares its item, supplier and PO
+        # line: if those were keyed wrong, so was the remainder's (walk 2026-10-26).
+        remainder = []
+        if locked.short_receipt == "BACKORDERED":
+            remainder = list(MaterialLot.objects.select_for_update().filter(  # tenant-safe: explicit tenant filter
+                tenant=locked.tenant, status="ON_ORDER", archived=False,
+                material_id=locked.material_id, material_type_id=locked.material_type_id,
+                supplier_id=locked.supplier_id, erp_po_number=locked.erp_po_number,
+                erp_po_line=locked.erp_po_line))
+        for target in [locked, *remainder]:
+            for field, value in changes.items():
+                old = getattr(target, field)
+                if old == value:
+                    continue
+                RecordEdit.objects.create(
+                    tenant=target.tenant, content_type=ct, object_id=target.id, field_name=field,
+                    old_value=str(old or ""), new_value=str(value or ""),
+                    reason=reason if target is locked else f"Follows {locked.lot_number}: {reason}",
+                    edited_by=user)
+                setattr(target, field, value)
+            target.save()
     lot.refresh_from_db()
     return lot
 

@@ -15,6 +15,8 @@ export const useUpdateCalibrationRecord = () => {
     const queryClient = useQueryClient();
 
     return useMutation<UpdateCalibrationRecordResponse, unknown, UpdateCalibrationRecordVariables>({
+        // The form shows the server's reason itself; the global toast doubled it.
+        meta: { suppressGlobalError: true },
         mutationFn: ({ id, data }) =>
             api.api_CalibrationRecords_partial_update(data, {
                 params: { id },

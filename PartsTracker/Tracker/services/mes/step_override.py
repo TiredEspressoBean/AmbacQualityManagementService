@@ -98,6 +98,7 @@ def validate_bypass_request(step_execution, block_type) -> None:
         raise ValueError("A bypass of this block is already waiting for a decision.")
 
 
+@transaction.atomic
 def approve_step_override(
     override: StepOverride,
     user,
@@ -130,10 +131,25 @@ def approve_step_override(
         'status', 'approved_by', 'approved_at', 'expires_at',
     ])
 
+    part = override.step_execution.part if override.step_execution else None
+    # An approved rollback is carried out now, for whoever asked — the lead isn't left
+    # to notice the approval and press again (walk 2026-10-26). Re-running advancement
+    # here instead would have pushed the part on, the opposite of what was asked.
+    if override.block_type == BlockType.ROLLBACK:
+        if part is not None:
+            from Tracker.services.mes.parts import rollback_part_step
+            rollback_part_step(part, override.requested_by or user, reason=override.reason,
+                               override_id=override.id)
+            override.refresh_from_db()
+            if not override.used:
+                override.used = True
+                override.used_at = timezone.now()
+                override.save(update_fields=['used', 'used_at'])
+        return override
+
     # Override clears a specific blocker. Synchronously re-evaluate
     # advancement in the same request so the QA manager sees the
     # outcome inline.
-    part = override.step_execution.part if override.step_execution else None
     if part and part.work_order_id and part.step_id:
         from Tracker.services.mes.advancement import try_advance_lot
         try_advance_lot(

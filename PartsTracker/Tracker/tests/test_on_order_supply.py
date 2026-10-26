@@ -268,6 +268,15 @@ class ReceiveExpectedLotTests(_MaterialFixture):
         self.assertEqual((lot.ordered_quantity, lot.short_receipt), (Decimal(20), "CLOSED"))
         self.assertFalse(MaterialLot.objects.filter(status="ON_ORDER", material=self.oring).exists())
 
+    def test_correcting_a_short_deliverys_line_carries_its_remainder(self):
+        """Walk 2026-10-26: the back-ordered rest stayed on the wrong PO line."""
+        from Tracker.services.mes.material_lot import correct_lot_source
+        lot = receive_expected_lot(self._expect(qty=20), lot_number="SUP-H", received_by=self.user,
+                                   quantity=Decimal(12), remainder="BACKORDERED")
+        correct_lot_source(lot, user=self.user, reason="Slip was line 2", changes={"erp_po_line": "2"})
+        rest = MaterialLot.objects.get(status="ON_ORDER", material=self.oring)
+        self.assertEqual(rest.erp_po_line, "2")
+
     def test_thats_all_by_mistake_puts_the_rest_back_on_order(self):
         """Corrections #27 (user decision 2026-10-26): same PO, line and promised date."""
         from Tracker.models import RecordEdit

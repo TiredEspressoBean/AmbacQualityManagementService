@@ -1914,6 +1914,18 @@ class RebuildLifecycleTests(TenantTestCase):
         listed = self.client.get(f"/api/AssemblyUsages/?assembly={self.core.part_id}").json()["results"]
         self.assertEqual([u["removal_reason"] for u in listed], ["Wrong slot"])
 
+    def test_removing_from_a_rebuilt_unit_sends_it_back_to_rebuild(self):
+        """User decision 2026-10-26: not ready to ship until the slot is filled again."""
+        from Tracker.services.reman.rebuild_execution import complete_rebuild, install_component
+        usage = install_component(self.core, harvested=self.hc, user=self.user_a)
+        complete_rebuild(self.core, self.user_a)
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.status, 'REBUILT')
+        usage.remove(user=self.user_a, reason='Valve seat leaks')
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.status, 'IN_REBUILD')
+        self.assertIn('back to rebuild', self.core.condition_notes)
+
     def test_a_received_cores_mode_is_corrected_with_a_reason(self):
         """Corrections #21: while Received; refused after teardown has begun."""
         from Tracker.models import RecordEdit

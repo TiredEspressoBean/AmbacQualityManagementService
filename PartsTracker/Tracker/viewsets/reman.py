@@ -328,15 +328,18 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
                             status=status.HTTP_400_BAD_REQUEST)
         core = self.get_object()
         data = {k: request.data[k] for k in ('order', 'fulfilment_mode') if k in request.data}
-        before = {'order': str(core.part.order_id) if core.part_id and core.part.order_id else '',
-                  'fulfilment_mode': core.fulfilment_mode}
+        def order_label(c):
+            # The order's number, not its id — the record is read by people.
+            o = c.part.order if c.part_id else None
+            return (o.order_number or o.name) if o is not None else ''
+
+        before = {'order': order_label(core), 'fulfilment_mode': core.fulfilment_mode}
         ser = CoreSerializer(core, data=data, partial=True, context={'request': request})
         ser.is_valid(raise_exception=True)
         with transaction.atomic():
             core = ser.save()
             core.refresh_from_db()
-            after = {'order': str(core.part.order_id) if core.part_id and core.part.order_id else '',
-                     'fulfilment_mode': core.fulfilment_mode}
+            after = {'order': order_label(core), 'fulfilment_mode': core.fulfilment_mode}
             for field, old in before.items():
                 if after[field] != old:
                     RecordEdit.objects.create(

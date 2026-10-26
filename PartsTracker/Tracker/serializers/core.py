@@ -945,6 +945,20 @@ class ApprovalRequestSerializer(SecureModelMixin):
     can_self_approve = serializers.SerializerMethodField(
         help_text="The viewer requested this and may decide it themselves (with a "
                   "justification): the template allows it, or nobody else can approve it.")
+    withdrawal_reason = serializers.SerializerMethodField(
+        help_text="Why the requester withdrew it, when it was withdrawn.")
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_withdrawal_reason(self, obj):
+        if obj.status != 'CANCELLED':
+            return None
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import RecordEdit
+        edit = (RecordEdit.objects  # tenant-safe: keyed to a scoped request
+                .filter(content_type=ContentType.objects.get_for_model(ApprovalRequest),
+                        object_id=str(obj.id), field_name='status', new_value='CANCELLED')
+                .order_by('-edited_at').first())
+        return edit.reason if edit else None
 
     class Meta:
         model = ApprovalRequest
@@ -961,7 +975,7 @@ class ApprovalRequestSerializer(SecureModelMixin):
             'required_approvers_info', 'optional_approvers_info',
             'approver_groups', 'approver_groups_info',
             'responses', 'pending_approvers',
-            'is_overdue', 'can_self_approve',
+            'is_overdue', 'can_self_approve', 'withdrawal_reason',
             'requested_at', 'completed_at', 'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (

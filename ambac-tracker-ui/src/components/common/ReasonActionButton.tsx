@@ -16,8 +16,8 @@ type Props = {
     description: ReactNode;
     placeholder?: string;
     confirmLabel?: string;
-    /** Shown on success. */
-    done: string;
+    /** Shown on success — or worked out from the response, when what happened varies. */
+    done: string | ((result: unknown) => string);
     /** Performs the correction with the reason the user gave. */
     run: (reason: string) => Promise<unknown>;
     variant?: "outline" | "ghost" | "default" | "destructive";
@@ -41,9 +41,9 @@ export function ReasonActionButton({
     const mut = useMutation({
         meta: { suppressGlobalError: true },
         mutationFn: () => run(reason.trim()),
-        onSuccess: () => {
+        onSuccess: (result) => {
             queryClient.invalidateQueries();
-            toast.success(done);
+            toast.success(typeof done === "function" ? done(result) : done);
             setOpen(false);
             setReason("");
         },

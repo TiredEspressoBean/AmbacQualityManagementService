@@ -194,14 +194,20 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
     )
 
 
-def remove_part_from_sealed_batch(*, batch: "BatchExecution", part, user: "User", reason: str) -> None:
+REMOVED = "REMOVED"
+ROLLBACK_PENDING = "ROLLBACK_PENDING"
+
+
+def remove_part_from_sealed_batch(*, batch: "BatchExecution", part, user: "User", reason: str) -> str:
     """The wrong part went into a sealed batch: take it out, with a reason (user decision
     2026-10-22, Corrections #6 — no unseal). Out of the batch, the batch's completions no
     longer count for it, so it holds at the batch's step until its own work there is
     done. A part the batch already advanced one step is rolled back to the step first,
-    under the rollback's own rules; one further on is refused — roll it back first.
+    under the rollback's own rules — which may send it for approval (ROLLBACK_PENDING:
+    take it out again once approved); one further on is refused — roll it back first.
 
-    The removal and its reason are kept as an edit of the batch's `parts`.
+    The removal and its reason are kept as an edit of the batch's `parts`. Returns
+    REMOVED or ROLLBACK_PENDING.
 
     Raises:
         ValidationError: naming why it can't.
@@ -232,11 +238,19 @@ def remove_part_from_sealed_batch(*, batch: "BatchExecution", part, user: "User"
             try:
                 result = rollback_part_step(part, user, reason=reason)
             except ValueError as e:
-                raise ValidationError(str(e)) from e
+                # Say what it means here, not only the rollback's own words.
+                raise ValidationError(
+                    f"{part.ERP_id} has already moved on from {batch.step.name} and can't be stepped "
+                    f"back to it ({str(e).removeprefix('Cannot rollback: ')}). Ask a lead how to put it right."
+                ) from e
             if not result.get("success"):
-                raise ValidationError(result.get("message") or "The rollback needs approval first.")
+                # Sent for approval (past the undo window, or the step asks for one): the
+                # request stands, and the part comes out once it's approved and rolled back.
+                # Returned, not raised — raising would undo the request it just made.
+                return ROLLBACK_PENDING
         batch.parts.remove(part)
         RecordEdit.objects.create(
             tenant=batch.tenant, content_type=ContentType.objects.get_for_model(BatchExecution),
             object_id=batch.id, field_name="parts", old_value=part.ERP_id, new_value="",
             reason=reason, edited_by=user)
+    return REMOVED

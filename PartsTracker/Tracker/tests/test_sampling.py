@@ -1025,8 +1025,9 @@ class RollbackTestCase(TenantTestCase):
         self.assertTrue(can_rollback, reason)
         self.assertFalse(requires_approval)
 
-    def test_cannot_rollback_outside_window(self):
-        """Test that rollback is blocked outside the undo window"""
+    def test_outside_the_window_a_rollback_needs_approval(self):
+        """Past the undo window the rollback is sent for approval, not refused (user
+        decision 2026-10-26: there was otherwise no way back at all)."""
         # Create step executions with old timestamps
         exec1 = StepExecution.objects.create(
             part=self.part,
@@ -1042,8 +1043,23 @@ class RollbackTestCase(TenantTestCase):
         )
 
         can_rollback, reason, requires_approval = self.part.can_rollback_step(self.user)
-        self.assertFalse(can_rollback)
-        self.assertIn('expired', reason.lower())
+        self.assertTrue(can_rollback)
+        self.assertTrue(requires_approval)
+        self.assertIn('undo window', reason.lower())
+
+        # The request is filed; approving it carries the rollback out at once.
+        from Tracker.models import StepOverride
+        from Tracker.services.mes.parts import rollback_part_step
+        from Tracker.services.mes.step_override import approve_step_override
+        result = rollback_part_step(self.part, self.user, reason="Wrong part washed, needs redo")
+        self.assertFalse(result['success'])
+        override = StepOverride.objects.get(step_execution=exec2, status='PENDING')
+        approver = User.objects.create_user(username='approver_roll', email='ar@x.test', password='x')
+        approve_step_override(override, approver)
+        self.part.refresh_from_db()
+        override.refresh_from_db()
+        self.assertEqual(self.part.step, self.step1)
+        self.assertTrue(override.used)
 
     def test_cannot_rollback_from_first_step(self):
         """Test that rollback from first step is not allowed"""

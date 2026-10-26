@@ -55,6 +55,8 @@ export interface ApprovalRequest {
     is_overdue?: boolean;
     /** The viewer requested this and may decide it themselves, with a justification. */
     can_self_approve?: boolean;
+    /** Why the requester withdrew it (null unless withdrawn). */
+    withdrawal_reason?: string | null;
     // `required_approvers` used to be declared here as a flat id list. The
     // API never emits it — ApprovalRequestSerializer sends
     // `required_approvers_info` — so the declaration was a lie that let

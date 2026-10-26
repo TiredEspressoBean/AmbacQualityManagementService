@@ -20,7 +20,7 @@ export function ResponseCorrections({ corrections }: { corrections?: Correction[
                         ? <>Withdrew <strong>{LABEL[c.old_value] ?? c.old_value}</strong></>
                         : <>Answered again: <strong>{LABEL[c.new_value] ?? c.new_value}</strong></>}
                     {c.reason ? ` — ${c.reason}` : ""}
-                    <span className="ml-1">({c.by ? `${c.by}, ` : ""}{new Date(c.at).toLocaleString()})</span>
+                    {" "}<span>({c.by ? `${c.by}, ` : ""}{new Date(c.at).toLocaleString()})</span>
                 </li>
             ))}
         </ul>

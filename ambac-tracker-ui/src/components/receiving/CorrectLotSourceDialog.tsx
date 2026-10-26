@@ -65,8 +65,9 @@ export function CorrectLotSourceDialog({ lot, open, onOpenChange }: {
                 <DialogHeader>
                     <DialogTitle>Correct receipt details · {lot.lot_number}</DialogTitle>
                     <DialogDescription>
-                        The supplier, item or PO line was keyed wrong. Correctable while nothing has been
-                        used, split or adjusted. Each change and your reason are kept on the lot.
+                        The supplier, {lot.material ? "material, " : ""}PO or line was keyed wrong. Correctable while
+                        nothing has been used, split or adjusted. Each change and your reason are kept on the lot,
+                        and a back-ordered rest of this delivery still on order is corrected with it.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3">

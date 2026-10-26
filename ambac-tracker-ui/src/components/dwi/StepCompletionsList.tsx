@@ -173,7 +173,9 @@ export function StepCompletionsList({
                                             for the other parts — and goes back to {stepName}, where its own work has to be
                                             done. Your reason is kept on the batch.</>}
                                         placeholder="Why — e.g. wrong serial loaded into the furnace"
-                                        done="Part taken out of the cycle."
+                                        done={(r) => (r as { outcome?: string })?.outcome === "ROLLBACK_PENDING"
+                                            ? "It had moved on — stepping it back was sent for approval. Take it out again once that's done."
+                                            : "Part taken out of the cycle."}
                                         run={(reason) => api.api_BatchExecutions_remove_part_create(
                                             { part: partId!, reason }, { params: { id: group.key } })}
                                     />

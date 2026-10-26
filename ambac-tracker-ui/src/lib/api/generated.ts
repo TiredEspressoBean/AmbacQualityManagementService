@@ -168,6 +168,10 @@ export type ApprovalRequest = {
    * The viewer requested this and may decide it themselves (with a justification): the template allows it, or nobody else can approve it.
    */
   can_self_approve: boolean;
+  /**
+   * Why the requester withdrew it, when it was withdrawn.
+   */
+  withdrawal_reason: string | null;
   requested_at: string;
   completed_at: string | null;
   created_at: string;
@@ -16198,6 +16202,25 @@ export type QueueWarning = {
   code: string;
   detail: string;
 };
+export type RemoveBatchPartResponse = {
+  batch_id: string;
+  part: string;
+  /**
+     * ROLLBACK_PENDING: the part had moved on, and stepping it back was sent for approval — take it out again once that's done.
+    
+    * `REMOVED` - REMOVED
+    * `ROLLBACK_PENDING` - ROLLBACK_PENDING
+     */
+  outcome: RemoveBatchPartResponseOutcomeEnum;
+};
+export type RemoveBatchPartResponseOutcomeEnum =
+  /**
+   * * `REMOVED` - REMOVED
+   * `ROLLBACK_PENDING` - ROLLBACK_PENDING
+   *
+   * @enum REMOVED, ROLLBACK_PENDING
+   */
+  "REMOVED" | "ROLLBACK_PENDING";
 export type RepairCodeRequest = {
   /**
    * Short identifier the shop uses, e.g. NZL-RECON.
@@ -18696,6 +18719,7 @@ const ApprovalRequest = z.object({
   pending_approvers: z.array(z.unknown()),
   is_overdue: z.boolean(),
   can_self_approve: z.boolean(),
+  withdrawal_reason: z.string().nullable(),
   requested_at: z.string().datetime({ offset: true }),
   completed_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
@@ -19130,9 +19154,14 @@ const RemoveBatchPartRequestRequest = z.object({
   part: z.string().uuid(),
   reason: z.string().min(1),
 });
+const RemoveBatchPartResponseOutcomeEnum = z.enum([
+  "REMOVED",
+  "ROLLBACK_PENDING",
+]);
 const RemoveBatchPartResponse = z.object({
   batch_id: z.string().uuid(),
   part: z.string().uuid(),
+  outcome: RemoveBatchPartResponseOutcomeEnum,
 });
 const BatchSealResponse = z.object({
   batch_id: z.string(),
@@ -29324,6 +29353,7 @@ export const schemas = {
   BatchExecutionRequest,
   PatchedBatchExecutionRequest,
   RemoveBatchPartRequestRequest,
+  RemoveBatchPartResponseOutcomeEnum,
   RemoveBatchPartResponse,
   BatchSealResponse,
   CapaTypeEnum,

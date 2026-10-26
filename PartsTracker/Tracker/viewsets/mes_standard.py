@@ -1844,5 +1844,9 @@ class AssemblyUsageViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         serializer = AssemblyRemoveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        usage.remove(user=request.user, reason=serializer.validated_data.get('reason', ''))
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            usage.remove(user=request.user, reason=serializer.validated_data.get('reason', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(AssemblyUsageSerializer(usage, context={'request': request}).data)

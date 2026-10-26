@@ -15,6 +15,8 @@ export const useUpdateTrainingRecord = () => {
     const queryClient = useQueryClient();
 
     return useMutation<UpdateTrainingRecordResponse, unknown, UpdateTrainingRecordVariables>({
+        // The form shows the server's reason itself; the global toast doubled it.
+        meta: { suppressGlobalError: true },
         mutationFn: ({ id, data }) =>
             api.api_TrainingRecords_partial_update(data, {
                 params: { id },

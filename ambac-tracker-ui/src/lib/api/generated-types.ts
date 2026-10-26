@@ -20955,6 +20955,8 @@ export interface components {
             readonly is_overdue: boolean;
             /** @description The viewer requested this and may decide it themselves (with a justification): the template allows it, or nobody else can approve it. */
             readonly can_self_approve: boolean;
+            /** @description Why the requester withdrew it, when it was withdrawn. */
+            readonly withdrawal_reason: string | null;
             /** Format: date-time */
             readonly requested_at: string;
             /** Format: date-time */
@@ -34509,7 +34511,20 @@ export interface components {
             batch_id: string;
             /** Format: uuid */
             part: string;
+            /**
+             * @description ROLLBACK_PENDING: the part had moved on, and stepping it back was sent for approval — take it out again once that's done.
+             *
+             *     * `REMOVED` - REMOVED
+             *     * `ROLLBACK_PENDING` - ROLLBACK_PENDING
+             */
+            outcome: components["schemas"]["RemoveBatchPartResponseOutcomeEnum"];
         };
+        /**
+         * @description * `REMOVED` - REMOVED
+         *     * `ROLLBACK_PENDING` - ROLLBACK_PENDING
+         * @enum {string}
+         */
+        RemoveBatchPartResponseOutcomeEnum: "REMOVED" | "ROLLBACK_PENDING";
         RemoveMemberResponse: {
             status: string;
         };

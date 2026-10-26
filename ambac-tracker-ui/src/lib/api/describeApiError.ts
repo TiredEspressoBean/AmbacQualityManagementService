@@ -134,7 +134,9 @@ export function apiErrorMessage(error: unknown): string | undefined {
     for (const [field, value] of Object.entries(body)) {
         if (field === "blockers") continue;
         const msg = text(value);
-        if (msg) return field === "detail" ? msg : `${field.replace(/_/g, " ")}: ${msg}`;
+        // The reason a correction asks for is a sentence on its own ("Say why…"); its
+        // field name added nothing but "edit reason:" (walk 2026-10-26).
+        if (msg) return field === "detail" || field === "edit_reason" ? msg : `${field.replace(/_/g, " ")}: ${msg}`;
     }
     return undefined;
 }

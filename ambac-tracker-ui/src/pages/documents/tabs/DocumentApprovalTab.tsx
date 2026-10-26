@@ -304,7 +304,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                     <CardDescription>Record of all approval responses</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {!approvalRequests?.length || approvalRequests.every(req => !req.responses?.length) ? (
+                    {!approvalRequests?.length || approvalRequests.every(req => !req.responses?.length && !req.withdrawal_reason) ? (
                         <p className="text-sm text-muted-foreground">No approval history yet.</p>
                     ) : (
                         <div className="space-y-4">
@@ -319,6 +319,11 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                             label={request.status_display}
                                         />
                                     </div>
+                                    {request.withdrawal_reason && (
+                                        <p className="ml-4 text-sm text-muted-foreground">
+                                            Withdrawn by {request.requested_by_info?.full_name || "the requester"} — {request.withdrawal_reason}
+                                        </p>
+                                    )}
                                     {request.responses?.map((response) => (
                                         <div key={response.id} className="flex items-start gap-3 p-3 border rounded-lg ml-4">
                                             {response.decision === 'APPROVED' ? (

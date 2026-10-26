@@ -456,7 +456,7 @@ export function CoreDetailPage() {
                     )}
                 </CardContent>
             </Card>
-            {core.part && <AsBuiltCard partId={String(core.part)} />}
+            {core.part && <AsBuiltCard partId={String(core.part)} coreStatus={core.status} />}
             {id && (
                 <div className="max-w-3xl mx-auto py-6">
                     <RecordHistoryCard endpoint="Cores" id={id} model="core" />

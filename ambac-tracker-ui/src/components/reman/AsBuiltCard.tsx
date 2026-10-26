@@ -11,7 +11,12 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
  * slot, wrong part) is removed here, which frees it to go in elsewhere; the record of
  * both stays (Corrections #23).
  */
-export function AsBuiltCard({ partId }: { partId: string }) {
+export function AsBuiltCard({ partId, coreStatus }: {
+    partId: string;
+    /** The unit's stage: a finished unit goes back to In Rebuild on a removal. */
+    coreStatus?: string | null;
+}) {
+    const rebuilt = coreStatus === "REBUILT" || coreStatus === "REBUILT_TO_STOCK";
     const { has } = usePermissionSet();
     const { data, isLoading } = useQuery({
         queryKey: ["assembly-usages", partId],
@@ -42,8 +47,10 @@ export function AsBuiltCard({ partId }: { partId: string }) {
                                 <ReasonActionButton
                                     label="Remove" variant="ghost"
                                     title={`Remove ${u.component_label}`}
-                                    description={<>Taken back out of the unit: it can then be fitted elsewhere, or here again.
-                                        The fitting stays on the as-built record, marked removed, with your reason.</>}
+                                    description={<>Taken back out of the unit: it can then be fitted elsewhere, or here again
+                                        through the rebuild (Work this unit).{rebuilt
+                                            ? " This unit is finished, so it goes back to In Rebuild — not ready to ship until the slot is filled again."
+                                            : ""} The fitting stays on the as-built record, marked removed, with your reason.</>}
                                     placeholder="Why — e.g. fitted to the wrong slot"
                                     done={`${u.component_label} removed.`}
                                     run={(reason) => api.api_AssemblyUsages_remove_create({ reason }, { params: { id: u.id } })}

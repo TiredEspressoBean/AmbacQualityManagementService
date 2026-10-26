@@ -66,6 +66,7 @@ import { useOSPShipments, useReadyToShip } from "@/hooks/useOutsideProcess";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { parseDateOnly } from "@/lib/date-only";
 import { UnassignedDispositions, unassignedDispositionsOptions } from "@/components/quality/UnassignedDispositions";
+import { BypassRequestsCard } from "@/components/quality/BypassRequestsCard";
 
 /** Normalize a list endpoint's envelope (paginated `{count,results}` or a bare
  *  array) to a row count — the change-control hooks return an untyped envelope. */
@@ -1559,6 +1560,9 @@ const BLOCKS: BlockDef[] = [
     // a held part's decision was findable only through the dispositions list).
     { id: "unassigned-dispositions", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: ({ user }) => <UnassignedDispositionsBlock userPk={user.pk} /> },
     { id: "needs-attention", size: "full", groups: ["QA Manager", "Production Manager", "Shift Lead", "Tenant Admin"], Component: () => <NeedsAttentionBlock /> },
+    // Bypass and rollback requests waiting on the people who approve them — found only
+    // on the inspector's home before (walk 2026-10-26). Renders nothing when none wait.
+    { id: "bypass-requests", size: "full", groups: ["QA Manager", "Tenant Admin"], Component: () => <BypassRequestsCard /> },
     // KPI strip — 5 stat tiles; wants the room.
     { id: "quality-kpis", size: "full", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <QualityKpisBlock /> },
     { id: "competency-coverage", size: "half", groups: ["QA Manager", "Production Manager", "Tenant Admin"], Component: () => <CompetencyCoverageBlock /> },
@@ -1600,7 +1604,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     // their order here is a fallback only.
     { group: "Operator", order: ["scan", "wo-queue", "quality-actions"] },
     { group: "QA Inspector", order: ["scan", "inspection", "quality-actions"] },
-    { group: "QA Manager", order: ["needs-attention", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
+    { group: "QA Manager", order: ["needs-attention", "bypass-requests", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "overdue-calibrations", "supplier-quals-expiring", "competency-coverage", "training-strip", "approvals-in-flight", "available-to-claim", "doc-review-due", "quality-actions", "scan"] },
     { group: "Production Manager", order: ["needs-attention", "quality-kpis", "wos-going-late", "wos-on-hold", "wo-queue", "production-osp", "supplier-quals-expiring", "competency-coverage", "available-to-claim", "quality-actions", "scan"] },
     { group: "Shift Lead", order: ["shift-lead-hero", "scan", "wo-queue", "wos-going-late", "wos-on-hold", "needs-attention", "production-osp", "training-strip", "available-to-claim", "quality-actions"] },
     { group: "Engineering", order: ["change-control", "approvals-in-flight", "documents", "scan"] },
@@ -1610,7 +1614,7 @@ const PERSONA_ORDER: Array<{ group: string; order: string[] }> = [
     { group: "Receiving", order: ["launchpad-receiving", "scan", "late-deliveries"] },
     { group: "Shipping", order: ["launchpad-shipping", "scan", "production-osp"] },
     { group: "Auditor", order: ["launchpad-auditor", "capa-status", "ncr-aging"] },
-    { group: "Tenant Admin", order: ["needs-attention", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
+    { group: "Tenant Admin", order: ["needs-attention", "bypass-requests", "unassigned-dispositions", "quality-kpis", "capa-status", "ncr-aging", "wos-going-late", "wos-on-hold", "wo-queue", "inspection", "doc-review-due", "approvals-in-flight", "documents", "change-control", "supplier-quals-expiring", "training-strip", "competency-coverage", "available-to-claim", "production-osp", "quality-actions", "scan"] },
 ];
 
 /** The user's primary persona (first PERSONA_ORDER match), or null. Home uses

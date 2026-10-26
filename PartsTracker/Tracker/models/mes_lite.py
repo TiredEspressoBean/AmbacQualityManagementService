@@ -3939,20 +3939,16 @@ class Parts(SecureModel):
             return (False, "No previous step execution found", False)
 
         # Undo window: from when the previous step was completed — the advance being undone.
+        # Past it, the rollback is sent for approval rather than refused (user decision
+        # 2026-10-26: there was otherwise no way back at all).
         undo_window_minutes = getattr(self.step, 'undo_window_minutes', 15)
+        late = False
         if previous_execution.exited_at:
             elapsed = timezone.now() - previous_execution.exited_at
-            elapsed_minutes = elapsed.total_seconds() / 60
-
-            if elapsed_minutes > undo_window_minutes:
-                return (
-                    False,
-                    f"Undo window expired ({undo_window_minutes} minutes)",
-                    False
-                )
+            late = elapsed.total_seconds() / 60 > undo_window_minutes
 
         # Check if rollback requires approval
-        requires_approval = getattr(self.step, 'rollback_requires_approval', True)
+        requires_approval = late or getattr(self.step, 'rollback_requires_approval', True)
 
         if requires_approval:
             # Check for existing approved override for this execution
@@ -3969,7 +3965,9 @@ class Parts(SecureModel):
                     return (False, "Rollback approval has expired", True)
                 return (True, "Rollback approved", False)  # Has approval, doesn't need more
 
-            return (True, "Rollback requires approval", True)
+            return (True,
+                    f"Past the {undo_window_minutes}-minute undo window — the rollback needs approval"
+                    if late else "Rollback requires approval", True)
 
         return (True, "Rollback allowed", False)
 

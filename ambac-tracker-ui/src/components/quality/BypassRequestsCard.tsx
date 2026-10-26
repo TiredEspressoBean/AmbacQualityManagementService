@@ -21,6 +21,9 @@ export const pendingBypassOptions = () =>
     queryOptions({
         queryKey: ["bypass-requests", "pending"] as const,
         queryFn: () => api.api_StepOverrides_list({ queries: { status: "PENDING", limit: 100 } }),
+        // A request raised a moment ago must show when QA opens their home, not a
+        // minute later (walk 2026-10-26: a rollback request wasn't listed at first).
+        staleTime: 0,
     });
 
 const csrf = () => ({ "X-CSRFToken": getCookie("csrftoken") ?? "" });
@@ -43,7 +46,10 @@ export function BypassRequestsCard() {
     const approve = useMutation({
         meta: { suppressGlobalError: true },
         mutationFn: (id: string) => api.api_StepOverrides_approve_create({}, { params: { id }, headers: csrf() }),
-        onSuccess: () => done("Bypass approved"),
+        // A rollback is carried out on approval: say so, rather than "bypass approved".
+        onSuccess: (_d, id) => done(requests.find((r) => r.id === id)?.block_type === "ROLLBACK"
+            ? "Rollback approved — the part is stepped back"
+            : "Bypass approved"),
         onError: (e) => toast.error(apiErrorMessage(e) ?? "Couldn't approve the bypass"),
     });
     const refuse = useMutation({

@@ -76,5 +76,8 @@ class ApprovalWithdrawTests(TenantContextMixin, VectorTestCase):
         self.assertEqual(self.doc.status, "DRAFT")
         self.assertTrue(RecordEdit.objects.filter(object_id=self.ar.id,
                                                   reason="Wrong classification; fixing it").exists())
+        from Tracker.serializers.core import ApprovalRequestSerializer
+        self.assertEqual(ApprovalRequestSerializer(self.ar).data["withdrawal_reason"],
+                         "Wrong classification; fixing it")
         with self.assertRaises(ValueError):
             withdraw_approval_request(self.ar, self.lisa, "again")

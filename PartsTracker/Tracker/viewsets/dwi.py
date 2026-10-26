@@ -766,7 +766,11 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         request=inline_serializer(name='RemoveBatchPartRequest', fields={
             'part': drf_serializers.UUIDField(), 'reason': drf_serializers.CharField()}),
         responses={200: inline_serializer(name='RemoveBatchPartResponse', fields={
-            'batch_id': drf_serializers.UUIDField(), 'part': drf_serializers.UUIDField()})},
+            'batch_id': drf_serializers.UUIDField(), 'part': drf_serializers.UUIDField(),
+            'outcome': drf_serializers.ChoiceField(
+                choices=['REMOVED', 'ROLLBACK_PENDING'],
+                help_text="ROLLBACK_PENDING: the part had moved on, and stepping it back was "
+                          "sent for approval — take it out again once that's done.")})},
         description="Take the wrong part out of a sealed batch, with a reason. It goes back "
                     "to the batch's step and its batch-done work no longer counts for it. "
                     "No unseal.",
@@ -781,11 +785,11 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         if part is None:
             return Response({'detail': 'Part not found.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            remove_part_from_sealed_batch(batch=batch, part=part, user=request.user,
-                                          reason=request.data.get('reason', ''))
+            outcome = remove_part_from_sealed_batch(batch=batch, part=part, user=request.user,
+                                                    reason=request.data.get('reason', ''))
         except ValidationError as exc:
             return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'batch_id': str(batch.id), 'part': str(part.id)})
+        return Response({'batch_id': str(batch.id), 'part': str(part.id), 'outcome': outcome})
 
 
 class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):

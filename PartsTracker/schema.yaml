@@ -49670,6 +49670,11 @@ components:
           readOnly: true
           description: 'The viewer requested this and may decide it themselves (with
             a justification): the template allows it, or nobody else can approve it.'
+        withdrawal_reason:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Why the requester withdrew it, when it was withdrawn.
         requested_at:
           type: string
           format: date-time
@@ -49714,6 +49719,7 @@ components:
       - responses
       - status_display
       - updated_at
+      - withdrawal_reason
     ApprovalRequestRequest:
       type: object
       description: Approval request serializer
@@ -76205,9 +76211,26 @@ components:
         part:
           type: string
           format: uuid
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/RemoveBatchPartResponseOutcomeEnum'
+          description: |-
+            ROLLBACK_PENDING: the part had moved on, and stepping it back was sent for approval — take it out again once that's done.
+
+            * `REMOVED` - REMOVED
+            * `ROLLBACK_PENDING` - ROLLBACK_PENDING
       required:
       - batch_id
+      - outcome
       - part
+    RemoveBatchPartResponseOutcomeEnum:
+      enum:
+      - REMOVED
+      - ROLLBACK_PENDING
+      type: string
+      description: |-
+        * `REMOVED` - REMOVED
+        * `ROLLBACK_PENDING` - ROLLBACK_PENDING
     RemoveMemberResponse:
       type: object
       properties:

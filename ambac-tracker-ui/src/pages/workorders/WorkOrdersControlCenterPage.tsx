@@ -1098,16 +1098,18 @@ function ExceptionRowAction({
     if (exc.kind === "DOWNTIME") {
         return (
             <div className="space-y-1">
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full"
-                    disabled={!isOpen}
-                    onClick={() => onResolve([exc.id])}
-                >
-                    <Wrench className="mr-1 h-3 w-3" />
-                    Resolve
-                </Button>
+                {/* Resolved downtime isn't offered Resolve again (walk 2026-10-26). */}
+                {isOpen && (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => onResolve([exc.id])}
+                    >
+                        <Wrench className="mr-1 h-3 w-3" />
+                        Resolve
+                    </Button>
+                )}
                 {/* Recorded wrong: machine, times or reason — corrected with a reason. */}
                 <Button size="sm" variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
                     Correct…

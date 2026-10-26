@@ -1334,9 +1334,21 @@ export function WorkOrderControlPage() {
                     const done = rows.filter((r) => r.ok).length;
                     const pendingApproval = rows.filter((r) => !r.ok && /approval/i.test(r.error ?? "") && !/expired/i.test(r.error ?? "")).length;
                     if (done > 0) toast.success(`${done} part(s) rolled back.`);
-                    if (pendingApproval > 0) toast.info(`${pendingApproval} rollback(s) sent for approval.`);
+                    if (pendingApproval > 0) toast.info(`${pendingApproval} rollback(s) sent for approval.`, {
+                        description: "QA approves it under Bypass requests, and the part steps back then.",
+                    });
                     const refused = rows.filter((r) => !r.ok && !(/approval/i.test(r.error ?? "") && !/expired/i.test(r.error ?? "")));
-                    if (refused.length > 0) reportBulkFailures({ results: refused }, "could not be rolled back");
+                    if (refused.length > 0) {
+                        reportBulkFailures({ results: refused }, "could not be rolled back");
+                        // Said where the user is looking — the banner alone sat above the
+                        // fold while the dialog closed as if it had worked (walk 2026-10-26).
+                        const why = [...new Set(refused.map((r) => r.error).filter(Boolean))].join("; ");
+                        toast.error(`${refused.length} part(s) not rolled back${why ? `: ${why}` : ""}`, {
+                            description: /undo window/i.test(why)
+                                ? "Past the step's undo window it can't be stepped back here. Ask a lead how to put it right."
+                                : undefined,
+                        });
+                    }
                 },
             });
         } else if (action.kind === "status") {
