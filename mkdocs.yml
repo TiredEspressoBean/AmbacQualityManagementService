@@ -78,6 +78,7 @@ nav:
       - Training Data Setup: training/running-training/training-data-setup.md
   - Core Workflows:
     - Overview: workflows/index.md
+    - Putting a Mistake Right: workflows/fixing-mistakes.md
     - Orders & Parts:
       - Creating Orders: workflows/orders/creating-orders.md
       - Adding Parts: workflows/orders/adding-parts.md
