@@ -27,6 +27,11 @@ class MarkReceiptsPostedSerializer(serializers.Serializer):
     lot_ids = serializers.ListField(child=serializers.UUIDField(), allow_empty=False)
 
 
+class UnmarkReceiptPostedSerializer(serializers.Serializer):
+    lot_id = serializers.UUIDField()
+    reason = serializers.CharField(allow_blank=False)
+
+
 class MarkReceiptsPostedResultSerializer(serializers.Serializer):
     marked = serializers.IntegerField(
         help_text="Deliveries marked posted. Ones still awaiting a decision are skipped.")

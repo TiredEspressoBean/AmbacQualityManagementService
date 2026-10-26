@@ -328,6 +328,92 @@ def receive_expected_lot(lot, *, received_by, lot_number: str = "",
     return lot
 
 
+# What a delivery is and where it came from — corrected only through
+# `correct_lot_source`, never a plain edit (Corrections #25).
+SOURCE_FIELDS = ("supplier", "material", "material_type", "erp_po_number", "erp_po_line")
+
+
+def correct_lot_source(lot, *, user, reason: str, changes: dict):
+    """A lot's supplier, item or PO line recorded wrong at receipt: correct it, with a
+    reason, while nothing has been taken from it (user decision 2026-10-26, Corrections
+    #25) — once used, split or adjusted, the trace already names it. Each change and
+    the reason are kept as an edit of its field.
+
+    ``changes`` maps names in SOURCE_FIELDS to the new value (a model instance for the
+    FKs). Raises ValueError naming why it can't."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, MaterialUsage, RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the receipt details are being corrected")
+    unknown = set(changes) - set(SOURCE_FIELDS)
+    if unknown:
+        raise ValueError(f"Not a receipt detail: {', '.join(sorted(unknown))}")
+    with transaction.atomic():
+        locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
+        used = (locked.quantity_remaining != locked.quantity
+                or MaterialLot.all_tenants.filter(parent_lot=locked).exists()  # tenant-safe: by the lot's own FK
+                or MaterialUsage.objects.filter(lot=locked).exists())  # tenant-safe: FK to a scoped lot
+        if used:
+            raise ValueError(f"Some of lot {locked.lot_number} has already been used, split or adjusted, "
+                             f"so its receipt details can't be corrected any more.")
+        if "material" in changes or "material_type" in changes:
+            material = changes.get("material", locked.material)
+            material_type = changes.get("material_type", locked.material_type)
+            if (material is None) == (material_type is None):
+                raise ValueError("A lot is one item: a material or a bought part, not both or neither.")
+        ct = ContentType.objects.get_for_model(MaterialLot)
+        for field, value in changes.items():
+            old = getattr(locked, field)
+            if old == value:
+                continue
+            RecordEdit.objects.create(
+                tenant=locked.tenant, content_type=ct, object_id=locked.id, field_name=field,
+                old_value=str(old or ""), new_value=str(value or ""), reason=reason, edited_by=user)
+            setattr(locked, field, value)
+        locked.save()
+    lot.refresh_from_db()
+    return lot
+
+
+def reopen_remainder(lot, *, user, reason: str):
+    """A short delivery marked "that's all" by mistake: the rest goes back on order
+    (user decision 2026-10-26, Corrections #27) — an expected lot for what's still owed,
+    on the delivery's own PO, line and promised date — and the delivery reads "rest
+    back-ordered". The change and its reason are kept as an edit of `short_receipt`.
+
+    Raises ValueError for a lot whose remainder isn't closed."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import MaterialLot, RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the rest is going back on order")
+    with transaction.atomic():
+        locked = MaterialLot.all_tenants.select_for_update().get(pk=lot.pk)
+        if locked.short_receipt != "CLOSED":
+            raise ValueError(f"Lot {locked.lot_number} wasn't closed short — there's no remainder to reopen.")
+        owed = Decimal(str(locked.ordered_quantity or 0)) - Decimal(str(locked.quantity))
+        if owed <= 0:
+            raise ValueError(f"Lot {locked.lot_number} has nothing left owed on its order.")
+        RecordEdit.objects.create(
+            tenant=locked.tenant, content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=locked.id, field_name="short_receipt", old_value="CLOSED",
+            new_value="BACKORDERED", reason=reason, edited_by=user)
+        locked.short_receipt = "BACKORDERED"
+        locked.save(update_fields=["short_receipt", "updated_at"])
+        expected = record_expected_receipt(
+            tenant=locked.tenant, quantity=owed, promised_date=locked.promised_date,
+            original_promised_date=locked.original_promised_date,
+            material=locked.material, material_type=locked.material_type,
+            unit_of_measure=locked.unit_of_measure, supplier=locked.supplier,
+            erp_po_number=locked.erp_po_number, erp_po_line=locked.erp_po_line,
+        )
+    lot.refresh_from_db()
+    return expected
+
+
 def record_expected_receipts(*, tenant, rows: list[dict]) -> list:
     """Several expected receipts at once — a buyer raising what they just ordered from a
     list of shortages. All or nothing: a half-recorded batch leaves the buyer unsure which

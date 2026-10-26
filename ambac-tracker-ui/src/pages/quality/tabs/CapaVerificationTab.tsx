@@ -346,10 +346,13 @@ export function CapaVerificationTab({ capa }: CapaVerificationTabProps) {
                             Verify that corrective/preventive actions have been effective
                         </CardDescription>
                     </div>
-                    <Button onClick={() => handleOpenDialog()}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Verification
-                    </Button>
+                    {/* A closed CAPA's effectiveness has been decided: no new plan. */}
+                    {capa.status !== "CLOSED" && capa.status !== "CANCELLED" && (
+                        <Button onClick={() => handleOpenDialog()}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Verification
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent>
                     {verifications.length === 0 ? (

@@ -14,6 +14,7 @@ from Tracker.serializers.receipts import (
     MarkReceiptsPostedResultSerializer,
     MarkReceiptsPostedSerializer,
     ReceiptRowSerializer,
+    UnmarkReceiptPostedSerializer,
 )
 
 _KEYS = {
@@ -72,3 +73,22 @@ class ReceiptsViewSet(viewsets.ViewSet):
         marked = mark_posted(request.tenant, [str(i) for i in ser.validated_data['lot_ids']],
                              user=request.user)
         return Response(MarkReceiptsPostedResultSerializer({'marked': marked}).data)
+
+    @extend_schema(request=UnmarkReceiptPostedSerializer,
+                   responses={200: MarkReceiptsPostedResultSerializer},
+                   description=("A delivery marked posted by mistake: take the mark off, with a "
+                                "reason, so it returns to the next receipts sheet."))
+    @action(detail=False, methods=['post'], url_path='unmark-posted')
+    def unmark_posted(self, request):
+        from Tracker.services.mes.receipt_export import unmark_posted
+        if not request.user.has_tenant_perm("change_materiallot"):
+            return Response({'detail': "Unmarking a receipt needs change_materiallot."},
+                            status=status.HTTP_403_FORBIDDEN)
+        ser = UnmarkReceiptPostedSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            unmark_posted(request.tenant, str(ser.validated_data['lot_id']), user=request.user,
+                          reason=ser.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MarkReceiptsPostedResultSerializer({'marked': 0}).data)

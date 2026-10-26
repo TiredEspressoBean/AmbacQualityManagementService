@@ -221,9 +221,76 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
     core.authorisation_contact = contact.strip()
     core.authorisation_method = method.strip()
     core.authorisation_reference = reference.strip()
+    core.authorisation_codes = list(codes)
     core.save(update_fields=['status', 'approved_repair_codes', 'condition_notes',
                              'authorisation_answered_at', 'authorisation_contact',
-                             'authorisation_method', 'authorisation_reference', 'updated_at'])
+                             'authorisation_method', 'authorisation_reference',
+                             'authorisation_codes', 'updated_at'])
+    sync_part_status(core)
+    return core
+
+
+def _authorised_repair_started(core) -> bool:
+    """Whether work has begun on a repair the customer's answer authorised: a repair
+    step for one of its codes started on this unit."""
+    from Tracker.models import StepExecution
+    codes = core.authorisation_codes or []
+    if not codes or not core.part_id:
+        return False
+    return StepExecution.objects.filter(  # tenant-safe: FK-correlated to a scoped core
+        part_id=core.part_id, step__repair_code__code__in=codes,
+        status__in=('IN_PROGRESS', 'COMPLETED')).exists()
+
+
+@transaction.atomic
+def correct_authorisation(core, approved: bool, user, reason: str):
+    """The customer's answer was recorded wrong: put the right one on record (user
+    decision 2026-10-26, Corrections #22). Allowed until the authorised repair has
+    started — or, for a decline, until the unit has gone back. Both answers stay in
+    the core's notes, with the reason.
+
+    Approved → declined takes back the repairs that answer approved and sends the unit
+    to DECLINED. Declined → approved resumes the rebuild and approves what was waiting.
+
+    Raises:
+        ValidationError: no reason, nothing recorded to correct, the same answer, or the
+            authorised work has begun.
+    """
+    from Tracker.services.reman.repair_routing import codes_needing_approval
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValidationError("Say why the customer's answer is being corrected.")
+    if core.authorisation_answered_at is None:
+        raise ValidationError(f"{core.core_number} has no customer answer on record to correct.")
+    was_approved = core.status == 'IN_REBUILD'
+    if core.status not in ('IN_REBUILD', 'DECLINED'):
+        raise ValidationError(
+            f"{core.core_number} is {core.get_status_display()} — its answer can no longer be corrected.")
+    if approved == was_approved:
+        raise ValidationError("That is the answer already on record.")
+    if was_approved and _authorised_repair_started(core):
+        raise ValidationError(
+            f"Work has started on a repair the customer's answer authorised on {core.core_number}; "
+            "the answer can no longer be corrected.")
+
+    who = (user.get_full_name() or user.get_username()) if user else 'system'
+    if approved:
+        codes = codes_needing_approval(core)
+        core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) | set(codes))
+        core.authorisation_codes = list(codes)
+        core.status = 'IN_REBUILD'
+    else:
+        taken_back = set(core.authorisation_codes or [])
+        core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) - taken_back)
+        core.authorisation_codes = []
+        core.status = 'DECLINED'
+    line = (f"{timezone.now():%Y-%m-%d} {who}: correction — customer "
+            f"{'approved' if approved else 'declined'} (recorded as "
+            f"{'approved' if was_approved else 'declined'}). {reason}")
+    core.condition_notes = f"{core.condition_notes}\n{line}".strip()
+    core.save(update_fields=['status', 'approved_repair_codes', 'authorisation_codes',
+                             'condition_notes', 'updated_at'])
     sync_part_status(core)
     return core
 

@@ -81,6 +81,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         'run_dispatch': ['change_scheduledtask'],
         'commit': ['add_scheduleresult'],
         'discard': ['add_scheduleresult'],
+        # Undoing a commit is the same authority as making it.
+        'restore_previous': ['add_scheduleresult'],
         # NOTE: 'config' is deliberately absent — it serves GET (anyone with
         # view_optimizationconfig, i.e. all staff) and PATCH (planner) from one
         # action, so the PATCH gate is enforced inside the action body.
@@ -91,7 +93,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         'undo': ['change_scheduledtask'],
     }
     crud_exempt_actions = {
-        'run_dispatch', 'commit', 'discard', 'config', 'plan_work_order',
+        'run_dispatch', 'commit', 'discard', 'restore_previous', 'config', 'plan_work_order',
         'explode_work_order', 'undo', 'violations',
     }
 
@@ -217,6 +219,20 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         if promoted is None:
             return Response({'detail': 'No draft to commit.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(ScheduleResultSerializer(promoted).data)
+
+    @extend_schema(
+        request=inline_serializer(name='RestorePreviousInput', fields={'reason': serializers.CharField()}),
+        responses={200: ScheduleResultSerializer, 400: OpenApiTypes.OBJECT},
+        description="A what-if committed by mistake: the plan it replaced goes live again and "
+                    "the committed one goes back to being a draft. One step back, with a reason.")
+    @action(detail=False, methods=['post'], url_path='restore-previous')
+    def restore_previous(self, request):
+        from Tracker.services.scheduling.scenario import restore_previous
+        try:
+            restored = restore_previous(self.tenant, request.user, request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ScheduleResultSerializer(restored).data)
 
     @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=['post'])

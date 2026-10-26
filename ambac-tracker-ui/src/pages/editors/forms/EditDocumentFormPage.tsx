@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -157,6 +157,9 @@ export default function DocumentFormPage() {
     const { data: documentTypesData } = useRetrieveDocumentTypes({ search: documentTypeSearch });
     const createDocument = useCreateDocument();
     const updateDocument = useUpdateDocument();
+
+    // Awaiting approval: nothing can change until the request is withdrawn or decided.
+    const isUnderReview = mode === "edit" && document?.status === schemas.DocumentsStatusEnum.enum.UNDER_REVIEW;
 
     // Check if document is approved/released (file changes not allowed)
     const isFileLocked = mode === "edit" && document?.status && (
@@ -365,6 +368,16 @@ export default function DocumentFormPage() {
                     <p className="text-muted-foreground mb-6">
                         Editing: {document.file_name} (v{document.version || 1})
                     </p>
+                )}
+
+                {/* Said up front rather than refused on Save (walk 2026-10-26). */}
+                {isUnderReview && (
+                    <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                        <strong>Under review — can&rsquo;t be changed while approvers are looking at it.</strong>{" "}
+                        If you asked for the approval, withdraw the request from the document&rsquo;s{" "}
+                        <Link to="/documents/$id" params={{ id: String(documentId) }} className="underline">Approval tab</Link>;
+                        it goes back to draft, and you can edit it and submit again.
+                    </div>
                 )}
 
                 {/* Document Preview - Edit Mode Only */}
@@ -629,7 +642,7 @@ export default function DocumentFormPage() {
                         </Button>
                         <Button
                             type="submit"
-                            disabled={createDocument.isPending || updateDocument.isPending}
+                            disabled={createDocument.isPending || updateDocument.isPending || isUnderReview}
                         >
                             {createDocument.isPending || updateDocument.isPending ? (
                                 <>

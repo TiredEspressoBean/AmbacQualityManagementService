@@ -5,6 +5,7 @@ import { getCookie } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { Button } from "@/components/ui/button";
+import { CorrectTimeEntryButton } from "@/components/scheduling/CorrectTimeEntryButton";
 
 /** Day after an ISO date, so the range's last day is included. */
 const dayAfter = (isoDate: string) => {
@@ -97,10 +98,13 @@ export function TimeApprovalCard({ start, end }: { start: string; end: string })
                                         {own ? (
                                             <span className="text-xs text-muted-foreground">Your time</span>
                                         ) : (
-                                            <Button size="sm" variant="ghost" disabled={approve.isPending}
-                                                    onClick={() => approveIds([e.id])}>
-                                                Approve
-                                            </Button>
+                                            <>
+                                                <CorrectTimeEntryButton entry={e} />
+                                                <Button size="sm" variant="ghost" disabled={approve.isPending}
+                                                        onClick={() => approveIds([e.id])}>
+                                                    Approve
+                                                </Button>
+                                            </>
                                         )}
                                     </td>
                                 </tr>

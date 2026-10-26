@@ -153,6 +153,36 @@ def mark_posted(tenant, lot_ids, *, user) -> int:
     return marked
 
 
+def unmark_posted(tenant, lot_id, *, user, reason: str):
+    """A delivery marked posted to the ERP by mistake: take the mark off, so it returns
+    to the next receipts sheet (user decision 2026-10-26, Corrections #30). The mark it
+    had and the reason are kept as an edit of `erp_posted_at`.
+
+    Raises ValueError for a delivery that isn't marked posted, or no reason."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import MaterialLot, RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the delivery is being unmarked")
+    with transaction.atomic():
+        lot = (MaterialLot.objects.select_for_update()  # tenant-safe: explicit tenant filter
+               .filter(tenant=tenant, id=lot_id).first())
+        if lot is None or lot.erp_posted_at is None:
+            raise ValueError("That delivery isn't marked posted.")
+        who = lot.erp_posted_by.get_full_name() if lot.erp_posted_by_id else ""
+        RecordEdit.objects.create(
+            tenant=tenant, content_type=ContentType.objects.get_for_model(MaterialLot),
+            object_id=lot.id, field_name="erp_posted_at",
+            old_value=f"{lot.erp_posted_at:%Y-%m-%d %H:%M}{f' by {who}' if who else ''}",
+            new_value="", reason=reason, edited_by=user)
+        lot.erp_posted_at, lot.erp_posted_by, lot.erp_posted_snapshot = None, None, None
+        lot.save(update_fields=["erp_posted_at", "erp_posted_by", "erp_posted_snapshot",
+                                "updated_at"])
+    return lot
+
+
 def receipts_workbook(tenant, start, end, *, with_po_only: bool = False,
                       unposted_only: bool = False) -> bytes:
     """The rows as an .xlsx: a sheet of receipts, and a note on what it is."""

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { VoidCompletionDialog } from "@/components/dwi/VoidCompletionDialog";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 
 type CompletionRow = Awaited<
     ReturnType<typeof api.api_SubstepCompletions_list>
@@ -77,17 +78,25 @@ export function StepCompletionsList({
     stepExecutionIds,
     batchCycles,
     stepName,
+    partId,
+    partLabel,
 }: {
     stepExecutionIds: string[];
     /** Cycles this part shared at this step, with how many parts rode each —
      *  the count is what tells the reader a void here reaches other parts. */
     batchCycles: { batch_id: string; part_count: number }[];
     stepName: string;
+    /** The part whose history this is — offered "take out of the cycle" when it was
+     *  loaded by mistake (Corrections #6). */
+    partId?: string;
+    partLabel?: string;
 }) {
     const batchIds = batchCycles.map((b) => b.batch_id);
     const { rows, isLoading, error } = useStepCompletions(stepExecutionIds, batchIds);
     const partCountByBatch = new Map(batchCycles.map((b) => [b.batch_id, b.part_count]));
-    const canVoid = usePermissionSet().has("void_substepcompletion");
+    const perms = usePermissionSet();
+    const canVoid = perms.has("void_substepcompletion");
+    const canRemove = !!partId && perms.has("add_batchexecution");
     const [target, setTarget] = useState<CompletionRow | null>(null);
 
     if (isLoading) {
@@ -152,6 +161,22 @@ export function StepCompletionsList({
                                 <span className="ml-1 normal-case text-destructive">
                                     · shared by {group.sharedWith} parts — voiding
                                     affects all of them
+                                </span>
+                            )}
+                            {/* The wrong part in the load: take it out, not the load's work. */}
+                            {canRemove && group.label === "Shared cycle" && (
+                                <span className="ml-2 normal-case">
+                                    <ReasonActionButton
+                                        label="Take this part out" variant="ghost"
+                                        title={`Take ${partLabel ?? "this part"} out of the cycle`}
+                                        description={<>It was loaded by mistake. It leaves the cycle — the cycle stays sealed
+                                            for the other parts — and goes back to {stepName}, where its own work has to be
+                                            done. Your reason is kept on the batch.</>}
+                                        placeholder="Why — e.g. wrong serial loaded into the furnace"
+                                        done="Part taken out of the cycle."
+                                        run={(reason) => api.api_BatchExecutions_remove_part_create(
+                                            { part: partId!, reason }, { params: { id: group.key } })}
+                                    />
                                 </span>
                             )}
                         </div>

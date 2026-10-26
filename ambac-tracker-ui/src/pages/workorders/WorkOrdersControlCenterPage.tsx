@@ -1,3 +1,4 @@
+import { CorrectDowntimeDialog } from "@/components/downtime/CorrectDowntimeDialog";
 import { useMemo, useState } from "react";
 import { ClearHoldDialog } from "@/components/workorders/ClearHoldDialog";
 import { useNavigate } from "@tanstack/react-router";
@@ -1092,19 +1093,29 @@ function ExceptionRowAction({
     onResolve: (ids: string[]) => void;
 }) {
     const navigate = useNavigate();
+    const [correcting, setCorrecting] = useState(false);
     const isOpen = !exc.closed_at;
     if (exc.kind === "DOWNTIME") {
         return (
-            <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                disabled={!isOpen}
-                onClick={() => onResolve([exc.id])}
-            >
-                <Wrench className="mr-1 h-3 w-3" />
-                Resolve
-            </Button>
+            <div className="space-y-1">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full"
+                    disabled={!isOpen}
+                    onClick={() => onResolve([exc.id])}
+                >
+                    <Wrench className="mr-1 h-3 w-3" />
+                    Resolve
+                </Button>
+                {/* Recorded wrong: machine, times or reason — corrected with a reason. */}
+                <Button size="sm" variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
+                    Correct…
+                </Button>
+                {correcting && (
+                    <CorrectDowntimeDialog eventId={exc.id} open onOpenChange={setCorrecting} />
+                )}
+            </div>
         );
     }
     if (exc.kind === "QUARANTINE") {

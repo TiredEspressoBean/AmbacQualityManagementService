@@ -541,6 +541,12 @@ class ScheduleResult(SecureModel):
                   "one and then commits or discards. A draft never supersedes the active "
                   "schedule until committed; committing promotes it to is_active.",
     )
+    # The live schedule this one replaced when its draft was committed — kept so a
+    # commit made by mistake can be taken back one step (Corrections #38).
+    superseded = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        help_text="The live schedule this one replaced on commit; restoring brings it back.",
+    )
 
     class Meta:
         verbose_name = 'Schedule Result'

@@ -29,8 +29,8 @@ CONCURRENCY
 
 The Compiler is instantiated lazily on the first call within a
 process, protected by a double-checked lock. Celery prefork workers
-each get their own Compiler at no extra cost. Threaded pools share
-one Compiler, serialized by the lock — safe but serialized.
+each get their own Compiler at no extra cost. Threaded servers share
+one Compiler, and each compile holds `_compile_lock` — safe but serialized.
 
 VERSION NOTES
 =============
@@ -56,6 +56,10 @@ TEMPLATES_DIR = Path(settings.BASE_DIR) / "Tracker" / "reports" / "templates"
 # Process-wide Compiler. None until first compile call; thread-safe via lock.
 _compiler: typst.Compiler | None = None
 _compiler_lock = threading.Lock()
+# One compile at a time on the shared Compiler. It holds Rust-side state behind a
+# RefCell, so two threads compiling at once failed the second with "Already borrowed"
+# (walk 2026-10-26: Ship's packing list and CoC auto-downloads, under threaded runserver).
+_compile_lock = threading.Lock()
 
 
 def get_compiler() -> typst.Compiler:
@@ -64,9 +68,9 @@ def get_compiler() -> typst.Compiler:
 
     Double-checked locking: the happy-path read is lock-free; the
     initialization path is serialized. In Celery prefork mode each
-    worker process gets its own Compiler. In threaded pools the
-    Compiler is shared and compile calls serialize on the lock
-    (Typst holds its own internal locks for parse/compile state).
+    worker process gets its own Compiler. In threaded servers the
+    Compiler is shared and compile calls serialize on `_compile_lock`
+    (Typst does not lock its own state; concurrent compiles fail).
     """
     global _compiler
     if _compiler is None:
@@ -104,11 +108,13 @@ def generate_typst_pdf(template_name: str, context: dict) -> bytes:
     sys_inputs = {"data": json.dumps(context, default=str, ensure_ascii=False)}
 
     try:
-        pdf_bytes = get_compiler().compile(
-            input=str(template_path),
-            format="pdf",
-            sys_inputs=sys_inputs,
-        )
+        compiler = get_compiler()
+        with _compile_lock:
+            pdf_bytes = compiler.compile(
+                input=str(template_path),
+                format="pdf",
+                sys_inputs=sys_inputs,
+            )
     except Exception as exc:
         logger.exception(
             "Typst compile failed for template %s", template_name

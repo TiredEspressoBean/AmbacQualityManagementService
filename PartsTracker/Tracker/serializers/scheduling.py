@@ -88,6 +88,8 @@ class ScheduleResultSerializer(serializers.ModelSerializer):
             'infeasible_reason',
             'is_active', 'is_stale', 'is_draft', 'created_at', 'task_count',
             'last_failed_solve',
+            # Set when committed over a live plan: there's a previous plan to restore.
+            'superseded',
         )
         read_only_fields = fields
 

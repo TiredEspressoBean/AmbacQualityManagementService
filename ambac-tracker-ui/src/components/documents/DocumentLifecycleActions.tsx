@@ -1,7 +1,8 @@
-/** Release and Obsolete on a controlled document — the document controller's acts
- *  (`release_documents`). Approval says the content is right; release puts it in force
- *  from an effective date (review and retention dates follow from the document type);
- *  obsolete retires it. Both confirm first: they change what the floor works to. */
+/** Release, Obsolete and Reinstate on a controlled document — the document controller's
+ *  acts (`release_documents`). Approval says the content is right; release puts it in
+ *  force from an effective date (review and retention dates follow from the document
+ *  type); obsolete retires it; reinstate undoes a mistaken obsolete while nothing has
+ *  replaced it. All confirm first: they change what the floor works to. */
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -17,9 +18,14 @@ import { api } from "@/lib/api/generated";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { getCookie } from "@/lib/utils";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 
 export function DocumentLifecycleActions({ document }: {
-    document: { id: string | number; file_name?: string | null; status?: string | null };
+    document: {
+        id: string | number; file_name?: string | null; status?: string | null;
+        /** Set on an obsolete document a later revision replaced — it can't be reinstated. */
+        superseded_by_version?: number | null;
+    };
 }) {
     const qc = useQueryClient();
     const { has } = usePermissionSet();
@@ -87,8 +93,8 @@ export function DocumentLifecycleActions({ document }: {
                             <AlertDialogTitle>Mark {document.file_name} obsolete?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 It is withdrawn from use from today and kept for its retention
-                                period. This can't be undone; a new revision is how a document
-                                comes back.
+                                period. Marked obsolete by mistake, it can be reinstated while no
+                                later revision has replaced it.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -97,6 +103,17 @@ export function DocumentLifecycleActions({ document }: {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+            )}
+            {status === "OBSOLETE" && !document.superseded_by_version && (
+                <ReasonActionButton
+                    label="Reinstate" size="default"
+                    title={`Reinstate ${document.file_name ?? "this document"}`}
+                    description={<>Marked obsolete by mistake: it goes back in force — released again if it had
+                        been released — and its obsolete date clears. Your reason is kept on the document.</>}
+                    placeholder="Why — e.g. obsoleted the wrong work instruction"
+                    done={`${document.file_name ?? "Document"} reinstated`}
+                    run={(reason) => api.api_Documents_reinstate_create({ reason }, { params: { id }, headers })}
+                />
             )}
         </>
     );

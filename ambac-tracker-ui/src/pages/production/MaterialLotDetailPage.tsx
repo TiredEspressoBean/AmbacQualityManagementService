@@ -12,6 +12,8 @@ import { LotHoldBadges } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { MoveLotDialog } from "@/components/locations/MoveLotDialog";
 import { CorrectUsageLotDialog } from "@/components/receiving/CorrectUsageLotDialog";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
+import { CorrectLotSourceDialog } from "@/components/receiving/CorrectLotSourceDialog";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useReportEmail } from "@/hooks/useReportEmail";
@@ -64,6 +66,7 @@ export function MaterialLotDetailPage() {
     const [moveOpen, setMoveOpen] = useState(false);
     // A draw recorded against this lot that really came from another (leads, QA).
     const [wrongDraw, setWrongDraw] = useState<{ id: string; quantity: number } | null>(null);
+    const [sourceOpen, setSourceOpen] = useState(false);
     const { has: hasPerm } = usePermissionSet();
     const { data: trace } = useQuery(traceOptions(lotId));
     const { downloadReport } = useReportEmail();
@@ -167,6 +170,20 @@ export function MaterialLotDetailPage() {
                             <span className="text-muted-foreground">{Number(l.quantity) > Number(l.ordered_quantity)
                                 ? `· ${Number(l.quantity) - Number(l.ordered_quantity)} over`
                                 : l.short_receipt === "BACKORDERED" ? "· rest back-ordered" : "· nothing more expected"}</span>
+                            {l.short_receipt === "CLOSED" && hasPerm("change_materiallot") && (
+                                <div className="pt-1">
+                                    <ReasonActionButton
+                                        label="Reopen the rest" variant="ghost"
+                                        title={`Put the rest of ${l.lot_number}'s order back on order`}
+                                        description={<>Marked &ldquo;that&rsquo;s all&rdquo;, but more is coming. The{" "}
+                                            {Number(l.ordered_quantity) - Number(l.quantity)} {unit} still owed goes back on
+                                            order as an expected receipt — same PO, line and promised date. Your reason is kept on the lot.</>}
+                                        placeholder="Why — e.g. the slip says the rest follows next week"
+                                        done="The rest is back on order."
+                                        run={(reason) => api.api_MaterialLots_reopen_remainder_create({ reason }, { params: { id: lotId } })}
+                                    />
+                                </div>
+                            )}
                         </Field>
                     )}
                     <Field label="Counted as">{l.received_as_quantity && l.received_as_unit ? `${l.received_as_quantity} ${l.received_as_unit.toLowerCase()}` : null}</Field>
@@ -179,6 +196,24 @@ export function MaterialLotDetailPage() {
                             <Link to="/production/shipments/$shipmentId" params={{ shipmentId: String(l.customer_shipment) }} className="underline">{l.customer_shipment_number}</Link>
                         </Field>
                     )}
+                    {l.erp_posted_at && (
+                        <Field label="Posted to ERP">
+                            {new Date(l.erp_posted_at).toLocaleDateString()}
+                            {hasPerm("change_materiallot") && (
+                                <div className="pt-1">
+                                    <ReasonActionButton
+                                        label="Unmark" variant="ghost"
+                                        title={`${l.lot_number} wasn't posted to the ERP`}
+                                        description={<>The &ldquo;posted&rdquo; mark comes off and the delivery returns to the next
+                                            receipts sheet. The mark it had and your reason are kept on the lot.</>}
+                                        placeholder="Why — e.g. ticked the wrong row; not keyed yet"
+                                        done="Unmarked — it's back on the next receipts sheet."
+                                        run={(reason) => api.api_Receipts_unmark_posted_create({ lot_id: lotId, reason })}
+                                    />
+                                </div>
+                            )}
+                        </Field>
+                    )}
                     <Field label="Use by">{l.expiration_date ?? null}</Field>
                     <Field label="CoC">{l.certificate_of_conformance
                         ? <a className="underline" href={l.certificate_of_conformance as string} target="_blank" rel="noreferrer">On file</a>
@@ -188,7 +223,14 @@ export function MaterialLotDetailPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-base">Came from</CardTitle></CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-base">Came from</CardTitle>
+                        {/* Keyed wrong at receipt, and nothing taken from it yet. */}
+                        {hasPerm("change_materiallot") && l.status !== "ON_ORDER"
+                            && Number(l.quantity_remaining) === Number(l.quantity) && !l.child_lot_count && (
+                            <Button size="sm" variant="ghost" onClick={() => setSourceOpen(true)}>Correct receipt details</Button>
+                        )}
+                    </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-4">
                         <Field label="Supplier">{b?.supplier}</Field>
                         <Field label="Their lot">{b?.supplier_lot_number}</Field>
@@ -311,6 +353,14 @@ export function MaterialLotDetailPage() {
             <MoveLotDialog lot={{ id: lotId, lot_number: l.lot_number, storage_location: l.storage_location,
                                   quantity_remaining: l.quantity_remaining, unit_of_measure: l.unit_of_measure }}
                 open={moveOpen} onOpenChange={setMoveOpen} />
+            {sourceOpen && (
+                <CorrectLotSourceDialog open onOpenChange={setSourceOpen}
+                    lot={{ id: lotId, lot_number: l.lot_number,
+                           supplier: l.supplier ? String(l.supplier) : null,
+                           material: l.material ? String(l.material) : null,
+                           material_type: l.material_type ? String(l.material_type) : null,
+                           erp_po_number: l.erp_po_number, erp_po_line: l.erp_po_line }} />
+            )}
             {wrongDraw && (
                 <CorrectUsageLotDialog usageId={wrongDraw.id} lotId={lotId} lotNumber={l.lot_number}
                     quantity={wrongDraw.quantity} unitOfMeasure={l.unit_of_measure}

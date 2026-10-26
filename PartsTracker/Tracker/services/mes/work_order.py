@@ -828,6 +828,48 @@ def short_close_work_order(work_order: WorkOrder, *, reason: str, user,
     return work_order
 
 
+def reopen_short_closed(work_order: WorkOrder, *, user, reason: str) -> WorkOrder:
+    """A work order short-closed by mistake: the production manager reopens it (user
+    decision 2026-10-26, Corrections #41). It goes back to In progress and stops
+    counting as closed short, so a shortfall it gave back to its order line is planned
+    on it again; an order the close completed reopens too. What the close did to units
+    stays done — a scrapped unit stays scrapped unless un-scrapped separately, and a
+    moved one stays where it went. The reopen and its reason are kept as an edit of
+    `workorder_status`.
+
+    Raises:
+        ValueError: no reason, or the work order wasn't short-closed.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import OrdersStatus, RecordEdit
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the work order is being reopened.")
+    with transaction.atomic():
+        wo = WorkOrder.objects.select_for_update().get(pk=work_order.pk)  # tenant-safe: .objects auto-scopes
+        if not (wo.short_closed and wo.workorder_status == WorkOrderStatus.COMPLETED):
+            raise ValueError(f"{wo.ERP_id} wasn't closed short — there's nothing to reopen.")
+        RecordEdit.objects.create(
+            tenant=wo.tenant, content_type=ContentType.objects.get_for_model(WorkOrder),
+            object_id=wo.id, field_name='workorder_status',
+            old_value=f"COMPLETED (short-closed: {wo.short_close_reason})",
+            new_value=WorkOrderStatus.IN_PROGRESS, reason=reason, edited_by=user)
+        wo.workorder_status = WorkOrderStatus.IN_PROGRESS
+        wo.short_closed = False
+        wo.short_close_returned_quantity = 0
+        wo.true_completion = None
+        wo.save(update_fields=['workorder_status', 'short_closed', 'short_close_returned_quantity',
+                               'true_completion', 'updated_at'])
+        order = wo.related_order
+        if order is not None and order.order_status == OrdersStatus.COMPLETED:
+            order.order_status = OrdersStatus.IN_PROGRESS
+            order.save(update_fields=['order_status'])
+    work_order.refresh_from_db()
+    return work_order
+
+
 def manual_status_refusal(current: str, new: str) -> str | None:
     """Why `current` → `new` can't be written as a plain field edit, or None if it can.
 

@@ -33,6 +33,7 @@ def commit_draft(tenant):
     if draft is None:
         return None
     with transaction.atomic():
+        live = _active(tenant)
         ScheduleResult.objects.filter(tenant=tenant, is_active=True).update(
             is_active=False, is_stale=True)
         # Any stray older drafts are dropped on commit (scratch, cascade-deletes tasks).
@@ -40,8 +41,47 @@ def commit_draft(tenant):
         draft.is_draft = False
         draft.is_active = True
         draft.is_stale = False
-        draft.save(update_fields=['is_draft', 'is_active', 'is_stale'])
+        draft.superseded = live
+        draft.save(update_fields=['is_draft', 'is_active', 'is_stale', 'superseded'])
     return draft
+
+
+def restore_previous(tenant, user, reason: str):
+    """A what-if committed by mistake: the live schedule it replaced goes live again,
+    and the committed one goes back to being a draft to review (user decision
+    2026-10-26, Corrections #38). One step back only. The reason is kept as an edit of
+    the restored schedule's `is_active`.
+
+    Raises ValueError when there's nothing to restore, or no reason."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+    from Tracker.models.scheduling import ScheduleResult
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the previous plan is being restored.")
+    with transaction.atomic():
+        live = _active(tenant)
+        previous = live.superseded if live is not None else None
+        if previous is None or previous.archived:
+            raise ValueError("The live schedule wasn't committed over another one — there's "
+                             "no previous plan to restore.")
+        if _latest_draft(tenant) is not None:
+            raise ValueError("A what-if draft is waiting — commit or discard it first.")
+        RecordEdit.objects.create(
+            tenant=tenant, content_type=ContentType.objects.get_for_model(ScheduleResult),
+            object_id=previous.id, field_name='is_active', old_value='False', new_value='True',
+            reason=reason, edited_by=user)
+        live.is_active = False
+        live.is_draft = True
+        live.superseded = None  # one step back: the restored plan isn't undone again
+        live.save(update_fields=['is_active', 'is_draft', 'superseded'])
+        previous.is_active = True
+        previous.is_stale = False
+        # One step back: restoring again would reach further into the past.
+        previous.superseded = None
+        previous.save(update_fields=['is_active', 'is_stale', 'superseded'])
+    return previous
 
 
 def discard_draft(tenant) -> int:

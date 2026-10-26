@@ -526,6 +526,44 @@ def complete_disposition_resolution(
     return disposition
 
 
+def reopen_disposition(disposition: QuarantineDisposition, user, reason: str) -> QuarantineDisposition:
+    """A disposition closed by mistake: the QA manager reopens it (user decision
+    2026-10-26, Corrections #41). It is In progress again and its resolution is no
+    longer complete, so it can be re-decided or completed again; the decision stands
+    until then. What the decision did to its part stays done — a scrapped part stays
+    scrapped unless the reopened disposition is re-decided (which un-scraps it, with a
+    reason). The reopen is kept as an edit of `current_state` and in the notes.
+
+    Raises:
+        ValueError: no reason, or the disposition isn't closed.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the disposition is being reopened.")
+    with transaction.atomic():
+        locked = QuarantineDisposition.objects.select_for_update().get(pk=disposition.pk)  # tenant-safe: .objects auto-scopes
+        if locked.current_state != 'CLOSED':
+            raise ValueError(f"{locked.disposition_number} isn't closed — there's nothing to reopen.")
+        RecordEdit.objects.create(
+            tenant=locked.tenant, content_type=ContentType.objects.get_for_model(QuarantineDisposition),
+            object_id=locked.id, field_name='current_state', old_value='CLOSED', new_value='IN_PROGRESS',
+            reason=reason, edited_by=user)
+        who = (user.get_full_name() or user.get_username()) if user else 'system'
+        line = f"{timezone.now():%Y-%m-%d} {who}: reopened — {reason}"
+        locked.resolution_notes = f"{locked.resolution_notes}\n{line}".strip() if locked.resolution_notes else line
+        locked.current_state = 'IN_PROGRESS'
+        locked.resolution_completed = False
+        locked.resolution_completed_by = None
+        locked.resolution_completed_at = None
+        locked.save(update_fields=['current_state', 'resolution_completed', 'resolution_completed_by',
+                                   'resolution_completed_at', 'resolution_notes', 'updated_at'])
+    disposition.refresh_from_db()
+    return disposition
+
+
 def route_part_to_rework_if_needed(disposition: QuarantineDisposition, user) -> None:
     """Route a REWORK/REPAIR disposition's part to the process's in-process rework
     step at *decision* time (when the type is set) — split off the lot and moved

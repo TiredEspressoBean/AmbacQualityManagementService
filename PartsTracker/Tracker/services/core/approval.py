@@ -21,6 +21,7 @@ from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.utils import timezone
 
 from Tracker.services.core.clock import tenant_today
@@ -149,7 +150,7 @@ def claim_approval(request: ApprovalRequest, user) -> ApproverAssignment:
     if request.approver_assignments.exists():
         raise ValidationError("This approval is already claimed or individually assigned.")
 
-    if request.responses.filter(approver=user).exists():
+    if request.responses.filter(approver=user).exclude(decision=ApprovalDecision.WITHDRAWN).exists():
         raise ValidationError("You have already responded to this approval.")
 
     assignment, _created = add_approver(
@@ -583,11 +584,15 @@ def submit_approval_response(
     if not approval_request.can_approve(approver):
         raise PermissionDenied("You are not authorized to approve this request")
 
-    if ApprovalResponse.objects.filter(
+    existing = ApprovalResponse.objects.filter(  # tenant-safe: scoped by the request FK
         approval_request=approval_request,
         approver=approver,
-    ).exists():
+    ).first()
+    if existing is not None and existing.decision != ApprovalDecision.WITHDRAWN:
         raise ValidationError("You have already responded to this approval")
+    if approval_request.status != Approval_Status_Type.PENDING:
+        raise ValidationError(f"{approval_request.approval_number} is "
+                              f"{approval_request.get_status_display().lower()}; it takes no more responses.")
 
     is_self_approval = (approval_request.requested_by == approver)
     if is_self_approval:
@@ -608,9 +613,7 @@ def submit_approval_response(
         verification_method = VerificationMethod.PASSWORD
         verified_at = timezone.now()
 
-    response = ApprovalResponse.objects.create(
-        approval_request=approval_request,
-        approver=approver,
+    fields = dict(
         decision=decision,
         comments=comments,
         signature_data=signature_data,
@@ -620,9 +623,94 @@ def submit_approval_response(
         ip_address=ip_address,
         self_approved=is_self_approval,
     )
+    if existing is not None:
+        # Answering again after withdrawing: the same row (one response per approver),
+        # the withdrawn answer kept in its RecordEdit and the audit log — and the new
+        # answer, with the comment it replaces, kept beside it.
+        from Tracker.models import RecordEdit
+        RecordEdit.objects.create(
+            tenant=existing.tenant, content_type=ContentType.objects.get_for_model(ApprovalResponse),
+            object_id=existing.id, field_name='decision', old_value=ApprovalDecision.WITHDRAWN,
+            new_value=decision,
+            reason=(f"Answered again (earlier comment: {existing.comments})" if existing.comments
+                    else "Answered again"),
+            edited_by=approver)
+        for k, v in fields.items():
+            setattr(existing, k, v)
+        existing.decision_date = timezone.now()
+        existing.save()
+        response = existing
+    else:
+        response = ApprovalResponse.objects.create(
+            approval_request=approval_request, approver=approver, **fields)
 
     update_approval_status(approval_request)
     return response
+
+
+def withdraw_response(response: ApprovalResponse, user, reason: str) -> ApprovalResponse:
+    """An approver takes back their own response while the request is still open (user
+    decision 2026-10-26, Corrections #17) — to answer differently, or not yet. The
+    answer given and the reason are kept as a RecordEdit of `decision`; the approver is
+    waited on again and may respond anew.
+
+    Raises:
+        PermissionDenied: not the approver's own response.
+        ValidationError: no reason, the request is decided, or nothing to withdraw.
+    """
+    from Tracker.models import RecordEdit
+    reason = (reason or '').strip()
+    if response.approver_id != getattr(user, 'id', None):
+        raise PermissionDenied("Only the approver can withdraw their own response.")
+    if not reason:
+        raise ValidationError("Say why the response is being withdrawn.")
+    with transaction.atomic():
+        # Read fresh and locked: the request may have been decided since this response
+        # was loaded, and a decided request's responses stand.
+        request = ApprovalRequest.objects.select_for_update().get(pk=response.approval_request_id)  # tenant-safe: .objects auto-scopes
+        response.refresh_from_db()
+        if request.status != Approval_Status_Type.PENDING:
+            raise ValidationError(f"{request.approval_number} is {request.get_status_display().lower()}; "
+                                  "a decided request's responses stand.")
+        if response.decision not in (ApprovalDecision.APPROVED, ApprovalDecision.REJECTED):
+            raise ValidationError("There is no answer here to withdraw.")
+        RecordEdit.objects.create(
+            tenant=response.tenant, content_type=ContentType.objects.get_for_model(ApprovalResponse),
+            object_id=response.id, field_name='decision', old_value=response.decision,
+            new_value=ApprovalDecision.WITHDRAWN, reason=reason, edited_by=user)
+        response.decision = ApprovalDecision.WITHDRAWN
+        response.save(update_fields=['decision'])
+    return response
+
+
+def withdraw_approval_request(request: ApprovalRequest, user, reason: str) -> ApprovalRequest:
+    """The requester takes back a request still waiting on its approvers — to change
+    what was submitted, then submit again. The reason is kept as a RecordEdit of
+    `status`. A document under review goes back to draft so it can be edited.
+
+    Raises:
+        PermissionDenied: not the requester.
+        ValidationError: no reason.
+        ValueError: the request is no longer pending.
+    """
+    from Tracker.models import RecordEdit
+    reason = (reason or '').strip()
+    if request.requested_by_id != getattr(user, 'id', None):
+        raise PermissionDenied("Only the person who asked for this approval can withdraw it.")
+    if not reason:
+        raise ValidationError("Say why the request is being withdrawn.")
+    with transaction.atomic():
+        request = ApprovalRequest.objects.select_for_update().get(pk=request.pk)  # tenant-safe: .objects auto-scopes
+        cancel_approval_request(request)
+        RecordEdit.objects.create(
+            tenant=request.tenant, content_type=ContentType.objects.get_for_model(ApprovalRequest),
+            object_id=request.id, field_name='status', old_value=Approval_Status_Type.PENDING,
+            new_value=Approval_Status_Type.CANCELLED, reason=reason, edited_by=user)
+        obj = request.content_object
+        if type(obj).__name__ == 'Documents' and obj.status == 'UNDER_REVIEW':
+            obj.status = 'DRAFT'
+            obj.save(update_fields=['status'])
+    return request
 
 
 def delegate_approval(response: ApprovalResponse, delegatee, reason: str):

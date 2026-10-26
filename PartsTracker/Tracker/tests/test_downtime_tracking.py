@@ -63,6 +63,18 @@ class TrackDowntimeTests(APITestCase):
         r = self._raise(self.untyped)
         self.assertEqual(r.status_code, 201, r.content)
 
+    def test_a_recorded_event_is_corrected_with_a_reason(self):
+        """Corrections #13 (user decision 2026-10-26): machine, times, reason."""
+        from Tracker.models import RecordEdit
+        event_id = self._raise(self.lathe_1).json()["id"]
+        url = f"/api/DowntimeEvents/{event_id}/"
+        self.assertEqual(self.client.patch(url, {"equipment": str(self.untyped.id)}, format="json").status_code, 400)
+        r = self.client.patch(url, {"equipment": str(self.untyped.id), "edit_reason": "Logged on the wrong lathe"},
+                              format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(RecordEdit.objects.filter(object_id=event_id, field_name="equipment",
+                                                  reason="Logged on the wrong lathe").exists())
+
     def test_an_edit_cannot_move_an_event_onto_untracked_equipment(self):
         event_id = self._raise(self.lathe_1).json()["id"]
         r = self.client.patch(f"/api/DowntimeEvents/{event_id}/",

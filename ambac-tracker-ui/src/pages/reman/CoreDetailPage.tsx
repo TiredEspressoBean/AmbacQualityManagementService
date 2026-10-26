@@ -4,6 +4,12 @@ import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { AsBuiltCard } from "@/components/reman/AsBuiltCard";
+import { CorrectCoreReceiptButton } from "@/components/reman/CorrectCoreReceiptButton";
 import { useCoreLifecycleAction } from "@/hooks/useReleaseCore";
 import { CustomerAnswerDialog } from "@/components/WorkOrderCoresCard";
 import { WorkThisUnit } from "@/components/reman/WorkThisUnit";
@@ -144,6 +150,11 @@ export function CoreDetailPage() {
                             </Button>
                             <CustomerAnswerActions core={core} />
                         </>
+                    )}
+                    {core.status === 'RECEIVED' && <CorrectCoreReceiptButton core={core} />}
+                    {core.returns_to_customer && core.authorisation_answered_at
+                        && (core.status === 'IN_REBUILD' || core.status === 'DECLINED') && (
+                        <CorrectAnswerButton core={core} />
                     )}
                     <WorkThisUnit core={core} />
                     <ScrapCoreButton core={core} />
@@ -445,6 +456,7 @@ export function CoreDetailPage() {
                     )}
                 </CardContent>
             </Card>
+            {core.part && <AsBuiltCard partId={String(core.part)} />}
             {id && (
                 <div className="max-w-3xl mx-auto py-6">
                     <RecordHistoryCard endpoint="Cores" id={id} model="core" />
@@ -456,6 +468,56 @@ export function CoreDetailPage() {
 
 export default CoreDetailPage;
 
+
+/** The customer's answer was recorded wrong: put the right one on record, with a reason.
+ *  The server refuses once the repair it authorised has started, or a declined unit has
+ *  gone back. Both answers stay in the core's notes. */
+function CorrectAnswerButton({ core }: { core: { id: string; core_number?: string; status?: string } }) {
+    const [open, setOpen] = useState(false);
+    const [reason, setReason] = useState("");
+    const lifecycle = useCoreLifecycleAction();
+    const wasApproved = core.status === "IN_REBUILD";
+    const name = core.core_number ?? "Core";
+    return (
+        <>
+            <Button variant="ghost" onClick={() => setOpen(true)}>Correct customer&rsquo;s answer…</Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Correct the customer&rsquo;s answer · {name}</DialogTitle>
+                        <DialogDescription>
+                            Recorded as <strong>{wasApproved ? "approved" : "declined"}</strong>. Correcting it to{" "}
+                            <strong>{wasApproved ? "declined" : "approved"}</strong>{" "}
+                            {wasApproved
+                                ? "takes back the repairs that answer approved and sends the unit to Declined."
+                                : "resumes the rebuild and approves the repairs that were waiting."}{" "}
+                            Both answers stay in the core&rsquo;s notes. Not possible once the authorised repair has started.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason"
+                        placeholder="Why — e.g. keyed approved; the customer's email says decline" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOpen(false)} disabled={lifecycle.isPending}>Cancel</Button>
+                        <Button disabled={!reason.trim() || lifecycle.isPending}
+                            onClick={async () => {
+                                try {
+                                    await lifecycle.mutateAsync({ id: String(core.id), action: "correct_authorisation",
+                                                                  approved: !wasApproved, reason: reason.trim() });
+                                    toast.success(`${name} — answer corrected to ${wasApproved ? "declined" : "approved"}`);
+                                    setOpen(false);
+                                    setReason("");
+                                } catch {
+                                    // the global mutation handler shows the server's reason
+                                }
+                            }}>
+                            Correct to {wasApproved ? "declined" : "approved"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
 
 /** Record the customer's answer from the core itself — it waits here, so the action
  *  belongs here too (it was only on the teardown work order's card). */

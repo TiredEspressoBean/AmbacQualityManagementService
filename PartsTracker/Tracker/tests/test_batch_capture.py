@@ -73,6 +73,29 @@ class BatchCaptureWritePathTests(TenantContextMixin, VectorTestCase):
         )
         self.batch.parts.set(self.parts)
 
+    def test_the_wrong_part_comes_out_of_a_sealed_batch_with_a_reason(self):
+        """Corrections #6 (user decision 2026-10-22): no unseal; the part leaves the batch
+        and its batch-done work no longer counts for it."""
+        from django.utils import timezone
+        from Tracker.models import RecordEdit
+        from Tracker.services.dwi.batch_lifecycle import remove_part_from_sealed_batch
+        wrong = self.parts[1]
+        with self.assertRaisesMessage(ValidationError, "isn't sealed"):
+            remove_part_from_sealed_batch(batch=self.batch, part=wrong, user=self.user, reason="x")
+        self.batch.sealed_at = timezone.now()
+        self.batch.save(update_fields=["sealed_at"])
+        with self.assertRaisesMessage(ValidationError, "Say why"):
+            remove_part_from_sealed_batch(batch=self.batch, part=wrong, user=self.user, reason=" ")
+        remove_part_from_sealed_batch(batch=self.batch, part=wrong, user=self.user,
+                                      reason="Wrong serial loaded into the furnace")
+        self.assertEqual(list(self.batch.parts.all()), [self.parts[0]])
+        wrong.refresh_from_db()
+        self.assertEqual(wrong.step_id, self.step.id)
+        self.assertTrue(RecordEdit.objects.filter(object_id=self.batch.id, field_name="parts",
+                                                  old_value="P-BC-1").exists())
+        with self.assertRaisesMessage(ValidationError, "isn't in this batch"):
+            remove_part_from_sealed_batch(batch=self.batch, part=wrong, user=self.user, reason="again")
+
     def test_seal_fails_without_batch_completion(self):
         with self.assertRaises(ValidationError):
             seal_batch(batch=self.batch, user=self.user)

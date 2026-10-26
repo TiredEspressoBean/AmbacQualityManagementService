@@ -20,7 +20,9 @@ import { WorkOrderMaterialsPanel } from "@/components/workorder/WorkOrderMateria
 import { WorkOrderDocuments } from "@/components/reports/WorkOrderDocuments";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
-import type { WorkOrderStatusEnum } from "@/lib/api/generated";
+import { api, type WorkOrderStatusEnum } from "@/lib/api/generated";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { parseDateOnly } from "@/lib/date-only";
 
 const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
@@ -34,6 +36,7 @@ export function WorkOrderDetailPage() {
     // `?start=<part>` (a scanned part serial) opens Start Work with that part ticked.
     const startPartId = (useSearch({ strict: false }) as { start?: string }).start;
     const { workOrderId } = useParams({ from: "/workorder/$workOrderId" });
+    const { has: hasPerm } = usePermissionSet();
     const [activeTab, setActiveTab] = useState("overview");
     const [selectedPart, setSelectedPart] = useState<any | null>(null);
     const [partsStatusFilter, setPartsStatusFilter] = useState<string>("all");
@@ -136,6 +139,18 @@ export function WorkOrderDetailPage() {
                             <Badge variant="outline" className="text-xs" title={workOrder.short_close_reason || undefined}>
                                 Short-closed
                             </Badge>
+                        )}
+                        {workOrder.short_closed && currentStatus === "COMPLETED" && hasPerm("cancel_workorder") && (
+                            <ReasonActionButton
+                                label="Reopen"
+                                title={`Reopen ${workOrder.ERP_id}`}
+                                description={<>Short-closed by mistake: it goes back to In progress, and its order with it.
+                                    Units the close scrapped stay scrapped and units it moved stay where they went.
+                                    Your reason is kept on the work order.</>}
+                                placeholder="Why — e.g. short-closed the wrong work order"
+                                done={`${workOrder.ERP_id} reopened.`}
+                                run={(reason) => api.api_WorkOrders_reopen_create({ reason }, { params: { id: workOrderId } })}
+                            />
                         )}
                         <Badge className={cn("text-xs", priorityConfig.className)}>
                             {priorityConfig.label}

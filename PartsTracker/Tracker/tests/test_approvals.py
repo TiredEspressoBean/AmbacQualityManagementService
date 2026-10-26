@@ -691,6 +691,30 @@ class DocumentApprovalUnhappyPathTestCase(TenantContextMixin, VectorTestCase):
         with self.assertRaises(ValueError):
             mark_document_obsolete(document, self.user)
 
+    def test_an_obsolete_by_mistake_is_reinstated_unless_replaced(self):
+        """Corrections #45 (user decision 2026-10-26)."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.core.documents import (
+            mark_document_obsolete, reinstate_document, release_document,
+        )
+        document = Documents.objects.create(file_name='wi.pdf', uploaded_by=self.user,
+                                            status='APPROVED', tenant=self.tenant)
+        release_document(document, self.user)
+        mark_document_obsolete(document, self.user)
+        with self.assertRaises(ValueError):
+            reinstate_document(document, self.user, "")
+        reinstate_document(document, self.user, "Obsoleted the wrong WI")
+        document.refresh_from_db()
+        self.assertEqual((document.status, document.obsolete_date), ('RELEASED', None))
+        self.assertTrue(RecordEdit.objects.filter(object_id=document.id, field_name='status').exists())
+        # Replaced by a later released revision: it stays obsolete.
+        rev2 = document.create_new_version(change_justification='Rev 2', status='APPROVED')
+        release_document(rev2, self.user)
+        document.refresh_from_db()
+        self.assertEqual(document.status, 'OBSOLETE')
+        with self.assertRaisesMessage(ValueError, "replaced this one"):
+            reinstate_document(document, self.user, "Wrong one again")
+
     # ---------- fresh approval after revise() ----------
 
     def test_revised_document_requires_fresh_approval(self):

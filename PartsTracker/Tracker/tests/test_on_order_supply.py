@@ -268,6 +268,23 @@ class ReceiveExpectedLotTests(_MaterialFixture):
         self.assertEqual((lot.ordered_quantity, lot.short_receipt), (Decimal(20), "CLOSED"))
         self.assertFalse(MaterialLot.objects.filter(status="ON_ORDER", material=self.oring).exists())
 
+    def test_thats_all_by_mistake_puts_the_rest_back_on_order(self):
+        """Corrections #27 (user decision 2026-10-26): same PO, line and promised date."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.mes.material_lot import reopen_remainder
+        lot = receive_expected_lot(self._expect(qty=20), lot_number="SUP-G", received_by=self.user,
+                                   quantity=Decimal(12), remainder="CLOSED")
+        with self.assertRaises(ValueError):
+            reopen_remainder(lot, user=self.user, reason="")
+        rest = reopen_remainder(lot, user=self.user, reason="Slip says 8 to follow")
+        lot.refresh_from_db()
+        self.assertEqual(lot.short_receipt, "BACKORDERED")
+        self.assertEqual((rest.status, rest.quantity, rest.erp_po_number, rest.promised_date),
+                         ("ON_ORDER", Decimal(8), lot.erp_po_number, lot.promised_date))
+        self.assertTrue(RecordEdit.objects.filter(object_id=lot.id, field_name="short_receipt").exists())
+        with self.assertRaises(ValueError):
+            reopen_remainder(lot, user=self.user, reason="again")
+
     def test_lands_at_received_not_accepted(self):
         """Incoming inspection still owns whether the stock is usable — receiving an
         expected lot must not smuggle it into consumable status."""

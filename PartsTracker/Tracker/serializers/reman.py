@@ -88,6 +88,8 @@ class CoreSerializer(SecureModelMixin):
             'work_order', 'part', 'order', 'order_number',
             'harvested_component_count', 'usable_component_count', 'pending_finding_count',
             'approved_repair_codes', 'awaiting_authorisation', 'authorisation_needed',
+            # When the customer's answer was recorded — there is one to correct.
+            'authorisation_answered_at',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = (
@@ -95,7 +97,7 @@ class CoreSerializer(SecureModelMixin):
             'disassembly_started_at', 'disassembly_completed_at',
             'core_credit_issued_at', 'harvested_component_count', 'usable_component_count', 'pending_finding_count',
             'returns_to_customer', 'work_order_erp_id', 'work_order_status',
-            'returned_at', 'returned_by',
+            'returned_at', 'returned_by', 'authorisation_answered_at',
             # The part this core IS — what the operator runtime opens. Minted with the
             # core, never set by a client.
             'part',

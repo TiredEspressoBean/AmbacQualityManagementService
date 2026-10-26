@@ -1163,6 +1163,27 @@ class RcaAuthorAndApprovalTests(TenantTestCase):
         with self.assertRaisesMessage(ValidationError, 'closed'):
             verify_capa_effectiveness(fresh, self.reviewer, confirmed=False, notes='Recurred')
 
+    def test_a_closed_capa_takes_no_new_plan_and_an_open_plan_stays_editable(self):
+        """Walk 2026-10-26: a plan was added to a closed CAPA and could never be
+        completed; and every plan was frozen because the lock read the INCONCLUSIVE
+        default as a decision."""
+        from django.utils import timezone
+        from Tracker.models import CapaVerification
+        from Tracker.services.core.approval_lock import edit_refusal
+        rca = self._rca()
+        plan = CapaVerification.objects.create(
+            tenant=self.tenant_a, capa=rca.capa, verification_method='Audit',
+            verification_criteria='No recurrence in 30 days')
+        self.assertIsNone(edit_refusal(plan, {'verification_criteria': 'No recurrence in 60 days'}))
+        plan.effectiveness_decided_at = timezone.now()
+        self.assertIsNotNone(edit_refusal(plan, {'verification_criteria': 'x'}))
+        rca.capa.status = 'CLOSED'
+        rca.capa.save(update_fields=['status'])
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from Tracker.serializers.qms import CapaVerificationSerializer
+        with self.assertRaises(DRFValidationError):
+            CapaVerificationSerializer().validate_capa(rca.capa)
+
     def test_a_blank_root_cause_summary_is_not_a_complete_rca(self):
         rca = self._rca()
         rca.root_cause_summary = '   '

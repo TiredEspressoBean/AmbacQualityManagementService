@@ -18,6 +18,9 @@ export interface ApprovalResponse {
     signature_data?: string;
     signature_meaning?: string;
     decision_date: string;
+    /** Withdrawn and answered again while the request was open — each change and why. */
+    corrections?: { field: string; old_value: string; new_value: string; reason: string;
+                    by: string | null; at: string }[];
     delegated_to?: string;
     delegated_to_info?: {
         id: string;

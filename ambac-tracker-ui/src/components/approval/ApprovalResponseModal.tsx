@@ -30,7 +30,7 @@ import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
 import { type ApprovalResponseDecisionEnum } from "@/lib/api/generated";
 
 interface ApprovalResponsePayload {
-    decision: ApprovalResponseDecisionEnum;
+    decision: Exclude<ApprovalResponseDecisionEnum, "WITHDRAWN">;
     comments?: string;
     signature_data?: string;
     signature_meaning?: string;

@@ -121,6 +121,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         # than inventing codenames for each transition.
         'request_authorisation_action': ['change_core'],
         'record_authorisation_action': ['change_core'],
+        'correct_authorisation_action': ['change_core'],
+        'correct_receipt_action': ['change_core'],
         # A return is a shipment, so it also takes the perm the Shipping board does.
         'return_to_customer': ['change_core', 'add_customershipment'],
         # Approving a repair the process doesn't pre-approve decides what work goes into
@@ -131,6 +133,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'complete_disassembly',
         'release_to_rebuild', 'release_to_inventory',
         'request_authorisation_action', 'record_authorisation_action',
+        'correct_authorisation_action', 'correct_receipt_action',
         'return_to_customer', 'approve_repair',
     }
 
@@ -301,6 +304,67 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)},
                             status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(core, context={'request': request}).data)
+
+    @extend_schema(
+        request=inline_serializer(name="CoreReceiptCorrectionInput", fields={
+            "order": serializers.UUIDField(required=False, allow_null=True),
+            "fulfilment_mode": serializers.CharField(required=False),
+            "reason": serializers.CharField(),
+        }),
+        responses={200: CoreSerializer, 400: OpenApiTypes.OBJECT},
+        description="Correct a core's order or exchange / repair-and-return mode, recorded "
+                    "wrong at receipt, with a reason — while it is still Received (before "
+                    "teardown). Each change and the reason are kept on the core.",
+    )
+    @action(detail=True, methods=['post'], url_path='correct_receipt')
+    def correct_receipt_action(self, request, pk=None):
+        from django.contrib.contenttypes.models import ContentType
+        from django.db import transaction
+        from Tracker.models import Core, RecordEdit
+        reason = (request.data.get('reason') or '').strip()
+        if not reason:
+            return Response({'detail': "Say why the receipt is being corrected."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        core = self.get_object()
+        data = {k: request.data[k] for k in ('order', 'fulfilment_mode') if k in request.data}
+        before = {'order': str(core.part.order_id) if core.part_id and core.part.order_id else '',
+                  'fulfilment_mode': core.fulfilment_mode}
+        ser = CoreSerializer(core, data=data, partial=True, context={'request': request})
+        ser.is_valid(raise_exception=True)
+        with transaction.atomic():
+            core = ser.save()
+            core.refresh_from_db()
+            after = {'order': str(core.part.order_id) if core.part_id and core.part.order_id else '',
+                     'fulfilment_mode': core.fulfilment_mode}
+            for field, old in before.items():
+                if after[field] != old:
+                    RecordEdit.objects.create(
+                        tenant=core.tenant, content_type=ContentType.objects.get_for_model(Core),
+                        object_id=core.id, field_name=field, old_value=old, new_value=after[field],
+                        reason=reason, edited_by=request.user)
+        return Response(CoreSerializer(core, context={'request': request}).data)
+
+    @extend_schema(
+        request=inline_serializer(name="CoreAuthorisationCorrectionInput", fields={
+            "approved": serializers.BooleanField(help_text="What the customer actually said."),
+            "reason": serializers.CharField(),
+        }),
+        responses={200: CoreSerializer, 400: inline_serializer(
+            name="CoreAuthorisationCorrectionError", fields={"detail": serializers.CharField()})},
+        description="Correct a customer's answer recorded wrong, with a reason — until the "
+                    "repair it authorised has started, or a declined unit has gone back. Both "
+                    "answers stay in the core's notes.",
+    )
+    @action(detail=True, methods=['post'], url_path='correct_authorisation')
+    def correct_authorisation_action(self, request, pk=None):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import correct_authorisation
+        try:
+            core = correct_authorisation(self.get_object(), bool(request.data.get('approved')),
+                                         request.user, request.data.get('reason', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CoreSerializer(core, context={'request': request}).data)
 
     @extend_schema(

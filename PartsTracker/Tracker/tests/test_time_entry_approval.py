@@ -59,6 +59,31 @@ class TimeEntryApprovalTests(TenantTestCase):
         self.entry.save(update_fields=['end_time'])
         self.assertEqual(self._approve().status_code, 400)
 
+    def test_a_lead_corrects_clock_times_with_a_reason_before_approval(self):
+        """Corrections #5 (user decision 2026-10-26)."""
+        from Tracker.models import RecordEdit
+        self._as_lead(['view_timeentry', 'change_timeentry', 'approve_timeentry'])
+        url = f"/api/TimeEntries/{self.entry.id}/"
+        new_end = (self.entry.end_time + datetime.timedelta(minutes=30)).isoformat()
+        self.assertEqual(self.client.patch(url, {"end_time": new_end}, format="json").status_code, 400)
+        resp = self.client.patch(url, {"end_time": new_end, "edit_reason": "Forgot to clock out"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(RecordEdit.objects.filter(object_id=self.entry.id, field_name="end_time",
+                                                  reason="Forgot to clock out").exists())
+        self.assertEqual(self._approve().status_code, 200)
+        resp = self.client.patch(url, {"end_time": self.entry.end_time.isoformat(), "edit_reason": "late"},
+                                 format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)   # approved: frozen
+
+    def test_clock_times_are_a_leads_correction(self):
+        self._as_lead(['view_timeentry', 'change_timeentry'])
+        resp = self.client.patch(f"/api/TimeEntries/{self.entry.id}/",
+                                 {"start_time": self.entry.start_time.isoformat(), "notes": "ok"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)   # unchanged times: a notes edit
+        resp = self.client.patch(f"/api/TimeEntries/{self.entry.id}/",
+                                 {"end_time": timezone.now().isoformat(), "edit_reason": "x"}, format="json")
+        self.assertEqual(resp.status_code, 403, resp.content)
+
     def test_approved_cannot_be_set_by_editing_the_entry(self):
         self._as_lead(['view_timeentry', 'change_timeentry'])
         resp = self.client.patch(f"/api/TimeEntries/{self.entry.id}/", {"approved": True}, format="json")

@@ -1650,6 +1650,14 @@ class CapaVerificationSerializer(SecureModelMixin):
         if self.instance is not None:
             self.fields['capa'].read_only = True
 
+    def validate_capa(self, capa):
+        # A closed CAPA's effectiveness has been decided: a new plan on it could never
+        # be completed (walk 2026-10-26, after Corrections #16 refused the verify).
+        if capa is not None and capa.status in ('CLOSED', 'CANCELLED'):
+            raise serializers.ValidationError(
+                f"{capa.capa_number} is {capa.get_status_display().lower()} — it takes no new verification.")
+        return capa
+
     class Meta:
         model = CapaVerification
         fields = (

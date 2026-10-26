@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models, transaction
 from django.http import HttpResponse, FileResponse, Http404
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -1303,8 +1305,10 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         # controller's acts — not anyone who can upload (the POST default).
         'release': ['release_documents'],
         'mark_obsolete': ['release_documents'],
+        # Putting one back in force after a mistaken obsolete — the same act.
+        'reinstate': ['release_documents'],
     }
-    crud_exempt_actions = {'attach', 'detach', 'release', 'mark_obsolete'}
+    crud_exempt_actions = {'attach', 'detach', 'release', 'mark_obsolete', 'reinstate'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1743,6 +1747,21 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @extend_schema(
+        request=inline_serializer('ReinstateDocumentInput', fields={'reason': serializers.CharField()}),
+        responses={200: DocumentsSerializer, 400: OpenApiTypes.OBJECT},
+        description="Put a document made obsolete by mistake back in force, with a reason — "
+                    "only if no later revision replaced it.",
+    )
+    @action(detail=True, methods=['post'], url_path='reinstate')
+    def reinstate(self, request, pk=None):
+        from Tracker.services.core.documents import reinstate_document
+        try:
+            document = reinstate_document(self.get_object(), request.user, request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(document, context={'request': request}).data)
 
     @extend_schema(responses=DocumentsSerializer(many=True))
     @action(detail=False, methods=['get'], url_path='due-for-review')
@@ -2189,6 +2208,10 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
     action_permissions = {
         'submit_response': ['respond_to_approval'],
         'claim': ['respond_to_approval'],
+        'withdraw_response': ['respond_to_approval'],
+        # The requester's own act on their own request — the service checks it is
+        # theirs; anyone who can see it may be the one who asked.
+        'withdraw': ['view_approvalrequest'],
     }
     # Responding to (or claiming) an approval is not creating an
     # ApprovalRequest, so the POST→add_approvalrequest CRUD gate must not
@@ -2196,7 +2219,7 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
     # `add_approvalrequest`. `respond_to_approval` (above) + the
     # per-instance group-eligibility check inside the service are the
     # real gates.
-    crud_exempt_actions = {'submit_response', 'claim'}
+    crud_exempt_actions = {'submit_response', 'claim', 'withdraw_response', 'withdraw'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -2266,6 +2289,48 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
         pending = approval.get_pending_approvers()
         from Tracker.serializers import UserSelectSerializer
         return Response(UserSelectSerializer(pending, many=True).data)
+
+    @extend_schema(
+        request=inline_serializer('WithdrawApprovalInput', fields={'reason': serializers.CharField()}),
+        responses={200: ApprovalResponseSerializer},
+        description="Withdraw your own response while the request is still open, with a "
+                    "reason. You're waited on again and may respond anew; the withdrawn "
+                    "answer stays on record.")
+    @action(detail=True, methods=['post'], url_path='withdraw-response')
+    def withdraw_response(self, request, pk=None):
+        from Tracker.services.core.approval import withdraw_response
+        approval = self.get_object()
+        mine = approval.responses.filter(approver=request.user).first()
+        if mine is None:
+            return Response({'detail': "You haven't responded to this request."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            mine = withdraw_response(mine, request.user, request.data.get('reason', ''))
+        except DjangoPermissionDenied as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ApprovalResponseSerializer(mine).data)
+
+    @extend_schema(
+        request=inline_serializer('WithdrawRequestInput', fields={'reason': serializers.CharField()}),
+        responses={200: ApprovalRequestSerializer},
+        description="The requester withdraws a request still waiting on its approvers, "
+                    "with a reason — to change what was submitted and submit again. A "
+                    "document under review goes back to draft.")
+    @action(detail=True, methods=['post'], url_path='withdraw')
+    def withdraw(self, request, pk=None):
+        from Tracker.services.core.approval import withdraw_approval_request
+        try:
+            approval = withdraw_approval_request(self.get_object(), request.user,
+                                                 request.data.get('reason', ''))
+        except DjangoPermissionDenied as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ApprovalRequestSerializer(approval, context={'request': request}).data)
 
     @extend_schema(
         description="Submit an approval response (approve/reject/delegate) with optional signature + password identity verification.",

@@ -93,6 +93,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ApprovalRequests/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The requester withdraws a request still waiting on its approvers, with a reason — to change what was submitted and submit again. A document under review goes back to draft. */
+        post: operations["api_ApprovalRequests_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ApprovalRequests/{id}/withdraw-response/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Withdraw your own response while the request is still open, with a reason. You're waited on again and may respond anew; the withdrawn answer stays on record. */
+        post: operations["api_ApprovalRequests_withdraw_response_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ApprovalRequests/claimable/": {
         parameters: {
             query?: never;
@@ -725,6 +759,23 @@ export interface paths {
          *     for advancement.
          */
         patch: operations["api_BatchExecutions_partial_update"];
+        trace?: never;
+    };
+    "/api/BatchExecutions/{id}/remove-part/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Take the wrong part out of a sealed batch, with a reason. It goes back to the batch's step and its batch-done work no longer counts for it. No unseal. */
+        post: operations["api_BatchExecutions_remove_part_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/BatchExecutions/{id}/seal/": {
@@ -1812,6 +1863,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/{id}/correct_authorisation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct a customer's answer recorded wrong, with a reason — until the repair it authorised has started, or a declined unit has gone back. Both answers stay in the core's notes. */
+        post: operations["api_Cores_correct_authorisation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/{id}/correct_receipt/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct a core's order or exchange / repair-and-return mode, recorded wrong at receipt, with a reason — while it is still Received (before teardown). Each change and the reason are kept on the core. */
+        post: operations["api_Cores_correct_receipt_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/{id}/issue_credit/": {
         parameters: {
             query?: never;
@@ -2745,6 +2830,23 @@ export interface paths {
          *     Sets status to OBSOLETE and records the obsolete_date.
          */
         post: operations["api_Documents_mark_obsolete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Documents/{id}/reinstate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Put a document made obsolete by mistake back in force, with a reason — only if no later revision replaced it. */
+        post: operations["api_Documents_reinstate_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5866,6 +5968,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/MaterialLots/{id}/correct-source/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Correct a lot's supplier, item or PO line recorded wrong at receipt, with a reason — only while nothing has been used, split or adjusted. */
+        post: operations["api_MaterialLots_correct_source_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/MaterialLots/{id}/evaluate_receiving/": {
         parameters: {
             query?: never;
@@ -6074,6 +6193,23 @@ export interface paths {
          *     that one gate waived (inspection or dock-to-stock as usual).
          */
         post: operations["api_MaterialLots_release_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/reopen-remainder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A short delivery marked "that's all" by mistake: put the rest back on order, on the same PO, line and promised date, with a reason. Returns the new expected receipt. */
+        post: operations["api_MaterialLots_reopen_remainder_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10242,6 +10378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/QuarantineDispositions/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reopen a disposition closed by mistake, with a reason. It can then be re-decided or completed again; a scrapped part stays scrapped until then. */
+        post: operations["api_QuarantineDispositions_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/QuarantineDispositions/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -10509,6 +10662,23 @@ export interface paths {
         put?: never;
         /** @description Record that these deliveries were keyed into the ERP, with the numbers posted. Ones still awaiting a decision are skipped. */
         post: operations["api_Receipts_mark_posted_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Receipts/unmark-posted/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A delivery marked posted by mistake: take the mark off, with a reason, so it returns to the next receipts sheet. */
+        post: operations["api_Receipts_unmark_posted_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11848,6 +12018,23 @@ export interface paths {
         get: operations["api_Schedules_requirements_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/restore-previous/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description A what-if committed by mistake: the plan it replaced goes live again and the committed one goes back to being a draft. One step back, with a reason. */
+        post: operations["api_Schedules_restore_previous_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16899,6 +17086,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/WorkOrders/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Reopen a work order short-closed by mistake, with a reason. Scrapped units stay scrapped and moved units stay moved. */
+        post: operations["api_WorkOrders_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/WorkOrders/{id}/set_quantity/": {
         parameters: {
             query?: never;
@@ -20798,6 +21002,7 @@ export interface components {
             /** Format: date-time */
             readonly decision_date: string;
             comments?: string | null;
+            readonly corrections: components["schemas"]["ApprovalResponseCorrection"][];
             /** @description Base64 encoded signature image (PNG) */
             signature_data?: string | null;
             /** @description e.g., 'I approve as QA Manager' */
@@ -20822,13 +21027,23 @@ export interface components {
             readonly updated_at: string;
             archived?: boolean;
         };
+        ApprovalResponseCorrection: {
+            field: string;
+            old_value: string;
+            new_value: string;
+            reason: string;
+            by: string | null;
+            /** Format: date-time */
+            at: string;
+        };
         /**
          * @description * `APPROVED` - Approved
          *     * `REJECTED` - Rejected
          *     * `DELEGATED` - Delegated
+         *     * `WITHDRAWN` - Withdrawn
          * @enum {string}
          */
-        ApprovalResponseDecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED";
+        ApprovalResponseDecisionEnum: "APPROVED" | "REJECTED" | "DELEGATED" | "WITHDRAWN";
         ApprovalResponseDelegateRequestRequest: {
             delegatee_id: number;
             reason: string;
@@ -20986,9 +21201,11 @@ export interface components {
          * @enum {string}
          */
         ApprovalTypeEnum: "DOCUMENT_RELEASE" | "CAPA_APPROVAL" | "CAPA_CRITICAL" | "CAPA_MAJOR" | "ECO" | "TRAINING_CERT" | "PROCESS_APPROVAL" | "PCR_APPROVAL" | "PCO_APPROVAL" | "PCN_RELEASE" | "PPAP" | "FAI";
-        /** @description Serializer for removing a component from assembly */
+        /**
+         * @description Taking a component back out of the unit — fitted by mistake, or the wrong one.
+         *     The reason is kept on the usage (Corrections #23).
+         */
         AssemblyRemoveRequest: {
-            /** @default  */
             reason: string;
         };
         /** @description Assembly component usage serializer */
@@ -21006,7 +21223,13 @@ export interface components {
              * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
             component?: string | null;
-            readonly component_erp_id: string;
+            readonly component_erp_id: string | null;
+            /**
+             * Format: uuid
+             * @description The harvested component installed — the customer's own part going back into their own unit, which never became a Parts row.
+             */
+            component_harvested?: string | null;
+            readonly component_label: string;
             /** Format: decimal */
             quantity?: string;
             /** Format: uuid */
@@ -21014,7 +21237,7 @@ export interface components {
             /** Format: date-time */
             readonly installed_at: string;
             readonly installed_by: number;
-            readonly installed_by_name: string;
+            readonly installed_by_name: string | null;
             /** Format: uuid */
             step?: string | null;
             /** Format: date-time */
@@ -21040,6 +21263,11 @@ export interface components {
              * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
             component?: string | null;
+            /**
+             * Format: uuid
+             * @description The harvested component installed — the customer's own part going back into their own unit, which never became a Parts row.
+             */
+            component_harvested?: string | null;
             /** Format: decimal */
             quantity?: string;
             /** Format: uuid */
@@ -22361,6 +22589,8 @@ export interface components {
             /** @description While a repair-and-return unit is in rebuild: what a request for the customer's authorisation would ask about (code, name, findings). Empty otherwise. */
             readonly authorisation_needed: components["schemas"]["AuthorisationScopeItem"][];
             /** Format: date-time */
+            readonly authorisation_answered_at: string | null;
+            /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
@@ -22384,6 +22614,14 @@ export interface components {
             serial_number?: string;
             condition_notes?: string;
             source_type?: components["schemas"]["SourceTypeEnum"];
+        };
+        CoreAuthorisationCorrectionError: {
+            detail: string;
+        };
+        CoreAuthorisationCorrectionInputRequest: {
+            /** @description What the customer actually said. */
+            approved: boolean;
+            reason: string;
         };
         CoreAuthorisationError: {
             detail: string;
@@ -22517,6 +22755,12 @@ export interface components {
             work_order_erp_id: string;
             planned_core_ids: string[];
         };
+        CoreReceiptCorrectionInputRequest: {
+            /** Format: uuid */
+            order?: string | null;
+            fulfilment_mode?: string;
+            reason: string;
+        };
         CoreReleaseInventory: {
             core: components["schemas"]["Core"];
             accepted_count: number;
@@ -22635,6 +22879,21 @@ export interface components {
          * @enum {string}
          */
         CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "SHIPPED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        /**
+         * @description A lot's supplier, item or PO line recorded wrong at receipt — send only what
+         *     changes, and why.
+         */
+        CorrectLotSourceRequest: {
+            /** Format: uuid */
+            supplier?: string | null;
+            /** Format: uuid */
+            material?: string | null;
+            /** Format: uuid */
+            material_type?: string | null;
+            erp_po_number?: string;
+            erp_po_line?: string;
+            reason: string;
+        };
         /** @description The lot this draw really came from, and why the record was wrong. */
         CorrectUsageLotRequest: {
             /**
@@ -23672,6 +23931,7 @@ export interface components {
             end_time?: string | null;
             /** Format: uuid */
             work_order?: string | null;
+            edit_reason?: string;
             archived?: boolean;
         };
         /** @description Downtime over a period, by category and by machine, largest first. */
@@ -25893,6 +26153,8 @@ export interface components {
              *     * `CLOSED` - That's all
              */
             readonly short_receipt: components["schemas"]["ShortReceiptEnum"] | components["schemas"]["BlankEnum"];
+            /** Format: date-time */
+            readonly erp_posted_at: string | null;
             /** Format: date */
             received_date?: string | null;
             readonly received_by: number | null;
@@ -29379,6 +29641,11 @@ export interface components {
              * @description The component part installed. Null when the thing installed is a harvested component that never became stock.
              */
             component?: string | null;
+            /**
+             * Format: uuid
+             * @description The harvested component installed — the customer's own part going back into their own unit, which never became a Parts row.
+             */
+            component_harvested?: string | null;
             /** Format: decimal */
             quantity?: string;
             /** Format: uuid */
@@ -29869,6 +30136,7 @@ export interface components {
             end_time?: string | null;
             /** Format: uuid */
             work_order?: string | null;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**
@@ -31898,6 +32166,7 @@ export interface components {
             work_center?: string | null;
             notes?: string;
             downtime_reason?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**
@@ -34136,6 +34405,9 @@ export interface components {
             password1: string;
             password2: string;
         };
+        ReinstateDocumentInputRequest: {
+            reason: string;
+        };
         /**
          * @description The inspector's reject: how many pieces are bad (or the whole lot), where they go,
          *     and why. Omitting both `rejected_quantity` and `whole_lot` rejects the whole lot.
@@ -34224,8 +34496,28 @@ export interface components {
         ReleaseWorkOrderRequestRequest: {
             override_reason?: string;
         };
+        RemoveBatchPartRequestRequest: {
+            /** Format: uuid */
+            part: string;
+            reason: string;
+        };
+        RemoveBatchPartResponse: {
+            /** Format: uuid */
+            batch_id: string;
+            /** Format: uuid */
+            part: string;
+        };
         RemoveMemberResponse: {
             status: string;
+        };
+        ReopenDispositionRequestRequest: {
+            reason: string;
+        };
+        ReopenRemainderInputRequest: {
+            reason: string;
+        };
+        ReopenWorkOrderRequestRequest: {
+            reason: string;
         };
         RepairBranch: {
             step_id: string;
@@ -34333,6 +34625,9 @@ export interface components {
         };
         RestAuthToken: {
             key: string;
+        };
+        RestorePreviousInputRequest: {
+            reason: string;
         };
         /**
          * @description * `ANY` - Any Qualified Operator
@@ -35068,6 +35363,11 @@ export interface components {
             readonly created_at: string;
             readonly task_count: number;
             readonly last_failed_solve: components["schemas"]["FailedSolve"] | null;
+            /**
+             * Format: uuid
+             * @description The live schedule this one replaced on commit; restoring brings it back.
+             */
+            readonly superseded: string | null;
         };
         /** @description Production schedule slot serializer */
         ScheduleSlot: {
@@ -38256,7 +38556,7 @@ export interface components {
             /** Format: date-time */
             end_time?: string | null;
             readonly user: number;
-            readonly user_name: string;
+            readonly user_name: string | null;
             /** Format: double */
             readonly duration_hours: number | null;
             /** Format: uuid */
@@ -38302,6 +38602,7 @@ export interface components {
             work_center?: string | null;
             notes?: string;
             downtime_reason?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**
@@ -38853,6 +39154,11 @@ export interface components {
             count: number;
             emails: string[];
         };
+        UnmarkReceiptPostedRequest: {
+            /** Format: uuid */
+            lot_id: string;
+            reason: string;
+        };
         UnplannedDemand: {
             lines: number;
             units: number;
@@ -39242,6 +39548,12 @@ export interface components {
             pending_count: number;
             in_progress_count: number;
             total_active: number;
+        };
+        WithdrawApprovalInputRequest: {
+            reason: string;
+        };
+        WithdrawRequestInputRequest: {
+            reason: string;
         };
         WorkAuthorization: {
             results: components["schemas"]["WorkAuthorizationRow"][];
@@ -40133,6 +40445,62 @@ export interface operations {
             };
         };
     };
+    api_ApprovalRequests_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Approval Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawRequestInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WithdrawRequestInputRequest"];
+                "multipart/form-data": components["schemas"]["WithdrawRequestInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequest"];
+                };
+            };
+        };
+    };
+    api_ApprovalRequests_withdraw_response_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Approval Request. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawApprovalInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["WithdrawApprovalInputRequest"];
+                "multipart/form-data": components["schemas"]["WithdrawApprovalInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalResponse"];
+                };
+            };
+        };
+    };
     api_ApprovalRequests_claimable_list: {
         parameters: {
             query?: {
@@ -40299,8 +40667,9 @@ export interface operations {
                  * @description * `APPROVED` - Approved
                  *     * `REJECTED` - Rejected
                  *     * `DELEGATED` - Delegated
+                 *     * `WITHDRAWN` - Withdrawn
                  */
-                decision?: "APPROVED" | "DELEGATED" | "REJECTED";
+                decision?: "APPROVED" | "DELEGATED" | "REJECTED" | "WITHDRAWN";
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -40983,7 +41352,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["AssemblyRemoveRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["AssemblyRemoveRequest"];
@@ -41696,6 +42065,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BatchExecution"];
+                };
+            };
+        };
+    };
+    api_BatchExecutions_remove_part_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this batch execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveBatchPartRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RemoveBatchPartRequestRequest"];
+                "multipart/form-data": components["schemas"]["RemoveBatchPartRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoveBatchPartResponse"];
                 };
             };
         };
@@ -44177,6 +44574,80 @@ export interface operations {
             };
         };
     };
+    api_Cores_correct_authorisation_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreAuthorisationCorrectionInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreAuthorisationCorrectionInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreAuthorisationCorrectionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAuthorisationCorrectionError"];
+                };
+            };
+        };
+    };
+    api_Cores_correct_receipt_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Core. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreReceiptCorrectionInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreReceiptCorrectionInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreReceiptCorrectionInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Core"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_Cores_issue_credit_create: {
         parameters: {
             query?: never;
@@ -45993,6 +46464,44 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Documents"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    api_Documents_reinstate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Document. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReinstateDocumentInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReinstateDocumentInputRequest"];
+                "application/json": components["schemas"]["ReinstateDocumentInputRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -51408,6 +51917,34 @@ export interface operations {
             };
         };
     };
+    api_MaterialLots_correct_source_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["CorrectLotSourceRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CorrectLotSourceRequest"];
+                "application/json": components["schemas"]["CorrectLotSourceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
     api_MaterialLots_evaluate_receiving_retrieve: {
         parameters: {
             query?: never;
@@ -51715,6 +52252,34 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_reopen_remainder_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ReopenRemainderInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReopenRemainderInputRequest"];
+                "application/json": components["schemas"]["ReopenRemainderInputRequest"];
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -58277,6 +58842,44 @@ export interface operations {
             };
         };
     };
+    api_QuarantineDispositions_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Disposition. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenDispositionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReopenDispositionRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReopenDispositionRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuarantineDisposition"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     api_QuarantineDispositions_export_retrieve: {
         parameters: {
             query?: {
@@ -58989,6 +59592,31 @@ export interface operations {
                 "application/json": components["schemas"]["MarkReceiptsPostedRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["MarkReceiptsPostedRequest"];
                 "multipart/form-data": components["schemas"]["MarkReceiptsPostedRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkReceiptsPostedResult"];
+                };
+            };
+        };
+    };
+    api_Receipts_unmark_posted_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnmarkReceiptPostedRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["UnmarkReceiptPostedRequest"];
+                "multipart/form-data": components["schemas"]["UnmarkReceiptPostedRequest"];
             };
         };
         responses: {
@@ -61109,6 +61737,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourcingRequirements"];
+                };
+            };
+        };
+    };
+    api_Schedules_restore_previous_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestorePreviousInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RestorePreviousInputRequest"];
+                "multipart/form-data": components["schemas"]["RestorePreviousInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -70698,6 +71361,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderReleaseReadiness"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenWorkOrderRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReopenWorkOrderRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReopenWorkOrderRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

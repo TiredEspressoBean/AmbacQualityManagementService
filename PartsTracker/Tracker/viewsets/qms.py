@@ -157,8 +157,10 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
     # a closer/authorizer shouldn't also need `add_quarantinedisposition`.
     action_permissions = {
         'close': ['close_disposition'],
+        # Reopening one closed by mistake is the QA manager's call (the SoD tier).
+        'reopen': ['approve_disposition'],
     }
-    crud_exempt_actions = {'close', 'decide'}
+    crud_exempt_actions = {'close', 'decide', 'reopen'}
 
     # The disposition DECISION (choosing the disposition_type) is the authorized
     # act under AS9100/ISO 9001 8.7 & 21 CFR 820.90 — the record must carry the
@@ -199,6 +201,21 @@ class QuarantineDispositionViewSet(TenantScopedMixin, ListMetadataMixin, DataExp
         disposition = self.get_object()
         try:
             complete_disposition_resolution(disposition, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(self.get_serializer(disposition).data)
+
+    @extend_schema(
+        request=inline_serializer(name="ReopenDispositionRequest", fields={"reason": serializers.CharField()}),
+        responses={200: QuarantineDispositionSerializer, 400: OpenApiTypes.OBJECT},
+        description="Reopen a disposition closed by mistake, with a reason. It can then be "
+                    "re-decided or completed again; a scrapped part stays scrapped until then.",
+    )
+    @action(detail=True, methods=['post'], url_path='reopen')
+    def reopen(self, request, pk=None):
+        from Tracker.services.qms.disposition import reopen_disposition
+        try:
+            disposition = reopen_disposition(self.get_object(), request.user, request.data.get('reason', ''))
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(disposition).data)

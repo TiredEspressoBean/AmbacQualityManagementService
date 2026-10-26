@@ -341,6 +341,18 @@ class PostedToErpTests(_Fixture):
         self.assertEqual(resp.json()["marked"], 1)
         self.assertNotIn("PX-1", {r["Our Lot"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)})
 
+        # Corrections #30 (user decision 2026-10-26): marked by mistake → back on the sheet.
+        from Tracker.models import RecordEdit
+        url = "/api/Receipts/unmark-posted/"
+        self.assertEqual(self.client.post(url, {"lot_id": str(done.id), "reason": ""}, format="json").status_code, 400)
+        resp = self.client.post(url, {"lot_id": str(done.id), "reason": "Not keyed yet — ticked the wrong row"},
+                                format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertIn("PX-1", {r["Our Lot"] for r in receipt_rows(self.tenant, today, today, unposted_only=True)})
+        self.assertTrue(RecordEdit.objects.filter(object_id=done.id, field_name="erp_posted_at").exists())
+        self.assertEqual(self.client.post(url, {"lot_id": str(done.id), "reason": "again"},
+                                          format="json").status_code, 400)
+
 
 class CorrectReceiptTests(_Fixture):
     """A mis-keyed receipt (120 keyed, 12 arrived) is corrected at the receipt, not as
@@ -368,6 +380,27 @@ class CorrectReceiptTests(_Fixture):
         self.client.post(f"/api/MaterialLots/{lot.id}/correct-receipt/",
                          {"quantity": "12", "reason": "Keyed 120, box holds 12"}, format="json")
         self.assertEqual(self._row("CR-2")["ERP Status"], "Changed since posted")
+
+    def test_receipt_details_are_corrected_with_a_reason_until_used(self):
+        """Corrections #25 (user decision 2026-10-26): PO line corrected with a reason; a
+        plain edit is refused; once anything is used, refused too."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.mes.material_lot import adjust_quantity
+        lot = self._lot("CR-4", qty="50", erp_po_number="88", erp_po_line="3")
+        patched = self.client.patch(f"/api/MaterialLots/{lot.id}/", {"erp_po_line": "4"}, format="json")
+        self.assertEqual(patched.status_code, 400, patched.content)
+        url = f"/api/MaterialLots/{lot.id}/correct-source/"
+        self.assertEqual(self.client.post(url, {"erp_po_line": "4", "reason": ""}, format="json").status_code, 400)
+        resp = self.client.post(url, {"erp_po_line": "4", "reason": "Slip was line 4"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        lot.refresh_from_db()
+        self.assertEqual(lot.erp_po_line, "4")
+        self.assertTrue(RecordEdit.objects.filter(object_id=lot.id, field_name="erp_po_line",
+                                                  old_value="3", new_value="4").exists())
+        adjust_quantity(lot, new_quantity=Decimal(40), reason="Used 10", user=self.user)
+        resp = self.client.post(url, {"erp_po_line": "5", "reason": "again"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("already been used", resp.json()["detail"])
 
     def test_not_once_anything_has_been_taken(self):
         from Tracker.services.mes.material_lot import adjust_quantity

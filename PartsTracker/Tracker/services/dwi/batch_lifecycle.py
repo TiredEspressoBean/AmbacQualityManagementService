@@ -192,3 +192,51 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
         sealed_at=batch.sealed_at.isoformat(),
         problems=[],
     )
+
+
+def remove_part_from_sealed_batch(*, batch: "BatchExecution", part, user: "User", reason: str) -> None:
+    """The wrong part went into a sealed batch: take it out, with a reason (user decision
+    2026-10-22, Corrections #6 — no unseal). Out of the batch, the batch's completions no
+    longer count for it, so it holds at the batch's step until its own work there is
+    done. A part the batch already advanced one step is rolled back to the step first,
+    under the rollback's own rules; one further on is refused — roll it back first.
+
+    The removal and its reason are kept as an edit of the batch's `parts`.
+
+    Raises:
+        ValidationError: naming why it can't.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import BatchExecution, RecordEdit, StepExecution
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValidationError("Say why the part is being taken out of the batch.")
+    if batch.sealed_at is None:
+        raise ValidationError("The batch isn't sealed — change its parts before sealing it.")
+    if not batch.parts.filter(pk=part.pk).exists():
+        raise ValidationError(f"{part.ERP_id} isn't in this batch.")
+    with transaction.atomic():
+        part.refresh_from_db()
+        if part.step_id != batch.step_id:
+            # Moved on with the cohort: back one step to the batch's step, if that's where
+            # it came from.
+            came_from = (StepExecution.objects  # tenant-safe: FK-correlated to a scoped part
+                         .filter(part=part, next_step_id=part.step_id, status="COMPLETED", archived=False)
+                         .order_by("-exited_at").values_list("step_id", flat=True).first())
+            if came_from != batch.step_id:
+                raise ValidationError(
+                    f"{part.ERP_id} has moved on past {batch.step.name} — roll it back to that step "
+                    "first, then take it out of the batch.")
+            from Tracker.services.mes.parts import rollback_part_step
+            try:
+                result = rollback_part_step(part, user, reason=reason)
+            except ValueError as e:
+                raise ValidationError(str(e)) from e
+            if not result.get("success"):
+                raise ValidationError(result.get("message") or "The rollback needs approval first.")
+        batch.parts.remove(part)
+        RecordEdit.objects.create(
+            tenant=batch.tenant, content_type=ContentType.objects.get_for_model(BatchExecution),
+            object_id=batch.id, field_name="parts", old_value=part.ERP_id, new_value="",
+            reason=reason, edited_by=user)

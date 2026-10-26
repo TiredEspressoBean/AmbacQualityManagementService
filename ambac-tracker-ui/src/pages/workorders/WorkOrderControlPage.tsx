@@ -913,6 +913,8 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                         stepExecutionIds={execIds}
                                         batchCycles={v.batch_cycles ?? []}
                                         stepName={v.step_name}
+                                        partId={part.id}
+                                        partLabel={part.serial}
                                     />
                                 </TableCell>
                             </TableRow>

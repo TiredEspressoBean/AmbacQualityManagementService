@@ -77,6 +77,25 @@ class ShortCloseTests(TenantTestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.order_status, OrdersStatus.COMPLETED)
 
+    def test_a_mistaken_short_close_is_reopened_and_the_scrap_stays(self):
+        """Corrections #41 (user decision 2026-10-26): the PM reopens it; the order
+        reopens; scrapped stays scrapped, moved stays moved."""
+        self._post(self._body())
+        url = f"/api/WorkOrders/{self.wo.id}/reopen/"
+        self.assertEqual(self.client.post(url, {"reason": ""}, format="json").status_code, 400)
+        resp = self.client.post(url, {"reason": "Closed the wrong WO"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.wo.refresh_from_db()
+        self.order.refresh_from_db()
+        self.to_scrap.refresh_from_db()
+        self.to_move.refresh_from_db()
+        self.assertEqual((self.wo.workorder_status, self.wo.short_closed), ("IN_PROGRESS", False))
+        self.assertIsNone(self.wo.true_completion)
+        self.assertEqual(self.order.order_status, OrdersStatus.IN_PROGRESS)
+        self.assertEqual(self.to_scrap.part_status, "SCRAPPED")
+        self.assertEqual(self.to_move.work_order_id, self.other.id)
+        self.assertEqual(self.client.post(url, {"reason": "again"}, format="json").status_code, 400)
+
     def test_cancel_permission_is_required(self):
         resp = self._post(self._body(), perms=('view_workorder', 'change_workorder'))
         self.assertEqual(resp.status_code, 403, resp.content)

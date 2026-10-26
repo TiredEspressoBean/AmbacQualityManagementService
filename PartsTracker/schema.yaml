@@ -406,6 +406,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApprovalResponse'
           description: ''
+  /api/ApprovalRequests/{id}/withdraw/:
+    post:
+      operationId: api_ApprovalRequests_withdraw_create
+      description: The requester withdraws a request still waiting on its approvers,
+        with a reason — to change what was submitted and submit again. A document
+        under review goes back to draft.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Approval Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequestInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequestInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WithdrawRequestInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalRequest'
+          description: ''
+  /api/ApprovalRequests/{id}/withdraw-response/:
+    post:
+      operationId: api_ApprovalRequests_withdraw_response_create
+      description: Withdraw your own response while the request is still open, with
+        a reason. You're waited on again and may respond anew; the withdrawn answer
+        stays on record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Approval Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawApprovalInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WithdrawApprovalInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WithdrawApprovalInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+          description: ''
   /api/ApprovalRequests/claimable/:
     get:
       operationId: api_ApprovalRequests_claimable_list
@@ -685,10 +761,12 @@ paths:
           - APPROVED
           - DELEGATED
           - REJECTED
+          - WITHDRAWN
         description: |-
           * `APPROVED` - Approved
           * `REJECTED` - Rejected
           * `DELEGATED` - Delegated
+          * `WITHDRAWN` - Withdrawn
       - name: limit
         required: false
         in: query
@@ -1570,6 +1648,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/AssemblyRemoveRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -2455,6 +2534,44 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/BatchExecutions/{id}/remove-part/:
+    post:
+      operationId: api_BatchExecutions_remove_part_create
+      description: Take the wrong part out of a sealed batch, with a reason. It goes
+        back to the batch's step and its batch-done work no longer counts for it.
+        No unseal.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this batch execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveBatchPartRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RemoveBatchPartRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RemoveBatchPartRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveBatchPartResponse'
+          description: ''
   /api/BatchExecutions/{id}/seal/:
     post:
       operationId: api_BatchExecutions_seal_create
@@ -5759,6 +5876,95 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedHarvestedComponentList'
           description: ''
+  /api/Cores/{id}/correct_authorisation/:
+    post:
+      operationId: api_Cores_correct_authorisation_create
+      description: Correct a customer's answer recorded wrong, with a reason — until
+        the repair it authorised has started, or a declined unit has gone back. Both
+        answers stay in the core's notes.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationCorrectionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationCorrectionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreAuthorisationCorrectionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreAuthorisationCorrectionError'
+          description: ''
+  /api/Cores/{id}/correct_receipt/:
+    post:
+      operationId: api_Cores_correct_receipt_create
+      description: Correct a core's order or exchange / repair-and-return mode, recorded
+        wrong at receipt, with a reason — while it is still Received (before teardown).
+        Each change and the reason are kept on the core.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Core.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreReceiptCorrectionInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreReceiptCorrectionInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreReceiptCorrectionInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Core'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/Cores/{id}/issue_credit/:
     post:
       operationId: api_Cores_issue_credit_create
@@ -7951,6 +8157,50 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Documents'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/Documents/{id}/reinstate/:
+    post:
+      operationId: api_Documents_reinstate_create
+      description: Put a document made obsolete by mistake back in force, with a reason
+        — only if no later revision replaced it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Document.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReinstateDocumentInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReinstateDocumentInputRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReinstateDocumentInputRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -15257,6 +15507,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/MaterialLot'
           description: ''
+  /api/MaterialLots/{id}/correct-source/:
+    post:
+      operationId: api_MaterialLots_correct_source_create
+      description: Correct a lot's supplier, item or PO line recorded wrong at receipt,
+        with a reason — only while nothing has been used, split or adjusted.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CorrectLotSourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CorrectLotSourceRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectLotSourceRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
   /api/MaterialLots/{id}/evaluate_receiving/:
     get:
       operationId: api_MaterialLots_evaluate_receiving_retrieve
@@ -15636,6 +15923,44 @@ paths:
       - tokenAuth: []
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/MaterialLots/{id}/reopen-remainder/:
+    post:
+      operationId: api_MaterialLots_reopen_remainder_create
+      description: 'A short delivery marked "that''s all" by mistake: put the rest
+        back on order, on the same PO, line and promised date, with a reason. Returns
+        the new expected receipt.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReopenRemainderInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReopenRemainderInputRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReopenRemainderInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
           content:
             application/json:
               schema:
@@ -25051,6 +25376,50 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/QuarantineDispositions/{id}/reopen/:
+    post:
+      operationId: api_QuarantineDispositions_reopen_create
+      description: Reopen a disposition closed by mistake, with a reason. It can then
+        be re-decided or completed again; a scrapped part stays scrapped until then.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Disposition.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReopenDispositionRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReopenDispositionRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReopenDispositionRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuarantineDisposition'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/QuarantineDispositions/export/{export_format}/:
     get:
       operationId: api_QuarantineDispositions_export_retrieve
@@ -25949,6 +26318,35 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/MarkReceiptsPostedRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkReceiptsPostedResult'
+          description: ''
+  /api/Receipts/unmark-posted/:
+    post:
+      operationId: api_Receipts_unmark_posted_create
+      description: 'A delivery marked posted by mistake: take the mark off, with a
+        reason, so it returns to the next receipts sheet.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnmarkReceiptPostedRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UnmarkReceiptPostedRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UnmarkReceiptPostedRequest'
         required: true
       security:
       - cookieAuth: []
@@ -28767,6 +29165,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SourcingRequirements'
+          description: ''
+  /api/Schedules/restore-previous/:
+    post:
+      operationId: api_Schedules_restore_previous_create
+      description: 'A what-if committed by mistake: the plan it replaced goes live
+        again and the committed one goes back to being a draft. One step back, with
+        a reason.'
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestorePreviousInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RestorePreviousInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RestorePreviousInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/Schedules/solve/:
     post:
@@ -41900,6 +42335,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkOrderReleaseReadiness'
           description: ''
+  /api/WorkOrders/{id}/reopen/:
+    post:
+      operationId: api_WorkOrders_reopen_create
+      description: Reopen a work order short-closed by mistake, with a reason. Scrapped
+        units stay scrapped and moved units stay moved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReopenWorkOrderRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReopenWorkOrderRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReopenWorkOrderRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/WorkOrders/{id}/set_quantity/:
     post:
       operationId: api_WorkOrders_set_quantity_create
@@ -49320,6 +49793,11 @@ components:
         comments:
           type: string
           nullable: true
+        corrections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalResponseCorrection'
+          readOnly: true
         signature_data:
           type: string
           nullable: true
@@ -49370,6 +49848,7 @@ components:
       - approval_request
       - approver
       - approver_info
+      - corrections
       - created_at
       - decision
       - decision_date
@@ -49381,16 +49860,42 @@ components:
       - updated_at
       - verification_method_display
       - verified_at
+    ApprovalResponseCorrection:
+      type: object
+      properties:
+        field:
+          type: string
+        old_value:
+          type: string
+        new_value:
+          type: string
+        reason:
+          type: string
+        by:
+          type: string
+          nullable: true
+        at:
+          type: string
+          format: date-time
+      required:
+      - at
+      - by
+      - field
+      - new_value
+      - old_value
+      - reason
     ApprovalResponseDecisionEnum:
       enum:
       - APPROVED
       - REJECTED
       - DELEGATED
+      - WITHDRAWN
       type: string
       description: |-
         * `APPROVED` - Approved
         * `REJECTED` - Rejected
         * `DELEGATED` - Delegated
+        * `WITHDRAWN` - Withdrawn
     ApprovalResponseDelegateRequestRequest:
       type: object
       properties:
@@ -49725,11 +50230,15 @@ components:
         * `FAI` - First Article (FAI / AS9102)
     AssemblyRemoveRequest:
       type: object
-      description: Serializer for removing a component from assembly
+      description: |-
+        Taking a component back out of the unit — fitted by mistake, or the wrong one.
+        The reason is kept on the usage (Corrections #23).
       properties:
         reason:
           type: string
-          default: ''
+          minLength: 1
+      required:
+      - reason
     AssemblyUsage:
       type: object
       description: Assembly component usage serializer
@@ -49756,6 +50265,16 @@ components:
         component_erp_id:
           type: string
           readOnly: true
+          nullable: true
+        component_harvested:
+          type: string
+          format: uuid
+          nullable: true
+          description: The harvested component installed — the customer's own part
+            going back into their own unit, which never became a Parts row.
+        component_label:
+          type: string
+          readOnly: true
         quantity:
           type: string
           format: decimal
@@ -49773,6 +50292,7 @@ components:
           readOnly: true
         installed_by_name:
           type: string
+          nullable: true
           readOnly: true
         step:
           type: string
@@ -49806,6 +50326,7 @@ components:
       required:
       - assembly_erp_id
       - component_erp_id
+      - component_label
       - created_at
       - id
       - installed_at
@@ -49832,6 +50353,12 @@ components:
           nullable: true
           description: The component part installed. Null when the thing installed
             is a harvested component that never became stock.
+        component_harvested:
+          type: string
+          format: uuid
+          nullable: true
+          description: The harvested component installed — the customer's own part
+            going back into their own unit, which never became a Parts row.
         quantity:
           type: string
           format: decimal
@@ -52547,6 +53074,11 @@ components:
           description: 'While a repair-and-return unit is in rebuild: what a request
             for the customer''s authorisation would ask about (code, name, findings).
             Empty otherwise.'
+        authorisation_answered_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -52559,6 +53091,7 @@ components:
           type: boolean
       required:
       - approved_repair_codes
+      - authorisation_answered_at
       - authorisation_needed
       - awaiting_authorisation
       - condition_grade
@@ -52624,6 +53157,25 @@ components:
       required:
       - condition_grade
       - lot
+    CoreAuthorisationCorrectionError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreAuthorisationCorrectionInputRequest:
+      type: object
+      properties:
+        approved:
+          type: boolean
+          description: What the customer actually said.
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - approved
+      - reason
     CoreAuthorisationError:
       type: object
       properties:
@@ -52909,6 +53461,21 @@ components:
       - planned_core_ids
       - work_order_erp_id
       - work_order_id
+    CoreReceiptCorrectionInputRequest:
+      type: object
+      properties:
+        order:
+          type: string
+          format: uuid
+          nullable: true
+        fulfilment_mode:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     CoreReleaseInventory:
       type: object
       properties:
@@ -53141,6 +53708,33 @@ components:
         * `RETURNED_UNREPAIRED` - Returned unrepaired
         * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
+    CorrectLotSourceRequest:
+      type: object
+      description: |-
+        A lot's supplier, item or PO line recorded wrong at receipt — send only what
+        changes, and why.
+      properties:
+        supplier:
+          type: string
+          format: uuid
+          nullable: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+        material_type:
+          type: string
+          format: uuid
+          nullable: true
+        erp_po_number:
+          type: string
+        erp_po_line:
+          type: string
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     CorrectUsageLotRequest:
       type: object
       description: The lot this draw really came from, and why the record was wrong.
@@ -55361,6 +55955,9 @@ components:
           type: string
           format: uuid
           nullable: true
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
       required:
@@ -60127,6 +60724,11 @@ components:
           oneOf:
           - $ref: '#/components/schemas/ShortReceiptEnum'
           - $ref: '#/components/schemas/BlankEnum'
+        erp_posted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         received_date:
           type: string
           format: date
@@ -60305,6 +60907,7 @@ components:
       - customer_shipment
       - customer_shipment_number
       - delivery_state
+      - erp_posted_at
       - hold_reason
       - hold_reasons
       - holds_cores
@@ -66649,6 +67252,12 @@ components:
           nullable: true
           description: The component part installed. Null when the thing installed
             is a harvested component that never became stock.
+        component_harvested:
+          type: string
+          format: uuid
+          nullable: true
+          description: The harvested component installed — the customer's own part
+            going back into their own unit, which never became a Parts row.
         quantity:
           type: string
           format: decimal
@@ -67468,6 +68077,9 @@ components:
           type: string
           format: uuid
           nullable: true
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
     PatchedEquipmentTypeRequest:
@@ -70825,6 +71437,9 @@ components:
         downtime_reason:
           type: string
           maxLength: 100
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
     PatchedTrainingRecordRequest:
@@ -75376,6 +75991,14 @@ components:
       - password1
       - password2
       - username
+    ReinstateDocumentInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     RejectLotRequest:
       type: object
       description: |-
@@ -75552,6 +76175,30 @@ components:
       properties:
         override_reason:
           type: string
+    RemoveBatchPartRequestRequest:
+      type: object
+      properties:
+        part:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - part
+      - reason
+    RemoveBatchPartResponse:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        part:
+          type: string
+          format: uuid
+      required:
+      - batch_id
+      - part
     RemoveMemberResponse:
       type: object
       properties:
@@ -75559,6 +76206,30 @@ components:
           type: string
       required:
       - status
+    ReopenDispositionRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    ReopenRemainderInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    ReopenWorkOrderRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     RepairBranch:
       type: object
       properties:
@@ -75784,6 +76455,14 @@ components:
           type: string
       required:
       - key
+    RestorePreviousInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     RevisitAssignmentEnum:
       enum:
       - ANY
@@ -77226,6 +77905,13 @@ components:
           - $ref: '#/components/schemas/FailedSolve'
           nullable: true
           readOnly: true
+        superseded:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: The live schedule this one replaced on commit; restoring brings
+            it back.
       required:
       - created_at
       - frozen_freed
@@ -77246,6 +77932,7 @@ components:
       - solve_time_ms
       - solver_status
       - stickiness_cost
+      - superseded
       - task_count
       - weighted_lateness
     ScheduleSlot:
@@ -83437,6 +84124,7 @@ components:
           readOnly: true
         user_name:
           type: string
+          nullable: true
           readOnly: true
         duration_hours:
           type: number
@@ -83550,6 +84238,9 @@ components:
         downtime_reason:
           type: string
           maxLength: 100
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
       required:
@@ -84780,6 +85471,18 @@ components:
       required:
       - count
       - emails
+    UnmarkReceiptPostedRequest:
+      type: object
+      properties:
+        lot_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - lot_id
+      - reason
     UnplannedDemand:
       type: object
       properties:
@@ -85636,6 +86339,22 @@ components:
       - step_name
       - step_order
       - total_active
+    WithdrawApprovalInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    WithdrawRequestInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     WorkAuthorization:
       type: object
       properties:

@@ -32,6 +32,16 @@ class TypstGeneratorSmokeTests(SimpleTestCase):
             f"Expected PDF magic header, got {pdf_bytes[:4]!r}",
         )
 
+    def test_concurrent_compiles_all_succeed(self):
+        """Two documents generated at once (Ship's packing list and CoC) share the one
+        Compiler; the second used to fail "Already borrowed" (walk 2026-10-26)."""
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(
+                lambda i: generate_typst_pdf(self.HELLO_TEMPLATE, {"name": f"T{i}", "number": i}),
+                range(8)))
+        self.assertTrue(all(r.startswith(b"%PDF") for r in results))
+
     def test_pdf_is_non_trivial_size(self):
         """
         Catch empty-PDF regressions. A real hello-world PDF with

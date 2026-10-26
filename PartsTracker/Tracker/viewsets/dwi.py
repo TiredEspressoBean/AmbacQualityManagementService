@@ -762,6 +762,31 @@ class BatchExecutionViewSet(TenantScopedMixin, viewsets.ModelViewSet):
             'sealed_at': result.sealed_at,
         })
 
+    @extend_schema(
+        request=inline_serializer(name='RemoveBatchPartRequest', fields={
+            'part': drf_serializers.UUIDField(), 'reason': drf_serializers.CharField()}),
+        responses={200: inline_serializer(name='RemoveBatchPartResponse', fields={
+            'batch_id': drf_serializers.UUIDField(), 'part': drf_serializers.UUIDField()})},
+        description="Take the wrong part out of a sealed batch, with a reason. It goes back "
+                    "to the batch's step and its batch-done work no longer counts for it. "
+                    "No unseal.",
+    )
+    @action(detail=True, methods=['post'], url_path='remove-part')
+    def remove_part(self, request, pk=None):
+        from django.core.exceptions import ValidationError
+        from Tracker.models import Parts
+        from Tracker.services.dwi.batch_lifecycle import remove_part_from_sealed_batch
+        batch = self.get_object()
+        part = Parts.objects.filter(pk=request.data.get('part')).first()  # tenant-safe: .objects auto-scopes
+        if part is None:
+            return Response({'detail': 'Part not found.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            remove_part_from_sealed_batch(batch=batch, part=part, user=request.user,
+                                          reason=request.data.get('reason', ''))
+        except ValidationError as exc:
+            return Response({'detail': '; '.join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'batch_id': str(batch.id), 'part': str(part.id)})
+
 
 class SamplingDecisionViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     """Read-only access to live SamplingDecision rows.

@@ -213,6 +213,13 @@ class DowntimeEventSerializer(SecureModelMixin):
     reported_by_name = serializers.SerializerMethodField()
     resolved_by_name = serializers.SerializerMethodField()
     duration_minutes = serializers.SerializerMethodField()
+    # Why a recorded event is being corrected — required when its machine, times or
+    # reason change (Corrections #13); kept per field as a RecordEdit.
+    edit_reason = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    # What a correction may change, each kept with the reason.
+    CORRECTED_FIELDS = ('equipment', 'work_center', 'category', 'reason', 'description',
+                        'start_time', 'end_time')
 
     class Meta:
         model = DowntimeEvent
@@ -221,10 +228,34 @@ class DowntimeEventSerializer(SecureModelMixin):
             'category', 'reason', 'description',
             'start_time', 'end_time', 'duration_minutes',
             'work_order', 'reported_by', 'reported_by_name',
-            'resolved_by', 'resolved_by_name',
+            'resolved_by', 'resolved_by_name', 'edit_reason',
             'created_at', 'updated_at', 'archived'
         )
         read_only_fields = ('created_at', 'updated_at', 'duration_minutes', 'reported_by', 'resolved_by')
+
+    def create(self, validated_data):
+        validated_data.pop('edit_reason', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core import reasoned_edit
+        why = validated_data.pop('edit_reason', '')
+        changes = reasoned_edit.changed_fields(instance, validated_data, self.CORRECTED_FIELDS)
+        try:
+            why = reasoned_edit.require_reason(changes, why)
+        except ValueError as e:
+            raise serializers.ValidationError({'edit_reason': str(e)})
+        event = super().update(instance, validated_data)
+        reasoned_edit.record(event, changes, why, self.context['request'].user)
+        return event
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        start = attrs.get('start_time', getattr(self.instance, 'start_time', None))
+        end = attrs.get('end_time', getattr(self.instance, 'end_time', None))
+        if start and end and end < start:
+            raise serializers.ValidationError({'end_time': "Downtime can't end before it started."})
+        return attrs
 
     def validate_equipment(self, value):
         from Tracker.services.mes.downtime import downtime_refusal
@@ -428,6 +459,8 @@ class MaterialLotSerializer(SecureModelMixin):
             'erp_po_number', 'erp_po_line', 'promised_date', 'original_promised_date',
             'chase_note', 'chased_at', 'delivery_state',
             'ordered_quantity', 'short_receipt',
+            # When the delivery was marked keyed into the ERP (receipts sheet), if it was.
+            'erp_posted_at',
             'received_date', 'received_by', 'received_by_name',
             'quantity', 'quantity_remaining', 'unit_of_measure',
             'status', 'hold_reason', 'hold_reasons', 'manufacture_date', 'expiration_date',
@@ -454,6 +487,8 @@ class MaterialLotSerializer(SecureModelMixin):
             'rma_number', 'replaces', 'customer_shipment', 'hold_reasons',
             # Set by receiving a short delivery, not edited.
             'ordered_quantity', 'short_receipt',
+            # Set by mark-posted / unmark-posted on the receipts sheet.
+            'erp_posted_at',
             # Moved only by the services — receiving routing, inspection, reject,
             # ship-back. Writable, a POST of ACCEPTED skipped inspection and a PATCH
             # put a RETURNED lot back in stock.
@@ -512,6 +547,14 @@ class MaterialLotSerializer(SecureModelMixin):
                 attrs.get('quantity', self.instance.quantity) != self.instance.quantity:
             raise serializers.ValidationError(
                 {'quantity': "Change a lot's quantity with Adjust quantity, which records why."})
+        # What the delivery is and where it came from: corrected with a reason, and only
+        # while nothing has been used (correct-source). A PATCH changed them any time.
+        if self.instance is not None:
+            from Tracker.services.mes.material_lot import SOURCE_FIELDS
+            moved = [f for f in SOURCE_FIELDS if f in attrs and attrs[f] != getattr(self.instance, f)]
+            if moved:
+                raise serializers.ValidationError({f: "Correct receipt details with a reason "
+                                                      "(Correct receipt details on the lot)." for f in moved})
         return attrs
 
     @extend_schema_field(serializers.ChoiceField(choices=PURCHASE_UNIT_CHOICES, allow_null=True))
@@ -926,6 +969,17 @@ class MaterialUsageSerializer(SecureModelMixin):
         return obj.consumed_by.display_name if obj.consumed_by else None
 
 
+class CorrectLotSourceSerializer(serializers.Serializer):
+    """A lot's supplier, item or PO line recorded wrong at receipt — send only what
+    changes, and why."""
+    supplier = TenantScopedPrimaryKeyRelatedField(queryset=Companies.unscoped.all(), required=False, allow_null=True)
+    material = TenantScopedPrimaryKeyRelatedField(queryset=Material.unscoped.all(), required=False, allow_null=True)
+    material_type = TenantScopedPrimaryKeyRelatedField(queryset=PartTypes.unscoped.all(), required=False, allow_null=True)
+    erp_po_number = serializers.CharField(required=False, allow_blank=True)
+    erp_po_line = serializers.CharField(required=False, allow_blank=True)
+    reason = serializers.CharField(allow_blank=False)
+
+
 class CorrectUsageLotSerializer(serializers.Serializer):
     """The lot this draw really came from, and why the record was wrong."""
     lot = serializers.UUIDField(help_text="The lot actually used.")
@@ -940,6 +994,11 @@ class TimeEntrySerializer(SecureModelMixin):
     duration_hours = serializers.SerializerMethodField()
     work_order_erp_id = serializers.CharField(source='work_order.ERP_id', read_only=True, allow_null=True)
     part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
+    # Why clock times are being corrected — required when they change (Corrections #5);
+    # kept per field as a RecordEdit. An approved entry can't be edited at all.
+    edit_reason = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    CORRECTED_FIELDS = ('entry_type', 'start_time', 'end_time')
 
     class Meta:
         model = TimeEntry
@@ -949,7 +1008,7 @@ class TimeEntrySerializer(SecureModelMixin):
             'part', 'part_erp_id', 'work_order', 'work_order_erp_id',
             'step', 'equipment', 'work_center',
             'notes', 'downtime_reason',
-            'approved', 'approved_by', 'approved_at',
+            'approved', 'approved_by', 'approved_at', 'edit_reason',
             'created_at', 'updated_at', 'archived'
         )
         # `approved` too: approval is the approve action (approve_timeentry, never your
@@ -957,13 +1016,37 @@ class TimeEntrySerializer(SecureModelMixin):
         read_only_fields = ('created_at', 'updated_at', 'duration_hours', 'user', 'approved',
                             'approved_by', 'approved_at')
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_user_name(self, obj):
         return obj.user.display_name if obj.user else None
 
     @extend_schema_field(serializers.FloatField(allow_null=True))
     def get_duration_hours(self, obj):
         return obj.duration_hours
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        start = attrs.get('start_time', getattr(self.instance, 'start_time', None))
+        end = attrs.get('end_time', getattr(self.instance, 'end_time', None))
+        if start and end and end < start:
+            raise serializers.ValidationError({'end_time': "Clock-out can't be before clock-in."})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('edit_reason', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core import reasoned_edit
+        why = validated_data.pop('edit_reason', '')
+        changes = reasoned_edit.changed_fields(instance, validated_data, self.CORRECTED_FIELDS)
+        try:
+            why = reasoned_edit.require_reason(changes, why)
+        except ValueError as e:
+            raise serializers.ValidationError({'edit_reason': str(e)})
+        entry = super().update(instance, validated_data)
+        reasoned_edit.record(entry, changes, why, self.context['request'].user)
+        return entry
 
 
 class ClockInSerializer(serializers.Serializer):
@@ -1087,7 +1170,10 @@ class BOMListSerializer(SecureModelMixin):
 class AssemblyUsageSerializer(SecureModelMixin):
     """Assembly component usage serializer"""
     assembly_erp_id = serializers.CharField(source='assembly.ERP_id', read_only=True)
-    component_erp_id = serializers.CharField(source='component.ERP_id', read_only=True)
+    # Null for the unit's own harvested component, which is not a stock part.
+    component_erp_id = serializers.CharField(source='component.ERP_id', read_only=True, allow_null=True)
+    # What went in, whichever kind: a stock part's serial, or the harvested component.
+    component_label = serializers.SerializerMethodField()
     installed_by_name = serializers.SerializerMethodField()
     is_installed = serializers.BooleanField(read_only=True)
 
@@ -1095,6 +1181,7 @@ class AssemblyUsageSerializer(SecureModelMixin):
         model = AssemblyUsage
         fields = (
             'id', 'assembly', 'assembly_erp_id', 'component', 'component_erp_id',
+            'component_harvested', 'component_label',
             'quantity', 'bom_line',
             'installed_at', 'installed_by', 'installed_by_name', 'step',
             'removed_at', 'removed_by', 'removal_reason',
@@ -1106,11 +1193,18 @@ class AssemblyUsageSerializer(SecureModelMixin):
             'removed_at', 'removed_by', 'removal_reason', 'is_installed'
         )
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_installed_by_name(self, obj):
         return obj.installed_by.display_name if obj.installed_by else None
 
+    @extend_schema_field(serializers.CharField())
+    def get_component_label(self, obj):
+        if obj.component_id:
+            return obj.component.ERP_id
+        return str(obj.component_harvested) if obj.component_harvested_id else ''
+
 
 class AssemblyRemoveSerializer(serializers.Serializer):
-    """Serializer for removing a component from assembly"""
-    reason = serializers.CharField(required=False, allow_blank=True, default="")
+    """Taking a component back out of the unit — fitted by mistake, or the wrong one.
+    The reason is kept on the usage (Corrections #23)."""
+    reason = serializers.CharField(allow_blank=False)

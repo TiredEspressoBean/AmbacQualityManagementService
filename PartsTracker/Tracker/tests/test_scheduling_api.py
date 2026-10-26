@@ -187,6 +187,16 @@ class SchedulingAPITests(TenantTestCase):
         self.assertNotEqual(c.data['id'], live_id)
         self.assertEqual(self.client.get('/api/Schedules/draft/').status_code, 404)
 
+        # Corrections #38 (user decision 2026-10-26): committed by mistake → one step back.
+        url = '/api/Schedules/restore-previous/'
+        self.assertEqual(self.client.post(url, {'reason': ''}, format='json').status_code, 400)
+        r = self.client.post(url, {'reason': 'Committed the wrong scenario'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(self.client.get('/api/Schedules/current/').data['id'], live_id)
+        self.assertEqual(self.client.get('/api/Schedules/draft/').data['id'], c.data['id'])
+        self.client.post('/api/Schedules/discard/')
+        self.assertEqual(self.client.post(url, {'reason': 'again'}, format='json').status_code, 400)
+
     def test_whatif_discard_leaves_live(self):
         self.authenticate_superuser(self.tenant_a)
         self.client.post('/api/Schedules/solve/')

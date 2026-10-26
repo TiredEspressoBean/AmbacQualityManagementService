@@ -1898,6 +1898,52 @@ class RebuildLifecycleTests(TenantTestCase):
         with self.assertRaises(ValidationError):
             install_component(self.core, harvested=theirs, user=self.user_a)
 
+    def test_removing_a_fitted_component_needs_a_reason_and_is_kept(self):
+        """Corrections #23: the Remove button's endpoint; the fitting stays, marked."""
+        from Tracker.services.reman.rebuild_execution import install_component
+        usage = install_component(self.core, harvested=self.hc, user=self.user_a)
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['view_assemblyusage', 'add_assemblyusage', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        url = f"/api/AssemblyUsages/{usage.id}/remove/"
+        self.assertEqual(self.client.post(url, {"reason": ""}, format="json").status_code, 400)
+        resp = self.client.post(url, {"reason": "Wrong slot"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertFalse(resp.json()["is_installed"])
+        self.assertIn("Nozzle", resp.json()["component_label"])
+        listed = self.client.get(f"/api/AssemblyUsages/?assembly={self.core.part_id}").json()["results"]
+        self.assertEqual([u["removal_reason"] for u in listed], ["Wrong slot"])
+
+    def test_a_received_cores_mode_is_corrected_with_a_reason(self):
+        """Corrections #21: while Received; refused after teardown has begun."""
+        from Tracker.models import RecordEdit
+        core = create_core(
+            tenant=self.tenant_a, core_number='CORE-FIX-1', core_type=self.core_type,
+            fulfilment_mode='EXCHANGE', status='RECEIVED', customer=self.customer,
+            received_date=date.today(), received_by=self.user_a)
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['view_core', 'change_core', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        url = f"/api/Cores/{core.id}/correct_receipt/"
+        self.assertEqual(self.client.post(url, {"fulfilment_mode": "EXCHANGE", "reason": ""},
+                                          format="json").status_code, 400)
+        # Exchange → repair-and-return: still needs an order (the receipt rule).
+        resp = self.client.post(url, {"fulfilment_mode": "REPAIR_RETURN", "reason": "Paperwork says repair"},
+                                format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+        from Tracker.models import Orders
+        order = Orders.objects.create(tenant=self.tenant_a, name="Fleet repair", company=self.customer)
+        resp = self.client.post(url, {"fulfilment_mode": "REPAIR_RETURN", "order": str(order.id),
+                                      "reason": "Paperwork says repair"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        core.refresh_from_db()
+        self.assertEqual(core.fulfilment_mode, 'REPAIR_RETURN')
+        self.assertTrue(RecordEdit.objects.filter(object_id=core.id, field_name='fulfilment_mode',
+                                                  reason="Paperwork says repair").exists())
+        resp = self.client.post(f"/api/Cores/{self.core.id}/correct_receipt/",
+                                {"fulfilment_mode": "EXCHANGE", "reason": "late"}, format="json")
+        self.assertEqual(resp.status_code, 400, resp.content)
+
     def test_a_fitted_component_is_not_installed_twice_until_removed(self):
         from django.core.exceptions import ValidationError
         from Tracker.services.reman.rebuild_execution import install_component
@@ -2181,6 +2227,36 @@ class RepairRoutingTests(TenantTestCase):
         self.assertIn('answered by J. Fleet', core.condition_notes)
         self._advance()
         self.assertEqual(self.core.part.step.name, 'Hone')
+
+    def test_an_answer_recorded_wrong_is_corrected_until_the_repair_starts(self):
+        """Corrections #22 (user decision 2026-10-26): both answers on the core's notes;
+        an approval is taken back only before its repair has begun."""
+        from django.core.exceptions import ValidationError
+        from Tracker.models import StepExecution
+        from Tracker.services.reman.release import (
+            correct_authorisation, record_authorisation, request_authorisation,
+        )
+        self.hone_edge.pre_approved = False
+        self.hone_edge.save(update_fields=['pre_approved'])
+        self._grade('C')
+        self._advance()                        # → Check
+        core, _ = request_authorisation(self.core, self.user_a)
+        core = record_authorisation(core, approved=True, user=self.user_a)
+        with self.assertRaises(ValidationError):
+            correct_authorisation(core, False, self.user_a, "")
+        core = correct_authorisation(core, False, self.user_a, "Their email said decline")
+        self.assertEqual(core.status, 'DECLINED')
+        self.assertNotIn('NZL-RECON', core.approved_repair_codes)
+        self.assertIn('customer approved', core.condition_notes)
+        self.assertIn('correction — customer declined', core.condition_notes)
+        core = correct_authorisation(core, True, self.user_a, "Called back: they do want it")
+        self.assertEqual(core.status, 'IN_REBUILD')
+        self.assertIn('NZL-RECON', core.approved_repair_codes)
+        self._advance()                        # Check → Hone: the repair starts
+        StepExecution.objects.filter(part=self.core.part, step__name='Hone').update(status='IN_PROGRESS')
+        self.core.refresh_from_db()
+        with self.assertRaisesMessage(ValidationError, "Work has started"):
+            correct_authorisation(self.core, False, self.user_a, "too late")
 
     def test_on_an_exchange_unit_a_lead_approves_and_no_customer_is_asked(self):
         from django.core.exceptions import ValidationError

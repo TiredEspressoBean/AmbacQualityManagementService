@@ -2840,7 +2840,9 @@ class ApprovalRequest(SecureModel):
         For SEQUENTIAL approval, returns only the next approver in sequence.
         For PARALLEL approval, returns all pending approvers.
         """
-        responded = set(self.responses.values_list('approver_id', flat=True))
+        # A withdrawn response is no answer: that approver is waited on again.
+        responded = set(self.responses.exclude(decision=ApprovalDecision.WITHDRAWN)
+                        .values_list('approver_id', flat=True))
 
         # Get required approver assignments ordered by sequence
         assignments = self.approver_assignments.filter(
@@ -2922,6 +2924,10 @@ class ApprovalDecision(models.TextChoices):
     APPROVED = 'APPROVED', 'Approved'
     REJECTED = 'REJECTED', 'Rejected'
     DELEGATED = 'DELEGATED', 'Delegated'
+    # The approver took their response back while the request was still open (with a
+    # reason, kept as a RecordEdit of `decision`). They're waiting on again, and may
+    # respond anew on the same row (user decision 2026-10-26, Corrections #17).
+    WITHDRAWN = 'WITHDRAWN', 'Withdrawn'
 
 
 class VerificationMethod(models.TextChoices):

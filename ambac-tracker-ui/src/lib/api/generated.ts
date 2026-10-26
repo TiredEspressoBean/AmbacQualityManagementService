@@ -276,6 +276,7 @@ export type ApprovalResponse = {
   decision_display: string;
   decision_date: string;
   comments?: (string | null) | undefined;
+  corrections: Array<ApprovalResponseCorrection>;
   signature_data?:
     | /**
      * Base64 encoded signature image (PNG)
@@ -312,10 +313,19 @@ export type ApprovalResponseDecisionEnum =
    * * `APPROVED` - Approved
    * `REJECTED` - Rejected
    * `DELEGATED` - Delegated
+   * `WITHDRAWN` - Withdrawn
    *
-   * @enum APPROVED, REJECTED, DELEGATED
+   * @enum APPROVED, REJECTED, DELEGATED, WITHDRAWN
    */
-  "APPROVED" | "REJECTED" | "DELEGATED";
+  "APPROVED" | "REJECTED" | "DELEGATED" | "WITHDRAWN";
+export type ApprovalResponseCorrection = {
+  field: string;
+  old_value: string;
+  new_value: string;
+  reason: string;
+  by: string | null;
+  at: string;
+};
 export type VerificationMethodEnum =
   /**
    * * `PASSWORD` - Password
@@ -1848,6 +1858,7 @@ export type Core = {
    * While a repair-and-return unit is in rebuild: what a request for the customer's authorisation would ask about (code, name, findings). Empty otherwise.
    */
   authorisation_needed: Array<AuthorisationScopeItem>;
+  authorisation_answered_at: string | null;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -2951,6 +2962,7 @@ export type DowntimeEventRequest = {
   start_time: string;
   end_time?: (string | null) | undefined;
   work_order?: (string | null) | undefined;
+  edit_reason?: string | undefined;
   archived?: boolean | undefined;
 };
 export type DowntimeSummary = {
@@ -4436,6 +4448,7 @@ export type MaterialLot = {
     * `CLOSED` - That's all
      */
   short_receipt: ShortReceiptEnum | BlankEnum;
+  erp_posted_at: string | null;
   received_date?: (string | null) | undefined;
   received_by: number | null;
   received_by_name: string | null;
@@ -5670,7 +5683,14 @@ export type AssemblyUsage = {
      */
     (string | null)
     | undefined;
-  component_erp_id: string;
+  component_erp_id: string | null;
+  component_harvested?:
+    | /**
+     * The harvested component installed — the customer's own part going back into their own unit, which never became a Parts row.
+     */
+    (string | null)
+    | undefined;
+  component_label: string;
   quantity?: /**
    * @pattern ^-?\d{0,6}(?:\.\d{0,4})?$
    */
@@ -5678,7 +5698,7 @@ export type AssemblyUsage = {
   bom_line?: (string | null) | undefined;
   installed_at: string;
   installed_by: number;
-  installed_by_name: string;
+  installed_by_name: string | null;
   step?: (string | null) | undefined;
   removed_at: string | null;
   removed_by: number | null;
@@ -11449,7 +11469,7 @@ export type TimeEntry = {
   start_time: string;
   end_time?: (string | null) | undefined;
   user: number;
-  user_name: string;
+  user_name: string | null;
   duration_hours: number | null;
   part?: (string | null) | undefined;
   part_erp_id: string | null;
@@ -13043,6 +13063,7 @@ export type PatchedDowntimeEventRequest = Partial<{
   start_time: string;
   end_time: string | null;
   work_order: string | null;
+  edit_reason: string;
   archived: boolean;
 }>;
 export type PatchedEquipmentsRequest = Partial<{
@@ -15114,6 +15135,7 @@ export type PatchedTimeEntryRequest = Partial<{
    * @maxLength 100
    */
   downtime_reason: string;
+  edit_reason: string;
   archived: boolean;
 }>;
 export type PatchedTrainingRecordRequest = Partial<{
@@ -16792,6 +16814,10 @@ export type ScheduleResult = {
   created_at: string;
   task_count: number;
   last_failed_solve: FailedSolve;
+  /**
+   * The live schedule this one replaced on commit; restoring brings it back.
+   */
+  superseded: string | null;
 };
 export type SolverStatusEnum =
   /**
@@ -18056,6 +18082,7 @@ export type TimeEntryRequest = {
    * @maxLength 100
    */
   string | undefined;
+  edit_reason?: string | undefined;
   archived?: boolean | undefined;
 };
 export type TrainingMatrix = {
@@ -18597,7 +18624,16 @@ const ApprovalResponseDecisionEnum = z.enum([
   "APPROVED",
   "REJECTED",
   "DELEGATED",
+  "WITHDRAWN",
 ]);
+const ApprovalResponseCorrection = z.object({
+  field: z.string(),
+  old_value: z.string(),
+  new_value: z.string(),
+  reason: z.string(),
+  by: z.string().nullable(),
+  at: z.string().datetime({ offset: true }),
+});
 const VerificationMethodEnum = z.enum(["PASSWORD", "SSO", "NONE"]);
 const ApprovalResponse = z.object({
   id: z.string().uuid(),
@@ -18608,6 +18644,7 @@ const ApprovalResponse = z.object({
   decision_display: z.string(),
   decision_date: z.string().datetime({ offset: true }),
   comments: z.string().nullish(),
+  corrections: z.array(ApprovalResponseCorrection),
   signature_data: z.string().nullish(),
   signature_meaning: z.string().max(200).nullish(),
   verified_at: z.string().datetime({ offset: true }).nullable(),
@@ -18714,6 +18751,8 @@ const ApprovalResponseSubmitRequestRequest = z.object({
   password: z.string().optional(),
   delegate_to: z.number().int().nullish(),
 });
+const WithdrawRequestInputRequest = z.object({ reason: z.string().min(1) });
+const WithdrawApprovalInputRequest = z.object({ reason: z.string().min(1) });
 const ListMetadataResponse = z.object({
   search_fields: z.array(z.string()),
   search_fields_display: z.array(z.string()),
@@ -18850,7 +18889,9 @@ const AssemblyUsage = z.object({
   assembly: z.string().uuid().nullish(),
   assembly_erp_id: z.string(),
   component: z.string().uuid().nullish(),
-  component_erp_id: z.string(),
+  component_erp_id: z.string().nullable(),
+  component_harvested: z.string().uuid().nullish(),
+  component_label: z.string(),
   quantity: z
     .string()
     .regex(/^-?\d{0,6}(?:\.\d{0,4})?$/)
@@ -18858,7 +18899,7 @@ const AssemblyUsage = z.object({
   bom_line: z.string().uuid().nullish(),
   installed_at: z.string().datetime({ offset: true }),
   installed_by: z.number().int(),
-  installed_by_name: z.string(),
+  installed_by_name: z.string().nullable(),
   step: z.string().uuid().nullish(),
   removed_at: z.string().datetime({ offset: true }).nullable(),
   removed_by: z.number().int().nullable(),
@@ -18878,6 +18919,7 @@ const AssemblyUsageRequest = z
   .object({
     assembly: z.string().uuid().nullable(),
     component: z.string().uuid().nullable(),
+    component_harvested: z.string().uuid().nullable(),
     quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
     bom_line: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
@@ -18888,15 +18930,14 @@ const PatchedAssemblyUsageRequest = z
   .object({
     assembly: z.string().uuid().nullable(),
     component: z.string().uuid().nullable(),
+    component_harvested: z.string().uuid().nullable(),
     quantity: z.string().regex(/^-?\d{0,6}(?:\.\d{0,4})?$/),
     bom_line: z.string().uuid().nullable(),
     step: z.string().uuid().nullable(),
     archived: z.boolean(),
   })
   .partial();
-const AssemblyRemoveRequest = z
-  .object({ reason: z.string().default("") })
-  .partial();
+const AssemblyRemoveRequest = z.object({ reason: z.string().min(1) });
 const BOMLineSourceEnum = z.enum(["MAKE", "BUY"]);
 const BOMLine = z.object({
   id: z.string().uuid(),
@@ -19081,6 +19122,14 @@ const PatchedBatchExecutionRequest = z
     notes: z.string(),
   })
   .partial();
+const RemoveBatchPartRequestRequest = z.object({
+  part: z.string().uuid(),
+  reason: z.string().min(1),
+});
+const RemoveBatchPartResponse = z.object({
+  batch_id: z.string().uuid(),
+  part: z.string().uuid(),
+});
 const BatchSealResponse = z.object({
   batch_id: z.string(),
   sealed_at: z.string(),
@@ -19814,6 +19863,7 @@ const Core = z.object({
   approved_repair_codes: z.array(z.string()),
   awaiting_authorisation: z.array(AuthorisationScopeItem),
   authorisation_needed: z.array(AuthorisationScopeItem),
+  authorisation_answered_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19879,6 +19929,16 @@ const PaginatedHarvestedComponentList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(HarvestedComponent),
+});
+const CoreAuthorisationCorrectionInputRequest = z.object({
+  approved: z.boolean(),
+  reason: z.string().min(1),
+});
+const CoreAuthorisationCorrectionError = z.object({ detail: z.string() });
+const CoreReceiptCorrectionInputRequest = z.object({
+  order: z.string().uuid().nullish(),
+  fulfilment_mode: z.string().min(1).optional(),
+  reason: z.string().min(1),
 });
 const RebuildCandidate = z.object({
   kind: z.string(),
@@ -20484,6 +20544,7 @@ const DocumentLinkDetachRequestRequest = z.object({
 const DocumentLinksDetachResponse = z.object({
   links: z.array(z.object({}).partial().passthrough()),
 });
+const ReinstateDocumentInputRequest = z.object({ reason: z.string().min(1) });
 const DocumentReleaseRequestRequest = z
   .object({ effective_date: z.string() })
   .partial();
@@ -20551,6 +20612,7 @@ const DowntimeEventRequest = z.object({
   start_time: z.string().datetime({ offset: true }),
   end_time: z.string().datetime({ offset: true }).nullish(),
   work_order: z.string().uuid().nullish(),
+  edit_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedDowntimeEventRequest = z
@@ -20563,6 +20625,7 @@ const PatchedDowntimeEventRequest = z
     start_time: z.string().datetime({ offset: true }),
     end_time: z.string().datetime({ offset: true }).nullable(),
     work_order: z.string().uuid().nullable(),
+    edit_reason: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -21559,6 +21622,7 @@ const MaterialLot = z.object({
     .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
     .nullable(),
   short_receipt: z.union([ShortReceiptEnum, BlankEnum]),
+  erp_posted_at: z.string().datetime({ offset: true }).nullable(),
   received_date: z.string().nullish(),
   received_by: z.number().int().nullable(),
   received_by_name: z.string().nullable(),
@@ -21774,6 +21838,14 @@ const ChaseExpectedReceiptRequest = z.object({
   note: z.string().min(1),
   promised_date: z.string().nullish(),
 });
+const CorrectLotSourceRequest = z.object({
+  supplier: z.string().uuid().nullish(),
+  material: z.string().uuid().nullish(),
+  material_type: z.string().uuid().nullish(),
+  erp_po_number: z.string().optional(),
+  erp_po_line: z.string().optional(),
+  reason: z.string().min(1),
+});
 const ReceivingVerdict = z.object({
   status: z.string(),
   is_variables: z.boolean(),
@@ -21874,6 +21946,7 @@ const ReleaseHoldRequest = z.object({
   reason: z.string().min(1),
   code: z.string().optional().default(""),
 });
+const ReopenRemainderInputRequest = z.object({ reason: z.string().min(1) });
 const ReceivingCharacteristic = z.object({
   id: z.string().uuid(),
   label: z.string(),
@@ -23889,6 +23962,7 @@ const api_QuarantineDispositions_decide_create_Body = z.object({
   cosign_email: z.string().optional(),
   cosign_password: z.string().optional(),
 });
+const ReopenDispositionRequestRequest = z.object({ reason: z.string().min(1) });
 const PaginatedRcaRecordList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -24068,6 +24142,10 @@ const MarkReceiptsPostedRequest = z.object({
   lot_ids: z.array(z.string().uuid()),
 });
 const MarkReceiptsPostedResult = z.object({ marked: z.number().int() });
+const UnmarkReceiptPostedRequest = z.object({
+  lot_id: z.string().uuid(),
+  reason: z.string().min(1),
+});
 const RecordEdit = z.object({
   id: z.string().uuid(),
   content_type: z.number().int(),
@@ -24649,6 +24727,7 @@ const ScheduleResult = z.object({
   created_at: z.string().datetime({ offset: true }),
   task_count: z.number().int(),
   last_failed_solve: FailedSolve.nullable(),
+  superseded: z.string().uuid().nullable(),
 });
 const ReleaseModeEnum = z.enum(["auto", "manual"]);
 const ReleasePolicyEnum = z.enum(["wlc", "constraint"]);
@@ -24841,6 +24920,7 @@ const SourcingRequirements = z.object({
   recover: z.array(RecoverRequirement),
   tooling: z.array(ToolingRequirement),
 });
+const RestorePreviousInputRequest = z.object({ reason: z.string().min(1) });
 const LapsingInHorizonKindEnum = z.enum(["operator", "machine", "gauge"]);
 const LapsingInHorizon = z.object({
   kind: LapsingInHorizonKindEnum,
@@ -26516,7 +26596,7 @@ const TimeEntry = z.object({
   start_time: z.string().datetime({ offset: true }),
   end_time: z.string().datetime({ offset: true }).nullish(),
   user: z.number().int(),
-  user_name: z.string(),
+  user_name: z.string().nullable(),
   duration_hours: z.number().nullable(),
   part: z.string().uuid().nullish(),
   part_erp_id: z.string().nullable(),
@@ -26551,6 +26631,7 @@ const TimeEntryRequest = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional(),
   downtime_reason: z.string().max(100).optional(),
+  edit_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedTimeEntryRequest = z
@@ -26565,6 +26646,7 @@ const PatchedTimeEntryRequest = z
     work_center: z.string().uuid().nullable(),
     notes: z.string(),
     downtime_reason: z.string().max(100),
+    edit_reason: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -27444,6 +27526,7 @@ const WorkOrderReleaseReadiness = z.object({
   blockers: z.array(ReleaseBlocker),
   warnings: z.array(ReleaseWarning),
 });
+const ReopenWorkOrderRequestRequest = z.object({ reason: z.string().min(1) });
 const WorkOrderSetQuantityInputRequest = z.object({
   quantity: z.number().int().gte(0),
 });
@@ -29183,6 +29266,7 @@ export const schemas = {
   ApprovalSequenceEnum,
   DelegationPolicyEnum,
   ApprovalResponseDecisionEnum,
+  ApprovalResponseCorrection,
   VerificationMethodEnum,
   ApprovalResponse,
   ApprovalRequest,
@@ -29191,6 +29275,8 @@ export const schemas = {
   PatchedApprovalRequestRequest,
   ApprovalResponseSubmitRequestDecisionEnum,
   ApprovalResponseSubmitRequestRequest,
+  WithdrawRequestInputRequest,
+  WithdrawApprovalInputRequest,
   ListMetadataResponse,
   PaginatedApprovalResponseList,
   ApprovalResponseDelegateRequestRequest,
@@ -29229,6 +29315,8 @@ export const schemas = {
   PaginatedBatchExecutionList,
   BatchExecutionRequest,
   PatchedBatchExecutionRequest,
+  RemoveBatchPartRequestRequest,
+  RemoveBatchPartResponse,
   BatchSealResponse,
   CapaTypeEnum,
   SeverityEnum,
@@ -29301,6 +29389,9 @@ export const schemas = {
   CoreApproveRepairError,
   HarvestedComponent,
   PaginatedHarvestedComponentList,
+  CoreAuthorisationCorrectionInputRequest,
+  CoreAuthorisationCorrectionError,
+  CoreReceiptCorrectionInputRequest,
   RebuildCandidate,
   RebuildSlot,
   ExpectedRepair,
@@ -29375,6 +29466,7 @@ export const schemas = {
   DocumentLinksResponse,
   DocumentLinkDetachRequestRequest,
   DocumentLinksDetachResponse,
+  ReinstateDocumentInputRequest,
   DocumentReleaseRequestRequest,
   DocumentReviseRequestRequest,
   DocumentStatsResponse,
@@ -29512,6 +29604,7 @@ export const schemas = {
   AdjustQuantityRequest,
   CancelExpectedReceiptRequest,
   ChaseExpectedReceiptRequest,
+  CorrectLotSourceRequest,
   ReceivingVerdict,
   ExtendShelfLifeRequest,
   MoveLotRequestRequest,
@@ -29528,6 +29621,7 @@ export const schemas = {
   RejectLotResponse,
   LotDecisionRequest,
   ReleaseHoldRequest,
+  ReopenRemainderInputRequest,
   ReceivingCharacteristic,
   SamplePlanResponse,
   ShipBackRequest,
@@ -29739,6 +29833,7 @@ export const schemas = {
   QuarantineDispositionRequest,
   PatchedQuarantineDispositionRequest,
   api_QuarantineDispositions_decide_create_Body,
+  ReopenDispositionRequestRequest,
   PaginatedRcaRecordList,
   FiveWhysNestedRequest,
   FishboneNestedRequest,
@@ -29758,6 +29853,7 @@ export const schemas = {
   ReceiptRow,
   MarkReceiptsPostedRequest,
   MarkReceiptsPostedResult,
+  UnmarkReceiptPostedRequest,
   RecordEdit,
   TriggerEnum,
   RepairCode,
@@ -29843,6 +29939,7 @@ export const schemas = {
   RecoverRequirement,
   ToolingRequirement,
   SourcingRequirements,
+  RestorePreviousInputRequest,
   LapsingInHorizonKindEnum,
   LapsingInHorizon,
   UnscheduledWorkOrder,
@@ -30104,6 +30201,7 @@ export const schemas = {
   ReleaseBlocker,
   ReleaseWarning,
   WorkOrderReleaseReadiness,
+  ReopenWorkOrderRequestRequest,
   WorkOrderSetQuantityInputRequest,
   WorkOrderSetQuantityResponse,
   ShortCloseDispositionActionEnum,
@@ -30741,6 +30839,46 @@ POST: Executes the query.`,
     response: ApprovalResponse,
   },
   {
+    method: "post",
+    path: "/api/ApprovalRequests/:id/withdraw-response/",
+    alias: "api_ApprovalRequests_withdraw_response_create",
+    description: `Withdraw your own response while the request is still open, with a reason. You&#x27;re waited on again and may respond anew; the withdrawn answer stays on record.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ApprovalResponse,
+  },
+  {
+    method: "post",
+    path: "/api/ApprovalRequests/:id/withdraw/",
+    alias: "api_ApprovalRequests_withdraw_create",
+    description: `The requester withdraws a request still waiting on its approvers, with a reason — to change what was submitted and submit again. A document under review goes back to draft.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: ApprovalRequest,
+  },
+  {
     method: "get",
     path: "/api/ApprovalRequests/claimable/",
     alias: "api_ApprovalRequests_claimable_list",
@@ -30954,7 +31092,9 @@ POST: Executes the query.`,
       {
         name: "decision",
         type: "Query",
-        schema: z.enum(["APPROVED", "DELEGATED", "REJECTED"]).optional(),
+        schema: z
+          .enum(["APPROVED", "DELEGATED", "REJECTED", "WITHDRAWN"])
+          .optional(),
       },
       {
         name: "limit",
@@ -31504,7 +31644,7 @@ POST: Executes the query.`,
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string().default("") }).partial(),
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -31727,6 +31867,26 @@ for advancement.`,
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/api/BatchExecutions/:id/remove-part/",
+    alias: "api_BatchExecutions_remove_part_create",
+    description: `Take the wrong part out of a sealed batch, with a reason. It goes back to the batch&#x27;s step and its batch-done work no longer counts for it. No unseal.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: RemoveBatchPartRequestRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: RemoveBatchPartResponse,
   },
   {
     method: "post",
@@ -34332,6 +34492,58 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
   },
   {
     method: "post",
+    path: "/api/Cores/:id/correct_authorisation/",
+    alias: "api_Cores_correct_authorisation_create",
+    description: `Correct a customer&#x27;s answer recorded wrong, with a reason — until the repair it authorised has started, or a declined unit has gone back. Both answers stay in the core&#x27;s notes.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreAuthorisationCorrectionInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Core,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Cores/:id/correct_receipt/",
+    alias: "api_Cores_correct_receipt_create",
+    description: `Correct a core&#x27;s order or exchange / repair-and-return mode, recorded wrong at receipt, with a reason — while it is still Received (before teardown). Each change and the reason are kept on the core.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreReceiptCorrectionInputRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Core,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
     path: "/api/Cores/:id/issue_credit/",
     alias: "api_Cores_issue_credit_create",
     description: `Issue core credit to customer`,
@@ -35000,7 +35212,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: OrderShipping,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CustomerShipments/ready/",
@@ -35095,10 +35310,7 @@ Never edited or deleted otherwise — a count is a record of what was found.`,
       },
     ],
     response: CycleCount,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/CycleCounts/:id/apply/",
@@ -36130,6 +36342,32 @@ Returns the document&#x27;s current &#x60;links&#x60;.`,
 Sets status to OBSOLETE and records the obsolete_date.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: Documents,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Documents/:id/reinstate/",
+    alias: "api_Documents_reinstate_create",
+    description: `Put a document made obsolete by mistake back in force, with a reason — only if no later revision replaced it.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
       {
         name: "id",
         type: "Path",
@@ -40102,7 +40340,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "patch",
     path: "/api/JobRoles/:id/",
@@ -40218,10 +40459,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.instanceof(File),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "post",
     path: "/api/JobRoles/import/",
@@ -41435,6 +41673,26 @@ nothing has been taken from the lot. Not shrinkage: that&#x27;s adjust-quantity.
     response: MaterialLot,
   },
   {
+    method: "post",
+    path: "/api/MaterialLots/:id/correct-source/",
+    alias: "api_MaterialLots_correct_source_create",
+    description: `Correct a lot&#x27;s supplier, item or PO line recorded wrong at receipt, with a reason — only while nothing has been used, split or adjusted.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CorrectLotSourceRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
     method: "get",
     path: "/api/MaterialLots/:id/evaluate_receiving/",
     alias: "api_MaterialLots_evaluate_receiving_retrieve",
@@ -41654,6 +41912,26 @@ that one gate waived (inspection or dock-to-stock as usual).`,
         name: "body",
         type: "Body",
         schema: ReleaseHoldRequest,
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialLots/:id/reopen-remainder/",
+    alias: "api_MaterialLots_reopen_remainder_create",
+    description: `A short delivery marked &quot;that&#x27;s all&quot; by mistake: put the rest back on order, on the same PO, line and promised date, with a reason. Returns the new expected receipt.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",
@@ -44353,7 +44631,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/OrderLines/:id/plan/",
@@ -44603,10 +44884,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/Orders/:id/add-note/",
@@ -50085,7 +50363,10 @@ the completion blockers.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/decide/",
@@ -50105,6 +50386,32 @@ the completion blockers.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/QuarantineDispositions/:id/reopen/",
+    alias: "api_QuarantineDispositions_reopen_create",
+    description: `Reopen a disposition closed by mistake, with a reason. It can then be re-decided or completed again; a scrapped part stays scrapped until then.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: QuarantineDisposition,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -50265,10 +50572,7 @@ the completion blockers.`,
       },
     ],
     response: RcaRecord,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/RcaRecords/:id/",
@@ -50699,6 +51003,21 @@ approving it (review_rca) completes the review.`,
         name: "body",
         type: "Body",
         schema: MarkReceiptsPostedRequest,
+      },
+    ],
+    response: z.object({ marked: z.number().int() }),
+  },
+  {
+    method: "post",
+    path: "/api/Receipts/unmark-posted/",
+    alias: "api_Receipts_unmark_posted_create",
+    description: `A delivery marked posted by mistake: take the mark off, with a reason, so it returns to the next receipts sheet.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: UnmarkReceiptPostedRequest,
       },
     ],
     response: z.object({ marked: z.number().int() }),
@@ -52466,6 +52785,27 @@ what to make (produce), and tooling to acquire, with lead-time-driven order-by
 dates.`,
     requestFormat: "json",
     response: SourcingRequirements,
+  },
+  {
+    method: "post",
+    path: "/api/Schedules/restore-previous/",
+    alias: "api_Schedules_restore_previous_create",
+    description: `A what-if committed by mistake: the plan it replaced goes live again and the committed one goes back to being a draft. One step back, with a reason.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+    ],
+    response: ScheduleResult,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({}).partial().passthrough(),
+      },
+    ],
   },
   {
     method: "get",
@@ -55326,7 +55666,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -55793,10 +56136,7 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: Steps,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Steps/:id/version-history/",
@@ -60487,7 +60827,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/:id/access-history/",
@@ -60663,10 +61006,7 @@ untouched. Request/response shape is unchanged.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/User/send-invitation/",
@@ -62149,6 +62489,26 @@ re-POST with a reason to release anyway (the reason is recorded).`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
+  },
+  {
+    method: "post",
+    path: "/api/WorkOrders/:id/reopen/",
+    alias: "api_WorkOrders_reopen_create",
+    description: `Reopen a work order short-closed by mistake, with a reason. Scrapped units stay scrapped and moved units stay moved.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: z.object({}).partial().passthrough(),
   },
   {
     method: "post",

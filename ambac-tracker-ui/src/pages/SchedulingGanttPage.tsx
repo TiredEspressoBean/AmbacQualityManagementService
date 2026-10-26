@@ -1,6 +1,8 @@
 // Production schedule Gantt — reads the active CP-SAT schedule and renders it,
 // grouped by machine / operator / work order, with solve / dispatch actions, search,
 // and a per-task detail dialog (opened from the bar) that pins/unpins.
+import { api } from "@/lib/api/generated";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { differenceInMinutes, startOfDay } from "date-fns";
 import { toast } from "sonner";
@@ -1426,6 +1428,22 @@ export function SchedulingGanttPage() {
                   aria-label="Dismiss dispatch summary">
             ✕
           </Button>
+        </div>
+      )}
+
+      {/* A what-if committed by mistake: one step back to the plan it replaced. */}
+      {!draft && canSolve && live?.superseded && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+          This plan was committed from a what-if.
+          <ReasonActionButton
+            label="Restore the previous plan" variant="ghost"
+            title="Restore the plan this one replaced"
+            description={<>The previous live plan goes live again, and this one goes back to being a draft you can
+              review, commit or discard. One step back only. Your reason is kept on the schedule.</>}
+            placeholder="Why — e.g. committed the wrong scenario"
+            done="Previous plan restored — the committed one is a draft again."
+            run={(reason) => api.api_Schedules_restore_previous_create({ reason })}
+          />
         </div>
       )}
 

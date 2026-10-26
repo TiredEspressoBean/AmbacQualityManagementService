@@ -200,6 +200,9 @@ class Core(SecureModel):
     authorisation_contact = models.CharField(max_length=200, blank=True)
     authorisation_method = models.CharField(max_length=100, blank=True)
     authorisation_reference = models.CharField(max_length=200, blank=True)
+    # The codes that answer approved — what a correction of it takes back (user decision
+    # 2026-10-26, Corrections #22). Empty for a decline.
+    authorisation_codes = models.JSONField(default=list, blank=True)
     status = models.CharField(
         max_length=30,
         choices=CORE_STATUS_CHOICES,

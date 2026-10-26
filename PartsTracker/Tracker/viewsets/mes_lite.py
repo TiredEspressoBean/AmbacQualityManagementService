@@ -2125,6 +2125,8 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         # holds — without this an operator could cancel a work order.
         'cancel': ['cancel_workorder'],
         'short_close': ['cancel_workorder'],
+        # Undoing a mistaken short-close is the same authority as making it.
+        'reopen': ['cancel_workorder'],
         # Holding and resuming change an existing order (and are now the only way to
         # move it on or off hold — a status edit is refused). change_workorder is what
         # the work order page's Hold / Resume needed when they were a PATCH.
@@ -2133,7 +2135,7 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         'bulk_place_on_hold': ['change_workorder'],
         'bulk_clear_hold': ['change_workorder'],
     }
-    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel', 'short_close',
+    crud_exempt_actions = {'release', 'unrelease', 'bulk_release', 'cancel', 'short_close', 'reopen',
                            'place_on_hold', 'clear_hold',
                            'bulk_place_on_hold', 'bulk_clear_hold'}
 
@@ -2601,6 +2603,21 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         that customer's work. `allowed` maps part id -> target ids."""
         from Tracker.services.mes.work_order import short_close_targets
         return Response(short_close_targets(self.get_object()))
+
+    @extend_schema(
+        request=inline_serializer(name="ReopenWorkOrderRequest", fields={"reason": serializers.CharField()}),
+        responses={200: OpenApiTypes.OBJECT},
+        description="Reopen a work order short-closed by mistake, with a reason. Scrapped "
+                    "units stay scrapped and moved units stay moved.")
+    @action(detail=True, methods=["post"], url_path="reopen")
+    def reopen(self, request, pk=None):
+        from Tracker.services.mes.work_order import reopen_short_closed
+        try:
+            wo = reopen_short_closed(self.get_object(), user=request.user,
+                                     reason=request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'id': str(wo.id), 'workorder_status': wo.workorder_status})
 
     @extend_schema(
         request=inline_serializer(name="ShortCloseWorkOrderRequest", fields={

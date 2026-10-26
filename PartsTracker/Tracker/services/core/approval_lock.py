@@ -25,7 +25,9 @@ from django.contrib.contenttypes.models import ContentType
 # model name -> (predicate on the instance, phrase for the refusal)
 FINAL_WHEN = {
     'CAPA': (lambda o: o.status in ('CLOSED', 'CANCELLED'), "closed"),
-    'CapaVerification': (lambda o: bool(o.effectiveness_result), "verified"),
+    # Decided, not merely has a result: effectiveness_result defaults to INCONCLUSIVE,
+    # so reading it froze every plan the moment it was created.
+    'CapaVerification': (lambda o: o.effectiveness_decided_at is not None, "verified"),
     'RcaRecord': (lambda o: o.root_cause_verification_status == 'VERIFIED', "verified"),
     # The report is the inspector's FINDING — what was measured, by whom, when —
     # and is frozen once recorded. The QA Manager's JUDGEMENT about it (does this

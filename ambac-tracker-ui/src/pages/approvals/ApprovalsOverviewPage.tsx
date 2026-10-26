@@ -1,3 +1,4 @@
+import { WithdrawRequestButton } from "@/components/approval/WithdrawButtons";
 import { Link } from "@tanstack/react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -276,7 +277,10 @@ export function ApprovalsOverviewPage() {
                                             <span className="text-xs text-muted-foreground">
                                                 {request.approval_type_display || formatApprovalType(request.approval_type)}
                                             </span>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                {request.status === "PENDING" && (
+                                                    <WithdrawRequestButton approvalId={String(request.id)} />
+                                                )}
                                                 {new Date(request.requested_at).toLocaleDateString()}
                                             </span>
                                         </div>

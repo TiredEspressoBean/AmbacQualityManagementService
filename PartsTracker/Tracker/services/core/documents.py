@@ -80,6 +80,40 @@ def mark_document_obsolete(document, user):
     document.save()
 
 
+def reinstate_document(document, user, reason: str):
+    """A document made obsolete by mistake: the document controller puts it back in
+    force, if nothing replaced it (user decision 2026-10-26, Corrections #45). Back to
+    RELEASED if it had been released (it has an effective date), else APPROVED. The
+    obsolete date clears; the change and its reason are kept as an edit of `status`.
+
+    Pure status transition — `.save()` is correct.
+
+    Raises:
+        ValueError: no reason, not obsolete, or a later revision replaced it.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the document is being reinstated.")
+    if document.status != 'OBSOLETE':
+        raise ValueError(f"Only an obsolete document can be reinstated; this one is {document.status}.")
+    if superseded_by_version(document) is not None:
+        raise ValueError(
+            f"Revision {superseded_by_version(document)} replaced this one — it stays obsolete. "
+            "Revise the current revision instead.")
+    back_to = 'RELEASED' if document.effective_date else 'APPROVED'
+    RecordEdit.objects.create(
+        tenant=document.tenant, content_type=ContentType.objects.get_for_model(document.__class__),
+        object_id=document.id, field_name='status', old_value='OBSOLETE', new_value=back_to,
+        reason=reason, edited_by=user)
+    document.status = back_to
+    document.obsolete_date = None
+    document.save()
+    return document
+
+
 def submit_document_for_approval(document, user):
     """Submit a draft document into the approval workflow.
 

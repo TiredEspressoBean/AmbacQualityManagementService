@@ -1,5 +1,6 @@
 "use client"
 
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 import { MultiPicker } from "@/components/ui/multi-picker";
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react"
@@ -482,6 +483,18 @@ export default function EditDispositionFormPage() {
                                 }>
                                     {disposition.severity}
                                 </Badge>
+                                {disposition.current_state === "CLOSED" && canApproveDisposition && (
+                                    <ReasonActionButton
+                                        label="Reopen"
+                                        title={`Reopen ${disposition.disposition_number ?? "this disposition"}`}
+                                        description={<>Closed by mistake: it is in progress again, to be re-decided or completed
+                                            again. The decision stands until then — a scrapped part stays scrapped unless you
+                                            re-decide it. Your reason is kept on the record and in the notes.</>}
+                                        placeholder="Why — e.g. closed the wrong NCR"
+                                        done="Disposition reopened."
+                                        run={(reason) => api.api_QuarantineDispositions_reopen_create({ reason }, { params: { id: String(disposition.id) } })}
+                                    />
+                                )}
                             </>
                         )}
                     </div>

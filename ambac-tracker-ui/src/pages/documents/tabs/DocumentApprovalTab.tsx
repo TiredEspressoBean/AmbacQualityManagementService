@@ -25,16 +25,19 @@ import {
     Send,
 } from "lucide-react";
 import { isUserAnApprover } from "@/lib/approvals/is-user-an-approver";
+import { WithdrawRequestButton, WithdrawResponseButton } from "@/components/approval/WithdrawButtons";
+import { ResponseCorrections } from "@/components/approval/ResponseCorrections";
 
 type DocumentApprovalTabProps = {
     document: any;
 };
 
 
+/** A withdrawn response is no answer: that approver is asked again. */
 function hasUserResponded(userId: number | string | undefined, responses: ApprovalResponse[]): boolean {
     if (!userId || !responses) return false;
     const uid = String(userId);
-    return responses.some(r => String(r.approver) === uid);
+    return responses.some(r => String(r.approver) === uid && r.decision !== 'WITHDRAWN');
 }
 
 export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
@@ -154,7 +157,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                     <div className="space-y-1">
                                         {pendingApprovalRequest.required_approvers_info?.map((approver) => {
                                             const hasResponded = pendingApprovalRequest.responses?.some(
-                                                r => r.approver === approver.id
+                                                r => r.approver === approver.id && r.decision !== 'WITHDRAWN'
                                             );
                                             const response = pendingApprovalRequest.responses?.find(
                                                 r => r.approver === approver.id
@@ -214,11 +217,28 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                             )}
 
                             {!canRespond && pendingApprovalRequest && (
-                                <p className="text-sm text-muted-foreground">
-                                    {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
-                                        ? "You have already submitted your response."
-                                        : "You are not assigned as an approver for this document."}
-                                </p>
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
+                                            ? "You have already submitted your response."
+                                            : "You are not assigned as an approver for this document."}
+                                    </p>
+                                    {/* Still open, so the answer can be taken back and given again. */}
+                                    {hasUserResponded(currentUserId, pendingApprovalRequest.responses || []) && (
+                                        <WithdrawResponseButton approvalId={String(pendingApprovalRequest.id)} />
+                                    )}
+                                </div>
+                            )}
+
+                            {/* The requester may take the request back to change the draft. */}
+                            {pendingApprovalRequest && currentUserId != null
+                                && String(pendingApprovalRequest.requested_by) === String(currentUserId) && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+                                    <p className="text-sm text-muted-foreground">
+                                        You asked for this approval. Withdraw it to change the document, then submit again.
+                                    </p>
+                                    <WithdrawRequestButton approvalId={String(pendingApprovalRequest.id)} />
+                                </div>
                             )}
                         </>
                     )}
@@ -331,6 +351,7 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
                                                         {response.comments}
                                                     </p>
                                                 )}
+                                                <ResponseCorrections corrections={response.corrections} />
                                             </div>
                                         </div>
                                     ))}

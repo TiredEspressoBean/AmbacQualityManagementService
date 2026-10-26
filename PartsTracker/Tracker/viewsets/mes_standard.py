@@ -40,7 +40,7 @@ from Tracker.serializers.mes_standard import (
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
     LotTraceSerializer, DockMetricsSerializer,
-    MaterialUsageSerializer, CorrectUsageLotSerializer,
+    MaterialUsageSerializer, CorrectUsageLotSerializer, CorrectLotSourceSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
     AssemblyUsageSerializer, AssemblyRemoveSerializer,
@@ -670,6 +670,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         'release_hold': ['approve_disposition'],
         'adjust_quantity': ['change_materiallot'],
         'correct_receipt': ['change_materiallot'],
+        'reopen_remainder': ['change_materiallot'],
+        'correct_source': ['change_materiallot'],
         # The whole-lot decisions. Rejecting a lot under inspection is open to
         # inspectors (the service holds a whole-lot reject as a request without it).
         'confirm_whole_lot_reject': ['reject_whole_lot'],
@@ -824,6 +826,38 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=CorrectLotSourceSerializer, responses={200: MaterialLotSerializer},
+                   description="Correct a lot's supplier, item or PO line recorded wrong at receipt, "
+                               "with a reason — only while nothing has been used, split or adjusted.")
+    @action(detail=True, methods=['post'], url_path='correct-source')
+    def correct_source(self, request, pk=None):
+        from Tracker.services.mes.material_lot import SOURCE_FIELDS, correct_lot_source
+        ser = CorrectLotSourceSerializer(data=request.data, context={'request': request})
+        ser.is_valid(raise_exception=True)
+        changes = {f: ser.validated_data[f] for f in SOURCE_FIELDS if f in ser.validated_data}
+        try:
+            lot = correct_lot_source(self.get_object(), user=request.user,
+                                     reason=ser.validated_data['reason'], changes=changes)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=inline_serializer('ReopenRemainderInput', fields={'reason': serializers.CharField()}),
+                   responses={201: MaterialLotSerializer},
+                   description="A short delivery marked \"that's all\" by mistake: put the rest back "
+                               "on order, on the same PO, line and promised date, with a reason. "
+                               "Returns the new expected receipt.")
+    @action(detail=True, methods=['post'], url_path='reopen-remainder')
+    def reopen_remainder(self, request, pk=None):
+        from Tracker.services.mes.material_lot import reopen_remainder
+        try:
+            expected = reopen_remainder(self.get_object(), user=request.user,
+                                        reason=request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(expected, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
 
     @extend_schema(request=MaterialLotSplitSerializer, responses={201: MaterialLotSerializer})
     @action(detail=True, methods=['post'])
@@ -1563,6 +1597,18 @@ class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        """Correcting clock times is a lead's act — whoever approves hours — with a
+        reason (Corrections #5); other fields (notes) stay the entry owner's edit."""
+        from rest_framework.exceptions import PermissionDenied
+        timing = {'entry_type', 'start_time', 'end_time'}
+        if timing & set(serializer.validated_data) and not self.request.user.has_tenant_perm('approve_timeentry'):
+            moved = [f for f in timing if f in serializer.validated_data
+                     and serializer.validated_data[f] != getattr(serializer.instance, f)]
+            if moved:
+                raise PermissionDenied("Correcting clock times is for whoever approves hours (a lead).")
+        serializer.save()
+
     @extend_schema(request=ClockInSerializer, responses={201: TimeEntrySerializer})
     @action(detail=False, methods=['post'])
     def clock_in(self, request):
@@ -1775,7 +1821,8 @@ class BOMLineViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewset
 class AssemblyUsageViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     """Assembly component tracking"""
     queryset = AssemblyUsage.unscoped.select_related(
-        'assembly', 'component', 'bom_line', 'installed_by', 'removed_by', 'step'
+        'assembly', 'component', 'bom_line', 'installed_by', 'removed_by', 'step',
+        'component_harvested__component_type', 'component_harvested__core',
     )
     serializer_class = AssemblyUsageSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]

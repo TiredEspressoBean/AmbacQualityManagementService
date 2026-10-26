@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.shortcuts import get_current_site
 from django.conf import settings
 from django.db import models
-from drf_spectacular.utils import extend_schema_field
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 from rest_framework import serializers
 from Tracker.serializers.fields import TenantScopedPrimaryKeyRelatedField
 
@@ -846,12 +846,13 @@ class ApprovalResponseSerializer(SecureModelMixin):
     delegated_to_info = serializers.SerializerMethodField()
     decision_display = serializers.CharField(source='get_decision_display', read_only=True)
     verification_method_display = serializers.CharField(source='get_verification_method_display', read_only=True)
+    corrections = serializers.SerializerMethodField()
 
     class Meta:
         model = ApprovalResponse
         fields = (
             'id', 'approval_request', 'approver', 'approver_info',
-            'decision', 'decision_display', 'decision_date', 'comments',
+            'decision', 'decision_display', 'decision_date', 'comments', 'corrections',
             'signature_data', 'signature_meaning', 'verified_at',
             'verification_method', 'verification_method_display',
             'delegated_to', 'delegated_to_info',
@@ -871,6 +872,28 @@ class ApprovalResponseSerializer(SecureModelMixin):
         if obj.delegated_to:
             return UserSelectSerializer(obj.delegated_to).data
         return None
+
+    @extend_schema_field(inline_serializer(name='ApprovalResponseCorrection', many=True, fields={
+        'field': serializers.CharField(),
+        'old_value': serializers.CharField(),
+        'new_value': serializers.CharField(),
+        'reason': serializers.CharField(),
+        'by': serializers.CharField(allow_null=True),
+        'at': serializers.DateTimeField(),
+    }))
+    def get_corrections(self, obj):
+        """An answer withdrawn or given again while the request was open (Corrections
+        #17): each change, what it was, and why — oldest first."""
+        from django.contrib.contenttypes.models import ContentType
+        from Tracker.models import RecordEdit
+        edits = (RecordEdit.objects  # tenant-safe: keyed to a scoped response
+                 .filter(content_type=ContentType.objects.get_for_model(ApprovalResponse),
+                         object_id=str(obj.id))
+                 .select_related('edited_by').order_by('edited_at'))
+        return [{'field': e.field_name, 'old_value': e.old_value, 'new_value': e.new_value,
+                 'reason': e.reason,
+                 'by': (e.edited_by.get_full_name() or e.edited_by.username) if e.edited_by_id else None,
+                 'at': e.edited_at} for e in edits]
 
 
 class ApproverAssignmentSerializer(serializers.ModelSerializer):

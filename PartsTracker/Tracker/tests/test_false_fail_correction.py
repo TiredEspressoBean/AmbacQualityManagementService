@@ -122,6 +122,29 @@ class FalseFailCorrectionTests(TenantContextMixin, VectorTestCase):
                                authorized_by=self.manager)
 
 
+class ReopenDispositionTests(FalseFailCorrectionTests):
+    def test_a_closed_disposition_is_reopened_with_a_reason(self):
+        """Corrections #41 (user decision 2026-10-26): reopened by the QA manager; the
+        decision stands until re-decided; the reopen is on the record and in the notes."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.qms.disposition import decide_disposition, reopen_disposition
+        self._void()
+        self._recapture_pass()
+        decide_disposition(self.ncr, disposition_type="NOT_NONCONFORMANCE", authorized_by=self.manager)
+        self.ncr.refresh_from_db()
+        self.assertEqual(self.ncr.current_state, "CLOSED")
+        with self.assertRaises(ValueError):
+            reopen_disposition(self.ncr, self.manager, "")
+        reopen_disposition(self.ncr, self.manager, "Closed the wrong NCR")
+        self.ncr.refresh_from_db()
+        self.assertEqual((self.ncr.current_state, self.ncr.resolution_completed), ("IN_PROGRESS", False))
+        self.assertEqual(self.ncr.disposition_type, "NOT_NONCONFORMANCE")
+        self.assertIn("reopened — Closed the wrong NCR", self.ncr.resolution_notes)
+        self.assertTrue(RecordEdit.objects.filter(object_id=self.ncr.id, field_name="current_state").exists())
+        with self.assertRaises(ValueError):
+            reopen_disposition(self.ncr, self.manager, "again")
+
+
 class ScrapRedecisionTests(FalseFailCorrectionTests):
     """Changing a Scrap decision while the disposition is open un-scraps the part, with
     a reason, and both decisions stay on the record (user decision 2026-10-22). It used

@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type ApprovalResponseDecisionEnum } from "@/lib/api/generated";
 
 export interface ApprovalResponsePayload {
-    decision: ApprovalResponseDecisionEnum;
+    /** An answer — WITHDRAWN is set only by taking one back (withdraw-response). */
+    decision: Exclude<ApprovalResponseDecisionEnum, "WITHDRAWN">;
     comments?: string;
     signature_data?: string;
     signature_meaning?: string;

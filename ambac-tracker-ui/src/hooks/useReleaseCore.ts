@@ -64,6 +64,8 @@ export function useCoreLifecycleAction() {
             contact?: string; method?: string; reference?: string;
         }
         | { id: string; action: "approve_repair"; code: string; note?: string }
+        /** The customer's answer was recorded wrong — until the authorised repair starts. */
+        | { id: string; action: "correct_authorisation"; approved: boolean; reason: string }
     >({
         mutationFn: (v) => {
             const headers = { "X-CSRFToken": getCookie("csrftoken") };
@@ -83,6 +85,12 @@ export function useCoreLifecycleAction() {
                         approved: v.approved, note: v.note ?? "",
                         contact: v.contact ?? "", method: v.method ?? "", reference: v.reference ?? "",
                     },
+                    { params: { id: v.id }, headers },
+                );
+            }
+            if (v.action === "correct_authorisation") {
+                return api.api_Cores_correct_authorisation_create(
+                    { approved: v.approved, reason: v.reason },
                     { params: { id: v.id }, headers },
                 );
             }
