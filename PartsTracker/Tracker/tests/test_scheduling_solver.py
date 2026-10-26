@@ -261,8 +261,10 @@ class SolverTests(TenantContextMixin, TestCase):
         ScheduledTask.objects.create(
             tenant=self.tenant, schedule=prev, part=part, step=clean, machine=washer,
             start_time=now - _td(minutes=40), end_time=now + _td(minutes=20))
-        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=clean)
-        StepExecution.objects.filter(pk=se.pk).update(entered_at=now - _td(minutes=40))
+        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=clean,
+                                          status='IN_PROGRESS')
+        StepExecution.objects.filter(pk=se.pk).update(
+            entered_at=now - _td(minutes=40), started_at=now - _td(minutes=40))
         dt_user = get_user_model().objects.create_user(
             username="dt", email="dt@c.test", password="x", tenant=self.tenant)
         DowntimeEvent.objects.create(
@@ -312,8 +314,10 @@ class SolverTests(TenantContextMixin, TestCase):
             machine=self.machine, start_time=now - _td(minutes=40),
             end_time=now + _td(minutes=20))
         # open execution started 40 min ago (auto_now_add → override via .update())
-        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=self.step1)
-        StepExecution.objects.filter(pk=se.pk).update(entered_at=now - _td(minutes=40))
+        se = StepExecution.objects.create(tenant=self.tenant, part=part, step=self.step1,
+                                          status='IN_PROGRESS')
+        StepExecution.objects.filter(pk=se.pk).update(
+            entered_at=now - _td(minutes=50), started_at=now - _td(minutes=40))
 
         result = solve_schedule(self.tenant, time_limit_seconds=15)
         self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
@@ -330,6 +334,26 @@ class SolverTests(TenantContextMixin, TestCase):
         # the next step still follows the (shortened) running op
         t2 = ScheduledTask.objects.get(schedule=result, part=part, step=self.step2)
         self.assertGreaterEqual(t2.start_time, t1.end_time)
+
+    def test_parts_queued_at_one_machine_are_not_running(self):
+        # Arrival is not a start: parts waiting (PENDING) at a single-machine step are
+        # planned one after another, not all pinned "running" at now on that machine —
+        # which overlapped and made the whole solve infeasible (walk 2026-10-26).
+        from Tracker.models import StepExecution
+        now = timezone.now()
+        prev = ScheduleResult.objects.create(
+            tenant=self.tenant, horizon_start=now, horizon_end=now + _td(days=2),
+            is_active=True, is_stale=False)
+        for i in range(3):   # separate orders, so they can't share one lot
+            _wo, (part,) = self._wo(f"WO-Q{i}", 1)
+            ScheduledTask.objects.create(
+                tenant=self.tenant, schedule=prev, part=part, step=self.step1,
+                machine=self.machine, start_time=now + _td(minutes=60 * i),
+                end_time=now + _td(minutes=60 * (i + 1)))
+            StepExecution.objects.create(tenant=self.tenant, part=part, step=self.step1)
+        result = solve_schedule(self.tenant, time_limit_seconds=15)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertFalse(ScheduledTask.objects.filter(schedule=result, in_progress=True).exists())
 
     def test_move_time_gap_between_operations(self):
         # With a 30-min inter-op move/queue time, step2 can't start until 30 min after

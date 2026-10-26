@@ -111,8 +111,9 @@ class PartData:
     part_id: UUID
     current_step_id: UUID | None
     split_from_lot: bool = False  # True = split off in rework, a lock-step straggler
-    in_progress: bool = False     # current step has an OPEN StepExecution (work has started)
+    in_progress: bool = False     # current step's open StepExecution has STARTED (running)
     elapsed_minutes: float = 0.0  # minutes since that in-progress op actually started
+    at_step: bool = False         # current step has an open StepExecution, started or queued
     # Schedule this unit on its own, never in a lot with others: a reman core under
     # rebuild, whose repairs are its own. A core is a part
     # (Documents/CORE_AS_PART_DESIGN.md); this replaces the separate CoreData path.
@@ -508,18 +509,20 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
         wos = wos.filter(
             Q(expected_start__isnull=True) | Q(expected_start__lt=horizon_end_date))
 
-    # In-progress signal: an OPEN StepExecution (not yet exited) means work has physically
-    # started on that part's current step. `entered_at` is the actual start; elapsed is
+    # In-progress signal: a STARTED StepExecution not yet exited means work has physically
+    # begun on that part's current step. `started_at` is the actual start; elapsed is
     # measured from "now" so the solver can schedule only the REMAINING duration and pin
-    # the running op in place (see solver's in-progress branch). tenant-safe: .objects
-    # auto-scopes to the request tenant.
+    # the running op in place (see solver's in-progress branch). Arrival is not a start:
+    # an open PENDING execution is a part waiting in the queue, and pinning every queued
+    # part at "now" on one machine made the model infeasible (walk 2026-10-26).
+    # tenant-safe: .objects auto-scopes to the request tenant.
     now = timezone.now()
-    open_execs = {
-        (se['part_id'], se['step_id']): se['entered_at']
-        for se in StepExecution.objects.filter(archived=False,
-            tenant=tenant, exited_at__isnull=True, part__isnull=False
-        ).values('part_id', 'step_id', 'entered_at')
-    }
+    open_rows = list(StepExecution.objects.filter(
+        archived=False, tenant=tenant, exited_at__isnull=True, part__isnull=False,
+    ).values('part_id', 'step_id', 'started_at'))
+    at_step = {(se['part_id'], se['step_id']) for se in open_rows}
+    open_execs = {(se['part_id'], se['step_id']): se['started_at']
+                  for se in open_rows if se['started_at'] is not None}
 
     graph_cache: dict[UUID, tuple] = {}
 
@@ -555,6 +558,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                     max(0.0, (now - open_execs[(p.id, p.step_id)]).total_seconds() / 60.0)
                     if (p.id, p.step_id) in open_execs else 0.0
                 ),
+                at_step=(p.id, p.step_id) in at_step,
                 individual=_under_rebuild(p),
             )
             for p in wo.parts.all()

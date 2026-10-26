@@ -470,7 +470,8 @@ def _load_span(buckets, wo, ref, labor_hrs: float, wc_hrs: dict, now,
         return _bucket_index(buckets, wo.expected_start), hi, wo.expected_start
 
     now_idx = _bucket_index(buckets, now)
-    started = any(getattr(p, 'in_progress', False) for p in wo.parts)
+    # Any part at a step, running or queued there: the work is in hand now.
+    started = any(getattr(p, 'at_step', False) for p in wo.parts)
     if started or hi is None:
         return now_idx, hi, today
 
@@ -600,7 +601,7 @@ def build_capacity_load(tenant, months: int = 24, critical_only: bool = False) -
         # The actionable half. A heatmap says WHERE it is tight; this says what to do
         # about it. Only work whose release is genuinely still ahead of us or already
         # overdue — an order that started is not a release decision any more.
-        if planned_start and not any(getattr(p, 'in_progress', False) for p in wo.parts):
+        if planned_start and not any(getattr(p, 'at_step', False) for p in wo.parts):
             releases.append({
                 'work_order_id': str(wo.wo_id),
                 'erp_id': wo.erp_id,
