@@ -91,7 +91,7 @@ def _frozen_reason(instance) -> str | None:
     if ar is not None:
         if ar.status == 'PENDING':
             return (f"{_label(instance)} is awaiting approval ({ar.approval_number}); it can't be "
-                    "changed while approvers are looking at it. Cancel the request to edit it.")
+                    "changed while approvers are looking at it. Withdraw the request to edit it.")
         if type(instance).__name__ not in GO_AHEAD_APPROVALS:
             return (f"{_label(instance)} is approved ({ar.approval_number}); approved content "
                     "changes only through a new revision.")

@@ -48,7 +48,7 @@ export function AsBuiltCard({ partId, coreStatus }: {
                                     label="Remove" variant="ghost"
                                     title={`Remove ${u.component_label}`}
                                     description={<>Taken back out of the unit: it can then be fitted elsewhere, or here again
-                                        through the rebuild (Work this unit).{rebuilt
+                                        through the rebuild (Continue rebuild on this page).{rebuilt
                                             ? " This unit is finished, so it goes back to In Rebuild — not ready to ship until the slot is filled again."
                                             : ""} The fitting stays on the as-built record, marked removed, with your reason.</>}
                                     placeholder="Why — e.g. fitted to the wrong slot"
