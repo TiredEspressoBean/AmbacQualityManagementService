@@ -47,3 +47,27 @@ training is the highest level among their in-date records for it.
 - **Training Overrides** (on **Quality** > **Training**): every start
   a shift lead authorised for someone who wasn't qualified, with the reason. A
   person who keeps appearing here needs a record, not more overrides.
+
+## Correcting a record
+
+Edit the record. When the change is to its **outcome, dates, or who or what it
+covers** (the competency level, completion or expiry date, trainee, trainer or
+training type), the form asks for a **Reason for the correction**, and won't save
+without one. The reason is kept beside the field it changed. A change to the notes
+alone needs no reason.
+
+Correct the record rather than deleting it and entering a new one: a deleted
+record leaves no trace of why the person was or wasn't qualified on a given day.
+
+## An override that shouldn't have been given
+
+An override can't be undone. The step was worked, by that person, on that
+authority, and that is what happened. Two things put it right:
+
+- **The work**: if it needs checking, the step's work goes back through QA the
+  usual way.
+- **The record of it**: on the part's step history, the override line has **Flag
+  for QA review**. Flag it with a reason, and it reads *Flagged for QA review* for
+  the QA manager's training-override review.
+
+Next time, the right person is assigned, or the person gets their record.

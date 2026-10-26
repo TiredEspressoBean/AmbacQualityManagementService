@@ -175,9 +175,6 @@ A calibration record's status is derived, not chosen:
     calibration's due date is months away. A failure is a statement about the
     instrument, not a deadline, so it cannot be aged out of.
 
-!!! warning "Demo: Overdue Calibration Alert"
-    In demo mode, **Torque Wrench TW-25** shows as overdue (last calibrated 200 days ago with 180-day interval). Production Manager Jennifer Walsh sees this in her dashboard alerts, demonstrating how the system flags equipment needing attention before use.
-
 ### Recording Calibration
 
 A calibration is its own record, written from **Quality** > **Calibrations**, not
@@ -194,7 +191,7 @@ from the machine:
     | **Calibration type** | Scheduled, Initial, After repair, After adjustment, or Verification check |
     | **Performed by** / **External lab** | Free text — who did it, and the lab if it went out |
     | **Certificate number** and **standards used** | The traceability chain |
-    | **As found in tolerance** | Whether it was *in* tolerance when it arrived |
+    | **As-Found Status** | Whether it was *in* tolerance when it arrived |
     | **Adjustments made** | Whether it was adjusted |
 
 4. Save
@@ -211,6 +208,18 @@ the most recent record.
     destroys the only evidence that there was anything to go back for.
 
     See [Measurements](../../workflows/tracking/measurements.md).
+
+### Correcting a calibration record
+
+Open the record from **Quality** > **Calibrations** > **Records** and edit it. When
+the change is to its **outcome, dates, or who or what it covers** (the result,
+the calibration or due date, the equipment, who performed it), the form asks for a
+**Reason for the correction** and won't save without one. The reason is kept
+beside the field it changed.
+
+Correcting the **result** re-applies the gauge's status. A Fail corrected to Pass
+returns the gauge to service, and the reverse takes it out of service, exactly as
+if the record had been entered that way.
 
 ## What equipment was used
 
@@ -262,6 +271,11 @@ for material** · **Quality issue** · **Other**
 Open events show on the work order control pages and on the operator's home.
 Equipment whose type has **Track downtime** off is not offered in the dialog,
 and uqmes refuses an event against it from anywhere else.
+
+**Recorded it wrong?** The wrong machine, category or times: **Correct…** on the
+event's row in **WO Control Center** > **Exceptions** (turn off **Open only** to
+find a resolved one). Change what was wrong, give a **reason**, and each change is
+kept on the event with it. The downtime totals below follow the corrected times.
 
 ### Where downtime adds up
 

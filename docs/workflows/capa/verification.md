@@ -79,6 +79,12 @@ Common verification tasks:
 Inconclusive is the starting state, so a verification that was opened but never
 concluded reads as inconclusive rather than as a pass.
 
+A verification still **Inconclusive** can be edited, or deleted, while the CAPA is
+open. Once its result is decided it is locked: *"verified, so it can't be edited or
+deleted"*. And a decided verification can't be decided again. A **closed** or
+cancelled CAPA takes no new verification at all; **Add Verification** isn't offered
+on it.
+
 ## Effectiveness Criteria
 
 The verification record stores the criteria you judged against, in

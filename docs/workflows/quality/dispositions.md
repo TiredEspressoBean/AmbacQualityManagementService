@@ -23,7 +23,7 @@ under *Unassigned dispositions*, until someone presses **Take it** (which needs
 quarantined until the disposition acts on it: no one can start it in the
 meantime.
 
-## The five decisions
+## The decisions
 
 Choosing between these is the judgement the system asks you to make. They are
 not interchangeable, and the standard treats them very differently.
@@ -57,6 +57,27 @@ not interchangeable, and the standard treats them very differently.
     hides one that does.
 
 Rework and Repair both increment the part's **rework count**.
+
+### When the finding was wrong: Not a nonconformance
+
+A disposition opened by an inspection result that was itself a mistake (a FAIL
+that should have been a PASS) is closed with a sixth decision, **Not a
+nonconformance (result voided)**. It is accepted only when the finding has really
+been withdrawn:
+
+1. The failing capture has been **voided**, with its reason, so its report is
+   superseded and kept, not deleted.
+2. The part has been **re-inspected** and the new result is a **PASS**. The good
+   result is on record before the finding is written off.
+3. The person deciding is **neither** the inspector who recorded the failure nor
+   the one who voided it. An inspector doesn't clear their own finding.
+
+No approval reference, containment or annotation is asked for, because there was
+no nonconforming product. The decision's note records the void reason. The part
+then completes its step as usual.
+
+Until the re-inspection is on record, it is refused: *"Re-inspect first: the voided
+result hasn't been captured again with a PASS."*
 
 ## Use As Is and Repair require recorded approval
 
@@ -165,10 +186,21 @@ OPEN  ──(decision recorded)──▶  IN_PROGRESS  ──(resolution complet
   Setting the disposition type is what moves it here.
 - **Closed** — the resolution is complete.
 
-!!! warning "A closed disposition's decision cannot be changed"
-    Attempting it is rejected: *"This disposition is closed; its decision can no
-    longer be changed."* Raise a new record instead — the original stays as the
-    history of what was decided at the time.
+### Decided wrong, or closed too soon
+
+**While it is open,** a decision can be changed by deciding again, with the same
+authority as the first. Changing a **Scrap** to anything else asks for a reason,
+and brings the part back out of scrap to be handled under the new decision. Both
+decisions and the reason stay in the resolution notes. A scrapped **core** is the
+exception: it is reinstated from its core page, not here.
+
+**Once closed,** its decision can't be changed by editing: *"This disposition is
+closed; its decision can no longer be changed."* A disposition closed by mistake
+is **reopened** instead. **Reopen** on its page, with a required reason, held by
+whoever can decide dispositions (`approve_disposition`). It goes back to **In
+Progress**, where it can be decided again or closed again. The decision stands
+until then, so a scrapped part stays scrapped unless the disposition is decided
+again. The reopen and its reason are added to the resolution notes.
 
 ## What the decision does to the part
 
@@ -185,10 +217,12 @@ as a **paper record** of what was authorized and the part's status is left
 alone. It would otherwise drag a part that has moved on backwards.
 
 **A less severe decision cannot undo a terminal one.** Scrap dominates
-everything; a Rework, Repair, or Use As Is decision cannot revive a part that is
-already scrapped or cancelled. Reversing a terminal status is a separate,
-deliberate, permission-gated operation — never a side effect of another
-disposition.
+everything; a Rework, Repair, or Use As Is decision on *another* disposition
+cannot revive a part that is already scrapped or cancelled. The one way back is
+the disposition that scrapped it being decided again while it is open, with a
+reason — see [Decided wrong, or closed too
+soon](#decided-wrong-or-closed-too-soon). Reversing a terminal status is never a
+side effect.
 
 ## Scrap verification
 

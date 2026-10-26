@@ -103,6 +103,21 @@ its limits, and who took it and when. Those readings are what you are signing.
 **Waive** releases the run without a first-piece verification. It needs a reason
 of at least 10 characters, and the waiver records who, when and why.
 
+### A first piece passed in error
+
+Found after the buy-off that the first piece shouldn't have passed (the wrong gauge,
+a reading misread)? Anyone who can sign off FPIs can **Void pass** on the FPI
+banner, with a required reason:
+
+- The pass stays on record, marked **Voided** with your reason. It is not deleted.
+- The step's release is withdrawn, and a **new first-piece inspection** opens.
+  Parts not yet past the step wait until the piece is re-inspected and bought off.
+- Parts already past the step are **not** pulled back. If they need looking at,
+  that is a quality decision about them, made separately.
+
+A failed or waived first piece has nothing to void. A fail already holds the run,
+and a waiver is put right by starting a new first piece.
+
 ### Conditional Pass
 
 !!! note "Planned Feature — do not look for it"
