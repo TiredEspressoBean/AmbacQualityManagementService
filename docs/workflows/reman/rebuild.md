@@ -262,6 +262,18 @@ position, and this records the individual that went in.
     stock, not as the harvested record. If the bench is refusing a component you
     were told to fit, that is usually why.
 
+### Fitted the wrong component
+
+The core's page has an **As built** card: each component fitted, by whom and when.
+**Remove** the wrong one, with a required reason. It is struck through on the
+record, not deleted, and is free to be fitted elsewhere, or here again through the
+rebuild (**Continue rebuild** on the core's page).
+
+If the unit was already *Rebuilt* (or *Rebuilt to stock*), removing a component
+sends it back to *In Rebuild*. It is not ready to ship until the slot is filled
+again. A unit that has already gone back to its customer, or shipped, can't have
+components removed here.
+
 Findings are proposals a lead decides — see [Harvested
 Components](components.md#findings-a-component-found-worse-at-the-bench).
 Applying one re-resolves the plan from the new grade, exactly as it would have

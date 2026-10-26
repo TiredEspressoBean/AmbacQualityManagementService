@@ -133,6 +133,18 @@ The same card carries **Approved** and **Declined** once the unit is waiting.
 - **Approved** — work resumes.
 - **Declined** — the unit moves to *Scope declined*, and goes back unrepaired.
 
+**Recorded the wrong answer?** On the core's page, **Correct customer's answer…**
+turns it the other way, with a required reason:
+
+| Recorded as | Corrected to | What happens |
+|-------------|--------------|--------------|
+| Approved | Declined | The repairs that answer approved are taken back, and the unit moves to *Scope declined* |
+| Declined | Approved | The rebuild resumes, and the repairs that were waiting are approved |
+
+Both answers and the reason are added to the core's notes. The correction is
+refused once the repair it authorised has started, or once a declined unit has
+gone back to its customer. By then the answer has been acted on.
+
 A **Return** button on the work order's **Cores** card then sends the unit back to
 its customer, from either *Rebuilt* or *Scope declined*. It opens the ship dialog
 (carrier, tracking, ERP shipper number, expected delivery, notes) and creates a

@@ -73,8 +73,11 @@ with **Submit N cores**.
     customer's standing arrangement and annotated with where that came from —
     if no arrangement is on record it says so and defaults to stock.
 
-    It can be corrected on the core afterwards, but **only while the core is
-    still Received**. Once teardown starts the edit is refused, because harvest,
+    It can be corrected afterwards with **Correct receipt…** on the core's page,
+    but **only while the core is still Received**. The dialog changes the mode
+    and the order it came in for, with a required reason; repair and return
+    needs the order. Each change and the reason show under **Corrections** in the
+    core's history. Once teardown starts the receipt stands, because harvest,
     reservations and authorisation already follow from it. Check it now rather
     than relying on that window.
 
