@@ -56,6 +56,15 @@ one.
 lots back where they were. A reman unit goes back to the stage it left from
 (*Rebuilt*, *Scope declined* or *Rebuilt to stock*) and can ship again.
 
+A lot that was **split** to ship part of it rejoins the lot it came from: one lot
+number again, with the rejoin and your reason on both lots' history. So a wrong
+quantity is fixed by voiding and shipping the right amount, not by correcting
+stock by hand afterwards. If the lot it came from has since been rejected,
+scrapped or shipped, the piece stays a lot of its own.
+
+The wrong carrier or tracking number isn't a void: correct it on the shipment's
+paperwork, which stays editable.
+
 !!! tip "Void rather than ship a correction"
     Voiding restores the record to what it was. Shipping a second time to fix a
     mistake leaves two shipments and an on-time figure that reflects neither.

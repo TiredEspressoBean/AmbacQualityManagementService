@@ -87,6 +87,9 @@ stranded and nothing needs re-tagging.
 **Every move is recorded.** That is what makes the 7-day history on a location
 page, and what lets a cycle count compare the record against the shelf.
 
+Put something in the wrong place? **Move…** it again. There is no undo, and
+nothing needs one: the history keeps both moves, which is what actually happened.
+
 ## Cycle counts
 
 Start one from a location page: **Count this location**, with an optional
@@ -106,11 +109,19 @@ Start one from a location page: **Count this location**, with an optional
 On the count screen (`/production/cycle-counts/$countId`):
 
 - enter a **quantity per lot**
-- **tick each unit** that is present
+- answer **Here** or **Not here** for each unit
 - **scan anything you find** that isn't on the list
 
-**Save** as you go, then **Submit**. Anything left uncounted is recorded as **not
-there** — an omission is an answer, not a gap.
+**Save** as you go, then **Submit**.
+
+!!! important "A blank line is not a zero"
+    A line you leave blank stays **not counted**. It is left out of the
+    differences, and applying the count doesn't touch its stock. The count says
+    how many lines were not counted, before and after you submit. A shelf you
+    found **empty** is an answer: enter **0**, or **Not here** for a unit.
+
+    A skipped shelf is not missing stock, and the count should not write it off
+    as missing.
 
 !!! tip "Blind counting is the honest version"
     A blind count hides the expected quantities, including on the count sheet
@@ -143,6 +154,16 @@ Manager, Production Manager or Shift Lead — presses **Apply to UQMES**:
     **A serialised unit is only reported.** Losing one is a decision with
     consequences — for traceability, for a customer's order — and it belongs to a
     person, not to a stock count.
+
+### A count that looks wrong
+
+Before it is applied, a submitted count can go back. The same people who can
+apply it can choose **Send back for recount**, with a **required reason**. The
+count reopens **with what was entered**, so the counter corrects the lines in
+question rather than starting again, and the reason is kept on the count.
+
+Once applied, a count is final. A difference found later is a new count of that
+location, or an **Adjust quantity** on the lot with its reason.
 
 
 ### Paperwork

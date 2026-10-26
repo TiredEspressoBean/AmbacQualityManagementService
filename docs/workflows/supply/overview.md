@@ -124,6 +124,14 @@ The receipt is refused until you pick — *"say whether more is coming
     actually part-shipped and the material lane stops expecting stock the
     supplier still intends to send.
 
+#### Answered *That's all* by mistake
+
+The lot page's **Ordered** line reads *nothing more expected*, with **Reopen the
+rest**. Give a reason, and what is still owed goes back on order as an expected
+receipt, with the same supplier, PO, line and promised date. The lot then reads *rest
+back-ordered*, and the change and its reason show under **Corrections** in its
+history.
+
 !!! tip "Safety stock lives on the material"
     The **Material** form carries a **Safety stock** field. It is the buffer
     deducted from on-hand when the planning views work out free stock — see
@@ -197,6 +205,12 @@ settled quantity to post.
     So *Mark as posted* is a record of what you handed over, not a promise it
     stays true.
 
+#### Marked one posted that wasn't keyed
+
+Open the lot. *Posted to ERP* shows the date with **Unmark**. Give a reason and the
+delivery goes back on the next receipts sheet. The mark it had and your reason are
+kept on the lot.
+
 !!! important "No prices — this is a goods receipt, not an invoice"
     The export exists so goods receipts can be posted in the ERP (Glovia here)
     without re-keying them off paperwork. It says **what arrived and what you
@@ -228,6 +242,7 @@ with everything else under **⋯**:
 |--------|---|
 | **Print label** | One 4"×2" thermal label |
 | **Print label (Letter sheet)** | A sheet of ten (Avery 5163 / 8163) |
+| **Correct receipt…** | The quantity was keyed wrong when it was booked in — see [Correcting a receipt](#correcting-a-receipt) |
 | **Adjust quantity…** | Correct what is actually on the shelf |
 | **Extend shelf life…** | When shelf life applies |
 
@@ -260,6 +275,23 @@ what is left on the lot and records both.
     A correction here fixes what UQMES believes is on the shelf. It does not
     reach your ERP, and the dialog says so — an adjustment made in one place and
     not the other is how the two drift apart.
+
+### Correcting a receipt
+
+**Adjust quantity** is for stock that has gone missing since it arrived, when the
+receipt itself was right. When the **receipt** was wrong, correct the receipt
+instead, so the record of what arrived, and the sheet for the ERP, say what really
+came in:
+
+| Keyed wrong | Where | |
+|-------------|-------|---|
+| The quantity received | **Correct receipt…** on the row's **⋯** menu | Enter what actually arrived, and why. What's on hand changes with it |
+| The supplier, item, PO or line | **Correct receipt details** under **Came from** on the lot page | Item appears only on a material lot. A short delivery's back-ordered remainder still on order moves with a PO or line correction |
+
+Both take a **required reason**, and both are offered only while nothing has been
+used from the lot, split off it or adjusted. After that the lot's history depends
+on the receipt as it stood. Each change and its reason show under **Corrections**
+in the lot's history.
 
 ### Lot labels
 
@@ -728,6 +760,10 @@ by default **QA Manager** and **Tenant Admin**, through `approve_supplierqualifi
 makes it count. The status cannot be set on the form or through the API.
 **Suspend…** and **Disqualify…** take a reason. Only **Approved** and
 **Conditional** count at receiving.
+
+A supplier **suspended** by mistake is put back with **Grant…**. **Disqualified**
+is final for that qualification: a supplier who should not have been disqualified
+needs a new qualification, granted the usual way.
 
 ## Next Steps
 
