@@ -53,15 +53,7 @@ class DemoPlanningSeeder(BaseSeeder):
                         or by_email.get('jennifer.mgr@demo.ambac.com'))
         self.lead = by_email.get('casey.dual@demo.ambac.com')
         self._manual_release()
-        # This morning's plan and how the floor ran against it (Planner module 8), first:
-        # plan vs actual needs a plan that was live when the work started, and solved
-        # before the rest of the shop's work is released, it holds only this morning's
-        # jobs, so it isn't charged with missing work nobody had asked for yet.
-        from .plan_walk import DemoPlanWalkSeeder
-        plan_day = DemoPlanWalkSeeder(
-            self.stdout, self.style, self.tenant, scale=self.scale).seed(None, users)
         result = {
-            'plan_day': plan_day,
             'released': self._release_active_work(),
             'new_order': self._new_order(),
             'downtime': self._downtime(),

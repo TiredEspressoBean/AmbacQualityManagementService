@@ -104,9 +104,20 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
                 parts[wo_id] = self._release(wo, part_type, serial)
                 result['work_orders'].append(wo)
 
+        # Manual release, as the plant runs (the planning phase sets it too, later): only
+        # released work is planned, so the morning plan holds these five jobs.
+        from Tracker.models import OptimizationConfig
+        from Tracker.models.scheduling import ReleaseMode
+        cfg, _ = OptimizationConfig.objects.get_or_create(tenant=self.tenant)
+        if cfg.release_mode != ReleaseMode.MANUAL:
+            cfg.release_mode = ReleaseMode.MANUAL
+            cfg.save(update_fields=['release_mode'])
+
         schedule = self._solve_morning_plan()
         if schedule is None:
             return result
+        from Tracker.models.scheduling import ScheduledTask
+        result['morning_tasks'] = ScheduledTask.objects.filter(schedule=schedule).count()
         slots = self._slots(schedule, parts)
         if len(slots) != len(PLAN_DAY):
             self.log("  Warning: the plan didn't book every exhibit's Machining; skipping.",
@@ -125,7 +136,7 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
             task.refresh_from_db()
             self._date_visit(part, task.start_time + timedelta(minutes=start_off),
                              task.end_time + timedelta(minutes=end_off))
-        self.log(f"  Morning plan dated back {result['dated_back']}; "
+        self.log(f"  Morning plan ({result.get('morning_tasks')} ops) dated back {result['dated_back']}; "
                  + ", ".join(f"{w}: {o}" for w, o in result['outcomes'].items()))
         return result
 

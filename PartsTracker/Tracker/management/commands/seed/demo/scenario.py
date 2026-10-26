@@ -165,6 +165,15 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 4c2: Batch Cycle Readings ---")
         self._backfill_batch_captures(result['users'])
 
+        # Phase 4c3: this morning's plan and how the floor ran against it (Planner
+        # track module 9). Before any other phase releases work, so the morning plan
+        # holds only its own five jobs and isn't charged with the rest of the shop;
+        # after 4c, whose Machining substeps the walk captures on.
+        self.log("\n--- Phase 4c3: The Planner's Morning ---")
+        from .plan_walk import DemoPlanWalkSeeder
+        plan_walk = DemoPlanWalkSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        result['plan_walk'] = plan_walk.seed(None, result['users'])
+
         # Phase 4d: SHOWCASE storyline (named objects threaded by one hero part)
         self.log("\n--- Phase 4d: Showcase Storyline ---")
         result['showcase'] = self._seed_showcase(
