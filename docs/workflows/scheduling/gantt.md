@@ -31,6 +31,14 @@ away. Committing supersedes the previous live plan; older drafts are cleared.
 **Discard is final** — a discarded draft is gone, not archived. If there is
 anything in it worth keeping, commit it or write the numbers down first.
 
+### Committed one by mistake
+
+After a commit from a what-if, the board reads *This plan was committed from a
+what-if* with **Restore the previous plan**. Give a reason, and the plan it
+replaced goes live again, while the one you committed becomes a draft once more,
+to commit later or discard. It goes **one step back only**, and the reason is kept
+on the schedule.
+
 !!! note "The Live/Draft toggle only appears once a draft exists"
     It is not a permanent two-mode switch. Run **What-if** and the toggle
     appears; discard or commit and it goes away again.

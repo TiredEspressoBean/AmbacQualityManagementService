@@ -41,6 +41,11 @@ works the other way, adding working time it **will** plan into. Either way the
 calendar is what the solver treats as available hours, and keeping it current is
 what makes the Gantt's dates believable.
 
+An entry made wrong (the wrong day, the wrong crew) is removed and added again.
+Each entry in the day's list has its own **Remove**, named for what it removes,
+and it asks you to confirm. Then **re-solve**, since the plan was made against the
+calendar as it stood.
+
 ## Staging List
 
 **What to put at each bench before the operator gets there — the next window of
@@ -103,6 +108,11 @@ You can't approve your own time: your entries read *Your time*, with no button.
 An entry still running can't be approved until it ends. Approving needs
 `approve_timeentry`, held by default by **Shift Lead**, **Production Manager**
 and **Tenant Admin**. Without it the card isn't shown.
+
+**Correct times** on an entry fixes a clock-in or clock-out that was wrong, before
+it is approved: change the time, give a **reason**, and the hours recalculate. Each
+change and its reason are kept on the entry. Correct first, approve second: an
+approved entry leaves this card, and can't be corrected here.
 
 ## Requirements
 
