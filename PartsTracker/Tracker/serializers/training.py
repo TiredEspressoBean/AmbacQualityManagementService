@@ -108,6 +108,11 @@ class TrainingRecordSerializer(SecureModelMixin):
     level_display = serializers.CharField(source='get_level_display', read_only=True)
     status = serializers.CharField(read_only=True)
     is_current = serializers.BooleanField(read_only=True)
+    # Why a recorded training is being corrected — required when who, what, when or the
+    # level change; kept per field as a RecordEdit (walk 2026-10-22).
+    edit_reason = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    CORRECTED_FIELDS = ('user', 'training_type', 'completed_date', 'level', 'expires_date', 'trainer')
 
     class Meta:
         model = TrainingRecord
@@ -115,7 +120,7 @@ class TrainingRecordSerializer(SecureModelMixin):
             'id', 'user', 'user_info', 'training_type', 'training_type_info',
             'completed_date', 'level', 'level_display', 'expires_date',
             'trainer', 'trainer_info',
-            'notes', 'status', 'is_current',
+            'notes', 'status', 'is_current', 'edit_reason',
             'created_at', 'updated_at', 'archived'
         ]
         read_only_fields = ('id', 'level_display', 'status', 'is_current', 'created_at', 'updated_at')
@@ -124,11 +129,21 @@ class TrainingRecordSerializer(SecureModelMixin):
     # is applied on every write path, not in the model's save().
     def create(self, validated_data):
         from Tracker.services.training import create_training_record
+        validated_data.pop('edit_reason', None)
         return create_training_record(**validated_data)
 
     def update(self, instance, validated_data):
+        from Tracker.services.core import reasoned_edit
         from Tracker.services.training import update_training_record
-        return update_training_record(instance, **validated_data)
+        why = validated_data.pop('edit_reason', '')
+        changes = reasoned_edit.changed_fields(instance, validated_data, self.CORRECTED_FIELDS)
+        try:
+            why = reasoned_edit.require_reason(changes, why)
+        except ValueError as e:
+            raise serializers.ValidationError({'edit_reason': str(e)})
+        record = update_training_record(instance, **validated_data)
+        reasoned_edit.record(record, changes, why, self.context['request'].user)
+        return record
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_user_info(self, obj):

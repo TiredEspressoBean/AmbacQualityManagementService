@@ -77,6 +77,15 @@ export const queryClient = new QueryClient({
             });
         },
         onSuccess: (_data, _vars, _ctx, mutation) => {
+            // Any write may add to a record's history; an open History panel refetches
+            // rather than showing what it loaded before the edit (walk 2026-10-22).
+            queryClient.invalidateQueries({
+                predicate: (q) => {
+                    const k = q.queryKey;
+                    return k[0] === "logs" || k[0] === "record-history"
+                        || (k[0] === "user" && k[2] === "access-history");
+                },
+            });
             const meta = mutation.meta as MutationMeta | undefined;
             if (meta?.suppressGlobalSuccess) return;
             if (meta?.successMessage) toast.success(meta.successMessage);

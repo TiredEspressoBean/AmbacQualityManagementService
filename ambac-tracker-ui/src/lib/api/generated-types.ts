@@ -22010,6 +22010,7 @@ export interface components {
             /** @description Were adjustments made during calibration? */
             adjustments_made?: boolean;
             notes?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**
@@ -29809,6 +29810,7 @@ export interface components {
             /** @description Were adjustments made during calibration? */
             adjustments_made?: boolean;
             notes?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /** @description CAPA tasks serializer */
@@ -32198,6 +32200,7 @@ export interface components {
             /** @description Person who conducted the training */
             trainer?: number | null;
             notes?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**
@@ -38829,6 +38832,7 @@ export interface components {
             /** @description Person who conducted the training */
             trainer?: number | null;
             notes?: string;
+            edit_reason?: string;
             archived?: boolean;
         };
         /**

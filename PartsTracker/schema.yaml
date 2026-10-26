@@ -51863,6 +51863,9 @@ components:
           description: Were adjustments made during calibration?
         notes:
           type: string
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
       required:
@@ -67509,6 +67512,9 @@ components:
           description: Were adjustments made during calibration?
         notes:
           type: string
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
     PatchedCapaTasksRequest:
@@ -71481,6 +71487,9 @@ components:
           description: Person who conducted the training
         notes:
           type: string
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
     PatchedTrainingRequirementRequest:
@@ -84770,6 +84779,9 @@ components:
           description: Person who conducted the training
         notes:
           type: string
+        edit_reason:
+          type: string
+          writeOnly: true
         archived:
           type: boolean
       required:

@@ -1462,6 +1462,7 @@ export type CalibrationRecordRequest = {
    */
   boolean | undefined;
   notes?: string | undefined;
+  edit_reason?: string | undefined;
   archived?: boolean | undefined;
 };
 export type CapaDecisionRequestRequest = {
@@ -12734,6 +12735,7 @@ export type PatchedCalibrationRecordRequest = Partial<{
    */
   adjustments_made: boolean;
   notes: string;
+  edit_reason: string;
   archived: boolean;
 }>;
 export type PatchedCapaTasksRequest = Partial<{
@@ -15163,6 +15165,7 @@ export type PatchedTrainingRecordRequest = Partial<{
    */
   trainer: number | null;
   notes: string;
+  edit_reason: string;
   archived: boolean;
 }>;
 export type PatchedTrainingRequirementRequest = Partial<{
@@ -18148,6 +18151,7 @@ export type TrainingRecordRequest = {
     (number | null)
     | undefined;
   notes?: string | undefined;
+  edit_reason?: string | undefined;
   archived?: boolean | undefined;
 };
 export type TrainingRequirementRequest = {
@@ -19468,6 +19472,7 @@ const CalibrationRecordRequest = z.object({
   as_found_in_tolerance: z.boolean().nullish(),
   adjustments_made: z.boolean().optional(),
   notes: z.string().optional(),
+  edit_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedCalibrationRecordRequest = z
@@ -19484,6 +19489,7 @@ const PatchedCalibrationRecordRequest = z
     as_found_in_tolerance: z.boolean().nullable(),
     adjustments_made: z.boolean(),
     notes: z.string(),
+    edit_reason: z.string(),
     archived: z.boolean(),
   })
   .partial();
@@ -26795,6 +26801,7 @@ const TrainingRecordRequest = z.object({
   expires_date: z.string().nullish(),
   trainer: z.number().int().nullish(),
   notes: z.string().optional(),
+  edit_reason: z.string().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedTrainingRecordRequest = z
@@ -26806,6 +26813,7 @@ const PatchedTrainingRecordRequest = z
     expires_date: z.string().nullable(),
     trainer: z.number().int().nullable(),
     notes: z.string(),
+    edit_reason: z.string(),
     archived: z.boolean(),
   })
   .partial();

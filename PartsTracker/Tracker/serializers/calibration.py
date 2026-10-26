@@ -23,6 +23,28 @@ class CalibrationRecordSerializer(SecureModelMixin):
     is_current = serializers.BooleanField(read_only=True)
     days_until_due = serializers.IntegerField(read_only=True)
     days_overdue = serializers.IntegerField(read_only=True, allow_null=True)
+    # Why a recorded calibration is being corrected — required when its outcome or dates
+    # change; kept per field as a RecordEdit (walk 2026-10-22, Corrections #19).
+    edit_reason = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    CORRECTED_FIELDS = ('equipment', 'calibration_date', 'due_date', 'result', 'calibration_type',
+                        'as_found_in_tolerance', 'adjustments_made')
+
+    def create(self, validated_data):
+        validated_data.pop('edit_reason', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        from Tracker.services.core import reasoned_edit
+        why = validated_data.pop('edit_reason', '')
+        changes = reasoned_edit.changed_fields(instance, validated_data, self.CORRECTED_FIELDS)
+        try:
+            why = reasoned_edit.require_reason(changes, why)
+        except ValueError as e:
+            raise serializers.ValidationError({'edit_reason': str(e)})
+        record = super().update(instance, validated_data)
+        reasoned_edit.record(record, changes, why, self.context['request'].user)
+        return record
 
     class Meta:
         model = CalibrationRecord
@@ -38,7 +60,7 @@ class CalibrationRecordSerializer(SecureModelMixin):
             # As-found/As-left
             'as_found_in_tolerance', 'adjustments_made',
             # Notes
-            'notes',
+            'notes', 'edit_reason',
             # Computed status
             'status', 'is_current', 'days_until_due', 'days_overdue',
             # Timestamps

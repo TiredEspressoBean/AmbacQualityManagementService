@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import {
     Select,
     SelectContent,
@@ -96,6 +97,9 @@ export default function EditCalibrationRecordFormPage() {
     const presetEquipment = (useSearch({ strict: false }) as { equipment?: string }).equipment;
 
     const [equipmentSearch, setEquipmentSearch] = useState("");
+    // Why a recorded value is being corrected — the server asks for it when the
+    // record's outcome, dates or who/what change (kept beside each change).
+    const [editReason, setEditReason] = useState("");
 
     const { data: record, isLoading: isLoadingRecord } = useRetrieveCalibrationRecord(recordId || "");
 
@@ -184,6 +188,7 @@ export default function EditCalibrationRecordFormPage() {
             as_found_in_tolerance: values.as_found_in_tolerance,
             adjustments_made: values.adjustments_made,
             notes: values.notes || undefined,
+            ...(mode === "edit" && editReason.trim() ? { edit_reason: editReason.trim() } : {}),
         };
 
         if (mode === "edit" && recordId) {
@@ -196,7 +201,7 @@ export default function EditCalibrationRecordFormPage() {
                     },
                     onError: (err) => {
                         console.error("Update failed:", err);
-                        toast.error("Failed to update calibration record.");
+                        toast.error(apiErrorMessage(err) ?? "Failed to update calibration record.");
                     },
                 }
             );
@@ -343,7 +348,7 @@ export default function EditCalibrationRecordFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Result *</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <Select key={field.value ?? "empty"} onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select result" />
@@ -369,7 +374,7 @@ export default function EditCalibrationRecordFormPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Calibration Type</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                                    <Select key={field.value ?? "empty"} onValueChange={field.onChange} value={field.value ?? ""}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select type" />
@@ -531,6 +536,16 @@ export default function EditCalibrationRecordFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {mode === "edit" && (
+                        <div className="space-y-1.5">
+                            <label htmlFor="edit-reason" className="text-sm font-medium">Reason for the correction</label>
+                            <Textarea id="edit-reason" rows={2} value={editReason}
+                                onChange={(e) => setEditReason(e.target.value)}
+                                placeholder="e.g. Recorded FAIL by mistake; the as-left readings were in tolerance" />
+                            <p className="text-xs text-muted-foreground">Needed when the outcome, dates or who/what change; kept on the record.</p>
+                        </div>
+                    )}
 
                     <div className="flex gap-4">
                         <Button

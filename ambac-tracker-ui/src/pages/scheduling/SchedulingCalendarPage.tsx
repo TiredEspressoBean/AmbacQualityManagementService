@@ -13,6 +13,10 @@
 import { useMemo, useState } from "react";
 import { eachDayOfInterval, endOfDay, format, isSameDay, startOfDay } from "date-fns";
 import { Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 import {
   CalendarBody,
@@ -1116,10 +1120,29 @@ function Row({ label, sub, color, onDelete, canDelete = true }: {
         <div className="truncate">{label}</div>
         <div className="truncate text-[11px] text-muted-foreground">{sub}</div>
       </div>
+      {/* Removing changes what the plant can schedule: labelled, and asked first
+          (walk 2026-10-22: one click on an unlabelled icon deleted a closure). */}
       {canDelete && (
-        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+                    aria-label={`Remove ${label}`} title={`Remove ${label}`}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {label}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {sub ? `${sub}. ` : ""}The schedule no longer accounts for it; re-solve to plan around the change.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={onDelete}>Remove</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

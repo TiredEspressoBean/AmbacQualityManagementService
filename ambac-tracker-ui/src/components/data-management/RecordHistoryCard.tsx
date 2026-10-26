@@ -16,6 +16,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { auditLogOptions } from "@/hooks/useRetrieveAuditLogEntries";
+import { locationSummaryOptions } from "@/hooks/useLocations";
 import { useContentTypeMapping } from "@/hooks/useContentTypes";
 import { endpointFn } from "@/lib/api/endpoint-fn";
 import { CorrectionReasons } from "@/components/audit/CorrectionReasons";
@@ -41,12 +42,16 @@ const show = (v: unknown) => {
     const s = String(n);
     return s.length > 40 ? `${s.slice(0, 40)}…` : s;
 };
-/** A field whose stored value is a code reads as its label (a lot's holds). */
-const showField = (field: string, v: unknown) => {
+/** A field whose stored value is a code reads as its label (a lot's holds); a storage
+ *  location's id reads as its name (a move showed a raw UUID — walk 2026-10-22). */
+const showField = (field: string, v: unknown, locationNames?: Map<string, string>) => {
     const n = norm(v);
     if (n !== null && (field === "hold_reason" || field === "hold_reasons")) {
         const codes = String(n).match(/[A-Z][A-Z_]+/g) ?? [];
         if (codes.length) return codes.map((c) => HOLD_LABELS[c] ?? c).join(", ");
+    }
+    if (n !== null && field === "location" && locationNames?.has(String(n))) {
+        return locationNames.get(String(n))!;
     }
     return show(v);
 };
@@ -93,6 +98,11 @@ export function RecordHistoryCard({ endpoint, id, model }: {
 
     const { getContentTypeId } = useContentTypeMapping();
     const contentType = getContentTypeId(model);
+    const { data: locations } = useQuery(locationSummaryOptions());
+    const locationNames = useMemo(
+        () => new Map((locations ?? []).map((l) => [String(l.id), l.path || l.name])),
+        [locations],
+    );
     const entriesByVersion = useQueries({
         queries: versions.map((v) => ({
             ...auditLogOptions({ content_type: contentType, object_pk: String(v.id), ordering: "timestamp", limit: 100 }),
@@ -180,9 +190,9 @@ export function RecordHistoryCard({ endpoint, id, model }: {
                                     {ev.changes.slice(0, 6).map((c) => (
                                         <div key={c.field} className="flex flex-wrap gap-1">
                                             <span className="font-medium">{fieldLabel(c.field)}:</span>
-                                            <span className="text-muted-foreground line-through">{showField(c.field, c.from)}</span>
+                                            <span className="text-muted-foreground line-through">{showField(c.field, c.from, locationNames)}</span>
                                             <span className="text-muted-foreground">→</span>
-                                            <span>{showField(c.field, c.to)}</span>
+                                            <span>{showField(c.field, c.to, locationNames)}</span>
                                         </div>
                                     ))}
                                     {ev.changes.length > 6 && (

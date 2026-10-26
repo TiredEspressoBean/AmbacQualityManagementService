@@ -19,6 +19,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import {
     Select,
     SelectContent,
@@ -93,6 +94,9 @@ export default function EditTrainingRecordFormPage() {
     const [trainingTypeSearch, setTrainingTypeSearch] = useState("");
     const [userSearch, setUserSearch] = useState("");
     const [trainerSearch, setTrainerSearch] = useState("");
+    // Why a recorded value is being corrected — the server asks for it when the
+    // record's outcome, dates or who/what change (kept beside each change).
+    const [editReason, setEditReason] = useState("");
 
     const { data: record, isLoading: isLoadingRecord } = useRetrieveTrainingRecord(recordId || "");
 
@@ -156,6 +160,7 @@ export default function EditTrainingRecordFormPage() {
             expires_date: values.expires_date || undefined,
             trainer: values.trainer || undefined,
             notes: values.notes || undefined,
+            ...(mode === "edit" && editReason.trim() ? { edit_reason: editReason.trim() } : {}),
         };
 
         if (mode === "edit" && recordId) {
@@ -168,7 +173,7 @@ export default function EditTrainingRecordFormPage() {
                     },
                     onError: (err) => {
                         console.error("Update failed:", err);
-                        toast.error("Failed to update training record.");
+                        toast.error(apiErrorMessage(err) ?? "Failed to update training record.");
                     },
                 }
             );
@@ -399,6 +404,16 @@ export default function EditTrainingRecordFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {mode === "edit" && (
+                        <div className="space-y-1.5">
+                            <label htmlFor="edit-reason" className="text-sm font-medium">Reason for the correction</label>
+                            <Textarea id="edit-reason" rows={2} value={editReason}
+                                onChange={(e) => setEditReason(e.target.value)}
+                                placeholder="e.g. The course was on the 30th, not the 1st" />
+                            <p className="text-xs text-muted-foreground">Needed when the outcome, dates or who/what change; kept on the record.</p>
+                        </div>
+                    )}
 
                     <div className="flex gap-4">
                         <Button

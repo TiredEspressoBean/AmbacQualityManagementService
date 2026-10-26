@@ -530,6 +530,9 @@ class DemoCapaSeeder(BaseSeeder):
         """
         verified_by = user_map.get(ver_data['verified_by'])
         verified_date = (self.today - timedelta(days=ver_data['verified_days_ago'])).date()
+        # A decided result carries when it was decided, as the verify flow writes it;
+        # the lock that freezes a decided verification reads that, not the result.
+        decided = ver_data['effectiveness_result'] != EffectivenessResult.INCONCLUSIVE
 
         ver, _ = CapaVerification.objects.update_or_create(
             capa=capa,
@@ -540,6 +543,8 @@ class DemoCapaSeeder(BaseSeeder):
                 'verification_method': ver_data['verification_method'],  # Explicitly required
                 'verification_criteria': ver_data['verification_criteria'],  # Explicitly required
                 'effectiveness_result': ver_data['effectiveness_result'],  # Already an enum member
+                'effectiveness_decided_at': (self.today - timedelta(days=ver_data['verified_days_ago']))
+                                            if decided else None,
                 'verification_notes': ver_data.get('verification_notes', ''),
             }
         )

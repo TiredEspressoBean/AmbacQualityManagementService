@@ -214,6 +214,10 @@ export type CaptureSummary = {
     display: string;
     /** True when the operator has no response for this capture node. */
     empty: boolean;
+    /** A reading outside its spec (the review's "OUT OF SPEC" mark). */
+    outOfSpec?: boolean;
+    /** The result the operator picked, on a quality-status node ("PASS", "FAIL", …). */
+    qualityResult?: string;
 };
 
 function trimVal(s: string, max = 80): string {
@@ -383,12 +387,15 @@ export function summarizeResponses(
         const label = (attrs.label as string) || type;
         const response = responses[node_id];
         const empty = response === undefined || response === null || response === "";
+        const display = summarizeOne(type, attrs, response);
         return {
             node_id,
             type,
             label,
-            display: summarizeOne(type, attrs, response),
+            display,
             empty,
+            outOfSpec: display.includes("OUT OF SPEC"),
+            qualityResult: type === "qualityStatusField" && typeof response === "string" ? response : undefined,
         };
     });
 }

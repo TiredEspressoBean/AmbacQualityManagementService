@@ -979,6 +979,11 @@ function ReviewStage({
                         responses,
                     );
                     const filled = summary.filter((r) => !r.empty);
+                    // A reading out of spec beside a result of Pass: not wrong data (the
+                    // spec decides at Complete), but worth a second look before it does
+                    // (walk 2026-10-26: 6.2 typed, Pass picked).
+                    const contradicts = !isDeselected && summary.some((r) => r.outOfSpec)
+                        && summary.some((r) => r.qualityResult === "PASS");
                     const missing = isDeselected
                         ? []
                         : findMissingRequired(
@@ -1036,6 +1041,15 @@ function ReviewStage({
                                     Edit
                                 </Button>
                             </div>
+                            {contradicts && (
+                                <div className="flex items-start gap-2 border-b bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-300">
+                                    <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    <span>
+                                        A reading is out of spec, but the result says Pass. Check the reading and the
+                                        result — on Complete, the spec decides.
+                                    </span>
+                                </div>
+                            )}
                             {isDeselected ? (
                                 <div className="px-4 py-2 text-xs italic text-muted-foreground">
                                     Sampling rule excluded this part — nothing to capture.

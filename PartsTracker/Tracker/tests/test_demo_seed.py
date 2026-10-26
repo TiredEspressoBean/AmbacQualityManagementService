@@ -335,6 +335,14 @@ class DemoSeedDarkExhibitTests(TestCase):
         from Tracker.models import User
         self.assertFalse(User.objects.get(email="admin@demo.ambac.com").is_staff)
 
+    def test_a_decided_verification_carries_when_it_was_decided(self):
+        """Corrections #16 (2026-10-26): the lock that freezes a decided CAPA verification
+        reads effectiveness_decided_at. A seeded Confirmed result without it was editable."""
+        from Tracker.models import CapaVerification
+        decided = CapaVerification.objects.exclude(effectiveness_result='INCONCLUSIVE')
+        self.assertTrue(decided.exists())
+        self.assertFalse(decided.filter(effectiveness_decided_at__isnull=True).exists())
+
     def test_a_false_fail_waits_to_be_put_right(self):
         """QA Inspector / QA Manager corrections (2026-10-22): a body failed at Body
         Inspection for a burr that wasn't there, quarantined with an open disposition
