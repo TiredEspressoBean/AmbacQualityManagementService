@@ -11739,6 +11739,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Schedules/adherence/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Plan vs actual: every op started, running, or due-and-never-started in the window, from every schedule that was live — each judged against the plan as it stood when it started. */
+        get: operations["api_Schedules_adherence_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Schedules/capable-to-promise/": {
         parameters: {
             query?: never;
@@ -20849,6 +20866,33 @@ export interface components {
             /** @default VISIBLE */
             visibility: components["schemas"]["VisibilityEnum"];
         };
+        AdherenceOp: {
+            /** Format: uuid */
+            id: string;
+            state: components["schemas"]["AdherenceOpStateEnum"];
+            /** Format: date-time */
+            planned_start: string;
+            /** Format: date-time */
+            planned_end: string;
+            /** Format: date-time */
+            actual_start: string | null;
+            /** Format: date-time */
+            actual_end: string | null;
+            /** Format: uuid */
+            part_id: string | null;
+            part_erp: string | null;
+            work_order: string | null;
+            step_name: string | null;
+            machine_name: string | null;
+            operator_name: string | null;
+        };
+        /**
+         * @description * `done` - done
+         *     * `running` - running
+         *     * `missed` - missed
+         * @enum {string}
+         */
+        AdherenceOpStateEnum: "done" | "running" | "missed";
         /** @description Correct what's left of a lot to what is physically there. */
         AdjustQuantityRequest: {
             /**
@@ -61396,6 +61440,30 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Schedules_adherence_list: {
+        parameters: {
+            query?: {
+                /** @description How far back, in days (default 7, max 31). */
+                days?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdherenceOp"][];
                 };
             };
         };

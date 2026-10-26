@@ -84,6 +84,29 @@ export type VisibilityEnum =
    * @enum VISIBLE, INTERNAL
    */
   "VISIBLE" | "INTERNAL";
+export type AdherenceOp = {
+  id: string;
+  state: AdherenceOpStateEnum;
+  planned_start: string;
+  planned_end: string;
+  actual_start: string | null;
+  actual_end: string | null;
+  part_id: string | null;
+  part_erp: string | null;
+  work_order: string | null;
+  step_name: string | null;
+  machine_name: string | null;
+  operator_name: string | null;
+};
+export type AdherenceOpStateEnum =
+  /**
+   * * `done` - done
+   * `running` - running
+   * `missed` - missed
+   *
+   * @enum done, running, missed
+   */
+  "done" | "running" | "missed";
 export type AffectedWorkorderRow = {
   wo_id: string;
   erp_id: string;
@@ -24628,6 +24651,21 @@ const PinBatchRequestRequest = z.object({
   task_ids: z.array(z.string().uuid()),
   is_pinned: z.boolean(),
 });
+const AdherenceOpStateEnum = z.enum(["done", "running", "missed"]);
+const AdherenceOp = z.object({
+  id: z.string().uuid(),
+  state: AdherenceOpStateEnum,
+  planned_start: z.string().datetime({ offset: true }),
+  planned_end: z.string().datetime({ offset: true }),
+  actual_start: z.string().datetime({ offset: true }).nullable(),
+  actual_end: z.string().datetime({ offset: true }).nullable(),
+  part_id: z.string().uuid().nullable(),
+  part_erp: z.string().nullable(),
+  work_order: z.string().nullable(),
+  step_name: z.string().nullable(),
+  machine_name: z.string().nullable(),
+  operator_name: z.string().nullable(),
+});
 const CtpBindingResource = z.object({
   resource: z.string(),
   need: z.number(),
@@ -29940,6 +29978,8 @@ export const schemas = {
   BulkReassignOperatorRequestRequest,
   MoveBatchRequestRequest,
   PinBatchRequestRequest,
+  AdherenceOpStateEnum,
+  AdherenceOp,
   CtpBindingResource,
   CapableToPromise,
   LaborBucket,
@@ -52595,6 +52635,26 @@ part; 422 (whole move refused) if any part breaks a local constraint.`,
   },
   {
     method: "get",
+    path: "/api/Schedules/adherence/",
+    alias: "api_Schedules_adherence_list",
+    description: `Plan vs actual: every op started, running, or due-and-never-started in the window, from every schedule that was live — each judged against the plan as it stood when it started.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(AdherenceOp),
+  },
+  {
+    method: "get",
     path: "/api/Schedules/capable-to-promise/",
     alias: "api_Schedules_capable_to_promise_retrieve",
     description: `Could we take this order? Explodes the part type&#x27;s routing, adds it to the
@@ -55684,7 +55744,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepOverrides/:id/reject/",
@@ -55704,10 +55767,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -60850,7 +60910,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "delete",
     path: "/api/User/:id/",
@@ -60865,10 +60928,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/:id/access-history/",

@@ -67,6 +67,7 @@ import { BulkReassignDialog } from "@/components/scheduling/BulkReassignDialog";
 import { UnscheduledPanel } from "@/components/scheduling/UnscheduledPanel";
 import { PullInWorkDialog } from "@/components/scheduling/PullInWorkDialog";
 import { ActiveRunBanner } from "@/components/scheduling/ActiveRunBanner";
+import { PlanVsActualView } from "@/components/scheduling/PlanVsActualView";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 const FENCE = {
@@ -376,6 +377,9 @@ export function SchedulingGanttPage() {
   // toolbar buttons. Higher zoom widens the day columns so hourly detail is legible.
   const [zoom, setZoom] = useState(220);
   const [groupBy, setGroupBy] = useState<"machine" | "operator" | "workorder">("machine");
+  // Plan vs actual: what happened against the plan (live schedule only).
+  const [planVsActual, setPlanVsActual] = useState(false);
+  const showPlanVsActual = planVsActual && !viewingDraft;
   const [search, setSearch] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailBatchId, setDetailBatchId] = useState<string | null>(null);
@@ -1270,15 +1274,45 @@ export function SchedulingGanttPage() {
             ] as const).map(([mode, label]) => (
               <Button
                 key={mode}
-                variant={groupBy === mode ? "secondary" : "ghost"}
+                variant={groupBy === mode && !showPlanVsActual ? "secondary" : "ghost"}
                 size="sm"
                 className="h-7 px-2 text-xs"
-                onClick={() => setGroupBy(mode)}
+                onClick={() => { setGroupBy(mode); setPlanVsActual(false); }}
               >
                 {label}
               </Button>
             ))}
+            <Button
+              variant={showPlanVsActual ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={viewingDraft}
+              title={viewingDraft
+                ? "Plan vs actual compares the live schedule with what happened — switch to Live."
+                : "What happened against the plan, the last 7 days"}
+              onClick={() => {
+                setPlanVsActual(true);
+                if (groupBy === "workorder") setGroupBy("machine");
+              }}
+            >
+              Plan vs actual
+            </Button>
           </div>
+          {showPlanVsActual && (
+            <div className="mr-1 flex items-center rounded-md border p-0.5">
+              {([["machine", "By machine"], ["operator", "By person"]] as const).map(([mode, label]) => (
+                <Button
+                  key={mode}
+                  variant={groupBy === mode ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setGroupBy(mode)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className="mr-1 flex items-center gap-1 rounded-md border px-1" title="Ctrl/⌘ + scroll, or pinch, to zoom">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => nudgeZoom(0.8)}>
               <ZoomOut className="h-4 w-4" />
@@ -1617,6 +1651,12 @@ export function SchedulingGanttPage() {
         />
       ) : tasksQuery.isLoading ? (
         <BoardStatus title="Loading tasks…" />
+      ) : showPlanVsActual ? (
+        <PlanVsActualView
+          liveTasks={allRows}
+          groupBy={groupBy === "operator" ? "operator" : "machine"}
+          zoom={zoom}
+        />
       ) : rows.length === 0 ? (
         // An empty board with no reason is the worst thing the scheduler can show.
         // When the solve came back infeasible the backend explains why (usually more

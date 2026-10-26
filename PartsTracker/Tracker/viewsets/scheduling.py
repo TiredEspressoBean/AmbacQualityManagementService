@@ -205,6 +205,36 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             return Response({'detail': 'No draft.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(self.get_serializer(sched).data)
 
+    @extend_schema(
+        parameters=[OpenApiParameter('days', int, required=False,
+                                     description="How far back, in days (default 7, max 31).")],
+        responses={200: inline_serializer(name='AdherenceOp', many=True, fields={
+            'id': serializers.UUIDField(),
+            'state': serializers.ChoiceField(choices=['done', 'running', 'missed']),
+            'planned_start': serializers.DateTimeField(),
+            'planned_end': serializers.DateTimeField(),
+            'actual_start': serializers.DateTimeField(allow_null=True),
+            'actual_end': serializers.DateTimeField(allow_null=True),
+            'part_id': serializers.UUIDField(allow_null=True),
+            'part_erp': serializers.CharField(allow_null=True),
+            'work_order': serializers.CharField(allow_null=True),
+            'step_name': serializers.CharField(allow_null=True),
+            'machine_name': serializers.CharField(allow_null=True),
+            'operator_name': serializers.CharField(allow_null=True),
+        })},
+        description="Plan vs actual: every op started, running, or due-and-never-started in "
+                    "the window, from every schedule that was live — each judged against the "
+                    "plan as it stood when it started.",
+    )
+    @action(detail=False, methods=['get'], pagination_class=None)
+    def adherence(self, request):
+        from Tracker.services.scheduling.adherence import adherence_ops
+        try:
+            days = int(request.query_params.get('days', 7))
+        except ValueError:
+            return Response({'detail': 'days must be a whole number.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(adherence_ops(self.tenant, days=days))
+
     @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=['get'])
     def compare(self, request):

@@ -648,6 +648,18 @@ class ScheduledTask(SecureModel):
         help_text="Real completion, stamped from the StepExecution exit. Null while the "
                   "op is unstarted or still running.",
     )
+    # The plan as it stood when the op started, taken from the schedule live at that
+    # moment. A re-solve pins a running op at "now" and rewrites its end, so judging the
+    # finish against the current plan would hide the slip (plan vs actual, 2026-10-26).
+    planned_start_at_start = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Planned start of this op in the schedule live when it actually started.",
+    )
+    planned_end_at_start = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Planned finish of this op in the schedule live when it actually "
+                  "started — what its finish is judged against.",
+    )
 
     class Meta:
         verbose_name = 'Scheduled Task'

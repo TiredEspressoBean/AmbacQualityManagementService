@@ -1549,6 +1549,11 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
                     rows.append(ScheduledTask(part_id=part_id, **common))
             # tenant-safe: every row is constructed with tenant=tenant via `common` above.
             ScheduledTask.objects.bulk_create(rows)
+            # A running op keeps its real start and the plan it started on across the
+            # re-solve, so plan-vs-actual still sees it (and judges it fairly).
+            if not draft:
+                from Tracker.services.scheduling.actuals import carry_running_actuals
+                carry_running_actuals(result)
             # Attribute a binding-constraint reason to any late task (heuristic, E7).
             from Tracker.services.scheduling.late_cause import attribute_late_causes
             attribute_late_causes(result)

@@ -28777,6 +28777,38 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Schedules/adherence/:
+    get:
+      operationId: api_Schedules_adherence_list
+      description: 'Plan vs actual: every op started, running, or due-and-never-started
+        in the window, from every schedule that was live — each judged against the
+        plan as it stood when it started.'
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: How far back, in days (default 7, max 31).
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdherenceOp'
+          description: ''
   /api/Schedules/capable-to-promise/:
     get:
       operationId: api_Schedules_capable_to_promise_retrieve
@@ -49414,6 +49446,70 @@ components:
           default: VISIBLE
       required:
       - message
+    AdherenceOp:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/AdherenceOpStateEnum'
+        planned_start:
+          type: string
+          format: date-time
+        planned_end:
+          type: string
+          format: date-time
+        actual_start:
+          type: string
+          format: date-time
+          nullable: true
+        actual_end:
+          type: string
+          format: date-time
+          nullable: true
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        part_erp:
+          type: string
+          nullable: true
+        work_order:
+          type: string
+          nullable: true
+        step_name:
+          type: string
+          nullable: true
+        machine_name:
+          type: string
+          nullable: true
+        operator_name:
+          type: string
+          nullable: true
+      required:
+      - actual_end
+      - actual_start
+      - id
+      - machine_name
+      - operator_name
+      - part_erp
+      - part_id
+      - planned_end
+      - planned_start
+      - state
+      - step_name
+      - work_order
+    AdherenceOpStateEnum:
+      enum:
+      - done
+      - running
+      - missed
+      type: string
+      description: |-
+        * `done` - done
+        * `running` - running
+        * `missed` - missed
     AdjustQuantityRequest:
       type: object
       description: Correct what's left of a lot to what is physically there.
