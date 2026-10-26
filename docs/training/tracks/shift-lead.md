@@ -114,6 +114,10 @@ severity.
 2. When the machine is back, **Resolve** it. The record keeps when it went down and
    came back, who reported it and who resolved it.
 
+**Recorded it wrong?** The wrong machine, or the wrong times? **Correct…** on its row
+(turn off **Open only** to find a resolved one). Fix the machine, category, times or
+what happened, and say why. Each change and your reason stay on the record.
+
 A quarantine or a CAPA is raised on its own form, not here.
 
 ---
@@ -198,6 +202,11 @@ and direct (job) hours per operator, and **Awaiting approval** lists each finish
 entry: shift, break, lunch, or production against a work order. **Approve** one, or
 **Approve all**. Your own entries read *Your time*: someone else approves those.
 
+Someone clocked out late, or forgot to clock in on time? **Correct times** on their
+entry, before you approve it. Change the clock-in or clock-out, say why, and the hours
+recalculate. Approve the hours only once they're right: an approved entry can't be
+corrected here.
+
 ---
 
 ## 8. Send a part back a step
@@ -215,8 +224,9 @@ body needs measuring again.
    Grinding visit is marked rolled back, not deleted. The other three wait at
    Grinding: the lot moves together, so it waits for this one.
 
-A step can be undone within an hour of finishing it. After that, or where the step
-requires it, the rollback is sent for approval instead, and the page says so.
+A step can be undone directly for a short while after it's finished; each step sets
+how long. After that, or where the step requires it, the rollback is sent for
+approval instead, and the page says so.
 
 ---
 

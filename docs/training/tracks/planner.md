@@ -123,6 +123,11 @@ puts it back.
 4. **Commit draft** makes it the live plan; **Discard** drops it (*Draft
    discarded*). With nothing changed, discard it.
 
+**Committed it by mistake?** The board then reads *This plan was committed from a
+what-if.* **Restore the previous plan**, with a reason, puts the plan it replaced
+back live. The committed one becomes a draft again, to commit or discard. It goes one
+step back only.
+
 ---
 
 ## 5. Put people on the plan

@@ -75,6 +75,10 @@ the card tells you what's coming and when.
 
 **On order** now shows the 30 still owed, still overdue.
 
+**Chose That's all, but the slip says more is coming?** The lot's **Ordered** line
+reads *nothing more expected*. **Reopen the rest** puts what's still owed back on
+order, with the same PO, line and promised date, and keeps your reason on the lot.
+
 !!! important "The system never guesses a short delivery"
     Guessing either strands a balance forever or closes a line that's still owed.
     The packing slip tells you which; you say it.
@@ -89,6 +93,10 @@ why. The receipt itself changes, and what's on hand with it, so the sheet for th
 ERP (module 8) carries 12. It's offered only while nothing has been taken from the
 lot. **Adjust quantity…** is something else: stock that's gone missing since it
 arrived, where the receipt was right.
+
+Booked it against the wrong supplier, PO or line? On the lot, under **Came from**,
+**Correct receipt details** and say why. Like the quantity, this is only offered
+while nothing has been used from the lot, split off it or adjusted.
 
 ---
 
@@ -203,6 +211,10 @@ posted here.*
 Deliveries still *awaiting a decision* stay off the sheet until inspection decides
 them.
 
+**Marked one posted that you hadn't keyed?** Open the lot: *Posted to ERP* shows the
+date with **Unmark**. Say why, and the delivery goes back on the next sheet. The mark
+it had and your reason stay on the lot.
+
 ---
 
 ## R. Cores (reman shops)
@@ -211,7 +223,7 @@ them.
 
 ### R1. A core arrives with its identity
 
-1. **Remanufacturing** > **Cores** > **Receive**. Serial `CRI-77821-MF`, type Common
+1. **Remanufacturing** > **Dashboard** > **Receive Core**. Serial `CRI-77821-MF`, type Common
    Rail Injector, **Customer Return** from **Midwest Fleet Services**, **This unit
    goes back to them**, for order `ORD-2024-0044`. Note what you see in **Condition
    Notes**. **Receive Core**.
@@ -221,6 +233,11 @@ them.
    see, don't clean yet.*
 3. **Complete step**: *Step submitted — awaiting QA sign-off.* It goes on to
    Disassembly when QA signs.
+
+**Picked the wrong fulfilment or order?** While the core is still *Received*, before
+teardown starts, **Correct receipt…** on its page changes the mode or the order, with
+a reason. Repair and return needs the order it came in for. Once teardown starts, the
+receipt stands.
 
 ### R2. A pallet arrives without serials
 

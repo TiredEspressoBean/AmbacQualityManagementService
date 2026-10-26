@@ -327,6 +327,11 @@ than the rebuild they bought. The unit waits, *Awaiting customer authorisation*.
 
 **Declined…** records a refusal the same way.
 
+**Recorded the wrong answer?** Until the repair it approved has started, **Correct
+customer's answer…** turns it the other way, with a reason. Corrected to declined,
+the approved repairs are taken back and the unit waits to go back unrepaired.
+Corrected to approved, the rebuild resumes. Both answers stay in the core's notes.
+
 ### R2. Recovered stock or buy new
 
 **You will:** decide what goes back into an exchange unit, and say why.

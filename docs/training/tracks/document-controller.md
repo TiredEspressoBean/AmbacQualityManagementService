@@ -73,6 +73,12 @@ by classification.
 
 You route documents; the people the template names approve them.
 
+**Submitted it with a mistake in it?** Under review, it can't be edited: the edit page
+says so and won't save. On the **Approval** tab (or **Approvals** > *My Submitted
+Requests*), **Withdraw request** and say why. The approvers are no longer asked, the
+document goes back to *Draft*, and you correct it and submit again. The withdrawn
+request stays in its approval history as *Cancelled*.
+
 ---
 
 ## 3. Approve it (as the QA manager)
@@ -85,6 +91,10 @@ password, and **Submit Approval**. The document is now *Approved*.
 
 The signature and password make it an electronic signature: the record says who
 approved it, when, and that it was really them.
+
+Answered too soon? While the request is still open, the approver can use **Change my
+response**, with a reason. Their answer is taken back and they're asked again. Once
+the request is decided, its responses stand.
 
 ---
 
@@ -125,11 +135,16 @@ period), and the **Due for review** count will find it then.
 **You will:** mark a document obsolete.
 
 Open a released document that's no longer needed. **Mark obsolete**: *It is withdrawn
-from use from today and kept for its retention period. This can't be undone; a new
-revision is how a document comes back.* Confirm.
+from use from today and kept for its retention period. Marked obsolete by mistake, it
+can be reinstated while no later revision has replaced it.* Confirm.
 
 It stays in the library as *Obsolete*, readable for the record. Deleting is not how a
 controlled document ends.
+
+**Obsoleted the wrong one?** **Reinstate** puts it back in force: released again if it
+had been released, with its obsolete date cleared. Say why. The reason shows under
+*Corrections* on its **Audit Trail**. A revision that a later one replaced can't be
+reinstated; revise the current revision instead.
 
 ---
 

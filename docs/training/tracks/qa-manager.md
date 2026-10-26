@@ -114,8 +114,9 @@ a pass, so the close rests on evidence, not on the inspector's word.
 **Decided wrong?** Until it's closed, a decision can be changed. **Scrap** asks you
 to confirm, because the part is scrapped as soon as you save. Change a Scrap to
 another decision and you're asked why: the part comes back out of scrap, and both
-decisions and your reason stay in the resolution notes. Once closed, it can't be
-changed.
+decisions and your reason stay in the resolution notes. Closed by mistake?
+**Reopen** it, with a reason. It's *In progress* again, to re-decide or close again,
+and the decision stands until you do. Your reason goes into the resolution notes.
 
 ---
 
