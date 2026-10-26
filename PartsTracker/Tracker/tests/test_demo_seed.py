@@ -339,9 +339,10 @@ class DemoSeedDarkExhibitTests(TestCase):
         """Corrections #16 (2026-10-26): the lock that freezes a decided CAPA verification
         reads effectiveness_decided_at. A seeded Confirmed result without it was editable."""
         from Tracker.models import CapaVerification
-        decided = CapaVerification.objects.exclude(effectiveness_result='INCONCLUSIVE')
-        self.assertTrue(decided.exists())
-        self.assertFalse(decided.filter(effectiveness_decided_at__isnull=True).exists())
+        with tenant_context(self.tenant.id):
+            decided = CapaVerification.objects.exclude(effectiveness_result='INCONCLUSIVE')
+            self.assertTrue(decided.exists())
+            self.assertFalse(decided.filter(effectiveness_decided_at__isnull=True).exists())
 
     def test_a_false_fail_waits_to_be_put_right(self):
         """QA Inspector / QA Manager corrections (2026-10-22): a body failed at Body
