@@ -167,8 +167,15 @@ def override_summary(execution) -> dict | None:
     override = snap.get('override')
     if not override:
         return None
+    flag = override.get('flag') or {}
     return {
+        'execution_id': str(execution.id),
         'visit_number': execution.visit_number or 1,
+        # Flagged for QA review as given wrongly (the override itself stands).
+        'flagged': bool(flag),
+        'flag_reason': flag.get('reason') or '',
+        'flagged_by_name': flag.get('by_name') or '',
+        'flagged_at': flag.get('at'),
         'worker_name': override.get('worker_name') or '',
         'authorized_by_name': override.get('authorized_by_name') or '',
         'reason': override.get('reason') or '',
@@ -176,6 +183,31 @@ def override_summary(execution) -> dict | None:
         'missing_training': [m.get('training', '') for m in snap.get('missing') or []
                              if isinstance(m, dict)],
     }
+
+
+def flag_override(execution, user, reason: str):
+    """An override that shouldn't have been given: flag it for QA review (user decision
+    2026-10-26, Corrections #11). The override stays — the work happened under it — and
+    the flag, with who raised it, why and when, rides on the same record, so the QA
+    manager's overrides review shows it.
+
+    Raises:
+        ValueError: no reason, no override on this execution, or already flagged.
+    """
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the override is being flagged.")
+    snap = dict(execution.training_authorization or {})
+    override = dict(snap.get('override') or {})
+    if not override:
+        raise ValueError("No training override was given on this step.")
+    if override.get('flag'):
+        raise ValueError("This override is already flagged for QA review.")
+    override['flag'] = {'by': user.id, 'by_name': _person(user), 'reason': reason, 'at': _iso()}
+    snap['override'] = override
+    execution.training_authorization = snap
+    execution.save(update_fields=['training_authorization', 'updated_at'])
+    return execution
 
 
 def training_override_rows(executions, *, since=None, until=None, limit=500) -> list[dict]:

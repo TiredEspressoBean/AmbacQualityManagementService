@@ -96,6 +96,7 @@ def trace_lot(lot) -> dict:
               .order_by("consumed_at")):
         part = u.part
         uses.append({
+            "usage_id": str(u.id),
             "lot_number": u.lot.lot_number,
             "quantity": float(u.qty_consumed),
             "consumed_at": u.consumed_at,

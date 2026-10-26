@@ -190,6 +190,45 @@ class MaterialConsumptionTests(TenantContextMixin, TestCase):
         self.assertEqual(MaterialUsage.objects.filter(part=self.part).count(), 1)
         self.assertEqual(lot.quantity_remaining, Decimal('8'))
 
+    def test_a_draw_on_the_wrong_lot_is_corrected_to_the_right_one(self):
+        """Corrections #4 (user decision 2026-10-26): the recorded lot is swapped; the
+        wrong lot gets its quantity back, the right one is drawn, the edit keeps both."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.mes.consumption import correct_usage_lot
+        wrong = self._lot(10, number="WRONG")
+        right = self._lot(10, number="RIGHT")
+        usage = MaterialUsage.objects.create(tenant=self.tenant, lot=wrong, part=self.part,
+                                             work_order=self.wo, step=self.step1,
+                                             qty_consumed=Decimal('2'), consumed_by=self.operator)
+        with self.assertRaisesMessage(ValueError, "Say why"):
+            correct_usage_lot(usage, right, user=self.operator, reason=" ")
+        correct_usage_lot(usage, right, user=self.operator, reason="Picked from the next bin")
+        wrong.refresh_from_db()
+        right.refresh_from_db()
+        usage.refresh_from_db()
+        self.assertEqual(usage.lot_id, right.id)
+        self.assertEqual((wrong.quantity_remaining, wrong.status), (Decimal('10'), 'ACCEPTED'))
+        self.assertEqual((right.quantity_remaining, right.status), (Decimal('8'), 'IN_USE'))
+        edit = RecordEdit.objects.get(object_id=usage.id, field_name='lot')
+        self.assertEqual((edit.old_value, edit.new_value), ("WRONG", "RIGHT"))
+
+    def test_a_correction_refuses_another_item_or_too_little_stock(self):
+        from Tracker.services.mes.consumption import correct_usage_lot
+        wrong = self._lot(10, number="WRONG")
+        usage = MaterialUsage.objects.create(tenant=self.tenant, lot=wrong, part=self.part,
+                                             work_order=self.wo, step=self.step1,
+                                             qty_consumed=Decimal('2'), consumed_by=self.operator)
+        other = Material.objects.create(tenant=self.tenant, name="O-ring")
+        elsewhere = MaterialLot.objects.create(
+            tenant=self.tenant, material=other, lot_number="OR-1", quantity=Decimal(5),
+            quantity_remaining=Decimal(5), unit_of_measure="EA", status='ACCEPTED',
+            received_date=timezone.localdate())
+        with self.assertRaisesMessage(ValueError, "not the same item"):
+            correct_usage_lot(usage, elsewhere, user=self.operator, reason="x")
+        short = self._lot(1, number="SHORT")
+        with self.assertRaisesMessage(ValueError, "left"):
+            correct_usage_lot(usage, short, user=self.operator, reason="x")
+
     def test_a_lot_through_the_operator_path_draws_once_per_part(self):
         """Seed walk INJ-QA-INSPECT-011 showed two draws per part on a lot step. The
         operator path: each part's "done" (complete_step), then the lot advance."""

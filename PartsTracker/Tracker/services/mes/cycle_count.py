@@ -88,17 +88,45 @@ def record_count(count, entries: list[dict]):
 
 
 def submit_count(count, user):
-    """Close counting. A line nobody counted is taken as not there (0) — the counter has
-    walked the location, and what wasn't entered wasn't seen."""
+    """Close counting. A line nobody counted stays uncounted: it is left out of the
+    differences and never applied, so a skipped shelf isn't written off as missing (user
+    decision 2026-10-26). A counter who finds a spot empty enters 0."""
     if count.status != "OPEN":
         raise ValueError(f"{count.count_number} is already {count.get_status_display().lower()}.")
-    for line in count.lines:
-        if line.get("counted") is None:
-            line["counted"] = 0
     count.status = "SUBMITTED"
     count.submitted_by = user if getattr(user, "is_authenticated", False) else None
     count.submitted_at = timezone.now()
-    count.save(update_fields=["lines", "status", "submitted_by", "submitted_at", "updated_at"])
+    count.save(update_fields=["status", "submitted_by", "submitted_at", "updated_at"])
+    return count
+
+
+def not_counted(count) -> int:
+    """Lines left blank — expected here, but nobody said whether they are."""
+    return sum(1 for line in count.lines if line.get("counted") is None)
+
+
+def send_back(count, user, reason: str):
+    """A lead sends a submitted count back for a recount, before it's applied (user
+    decision 2026-10-26, Corrections #29). It reopens with what was entered, for the
+    counter to correct; the reason is kept on the count's record. An applied count is
+    final."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import CycleCount, RecordEdit
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why it's going back for a recount.")
+    if count.status != "SUBMITTED":
+        raise ValueError(f"{count.count_number} is {count.get_status_display().lower()} — only a "
+                         f"submitted count, not yet applied, can go back for a recount.")
+    with transaction.atomic():
+        RecordEdit.objects.create(
+            tenant=count.tenant, content_type=ContentType.objects.get_for_model(CycleCount),
+            object_id=count.id, field_name="status", old_value="SUBMITTED", new_value="OPEN",
+            reason=reason, edited_by=user)
+        count.status = "OPEN"
+        count.submitted_by = None
+        count.submitted_at = None
+        count.save(update_fields=["status", "submitted_by", "submitted_at", "updated_at"])
     return count
 
 

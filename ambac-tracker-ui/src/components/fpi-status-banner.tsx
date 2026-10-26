@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, AlertTriangle, Lock, CheckCircle, Clock, PenLine } from "lucide-react";
-import { useFpiCheckStatus, useFpiGetOrCreate, useFpiPass, useFpiFail, useFpiWaive } from "@/hooks/useFpiRecords";
+import { useFpiCheckStatus, useFpiGetOrCreate, useFpiPass, useFpiFail, useFpiVoidPass, useFpiWaive } from "@/hooks/useFpiRecords";
 import { useState } from "react";
 import {
     Dialog,
@@ -51,12 +51,15 @@ export function FpiStatusBanner({
     const [waiveOpen, setWaiveOpen] = useState(false);
     const [notes, setNotes] = useState("");
     const [waiveReason, setWaiveReason] = useState("");
+    const [voidOpen, setVoidOpen] = useState(false);
+    const [voidReason, setVoidReason] = useState("");
 
     const { data: fpiStatus, isLoading, refetch } = useFpiCheckStatus(workOrderId, stepId);
     const getOrCreateMutation = useFpiGetOrCreate();
     const passMutation = useFpiPass();
     const failMutation = useFpiFail();
     const waiveMutation = useFpiWaive();
+    const voidMutation = useFpiVoidPass();
 
     const afterChange = () => {
         refetch();
@@ -69,6 +72,19 @@ export function FpiStatusBanner({
     // ---- Satisfied: run released --------------------------------------------
     if (fpiStatus.satisfied) {
         if (compact) return null;
+        const voidable = fpiStatus.can_sign_off ? fpiStatus.passed_fpi_id : null;
+        const handleVoid = async () => {
+            if (!voidable || !voidReason.trim()) return;
+            try {
+                await voidMutation.mutateAsync({ id: voidable, reason: voidReason.trim() });
+                toast.success("Pass voided — the run holds until the first piece is re-inspected");
+                setVoidOpen(false);
+                setVoidReason("");
+                afterChange();
+            } catch (e: unknown) {
+                toast.error(apiErrorMessage(e) ?? "Failed to void the pass");
+            }
+        };
         return (
             <div className="rounded-lg p-3 border bg-green-500/10 border-green-500/50">
                 <div className="flex items-center gap-3">
@@ -79,8 +95,35 @@ export function FpiStatusBanner({
                             Setup verified — all parts can proceed through this step.
                         </p>
                     </div>
+                    {voidable && (
+                        <Button size="sm" variant="ghost" onClick={() => setVoidOpen(true)}>
+                            Void pass
+                        </Button>
+                    )}
                     <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
+                <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Void the first-piece pass</DialogTitle>
+                            <DialogDescription>
+                                The pass stays on record, marked voided with your reason. The step&rsquo;s
+                                release is withdrawn and a new first-piece inspection opens: parts not yet
+                                past this step wait until the piece is re-inspected. Parts already past it
+                                are not pulled back.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Textarea rows={3} value={voidReason} onChange={(e) => setVoidReason(e.target.value)}
+                            placeholder="Why — e.g. bore read on the wrong gauge" aria-label="Reason" />
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setVoidOpen(false)} disabled={voidMutation.isPending}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleVoid}
+                                disabled={!voidReason.trim() || voidMutation.isPending}>
+                                {voidMutation.isPending ? "Voiding…" : "Void pass"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     }

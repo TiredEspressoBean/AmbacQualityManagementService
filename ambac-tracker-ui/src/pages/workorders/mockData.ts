@@ -53,7 +53,12 @@ export type MockStepVisit = {
     batch_cycles?: { batch_id: string; part_count: number }[];
     /** Supervisor overrides of the training gate, one per visit that had one. */
     training_overrides?: {
+        execution_id?: string;
         visit_number: number;
+        /** Flagged for QA review as given wrongly; the override itself stands. */
+        flagged?: boolean;
+        flag_reason?: string;
+        flagged_by_name?: string;
         worker_name: string;
         authorized_by_name: string;
         reason: string;

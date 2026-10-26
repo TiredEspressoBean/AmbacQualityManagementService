@@ -40,7 +40,7 @@ from Tracker.serializers.mes_standard import (
     ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
     LotTraceSerializer, DockMetricsSerializer,
-    MaterialUsageSerializer,
+    MaterialUsageSerializer, CorrectUsageLotSerializer,
     TimeEntrySerializer, ClockInSerializer,
     BOMSerializer, BOMListSerializer, BOMLineSerializer,
     AssemblyUsageSerializer, AssemblyRemoveSerializer,
@@ -659,7 +659,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     search_fields = ['lot_number', 'supplier_lot_number', 'material_description',
                      'material__name', 'material__part_number', 'material_type__name',
                      'supplier__name', 'erp_po_number', 'heat_number']
-    filterset_fields = ['status', 'supplier', 'material_type', 'location']
+    filterset_fields = ['status', 'supplier', 'material_type', 'material', 'location']
     # promised_date is the useful axis for ON_ORDER lots — they have no received_date yet.
     ordering_fields = ['received_date', 'lot_number', 'expiration_date', 'promised_date']
     ordering = ['-received_date']
@@ -1510,6 +1510,29 @@ class MaterialUsageViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['lot', 'part', 'work_order', 'is_substitute']
     ordering_fields = ['consumed_at']
     ordering = ['-consumed_at']
+    # A stock correction, so the cycle-count authority (leads, QA manager, production
+    # manager) — not every operator who draws material.
+    action_permissions = {'correct_lot': ['apply_cyclecount']}
+    crud_exempt_actions = {'correct_lot'}
+
+    @extend_schema(request=CorrectUsageLotSerializer, responses={200: MaterialUsageSerializer})
+    @action(detail=True, methods=['post'], url_path='correct-lot')
+    def correct_lot(self, request, pk=None):
+        """The draw was recorded against the wrong lot: swap it to the lot actually
+        used, with a reason. Quantities move back and forth between the two lots."""
+        from Tracker.services.mes.consumption import correct_usage_lot
+        usage = self.get_object()
+        ser = CorrectUsageLotSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        new_lot = MaterialLot.objects.filter(pk=ser.validated_data['lot']).first()  # tenant-safe: .objects auto-scopes
+        if new_lot is None:
+            return Response({'detail': 'Lot not found'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            usage = correct_usage_lot(usage, new_lot, user=request.user,
+                                      reason=ser.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialUsageSerializer(usage, context={'request': request}).data)
 
 
 # ===== TIME ENTRY VIEWSETS =====

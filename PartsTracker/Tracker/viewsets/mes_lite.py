@@ -3322,11 +3322,13 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
     serializer_class = StepExecutionSerializer
     # Saving work in progress is gated like committing it (substep submit), not as
     # creating an execution — POST would otherwise demand add_stepexecution.
-    crud_exempt_actions = {'save_draft'}
+    crud_exempt_actions = {'save_draft', 'flag_override'}
     # Reviewing training overrides across parts is browsing the trail across records
-    # (Tenant Admin, Document Controller, QA Manager, Auditor).
+    # (Tenant Admin, Document Controller, QA Manager, Auditor). Flagging one as given
+    # wrongly is the override authority's call (leads, QA manager, production manager).
     action_permissions = {'save_draft': ['add_substepcompletion'],
-                          'training_overrides': ['view_auditlog']}
+                          'training_overrides': ['view_auditlog'],
+                          'flag_override': ['override_training_gate']}
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'part': ['exact', 'isnull'],
@@ -3376,6 +3378,10 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             'reason': serializers.CharField(),
             'at': serializers.DateTimeField(allow_null=True),
             'missing_training': serializers.ListField(child=serializers.CharField()),
+            'flagged': serializers.BooleanField(),
+            'flag_reason': serializers.CharField(),
+            'flagged_by_name': serializers.CharField(),
+            'flagged_at': serializers.DateTimeField(allow_null=True),
         }),
     )
     @action(detail=False, methods=['get'], url_path='training-overrides', pagination_class=None)
@@ -3391,6 +3397,22 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             return Response({'detail': 'since and until are dates (YYYY-MM-DD).'},
                             status=status.HTTP_400_BAD_REQUEST)
         return Response(rows)
+
+    @extend_schema(
+        request=inline_serializer('FlagOverrideInput', fields={'reason': serializers.CharField()}),
+        responses={200: inline_serializer('FlagOverrideResponse', fields={
+            'execution_id': serializers.UUIDField(), 'flagged': serializers.BooleanField()})},
+        description="Flag a training override given wrongly, for QA review. The override "
+                    "stays (the work happened under it); the flag and its reason show in the "
+                    "overrides review.")
+    @action(detail=True, methods=['post'], url_path='flag-override')
+    def flag_override(self, request, pk=None):
+        from Tracker.services.mes.lifecycle import flag_override
+        try:
+            ex = flag_override(self.get_object(), request.user, request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'execution_id': str(ex.id), 'flagged': True})
 
     # ------------------------------------------------------------------
     # Training authorization gate (warn + supervisor override)

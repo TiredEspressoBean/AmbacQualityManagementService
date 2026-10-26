@@ -3006,6 +3006,9 @@ class FPIStatus(models.TextChoices):
     PASSED = 'PASSED', 'Passed'
     FAILED = 'FAILED', 'Failed'
     WAIVED = 'WAIVED', 'Waived'
+    # A pass given in error, voided with a reason (a RecordEdit of `status`). Kept as
+    # recorded; a fresh PENDING record takes its place and the run holds behind it.
+    VOIDED = 'VOIDED', 'Voided'
 
 
 class FPIResult(models.TextChoices):

@@ -2546,6 +2546,10 @@ export type CycleCount = {
   status_display: string;
   lines: Array<CycleCountLine>;
   variances: Array<CycleCountVariance>;
+  /**
+   * Lines left blank: not counted, so left out of the differences and never applied.
+   */
+  not_counted: number;
   started_by: number | null;
   started_by_name: string | null;
   submitted_by_name: string | null;
@@ -3170,6 +3174,7 @@ export type FPIRecord = {
     * `PASSED` - Passed
     * `FAILED` - Failed
     * `WAIVED` - Waived
+    * `VOIDED` - Voided
      */
   status: FPIRecordStatusEnum;
   status_display: string;
@@ -3265,10 +3270,11 @@ export type FPIRecordStatusEnum =
    * `PASSED` - Passed
    * `FAILED` - Failed
    * `WAIVED` - Waived
+   * `VOIDED` - Voided
    *
-   * @enum NOT_REQUIRED, PENDING, PASSED, FAILED, WAIVED
+   * @enum NOT_REQUIRED, PENDING, PASSED, FAILED, WAIVED, VOIDED
    */
-  "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED";
+  "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED" | "VOIDED";
 export type FPIRecordResultEnum =
   /**
    * * `PASS` - Pass
@@ -4189,6 +4195,7 @@ export type TraceSplitLot = {
   quantity: number;
 };
 export type TraceUse = {
+  usage_id: string;
   lot_number: string;
   quantity: number;
   consumed_at: string;
@@ -6740,7 +6747,7 @@ export type MaterialUsage = {
   qty_consumed: string;
   consumed_at: string;
   consumed_by: number;
-  consumed_by_name: string;
+  consumed_by_name: string | null;
   is_substitute?: /**
    * True if this material was a substitute for the BOM-specified material
    */
@@ -12314,7 +12321,12 @@ export type TravelerBatchMeasurement = {
   recorded_at: string | null;
 };
 export type TravelerTrainingOverride = {
+  execution_id: string;
   visit_number: number;
+  flagged: boolean;
+  flag_reason: string;
+  flagged_by_name: string;
+  flagged_at: string | null;
   worker_name: string;
   authorized_by_name: string;
   reason: string;
@@ -20225,6 +20237,7 @@ const CycleCount = z.object({
   status_display: z.string(),
   lines: z.array(CycleCountLine),
   variances: z.array(CycleCountVariance),
+  not_counted: z.number().int(),
   started_by: z.number().int().nullable(),
   started_by_name: z.string().nullable(),
   submitted_by_name: z.string().nullable(),
@@ -20255,6 +20268,7 @@ const CountEntryRequest = z.object({
   note: z.string().optional(),
 });
 const RecordCountRequest = z.object({ entries: z.array(CountEntryRequest) });
+const SendBackCountRequest = z.object({ reason: z.string().min(1) });
 const DisassemblyBOMLine = z.object({
   id: z.string().uuid(),
   core_type: z.string().uuid(),
@@ -20775,6 +20789,7 @@ const FPIRecordStatusEnum = z.enum([
   "PASSED",
   "FAILED",
   "WAIVED",
+  "VOIDED",
 ]);
 const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
 const FPIRecord = z.object({
@@ -20858,6 +20873,11 @@ const api_FPIRecords_pass_create_Body = z
     cosign_signature: z.string(),
   })
   .partial();
+const VoidFpiPassInputRequest = z.object({ reason: z.string().min(1) });
+const VoidFpiPassResponse = z.object({
+  id: z.string().uuid(),
+  status: z.string(),
+});
 const api_FPIRecords_waive_create_Body = z
   .object({
     reason: z.string(),
@@ -21921,6 +21941,7 @@ const TracePart = z.object({
   shipped_at: z.string().datetime({ offset: true }).nullable(),
 });
 const TraceUse = z.object({
+  usage_id: z.string().uuid(),
   lot_number: z.string(),
   quantity: z.number(),
   consumed_at: z.string().datetime({ offset: true }),
@@ -22060,7 +22081,7 @@ const MaterialUsage = z.object({
   qty_consumed: z.string().regex(/^-?\d{0,8}(?:\.\d{0,4})?$/),
   consumed_at: z.string().datetime({ offset: true }),
   consumed_by: z.number().int(),
-  consumed_by_name: z.string(),
+  consumed_by_name: z.string().nullable(),
   is_substitute: z.boolean().optional(),
   substitution_reason: z.string().max(200).optional(),
   created_at: z.string().datetime({ offset: true }),
@@ -22072,6 +22093,10 @@ const PaginatedMaterialUsageList = z.object({
   next: z.string().url().nullish(),
   previous: z.string().url().nullish(),
   results: z.array(MaterialUsage),
+});
+const CorrectUsageLotRequest = z.object({
+  lot: z.string().uuid(),
+  reason: z.string().min(1),
 });
 const Material = z.object({
   id: z.string().uuid(),
@@ -23270,7 +23295,12 @@ const TravelerBatchCycle = z.object({
   measurements: z.array(TravelerBatchMeasurement),
 });
 const TravelerTrainingOverride = z.object({
+  execution_id: z.string().uuid(),
   visit_number: z.number().int(),
+  flagged: z.boolean(),
+  flag_reason: z.string(),
+  flagged_by_name: z.string(),
+  flagged_at: z.string().datetime({ offset: true }).nullable(),
   worker_name: z.string(),
   authorized_by_name: z.string(),
   reason: z.string(),
@@ -25160,6 +25190,11 @@ const ClaimStepInputRequest = z
     override_reason: z.string().min(1),
   })
   .partial();
+const FlagOverrideInputRequest = z.object({ reason: z.string().min(1) });
+const FlagOverrideResponse = z.object({
+  execution_id: z.string().uuid(),
+  flagged: z.boolean(),
+});
 const CaptureDraftRequestRequest = z.object({
   substep: z.string().uuid(),
   responses: z.object({}).partial().passthrough(),
@@ -25192,6 +25227,10 @@ const TrainingOverrideRow = z.object({
   reason: z.string(),
   at: z.string().datetime({ offset: true }).nullable(),
   missing_training: z.array(z.string()),
+  flagged: z.boolean(),
+  flag_reason: z.string(),
+  flagged_by_name: z.string(),
+  flagged_at: z.string().datetime({ offset: true }).nullable(),
 });
 const WIPSummary = z.object({
   step_id: z.string().uuid(),
@@ -29317,6 +29356,7 @@ export const schemas = {
   StartCycleCountRequest,
   CountEntryRequest,
   RecordCountRequest,
+  SendBackCountRequest,
   DisassemblyBOMLine,
   PaginatedDisassemblyBOMLineList,
   DisassemblyBOMLineRequest,
@@ -29374,6 +29414,8 @@ export const schemas = {
   PatchedFPIRecordRequest,
   api_FPIRecords_fail_create_Body,
   api_FPIRecords_pass_create_Body,
+  VoidFpiPassInputRequest,
+  VoidFpiPassResponse,
   api_FPIRecords_waive_create_Body,
   api_FPIRecords_get_or_create_create_Body,
   FPIGetOrCreateExisting,
@@ -29512,6 +29554,7 @@ export const schemas = {
   LateDelivery,
   MaterialUsage,
   PaginatedMaterialUsageList,
+  CorrectUsageLotRequest,
   Material,
   PaginatedMaterialList,
   MaterialRequest,
@@ -29834,6 +29877,8 @@ export const schemas = {
   StepExecutionRequest,
   PatchedStepExecutionRequest,
   ClaimStepInputRequest,
+  FlagOverrideInputRequest,
+  FlagOverrideResponse,
   CaptureDraftRequestRequest,
   CaptureDraftResponse,
   CaptureDraftError,
@@ -35106,9 +35151,29 @@ const endpoints1 = makeApi([
   },
   {
     method: "post",
+    path: "/api/CycleCounts/:id/send-back/",
+    alias: "api_CycleCounts_send_back_create",
+    description: `Send a submitted count back for a recount, with a reason. It reopens with what was entered. An applied count is final.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: CycleCount,
+  },
+  {
+    method: "post",
     path: "/api/CycleCounts/:id/submit/",
     alias: "api_CycleCounts_submit_create",
-    description: `Finish counting; anything not counted is taken as not there.`,
+    description: `Finish counting. A line left blank stays uncounted: it is left out of the differences and never applied.`,
     requestFormat: "json",
     parameters: [
       {
@@ -38811,7 +38876,14 @@ operations against the quantity available (cumulative capacity).`,
         name: "status",
         type: "Query",
         schema: z
-          .enum(["FAILED", "NOT_REQUIRED", "PASSED", "PENDING", "WAIVED"])
+          .enum([
+            "FAILED",
+            "NOT_REQUIRED",
+            "PASSED",
+            "PENDING",
+            "VOIDED",
+            "WAIVED",
+          ])
           .optional(),
       },
       {
@@ -38984,6 +39056,26 @@ before batch production proceeds. Configurable per step via fpi_scope:
       },
     ],
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "post",
+    path: "/api/FPIRecords/:id/void-pass/",
+    alias: "api_FPIRecords_void_pass_create",
+    description: `Void a first-piece pass given in error, with a reason. The pass is kept and marked voided, its step sign-off withdrawn, and a fresh pending FPI opened: the run holds until the piece is re-inspected.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: VoidFpiPassResponse,
   },
   {
     method: "post",
@@ -40126,7 +40218,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/JobRoles/import/",
@@ -40155,10 +40250,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/LaborCalendarBlocks/",
@@ -41094,6 +41186,11 @@ Query params:
         schema: z.string().uuid().optional(),
       },
       {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "material_type",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -41677,6 +41774,11 @@ they just ordered against a list of shortages.`,
         schema: z.string().uuid().optional(),
       },
       {
+        name: "material",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
         name: "material_type",
         type: "Query",
         schema: z.string().uuid().optional(),
@@ -42139,6 +42241,27 @@ The buy-side item list, distinct from in-house PartTypes; holds purchase lead ti
     description: `Material consumption records (read-only, created via lot consumption)`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialUsage,
+  },
+  {
+    method: "post",
+    path: "/api/MaterialUsages/:id/correct-lot/",
+    alias: "api_MaterialUsages_correct_lot_create",
+    description: `The draw was recorded against the wrong lot: swap it to the lot actually
+used, with a reason. Quantities move back and forth between the two lots.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CorrectUsageLotRequest,
+      },
       {
         name: "id",
         type: "Path",
@@ -44480,7 +44603,10 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/Orders/:id/add-note/",
@@ -44550,10 +44676,7 @@ Import/Export endpoints (auto-configured from model):
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/Orders/:id/set-milestone/",
@@ -50142,7 +50265,10 @@ the completion blockers.`,
       },
     ],
     response: RcaRecord,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/RcaRecords/:id/",
@@ -50206,10 +50332,7 @@ approving it (review_rca) completes the review.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/RcaRecords/export/:export_format/",
@@ -54389,6 +54512,26 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
   },
   {
     method: "post",
+    path: "/api/StepExecutions/:id/flag-override/",
+    alias: "api_StepExecutions_flag_override_create",
+    description: `Flag a training override given wrongly, for QA review. The override stays (the work happened under it); the flag and its reason show in the overrides review.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: FlagOverrideResponse,
+  },
+  {
+    method: "post",
     path: "/api/StepExecutions/:id/save-draft/",
     alias: "api_StepExecutions_save_draft_create",
     description: `Save one substep&#x27;s work in progress, so the step resumes where the operator left off. Records nothing official — that happens at Complete step, through substep submit.`,
@@ -55650,7 +55793,10 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: Steps,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/Steps/:id/version-history/",
@@ -55816,10 +55962,7 @@ Returns the active + fallback rulesets for a given step`,
       },
     ],
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepTimings/",
@@ -60520,7 +60663,10 @@ untouched. Request/response shape is unchanged.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/User/send-invitation/",
@@ -60578,10 +60724,7 @@ Stores the selected tenant in the session.`,
         schema: z.unknown(),
       },
     ],
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/uninvited/",

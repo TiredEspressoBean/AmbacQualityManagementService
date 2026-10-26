@@ -164,6 +164,41 @@ class ShipTests(_Fixture):
         again = self._ship(parts)  # the fresh Ship-step visit ships again
         self.assertEqual(again.status_code, 201, again.content)
 
+    def test_void_rejoins_a_piece_split_off_to_ship(self):
+        """Corrections #33 (user decision 2026-10-26): the split-off piece rejoins its
+        parent — one lot again — and is retired, kept and pointing at the parent."""
+        from decimal import Decimal
+        from Tracker.models import MaterialLot
+        from Tracker.services.mes.shipping import ship, void_shipment
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant, lot_number="SEAL-1", material_description="Seal kit",
+            quantity=Decimal(10), quantity_remaining=Decimal(10), unit_of_measure="EA",
+            status="ACCEPTED")
+        shipment = ship(tenant=self.tenant, user=self.user, customer=self.fleet,
+                        lots=[{"lot": lot, "quantity": Decimal(3)}])
+        piece = MaterialLot.objects.get(parent_lot=lot)
+        void_shipment(shipment, user=self.user, reason="wrong pallet")
+        lot.refresh_from_db()
+        piece.refresh_from_db()
+        self.assertEqual((lot.status, lot.quantity_remaining), ("ACCEPTED", Decimal(10)))
+        self.assertEqual((piece.status, piece.quantity_remaining), ("CONSUMED", Decimal(0)))
+        self.assertEqual(piece.parent_lot_id, lot.id)
+
+    def test_void_leaves_a_lot_that_shipped_whole_as_it_was(self):
+        from decimal import Decimal
+        from Tracker.models import MaterialLot
+        from Tracker.services.mes.shipping import ship, void_shipment
+        lot = MaterialLot.objects.create(
+            tenant=self.tenant, lot_number="SEAL-2", material_description="Seal kit",
+            quantity=Decimal(5), quantity_remaining=Decimal(5), unit_of_measure="EA",
+            status="ACCEPTED")
+        shipment = ship(tenant=self.tenant, user=self.user, customer=self.fleet,
+                        lots=[{"lot": lot, "quantity": None}])
+        void_shipment(shipment, user=self.user, reason="wrong pallet")
+        lot.refresh_from_db()
+        self.assertEqual((lot.status, lot.quantity_remaining), ("ACCEPTED", Decimal(5)))
+        self.assertFalse(MaterialLot.objects.filter(parent_lot=lot).exists())
+
     def test_paperwork_editable_after_shipping_but_customer_is_not(self):
         s = self._ship([self._part("E-9")]).json()
         resp = self.client.patch(f"/api/CustomerShipments/{s['id']}/",

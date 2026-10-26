@@ -1867,7 +1867,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
     # ApprovalRequestViewSet.submit_response; see the crud_exempt_actions note
     # in Tracker/permissions.py.
     crud_exempt_actions = {
-        'pass_inspection', 'fail_inspection', 'waive', 'acknowledge',
+        'pass_inspection', 'fail_inspection', 'waive', 'acknowledge', 'void_pass',
     }
 
     # Buy-off is an independent authority act requiring `sign_off_fpi`
@@ -1890,6 +1890,8 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         # Acknowledging ("I'm on it") is a QA act, but it records no verdict and
         # attests to nothing — no co-signature path, so it stays a plain gate.
         'acknowledge': ['sign_off_fpi'],
+        # Withdrawing a buy-off is the buy-off authority's act.
+        'void_pass': ['sign_off_fpi'],
     }
 
     def get_serializer_class(self):
@@ -2244,6 +2246,25 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
+        description="Void a first-piece pass given in error, with a reason. The pass is "
+                    "kept and marked voided, its step sign-off withdrawn, and a fresh pending "
+                    "FPI opened: the run holds until the piece is re-inspected.",
+        request=inline_serializer(name="VoidFpiPassInput",
+                                  fields={"reason": serializers.CharField()}),
+        responses={201: inline_serializer(name="VoidFpiPassResponse", fields={
+            "id": serializers.UUIDField(), "status": serializers.CharField()})},
+    )
+    @action(detail=True, methods=['post'], url_path='void-pass')
+    def void_pass(self, request, pk=None):
+        """Void a pass given in error; returns the new pending FPI."""
+        from Tracker.services.qms.fpi import void_fpi_pass
+        try:
+            fresh = void_fpi_pass(self.get_object(), request.user, request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"id": str(fresh.id), "status": fresh.status}, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
         description="Acknowledge a pending FPI (QA is on it). Idempotent - the "
                     "first acknowledgment wins; the operator surface shows 'Seen by X'.",
         request=None,
@@ -2460,6 +2481,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             step_id=step_id,
             status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]
         ).exists()
+        # The pass a buy-off authority may void if it was given in error.
+        passed_id = (base_qs.filter(work_order_id=work_order_id, step_id=step_id,
+                                    status=FPIStatus.PASSED)
+                     .order_by('-created_at').values_list('id', flat=True).first())
 
         pending_fpi = base_qs.filter(
             work_order_id=work_order_id,
@@ -2495,6 +2520,7 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         return Response({
             "requires_fpi": True,
             "satisfied": passed_fpi,
+            "passed_fpi_id": str(passed_id) if passed_id else None,
             "has_pending": pending_fpi is not None,
             "pending_fpi_id": str(pending_fpi.id) if pending_fpi else None,
             "designated_part_id": str(designated.id) if designated else None,

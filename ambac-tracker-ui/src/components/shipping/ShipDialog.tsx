@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api/generated";
 import { resolveScan } from "@/lib/scan";
+import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { errorOf, useShipParts, type ReadyOrder } from "@/hooks/useShipping";
@@ -25,9 +26,23 @@ export type LotPick = { id: string; lot_number: string; item_name: string; remai
 function AddLotField({ onAdd }: { onAdd: (l: LotPick) => void }) {
     const [code, setCode] = useState("");
     const add = async () => {
-        const hit = await resolveScan(code).catch(() => null);
+        // resolveScan is null only for "no such code"; anything else is a failed lookup,
+        // which must not read as "no lot matches" (walk 2026-10-26).
+        let hit: Awaited<ReturnType<typeof resolveScan>>;
+        try {
+            hit = await resolveScan(code);
+        } catch (e) {
+            toast.error(apiErrorMessage(e) ?? "Couldn't look the lot up — try again.");
+            return;
+        }
         if (hit?.kind !== "LOT") { toast.error(`No lot matches “${code.trim()}”.`); return; }
-        const lot = await api.api_MaterialLots_retrieve({ params: { id: hit.id } });
+        let lot;
+        try {
+            lot = await api.api_MaterialLots_retrieve({ params: { id: hit.id } });
+        } catch (e) {
+            toast.error(apiErrorMessage(e) ?? "Couldn't load the lot — try again.");
+            return;
+        }
         if (!["ACCEPTED", "IN_USE"].includes(lot.status ?? "")) {
             toast.error(`Lot ${lot.lot_number} is ${String(lot.status).toLowerCase()} — only accepted stock ships.`);
             return;

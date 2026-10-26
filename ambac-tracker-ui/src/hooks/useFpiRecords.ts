@@ -6,6 +6,8 @@ import { getCookie } from "@/lib/utils";
 export type FpiCheckStatusResponse = {
     requires_fpi: boolean;
     satisfied: boolean;
+    /** The pass a buy-off authority may void if it was given in error (not a waive). */
+    passed_fpi_id?: string | null;
     has_pending: boolean;
     pending_fpi_id: string | null;
     /** The part the buy-off is made against (first to enter the step). */
@@ -173,6 +175,27 @@ export function useFpiFail() {
                 },
             }),
 
+        onSuccess: () => {
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "parts" });
+        },
+    });
+}
+
+/**
+ * Void a pass given in error: the pass is kept and marked, a fresh pending FPI holds
+ * the run until the piece is re-inspected.
+ */
+export function useFpiVoidPass() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        meta: { suppressGlobalError: true },
+        mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+            api.api_FPIRecords_void_pass_create({ reason }, {
+                params: { id },
+                headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" },
+            }),
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-status" });

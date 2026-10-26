@@ -810,6 +810,8 @@ class TracePartSerializer(serializers.Serializer):
 
 
 class TraceUseSerializer(serializers.Serializer):
+    # The draw itself, so a draw recorded against the wrong lot can be corrected.
+    usage_id = serializers.UUIDField()
     # The lot drawn from: this one, or a lot split off it.
     lot_number = serializers.CharField()
     quantity = serializers.FloatField()
@@ -919,9 +921,15 @@ class MaterialUsageSerializer(SecureModelMixin):
         )
         read_only_fields = ('created_at', 'updated_at', 'consumed_at')
 
-    @extend_schema_field(serializers.CharField())
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_consumed_by_name(self, obj):
         return obj.consumed_by.display_name if obj.consumed_by else None
+
+
+class CorrectUsageLotSerializer(serializers.Serializer):
+    """The lot this draw really came from, and why the record was wrong."""
+    lot = serializers.UUIDField(help_text="The lot actually used.")
+    reason = serializers.CharField(allow_blank=False)
 
 
 # ===== TIME ENTRY SERIALIZERS =====

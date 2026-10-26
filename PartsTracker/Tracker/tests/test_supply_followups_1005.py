@@ -94,8 +94,11 @@ class LotShippingTests(_Fixture):
                                 format="json")
         self.assertEqual(void.status_code, 200, void.content)
         from Tracker.models import MaterialLot
+        # The split-off piece rejoins its lot: one lot again (user decision 2026-10-26).
         child = MaterialLot.objects.get(pk=shipped["id"])
-        self.assertEqual((child.status, child.quantity_remaining), ("ACCEPTED", Decimal(36)))
+        self.assertEqual((child.status, child.quantity_remaining), ("CONSUMED", Decimal(0)))
+        ours.refresh_from_db()
+        self.assertEqual((ours.status, ours.quantity_remaining), ("ACCEPTED", Decimal(100)))
 
     def test_a_customers_lot_cant_go_to_someone_else_and_shipped_stock_is_not_supply(self):
         theirs = self._lot("THEIRS-2", owner=self.fleet)
@@ -186,3 +189,38 @@ class CycleCountTests(_Fixture):
         from Tracker.models import Tenant  # noqa: F401  (tenant membership comes with tenant=)
         self.client.force_authenticate(user=clerk)
         self.assertEqual(self.client.post(f"/api/CycleCounts/{first['id']}/apply/", format="json").status_code, 403)
+
+    def test_an_uncounted_line_is_not_written_off(self):
+        """Corrections #29: a blank line used to be submitted as 0 — "Not found" — and
+        applying wrote the stock off. Blank stays blank; an empty spot is entered as 0."""
+        skipped = self._lot("CC-E", qty="40", where="Rack 5")
+        empty = self._lot("CC-F", qty="10", where="Rack 5")
+        c = self.client.post("/api/CycleCounts/", {"location": "Rack 5"}, format="json").json()
+        self.client.post(f"/api/CycleCounts/{c['id']}/record/", {"entries": [
+            {"kind": "LOT", "id": str(empty.id), "counted": "0"}]}, format="json")
+        sub = self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json").json()
+        self.assertEqual({v["label"]: v["variance"] for v in sub["variances"]}, {"CC-F": "MISSING"})
+        self.assertEqual(sub["not_counted"], 1)
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        skipped.refresh_from_db()
+        empty.refresh_from_db()
+        self.assertEqual((skipped.quantity_remaining, empty.quantity_remaining), (Decimal(40), Decimal(0)))
+
+    def test_a_lead_sends_a_submitted_count_back_for_recount(self):
+        """Corrections #29 (user decision 2026-10-26): before applying, with a reason; the
+        entries are kept; an applied count is final."""
+        from Tracker.models import RecordEdit
+        lot = self._lot("CC-G", qty="30", where="Rack 6")
+        c = self.client.post("/api/CycleCounts/", {"location": "Rack 6"}, format="json").json()
+        self.client.post(f"/api/CycleCounts/{c['id']}/record/", {"entries": [
+            {"kind": "LOT", "id": str(lot.id), "counted": "3"}]}, format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
+        url = f"/api/CycleCounts/{c['id']}/send-back/"
+        self.assertEqual(self.client.post(url, {"reason": ""}, format="json").status_code, 400)
+        back = self.client.post(url, {"reason": "30 keyed as 3"}, format="json")
+        self.assertEqual((back.status_code, back.json()["status"]), (200, "OPEN"))
+        self.assertEqual(back.json()["lines"][0]["counted"], 3)
+        self.assertTrue(RecordEdit.objects.filter(object_id=c["id"], reason="30 keyed as 3").exists())
+        self.client.post(f"/api/CycleCounts/{c['id']}/submit/", format="json")
+        self.client.post(f"/api/CycleCounts/{c['id']}/apply/", format="json")
+        self.assertEqual(self.client.post(url, {"reason": "again"}, format="json").status_code, 400)

@@ -378,3 +378,64 @@ def _mark_line_issued(part, step, item, tenant) -> None:
     if row is not None and row.issued_at is None:
         row.issued_at = timezone.now()
         row.save(update_fields=['issued_at'])
+
+
+def _after_return(lot) -> str:
+    if lot.quantity_remaining <= 0:
+        return 'CONSUMED'
+    return 'ACCEPTED' if lot.quantity_remaining >= lot.quantity else 'IN_USE'
+
+
+@transaction.atomic
+def correct_usage_lot(usage, new_lot, *, user, reason: str):
+    """The draw was recorded against the wrong lot: point it at the lot actually used
+    (user decision 2026-10-26, Corrections #4). The wrong lot gets its quantity back,
+    the right one is drawn, and the record — which is what a recall trace reads — now
+    names the right lot. The change and its reason are kept as an edit of `lot`.
+
+    Raises ValueError for anything that isn't a like-for-like swap."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.utils import timezone
+    from Tracker.models import MaterialLot, MaterialUsage, RecordEdit
+    from Tracker.services.life_tracking.shelf_life import assert_lot_usable
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the lot is being corrected")
+    if usage.lot_id is None:
+        raise ValueError("This draw is a harvested component, not stock from a lot")
+    if new_lot.pk == usage.lot_id:
+        raise ValueError("That is the lot already recorded")
+    ids = sorted([usage.lot_id, new_lot.pk], key=str)  # lock in a fixed order
+    locked = {lot.pk: lot for lot in MaterialLot.objects.select_for_update().filter(pk__in=ids)}  # tenant-safe: .objects auto-scopes
+    old, new = locked[usage.lot_id], locked.get(new_lot.pk)
+    if new is None:
+        raise ValueError("Lot not found")
+    if (old.material_id, old.material_type_id) != (new.material_id, new.material_type_id):
+        raise ValueError(f"Lot {new.lot_number} is not the same item as {old.lot_number}")
+    if new.archived or new.status not in ('ACCEPTED', 'IN_USE'):
+        raise ValueError(f"Lot {new.lot_number} is {new.get_status_display().lower()}, not stock that can be used")
+    if new.owner_id != old.owner_id:
+        raise ValueError(f"Lot {new.lot_number} belongs to someone else than {old.lot_number} does")
+    assert_lot_usable(new)
+    qty = usage.qty_consumed
+    if new.quantity_remaining < qty:
+        raise ValueError(f"Lot {new.lot_number} has {new.quantity_remaining} {new.unit_of_measure} left; "
+                         f"this draw took {qty}")
+
+    old.quantity_remaining += qty
+    old.status = _after_return(old)
+    old.save(update_fields=['quantity_remaining', 'status', 'updated_at'])
+    new.quantity_remaining -= qty
+    new.status = 'CONSUMED' if new.quantity_remaining <= 0 else 'IN_USE'
+    new.save(update_fields=['quantity_remaining', 'status', 'updated_at'])
+
+    RecordEdit.objects.create(
+        tenant=usage.tenant, content_type=ContentType.objects.get_for_model(MaterialUsage),
+        object_id=usage.id, field_name='lot', old_value=old.lot_number, new_value=new.lot_number,
+        reason=reason, edited_by=user)
+    # An update, not a save: MaterialUsage.save() draws its lot down on insert only,
+    # and the draw above is the one that counts.
+    MaterialUsage.objects.filter(pk=usage.pk).update(lot=new, updated_at=timezone.now())  # tenant-safe: .objects auto-scopes
+    usage.refresh_from_db()
+    return usage

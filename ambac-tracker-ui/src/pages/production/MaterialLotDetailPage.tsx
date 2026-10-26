@@ -11,6 +11,8 @@ import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEdi
 import { LotHoldBadges } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { MoveLotDialog } from "@/components/locations/MoveLotDialog";
+import { CorrectUsageLotDialog } from "@/components/receiving/CorrectUsageLotDialog";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { materialLotOptions } from "@/hooks/useReceivingMutations";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import type { Schema } from "@/lib/api/types";
@@ -60,6 +62,9 @@ export function MaterialLotDetailPage() {
     const { data: lot, isLoading } = useQuery(materialLotOptions(lotId));
     const [docsOpen, setDocsOpen] = useState(false);
     const [moveOpen, setMoveOpen] = useState(false);
+    // A draw recorded against this lot that really came from another (leads, QA).
+    const [wrongDraw, setWrongDraw] = useState<{ id: string; quantity: number } | null>(null);
+    const { has: hasPerm } = usePermissionSet();
     const { data: trace } = useQuery(traceOptions(lotId));
     const { downloadReport } = useReportEmail();
 
@@ -264,7 +269,13 @@ export function MaterialLotDetailPage() {
                                             <tr key={i} className="border-b align-top last:border-0">
                                                 <td className="py-2 pr-3 tabular-nums">{u.quantity} {unit}<div className="text-xs text-muted-foreground">{u.step ?? ""}</div>
                                                     {/* Drawn from a lot split off this one. */}
-                                                    {u.lot_number !== lot?.lot_number && <div className="text-xs text-muted-foreground">from {u.lot_number}</div>}</td>
+                                                    {u.lot_number !== lot?.lot_number && <div className="text-xs text-muted-foreground">from {u.lot_number}</div>}
+                                                    {u.lot_number === l.lot_number && hasPerm("apply_cyclecount") && (
+                                                        <button type="button" className="text-xs text-muted-foreground underline hover:text-foreground"
+                                                            onClick={() => setWrongDraw({ id: u.usage_id, quantity: u.quantity })}>
+                                                            Wrong lot?
+                                                        </button>
+                                                    )}</td>
                                                 <td className="py-2 pr-3">{u.part ? <PartCell p={u.part} /> : "—"}</td>
                                                 <td className="py-2 pr-3">
                                                     {u.built_into.length === 0 ? <span className="text-muted-foreground">—</span>
@@ -300,6 +311,13 @@ export function MaterialLotDetailPage() {
             <MoveLotDialog lot={{ id: lotId, lot_number: l.lot_number, storage_location: l.storage_location,
                                   quantity_remaining: l.quantity_remaining, unit_of_measure: l.unit_of_measure }}
                 open={moveOpen} onOpenChange={setMoveOpen} />
+            {wrongDraw && (
+                <CorrectUsageLotDialog usageId={wrongDraw.id} lotId={lotId} lotNumber={l.lot_number}
+                    quantity={wrongDraw.quantity} unitOfMeasure={l.unit_of_measure}
+                    materialId={l.material ? String(l.material) : null}
+                    materialTypeId={l.material_type ? String(l.material_type) : null}
+                    open onOpenChange={(o) => { if (!o) setWrongDraw(null); }} />
+            )}
             <RecordHistoryCard endpoint="MaterialLots" id={lotId} model="materiallot" />
         </div>
     );

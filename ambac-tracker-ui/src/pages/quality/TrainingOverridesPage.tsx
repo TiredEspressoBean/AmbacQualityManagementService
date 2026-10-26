@@ -31,7 +31,10 @@ export function TrainingOverridesPage() {
         ...trainingOverridesOptions(since, until),
         enabled: canReview && !!since && !!until,
     });
-    const rows = data ?? [];
+    const [flaggedOnly, setFlaggedOnly] = useState(false);
+    const all = data ?? [];
+    const flaggedCount = all.filter((r) => r.flagged).length;
+    const rows = flaggedOnly ? all.filter((r) => r.flagged) : all;
 
     return (
         <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -59,8 +62,13 @@ export function TrainingOverridesPage() {
                             <Input id="tov-until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
                         </div>
                         <div className="pb-2 text-sm text-muted-foreground">
-                            {isLoading ? "Loading…" : `${rows.length} override${rows.length === 1 ? "" : "s"}`}
+                            {isLoading ? "Loading…" : `${all.length} override${all.length === 1 ? "" : "s"}`}
                         </div>
+                        {/* An override flagged as given wrongly is what QA looks at first. */}
+                        <label className="flex items-center gap-2 pb-2 text-sm">
+                            <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} />
+                            Flagged for review only ({flaggedCount})
+                        </label>
                     </div>
 
                     {error ? (
@@ -104,7 +112,15 @@ export function TrainingOverridesPage() {
                                                         : <span className="text-xs text-muted-foreground">—</span>}
                                                 </div>
                                             </td>
-                                            <td className="p-2 italic">{r.reason ? `“${r.reason}”` : "—"}</td>
+                                            <td className="p-2">
+                                                <span className="italic">{r.reason ? `“${r.reason}”` : "—"}</span>
+                                                {r.flagged && (
+                                                    <div className="mt-1 text-xs text-amber-700">
+                                                        <Badge variant="outline" className="mr-1 border-amber-500 text-amber-700">Flagged</Badge>
+                                                        {r.flagged_by_name}{r.flag_reason ? `: “${r.flag_reason}”` : ""}
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -74,6 +74,7 @@ import {
     FileText,
 } from "lucide-react";
 import { UndoSplitButton } from "./SplitWorkOrderUndo";
+import { FlagOverrideButton } from "@/components/training/FlagOverrideButton";
 import { ReportExceptionDialog } from "./ReportExceptionDialog";
 
 type SplitMode = "QUANTITY" | "OPERATION" | "REWORK";
@@ -897,6 +898,11 @@ function StepHistoryPanel({ part }: { part: MockPart }) {
                                     , authorized by {o.authorized_by_name || "a supervisor"}
                                     {o.at ? ` on ${new Date(o.at).toLocaleString()}` : ""}
                                     {o.reason ? ` — “${o.reason}”` : ""}
+                                    {o.flagged
+                                        ? <span className="ml-2 font-medium">Flagged for QA review{o.flagged_by_name ? ` by ${o.flagged_by_name}` : ""}{o.flag_reason ? ` — “${o.flag_reason}”` : ""}</span>
+                                        : o.execution_id
+                                            ? <FlagOverrideButton executionId={o.execution_id} flagged={false} />
+                                            : null}
                                 </TableCell>
                             </TableRow>
                         ))}

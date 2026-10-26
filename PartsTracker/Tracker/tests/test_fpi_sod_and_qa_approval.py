@@ -179,3 +179,33 @@ class FpiSodAndQaApprovalTests(TenantContextMixin, VectorTestCase):
         _, blockers_after = self.step.can_advance_from_step(self.se, self.wo)
         self.assertFalse(any("First Piece Inspection required" in b for b in blockers_after))
         self.assertFalse(any("QA signoff required" in b for b in blockers_after))
+
+    def test_a_pass_given_in_error_is_voided_and_the_run_holds_again(self):
+        """Corrections #9 (user decision 2026-10-26): the pass is kept, marked voided
+        with its reason; a fresh pending FPI holds the run; its re-pass releases it."""
+        from Tracker.models import RecordEdit
+        from Tracker.services.qms.fpi import void_fpi_pass
+        self._sign_substep(self.operator)
+        pass_fpi(self.fpi, self.qa)
+        with self.assertRaisesMessage(ValueError, "Say why"):
+            void_fpi_pass(self.fpi, self.qa, "")
+        fresh = void_fpi_pass(self.fpi, self.qa, "Bore read on the wrong gauge")
+        self.fpi.refresh_from_db()
+        self.assertEqual((self.fpi.status, self.fpi.result), (FPIStatus.VOIDED, "PASS"))
+        self.assertEqual(self.fpi.inspected_by, self.qa)  # kept as recorded
+        self.assertTrue(RecordEdit.objects.filter(object_id=self.fpi.id,
+                                                  reason="Bore read on the wrong gauge").exists())
+        self.assertEqual(fresh.status, FPIStatus.PENDING)
+        self.assertEqual(fresh.designated_part_id, self.part.id)
+        self.assertTrue(QaApproval.objects.filter(step=self.step, work_order=self.wo, archived=True).exists())
+        _, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertTrue(any("First Piece Inspection required" in b for b in blockers))
+        self.assertTrue(any("QA signoff required" in b for b in blockers))
+        self.assertTrue(self.step.needs_fpi(self.wo))
+        # Re-inspected: a new sign-off; the withdrawn one is untouched.
+        pass_fpi(fresh, self.qa)
+        _, blockers = self.step.can_advance_from_step(self.se, self.wo)
+        self.assertFalse(any("QA signoff required" in b for b in blockers))
+        self.assertEqual(QaApproval.objects.filter(step=self.step, work_order=self.wo).count(), 2)
+        with self.assertRaisesMessage(ValueError, "Only a passed"):
+            void_fpi_pass(self.fpi, self.qa, "again")

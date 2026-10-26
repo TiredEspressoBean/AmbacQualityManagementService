@@ -52,6 +52,16 @@ export function useSubmitCount() {
     });
 }
 
+/** A lead sends a submitted count back for a recount, with a reason. */
+export function useSendBackCount() {
+    const invalidate = useInvalidate();
+    return useMutation({
+        mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+            api.api_CycleCounts_send_back_create({ reason }, { params: { id } }) as Promise<CycleCount>,
+        onSuccess: invalidate,
+    });
+}
+
 export function useApplyCount() {
     const invalidate = useInvalidate();
     return useMutation({

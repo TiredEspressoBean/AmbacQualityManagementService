@@ -7096,10 +7096,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/CycleCount'
           description: ''
+  /api/CycleCounts/{id}/send-back/:
+    post:
+      operationId: api_CycleCounts_send_back_create
+      description: Send a submitted count back for a recount, with a reason. It reopens
+        with what was entered. An applied count is final.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Cycle Count.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendBackCountRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendBackCountRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendBackCountRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CycleCount'
+          description: ''
   /api/CycleCounts/{id}/submit/:
     post:
       operationId: api_CycleCounts_submit_create
-      description: Finish counting; anything not counted is taken as not there.
+      description: 'Finish counting. A line left blank stays uncounted: it is left
+        out of the differences and never applied.'
       parameters:
       - in: path
         name: id
@@ -10711,6 +10749,7 @@ paths:
           - NOT_REQUIRED
           - PASSED
           - PENDING
+          - VOIDED
           - WAIVED
         description: |-
           Current status of the FPI
@@ -10720,6 +10759,7 @@ paths:
           * `PASSED` - Passed
           * `FAILED` - Failed
           * `WAIVED` - Waived
+          * `VOIDED` - Voided
       - in: query
         name: step
         schema:
@@ -11025,6 +11065,44 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/FPIRecords/{id}/void-pass/:
+    post:
+      operationId: api_FPIRecords_void_pass_create
+      description: 'Void a first-piece pass given in error, with a reason. The pass
+        is kept and marked voided, its step sign-off withdrawn, and a fresh pending
+        FPI opened: the run holds until the piece is re-inspected.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this FPI Record.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoidFpiPassInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoidFpiPassInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoidFpiPassInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoidFpiPassResponse'
           description: ''
   /api/FPIRecords/{id}/waive/:
     post:
@@ -14775,6 +14853,11 @@ paths:
           type: string
           format: uuid
       - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: material_type
         schema:
           type: string
@@ -15687,6 +15770,11 @@ paths:
           type: string
           format: uuid
       - in: query
+        name: material
+        schema:
+          type: string
+          format: uuid
+      - in: query
         name: material_type
         schema:
           type: string
@@ -16056,6 +16144,44 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/MaterialUsages/{id}/correct-lot/:
+    post:
+      operationId: api_MaterialUsages_correct_lot_create
+      description: |-
+        The draw was recorded against the wrong lot: swap it to the lot actually
+        used, with a reason. Quantities move back and forth between the two lots.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Usage.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectUsageLotRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CorrectUsageLotRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CorrectUsageLotRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -30720,6 +30846,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StepExecution'
+          description: ''
+  /api/StepExecutions/{id}/flag-override/:
+    post:
+      operationId: api_StepExecutions_flag_override_create
+      description: Flag a training override given wrongly, for QA review. The override
+        stays (the work happened under it); the flag and its reason show in the overrides
+        review.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Step Execution.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlagOverrideInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FlagOverrideInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FlagOverrideInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlagOverrideResponse'
           description: ''
   /api/StepExecutions/{id}/save-draft/:
     post:
@@ -52977,6 +53141,20 @@ components:
         * `RETURNED_UNREPAIRED` - Returned unrepaired
         * `HARVESTED` - Harvested to inventory
         * `SCRAPPED` - Scrapped
+    CorrectUsageLotRequest:
+      type: object
+      description: The lot this draw really came from, and why the record was wrong.
+      properties:
+        lot:
+          type: string
+          format: uuid
+          description: The lot actually used.
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - lot
+      - reason
     CountEntryRequest:
       type: object
       properties:
@@ -53764,6 +53942,11 @@ components:
           items:
             $ref: '#/components/schemas/CycleCountVariance'
           readOnly: true
+        not_counted:
+          type: integer
+          description: 'Lines left blank: not counted, so left out of the differences
+            and never applied.'
+          readOnly: true
         started_by:
           type: integer
           readOnly: true
@@ -53809,6 +53992,7 @@ components:
       - lines
       - location
       - location_name
+      - not_counted
       - started_by
       - started_by_name
       - status
@@ -56108,6 +56292,7 @@ components:
             * `PASSED` - Passed
             * `FAILED` - Failed
             * `WAIVED` - Waived
+            * `VOIDED` - Voided
         status_display:
           type: string
           readOnly: true
@@ -56321,6 +56506,7 @@ components:
       - PASSED
       - FAILED
       - WAIVED
+      - VOIDED
       type: string
       description: |-
         * `NOT_REQUIRED` - Not Required
@@ -56328,6 +56514,7 @@ components:
         * `PASSED` - Passed
         * `FAILED` - Failed
         * `WAIVED` - Waived
+        * `VOIDED` - Voided
     FPIRecordStepInfo:
       type: object
       properties:
@@ -56853,6 +57040,25 @@ components:
           type: boolean
       required:
       - name
+    FlagOverrideInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    FlagOverrideResponse:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        flagged:
+          type: boolean
+      required:
+      - execution_id
+      - flagged
     FpiReading:
       type: object
       properties:
@@ -60508,6 +60714,7 @@ components:
           type: integer
         consumed_by_name:
           type: string
+          nullable: true
           readOnly: true
         is_substitute:
           type: boolean
@@ -77383,6 +77590,15 @@ components:
         * `PART_TYPE` - Part Type
         * `COMMODITY` - Commodity
         * `SPECIAL_PROCESS` - Special Process
+    SendBackCountRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          description: Why it's going back for a recount.
+      required:
+      - reason
     SendInvitationInputRequest:
       type: object
       properties:
@@ -83495,6 +83711,9 @@ components:
     TraceUse:
       type: object
       properties:
+        usage_id:
+          type: string
+          format: uuid
         lot_number:
           type: string
         quantity:
@@ -83525,6 +83744,7 @@ components:
       - part
       - quantity
       - step
+      - usage_id
       - work_order
     TrackerShipment:
       type: object
@@ -83704,10 +83924,24 @@ components:
           type: array
           items:
             type: string
+        flagged:
+          type: boolean
+        flag_reason:
+          type: string
+        flagged_by_name:
+          type: string
+        flagged_at:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - at
       - authorized_by_name
       - execution_id
+      - flag_reason
+      - flagged
+      - flagged_at
+      - flagged_by_name
       - missing_training
       - part_erp_id
       - part_id
@@ -84461,8 +84695,21 @@ components:
         A supervisor pushing an operator who wasn't qualified through the training gate —
         the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit.
       properties:
+        execution_id:
+          type: string
+          format: uuid
         visit_number:
           type: integer
+        flagged:
+          type: boolean
+        flag_reason:
+          type: string
+        flagged_by_name:
+          type: string
+        flagged_at:
+          type: string
+          format: date-time
+          nullable: true
         worker_name:
           type: string
         authorized_by_name:
@@ -84480,6 +84727,11 @@ components:
       required:
       - at
       - authorized_by_name
+      - execution_id
+      - flag_reason
+      - flagged
+      - flagged_at
+      - flagged_by_name
       - missing_training
       - reason
       - visit_number
@@ -85330,6 +85582,25 @@ components:
       description: |-
         * `VISIBLE` - VISIBLE
         * `INTERNAL` - INTERNAL
+    VoidFpiPassInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
+    VoidFpiPassResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+      required:
+      - id
+      - status
     VoidShipmentRequestRequest:
       type: object
       properties:

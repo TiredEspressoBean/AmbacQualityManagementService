@@ -370,7 +370,39 @@ def void_shipment(shipment, *, user, reason: str) -> None:
             lot.quantity_remaining = Decimal(shipped.old_value) if shipped else lot.quantity
             lot.customer_shipment = None
             lot.save(update_fields=["quantity_remaining", "customer_shipment", "updated_at"])
+            _rejoin_split(lot, shipment, user, reason.strip(), lot_ct)
         shipment.void(user, reason.strip())
+
+
+def _rejoin_split(lot, shipment, user, reason: str, lot_ct) -> None:
+    """A piece split off to ship on ``shipment`` rejoins its parent when the shipment is
+    voided: one lot number again, as if it hadn't shipped (user decision 2026-10-26,
+    Corrections #33). The piece is retired — kept, pointing at its parent, with nothing
+    left — rather than deleted. A split made for this shipment is a child created after
+    the shipment was (ship() records the shipment first); a lot that was already a child
+    before it shipped stays as it was."""
+    from Tracker.models import MaterialLot, RecordEdit
+    if not lot.parent_lot_id or lot.created_at < shipment.created_at:
+        return
+    parent = MaterialLot.objects.select_for_update().get(pk=lot.parent_lot_id)  # tenant-safe: FK from a scoped lot
+    if parent.archived or parent.status not in ("ACCEPTED", "IN_USE", "CONSUMED"):
+        return  # the parent has since been rejected, scrapped or shipped: the piece stays its own lot
+    qty = lot.quantity_remaining
+    RecordEdit.objects.create(
+        tenant=parent.tenant, content_type=lot_ct, object_id=parent.id, field_name="quantity_remaining",
+        old_value=str(parent.quantity_remaining), new_value=str(parent.quantity_remaining + qty),
+        reason=f"{lot.lot_number} rejoined: {shipment.shipment_number} voided — {reason}", edited_by=user)
+    parent.quantity_remaining += qty
+    if parent.status == "CONSUMED":
+        parent.status = "ACCEPTED"  # emptied by the split; stock again
+    parent.save(update_fields=["quantity_remaining", "status", "updated_at"])
+    RecordEdit.objects.create(
+        tenant=lot.tenant, content_type=lot_ct, object_id=lot.id, field_name="quantity_remaining",
+        old_value=str(qty), new_value="0",
+        reason=f"Rejoined {parent.lot_number}: {shipment.shipment_number} voided — {reason}", edited_by=user)
+    lot.quantity_remaining = Decimal("0")
+    lot.status = "CONSUMED"
+    lot.save(update_fields=["quantity_remaining", "status", "updated_at"])
 
 
 def order_shipping(order) -> dict:

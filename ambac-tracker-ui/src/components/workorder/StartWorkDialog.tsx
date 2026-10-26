@@ -71,6 +71,11 @@ const statusRank = (status: string | null | undefined) => {
     }
 };
 
+/** Parts whose work has ended — the server's TERMINAL_PART_STATUSES. Not listed. */
+const ENDED_STATUSES = new Set([
+    "COMPLETED", "SCRAPPED", "CANCELLED", "SHIPPED", "IN_STOCK", "AWAITING_PICKUP",
+]);
+
 /** A part held for a quality decision isn't worked: its disposition decides what
  *  happens to it (a rework routes it; use-as-is releases it). Listed, not selectable. */
 const PARKED: Record<string, string> = {
@@ -115,6 +120,9 @@ export function StartWorkDialog({ workOrderId, blockedReason, initialPartId }: S
         const groups: Map<string, StepGroup> = new Map();
         for (const p of partsData?.results ?? []) {
             if (!p.step || !p.step_name) continue;
+            // A part whose work has ended (cancelled, scrapped, finished, shipped) has
+            // nothing to start; listing it made "0 / 5" count parts that aren't there.
+            if (ENDED_STATUSES.has(p.part_status ?? "")) continue;
             const key = String(p.step);
             const existing = groups.get(key);
             if (existing) existing.parts.push(p);

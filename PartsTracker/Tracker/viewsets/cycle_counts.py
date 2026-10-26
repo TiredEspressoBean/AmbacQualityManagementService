@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from Tracker.models import CycleCount
 from Tracker.serializers.cycle_counts import (
-    CycleCountSerializer, RecordCountSerializer, StartCycleCountSerializer,
+    CycleCountSerializer, RecordCountSerializer, SendBackCountSerializer, StartCycleCountSerializer,
 )
 from Tracker.services.mes import cycle_count
 from Tracker.viewsets.base import TenantScopedMixin
@@ -35,8 +35,10 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
         'submit': ['change_cyclecount'],
         # Applying corrects stock — a lead's call, not the counter's.
         'apply': ['apply_cyclecount'],
+        # Sending it back is the same lead's call, made instead of applying.
+        'send_back': ['apply_cyclecount'],
     }
-    crud_exempt_actions = {'record', 'submit', 'apply'}
+    crud_exempt_actions = {'record', 'submit', 'apply', 'send_back'}
 
     def _respond(self, count, code=status.HTTP_200_OK):
         return Response(CycleCountSerializer(count, context={'request': self.request}).data, status=code)
@@ -67,8 +69,22 @@ class CycleCountViewSet(TenantScopedMixin, mixins.ListModelMixin, mixins.Retriev
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return self._respond(count)
 
+    @extend_schema(request=SendBackCountSerializer, responses=CycleCountSerializer,
+                   description="Send a submitted count back for a recount, with a reason. It "
+                               "reopens with what was entered. An applied count is final.")
+    @action(detail=True, methods=['post'], url_path='send-back')
+    def send_back(self, request, pk=None):
+        req = SendBackCountSerializer(data=request.data)
+        req.is_valid(raise_exception=True)
+        try:
+            count = cycle_count.send_back(self.get_object(), request.user, req.validated_data['reason'])
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self._respond(count)
+
     @extend_schema(request=None, responses=CycleCountSerializer,
-                   description="Finish counting; anything not counted is taken as not there.")
+                   description="Finish counting. A line left blank stays uncounted: it is left "
+                               "out of the differences and never applied.")
     @action(detail=True, methods=['post'], url_path='submit')
     def submit(self, request, pk=None):
         try:

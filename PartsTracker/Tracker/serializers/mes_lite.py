@@ -1347,7 +1347,13 @@ class TravelerBatchCycleSerializer(serializers.Serializer):
 class TravelerTrainingOverrideSerializer(serializers.Serializer):
     """A supervisor pushing an operator who wasn't qualified through the training gate —
     the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit."""
+    execution_id = serializers.UUIDField()
     visit_number = serializers.IntegerField()
+    # Flagged for QA review as given wrongly; the override itself stands.
+    flagged = serializers.BooleanField()
+    flag_reason = serializers.CharField(allow_blank=True)
+    flagged_by_name = serializers.CharField(allow_blank=True)
+    flagged_at = serializers.DateTimeField(allow_null=True)
     worker_name = serializers.CharField(allow_blank=True)
     authorized_by_name = serializers.CharField(allow_blank=True)
     reason = serializers.CharField(allow_blank=True)

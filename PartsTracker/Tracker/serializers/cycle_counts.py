@@ -37,6 +37,7 @@ class CycleCountSerializer(SecureModelMixin):
     applied through its actions."""
     lines = serializers.SerializerMethodField()
     variances = serializers.SerializerMethodField()
+    not_counted = serializers.SerializerMethodField()
     started_by_name = serializers.SerializerMethodField()
     submitted_by_name = serializers.SerializerMethodField()
     applied_by_name = serializers.SerializerMethodField()
@@ -47,7 +48,7 @@ class CycleCountSerializer(SecureModelMixin):
         model = CycleCount
         fields = (
             'id', 'count_number', 'location', 'location_name', 'blind', 'status', 'status_display',
-            'lines', 'variances',
+            'lines', 'variances', 'not_counted',
             'started_by', 'started_by_name', 'submitted_by_name', 'submitted_at',
             'applied_by_name', 'applied_at', 'created_at', 'updated_at', 'archived',
         )
@@ -67,6 +68,12 @@ class CycleCountSerializer(SecureModelMixin):
             return []
         return CycleCountVarianceSerializer(variances(obj), many=True).data
 
+    @extend_schema_field(serializers.IntegerField(
+        help_text="Lines left blank: not counted, so left out of the differences and never applied."))
+    def get_not_counted(self, obj):
+        from Tracker.services.mes.cycle_count import not_counted
+        return not_counted(obj)
+
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_started_by_name(self, obj):
         return _name(obj.started_by)
@@ -78,6 +85,10 @@ class CycleCountSerializer(SecureModelMixin):
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_applied_by_name(self, obj):
         return _name(obj.applied_by)
+
+
+class SendBackCountSerializer(serializers.Serializer):
+    reason = serializers.CharField(allow_blank=False, help_text="Why it's going back for a recount.")
 
 
 class StartCycleCountSerializer(serializers.Serializer):

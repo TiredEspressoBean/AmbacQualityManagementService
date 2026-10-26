@@ -2468,6 +2468,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/CycleCounts/{id}/send-back/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send a submitted count back for a recount, with a reason. It reopens with what was entered. An applied count is final. */
+        post: operations["api_CycleCounts_send_back_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/CycleCounts/{id}/submit/": {
         parameters: {
             query?: never;
@@ -2477,7 +2494,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Finish counting; anything not counted is taken as not there. */
+        /** @description Finish counting. A line left blank stays uncounted: it is left out of the differences and never applied. */
         post: operations["api_CycleCounts_submit_create"];
         delete?: never;
         options?: never;
@@ -4183,6 +4200,23 @@ export interface paths {
         put?: never;
         /** @description Mark FPI as passed */
         post: operations["api_FPIRecords_pass_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/FPIRecords/{id}/void-pass/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Void a first-piece pass given in error, with a reason. The pass is kept and marked voided, its step sign-off withdrawn, and a fresh pending FPI opened: the run holds until the piece is re-inspected. */
+        post: operations["api_FPIRecords_void_pass_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6313,6 +6347,26 @@ export interface paths {
         get: operations["api_MaterialUsages_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialUsages/{id}/correct-lot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The draw was recorded against the wrong lot: swap it to the lot actually
+         *     used, with a reason. Quantities move back and forth between the two lots.
+         */
+        post: operations["api_MaterialUsages_correct_lot_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12666,6 +12720,23 @@ export interface paths {
          *     logged on the execution's `training_authorization` snapshot.
          */
         post: operations["api_StepExecutions_claim_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/StepExecutions/{id}/flag-override/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Flag a training override given wrongly, for QA review. The override stays (the work happened under it); the flag and its reason show in the overrides review. */
+        post: operations["api_StepExecutions_flag_override_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22564,6 +22635,15 @@ export interface components {
          * @enum {string}
          */
         CoreStatusEnum: "RECEIVED" | "IN_DISASSEMBLY" | "DISASSEMBLED" | "IN_REBUILD" | "REBUILT" | "RETURNED" | "REBUILT_TO_STOCK" | "SHIPPED" | "AWAITING_AUTHORISATION" | "DECLINED" | "RETURNED_UNREPAIRED" | "HARVESTED" | "SCRAPPED";
+        /** @description The lot this draw really came from, and why the record was wrong. */
+        CorrectUsageLotRequest: {
+            /**
+             * Format: uuid
+             * @description The lot actually used.
+             */
+            lot: string;
+            reason: string;
+        };
         CountEntryRequest: {
             kind: components["schemas"]["CycleCountLineKindEnum"];
             /** Format: uuid */
@@ -22902,6 +22982,8 @@ export interface components {
             readonly status_display: string;
             readonly lines: components["schemas"]["CycleCountLine"][];
             readonly variances: components["schemas"]["CycleCountVariance"][];
+            /** @description Lines left blank: not counted, so left out of the differences and never applied. */
+            readonly not_counted: number;
             readonly started_by: number | null;
             readonly started_by_name: string | null;
             readonly submitted_by_name: string | null;
@@ -24067,6 +24149,7 @@ export interface components {
              *     * `PASSED` - Passed
              *     * `FAILED` - Failed
              *     * `WAIVED` - Waived
+             *     * `VOIDED` - Voided
              */
             readonly status: components["schemas"]["FPIRecordStatusEnum"];
             readonly status_display: string;
@@ -24162,9 +24245,10 @@ export interface components {
          *     * `PASSED` - Passed
          *     * `FAILED` - Failed
          *     * `WAIVED` - Waived
+         *     * `VOIDED` - Voided
          * @enum {string}
          */
-        FPIRecordStatusEnum: "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED";
+        FPIRecordStatusEnum: "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED" | "VOIDED";
         FPIRecordStepInfo: {
             id: string;
             name: string | null;
@@ -24407,6 +24491,14 @@ export interface components {
             /** @description Steps that require this resource. */
             steps?: string[];
             archived?: boolean;
+        };
+        FlagOverrideInputRequest: {
+            reason: string;
+        };
+        FlagOverrideResponse: {
+            /** Format: uuid */
+            execution_id: string;
+            flagged: boolean;
         };
         FpiReading: {
             /** Format: uuid */
@@ -26071,7 +26163,7 @@ export interface components {
             /** Format: date-time */
             readonly consumed_at: string;
             consumed_by: number;
-            readonly consumed_by_name: string;
+            readonly consumed_by_name: string | null;
             /** @description True if this material was a substitute for the BOM-specified material */
             is_substitute?: boolean;
             substitution_reason?: string;
@@ -35122,6 +35214,10 @@ export interface components {
          * @enum {string}
          */
         ScopeTypeEnum: "PART_TYPE" | "COMMODITY" | "SPECIAL_PROCESS";
+        SendBackCountRequest: {
+            /** @description Why it's going back for a recount. */
+            reason: string;
+        };
         SendInvitationInputRequest: {
             user_id: number;
         };
@@ -38264,6 +38360,8 @@ export interface components {
             quantity: number;
         };
         TraceUse: {
+            /** Format: uuid */
+            usage_id: string;
             lot_number: string;
             /** Format: double */
             quantity: number;
@@ -38346,6 +38444,11 @@ export interface components {
             /** Format: date-time */
             at: string | null;
             missing_training: string[];
+            flagged: boolean;
+            flag_reason: string;
+            flagged_by_name: string;
+            /** Format: date-time */
+            flagged_at: string | null;
         };
         /**
          * @description Serializer for TrainingRecord model.
@@ -38712,7 +38815,14 @@ export interface components {
          *     the competence evidence an auditor asks for (AS9100 7.2), one per overridden visit.
          */
         TravelerTrainingOverride: {
+            /** Format: uuid */
+            execution_id: string;
             visit_number: number;
+            flagged: boolean;
+            flag_reason: string;
+            flagged_by_name: string;
+            /** Format: date-time */
+            flagged_at: string | null;
             worker_name: string;
             authorized_by_name: string;
             reason: string;
@@ -39111,6 +39221,14 @@ export interface components {
          * @enum {string}
          */
         VisibilityEnum: "VISIBLE" | "INTERNAL";
+        VoidFpiPassInputRequest: {
+            reason: string;
+        };
+        VoidFpiPassResponse: {
+            /** Format: uuid */
+            id: string;
+            status: string;
+        };
         VoidShipmentRequestRequest: {
             reason: string;
         };
@@ -45194,6 +45312,34 @@ export interface operations {
             };
         };
     };
+    api_CycleCounts_send_back_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Cycle Count. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendBackCountRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SendBackCountRequest"];
+                "multipart/form-data": components["schemas"]["SendBackCountRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CycleCount"];
+                };
+            };
+        };
+    };
     api_CycleCounts_submit_create: {
         parameters: {
             query?: never;
@@ -47659,8 +47805,9 @@ export interface operations {
                  *     * `PASSED` - Passed
                  *     * `FAILED` - Failed
                  *     * `WAIVED` - Waived
+                 *     * `VOIDED` - Voided
                  */
-                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "WAIVED";
+                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "VOIDED" | "WAIVED";
                 /** @description Filter by step UUID */
                 step?: string;
                 /** @description Filter by work order UUID */
@@ -47902,6 +48049,34 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_FPIRecords_void_pass_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this FPI Record. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidFpiPassInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["VoidFpiPassInputRequest"];
+                "multipart/form-data": components["schemas"]["VoidFpiPassInputRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoidFpiPassResponse"];
                 };
             };
         };
@@ -50914,6 +51089,7 @@ export interface operations {
                 /** @description Number of results to return per page. */
                 limit?: number;
                 location?: string;
+                material?: string;
                 material_type?: string;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
@@ -51650,6 +51826,7 @@ export interface operations {
         parameters: {
             query?: {
                 location?: string;
+                material?: string;
                 material_type?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
@@ -51928,6 +52105,34 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    api_MaterialUsages_correct_lot_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Usage. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectUsageLotRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CorrectUsageLotRequest"];
+                "multipart/form-data": components["schemas"]["CorrectUsageLotRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -62502,6 +62707,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StepExecution"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_flag_override_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Step Execution. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlagOverrideInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FlagOverrideInputRequest"];
+                "multipart/form-data": components["schemas"]["FlagOverrideInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlagOverrideResponse"];
                 };
             };
         };

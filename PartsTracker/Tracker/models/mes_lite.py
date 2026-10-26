@@ -1114,7 +1114,8 @@ class Steps(SecureModel):
 
         # Import here to avoid circular import
         from .qms import QaApproval
-        if step.requires_qa_signoff and not QaApproval.objects.filter(step=step, work_order=work_order).exists():
+        if step.requires_qa_signoff and not QaApproval.objects.filter(step=step, work_order=work_order,
+                                                                      archived=False).exists():
             return False
 
         # Check First Piece Inspection requirement
@@ -1290,7 +1291,7 @@ class Steps(SecureModel):
             from django.contrib.contenttypes.models import ContentType
             from .life_tracking import LifeTracking
             part_ct = ContentType.objects.get_for_model(part)
-            for lt in LifeTracking.objects.filter(
+            for lt in LifeTracking.objects.filter(  # tenant-safe: generic FK to a scoped part
                 content_type=part_ct, object_id=part.pk,
             ).select_related('definition'):
                 if lt.is_blocked:
@@ -1298,9 +1299,11 @@ class Steps(SecureModel):
 
         # 2. Check QA signoff requirement
         if self.requires_qa_signoff:
+            # An archived approval was withdrawn (an FPI pass voided): it releases nothing.
             qa_approval = QaApproval.objects.filter(
                 step=self,
-                work_order=work_order
+                work_order=work_order,
+                archived=False,
             ).first()
             if not qa_approval:
                 blockers.append("QA signoff required but not received")
@@ -1516,7 +1519,8 @@ class StepRequirement(SecureModel):
                 return False
             return QaApproval.objects.filter(
                 step=step_execution.step,
-                work_order=work_order
+                work_order=work_order,
+                archived=False,
             ).exists()
 
         elif self.requirement_type == RequirementType.FPI_PASSED:

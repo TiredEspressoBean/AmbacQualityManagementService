@@ -99,6 +99,9 @@ def _ensure_qa_approval(fpi: FPIRecord, user, *, password_proven: bool = False,
         tenant=fpi.tenant,
         step=fpi.step,
         work_order=fpi.work_order,
+        # A withdrawn approval (a voided pass) stays as it was recorded; a new pass
+        # gets a new row rather than rewriting it.
+        archived=False,
         defaults={
             'qa_staff': user,
             'verification_method': 'PASSWORD' if password_proven else 'NONE',
@@ -234,6 +237,47 @@ def waive_fpi(fpi: FPIRecord, user, reason: str, performed_by=None, *,
     _ensure_qa_approval(fpi, user, password_proven=proven, ip_address=ip_address)
     notify_fpi_decided(fpi)
     return fpi
+
+
+def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
+    """A first piece passed in error: void the pass (user decision 2026-10-26,
+    Corrections #9). The passed record is kept as recorded and marked VOIDED, with the
+    reason; the step sign-off it gave is withdrawn (archived, kept); a fresh PENDING
+    FPI takes its place, so the run holds behind it until the piece is re-inspected.
+    Parts already past the step are not pulled back. Returns the new PENDING record.
+
+    Raises:
+        ValueError: no reason, or the record isn't a pass.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import RecordEdit
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the pass is being voided")
+    with transaction.atomic():
+        fpi = FPIRecord.objects.select_for_update().get(pk=fpi.pk)  # tenant-safe: .objects auto-scopes
+        if fpi.status != FPIStatus.PASSED:
+            raise ValueError(f"Only a passed first piece can be voided; this one is {fpi.get_status_display().lower()}")
+        RecordEdit.objects.create(
+            tenant=fpi.tenant, content_type=ContentType.objects.get_for_model(FPIRecord),
+            object_id=fpi.id, field_name='status', old_value=FPIStatus.PASSED,
+            new_value=FPIStatus.VOIDED, reason=reason, edited_by=user)
+        fpi.status = FPIStatus.VOIDED
+        fpi.save(update_fields=['status', 'updated_at'])
+        # The pass was the step's QA release for this work order; it no longer stands.
+        QaApproval.objects.filter(  # tenant-safe: scoped FKs
+            step_id=fpi.step_id, work_order_id=fpi.work_order_id, archived=False,
+        ).update(archived=True, updated_at=timezone.now())
+        fresh = FPIRecord.objects.create(
+            tenant=fpi.tenant, work_order=fpi.work_order, step=fpi.step, part_type=fpi.part_type,
+            designated_part=fpi.designated_part, equipment=fpi.equipment,
+            shift_date=fpi.shift_date, status=FPIStatus.PENDING,
+            notes=f"Re-inspection: the pass on {fpi.inspected_at:%Y-%m-%d} was voided — {reason}"
+                  if fpi.inspected_at else f"Re-inspection: an earlier pass was voided — {reason}")
+        transaction.on_commit(lambda: notify_fpi_requested(fresh))
+    return fresh
 
 
 # ── notifications ─────────────────────────────────────────────────────────────

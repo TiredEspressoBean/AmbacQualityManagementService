@@ -6,15 +6,17 @@ import { FileSpreadsheet, FileText, ScanLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { api } from "@/lib/api/generated";
 import { blobErrorMessage, downloadBlob } from "@/lib/download";
 import { resolveScan } from "@/lib/scan";
 import { useReportEmail } from "@/hooks/useReportEmail";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {
-    cycleCountOptions, useApplyCount, useRecordCount, useSubmitCount, type CountEntry,
+    cycleCountOptions, useApplyCount, useRecordCount, useSendBackCount, useSubmitCount, type CountEntry,
 } from "@/hooks/useCycleCounts";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
@@ -29,8 +31,8 @@ const WHAT: Record<string, { label: string; tone: string }> = {
 };
 
 /**
- * Counting one location, on a tablet. Enter what's there for each lot, tick each unit
- * that's present, and scan anything here that isn't on the list. Save as you go; submit
+ * Counting one location, on a tablet. Enter what's there for each lot, say of each unit
+ * whether it's here (a blank line is left uncounted, never taken as missing), and scan anything here that isn't on the list. Save as you go; submit
  * when the location is done. A lead then applies the count — UQMES's quantities and
  * locations are corrected — and the differences go to the ERP to be keyed.
  */
@@ -40,6 +42,9 @@ export function CycleCountPage() {
     const record = useRecordCount();
     const submit = useSubmitCount();
     const apply = useApplyCount();
+    const sendBack = useSendBackCount();
+    const [recountOpen, setRecountOpen] = useState(false);
+    const [recountReason, setRecountReason] = useState("");
     const perms = usePermissionSet();
     const { downloadReport } = useReportEmail();
     const [draft, setDraft] = useState<Record<string, string>>({});
@@ -194,9 +199,20 @@ export function CycleCountPage() {
                                     <tbody>
                                         {units.map((u) => (
                                             <tr key={u.id} className="border-b last:border-0">
-                                                <td className="w-8 py-2">
-                                                    <Checkbox checked={(draft[`PART:${u.id}`] ?? "") === "1"} aria-label={`${u.label} is here`}
-                                                        onCheckedChange={(v) => setDraft((d) => ({ ...d, [`PART:${u.id}`]: v ? "1" : "0" }))} />
+                                                <td className="w-44 py-2">
+                                                    {/* Two answers, and no answer: a unit nobody looked for is
+                                                        left uncounted, never taken as missing. */}
+                                                    <div className="flex gap-1" role="group" aria-label={`Is ${u.label} here?`}>
+                                                        {([["1", "Here"], ["0", "Not here"]] as const).map(([v, label]) => {
+                                                            const on = (draft[`PART:${u.id}`] ?? "") === v;
+                                                            return (
+                                                                <Button key={v} size="sm" variant={on ? "default" : "outline"} aria-pressed={on}
+                                                                    onClick={() => setDraft((d) => ({ ...d, [`PART:${u.id}`]: on ? "" : v }))}>
+                                                                    {label}
+                                                                </Button>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </td>
                                                 <td className="py-2 pr-3 font-mono">{u.label}{u.found_here && <Badge variant="outline" className="ml-2">found here</Badge>}</td>
                                                 <td className="py-2">{u.item || "—"}</td>
@@ -218,7 +234,9 @@ export function CycleCountPage() {
                             Submit count
                         </Button>
                         {uncounted > 0 && (
-                            <span className="text-sm text-amber-700">{uncounted} not counted yet — submitting records them as not here.</span>
+                            <span className="text-sm text-amber-700">
+                                {uncounted} not counted yet — left blank, they&rsquo;re left out of the count and their stock isn&rsquo;t touched. Enter 0 for a spot you found empty.
+                            </span>
                         )}
                     </div>
                 </>
@@ -226,6 +244,11 @@ export function CycleCountPage() {
                 <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-base">Differences</CardTitle></CardHeader>
                     <CardContent className="space-y-3 overflow-x-auto">
+                        {(c.not_counted ?? 0) > 0 && (
+                            <p className="text-sm text-amber-700">
+                                {c.not_counted} {c.not_counted === 1 ? "line was" : "lines were"} not counted — left out of the differences; applying won&rsquo;t change {c.not_counted === 1 ? "it" : "them"}.
+                            </p>
+                        )}
                         {c.variances.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Everything counted matched.</p>
                         ) : (
@@ -263,10 +286,40 @@ export function CycleCountPage() {
                                     })}>
                                     {apply.isPending ? "Applying…" : "Apply to UQMES"}
                                 </Button>
+                                <Button variant="outline" disabled={sendBack.isPending} onClick={() => setRecountOpen(true)}>
+                                    Send back for recount
+                                </Button>
                                 <span className="text-xs text-muted-foreground">
                                     Lot quantities move by the difference counted, and things found here are moved here. Units not found are left for you to chase.
                                     Key the same differences into your ERP.
                                 </span>
+                                <Dialog open={recountOpen} onOpenChange={setRecountOpen}>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Send {c.count_number} back for a recount</DialogTitle>
+                                            <DialogDescription>
+                                                It reopens with what was entered, for the counter to correct and submit again.
+                                                Nothing is applied. Your reason is kept on the count&rsquo;s record.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <Input value={recountReason} onChange={(e) => setRecountReason(e.target.value)} autoFocus
+                                            placeholder="Why — e.g. CC-A looks keyed wrong; recount Rack 3" aria-label="Reason for the recount" />
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setRecountOpen(false)} disabled={sendBack.isPending}>Cancel</Button>
+                                            <Button disabled={!recountReason.trim() || sendBack.isPending}
+                                                onClick={() => sendBack.mutate({ id: c.id, reason: recountReason.trim() }, {
+                                                    onSuccess: () => {
+                                                        toast.success("Sent back — it's open for a recount, with what was entered.");
+                                                        setRecountOpen(false);
+                                                        setRecountReason("");
+                                                    },
+                                                    onError: (e) => toast.error(errorOf(e, "Could not send it back")),
+                                                })}>
+                                                {sendBack.isPending ? "Sending…" : "Send back"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         ) : (
                             <p className="text-xs text-muted-foreground">A lead applies the count to UQMES.</p>

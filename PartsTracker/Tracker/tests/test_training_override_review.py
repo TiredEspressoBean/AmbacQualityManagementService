@@ -29,6 +29,7 @@ class TrainingOverrideReviewTests(TenantTestCase):
         # The part reached the step before the override was given (entered_at is auto_now_add).
         StepExecution.objects.filter(pk=overridden.pk).update(
             entered_at=datetime.datetime(2026, 10, 10, 8, 0, tzinfo=datetime.timezone.utc))
+        self.overridden = overridden
         StepExecution.objects.create(
             tenant=self.tenant_a, part=self.parts[1], step=step, visit_number=1, status="IN_PROGRESS",
             training_authorization={"authorized": True, "missing": [], "verified": []})
@@ -57,3 +58,26 @@ class TrainingOverrideReviewTests(TenantTestCase):
     def test_a_line_role_cannot_review_across_parts(self):
         resp = self._get(['view_stepexecution'])
         self.assertEqual(resp.status_code, 403, resp.content)
+
+    def test_an_override_given_wrongly_is_flagged_and_stays(self):
+        """Corrections #11 (user decision 2026-10-26): flagged with a reason by the override
+        authority; the override itself is untouched; the review shows the flag."""
+        from django.contrib.auth import get_user_model
+        flag_url = f"/api/StepExecutions/{self.overridden.id}/flag-override/"
+        reader = get_user_model().objects.create_user(username="tov-reader", email="r@tov.test",
+                                                      password="x", tenant=self.tenant_a)
+        self.grant_tenant_permissions(reader, self.tenant_a, ['view_stepexecution', 'full_tenant_access'])
+        self.authenticate_as(reader, self.tenant_a)
+        self.assertEqual(self.client.post(flag_url, {"reason": "x"}, format="json").status_code, 403)
+        resp = self._get(['view_stepexecution', 'view_auditlog', 'override_training_gate'])
+        self.assertFalse(resp.json()[0]["flagged"])
+        self.assertEqual(self.client.post(flag_url, {"reason": ""}, format="json").status_code, 400)
+        ok = self.client.post(flag_url, {"reason": "Cert had lapsed"}, format="json")
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.assertEqual(self.client.post(flag_url, {"reason": "again"}, format="json").status_code, 400)
+        row, = self.client.get(URL).json()
+        self.assertTrue(row["flagged"])
+        self.assertEqual(row["flag_reason"], "Cert had lapsed")
+        self.assertEqual(row["reason"], "Short-handed; Pat watched")  # the override stands
+        self.overridden.refresh_from_db()
+        self.assertEqual(self.overridden.training_authorization["override"]["authorized_by_name"], "Pat Lead")
