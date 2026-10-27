@@ -28,22 +28,22 @@ Shape:
             ],
         },
         "edges": {
-            "added":   [{"from_step": "...", "to_step": "...", "edge_type": "..."}],
-            "removed": [{"from_step": "...", "to_step": "...", "edge_type": "..."}],
+            # Matched by the identity of each end, so a step edited in the draft
+            # (a new version, same identity) leaves its connections unchanged.
+            "added":   [{"from_step": "...", "to_step": "...",
+                         "from_step_identity": "...", "to_step_identity": "...",
+                         "edge_type": "..."}],
+            "removed": [...],
         },
     }
 
 Notes:
-- Steps are matched by ID across versions, which works because process
-  versioning shares Step rows (Steps are independently versioned and
-  historically pinned per the `duplicate_process` docstring).
-- Substeps are intentionally NOT included in v1. They are attached to
-  Steps (not Processes); two Process versions sharing a Step row see
-  the same Substep set, so a substep diff would silently report "no
-  changes" even when the engineer edited substep content on the DRAFT.
-  Restoring this section requires versioning substeps with their parent
-  Step row first.
-- The diff is read-only — it's a JSON snapshot, never re-applied.
+- Steps, substeps and both ends of every edge are matched by `identity_id`, which
+  stays the same across versions: editing a step in a PCR draft forks a new Step
+  row, and only a real change should show.
+- Substeps are grouped under their parent step's identity (`substeps` block).
+- Computing the diff is read-only. `rebase.py` re-applies a PCR's diff onto a fresh
+  draft when the approved process moved underneath it.
 """
 from __future__ import annotations
 
@@ -83,10 +83,12 @@ _STEP_DIFF_FIELDS = (
     "repair_code_id",
 )
 
-# Edge-level fields used for the edge identity key. `pre_approved` is part of it so
-# that making a repair pre-approved at a check — or taking that away — shows in the
-# change request as a changed branch, rather than as no change at all.
-_EDGE_KEY_FIELDS = ("from_step_id", "to_step_id", "edge_type", "pre_approved")
+# An edge's identity: the logical step at each end (Step.identity_id), its type, and
+# `pre_approved` — so making a repair pre-approved at a check, or taking that away,
+# shows as a changed branch rather than as no change at all. Ends are matched by step
+# IDENTITY, not row id: editing a step in a PCR draft forks a new version and
+# re-points the draft's edges to it, and keyed by row id every connection of an
+# edited step read as removed and re-added though the routing hadn't changed.
 
 
 def compute_process_diff(from_process: "Processes", to_process: "Processes") -> Dict[str, Any]:
@@ -267,10 +269,11 @@ def _substep_summary(substep) -> Dict[str, Any]:
 
 
 def _diff_edges(from_process: "Processes", to_process: "Processes") -> Dict[str, Any]:
-    """Edge-membership diff. Edges are identified by the tuple
-    (from_step_id, to_step_id, edge_type)."""
-    from_edges = {_edge_key(e): e for e in from_process.step_edges.all()}
-    to_edges = {_edge_key(e): e for e in to_process.step_edges.all()}
+    """Edge-membership diff, edges matched by `_edge_key`."""
+    from_edges = {_edge_key(e): e for e in
+                  from_process.step_edges.select_related('from_step', 'to_step')}
+    to_edges = {_edge_key(e): e for e in
+                to_process.step_edges.select_related('from_step', 'to_step')}
 
     added = [_edge_summary(to_edges[k]) for k in to_edges.keys() - from_edges.keys()]
     removed = [_edge_summary(from_edges[k]) for k in from_edges.keys() - to_edges.keys()]
@@ -290,13 +293,17 @@ def _step_summary(step) -> Dict[str, Any]:
 
 
 def _edge_key(edge) -> tuple:
-    return tuple(getattr(edge, f) for f in _EDGE_KEY_FIELDS)
+    return (edge.from_step.identity_id, edge.to_step.identity_id,
+            edge.edge_type, edge.pre_approved)
 
 
 def _edge_summary(edge) -> Dict[str, Any]:
     return {
         "from_step": str(edge.from_step_id),
         "to_step": str(edge.to_step_id),
+        # The key the edge was matched on — what rebase resolves the ends by.
+        "from_step_identity": str(edge.from_step.identity_id),
+        "to_step_identity": str(edge.to_step.identity_id),
         # Names for the reader; the ids above are what rebase resolves.
         "from_step_name": edge.from_step.name,
         "to_step_name": edge.to_step.name,

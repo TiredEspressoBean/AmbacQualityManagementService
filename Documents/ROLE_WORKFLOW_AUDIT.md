@@ -428,7 +428,6 @@ who, when and old→new, but never a reason.
 
 | Finding | Where | Note |
 |---|---|---|
-| **Editing a step makes its connections look changed** | Engineering, PCR diff | Edges are compared by step id (`diff._EDGE_KEY_FIELDS`), and editing a step gives it a new version and id, so every connection to it shows as removed and re-added although the routing is the same. Names now show instead of ids. Comparing by step identity needs rebase (`rebase.py`, which replays edges by id) changed with it. Found on the 2026-10-27 walk |
 
 ### Walked 2026-10-19 — the day's builds
 
@@ -694,6 +693,7 @@ One line each, newest first. The full write-ups are in git history.
 
 | Finding | Resolution |
 |---|---|
+| Editing a step made its connections look changed in the PCR diff | Connections are matched by the identity of the step at each end, not its version id: a step edit shows under steps only, a real rewire once. Also fixed: a PCR that edited a step and removed one of its connections lost the removal on rebase (the removed edge's baseline ids didn't resolve against the draft); edge entries now carry each end's identity and rebase uses it (2026-10-27, tested, not walked) |
 | A cancelled PCR's draft blocked every later revision of the process | The one-draft guard ignores archived drafts (2026-10-27, walked) |
 | Change-control loose ends: a PCR whose draft changed nothing could be submitted; the affected-WO count misread for a temporary change; the signatures panel showed *Pending* on a closed request; the submit dialog doubled its error | Submit refuses an unchanged draft (extensions excepted); the count reads *In-flight WOs it could apply to* for a temporary change; a closed request reads *Not signed* and says nobody is waiting; one error toast (2026-10-27, walked). *Move back to baseline* already confirmed |
 | The Pick Sheet has no button | Stale: **Pick Sheet** and **Kit Sheet** are on the Staging page (checked 2026-10-27) |

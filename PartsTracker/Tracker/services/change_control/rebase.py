@@ -419,18 +419,23 @@ def _apply_intent_to_process(
 
     # Edge changes — fully rebuild affected edges on the fresh process.
     # `create_new_process_version` copied edges from current_approved
-    # already, so we apply additions and removals on top.
+    # already, so we apply additions and removals on top. Ends resolve by the
+    # step identity the diff matched them on; a removed edge's row ids belong to
+    # the BASELINE, which the draft's junction can't resolve once that step was
+    # versioned in the draft (the removal then silently didn't apply).
     for edge in edges_block.get('removed', []):
+        from_identity, to_identity = _edge_ends(edge, source_draft)
+        if not from_identity or not to_identity:
+            continue
         StepEdge.objects.filter(
             process=process,
-            from_step__identity_id=_step_identity_for(edge.get('from_step'), source_draft),
-            to_step__identity_id=_step_identity_for(edge.get('to_step'), source_draft),
+            from_step__identity_id=from_identity,
+            to_step__identity_id=to_identity,
             edge_type=edge.get('edge_type'),
             pre_approved=bool(edge.get('pre_approved', False)),
         ).delete()
     for edge in edges_block.get('added', []):
-        from_identity = _step_identity_for(edge.get('from_step'), source_draft)
-        to_identity = _step_identity_for(edge.get('to_step'), source_draft)
+        from_identity, to_identity = _edge_ends(edge, source_draft)
         if not from_identity or not to_identity:
             continue
         # Resolve identity → current Step row on this process.
@@ -478,6 +483,16 @@ def _approved_siblings_targeting(pcr: ProcessChangeRequest):
         .select_related('draft_process_version')
         .order_by('updated_at')
     )
+
+
+def _edge_ends(edge: dict, source_draft: Processes) -> tuple:
+    """`(from_identity, to_identity)` for a diff edge entry: the identities it
+    carries, or — for a diff stored before edges carried them — resolved from its
+    row ids against the source draft."""
+    return (edge.get('from_step_identity')
+            or _step_identity_for(edge.get('from_step'), source_draft),
+            edge.get('to_step_identity')
+            or _step_identity_for(edge.get('to_step'), source_draft))
 
 
 def _step_identity_for(step_id: Optional[str], source_draft: Processes) -> Optional[str]:

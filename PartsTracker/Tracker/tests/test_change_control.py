@@ -575,6 +575,78 @@ class PcrRebaseTestCase(TenantTestCase):
         self.assertEqual(c.step_identity_id, str(cleaning_identity))
         self.assertEqual(c.field, 'description')
 
+    def _wire_baseline(self):
+        """Cleaning → Milling → Done (DEFAULT), plus a Milling → Cleaning rework
+        loop (ALTERNATE) that a PCR can take out and still leave a valid routing."""
+        from Tracker.models import StepEdge
+        done = ProcessStep.objects.get(process=self.baseline, step__is_terminal=True).step
+        # The loop leads back into Cleaning, so it no longer reads as the start by
+        # itself — say so, or approving a version refuses the routing.
+        ProcessStep.objects.filter(process=self.baseline, step=self.cleaning).update(
+            is_entry_point=True)
+        for a, b, kind in ((self.cleaning, self.milling, 'DEFAULT'),
+                           (self.milling, done, 'DEFAULT'),
+                           (self.milling, self.cleaning, 'ALTERNATE')):
+            StepEdge.objects.create(process=self.baseline, from_step=a, to_step=b,
+                                    edge_type=kind)
+
+    def _draft_step(self, draft, step):
+        return ProcessStep.objects.get(process=draft, step__identity_id=step.identity_id).step
+
+    def test_editing_a_step_leaves_its_connections_unchanged_in_the_diff(self):
+        # Editing a step forks a new version and re-points the draft's edges to it.
+        # The routing is the same, so the diff shows the step edit and no edges
+        # (it showed every connection of the step as removed and re-added).
+        from Tracker.services.change_control.diff import compute_process_diff, diff_has_changes
+        self._wire_baseline()
+        pcr, draft = self._propose(title='Edit only')
+        self._edit_step_on_draft(draft, self.cleaning.identity_id, description='New notes')
+        self.assertNotEqual(self._draft_step(draft, self.cleaning).pk, self.cleaning.pk)
+
+        diff = compute_process_diff(self.baseline, draft)
+        self.assertEqual([s['identity_id'] for s in diff['steps']['modified']],
+                         [str(self.cleaning.identity_id)])
+        self.assertEqual(diff['edges'], {'added': [], 'removed': []})
+        self.assertTrue(diff_has_changes(diff))
+
+    def test_a_real_rewire_is_reported_once(self):
+        from Tracker.models import StepEdge
+        from Tracker.services.change_control.diff import compute_process_diff, diff_has_changes
+        self._wire_baseline()
+        pcr, draft = self._propose(title='Rewire')
+        self._edit_step_on_draft(draft, self.cleaning.identity_id, description='Also edited')
+        StepEdge.objects.filter(process=draft, edge_type='ALTERNATE').delete()
+
+        diff = compute_process_diff(self.baseline, draft)
+        self.assertEqual(diff['edges']['added'], [])
+        removed, = diff['edges']['removed']
+        self.assertEqual((removed['from_step_name'], removed['to_step_name'],
+                          removed['edge_type']), ('Milling', 'Cleaning', 'ALTERNATE'))
+        self.assertEqual(removed['to_step_identity'], str(self.cleaning.identity_id))
+        self.assertTrue(diff_has_changes(diff))
+
+    def test_rebase_removes_a_connection_off_a_step_edited_in_the_same_draft(self):
+        # PCR-B edits Cleaning (a new version on its draft) and takes out the rework
+        # loop into it; PCR-A edits Milling and ships first, so B rebases. The removed
+        # edge's row ids are the BASELINE's, which B's draft can't resolve once
+        # Cleaning was versioned there — the removal used to be silently skipped.
+        from Tracker.models import StepEdge
+        self._wire_baseline()
+        pcr_a, draft_a = self._propose(title='PCR-A')
+        self._edit_step_on_draft(draft_a, self.milling.identity_id, description='Milling A')
+        pcr_b, draft_b = self._propose(title='PCR-B')
+        self._edit_step_on_draft(draft_b, self.cleaning.identity_id, description='Cleaning B')
+        StepEdge.objects.filter(process=draft_b, edge_type='ALTERNATE').delete()
+
+        self._approve_and_implement(pcr_a)
+        submit_pcr(pcr_b, user=self.user_a)
+        approve_pcr(pcr_b, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+
+        pcr_b.refresh_from_db()
+        rebased = pcr_b.draft_process_version
+        self.assertFalse(StepEdge.objects.filter(process=rebased, edge_type='ALTERNATE').exists())
+        self.assertEqual(StepEdge.objects.filter(process=rebased, edge_type='DEFAULT').count(), 2)
+
     def test_single_pcr_approves_with_no_rebase(self):
         # Sanity: when there's nothing to rebase against, approval is
         # the normal flow. Refresh-from-db inside approve_pcr was the
