@@ -107,6 +107,25 @@ class YearlyClosureTests(TenantContextMixin, TestCase):
         closures = calendars.get_calendar_closures(self.tenant, self.horizon)
         self.assertTrue(closures, "yearly closure should recur into the horizon")
 
+    def test_board_shading_closes_a_yearly_closure(self):
+        # The Gantt's working windows use the solver's closures — a yearly holiday
+        # stored in a prior year is non-working this year too (it used to be shaded
+        # as working while the solver kept work off it).
+        from Tracker.models import Shift
+        Shift.objects.create(
+            tenant=self.tenant, name="All", code="ALL", start_time=time(0, 0),
+            end_time=time(23, 59), days_of_week="0,1,2,3,4,5,6", is_active=True)
+        occ = (self.horizon.start + timedelta(days=5)).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        stored_start = occ.replace(year=occ.year - 1)
+        PlantCalendarException.objects.create(
+            tenant=self.tenant, name="Founders Day", kind="HOLIDAY", recurrence="YEARLY",
+            start_time=stored_start, end_time=stored_start + timedelta(days=1))
+        wins = calendars.get_working_windows(self.tenant, self.horizon.start, self.horizon.end)
+        noon = occ + timedelta(hours=12)
+        self.assertFalse(any(s <= noon < e for s, e in wins))
+        self.assertTrue(any(s <= noon - timedelta(days=1) < e for s, e in wins))
+
     def test_yearly_closure_outside_horizon_excluded(self):
         occ = self.horizon.start + timedelta(days=90)  # ~3 months out, past the 30-day horizon
         stored_start = occ.replace(year=occ.year - 1, hour=0, minute=0, second=0, microsecond=0)

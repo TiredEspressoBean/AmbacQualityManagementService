@@ -141,8 +141,10 @@ def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     (nights/weekends/holidays), which the Gantt shades. Overtime is unioned in so the
     Gantt doesn't shade an overtime day as non-working while the solver schedules
     operators on it (get_operator_shift_windows counts the same overtime). Empty when
-    no shifts are configured (the solver treats that as always-available)."""
-    from Tracker.models import PlantCalendarException, Shift
+    no shifts are configured (the solver treats that as always-available). Closures
+    are the solver's own (`get_calendar_closures`), yearly ones included, so the Gantt
+    shades exactly the days the solver keeps work off."""
+    from Tracker.models import Shift
     from Tracker.services.scheduling.data import HorizonData
 
     shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
@@ -150,12 +152,7 @@ def get_working_windows(tenant, start: datetime, end: datetime) -> list[tuple]:
     base = _merge_intervals(
         _expand_shifts(shifts, start, end, plant_tz(tenant))
         + get_overtime_machine_windows(tenant, horizon))
-    closures = _merge_intervals([
-        (max(e.start_time, start), min(e.end_time, end))
-        for e in PlantCalendarException.objects.filter(archived=False, tenant=tenant, is_active=True)
-        .filter(start_time__lt=end).exclude(end_time__lt=start)
-    ])
-    return _subtract_intervals(base, closures)
+    return _subtract_intervals(base, get_calendar_closures(tenant, horizon))
 
 
 # --- Overtime -------------------------------------------------------------------

@@ -30,18 +30,22 @@ Layers built so far:
   operator per lot-op) AND, for training-gated steps, at the qualified crew on shift —
   so a scarce skill (e.g. one assembler) serializes and pushes work late instead of
   piling up uncoverable, and attended work is kept to staffed hours while machines run
-  unattended. A step no rostered operator is trained for makes the solve refuse
-  (`LaborInfeasible`) — that work can't be executed at all. Which operator takes each
-  task is still a Layer-2 (dispatch) concern; breaks live there too.
+  unattended. A step no rostered operator is trained for — or whose every machine is
+  down for the whole horizon — is planned up to, not past: that lot's route stops
+  there and Not scheduled says why. Breaks are not modelled here; dispatch honours
+  actual break clock-outs.
 - Secondary resources: a step's schedulable gauges (Keyence/CMM) are reserved
   one-at-a-time while the task runs.
 - Fixtures: shared tooling as a cumulative resource (≤ quantity concurrent users).
 - Setup/changeover: sequence-dependent transition gaps between machine neighbours.
 - Continuous machines: throughput-based duration + recurring bar-change downtime.
-- Time fences + warm-start: frozen-zone / planner-pinned tasks held to the previous
-  schedule (time and machine) by a SOFT penalty — a re-solve after the world changed
-  moves them the minimum instead of going INFEASIBLE, and reports the count
-  (`relaxed_pin_count`); slushy/liquid tasks seeded as solver hints.
+- Time fences + warm-start: frozen-zone and planner-pinned operations are HELD (hard,
+  decided 2026-10-21) — same machine, same operator where possible, same order on the
+  machine, start only sliding later. One that can't happen there any more is freed
+  and reported with its reason; held ops that collide are released a few at a time
+  (CP-SAT names them); only if that fails does the fence go soft for the solve.
+  Slushy operations carry a stickiness cost on the lateness scale; liquid ones are
+  only warm-start hints.
 - Cross-WO pegs: a component WO must finish (+ staging buffer) before its parent
   assembly WO starts (WorkOrder.pegged_to_workorder; multi-level chains transitively).
 
@@ -481,9 +485,11 @@ class _Phase:
 
     def _labor(self, step_id, timing, key, start, end, count):
         """Labor demand: ONE operator tends the lot at this operation (not one per
-        piece). Full-attention → tied to the whole run; load/unload → only the front
-        touch (setup + a load/unload per piece), the machine then running unattended.
-        Feeds the crew-capacity cumulative. Returns `(lm, named_assign, front_len)`."""
+        piece). Full-attention → tied to the whole run; otherwise only the front touch,
+        the machine then running on its own: setup + a load/unload per piece, or setup
+        alone when a robot does the handling (`TimingData.operator_attended_time` — the
+        same rule dispatch and capacity planning use). Feeds the crew-capacity
+        cumulative. Returns `(lm, named_assign, front_len)`."""
         shop, model = self.shop, self.model
         lm = self.labor_model(step_id)
         named_assign: list = []  # (op_id, assign_lit) chosen in the NAMED phase
@@ -494,7 +500,7 @@ class _Phase:
                 asz = model.NewIntVar(0, shop.H, f"asz_{key}")
                 att_iv = model.NewIntervalVar(start, asz, end, f"att_{key}")
             else:
-                front = int(round(timing.setup_minutes + timing.load_unload_per_piece * count))
+                front = int(round(timing.operator_attended_time(count)))
                 front_len = front
                 att_iv = (model.NewFixedSizeIntervalVar(start, front, f"att_{key}")
                           if front > 0 else None)

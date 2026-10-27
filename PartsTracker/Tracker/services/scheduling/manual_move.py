@@ -6,8 +6,8 @@ precedence against this unit's already-scheduled neighbours — so an obviously
 bad drop snaps back instantly with a reason. If those pass we pin the task at
 the new time and mark the schedule stale; the next Solve is the authority on the
 *global* constraints (machine no-overlap, sequence-dependent changeover,
-cumulative capacity, operator shifts), relaxing the pin via the soft-pin
-machinery if the move turns out infeasible.
+cumulative capacity, operator shifts). A pin it can't keep there is freed and
+reported with its reason, like any held operation.
 
 Why not validate everything here: the solver already encodes those global
 constraints (see solver.py); duplicating them in a standalone validator would

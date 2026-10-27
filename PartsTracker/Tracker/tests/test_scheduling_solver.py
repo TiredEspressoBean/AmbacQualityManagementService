@@ -547,6 +547,38 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertLessEqual(self._peak_concurrency(s1), 2,
                              "labor capacity must cap concurrent attended lots at the crew size")
 
+    def test_unattended_step_charges_the_crew_setup_only(self):
+        # A robot-fed step ('unattended') ties up an operator for its setup only — a
+        # stale per-piece touch time left on the row is not charged. With no setup,
+        # one rostered operator doesn't hold three lots on three machines apart.
+        # (It used to charge setup + load/unload per piece, unlike dispatch and RCCP.)
+        from Tracker.models import Shift, User
+        StepTiming.objects.filter(step=self.step1).update(
+            attention_type='unattended', setup_minutes=0, load_unload_per_piece=60)
+        # Step 2 off the crew, so only step 1's charge decides whether the lots overlap
+        # (the shortest plan runs all three at once — impossible if each held the one
+        # operator for 60 minutes).
+        Steps.objects.filter(pk=self.step2.pk).update(labor_model='off')
+        for i in (2, 3):
+            m = Equipments.objects.create(tenant=self.tenant, name=f"CNC-{i}", is_schedulable=True)
+            for step in (self.step1, self.step2):
+                StepEquipmentAffinity.objects.create(
+                    tenant=self.tenant, step=step, equipment=m,
+                    affinity=StepEquipmentAffinity.Affinity.PREFERRED)
+        shift = Shift.objects.create(
+            tenant=self.tenant, name="All", code="ALL",
+            start_time=dtime(0, 0), end_time=dtime(23, 59),
+            days_of_week="0,1,2,3,4,5,6", is_active=True)
+        User.objects.create(username="op-solo", tenant=self.tenant, user_type='INTERNAL',
+                            is_active=True, default_shift=shift)
+        for n in ("U1", "U2", "U3"):
+            self._wo(n, 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=20)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        s1 = list(result.tasks.filter(step=self.step1))
+        self.assertEqual(self._peak_concurrency(s1), 3)
+        self.assertFalse(any(t.requires_operator is False for t in s1))
+
     def test_no_roster_leaves_labor_unconstrained(self):
         # With a shift but NO rostered operators (crew 0), the labor cap is skipped and
         # three lots run in parallel across three machines (machine capacity only).

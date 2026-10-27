@@ -215,11 +215,15 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
     timings = {t.step_id: t
                for t in StepTiming.objects.filter(tenant=tenant, archived=False)}
 
-    dur = ExpressionWrapper(F('exited_at') - F('entered_at'), output_field=DurationField())
+    # Worked time only: start to exit. Arrival to exit counted the queue in front of
+    # the step too, so a step's learned time ran long by however long parts waited.
+    # Visits never started (advanced straight from the queue) carry no run time.
+    dur = ExpressionWrapper(F('exited_at') - F('started_at'), output_field=DurationField())
     hist = {
         row['step']: row
         for row in StepExecution.objects
-        .filter(archived=False, tenant=tenant, exited_at__isnull=False)
+        .filter(archived=False, tenant=tenant, exited_at__isnull=False,
+                started_at__isnull=False)
         .values('step').annotate(avg=Avg(dur), n=Count('id'))
     }
 

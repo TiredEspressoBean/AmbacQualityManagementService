@@ -59,7 +59,8 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
     def test_timing_fallback_chain(self):
         StepTiming.objects.create(
             tenant=self.tenant, step=self.s_timing, cycle_time_minutes=5, setup_minutes=8)
-        # history step: two completed executions of 10 minutes each.
+        # history step: two completed executions, each 10 minutes of work after
+        # 30 minutes waiting in the queue — only the work is the step's time.
         wo = WorkOrder.objects.create(
             tenant=self.tenant, ERP_id="WO-D", workorder_status=WorkOrderStatus.IN_PROGRESS,
             quantity=1, process=self.process)
@@ -70,7 +71,13 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
             ex = StepExecution.objects.create(
                 tenant=self.tenant, part=part, step=self.s_history, visit_number=i + 1, status="COMPLETED")
             StepExecution.objects.filter(pk=ex.pk).update(
-                entered_at=now - timedelta(minutes=10), exited_at=now)
+                entered_at=now - timedelta(minutes=40), started_at=now - timedelta(minutes=10),
+                exited_at=now)
+        # A visit advanced without ever being started carries no run time.
+        ex = StepExecution.objects.create(
+            tenant=self.tenant, part=part, step=self.s_history, visit_number=3, status="COMPLETED")
+        StepExecution.objects.filter(pk=ex.pk).update(
+            entered_at=now - timedelta(minutes=500), exited_at=now)
 
         timings = data.get_step_timings(self.tenant, min_samples=2)
         self.assertEqual(timings[self.s_timing.id].cycle_source, 'timing')
