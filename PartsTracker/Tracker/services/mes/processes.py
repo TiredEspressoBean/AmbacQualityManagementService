@@ -302,10 +302,10 @@ def create_new_process_version(
     # Direct callers (admin actions, the deprecated standalone Duplicate
     # path) keep the safer default.
     if not allow_multiple_drafts:
-        # tenant-safe: previous_version FK constrains to processes in the same
-        # tenant as `process` (versioning chains never cross tenants).
         # An archived draft is a discarded one (its PCR was cancelled or rejected):
         # it doesn't block a new revision.
+        # tenant-safe: previous_version FK constrains to processes in the same
+        # tenant as `process` (versioning chains never cross tenants).
         existing_draft = Processes.all_tenants.filter(
             previous_version=process,
             status=ProcessStatus.DRAFT,
