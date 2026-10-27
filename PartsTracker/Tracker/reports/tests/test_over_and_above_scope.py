@@ -177,3 +177,101 @@ class OverAndAboveScopeContextTests(TenantTestCase):
         self.core.save(update_fields=['approved_repair_codes'])
         with self.assertRaisesMessage(ReportParamError, 'nothing to authorise'):
             self._context()
+
+
+class TestOverAndAboveLotAdapter(ReportAdapterTestMixin, SimpleTestCase):
+    from Tracker.reports.adapters.over_and_above_scope import OverAndAboveLotAdapter as adapter_class
+    fixture_name = "over_and_above_scope_lot_sample"
+
+    def test_cross_tenant_id_is_rejected(self):
+        self.skipTest("Cross-tenant probe is in OverAndAboveLotTests (requires DB).")
+
+
+class OverAndAboveLotTests(OverAndAboveScopeContextTests):
+    """A second unit of the same customer's, its nozzle also scrapped: the lot sheet and
+    the bulk send / answer. Inherits the single-unit tests' route and first unit."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import HarvestedComponent
+        from Tracker.services.reman.core_part import create_core
+        self.core2 = create_core(
+            tenant=self.tenant_a, core_number='CORE-OAA-2', core_type=self.core_type,
+            fulfilment_mode='REPAIR_RETURN', status='AWAITING_AUTHORISATION',
+            work_order=self.wo, step=self.steps['Check'], customer=self.customer,
+            serial_number='SN-2', received_date=date(2026, 10, 2), received_by=self.user_a)
+        HarvestedComponent.objects.create(
+            tenant=self.tenant_a, core=self.core2, component_type=self.nozzle,
+            condition_grade='SCRAP', is_scrapped=True, condition_notes='Seized needle',
+            disassembled_by=self.user_a)
+
+    def _lot(self, *cores, user=None):
+        from Tracker.reports.adapters.over_and_above_scope import OverAndAboveLotAdapter
+        return OverAndAboveLotAdapter().build_context(
+            {'core_ids': [c.id for c in cores]}, user or self.user_a, self.tenant_a)
+
+    def test_the_lot_sheet_lists_each_unit_with_its_own_items(self):
+        ctx = self._lot(self.core2, self.core)
+        self.assertEqual([u.core_number for u in ctx.units], ['CORE-OAA-1', 'CORE-OAA-2'])
+        self.assertEqual([[line.code for line in u.lines] for u in ctx.units],
+                         [['NZL-REPLACE'], ['NZL-REPLACE']])
+        self.assertTrue(any('Seized needle' in f for f in ctx.units[1].lines[0].findings))
+        self.assertEqual((ctx.customer_name, ctx.reference), ('Fleet Co', 'CORE-OAA-1 +1'))
+
+    def test_the_lot_sheet_renders_and_carries_no_price(self):
+        pdf = PdfGenerator().generate(
+            'over_and_above_scope_lot', {'core_ids': [str(self.core.id), str(self.core2.id)]},
+            user=self.user_a)
+        self.assertTrue(pdf.startswith(b'%PDF'))
+        self.assertFalse([k for k in _keys(self._lot(self.core, self.core2).model_dump(mode='json'))
+                          if any(w in k.lower() for w in _PRICE_WORDS)])
+
+    def test_the_lot_sheet_is_for_one_customer(self):
+        from Tracker.models import Companies
+        self.core2.customer = Companies.objects.create(tenant=self.tenant_a, name='Other', description='')
+        self.core2.save(update_fields=['customer'])
+        with self.assertRaises(ReportParamError) as ctx:
+            PdfGenerator().generate(
+                'over_and_above_scope_lot', {'core_ids': [str(self.core.id), str(self.core2.id)]},
+                user=self.user_a)
+        self.assertIn('more than one customer', str(ctx.exception.errors))
+
+    def test_one_answer_is_recorded_on_every_unit(self):
+        from Tracker.services.reman.release import record_authorisation_for
+        cores = record_authorisation_for([self.core, self.core2], True, self.user_a,
+                                         contact='Pat', method='email', reference='PO-9')
+        for c in cores:
+            c.refresh_from_db()
+            self.assertEqual((c.status, c.authorisation_reference), ('IN_REBUILD', 'PO-9'))
+            self.assertIn('NZL-REPLACE', c.approved_repair_codes)
+
+    def test_a_unit_that_cant_take_the_answer_refuses_the_batch(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import record_authorisation_for
+        self.core2.status = 'IN_REBUILD'
+        self.core2.save(update_fields=['status'])
+        with self.assertRaisesMessage(ValidationError, 'CORE-OAA-2'):
+            record_authorisation_for([self.core, self.core2], True, self.user_a)
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.status, 'AWAITING_AUTHORISATION')  # not half-answered
+
+    def test_a_lot_is_sent_for_authorisation_together(self):
+        from Tracker.services.reman.release import request_authorisation_for
+        for c in (self.core, self.core2):
+            c.status = 'IN_REBUILD'
+            c.save(update_fields=['status'])
+        cores = request_authorisation_for([self.core, self.core2], self.user_a)
+        self.assertEqual({c.status for c in cores}, {'AWAITING_AUTHORISATION'})
+
+    def test_bulk_answer_endpoint(self):
+        from rest_framework.test import APIClient
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['view_core', 'change_core', 'full_tenant_access'])
+        client = APIClient()
+        client.force_authenticate(user=self.user_a)
+        client.credentials(HTTP_X_TENANT_ID=str(self.tenant_a.id))
+        resp = client.post('/api/Cores/bulk_record_authorisation/', {
+            'core_ids': [str(self.core.id), str(self.core2.id)], 'approved': False,
+            'contact': 'Pat'}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual({c['status'] for c in resp.json()}, {'DECLINED'})

@@ -5979,6 +5979,25 @@ export type PaginatedCompanyList = {
     | undefined;
   results: Array<Company>;
 };
+export type PaginatedCoreList = {
+  /**
+   * @example 123
+   */
+  count: number;
+  next?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=400&limit=100"
+     */
+    (string | null)
+    | undefined;
+  previous?:
+    | /**
+     * @example "http://api.example.org/accounts/?offset=200&limit=100"
+     */
+    (string | null)
+    | undefined;
+  results: Array<Core>;
+};
 export type PaginatedCoreListList = {
   /**
    * @example 123
@@ -20115,6 +20134,25 @@ const CoreBulkCreateError = z
     errors: z.array(z.object({}).partial().passthrough()),
   })
   .partial();
+const CoreBulkAuthorisationInputRequest = z.object({
+  core_ids: z.array(z.string().uuid()),
+  approved: z.boolean(),
+  note: z.string().optional(),
+  contact: z.string().optional(),
+  method: z.string().optional(),
+  reference: z.string().optional(),
+});
+const PaginatedCoreList = z.object({
+  count: z.number().int(),
+  next: z.string().url().nullish(),
+  previous: z.string().url().nullish(),
+  results: z.array(Core),
+});
+const CoreBulkAuthorisationError = z.object({ detail: z.string() });
+const CoreBulkRequestAuthorisationInputRequest = z.object({
+  core_ids: z.array(z.string().uuid()),
+});
+const CoreBulkRequestAuthorisationError = z.object({ detail: z.string() });
 const CoreLot = z.object({
   id: z.string().uuid(),
   lot_number: z.string(),
@@ -29512,6 +29550,11 @@ export const schemas = {
   CoreBulkCreateInputRequest,
   CoreBulkCreateResponse,
   CoreBulkCreateError,
+  CoreBulkAuthorisationInputRequest,
+  PaginatedCoreList,
+  CoreBulkAuthorisationError,
+  CoreBulkRequestAuthorisationInputRequest,
+  CoreBulkRequestAuthorisationError,
   CoreLot,
   CorePlanTeardownInputRequest,
   CorePlanTeardownResponse,
@@ -34867,6 +34910,174 @@ committed to rebuilding — which is also what lets the same call answer
     ],
   },
   {
+    method: "post",
+    path: "/api/Cores/bulk_record_authorisation/",
+    alias: "api_Cores_bulk_record_authorisation_create",
+    description: `Record one customer answer for several of their units waiting on it. Each unit gets its own record; any unit that can&#x27;t take the answer refuses the whole batch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreBulkAuthorisationInputRequest,
+      },
+      {
+        name: "condition_grade",
+        type: "Query",
+        schema: z.enum(["A", "B", "C", "SCRAP"]).optional(),
+      },
+      {
+        name: "core_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "source_type",
+        type: "Query",
+        schema: z
+          .enum(["CUSTOMER_RETURN", "PURCHASED", "TRADE_IN", "WARRANTY"])
+          .optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "AWAITING_AUTHORISATION",
+            "DECLINED",
+            "DISASSEMBLED",
+            "HARVESTED",
+            "IN_DISASSEMBLY",
+            "IN_REBUILD",
+            "REBUILT",
+            "REBUILT_TO_STOCK",
+            "RECEIVED",
+            "RETURNED",
+            "RETURNED_UNREPAIRED",
+            "SCRAPPED",
+            "SHIPPED",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedCoreList,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/Cores/bulk_request_authorisation/",
+    alias: "api_Cores_bulk_request_authorisation_create",
+    description: `Send several of one customer&#x27;s units for authorisation together. Any unit that can&#x27;t be sent refuses the whole batch.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: CoreBulkRequestAuthorisationInputRequest,
+      },
+      {
+        name: "condition_grade",
+        type: "Query",
+        schema: z.enum(["A", "B", "C", "SCRAP"]).optional(),
+      },
+      {
+        name: "core_type",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "customer",
+        type: "Query",
+        schema: z.string().uuid().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "offset",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "ordering",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "search",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "source_type",
+        type: "Query",
+        schema: z
+          .enum(["CUSTOMER_RETURN", "PURCHASED", "TRADE_IN", "WARRANTY"])
+          .optional(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "AWAITING_AUTHORISATION",
+            "DECLINED",
+            "DISASSEMBLED",
+            "HARVESTED",
+            "IN_DISASSEMBLY",
+            "IN_REBUILD",
+            "REBUILT",
+            "REBUILT_TO_STOCK",
+            "RECEIVED",
+            "RETURNED",
+            "RETURNED_UNREPAIRED",
+            "SCRAPPED",
+            "SHIPPED",
+          ])
+          .optional(),
+      },
+    ],
+    response: PaginatedCoreList,
+    errors: [
+      {
+        status: 400,
+        schema: z.object({ detail: z.string() }),
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/Cores/export/:export_format/",
     alias: "api_Cores_export_retrieve",
@@ -35271,7 +35482,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: DeliveryPerformance,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CustomerShipments/export/:export_format/",
@@ -35316,10 +35530,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: OrderShipping,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CustomerShipments/ready/",
@@ -40409,7 +40620,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/JobRoles/:id/",
@@ -40444,10 +40658,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/JobRoles/:id/",
@@ -44700,7 +44911,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/OrderLines/:id/",
@@ -44735,10 +44949,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/OrderLines/:id/plan/",
@@ -50405,7 +50616,10 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/QuarantineDispositions/:id/",
@@ -50467,10 +50681,7 @@ the completion blockers.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/decide/",
@@ -55735,7 +55946,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/:id/",
@@ -55770,10 +55984,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepOverrides/:id/reject/",
@@ -60901,7 +61112,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "put",
     path: "/api/User/:id/",
@@ -60941,10 +61155,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/User/:id/",

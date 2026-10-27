@@ -8,16 +8,10 @@
 
 #import "_common/frame.typ": *
 #import "_common/kitting.typ": tick
+#import "_common/over_and_above.typ": scope-items
 
 #let data = json.decode(sys.inputs.at("data"))
 #let optd(v) = if v == none { text(fill: muted)[—] } else { str(v) }
-
-#let part-line(p) = [
-  #text(weight: "semibold")[#p.component]
-  #if p.part_number != none [ #box(text(font: mono-font, size: 8.5pt)[#p.part_number])]
-  #if p.position != none [ · #p.position]
-  · #text(fill: muted)[#p.source]
-]
 
 #show: doc-frame.with(
   doc-type: "Over-and-Above Scope",
@@ -48,27 +42,7 @@
   Each item lists the work, the parts it needs, and the finding behind it.
 ]
 
-#for (i, l) in data.lines.enumerate() [
-  #block(breakable: false)[
-    #group-band(
-      [#l.code#if l.name != none [ — #l.name]],
-      count: [Item #(i + 1) of #data.lines.len()],
-    )
-    #report-table(
-      (1fr, 1.6fr, 1.4fr),
-      ("Work", "Finding behind it", "Parts needed"),
-      ((
-        if l.work.len() == 0 { text(fill: muted)[As named above] }
-        else { stack(spacing: 4pt, ..l.work.map(w => [#w])) },
-        if l.findings.len() == 0 { text(fill: muted)[None recorded] }
-        else { stack(spacing: 4pt, ..l.findings.map(f => [#f])) },
-        if l.parts.len() == 0 { text(fill: muted)[No replacement parts] }
-        else { stack(spacing: 4pt, ..l.parts.map(part-line)) },
-      ),),
-      valign: top,
-    )
-  ]
-]
+#scope-items(data.lines)
 
 #v(14pt)
 

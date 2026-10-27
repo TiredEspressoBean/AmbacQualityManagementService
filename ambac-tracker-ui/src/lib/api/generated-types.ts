@@ -2090,6 +2090,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/bulk_record_authorisation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Record one customer answer for several of their units waiting on it. Each unit gets its own record; any unit that can't take the answer refuses the whole batch. */
+        post: operations["api_Cores_bulk_record_authorisation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Cores/bulk_request_authorisation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send several of one customer's units for authorisation together. Any unit that can't be sent refuses the whole batch. */
+        post: operations["api_Cores_bulk_request_authorisation_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/export/{export_format}/": {
         parameters: {
             query?: never;
@@ -22684,6 +22718,17 @@ export interface components {
             method?: string;
             reference?: string;
         };
+        CoreBulkAuthorisationError: {
+            detail: string;
+        };
+        CoreBulkAuthorisationInputRequest: {
+            core_ids: string[];
+            approved: boolean;
+            note?: string;
+            contact?: string;
+            method?: string;
+            reference?: string;
+        };
         CoreBulkCreateError: {
             detail?: string;
             errors?: {
@@ -22698,6 +22743,12 @@ export interface components {
         CoreBulkCreateResponse: {
             count: number;
             created_core_ids: string[];
+        };
+        CoreBulkRequestAuthorisationError: {
+            detail: string;
+        };
+        CoreBulkRequestAuthorisationInputRequest: {
+            core_ids: string[];
         };
         /**
          * @description Lightweight core serializer for lists.
@@ -27549,6 +27600,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Company"][];
+        };
+        PaginatedCoreList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["Core"][];
         };
         PaginatedCoreListList: {
             /** @example 123 */
@@ -45038,6 +45104,158 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreBulkCreateError"];
+                };
+            };
+        };
+    };
+    api_Cores_bulk_record_authorisation_create: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Overall condition grade assigned at receipt
+                 *
+                 *     * `A` - Grade A - Excellent
+                 *     * `B` - Grade B - Good
+                 *     * `C` - Grade C - Fair
+                 *     * `SCRAP` - Scrap - Not Usable
+                 */
+                condition_grade?: "A" | "B" | "C" | "SCRAP";
+                core_type?: string;
+                customer?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `CUSTOMER_RETURN` - Customer Return
+                 *     * `PURCHASED` - Purchased Core
+                 *     * `WARRANTY` - Warranty Return
+                 *     * `TRADE_IN` - Trade-In
+                 */
+                source_type?: "CUSTOMER_RETURN" | "PURCHASED" | "TRADE_IN" | "WARRANTY";
+                /**
+                 * @description * `RECEIVED` - Received
+                 *     * `IN_DISASSEMBLY` - In Disassembly
+                 *     * `DISASSEMBLED` - Disassembled
+                 *     * `IN_REBUILD` - In Rebuild
+                 *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `RETURNED` - Returned to customer
+                 *     * `REBUILT_TO_STOCK` - Rebuilt to stock
+                 *     * `SHIPPED` - Shipped on exchange
+                 *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+                 *     * `DECLINED` - Scope declined — to be returned unrepaired
+                 *     * `RETURNED_UNREPAIRED` - Returned unrepaired
+                 *     * `HARVESTED` - Harvested to inventory
+                 *     * `SCRAPPED` - Scrapped
+                 */
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED" | "SHIPPED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreBulkAuthorisationInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreBulkAuthorisationInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreBulkAuthorisationInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCoreList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreBulkAuthorisationError"];
+                };
+            };
+        };
+    };
+    api_Cores_bulk_request_authorisation_create: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Overall condition grade assigned at receipt
+                 *
+                 *     * `A` - Grade A - Excellent
+                 *     * `B` - Grade B - Good
+                 *     * `C` - Grade C - Fair
+                 *     * `SCRAP` - Scrap - Not Usable
+                 */
+                condition_grade?: "A" | "B" | "C" | "SCRAP";
+                core_type?: string;
+                customer?: string;
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+                /** @description Which field to use when ordering the results. */
+                ordering?: string;
+                /** @description A search term. */
+                search?: string;
+                /**
+                 * @description * `CUSTOMER_RETURN` - Customer Return
+                 *     * `PURCHASED` - Purchased Core
+                 *     * `WARRANTY` - Warranty Return
+                 *     * `TRADE_IN` - Trade-In
+                 */
+                source_type?: "CUSTOMER_RETURN" | "PURCHASED" | "TRADE_IN" | "WARRANTY";
+                /**
+                 * @description * `RECEIVED` - Received
+                 *     * `IN_DISASSEMBLY` - In Disassembly
+                 *     * `DISASSEMBLED` - Disassembled
+                 *     * `IN_REBUILD` - In Rebuild
+                 *     * `REBUILT` - Rebuilt — ready to return
+                 *     * `RETURNED` - Returned to customer
+                 *     * `REBUILT_TO_STOCK` - Rebuilt to stock
+                 *     * `SHIPPED` - Shipped on exchange
+                 *     * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+                 *     * `DECLINED` - Scope declined — to be returned unrepaired
+                 *     * `RETURNED_UNREPAIRED` - Returned unrepaired
+                 *     * `HARVESTED` - Harvested to inventory
+                 *     * `SCRAPPED` - Scrapped
+                 */
+                status?: "AWAITING_AUTHORISATION" | "DECLINED" | "DISASSEMBLED" | "HARVESTED" | "IN_DISASSEMBLY" | "IN_REBUILD" | "REBUILT" | "REBUILT_TO_STOCK" | "RECEIVED" | "RETURNED" | "RETURNED_UNREPAIRED" | "SCRAPPED" | "SHIPPED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreBulkRequestAuthorisationInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CoreBulkRequestAuthorisationInputRequest"];
+                "multipart/form-data": components["schemas"]["CoreBulkRequestAuthorisationInputRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCoreList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreBulkRequestAuthorisationError"];
                 };
             };
         };

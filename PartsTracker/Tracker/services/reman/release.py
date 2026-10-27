@@ -307,6 +307,44 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
     return core
 
 
+def _one_customers_units(cores, status: str, doing: str):
+    """Refuse a batch unless every unit is the same customer's own unit, at `status`.
+    Names the units that don't fit, so whoever picked them can fix the selection."""
+    if not cores:
+        raise ValidationError("Choose at least one unit.")
+    customers = {c.customer_id for c in cores}
+    if len(customers) > 1:
+        raise ValidationError(
+            f"These units belong to more than one customer; {doing} one customer's units "
+            "at a time.")
+    misfits = [c for c in cores if c.status != status or not c.returns_to_customer]
+    if misfits:
+        listed = ', '.join(f"{c.core_number} ({c.get_status_display()})" for c in misfits)
+        raise ValidationError(f"Not every unit can be included — {listed}.")
+
+
+@transaction.atomic
+def request_authorisation_for(cores, user=None) -> list:
+    """Send several of one customer's units for authorisation together — a lot answered
+    on one sheet. Each unit is checked as `request_authorisation` checks it; any refusal
+    refuses the batch, so a lot is never half-sent."""
+    cores = list(cores)
+    _one_customers_units(cores, 'IN_REBUILD', 'send')
+    return [request_authorisation(c, user)[0] for c in cores]
+
+
+@transaction.atomic
+def record_authorisation_for(cores, approved: bool, user=None, note: str = '', *,
+                             contact: str = '', method: str = '', reference: str = '') -> list:
+    """Record one answer for several of one customer's units waiting on it — the
+    customer answered the lot. Each unit gets its own record, as `record_authorisation`
+    writes it; any refusal refuses the batch, so a lot is never half-answered."""
+    cores = list(cores)
+    _one_customers_units(cores, 'AWAITING_AUTHORISATION', 'answer for')
+    return [record_authorisation(c, approved, user, note, contact=contact, method=method,
+                                 reference=reference) for c in cores]
+
+
 def _authorised_repair_started(core) -> bool:
     """Whether work has begun on a repair the customer's answer authorised: a repair
     step for one of its codes started on this unit."""

@@ -1,0 +1,126 @@
+{
+  "our_org": "Sample Reman Co",
+  "reference": "CORE-0001 +2",
+  "customer_name": "Sample Fleet Services",
+  "units": [
+    {
+      "core_number": "CORE-0001",
+      "serial": "SN-INJ-1001",
+      "unit": "Common Rail Injector",
+      "order": "ORD-0001",
+      "received_date": "2026-10-01",
+      "entry_scope": "Standard rebuild",
+      "lines": [
+        {
+          "code": "NZL-REPLACE",
+          "name": "Replace injector nozzle",
+          "work": [
+            "Nozzle Replacement"
+          ],
+          "findings": [
+            "Injector Nozzle Assembly: scrapped at the bench — hairline crack at the needle guide."
+          ],
+          "parts": [
+            {
+              "component": "Injector Nozzle Assembly",
+              "part_number": "CRI-NZL",
+              "position": null,
+              "finding": "scrapped at the bench — hairline crack at the needle guide.",
+              "source": "Replacement part"
+            }
+          ]
+        },
+        {
+          "code": "CV-RECON",
+          "name": "Recondition control valve",
+          "work": [
+            "Valve Seat Lapping"
+          ],
+          "findings": [
+            "Control Valve Assembly: Grade C — seat wear beyond the serviceable limit."
+          ],
+          "parts": []
+        },
+        {
+          "code": "PLG-REPLACE",
+          "name": "Replace plungers",
+          "work": [
+            "Plunger Replacement"
+          ],
+          "findings": [
+            "Bore 1: Grade C — scoring on the barrel",
+            "Bore 3: scrapped at the bench — seized"
+          ],
+          "parts": [
+            {
+              "component": "Plunger",
+              "part_number": "PLG-12",
+              "position": "Bore 1",
+              "finding": "Grade C — scoring on the barrel",
+              "source": "Replacement part"
+            },
+            {
+              "component": "Plunger",
+              "part_number": "PLG-12",
+              "position": "Bore 3",
+              "finding": "scrapped at the bench — seized",
+              "source": "Replacement part"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "core_number": "CORE-0002",
+      "serial": "SN-INJ-1002",
+      "unit": "Common Rail Injector",
+      "order": "ORD-0001",
+      "received_date": "2026-10-01",
+      "entry_scope": "Standard rebuild",
+      "lines": [
+        {
+          "code": "NZL-REPLACE",
+          "name": "Replace injector nozzle",
+          "work": [
+            "Nozzle Replacement"
+          ],
+          "findings": [
+            "Injector Nozzle Assembly: scrapped at the bench — hairline crack at the needle guide."
+          ],
+          "parts": [
+            {
+              "component": "Injector Nozzle Assembly",
+              "part_number": "CRI-NZL",
+              "position": null,
+              "finding": "scrapped at the bench — hairline crack at the needle guide.",
+              "source": "Replacement part"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "core_number": "CORE-0003",
+      "serial": null,
+      "unit": "Common Rail Injector",
+      "order": "ORD-0001",
+      "received_date": "2026-10-02",
+      "entry_scope": "Standard rebuild",
+      "lines": [
+        {
+          "code": "CV-RECON",
+          "name": "Recondition control valve",
+          "work": [
+            "Valve Seat Lapping"
+          ],
+          "findings": [
+            "Control Valve Assembly: Grade C — seat wear beyond the serviceable limit."
+          ],
+          "parts": []
+        }
+      ]
+    }
+  ],
+  "issued_by": "Sample Planner",
+  "issued_date": "2026-10-27"
+}

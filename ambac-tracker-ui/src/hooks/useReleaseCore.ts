@@ -111,3 +111,44 @@ export function useCoreLifecycleAction() {
         },
     });
 }
+
+
+/**
+ * Send several of one customer's units for authorisation together, or record one
+ * answer for all of them — a lot answered on one sheet. Any unit that can't take it
+ * refuses the whole batch server-side, so a lot is never half-sent or half-answered.
+ */
+export function useBulkCoreAuthorisation() {
+    const queryClient = useQueryClient();
+    return useMutation<
+        unknown,
+        unknown,
+        | { action: "request"; coreIds: string[] }
+        | {
+            action: "record"; coreIds: string[]; approved: boolean; note?: string;
+            contact?: string; method?: string; reference?: string;
+        }
+    >({
+        mutationFn: (v) => {
+            const headers = { "X-CSRFToken": getCookie("csrftoken") };
+            if (v.action === "request") {
+                return api.api_Cores_bulk_request_authorisation_create({ core_ids: v.coreIds }, { headers });
+            }
+            return api.api_Cores_bulk_record_authorisation_create(
+                {
+                    core_ids: v.coreIds, approved: v.approved, note: v.note ?? "",
+                    contact: v.contact ?? "", method: v.method ?? "", reference: v.reference ?? "",
+                },
+                { headers },
+            );
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                predicate: (q) =>
+                    ["core", "cores", "workorder", "workorders", "rebuildplan", "parts"].includes(
+                        String(q.queryKey[0]).toLowerCase(),
+                    ),
+            });
+        },
+    });
+}

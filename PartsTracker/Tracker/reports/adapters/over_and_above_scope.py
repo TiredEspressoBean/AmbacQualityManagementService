@@ -141,3 +141,108 @@ class OverAndAboveScopeAdapter(ReportAdapter):
 
     def get_filename(self, validated_params) -> str:
         return f"over_and_above_scope_{validated_params.get('core_id', 'unknown')}.pdf"
+
+
+# ---------------------------------------------------------------------------
+# The lot: several of one customer's units on one sheet, answered together
+# ---------------------------------------------------------------------------
+
+class LotUnitRow(BaseModel):
+    core_number: str
+    serial: Optional[str] = None
+    unit: str
+    order: Optional[str] = None
+    received_date: Optional[date] = None
+    entry_scope: Optional[str] = None
+    lines: list[ScopeLineRow] = []
+
+
+class OverAndAboveLotContext(BaseModel):
+    our_org: str
+    reference: str
+    customer_name: Optional[str] = None
+    units: list[LotUnitRow] = []
+    issued_by: Optional[str] = None
+    issued_date: date
+
+
+class LotParamsSerializer(serializers.Serializer):
+    """{"core_ids": [<uuid>, ...]} — one customer's units in the requesting user's tenant,
+    each in rebuild or awaiting the customer's answer."""
+    core_ids = serializers.ListField(child=serializers.UUIDField(), min_length=1)
+
+    def validate_core_ids(self, value):
+        from Tracker.models import Core
+        user = self.context.get("user") or getattr(self.context.get("request"), "user", None)
+        if user is None:
+            raise serializers.ValidationError("Authenticated user required.")
+        tenant = getattr(user, "_current_tenant", None) or getattr(user, "tenant", None)
+        if tenant is None:
+            raise serializers.ValidationError("No tenant context on user.")
+        # tenant-safe: explicit tenant filter
+        cores = list(Core.unscoped.filter(id__in=value, tenant=tenant, archived=False))
+        if len(cores) != len(set(value)):
+            raise serializers.ValidationError("One or more of those units wasn't found.")
+        if len({c.customer_id for c in cores}) > 1:
+            raise serializers.ValidationError(
+                "These units belong to more than one customer; a sheet is for one customer.")
+        misfits = [c for c in cores
+                   if not c.returns_to_customer or c.status not in SCOPE_STATUSES]
+        if misfits:
+            raise serializers.ValidationError(
+                "Not every unit can be on the sheet — " + ", ".join(
+                    f"{c.core_number} ({c.get_status_display()})" for c in misfits) + ".")
+        return value
+
+
+def build_over_and_above_lot_context(cores, tenant, user=None) -> OverAndAboveLotContext:
+    """Every unit's scope, in core-number order. Raises ReportParamError when none of
+    them has anything to ask about; a unit with nothing to ask is left off the sheet."""
+    from Tracker.reports.services.pdf_generator import ReportParamError
+
+    units = []
+    for core in sorted(cores, key=lambda c: c.core_number):
+        try:
+            one = build_over_and_above_scope_context(core, tenant, user)
+        except ReportParamError:
+            continue
+        units.append(LotUnitRow(
+            core_number=one.core_number, serial=one.serial, unit=one.unit, order=one.order,
+            received_date=one.received_date, entry_scope=one.entry_scope, lines=one.lines))
+    if not units:
+        msg = ("Every repair raised on these units is pre-approved or was sold with its "
+               "rebuild level, so there is nothing to authorise.")
+        raise ReportParamError(msg, {"core_ids": [msg]})
+    first = cores[0]
+    return OverAndAboveLotContext(
+        our_org=tenant.name,
+        # One reference the customer can quote for the lot: the first unit's number and
+        # how many follow it.
+        reference=(units[0].core_number if len(units) == 1
+                   else f"{units[0].core_number} +{len(units) - 1}"),
+        customer_name=first.customer.name if first.customer_id else None,
+        units=units,
+        issued_by=_name(user),
+        issued_date=tenant_today(tenant),
+    )
+
+
+class OverAndAboveLotAdapter(ReportAdapter):
+    """For several of one customer's units, sent and answered together."""
+
+    name = "over_and_above_scope_lot"
+    title = "Over-and-Above Scope (lot)"
+    template_path = "over_and_above_scope_lot.typ"
+    context_model_class = OverAndAboveLotContext
+    param_serializer_class = LotParamsSerializer
+
+    def build_context(self, validated_params, user, tenant) -> OverAndAboveLotContext:
+        from Tracker.models import Core
+        # tenant-safe: explicit tenant filter (defense-in-depth)
+        cores = list(Core.unscoped.filter(tenant=tenant, id__in=validated_params["core_ids"])
+                     .select_related("customer", "core_type", "part__order",
+                                     "part__work_order__related_order"))
+        return build_over_and_above_lot_context(cores, tenant, user)
+
+    def get_filename(self, validated_params) -> str:
+        return f"over_and_above_scope_lot_{len(validated_params.get('core_ids', []))}_units.pdf"

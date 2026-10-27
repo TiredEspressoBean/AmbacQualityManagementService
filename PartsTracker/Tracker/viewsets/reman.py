@@ -121,6 +121,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         # than inventing codenames for each transition.
         'request_authorisation_action': ['change_core'],
         'record_authorisation_action': ['change_core'],
+        'bulk_request_authorisation': ['change_core'],
+        'bulk_record_authorisation': ['change_core'],
         'correct_authorisation_action': ['change_core'],
         'correct_receipt_action': ['change_core'],
         # A return is a shipment, so it also takes the perm the Shipping board does.
@@ -133,6 +135,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'complete_disassembly',
         'release_to_rebuild', 'release_to_inventory',
         'request_authorisation_action', 'record_authorisation_action',
+        'bulk_request_authorisation', 'bulk_record_authorisation',
         'correct_authorisation_action', 'correct_receipt_action',
         'return_to_customer', 'approve_repair',
     }
@@ -396,6 +399,74 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
             'core': CoreSerializer(core, context={'request': request}).data,
             'over_and_above': over,
         })
+
+    def _selected_cores(self, request):
+        """The cores named in `core_ids`, as this user may see them; None when any is
+        missing (another tenant's, or not visible to them)."""
+        ids = request.data.get('core_ids') or []
+        if not isinstance(ids, list):
+            return None
+        cores = list(self.get_queryset().filter(id__in=ids, archived=False))
+        return cores if len(cores) == len(set(map(str, ids))) else None
+
+    @extend_schema(
+        request=inline_serializer(name="CoreBulkRequestAuthorisationInput", fields={
+            "core_ids": serializers.ListField(child=serializers.UUIDField()),
+        }),
+        responses={200: CoreSerializer(many=True), 400: inline_serializer(
+            name="CoreBulkRequestAuthorisationError", fields={"detail": serializers.CharField()})},
+        description="Send several of one customer's units for authorisation together. "
+                    "Any unit that can't be sent refuses the whole batch.",
+    )
+    @action(detail=False, methods=['post'], url_path='bulk_request_authorisation')
+    def bulk_request_authorisation(self, request):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import request_authorisation_for
+
+        cores = self._selected_cores(request)
+        if cores is None:
+            return Response({'detail': "One or more of those units wasn't found."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            cores = request_authorisation_for(cores, request.user)
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(cores, many=True, context={'request': request}).data)
+
+    @extend_schema(
+        request=inline_serializer(name="CoreBulkAuthorisationInput", fields={
+            "core_ids": serializers.ListField(child=serializers.UUIDField()),
+            "approved": serializers.BooleanField(),
+            "note": serializers.CharField(required=False, allow_blank=True),
+            "contact": serializers.CharField(required=False, allow_blank=True),
+            "method": serializers.CharField(required=False, allow_blank=True),
+            "reference": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses={200: CoreSerializer(many=True), 400: inline_serializer(
+            name="CoreBulkAuthorisationError", fields={"detail": serializers.CharField()})},
+        description="Record one customer answer for several of their units waiting on it. "
+                    "Each unit gets its own record; any unit that can't take the answer "
+                    "refuses the whole batch.",
+    )
+    @action(detail=False, methods=['post'], url_path='bulk_record_authorisation')
+    def bulk_record_authorisation(self, request):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from Tracker.services.reman.release import record_authorisation_for
+
+        cores = self._selected_cores(request)
+        if cores is None:
+            return Response({'detail': "One or more of those units wasn't found."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            cores = record_authorisation_for(
+                cores, bool(request.data.get('approved')), request.user,
+                note=request.data.get('note', ''),
+                contact=request.data.get('contact', ''),
+                method=request.data.get('method', ''),
+                reference=request.data.get('reference', ''))
+        except DjangoValidationError as e:
+            return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(CoreSerializer(cores, many=True, context={'request': request}).data)
 
     @extend_schema(
         request=inline_serializer(name="CoreApproveRepairInput", fields={

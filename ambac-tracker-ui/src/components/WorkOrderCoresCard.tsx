@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { coreStageLabel, coreStageVariant } from "@/lib/reman/core-stages";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +22,7 @@ import {
     Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useCoreLifecycleAction, useReleaseCore } from "@/hooks/useReleaseCore";
+import { useBulkCoreAuthorisation, useCoreLifecycleAction, useReleaseCore } from "@/hooks/useReleaseCore";
 import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,8 +54,12 @@ export function WorkOrderCoresCard(
     // The customer's answer, recorded by staff: who answered, how, and the reference.
     const [answering, setAnswering] = useState<{ core: WorkOrderCore; approved: boolean } | null>(null);
     const [returning, setReturning] = useState<WorkOrderCore | null>(null);
+    // A customer's lot: several of their units sent and answered together.
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [bulkAnswer, setBulkAnswer] = useState<boolean | null>(null);
     const release = useReleaseCore();
     const lifecycle = useCoreLifecycleAction();
+    const bulk = useBulkCoreAuthorisation();
     // Teardown and rebuild are worked in the DWI operator runtime, at the step the unit
     // is at — a core is a part, so it opens like any part's work.
     const { workUnit, pending: opening } = useWorkUnit();
@@ -110,6 +116,27 @@ export function WorkOrderCoresCard(
 
     const awaiting = cores.filter((c) => c.status === "DISASSEMBLED").length;
 
+    // A unit can join a lot while its customer's answer is still to be asked for or given.
+    const lotable = (c: WorkOrderCore) =>
+        !!c.returns_to_customer && (c.status === "IN_REBUILD" || c.status === "AWAITING_AUTHORISATION");
+    const anyLotable = cores.some(lotable);
+    const picked = cores.filter((c) => selected.has(String(c.id)));
+    const pickedIds = picked.map((c) => String(c.id));
+    const pickedStatus = new Set(picked.map((c) => c.status));
+    const pickedCustomers = new Set(picked.map((c) => c.customer ?? null));
+    // A lot is one customer's units at one stage; anything else would be refused anyway.
+    const lotProblem = pickedCustomers.size > 1 ? "Choose one customer's units."
+        : pickedStatus.size > 1 ? "Choose units at the same stage." : null;
+    const toggle = (id: string, on: boolean) => setSelected((s) => {
+        const next = new Set(s);
+        if (on) next.add(id); else next.delete(id);
+        return next;
+    });
+    function onBulkDone(message: string) {
+        toast.success(message);
+        setSelected(new Set());
+    }
+
     return (
         <TooltipProvider>
             <AlertDialog open={harvesting !== null} onOpenChange={(o) => { if (!o) setHarvesting(null); }}>
@@ -145,10 +172,49 @@ export function WorkOrderCoresCard(
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
+                    {picked.length > 0 && (
+                        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm">
+                            <span className="font-medium">{picked.length} selected</span>
+                            {lotProblem ? (
+                                <span className="text-muted-foreground">{lotProblem}</span>
+                            ) : (
+                                <>
+                                    <ReportButton reportType="over_and_above_scope_lot"
+                                        params={{ core_ids: pickedIds }} label="Scope for customer" />
+                                    {pickedStatus.has("IN_REBUILD") && (
+                                        <Button size="sm" variant="outline" disabled={bulk.isPending}
+                                            onClick={() => bulk.mutate({ action: "request", coreIds: pickedIds }, {
+                                                onSuccess: () => onBulkDone(`${picked.length} units sent for authorisation`),
+                                                onError,
+                                            })}>
+                                            Send for authorisation
+                                        </Button>
+                                    )}
+                                    {pickedStatus.has("AWAITING_AUTHORISATION") && (
+                                        <>
+                                            <Button size="sm" disabled={bulk.isPending}
+                                                onClick={() => setBulkAnswer(true)}>
+                                                Approved…
+                                            </Button>
+                                            <Button size="sm" variant="outline" disabled={bulk.isPending}
+                                                onClick={() => setBulkAnswer(false)}>
+                                                Declined…
+                                            </Button>
+                                        </>
+                                    )}
+                                </>
+                            )}
+                            <Button size="sm" variant="ghost" className="ml-auto"
+                                onClick={() => setSelected(new Set())}>
+                                Clear
+                            </Button>
+                        </div>
+                    )}
                     <div className="w-full overflow-x-auto rounded-md border">
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    {anyLotable && <TableHead className="w-8" />}
                                     <TableHead>Core</TableHead>
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Status</TableHead>
@@ -167,6 +233,17 @@ export function WorkOrderCoresCard(
                                     const busy = pending === id;
                                     return (
                                         <TableRow key={id}>
+                                            {anyLotable && (
+                                                <TableCell>
+                                                    {lotable(core) && (
+                                                        <Checkbox
+                                                            aria-label={`Select ${core.core_number}`}
+                                                            checked={selected.has(id)}
+                                                            onCheckedChange={(v) => toggle(id, v === true)}
+                                                        />
+                                                    )}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="font-mono text-sm font-medium">
                                                 <Link
                                                     to="/reman/cores/$id"
@@ -360,6 +437,25 @@ export function WorkOrderCoresCard(
                     }}
                 />
             )}
+            {bulkAnswer !== null && picked.length > 0 && (
+                <CustomerAnswerDialog
+                    coreId={pickedIds[0]}
+                    coreNumber={`${picked.length} units`}
+                    units={picked.map((c) => c.core_number)}
+                    approved={bulkAnswer}
+                    pending={bulk.isPending}
+                    onCancel={() => setBulkAnswer(null)}
+                    onConfirm={(fields) => {
+                        const n = picked.length;
+                        bulk.mutate({ action: "record", coreIds: pickedIds, approved: bulkAnswer, ...fields }, {
+                            onSuccess: () => onBulkDone(
+                                `${n} units ${bulkAnswer ? "approved — rebuild resumed" : "declined"}`),
+                            onError,
+                        });
+                        setBulkAnswer(null);
+                    }}
+                />
+            )}
             {returning && (
                 <ShipDialog
                     group={{
@@ -380,9 +476,11 @@ export function WorkOrderCoresCard(
 /** Record what the customer said. The conversation happened elsewhere (phone, email,
  *  a PO); this is the production record of it — who answered, how, and the reference
  *  to trace it. Nobody at the customer needs a login for it to be on record. */
-export function CustomerAnswerDialog({ coreId, coreNumber, approved, pending, onCancel, onConfirm }: {
+export function CustomerAnswerDialog({ coreId, coreNumber, units, approved, pending, onCancel, onConfirm }: {
     coreId: string;
     coreNumber: string;
+    /** Several units answered together: their core numbers, listed instead of one unit's scope. */
+    units?: string[];
     approved: boolean;
     pending: boolean;
     onCancel: () => void;
@@ -394,8 +492,9 @@ export function CustomerAnswerDialog({ coreId, coreNumber, approved, pending, on
     const [note, setNote] = useState("");
     // What they're answering: each code, its name, and the finding behind it — so the
     // person recording the answer sees what was agreed to.
-    const { data: core } = useRetrieveCore(coreId);
+    const { data: core } = useRetrieveCore(units ? "" : coreId);
     const scope = core?.awaiting_authorisation ?? [];
+    const many = (units?.length ?? 0) > 1;
     return (
         <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
             <DialogContent>
@@ -405,10 +504,13 @@ export function CustomerAnswerDialog({ coreId, coreNumber, approved, pending, on
                     </DialogTitle>
                     <DialogDescription>
                         {approved
-                            ? "The repairs waiting on their answer are approved and the rebuild resumes."
-                            : "The unit goes back to them unrepaired."}
+                            ? `The repairs waiting on their answer are approved and the rebuild resumes${many ? " on each unit" : ""}.`
+                            : many ? "Each unit goes back to them unrepaired." : "The unit goes back to them unrepaired."}
                     </DialogDescription>
                 </DialogHeader>
+                {units && (
+                    <p className="rounded-md border bg-muted/30 p-2 font-mono text-xs">{units.join(", ")}</p>
+                )}
                 {scope.length > 0 && (
                     <ul className="space-y-1 rounded-md border bg-muted/30 p-2 text-sm">
                         {scope.map((item) => (

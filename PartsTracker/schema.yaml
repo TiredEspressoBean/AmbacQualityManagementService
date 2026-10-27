@@ -6322,6 +6322,271 @@ paths:
               schema:
                 $ref: '#/components/schemas/CoreBulkCreateError'
           description: ''
+  /api/Cores/bulk_record_authorisation/:
+    post:
+      operationId: api_Cores_bulk_record_authorisation_create
+      description: Record one customer answer for several of their units waiting on
+        it. Each unit gets its own record; any unit that can't take the answer refuses
+        the whole batch.
+      parameters:
+      - in: query
+        name: condition_grade
+        schema:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+          - SCRAP
+        description: |-
+          Overall condition grade assigned at receipt
+
+          * `A` - Grade A - Excellent
+          * `B` - Grade B - Good
+          * `C` - Grade C - Fair
+          * `SCRAP` - Scrap - Not Usable
+      - in: query
+        name: core_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: source_type
+        schema:
+          type: string
+          enum:
+          - CUSTOMER_RETURN
+          - PURCHASED
+          - TRADE_IN
+          - WARRANTY
+        description: |-
+          * `CUSTOMER_RETURN` - Customer Return
+          * `PURCHASED` - Purchased Core
+          * `WARRANTY` - Warranty Return
+          * `TRADE_IN` - Trade-In
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - AWAITING_AUTHORISATION
+          - DECLINED
+          - DISASSEMBLED
+          - HARVESTED
+          - IN_DISASSEMBLY
+          - IN_REBUILD
+          - REBUILT
+          - REBUILT_TO_STOCK
+          - RECEIVED
+          - RETURNED
+          - RETURNED_UNREPAIRED
+          - SCRAPPED
+          - SHIPPED
+        description: |-
+          * `RECEIVED` - Received
+          * `IN_DISASSEMBLY` - In Disassembly
+          * `DISASSEMBLED` - Disassembled
+          * `IN_REBUILD` - In Rebuild
+          * `REBUILT` - Rebuilt — ready to return
+          * `RETURNED` - Returned to customer
+          * `REBUILT_TO_STOCK` - Rebuilt to stock
+          * `SHIPPED` - Shipped on exchange
+          * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+          * `DECLINED` - Scope declined — to be returned unrepaired
+          * `RETURNED_UNREPAIRED` - Returned unrepaired
+          * `HARVESTED` - Harvested to inventory
+          * `SCRAPPED` - Scrapped
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreBulkAuthorisationInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreBulkAuthorisationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreBulkAuthorisationInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCoreList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreBulkAuthorisationError'
+          description: ''
+  /api/Cores/bulk_request_authorisation/:
+    post:
+      operationId: api_Cores_bulk_request_authorisation_create
+      description: Send several of one customer's units for authorisation together.
+        Any unit that can't be sent refuses the whole batch.
+      parameters:
+      - in: query
+        name: condition_grade
+        schema:
+          type: string
+          enum:
+          - A
+          - B
+          - C
+          - SCRAP
+        description: |-
+          Overall condition grade assigned at receipt
+
+          * `A` - Grade A - Excellent
+          * `B` - Grade B - Good
+          * `C` - Grade C - Fair
+          * `SCRAP` - Scrap - Not Usable
+      - in: query
+        name: core_type
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: customer
+        schema:
+          type: string
+          format: uuid
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: source_type
+        schema:
+          type: string
+          enum:
+          - CUSTOMER_RETURN
+          - PURCHASED
+          - TRADE_IN
+          - WARRANTY
+        description: |-
+          * `CUSTOMER_RETURN` - Customer Return
+          * `PURCHASED` - Purchased Core
+          * `WARRANTY` - Warranty Return
+          * `TRADE_IN` - Trade-In
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - AWAITING_AUTHORISATION
+          - DECLINED
+          - DISASSEMBLED
+          - HARVESTED
+          - IN_DISASSEMBLY
+          - IN_REBUILD
+          - REBUILT
+          - REBUILT_TO_STOCK
+          - RECEIVED
+          - RETURNED
+          - RETURNED_UNREPAIRED
+          - SCRAPPED
+          - SHIPPED
+        description: |-
+          * `RECEIVED` - Received
+          * `IN_DISASSEMBLY` - In Disassembly
+          * `DISASSEMBLED` - Disassembled
+          * `IN_REBUILD` - In Rebuild
+          * `REBUILT` - Rebuilt — ready to return
+          * `RETURNED` - Returned to customer
+          * `REBUILT_TO_STOCK` - Rebuilt to stock
+          * `SHIPPED` - Shipped on exchange
+          * `AWAITING_AUTHORISATION` - Awaiting customer authorisation
+          * `DECLINED` - Scope declined — to be returned unrepaired
+          * `RETURNED_UNREPAIRED` - Returned unrepaired
+          * `HARVESTED` - Harvested to inventory
+          * `SCRAPPED` - Scrapped
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreBulkRequestAuthorisationInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CoreBulkRequestAuthorisationInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoreBulkRequestAuthorisationInputRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCoreList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreBulkRequestAuthorisationError'
+          description: ''
   /api/Cores/export/{export_format}/:
     get:
       operationId: api_Cores_export_retrieve
@@ -53325,6 +53590,34 @@ components:
           type: string
       required:
       - approved
+    CoreBulkAuthorisationError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreBulkAuthorisationInputRequest:
+      type: object
+      properties:
+        core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        approved:
+          type: boolean
+        note:
+          type: string
+        contact:
+          type: string
+        method:
+          type: string
+        reference:
+          type: string
+      required:
+      - approved
+      - core_ids
     CoreBulkCreateError:
       type: object
       properties:
@@ -53358,6 +53651,23 @@ components:
       required:
       - count
       - created_core_ids
+    CoreBulkRequestAuthorisationError:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    CoreBulkRequestAuthorisationInputRequest:
+      type: object
+      properties:
+        core_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+      - core_ids
     CoreList:
       type: object
       description: |-
@@ -63657,6 +63967,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Company'
+    PaginatedCoreList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Core'
     PaginatedCoreListList:
       type: object
       required:

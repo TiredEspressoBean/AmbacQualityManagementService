@@ -170,6 +170,29 @@ Both answers and the reason are added to the core's notes. The correction is
 refused once the repair it authorised has started, or once a declined unit has
 gone back to its customer. By then the answer has been acted on.
 
+### A customer's lot, together
+
+When a customer sends several units, you can ask about them and record their
+answer together. On the work order's **Cores** card, tick the units: their
+customer's own units that are in rebuild or awaiting authorisation can be ticked.
+A bar above the table then offers, for the units ticked:
+
+- **Scope for customer** — one sheet for the lot: each unit with its items, and on
+  the last page a line per unit to authorise or decline;
+- **Send for authorisation** — sends every ticked unit that is in rebuild;
+- **Approved…** / **Declined…** — records one answer for every ticked unit that is
+  waiting, with who answered, how, and their reference.
+
+The units have to be one customer's, at the same stage; the bar says so when they
+aren't. Each unit gets its own record, exactly as if it had been answered on its
+own, so a correction is still made on that unit's page. If any one unit can't take
+the action (it has nothing to ask about, say), nothing is done and the message
+names that unit. Untick it and try again.
+
+If the customer authorises some units and declines others, record the two answers
+separately: tick the approved units for **Approved…**, then the rest for
+**Declined…**.
+
 A **Return** button on the work order's **Cores** card then sends the unit back to
 its customer, from either *Rebuilt* or *Scope declined*. It opens the ship dialog
 (carrier, tracking, ERP shipper number, expected delivery, notes) and creates a
