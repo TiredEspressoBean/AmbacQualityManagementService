@@ -267,9 +267,11 @@ class Command(BaseCommand):
                         rc = cur.rowcount
                 if rc:
                     self.stdout.write(f"  Cleared {rc} {label}")
+                return rc
             except Exception as e:
                 msg = str(e).encode('ascii', 'replace').decode('ascii')[:160]
                 self.stdout.write(self.style.WARNING(f"  Could not clear {label}: {msg}"))
+                return 0
 
         with transaction.atomic():
             with connection.cursor() as cur:
@@ -307,21 +309,65 @@ class Command(BaseCommand):
                     _sql(f'DELETE FROM "{m._meta.db_table}" WHERE tenant_id=%s', [tid], m._meta.object_name)
                 # 4) Audit log (not tenant-scoped).
                 _sql('DELETE FROM "auditlog_logentry";', [], "audit log entries")
-                # 5) Null dangling FKs on preserved config that pointed at the
-                #    now-deleted demo users/companies.
-                for tbl in ('Tracker_notificationrule', 'Tracker_notificationschedule'):
-                    for col in ('created_by_id', 'company_id'):
-                        try:
-                            with transaction.atomic():
-                                with connection.cursor() as cur:
-                                    cur.execute(f'UPDATE "{tbl}" SET "{col}"=NULL WHERE tenant_id=%s', [tid])
-                        except Exception:
-                            pass
+                # 5) Preserved config that pointed at now-deleted rows (users,
+                #    customers, contacts). FK enforcement is off, so apply each
+                #    field's own on_delete by hand — a dangling owner_user left a
+                #    personal schedule that failed validation on every fire.
+                self._repair_preserved_refs(PRESERVE, tid, _sql)
             finally:
                 with connection.cursor() as cur:
                     cur.execute("SET session_replication_role = 'origin';")
 
         self.stdout.write(self.style.SUCCESS("  Demo tenant data cleared (config preserved)"))
+
+    def _repair_preserved_refs(self, preserve, tid, _sql):
+        """CASCADE → delete the preserved row; SET_NULL → null the column;
+        M2M → drop through rows whose either end is gone."""
+        from django.apps import apps
+        from django.db import models as djm
+
+        preserved = [
+            m for m in apps.get_models()
+            if m._meta.app_label in ('Tracker', 'integrations')
+            and m._meta.object_name in preserve
+        ]
+
+        def missing(col, target):
+            t = target._meta
+            return f'NOT EXISTS (SELECT 1 FROM "{t.db_table}" x WHERE x."{t.pk.column}" = "{col}")'
+
+        # Repeat until settled: a deleted rule orphans its escalation policy,
+        # which orphans the policy's steps.
+        while True:
+            changed = 0
+            for m in preserved:
+                if not any(f.name == 'tenant' for f in m._meta.local_fields):
+                    continue
+                tbl = m._meta.db_table
+                for f in m._meta.local_fields:
+                    if not f.is_relation or f.name == 'tenant':
+                        continue
+                    cond = f'"{f.column}" IS NOT NULL AND {missing(f.column, f.related_model)}'
+                    if f.remote_field.on_delete is djm.CASCADE:
+                        changed += _sql(f'DELETE FROM "{tbl}" WHERE tenant_id=%s AND {cond}', [tid],
+                                        f'{m._meta.object_name} orphaned by {f.name}')
+                    elif f.null:
+                        changed += _sql(f'UPDATE "{tbl}" SET "{f.column}"=NULL WHERE tenant_id=%s AND {cond}',
+                                        [tid], f'{m._meta.object_name}.{f.name} references')
+            if not changed:
+                break
+        # After the CASCADE deletes, so through rows of deleted rules/schedules go too.
+        for m in preserved:
+            for f in m._meta.local_many_to_many:
+                through = f.remote_field.through
+                if not through._meta.auto_created:
+                    continue
+                src, dst = f.m2m_column_name(), f.m2m_reverse_name()
+                _sql(
+                    f'DELETE FROM "{through._meta.db_table}" WHERE {missing(src, m)} '
+                    f'OR {missing(dst, f.related_model)}',
+                    [], f'{through._meta.db_table} dangling rows',
+                )
 
     def _seed_demo_tenant(self):
         """Seed demo tenant with deterministic preset data."""
