@@ -482,7 +482,6 @@ database, not just the screen.
 - **`can_make` on part types.** Meant for the scheduler's make-or-buy choice, but
   how it should work isn't designed.
 - **The reman scheduling strategy** (Scheduler R1). Waiting for real data.
-- **An adherence view** (Scheduler 8).
 - **A per-ruleset list of sampling decisions.** Only the per-part view is built.
 
 ## Seed and training arc backlog
