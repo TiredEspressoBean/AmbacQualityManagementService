@@ -229,9 +229,9 @@ Walked 2026-10-21 as Rosa Kim (`rosa.ship`), a seeded Shipping user.
 
 The **frozen fence** is hard (fixed intervals since 2026-10-21), so *"Frozen stays
 put"* is accurate. A frozen op is re-planned only when its slot passed unstarted
-and slid to now; a 2026-10-27 draft solve on dev data froze 98 ops and re-planned
-47 that way (45 *crew full*, 2 *operator changed*). Whether that reason should read
-*its slot passed unstarted* is with the user.
+and it can't fit at now; it then reports *its slot passed unstarted*
+(`slot_passed`). A machine down or a closure still reports as such, and a held op
+still ahead of its slot that collides with others is still *crew full*.
 
 ## Production Manager
 
