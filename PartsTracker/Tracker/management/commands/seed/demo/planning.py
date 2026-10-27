@@ -130,12 +130,7 @@ class DemoPlanningSeeder(BaseSeeder):
         return made
 
     def _solve(self):
-        from Tracker.services.scheduling.preflight import LaborInfeasible
         from Tracker.services.scheduling.solver import solve_schedule
-        try:
-            result = solve_schedule(self.tenant, time_limit_seconds=SOLVE_SECONDS)
-        except LaborInfeasible as e:
-            self.log(f"  Warning: no schedule solved: {e}", warning=True)
-            return None
+        result = solve_schedule(self.tenant, time_limit_seconds=SOLVE_SECONDS)
         self.log(f"  Schedule solved: {result.solver_status}")
         return result

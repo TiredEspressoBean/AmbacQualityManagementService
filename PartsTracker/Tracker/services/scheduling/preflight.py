@@ -12,23 +12,6 @@ from __future__ import annotations
 from collections import defaultdict
 
 
-class LaborInfeasible(Exception):
-    """Raised to REFUSE a solve: a step in the active work requires a certification no
-    rostered operator holds, so the plan could never be executed. Carries the gap list
-    (from `find_unstaffable_steps`) so the caller can tell the planner what to fix."""
-
-    def __init__(self, gaps: list[dict]):
-        self.gaps = gaps
-        summary = "; ".join(
-            f"{g['step_name']} needs {'/'.join(g['required_training'])}" for g in gaps[:5]
-        )
-        more = "" if len(gaps) <= 5 else f" (+{len(gaps) - 5} more)"
-        super().__init__(
-            f"{len(gaps)} step(s) require training no rostered operator holds: "
-            f"{summary}{more}"
-        )
-
-
 def find_unstaffable_steps(tenant) -> list[dict]:
     """Training-gated steps in the active work that no dispatchable operator can run.
 

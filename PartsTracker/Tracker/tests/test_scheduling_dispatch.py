@@ -359,7 +359,7 @@ class DispatchTests(TenantContextMixin, TestCase):
         gaps = find_unstaffable_steps(self.tenant)
         self.assertNotIn("Turn", {g['step_name'] for g in gaps},
                          "an OFF step is never a staffing blocker")
-        result = solve_schedule(self.tenant)  # must not raise LaborInfeasible
+        result = solve_schedule(self.tenant)  # plans it — no staffing gap to cut it at
         self.assertIsNotNone(result)
 
     def test_scarce_skill_serializes_and_dispatch_covers_it(self):

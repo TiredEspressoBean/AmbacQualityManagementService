@@ -151,13 +151,8 @@ class DemoPlanWalkSeeder(DemoQaWalkSeeder):
         return part
 
     def _solve_morning_plan(self):
-        from Tracker.services.scheduling.preflight import LaborInfeasible
         from Tracker.services.scheduling.solver import solve_schedule
-        try:
-            return solve_schedule(self.tenant, time_limit_seconds=30)
-        except LaborInfeasible as e:
-            self.log(f"  Warning: no morning plan solved: {e}", warning=True)
-            return None
+        return solve_schedule(self.tenant, time_limit_seconds=30)
 
     def _slots(self, schedule, parts):
         from Tracker.models.scheduling import ScheduledTask

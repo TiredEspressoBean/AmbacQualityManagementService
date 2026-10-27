@@ -226,8 +226,8 @@ class DemoTrainingRecordsSeeder(BaseSeeder):
                     # min_level 1 — step/equipment gates mean "holds a current cert"
                     # (authorization per the WI), NOT "is a level-3 expert". Left at
                     # the model default (3), no dispatchable floor operator qualified
-                    # for Assembly/Nozzle Inspection and the solver's labor preflight
-                    # refused every solve (LaborInfeasible). The level-3 drama lives
+                    # for Assembly/Nozzle Inspection, and the solver would plan every
+                    # route only up to those steps. The level-3 drama lives
                     # on the JOB-ROLE profiles (competency-matrix demo), not here.
                     defaults={'notes': req_data.get('notes', ''), 'min_level': req_data.get('min_level', 1)},
                 )
