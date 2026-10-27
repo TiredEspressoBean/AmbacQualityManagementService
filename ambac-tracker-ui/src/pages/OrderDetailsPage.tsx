@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { orderPartsOptions } from "@/hooks/useOrderParts";
 import {
     CheckCircle, Clock, Circle, ArrowLeft, Edit, UserPlus,
@@ -171,6 +171,8 @@ function PartTypeGroup({
 type AddNoteBody = Parameters<typeof api.api_Orders_add_note_create>[0];
 type NoteVisibility = NonNullable<AddNoteBody["visibility"]>;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function OrderDetailsPage() {
     const { orderNumber } = useParams({ from: "/orders/$orderNumber" });
     const navigate = useNavigate();
@@ -181,7 +183,23 @@ export function OrderDetailsPage() {
     const [notesExpanded, setNotesExpanded] = useState(false);
     const [noteVisibility, setNoteVisibility] = useState<NoteVisibility>("VISIBLE");
 
-    const { data, isLoading, error, refetch } = useOrderDetails(orderNumber);
+    // Opened by its order number (/orders/ORD-2024-0042): find it, then settle on its id,
+    // which everything below (notes, lines, parts) addresses the order by.
+    const byNumber = !UUID_RE.test(orderNumber);
+    const lookup = useQuery({
+        queryKey: ["order-by-number", orderNumber],
+        queryFn: () => api.api_TrackerOrders_list({ queries: { order_number: orderNumber, limit: 1 } }),
+        enabled: byNumber,
+    });
+    const foundId = lookup.data?.results?.[0]?.id;
+    useEffect(() => {
+        if (byNumber && foundId) {
+            navigate({ to: "/orders/$orderNumber", params: { orderNumber: String(foundId) }, replace: true });
+        }
+    }, [byNumber, foundId, navigate]);
+    const { data, isLoading: detailsLoading, error: detailsError, refetch } = useOrderDetails(byNumber ? "" : orderNumber);
+    const isLoading = detailsLoading || (byNumber && (lookup.isLoading || !!foundId));
+    const error = detailsError ?? (byNumber && lookup.isSuccess && !foundId ? new Error("No such order") : null);
     const perms = usePermissionSet();
     const canChangeOrders = perms.has("change_orders");
     const canAddNotes = perms.has("add_orders");
@@ -212,7 +230,7 @@ export function OrderDetailsPage() {
             object_id: orderNumber,
         },
         undefined,
-        { enabled: !!ordersContentTypeId }
+        { enabled: !!ordersContentTypeId && !byNumber }
     );
 
     const documents = documentsData?.results || [];

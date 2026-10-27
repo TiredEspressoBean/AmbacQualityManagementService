@@ -59623,6 +59623,11 @@ Use /api/Orders/ for full CRUD operations (staff only).`,
         schema: z.number().int().optional(),
       },
       {
+        name: "order_number",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
         name: "ordering",
         type: "Query",
         schema: z.string().optional(),

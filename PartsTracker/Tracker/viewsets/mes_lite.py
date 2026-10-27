@@ -80,6 +80,9 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Orders.unscoped.all()
     serializer_class = CustomerOrderSerializer
     pagination_class = LimitOffsetPagination
+    # The order number is what people read and type (/orders/ORD-2024-0042); the
+    # page looks the order up by it within what the caller may see.
+    filterset_fields = ['order_number']
 
     # Inviting a viewer is not order creation: without the exemption,
     # POST /invite/ would demand add_orders (POST → add_{model}), which
@@ -1712,7 +1715,7 @@ class OrdersViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, DataEx
     filterset_class = OrderFilter
     ordering_fields = ["created_at", "order_status", "name", "estimated_completion"]
     ordering = ["-created_at"]
-    search_fields = ["name", "company__name", "customer__first_name", "customer__last_name"]
+    search_fields = ["order_number", "name", "company__name", "customer__first_name", "customer__last_name"]
 
     # Taking parts off an order changes the order — it fell back to the POST default,
     # add_orders, which made it a creation right.

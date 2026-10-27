@@ -30,7 +30,7 @@ order.
     and when that leaves nothing, the page says *No active orders to display*.
 
     To find a particular order, use the orders list in **Data Management**,
-    which searches by order name, company, and customer name.
+    which searches by order number, order name, company, and customer name.
 
 ### Order Detail Page
 
@@ -151,9 +151,12 @@ Eighteen, in four groups.
 ## Finding orders
 
 The **Tracker** has no search. The orders list in **Data Management** searches
-by **order name**, **company name**, and the **customer's first or last name** —
-not by part serial number and not by notes. To get from a serial number to its
-order, look the part up instead.
+by **order number**, **order name**, **company name**, and the **customer's first
+or last name** — not by part serial number and not by notes. To get from a serial
+number to its order, look the part up instead.
+
+An order also opens straight from its number: `/orders/ORD-2024-0042` goes to that
+order, if it is one you can see.
 
 ## Notifications
 

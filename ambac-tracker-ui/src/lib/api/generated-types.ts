@@ -67934,6 +67934,7 @@ export interface operations {
                 limit?: number;
                 /** @description The initial index from which to return the results. */
                 offset?: number;
+                order_number?: string;
                 /** @description Which field to use when ordering the results. */
                 ordering?: string;
             };
