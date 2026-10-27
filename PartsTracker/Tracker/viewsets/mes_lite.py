@@ -53,7 +53,7 @@ from Tracker.services.mes import outside_process
 from Tracker.services.mes.lifecycle import override_summary
 from Tracker.serializers.dms import DocumentsSerializer
 from .core import ListMetadataMixin, VersionedLikeTheAPIImport, with_int_pk_schema
-from Tracker.serializers.csv_import import create_import_serializer_for_model
+from Tracker.serializers.csv_import import PriorityReasonImport, create_import_serializer_for_model
 from .base import TenantScopedMixin
 from .mixins import CSVImportMixin, DataExportMixin, SecondPersonMixin, VersionHistoryMixin
 
@@ -2079,6 +2079,24 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         "wo_number": "ERP_id",
         "wo number": "ERP_id",
     }
+    # The generated importer (the registry's WorkOrderCSVImportSerializer is keyed
+    # "workorders" and never matched), plus the priority reason.
+    csv_import_serializer = create_import_serializer_for_model(WorkOrder, base=PriorityReasonImport)
+
+    def get_csv_template_generator(self):
+        """The model's columns plus `priority_reason`, beside `priority`: an import
+        that changes priority needs a reason, as the edit form does."""
+        import copy
+        from Tracker.services.template_generator import TemplateField
+        generator = copy.copy(super().get_csv_template_generator())
+        reason = TemplateField(
+            "priority_reason",
+            description="Why the priority is changing. Required when a row changes an "
+                        "existing work order's priority; not needed for a new one.")
+        names = [f.name for f in generator.fields]
+        at = names.index("priority") + 1 if "priority" in names else len(names)
+        generator.fields = generator.fields[:at] + [reason] + generator.fields[at:]
+        return generator
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

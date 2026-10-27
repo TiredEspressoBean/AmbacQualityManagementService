@@ -888,6 +888,33 @@ class BaseCSVImportSerializer(serializers.Serializer):
         checker.is_valid(raise_exception=True)
 
 
+class PriorityReasonImport(BaseCSVImportSerializer):
+    """A work order's priority changed by import is recorded with the row's
+    `priority_reason`, through change_priority as the edit form does. The API check
+    has already refused a change without one; a new job's first priority isn't a
+    change, so a create drops the column."""
+
+    def create_instance(self, data: Dict[str, Any]) -> models.Model:
+        data.pop('priority_reason', None)
+        return super().create_instance(data)
+
+    def update_instance(self, instance: models.Model, data: Dict[str, Any]) -> models.Model:
+        from Tracker.services.mes.work_order import change_priority
+        reason = data.pop('priority_reason', '') or ''
+        new_priority = data.get('priority')
+        reprioritised = False
+        if new_priority is not None and int(new_priority) != instance.priority:
+            data.pop('priority')
+            try:
+                reprioritised = change_priority(instance, new_priority, reason=reason, user=self.user)
+            except ValueError as e:
+                raise serializers.ValidationError({'priority': str(e)})
+        result = super().update_instance(instance, data)
+        if reprioritised:
+            self.unchanged = False  # the priority changed even if nothing else did
+        return result
+
+
 # ===== Model-specific CSV Import Serializers =====
 
 

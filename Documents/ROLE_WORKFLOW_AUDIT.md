@@ -163,7 +163,7 @@ The unit of work is the **shift**.
 | R1 | Decide a pending finding — apply or dismiss | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Exhibit `CORE-240214-0010` (seeded bd87899): a scrap finding recorded at Nozzle Inspection waits for the lead. Needs attention links to its rebuild plan; Apply on a scrap confirms; the plan re-resolves to NZL-REPLACE · Needs approval. Track R1. |
 | R2 | Request customer authorisation for over-and-above | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | **Authorise…** (core page or WO Cores card) lists the codes and findings, **Send for authorisation** → *Awaiting customer authorisation*. Refuses when nothing exceeds the sold level. Track R2. |
 | R3 | Decide a torn-down unit's exit: rebuild, harvest, or return | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | `CORE-240215-0006`: Plan rebuild / Rebuild to stock / Harvest for parts (confirms: consumed, can't be undone) / Scrap (reason). Track R3. |
-| C1 | Jump a job to the front, with a reason | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Priority → Urgent refused without a reason; *Priority changes* lists it with name, time and reason. **Residual:** a CSV import or the master workbook changes priority without a reason. Track module 5. |
+| C1 | Jump a job to the front, with a reason | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Priority → Urgent refused without a reason; *Priority changes* lists it with name, time and reason. A CSV import or the master workbook's Work Orders sheet takes the reason from a `priority_reason` column (on the template beside `priority`) and records it the same way; a row without one is refused (2026-10-27). Track module 5. |
 | C2 | Void an operator's bad record | ✅ | — | — | ? | 2026-10-15 | **Not this role, by design.** Voiding is QA Inspector, QA Manager and Tenant Admin. A lead escalates. |
 | C3 | Take a machine out of service and re-plan around it | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | An out-of-service or uncalibrated machine drops out of the solver's affinities. The lead records the downtime (track module 3); re-solving is the planner's, by design. |
 
@@ -227,9 +227,11 @@ Walked 2026-10-21 as Rosa Kim (`rosa.ship`), a seeded Shipping user.
 | 9 | Author non-working time — holidays, shutdowns, PTO, training | ✅ | ✅ | ✅ | ✅ | 2026-10-21 | Walked: Add closure → *stale — re-solve* → solve leaves the day at 0 tasks, next working day 45. Seeded closures were built in server UTC until 2026-10-21 (now plant time). Headcount counts the crew. Track module 4. |
 | R1 | Schedule work whose route isn't known until teardown | ✅ | ⚠️ | ✅ | ? | 2026-10-13 | Books the nominal route and re-solves when reality diverges. **⚠️ A deliberate simplification:** reman is tree-shaped. The user is waiting for real data before designing further. |
 
-The **frozen fence** is a soft penalty in the solver, but the board legend says
-*"Frozen stays put"*. A third of the frozen tasks moved in one solve. Either the
-legend or the weight should change. Open.
+The **frozen fence** is hard (fixed intervals since 2026-10-21), so *"Frozen stays
+put"* is accurate. A frozen op is re-planned only when its slot passed unstarted
+and slid to now; a 2026-10-27 draft solve on dev data froze 98 ops and re-planned
+47 that way (45 *crew full*, 2 *operator changed*). Whether that reason should read
+*its slot passed unstarted* is with the user.
 
 ## Production Manager
 
@@ -426,13 +428,7 @@ who, when and old→new, but never a reason.
 
 | Finding | Where | Note |
 |---|---|---|
-| **The customer sidebar shows internal sections** | `app-sidebar.tsx:160-166` | Sections are gated per permission; the Customer preset's view perms turn on Production, Scheduling and CAPAs. The destinations refuse them. |
-| **The frozen fence is presented as a lock** | Scheduler | It's a soft penalty. See the note under Scheduler. |
-| **Priority changed by import has no reason** | Shift Lead C1 | CSV import and the master workbook bypass `change_priority`. |
-| **In Simplified mode one person can carry a process change alone** | Change control | The default mode for every tenant. **Approve** needs only the authoring permissions, nothing stops the submitter approving, no signature is collected, and the PCO is created already approved. By design, but a decision to make knowingly: Regulated mode enforces the signed, independent path. Docs now say so (`change-control/overview.md`) |
 | **The over-and-above scope has no document** | Shift Lead R2, Production Manager R1 | The customer's answer is recorded (`viewsets/reman.py:279`), but nothing produces the scope to send the customer: what work, what parts, and the finding behind each. The product boundary says UQMES exports it. Found by the documents session 2026-10-20 |
-| **Every report is gated by one permission** | | All reports sit behind `export_data` (`reports/viewsets.py`, `CanExportReports`), so who can print a CoC is the same as who can print a training record. Worth deciding whether any documents need narrower gates |
-| **Small copy and accessibility** | | `OperatorSubstepRuntimePage.tsx:1271` and `completion-adapters.tsx:261` show developer copy (*"Add `?execution=<id>`…"*); the measurement input's accessible name is `—`; the receiving hold panel hedges (*"If the part type requires qualification, the lot was held"*); part Activity History dumps a raw `Capture Draft: {…}` field and prints `Expires At` as a raw UTC timestamp; CAPA **Related Items** shows raw UUIDs for the step and work order; the CAPA prefill chip shows the report's UUID, not its number; the FPI incomplete message says *"finish the step's captures"* when it means the first piece's. |
 
 ### Walked 2026-10-19 — the day's builds
 
@@ -694,6 +690,12 @@ One line each, newest first. The full write-ups are in git history.
 | A cancelled PCR's draft blocked every later revision of the process | The one-draft guard ignores archived drafts (2026-10-27, walked) |
 | Change-control loose ends: a PCR whose draft changed nothing could be submitted; the affected-WO count misread for a temporary change; the signatures panel showed *Pending* on a closed request; the submit dialog doubled its error | Submit refuses an unchanged draft (extensions excepted); the count reads *In-flight WOs it could apply to* for a temporary change; a closed request reads *Not signed* and says nobody is waiting; one error toast (2026-10-27, walked). *Move back to baseline* already confirmed |
 | The Pick Sheet has no button | Stale: **Pick Sheet** and **Kit Sheet** are on the Staging page (checked 2026-10-27) |
+| Every report is gated by one permission | Decided (user, 2026-10-27): keep the single `export_data` gate. At shops up to ~100 people the same few produce every report; customers don't hold it. Adapters read by tenant, not by the requester's per-model perms or `for_user`, so revisit if a tenant needs narrower gates |
+| In Simplified mode one person can carry a process change alone | Decided (user): in Simplified mode the author may approve their own PCR; Regulated mode is the signed, independent path. `change-control/overview.md` says so |
+| The frozen fence was presented as a lock but was a soft penalty | Stale: the fence has been hard since 2026-10-21; solver.py's header still said soft and is corrected (checked 2026-10-27) |
+| A priority changed by import had no reason | The import routes it through the same change as the edit form, with the row's `priority_reason` (2026-10-27) |
+| The customer sidebar showed internal sections | A portal user gets no staff sections (Production, Scheduling, Supply, Reman, Quality); approvals still show on their own permissions. The login payload carries `user_type` (2026-10-27) |
+| Small copy and accessibility: developer copy on the operator runtime, an unnamed measurement input, the receiving qualification banner hedged, Activity History printed a capture draft and raw UTC, CAPA Related Items showed ids | The runtime says to start the step from Start Work; the measurement input is named for its characteristic; the banner says whether this lot is held for it; Activity History leaves out the working draft and shows times on the plant clock; Related Items names the part, step and work order (2026-10-27). The CAPA prefill chip and the FPI message were already fixed |
 | `/orders/<order number>` errored; only the id loaded | An order opens from its number and settles on its id; the orders list searches by order number (2026-10-27, walked) |
 | A returned reman unit had no paperwork route | Returns ship as a `CustomerShipment` with packing list and CoC; exchange stock ships on an order (`ac85a3e`, 2026-10-20, not walked) |
 | A FAIL reached by editing a report opened a disposition without a quarantine | `on_report_failed` runs the FAIL consequences on the move into FAIL, from PATCH and from DWI findings (2026-10-20, not walked) |

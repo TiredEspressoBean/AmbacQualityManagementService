@@ -199,11 +199,11 @@ state you set, it is what Urgent looks like.
     there is nothing to explain yet. Changing it to the value it already has
     records nothing.
 
-!!! warning "An import changes priority silently"
-    The reason is required on the edit form and the API. A CSV import or the
-    master workbook can change priority **without** recording one, so a bulk
-    re-prioritisation leaves exactly the gap the form closes. Worth knowing
-    before reaching for an import to move a lot of work at once.
+!!! note "Changing priority by import"
+    A CSV import or the master workbook's **Work Orders** sheet needs a reason
+    too: add a `priority_reason` column beside `priority`. A row that changes
+    priority without one is refused, and the reason given is recorded with the
+    change exactly as the edit form records it.
 
 ## Handling Quality Holds
 

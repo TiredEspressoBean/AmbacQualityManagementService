@@ -98,11 +98,11 @@ not a state you set, it is simply what priority Urgent looks like.
     So the trail answers *what, who, when* **and** *why*. Setting a priority when you first create the work order needs no
     reason; there is nothing to explain yet.
 
-!!! warning "An import changes priority silently"
-    The reason is asked for on the edit form and the API. A CSV import or the
-    master workbook can change priority **without** recording one, so a bulk
-    re-prioritisation leaves no *why* behind. Worth
-    knowing before you reach for an import to move a lot of work at once.
+!!! note "Changing priority by import"
+    A CSV import or the master workbook's **Work Orders** sheet asks the same:
+    put the reason in a `priority_reason` column beside `priority`. A row that
+    changes priority without one is refused, and the reason is kept with the
+    change as it is from the edit form.
 
 ## Speaking to the next shift
 
