@@ -131,10 +131,22 @@ class Shop:
         counts = [c for sa, sb, c in self.crew_segs if sa < b and a < sb]
         return min(counts) if counts else 0
 
-    def frozen_refusal(self, *, prev_raw, rep, release_min, mat_lb, choices, durs, dur_free,
-                       step_id, lm, front_len, fixed_attended=()):
+    def frozen_refusal(self, *, prev_raw, **kw):
         """Why a frozen or planner-pinned operation can't be held where the live plan
         put it, as `(code, text)` — or None, when it is held exactly.
+
+        A slot already gone by slides to "now", and everything whose slot went by slides
+        there together — so the crew (or its operator) running out at "now" is really
+        the slot having passed unstarted, and is reported as that (user decision
+        2026-10-27). A machine down or the plant closed still says so."""
+        why = self._refusal(prev_raw=prev_raw, **kw)
+        if why and prev_raw < 0 and why[0] in ('crew_full', 'operator_unavailable'):
+            return ('slot_passed', "its slot passed unstarted")
+        return why
+
+    def _refusal(self, *, prev_raw, rep, release_min, mat_lb, choices, durs, dur_free,
+                 step_id, lm, front_len, fixed_attended=()):
+        """The reason itself, before `frozen_refusal` names a passed slot as such.
 
         Only reasons it CAN'T happen there: its order may not start yet or its material
         isn't in; its machine is out of service, no longer eligible or blocked

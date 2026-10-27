@@ -169,6 +169,33 @@ class FrozenFenceTests(TenantContextMixin, TestCase):
         self.assertEqual(t2.machine_id, t.machine_id)
         self.assertGreaterEqual(t2.start_time, timezone.now().replace(second=0, microsecond=0))
 
+    def test_c_passed_slots_that_cant_all_fit_now_say_the_slot_passed(self):
+        """Two lots planned side by side, both slots gone by unstarted, and one operator
+        on shift now: they can't both slide to "now", so one is re-planned — and the
+        planner is told its slot passed unstarted, not that the crew is busy
+        (user decision 2026-10-27)."""
+        from Tracker.models import Shift
+        from datetime import time as dtime
+        self._wo("WO-SP1", 1, due_days=5)
+        self._wo("WO-SP2", 1, due_days=5)
+        r1 = self._solve()
+        turns = list(r1.tasks.filter(step=self.turn))
+        self.assertEqual(len({t.machine_id for t in turns}), 2, "the fixture runs both at once")
+        shift = Shift.objects.create(
+            tenant=self.tenant, name="All", code="ALL", start_time=dtime(0, 0),
+            end_time=dtime(23, 59), days_of_week="0,1,2,3,4,5,6", is_active=True)
+        User.objects.create(username="op-one", tenant=self.tenant, user_type='INTERNAL',
+                            is_active=True, default_shift=shift)
+        ScheduledTask.objects.filter(schedule=r1, step=self.turn).update(
+            start_time=timezone.now() - timedelta(hours=3),
+            end_time=timezone.now() - timedelta(hours=2))
+        r2 = self._solve()
+        self.assertIn(r2.solver_status, SOLVED)
+        # The Turn ops are the ones whose slot passed. (A Mill op still ahead of its
+        # slot that collides with work slid to "now" is genuinely crew-full.)
+        turn_codes = {f['reason_code'] for f in r2.frozen_freed if f['step'] == 'Turn'}
+        self.assertEqual(turn_codes, {'slot_passed'})
+
     def test_b_a_re_solve_after_the_minute_rolls_keeps_held_work_in_order(self):
         """The dev failure: a re-solve that crossed a minute freed work planned at "now",
         and it queued behind the whole frozen window (3x lateness). Held work now keeps
