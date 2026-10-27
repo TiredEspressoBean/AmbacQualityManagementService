@@ -83,11 +83,17 @@ resource. It does not stop at the first order it holds, so smaller ones
 further down can still come through. Override it when you know something it
 doesn't.
 
-**Through the day — handle what the solver couldn't place.** An infeasible solve
-names what blocked it. Two causes worth telling apart:
+**Through the day — handle what the solver couldn't place.** Two causes worth
+telling apart:
 
-- **Capacity** — nowhere to put the work in the window
-- **Labour** — no certified, rostered operator can run a gated step at all
+- **Capacity** — more work than the window holds. The rest of the shop still gets
+  a plan; what doesn't fit is listed in **Not scheduled** as *Doesn't fit in the
+  horizon*, and the fix is capacity, moving lower-priority work out, or a wider
+  horizon.
+- **Labour** — no certified, rostered operator can run a gated step at all. Each
+  affected unit is planned up to the step before; that step and what follows wait,
+  listed in **Not scheduled** as *No qualified operator rostered* with what the
+  step needs.
 
 The second is a staffing or training problem wearing a scheduling costume, and
 no amount of re-solving fixes it.
@@ -95,8 +101,10 @@ no amount of re-solving fixes it.
 **As needed — move things by hand.** A manual move pins the task, and the next
 solve holds it: same machine, same operator, same place in the queue. If
 something makes it impossible (the machine goes down, the operator's off), the
-solve releases it and says why rather than failing. Use it when you know
-something the model doesn't, and check it survived.
+solve releases it and says why. The solver never moves a pin to make room for
+other work; if the held work can't all be kept, the re-solve fails and the live
+plan stays, marked out of date. Use a pin when you know something the model
+doesn't, and check it survived.
 
 ## Running the board
 
@@ -119,7 +127,10 @@ of planning, not a separate trade.
 5. Re-solve when the shop moves
 
 The header carries solver status, task count, **makespan**, **weighted lateness**
-and how long the solve took.
+and how long the solve took. A status of **Quick plan** means the solver ran out of
+time before finding a plan, and the board holds a rule-based one that ignores crew
+limits and changeovers; re-solve with more time. See [When the solver runs out of
+time](../workflows/scheduling/gantt.md#when-the-solver-runs-out-of-time).
 
 !!! tip "Judge a draft by disruption, not only by lateness"
     The board compares the two — *makespan X → Y h*, *lateness X → Y*, *moves N
@@ -130,7 +141,7 @@ and how long the solve took.
 ### Why isn't my job on the board?
 
 **Not scheduled** answers it directly, grouped by reason, each row naming the
-work order, how many units were placed, and the fix. There are twelve reasons,
+work order, how many units were placed, and the fix. There are sixteen reasons,
 and they are checked in order — the first that applies is the one you are shown:
 
 | | Reason | What it means |
@@ -138,22 +149,26 @@ and they are checked in order — the first that applies is the one you are show
 | 1 | **On hold** | The work order is held |
 | 2 | **Not released** | Not yet admitted to the floor |
 | 3 | **No process assigned** | Nothing to schedule against |
-| 4 | **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
-| 5 | **No routing to schedule** | The process has no usable route |
-| 6 | **No timings authored** | Operations carry no cycle time |
-| 7 | **No trained operator** | Nobody certified and rostered can run a gated step |
-| 8 | **Starts past the horizon** | Real, but beyond the window solved for |
-| 9 | **Waiting on material** | Gated on material that has not arrived |
-| 10 | **Material short** | Not enough to cover it |
-| 11 | **Added since the last solve** | The board simply predates it |
-| 12 | **Not placed by the last solve** | Nothing above explains it — the solve ran out of horizon or time |
+| 4 | **No units created yet** | The work order has no parts yet — add them |
+| 5 | **Waiting to ship** | Its units are at the end of the route; ship them |
+| 6 | **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
+| 7 | **No routing to schedule** | The process has no usable route |
+| 8 | **No timings authored** | Operations carry no cycle time |
+| 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step. It's planned up to the step before; that step and what follows wait |
+| 10 | **No machine available** | A step has no machine to run on (down, or none eligible). Planned up to the step before; that step and what follows wait |
+| 11 | **Starts past the horizon** | Real, but beyond the window solved for |
+| 12 | **Waiting on material** | Gated on material that has not arrived |
+| 13 | **Material short** | Not enough to cover it |
+| 14 | **Added since the last solve** | The board simply predates it |
+| 15 | **Doesn't fit in the horizon** | The shop is full: the work ahead of it fills the window |
+| 16 | **Not placed by the last solve** | Nothing above explains it — the solve most likely ran out of time |
 
 The order matters when you are reading a long list: a job showing **Not
 released** may *also* have no timings, and you will not see the second until you
 fix the first.
 
 Several resolve themselves on the next solve, and the dialog says so when the
-schedule is stale. Number 7 is the one that never does — see *Labour* above.
+schedule is stale. Number 9 is the one that never does — see *Labour* above.
 
 ### Dispatch
 

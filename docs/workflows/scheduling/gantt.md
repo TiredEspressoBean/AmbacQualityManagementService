@@ -68,6 +68,9 @@ they may not be real."*
     - **Uncovered goes up.** The draft is better on paper but less staffable.
     - **Solver status is not optimal** — it hit its time limit, so this is the
       best it found rather than the best there is.
+    - **Solver status reads Quick plan** — the optimizer found no plan in time,
+      and this one ignores crew limits and changeovers. Re-solve with more time
+      rather than committing it.
     - **Weighted lateness gets worse.** It happens when constraints changed;
       the question is whether the new plan is right, not whether the number is.
 
@@ -80,37 +83,65 @@ work order's earliest release date.
 
 **What-if** explores a change without committing to it.
 
-### When the solve can't place anything
+### When there's more work than the window holds
 
-If the scheduler returns no plan at all, the board tells you *why* rather than
-showing an empty week. The usual cause is arithmetic: every operation admitted
-to the planning window must also finish inside it, so asking for more hours than
-the window holds yields no assignment at all. The diagnostic names the resources
-that overflowed.
+Work that doesn't fit inside the planning horizon is left off the board, and the
+rest of the shop still gets a plan. It's listed in [Not
+scheduled](#why-isnt-this-scheduled) as **Doesn't fit in the horizon**:
 
-The fix is normally to extend the horizon, move demand out, or add capacity —
-not to re-run the solve.
+> *2 unit(s) don't fit before Nov 26: the work ahead of them fills the horizon.*
+> → Add capacity (overtime, another eligible machine), move lower-priority work
+> out, or widen the planning horizon.
+
+Re-running the solve won't change it; the shop is full for the window.
+
+### When the solver runs out of time
+
+Each solve has a time limit. If it runs out before finding any plan:
+
+- **With no live plan yet, or on a What-if,** the board gets a quick rule-based
+  plan, and the status badge reads **Quick plan · re-solve with more time**. It
+  keeps each part's route order and holds frozen and pinned work where it is, and
+  plans machine time around downtime and closures. It doesn't check the crew
+  limit or changeovers, and assigns no operators (**Dispatch** can). Re-solve with
+  more time for a full plan.
+- **With a live plan already,** that plan stays on the board, marked out of date.
+  A full earlier plan is better than a quick new one.
+
+### When a re-solve can't keep held work
+
+The scheduler never moves frozen or pinned work to make a plan fit (see [Fence
+zones](#fence-zones-how-near-term-work-is-protected)). If held work can't all be
+kept, the re-solve fails: the live plan stays on the board, marked out of date,
+and the board tells you why. Only a person moves held work: unpin it, drag it, or
+fix what's in its way.
 
 ### When nobody can run a step
 
-Before it plans anything, every solve checks that each training-gated step on the
-remaining routes has at least one operator who could actually run it: qualified,
-active, internal, rostered to a shift, holding an active tenant membership, and
-in a shop-floor group — Operator or Shift Lead.
+Every solve checks that each training-gated step on the remaining routes has at
+least one operator who could actually run it: qualified, active, internal,
+rostered to a shift, holding an active tenant membership, and in a shop-floor
+group — Operator or Shift Lead.
 
 !!! note "A certified supervisor may not count"
     The shop-floor group condition keeps admins and office staff out of the
     schedule. So someone can hold the certification and still not satisfy this
-    check, which is the case worth looking at first when the refusal surprises
+    check, which is the case worth looking at first when the result surprises
     you. (The condition is skipped entirely if nobody is in a shop-floor
     group.)
 
-If any step has **nobody**, the solve is refused outright. No schedule is
-produced and the live plan stays exactly as it was. You get the reason, naming
-the steps and what they need:
+If a step has **nobody**, the rest of the shop is still planned. Each unit whose
+route passes through that step is planned up to the step before it; that step and
+everything after it wait. They're listed in [Not
+scheduled](#why-isnt-this-scheduled) as **No qualified operator rostered**, naming
+the step and the training it needs:
 
-> *2 step(s) require training no rostered operator holds: Assembly needs
-> Assembly Certification; …*
+> *No qualified operator rostered: "Assembly" needs Assembly Certification.
+> Planned up to the step before it; it and what follows wait.*
+> → Certify or roster a qualified operator, or set the step's labor model to off.
+
+A step whose every machine is down for the whole window is handled the same way,
+as **No machine available**.
 
 !!! warning "This is a staffing problem wearing a scheduling costume"
     No scheduling setting fixes it. The answer is to train someone, roster
@@ -118,16 +149,15 @@ the steps and what they need:
 
 !!! note "Scarce is not the same as absent"
     This only trips when *nobody* rostered holds the certification. One
-    qualified operator for a busy step does not refuse the solve — the
-    scheduler serialises that work and it lands late, which shows up as
-    lateness rather than as a refusal.
+    qualified operator for a busy step is planned for: the scheduler serialises
+    that work and it lands late, which shows up as lateness.
 
     Steps with the labour model switched off are skipped entirely, since no
-    crew is modelled for them.
+    crew is modelled for them. A unit already running at the step stays on the
+    plan; it's already staffed.
 
 The same check surfaces earlier, before you ever solve: an order routed through
-an unstaffable step shows as **blocked** in [Pull in work](releasing.md), and
-those parts appear in the Unscheduled panel as **No trained operator**.
+an unstaffable step shows as **blocked** in [Pull in work](releasing.md).
 
 ## Dispatch
 
@@ -329,15 +359,24 @@ widens the frozen zone.
     queue to fill a gap. That's what lets the floor act on tomorrow's plan: the
     sequence people set up for doesn't change under them on a re-solve.
 
-A held task is let go only for a reason the plan can't work around: its machine
-is down or out of service, the crew on shift is already full, its operator is off,
-off shift or no longer qualified, or its work order isn't released. The header
-counts them (*1 frozen task(s) re-planned · 85 held*), and each one says why.
+A held task is re-planned only when it can't happen where it is, and it says why:
 
-!!! warning "A what-if can still move frozen tasks, and it tells you"
-    A draft that disturbs committed work warns before you commit it, with the
-    number of frozen tasks that had to move. That count is the real cost of the
-    change; read it beside the late orders, not after them.
+- its machine is down or out of service, or the plant is closed then;
+- its work order can't start that early, or its material won't be in;
+- its operator is off the crew, off shift or no longer qualified;
+- the crew on shift is already full at that time;
+- *its slot passed unstarted*: the time went by without the work starting, and it
+  can't fit now.
+
+The header counts them (*1 frozen task(s) re-planned · 85 held*). The scheduler
+never moves held work for any other reason, such as to make room for something
+else. If held work can't all be kept, the re-solve fails and the live plan stays
+(see [When a re-solve can't keep held work](#when-a-re-solve-cant-keep-held-work)).
+
+!!! warning "A what-if tells you which frozen tasks it re-planned"
+    A draft that re-plans committed work for one of those reasons warns before you
+    commit it, with the number of frozen tasks that moved. That count is the real
+    cost of the change; read it beside the late orders, not after them.
 
 A **planner pin** (📌) is a lock you place yourself, and it's held the same way,
 whatever zone the task is in. See [Moving a task by hand](#moving-a-task-by-hand).
@@ -393,26 +432,31 @@ on the board"* and groups them by reason, each row naming the work order, how
 many of its units were placed (*"0/2 placed"*), the specific detail, and the fix:
 
 > **STARTS PAST THE HORIZON — 1**
-> DEMO-PLAN-RR · Common Rail Injector · 0/2 placed
+> WO-1042 · Common Rail Injector · 0/2 placed
 > Releases Oct 22, past the Oct 21 horizon.
 > → Pull the release date in, or widen the planning horizon.
 
-The reasons:
+The reasons, in the order they're checked (a work order shows the first that
+applies):
 
 | Reason | Means |
 |--------|-------|
 | **On hold** | The order is held |
 | **Not released** | Under planner-released gating, nobody has released it |
 | **No process assigned** | It has no routing to schedule against |
+| **No units created yet** | The work order has no parts yet — add them |
+| **Waiting to ship** | Its units are at the end of the route — ship them |
+| **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
 | **No routing to schedule** | The process has no steps |
 | **No timings authored** | Steps exist with no cycle time — nothing to place |
-| **Nothing left to work** | Every unit is finished, shipped, scrapped or quarantined |
-| **No trained operator** | No one qualified could run a training-gated step |
-| **Material short** | Nothing on hand, nothing on order |
-| **Waiting on material** | Gated until stock arrives |
+| **No qualified operator rostered** | No one qualified could run a training-gated step; planned up to the step before (see [When nobody can run a step](#when-nobody-can-run-a-step)) |
+| **No machine available** | A step has no machine to run on — down, or none eligible; planned up to the step before |
 | **Starts past the horizon** | It releases beyond the planning window |
+| **Waiting on material** | Gated until stock arrives |
+| **Material short** | Nothing on hand, nothing on order |
 | **Added since the last solve** | The schedule predates the order's current state — re-solve |
-| **Not placed by the last solve** | The solver ran and left it out |
+| **Doesn't fit in the horizon** | The shop is full: the work ahead of it fills the planning window |
+| **Not placed by the last solve** | Nothing above explains it; the solve most likely ran out of time. Re-solve with a longer time limit |
 
 **Re-check** re-runs the diagnosis. If the board is stale the dialog says so,
 because several of these resolve themselves on the next solve.
@@ -433,7 +477,7 @@ constraint that best explains it:
 !!! warning "Uncovered is not a training gap"
     *Uncovered* means no operator is **assigned** — which is what you get before
     Dispatch has run, or when it left the task uncovered. A task the board could
-    never staff appears in **Not scheduled** as *No trained operator* instead.
+    never staff appears in **Not scheduled** as *No qualified operator rostered* instead.
     They read alike and have different fixes.
 
 This is a heuristic that picks the highest-priority binding reason, not a formal
