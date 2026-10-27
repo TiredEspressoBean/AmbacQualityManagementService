@@ -466,8 +466,12 @@ def send_notification_task(self, notification_id: int):
         try:
             handler = get_notification_handler(task.notification_type)
         except ValueError as e:
-            logger.error(f"Unknown notification type for task {notification_id}: {task.notification_type}")
-            return {'status': 'error', 'message': str(e)}
+            # No handler will ever exist for it (a retired type), so retrying is a loop:
+            # cancel the row so the dispatcher stops picking it up.
+            logger.error(f"Unknown notification type for task {notification_id}: {task.notification_type}; cancelled")
+            task.status = 'CANCELLED'
+            task.save(update_fields=['status'])
+            return {'status': 'cancelled', 'message': str(e)}
 
         # Additional validation (e.g., CAPA is not closed)
         if not handler.should_send(task):
@@ -720,8 +724,12 @@ def dispatch_pending_notifications():
     # tenant via ContextVar; use all_tenants to read IDs across every
     # tenant. Each dispatched task re-enters tenant_context for its own send.
     now = timezone.now()
+    # `archived=False`: an archived row is retired. Migration 0046 archived the legacy
+    # WEEKLY_REPORT rows but left them PENDING, and without this they were re-sent
+    # (and failed) every five minutes, forever.
     ready_notifications = NotificationTaskModel.all_tenants.filter(
         status='PENDING',
+        archived=False,
         next_send_at__lte=now
     ).values_list('id', flat=True)
 

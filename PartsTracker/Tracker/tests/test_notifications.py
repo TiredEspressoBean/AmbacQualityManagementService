@@ -772,6 +772,26 @@ class SendNotificationTaskTestCase(TenantTestCase):
 
         self.assertEqual(result['status'], 'skipped')
 
+    def test_a_retired_type_is_cancelled_not_retried(self):
+        """WEEKLY_REPORT has no handler any more. A due row of it used to fail on every
+        dispatch, forever; it is cancelled so the dispatcher stops picking it up."""
+        from Tracker.tasks import send_notification_task
+
+        notification = NotificationTask.objects.create(
+            notification_type='WEEKLY_REPORT',
+            recipient=self.user_a,
+            channel_type='EMAIL',
+            interval_type='FIXED',
+            status='PENDING',
+            next_send_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        result = send_notification_task(notification.id)
+
+        self.assertEqual(result['status'], 'cancelled')
+        notification.refresh_from_db()
+        self.assertEqual(notification.status, 'CANCELLED')
+
 
 class DispatchNotificationsTestCase(TenantTestCase):
     """Test the dispatch_pending_notifications task"""
@@ -813,3 +833,23 @@ class DispatchNotificationsTestCase(TenantTestCase):
         self.assertEqual(result['status'], 'success')
         self.assertEqual(result['dispatched'], 2)
         self.assertEqual(mock_send_delay.call_count, 2)
+
+    @patch('Tracker.tasks.send_notification_task.delay')
+    def test_an_archived_row_is_not_dispatched(self, mock_send_delay):
+        """An archived row is retired, even when it was left PENDING."""
+        from Tracker.tasks import dispatch_pending_notifications
+
+        NotificationTask.objects.create(
+            notification_type='CAPA_REMINDER',
+            recipient=self.user_a,
+            channel_type='EMAIL',
+            interval_type='DEADLINE_BASED',
+            status='PENDING',
+            archived=True,
+            next_send_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        result = dispatch_pending_notifications()
+
+        self.assertEqual(result['dispatched'], 0)
+        mock_send_delay.assert_not_called()
