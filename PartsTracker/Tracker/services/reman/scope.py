@@ -165,7 +165,11 @@ def _expected_repairs(core, raised: dict) -> list:
     process = part.work_order.process if part is not None and part.work_order_id else None
     if process is None or not raised:
         return []
-    because_by_code = {code.code: (code, because) for code, because in raised.values()}
+    # A repair the customer declined isn't expected: the unit is rebuilt without it, so
+    # its Repair node isn't reached and the parts consumed there leave the kit.
+    declined = set(core.declined_repair_codes or [])
+    because_by_code = {code.code: (code, because) for code, because in raised.values()
+                       if code.code not in declined}
     approved = set(core.approved_repair_codes or [])
     sold = set()
     preset = default_preset_for(core.core_type)

@@ -3,6 +3,20 @@
 // the lot sheet so both print an item the same way.
 
 #import "frame.typ": *
+#import "kitting.typ": tick
+
+// The customer answers each item. A required one says what declining it means, so
+// nobody declines it thinking the rest of the rebuild goes ahead.
+#let item-answer(l) = block(inset: (top: 6pt, bottom: 2pt))[
+  #grid(
+    columns: (auto, auto, auto, auto, 1fr), column-gutter: 6pt, align: horizon,
+    tick(), [Authorise], h(10pt), tick(), [Decline],
+  )
+  #if l.at("required", default: true) [
+    #v(2pt)
+    #text(size: 8.5pt, fill: muted)[Required for the rebuild: declining it returns the unit unrepaired.]
+  ]
+]
 
 #let part-line(p) = [
   #text(weight: "semibold")[#p.component]
@@ -30,5 +44,6 @@
       ),),
       valign: top,
     )
+    #item-answer(l)
   ]
 ]

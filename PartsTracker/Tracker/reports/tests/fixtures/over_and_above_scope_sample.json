@@ -29,6 +29,7 @@
     {
       "code": "CV-RECON",
       "name": "Recondition control valve",
+      "required": false,
       "work": ["Valve Seat Lapping"],
       "findings": [
         "Control Valve Assembly: Grade C — seat wear beyond the serviceable limit."

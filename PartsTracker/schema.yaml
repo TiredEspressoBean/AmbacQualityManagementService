@@ -50911,9 +50911,12 @@ components:
           type: array
           items:
             type: string
+        required:
+          type: boolean
       required:
       - code
       - name
+      - required
       - why
     AutoResolveEnum:
       enum:
@@ -53451,6 +53454,16 @@ components:
           items:
             type: string
           readOnly: true
+        declined_repair_codes:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        authorisation_codes:
+          type: array
+          items:
+            type: string
+          readOnly: true
         awaiting_authorisation:
           type: array
           items:
@@ -53484,6 +53497,7 @@ components:
       required:
       - approved_repair_codes
       - authorisation_answered_at
+      - authorisation_codes
       - authorisation_needed
       - awaiting_authorisation
       - condition_grade
@@ -53492,6 +53506,7 @@ components:
       - core_type_name
       - created_at
       - customer_name
+      - declined_repair_codes
       - disassembled_by
       - disassembled_by_name
       - disassembly_completed_at
@@ -53562,6 +53577,12 @@ components:
         approved:
           type: boolean
           description: What the customer actually said.
+        declined_codes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          description: The repairs they actually declined, item by item.
         reason:
           type: string
           minLength: 1
@@ -53580,6 +53601,11 @@ components:
       properties:
         approved:
           type: boolean
+        declined_codes:
+          type: array
+          items:
+            type: string
+            minLength: 1
         note:
           type: string
         contact:
@@ -53607,6 +53633,13 @@ components:
             format: uuid
         approved:
           type: boolean
+        declined_by_core:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              minLength: 1
         note:
           type: string
         contact:
@@ -70595,6 +70628,10 @@ components:
             * `PRESET` - Only when a rebuild level includes it
         notes:
           type: string
+        required:
+          type: boolean
+          description: 'Required for the rebuild: a customer who declines it has the
+            unit returned unrepaired. Untick for a repair the unit can ship without.'
         archived:
           type: boolean
     PatchedSamplingRuleRequest:
@@ -76785,6 +76822,10 @@ components:
           readOnly: true
         notes:
           type: string
+        required:
+          type: boolean
+          description: 'Required for the rebuild: a customer who declines it has the
+            unit returned unrepaired. Untick for a repair the unit can ship without.'
         created_at:
           type: string
           format: date-time
@@ -76842,6 +76883,10 @@ components:
             * `PRESET` - Only when a rebuild level includes it
         notes:
           type: string
+        required:
+          type: boolean
+          description: 'Required for the rebuild: a customer who declines it has the
+            unit returned unrepaired. Untick for a repair the unit can ship without.'
         archived:
           type: boolean
       required:

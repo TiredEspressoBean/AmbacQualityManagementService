@@ -9,6 +9,7 @@ import {
     Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { AsBuiltCard } from "@/components/reman/AsBuiltCard";
 import { CorrectCoreReceiptButton } from "@/components/reman/CorrectCoreReceiptButton";
 import { useCoreLifecycleAction } from "@/hooks/useReleaseCore";
@@ -481,12 +482,33 @@ export default CoreDetailPage;
 /** The customer's answer was recorded wrong: put the right one on record, with a reason.
  *  The server refuses once the repair it authorised has started, or a declined unit has
  *  gone back. Both answers stay in the core's notes. */
-function CorrectAnswerButton({ core }: { core: { id: string; core_number?: string; status?: string } }) {
+function CorrectAnswerButton({ core }: {
+    core: {
+        id: string; core_number?: string; status?: string;
+        authorisation_codes?: string[]; declined_repair_codes?: string[];
+    };
+}) {
     const [open, setOpen] = useState(false);
     const [reason, setReason] = useState("");
     const lifecycle = useCoreLifecycleAction();
     const wasApproved = core.status === "IN_REBUILD";
     const name = core.core_number ?? "Core";
+    // An approval is corrected item by item: the repairs it covered, as recorded.
+    const covered = [...new Set([...(core.authorisation_codes ?? []), ...(core.declined_repair_codes ?? [])])].sort();
+    const recordedDeclined = (core.declined_repair_codes ?? []).filter((c) => covered.includes(c)).sort();
+    const [declined, setDeclined] = useState<string[]>(recordedDeclined);
+    const changed = declined.slice().sort().join() !== recordedDeclined.join();
+    async function correct(approved: boolean, declinedCodes: string[], said: string) {
+        try {
+            await lifecycle.mutateAsync({ id: String(core.id), action: "correct_authorisation",
+                                          approved, declinedCodes, reason: reason.trim() });
+            toast.success(`${name} — answer corrected: ${said}`);
+            setOpen(false);
+            setReason("");
+        } catch {
+            // the global mutation handler shows the server's reason
+        }
+    }
     return (
         <>
             <Button variant="ghost" onClick={() => setOpen(true)}>Correct customer&rsquo;s answer…</Button>
@@ -503,22 +525,34 @@ function CorrectAnswerButton({ core }: { core: { id: string; core_number?: strin
                             Both answers stay in the core&rsquo;s notes. Not possible once the authorised repair has started.
                         </DialogDescription>
                     </DialogHeader>
+                    {wasApproved && covered.length > 0 && (
+                        <div className="space-y-1.5 rounded-md border p-2 text-sm">
+                            <p className="text-xs text-muted-foreground">What they approved — untick what they actually declined:</p>
+                            {covered.map((code) => (
+                                <label key={code} className="flex items-center gap-2">
+                                    <Checkbox
+                                        aria-label={`Approve ${code}`}
+                                        checked={!declined.includes(code)}
+                                        onCheckedChange={(v) => setDeclined((d) =>
+                                            v === true ? d.filter((c) => c !== code) : [...d, code])}
+                                    />
+                                    <span className="font-mono text-xs">{code}</span>
+                                </label>
+                            ))}
+                        </div>
+                    )}
                     <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason"
                         placeholder="Why — e.g. keyed approved; the customer's email says decline" />
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setOpen(false)} disabled={lifecycle.isPending}>Cancel</Button>
+                        {wasApproved && covered.length > 0 && (
+                            <Button variant="secondary" disabled={!reason.trim() || !changed || lifecycle.isPending}
+                                onClick={() => correct(true, declined, "items changed")}>
+                                Correct the items
+                            </Button>
+                        )}
                         <Button disabled={!reason.trim() || lifecycle.isPending}
-                            onClick={async () => {
-                                try {
-                                    await lifecycle.mutateAsync({ id: String(core.id), action: "correct_authorisation",
-                                                                  approved: !wasApproved, reason: reason.trim() });
-                                    toast.success(`${name} — answer corrected to ${wasApproved ? "declined" : "approved"}`);
-                                    setOpen(false);
-                                    setReason("");
-                                } catch {
-                                    // the global mutation handler shows the server's reason
-                                }
-                            }}>
+                            onClick={() => correct(!wasApproved, [], wasApproved ? "declined" : "approved")}>
                             Correct to {wasApproved ? "declined" : "approved"}
                         </Button>
                     </DialogFooter>
@@ -539,16 +573,18 @@ function CustomerAnswerActions({ core }: { core: { id: string; core_number?: str
             <Button variant="outline" onClick={() => setAnswering(false)} disabled={lifecycle.isPending}>Declined…</Button>
             {answering !== null && (
                 <CustomerAnswerDialog
-                    coreId={String(core.id)}
-                    coreNumber={core.core_number ?? "Core"}
+                    coreIds={[String(core.id)]}
+                    title={core.core_number ?? "Core"}
                     approved={answering}
                     pending={lifecycle.isPending}
                     onCancel={() => setAnswering(null)}
-                    onConfirm={async (fields) => {
+                    onConfirm={async ({ declinedByCore, ...fields }) => {
                         try {
                             await lifecycle.mutateAsync({ id: String(core.id), action: "record_authorisation",
-                                                          approved: answering, ...fields });
-                            toast.success(`${core.core_number ?? "Core"} — ${answering ? "approved, rebuild resumed" : "declined"}`);
+                                                          approved: answering,
+                                                          declinedCodes: declinedByCore[String(core.id)] ?? [],
+                                                          ...fields });
+                            toast.success(`${core.core_number ?? "Core"} — ${answering ? "answer recorded" : "declined"}`);
                             setAnswering(null);
                         } catch {
                             // the global mutation handler shows the server's reason

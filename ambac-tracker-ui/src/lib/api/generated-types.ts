@@ -21426,6 +21426,7 @@ export interface components {
             code: string;
             name: string;
             why: string[];
+            required: boolean;
         };
         /**
          * @description * `off` - Off (flag stale only; planner re-solves by hand)
@@ -22669,6 +22670,8 @@ export interface components {
             /** @description Findings waiting on a lead's decision; the unit holds until each is decided. */
             readonly pending_finding_count: number;
             readonly approved_repair_codes: string[];
+            readonly declined_repair_codes: string[];
+            readonly authorisation_codes: string[];
             /** @description While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise. */
             readonly awaiting_authorisation: components["schemas"]["AuthorisationScopeItem"][];
             /** @description While a repair-and-return unit is in rebuild: what a request for the customer's authorisation would ask about (code, name, findings). Empty otherwise. */
@@ -22706,6 +22709,8 @@ export interface components {
         CoreAuthorisationCorrectionInputRequest: {
             /** @description What the customer actually said. */
             approved: boolean;
+            /** @description The repairs they actually declined, item by item. */
+            declined_codes?: string[];
             reason: string;
         };
         CoreAuthorisationError: {
@@ -22713,6 +22718,7 @@ export interface components {
         };
         CoreAuthorisationInputRequest: {
             approved: boolean;
+            declined_codes?: string[];
             note?: string;
             contact?: string;
             method?: string;
@@ -22724,6 +22730,9 @@ export interface components {
         CoreBulkAuthorisationInputRequest: {
             core_ids: string[];
             approved: boolean;
+            declined_by_core?: {
+                [key: string]: string[];
+            };
             note?: string;
             contact?: string;
             method?: string;
@@ -31483,6 +31492,8 @@ export interface components {
              */
             trigger?: components["schemas"]["TriggerEnum"];
             notes?: string;
+            /** @description Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without. */
+            required?: boolean;
             archived?: boolean;
         };
         /** @description Enhanced sampling rule serializer */
@@ -34687,6 +34698,8 @@ export interface components {
             trigger?: components["schemas"]["TriggerEnum"];
             readonly repair_step_names: string[];
             notes?: string;
+            /** @description Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without. */
+            required?: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -34717,6 +34730,8 @@ export interface components {
              */
             trigger?: components["schemas"]["TriggerEnum"];
             notes?: string;
+            /** @description Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without. */
+            required?: boolean;
             archived?: boolean;
         };
         RepeatDefectItem: {

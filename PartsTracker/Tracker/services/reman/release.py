@@ -172,9 +172,15 @@ def pending_authorisation_scope(core, *, asking: bool = False) -> list[dict]:
     if not codes:
         return []
     why = raised_codes(core)
-    names = dict(RepairCode.objects  # tenant-safe: .objects auto-scopes
-                 .filter(code__in=codes, archived=False).values_list('code', 'name'))
-    return [{'code': c, 'name': names.get(c, ''), 'why': [str(w) for w in why.get(c, [])]}
+    rows = (RepairCode.objects  # tenant-safe: .objects auto-scopes
+            .filter(code__in=codes, archived=False, is_current_version=True)
+            .values_list('code', 'name', 'required'))
+    names = {c: n for c, n, _ in rows}
+    # The shop's setting on each code; a code with no current row reads as required,
+    # the safe default.
+    required_by = {c: r for c, _, r in rows}
+    return [{'code': c, 'name': names.get(c, ''), 'why': [str(w) for w in why.get(c, [])],
+             'required': required_by.get(c, True)}
             for c in codes]
 
 
@@ -197,6 +203,8 @@ class ScopeLine:
     work: list = field(default_factory=list)      # the repair step(s) the code sends it to
     findings: list = field(default_factory=list)
     parts: list = field(default_factory=list)     # [ScopePart]
+    # The shop's setting: declining a required repair returns the unit unrepaired.
+    required: bool = True
 
 
 @dataclass(frozen=True)
@@ -249,13 +257,39 @@ def over_and_above_scope(core) -> OverAndAboveScope | None:
                            source=_PART_SOURCE[s.resolution])
                  for s in replaced if code is not None and raised_by(code, s)]
         lines.append(ScopeLine(code=a['code'], name=a['name'], work=work,
-                               findings=list(a['why']), parts=parts))
+                               findings=list(a['why']), parts=parts,
+                               required=a.get('required', True)))
     return OverAndAboveScope(awaiting=awaiting, entry_scope=plan.entry_scope, lines=lines)
+
+
+def _split_answer(core, waiting: list, declined_codes) -> tuple[list, list, list]:
+    """A per-item answer against what is waiting: `(approved, declined, required_declined)`.
+
+    A code named as declined that isn't waiting on the customer is refused, so a stale
+    screen can't record an answer to a question nobody asked. Whether a declined repair
+    ends the unit is the shop's setting on the code (`RepairCode.required`)."""
+    from Tracker.models import RepairCode
+    declined = sorted(set(declined_codes or ()))
+    stray = [c for c in declined if c not in waiting]
+    if stray:
+        raise ValidationError(
+            f"{', '.join(stray)} {'is' if len(stray) == 1 else 'are'} not waiting on the "
+            f"customer for {core.core_number}.")
+    required = set(RepairCode.objects  # tenant-safe: .objects auto-scopes
+                   .filter(code__in=declined, archived=False, is_current_version=True,
+                           required=True).values_list('code', flat=True))
+    # A code with no current row reads as required, the safe default.
+    known = set(RepairCode.objects  # tenant-safe: .objects auto-scopes
+                .filter(code__in=declined, archived=False, is_current_version=True)
+                .values_list('code', flat=True))
+    required |= set(declined) - known
+    return ([c for c in waiting if c not in declined], declined, sorted(required))
 
 
 @transaction.atomic
 def record_authorisation(core, approved: bool, user=None, note: str = '', *,
-                         contact: str = '', method: str = '', reference: str = ''):
+                         contact: str = '', method: str = '', reference: str = '',
+                         declined_codes=()):
     """Record what the customer said. The decision was made elsewhere; this is the
     production record of it, and the thing that unblocks or ends the job.
 
@@ -263,6 +297,10 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
     the unit goes down those branches. Declined sends the unit to DECLINED — not
     straight to returned, because it still has to physically go back, and that is the
     same dispatch step a rebuilt unit takes.
+
+    `declined_codes`: an approval that declines some repairs. A declined OPTIONAL repair
+    is recorded and the unit is rebuilt without it; declining a REQUIRED one (the
+    shop's setting on the code) declines the unit, since it can't be rebuilt without it.
 
     `contact`, `method` and `reference` say who answered, how, and the reference to
     trace it — nobody at the customer needs a login for their answer to be on record.
@@ -275,12 +313,21 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
             f"{core.get_status_display()})."
         )
 
-    codes = codes_needing_approval(core) if approved else []
+    waiting = codes_needing_approval(core)
+    codes, declined, required_declined = (
+        _split_answer(core, waiting, declined_codes) if approved else ([], [], []))
+    if required_declined:
+        approved, codes, declined = False, [], []
     who = (user.get_full_name() or user.get_username()) if user else 'system'
     verdict = 'approved' if approved else 'declined'
     parts = [f"{timezone.now():%Y-%m-%d} {who}: customer {verdict}"]
     if codes:
         parts.append(f"repairs {', '.join(codes)}")
+    if declined:
+        parts.append(f"declined {', '.join(declined)}, rebuilt without")
+    if required_declined:
+        parts.append(f"declined {', '.join(required_declined)}, required for the rebuild, "
+                     "so the unit goes back unrepaired")
     if contact.strip():
         parts.append(f"answered by {contact.strip()}")
     if method.strip():
@@ -293,13 +340,15 @@ def record_authorisation(core, approved: bool, user=None, note: str = '', *,
 
     core.status = 'IN_REBUILD' if approved else 'DECLINED'
     core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) | set(codes))
+    core.declined_repair_codes = sorted(set(core.declined_repair_codes or []) | set(declined))
     core.condition_notes = f"{core.condition_notes}\n{line}".strip()
     core.authorisation_answered_at = timezone.now()
     core.authorisation_contact = contact.strip()
     core.authorisation_method = method.strip()
     core.authorisation_reference = reference.strip()
     core.authorisation_codes = list(codes)
-    core.save(update_fields=['status', 'approved_repair_codes', 'condition_notes',
+    core.save(update_fields=['status', 'approved_repair_codes', 'declined_repair_codes',
+                             'condition_notes',
                              'authorisation_answered_at', 'authorisation_contact',
                              'authorisation_method', 'authorisation_reference',
                              'authorisation_codes', 'updated_at'])
@@ -335,21 +384,28 @@ def request_authorisation_for(cores, user=None) -> list:
 
 @transaction.atomic
 def record_authorisation_for(cores, approved: bool, user=None, note: str = '', *,
-                             contact: str = '', method: str = '', reference: str = '') -> list:
-    """Record one answer for several of one customer's units waiting on it — the
+                             contact: str = '', method: str = '', reference: str = '',
+                             declined_by_core=None) -> list:
+    """Record the customer's answer for several of their units waiting on it — the
     customer answered the lot. Each unit gets its own record, as `record_authorisation`
-    writes it; any refusal refuses the batch, so a lot is never half-answered."""
+    writes it; any refusal refuses the batch, so a lot is never half-answered.
+
+    `declined_by_core`: `{core id: [codes]}`, the repairs declined on each unit (the
+    lot grid's unticked cells)."""
     cores = list(cores)
     _one_customers_units(cores, 'AWAITING_AUTHORISATION', 'answer for')
+    declined_by_core = {str(k): v for k, v in (declined_by_core or {}).items()}
     return [record_authorisation(c, approved, user, note, contact=contact, method=method,
-                                 reference=reference) for c in cores]
+                                 reference=reference,
+                                 declined_codes=declined_by_core.get(str(c.id), ()))
+            for c in cores]
 
 
-def _authorised_repair_started(core) -> bool:
+def _authorised_repair_started(core, codes=None) -> bool:
     """Whether work has begun on a repair the customer's answer authorised: a repair
-    step for one of its codes started on this unit."""
+    step for one of its codes (or of `codes`, when given) started on this unit."""
     from Tracker.models import StepExecution
-    codes = core.authorisation_codes or []
+    codes = list(codes if codes is not None else (core.authorisation_codes or []))
     if not codes or not core.part_id:
         return False
     return StepExecution.objects.filter(  # tenant-safe: FK-correlated to a scoped core
@@ -358,18 +414,20 @@ def _authorised_repair_started(core) -> bool:
 
 
 @transaction.atomic
-def correct_authorisation(core, approved: bool, user, reason: str):
+def correct_authorisation(core, approved: bool, user, reason: str, *, declined_codes=()):
     """The customer's answer was recorded wrong: put the right one on record (user
-    decision 2026-10-26, Corrections #22). Allowed until the authorised repair has
-    started — or, for a decline, until the unit has gone back. Both answers stay in
-    the core's notes, with the reason.
+    decision 2026-10-26, Corrections #22). Allowed until a repair it would take back has
+    started — or, for a decline, until the unit has gone back. Both answers stay in the
+    core's notes, with the reason.
 
     Approved → declined takes back the repairs that answer approved and sends the unit
     to DECLINED. Declined → approved resumes the rebuild and approves what was waiting.
+    `declined_codes` corrects item by item: the repairs the customer actually declined,
+    as `record_authorisation` takes them (a required one declines the unit).
 
     Raises:
-        ValidationError: no reason, nothing recorded to correct, the same answer, or the
-            authorised work has begun.
+        ValidationError: no reason, nothing recorded to correct, the same answer, or work
+            has begun on a repair the correction would take back.
     """
     from Tracker.services.reman.repair_routing import codes_needing_approval
 
@@ -382,30 +440,45 @@ def correct_authorisation(core, approved: bool, user, reason: str):
     if core.status not in ('IN_REBUILD', 'DECLINED'):
         raise ValidationError(
             f"{core.core_number} is {core.get_status_display()} — its answer can no longer be corrected.")
-    if approved == was_approved:
+
+    # What the recorded answer was about: the repairs it approved and the ones it
+    # declined — or, after a whole-unit decline, what is still waiting.
+    old_approved = set(core.authorisation_codes or [])
+    old_declined = set(core.declined_repair_codes or [])
+    asked = (sorted(old_approved | old_declined) if was_approved
+             else codes_needing_approval(core))
+    if approved:
+        new_approved, new_declined, required_declined = _split_answer(core, asked, declined_codes)
+        if required_declined:
+            approved, new_approved, new_declined = False, [], []
+    else:
+        new_approved, new_declined, required_declined = [], [], []
+    if approved == was_approved and set(new_approved) == old_approved \
+            and set(new_declined) == (old_declined & set(asked)):
         raise ValidationError("That is the answer already on record.")
-    if was_approved and _authorised_repair_started(core):
+    taken_back = old_approved - set(new_approved)
+    if taken_back and _authorised_repair_started(core, taken_back):
         raise ValidationError(
             f"Work has started on a repair the customer's answer authorised on {core.core_number}; "
             "the answer can no longer be corrected.")
 
     who = (user.get_full_name() or user.get_username()) if user else 'system'
-    if approved:
-        codes = codes_needing_approval(core)
-        core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) | set(codes))
-        core.authorisation_codes = list(codes)
-        core.status = 'IN_REBUILD'
-    else:
-        taken_back = set(core.authorisation_codes or [])
-        core.approved_repair_codes = sorted(set(core.approved_repair_codes or []) - taken_back)
-        core.authorisation_codes = []
-        core.status = 'DECLINED'
-    line = (f"{timezone.now():%Y-%m-%d} {who}: correction — customer "
-            f"{'approved' if approved else 'declined'} (recorded as "
+    core.approved_repair_codes = sorted(
+        (set(core.approved_repair_codes or []) - old_approved) | set(new_approved))
+    core.declined_repair_codes = sorted((old_declined - set(asked)) | set(new_declined))
+    core.authorisation_codes = list(new_approved)
+    core.status = 'IN_REBUILD' if approved else 'DECLINED'
+    said = 'approved' if approved else 'declined'
+    if new_declined:
+        said += f", declining {', '.join(new_declined)}"
+    if required_declined:
+        said += (f" (declined {', '.join(required_declined)}, required for the rebuild, so "
+                 "the unit goes back unrepaired)")
+    line = (f"{timezone.now():%Y-%m-%d} {who}: correction — customer {said} (recorded as "
             f"{'approved' if was_approved else 'declined'}). {reason}")
     core.condition_notes = f"{core.condition_notes}\n{line}".strip()
-    core.save(update_fields=['status', 'approved_repair_codes', 'authorisation_codes',
-                             'condition_notes', 'updated_at'])
+    core.save(update_fields=['status', 'approved_repair_codes', 'declined_repair_codes',
+                             'authorisation_codes', 'condition_notes', 'updated_at'])
     sync_part_status(core)
     return core
 

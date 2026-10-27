@@ -43,12 +43,27 @@
   aligns: (left, left, right),
 )
 
+#let declined = data.at("declined_work", default: ())
+#if declined.len() > 0 [
+  #v(10pt)
+  = Work declined by the customer
+
+  #text(size: 9.5pt)[These units were repaired without the work below, at the customer's request.]
+  #v(4pt)
+  #report-table(
+    (1fr, 1.4fr),
+    ("Unit", "Repair not done"),
+    declined.map(d => (d.unit, [#text(font: mono-font, size: 8.5pt)[#d.code]#if d.name != none [ — #d.name]])),
+  )
+]
+
 #v(10pt)
 
 #info-box[
   We certify that the items listed above were #data.work_done, inspected and tested in
   accordance with the requirements of the order(s) referenced, and conform to those
-  requirements. Records supporting this certification are retained by #data.our_org
+  requirements#if declined.len() > 0 [, except for the work declined by the customer
+  listed above]. Records supporting this certification are retained by #data.our_org
   and are available on request.
 ]
 

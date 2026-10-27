@@ -33,6 +33,7 @@
         {
           "code": "CV-RECON",
           "name": "Recondition control valve",
+          "required": false,
           "work": [
             "Valve Seat Lapping"
           ],
@@ -110,6 +111,7 @@
         {
           "code": "CV-RECON",
           "name": "Recondition control valve",
+          "required": false,
           "work": [
             "Valve Seat Lapping"
           ],

@@ -35,8 +35,8 @@
 #info-box[
   Teardown and inspection of these units found the conditions below. Each needs work
   beyond the rebuild level ordered, so it goes ahead only with your authorisation. Each
-  unit lists the work, the parts it needs, and the finding behind it. Answer each unit
-  on the last page.
+  unit lists the work, the parts it needs, and the finding behind it. Authorise or
+  decline each item, or use the shortcuts on the last page.
 ]
 
 #for u in data.units [
@@ -58,17 +58,22 @@
 #block(breakable: false)[
   = Your answer
   #text(size: 9.5pt)[
-    Tick one box for each unit and return this sheet, quoting our reference
-    #text(font: mono-font)[#data.reference].
+    Tick authorise or decline for each item, and return this sheet quoting our
+    reference #text(font: mono-font)[#data.reference]. Items you decline are left out of
+    that unit's rebuild; declining an item marked required returns that unit unrepaired.
   ]
   #v(6pt)
+  #grid(
+    columns: (auto, 1fr), column-gutter: 8pt, align: horizon,
+    tick(), [Or authorise every item on every unit],
+  )
+  #v(6pt)
   #report-table(
-    (1.4fr, 1.2fr, auto, auto),
-    ("Unit", "Our reference", "Authorise", "Decline — return unrepaired"),
+    (1.4fr, 1.2fr, auto),
+    ("Unit", "Our reference", "Decline everything — return unrepaired"),
     data.units.map(u => (
       if u.serial != none { u.serial } else { u.core_number },
       text(font: mono-font, size: 8.5pt)[#u.core_number],
-      align(center, tick()),
       align(center, tick()),
     )),
   )

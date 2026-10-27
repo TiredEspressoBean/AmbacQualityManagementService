@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { RequestAuthorisationButton } from "@/components/reman/RequestAuthorisationButton";
-import { useRetrieveCore } from "@/hooks/useRetrieveCore";
+import { retrieveCoreOptions } from "@/hooks/useRetrieveCore";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Hammer, PackageCheck, Play, Truck, Wrench } from "lucide-react";
@@ -423,33 +424,34 @@ export function WorkOrderCoresCard(
             </Card>
             {answering && (
                 <CustomerAnswerDialog
-                    coreId={String(answering.core.id)}
-                    coreNumber={answering.core.core_number}
+                    coreIds={[String(answering.core.id)]}
+                    title={answering.core.core_number}
                     approved={answering.approved}
                     pending={lifecycle.isPending}
                     onCancel={() => setAnswering(null)}
-                    onConfirm={(fields) => {
+                    onConfirm={({ declinedByCore, ...fields }) => {
+                        const id = String(answering.core.id);
                         act(answering.core,
-                            { id: String(answering.core.id), action: "record_authorisation",
-                              approved: answering.approved, ...fields },
-                            answering.approved ? "approved — rebuild resumed" : "declined");
+                            { id, action: "record_authorisation", approved: answering.approved,
+                              declinedCodes: declinedByCore[id] ?? [], ...fields },
+                            answering.approved ? "answer recorded" : "declined");
                         setAnswering(null);
                     }}
                 />
             )}
             {bulkAnswer !== null && picked.length > 0 && (
                 <CustomerAnswerDialog
-                    coreId={pickedIds[0]}
-                    coreNumber={`${picked.length} units`}
-                    units={picked.map((c) => c.core_number)}
+                    coreIds={pickedIds}
+                    title={`${picked.length} units`}
                     approved={bulkAnswer}
                     pending={bulk.isPending}
                     onCancel={() => setBulkAnswer(null)}
-                    onConfirm={(fields) => {
+                    onConfirm={({ declinedByCore, ...fields }) => {
                         const n = picked.length;
-                        bulk.mutate({ action: "record", coreIds: pickedIds, approved: bulkAnswer, ...fields }, {
+                        bulk.mutate({ action: "record", coreIds: pickedIds, approved: bulkAnswer,
+                                      declinedByCore, ...fields }, {
                             onSuccess: () => onBulkDone(
-                                `${n} units ${bulkAnswer ? "approved — rebuild resumed" : "declined"}`),
+                                `${n} units — ${bulkAnswer ? "answer recorded" : "declined"}`),
                             onError,
                         });
                         setBulkAnswer(null);
@@ -476,53 +478,156 @@ export function WorkOrderCoresCard(
 /** Record what the customer said. The conversation happened elsewhere (phone, email,
  *  a PO); this is the production record of it — who answered, how, and the reference
  *  to trace it. Nobody at the customer needs a login for it to be on record. */
-export function CustomerAnswerDialog({ coreId, coreNumber, units, approved, pending, onCancel, onConfirm }: {
-    coreId: string;
-    coreNumber: string;
-    /** Several units answered together: their core numbers, listed instead of one unit's scope. */
-    units?: string[];
+export function CustomerAnswerDialog({ coreIds, title, approved, pending, onCancel, onConfirm }: {
+    /** One unit, or a customer's lot answered together. */
+    coreIds: string[];
+    title: string;
+    /** Approved… records the answer item by item; Declined… declines each unit whole. */
     approved: boolean;
     pending: boolean;
     onCancel: () => void;
-    onConfirm: (f: { contact: string; method: string; reference: string; note: string }) => void;
+    onConfirm: (f: {
+        contact: string; method: string; reference: string; note: string;
+        /** Core id → the repairs declined on that unit. */
+        declinedByCore: Record<string, string[]>;
+    }) => void;
 }) {
     const [contact, setContact] = useState("");
     const [method, setMethod] = useState("");
     const [reference, setReference] = useState("");
     const [note, setNote] = useState("");
-    // What they're answering: each code, its name, and the finding behind it — so the
-    // person recording the answer sees what was agreed to.
-    const { data: core } = useRetrieveCore(units ? "" : coreId);
-    const scope = core?.awaiting_authorisation ?? [];
-    const many = (units?.length ?? 0) > 1;
+    // Core id → codes the customer declined. Everything starts approved: most answers are
+    // "yes", so the common case is one click.
+    const [declined, setDeclined] = useState<Record<string, string[]>>({});
+    // What each unit is waiting on: each code, its name, the finding behind it, and
+    // whether the shop marked it required — so whoever records it sees what's agreed.
+    const units = useQueries({
+        queries: coreIds.map((id) => retrieveCoreOptions(id)),
+        combine: (rs) => rs.map((r) => r.data).filter((c): c is NonNullable<typeof c> => !!c),
+    });
+    const many = coreIds.length > 1;
+    const isDeclined = (id: string, code: string) => (declined[id] ?? []).includes(code);
+    const setItem = (id: string, code: string, approve: boolean) => setDeclined((d) => {
+        const now = new Set(d[id] ?? []);
+        if (approve) now.delete(code); else now.add(code);
+        return { ...d, [id]: [...now] };
+    });
+    // Units a declined REQUIRED repair sends back unrepaired.
+    const goingBack = approved ? units.filter((u) =>
+        (u.awaiting_authorisation ?? []).some((i) => i.required && isDeclined(String(u.id), i.code))) : [];
+    // The lot grid's columns: every repair waiting on any of the units.
+    const columns = Array.from(new Map(units.flatMap((u) => u.awaiting_authorisation ?? [])
+        .map((i) => [i.code, i] as const)).values());
+    const setColumn = (code: string, approve: boolean) => units.forEach((u) => {
+        if ((u.awaiting_authorisation ?? []).some((i) => i.code === code)) setItem(String(u.id), code, approve);
+    });
+    const allBack = approved && units.length > 0 && goingBack.length === units.length;
     return (
         <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-            <DialogContent>
+            <DialogContent className={many && approved ? "max-w-3xl" : undefined}>
                 <DialogHeader>
                     <DialogTitle>
-                        {coreNumber} — customer {approved ? "approved" : "declined"}
+                        {title} — customer {approved ? "answered" : "declined"}
                     </DialogTitle>
                     <DialogDescription>
                         {approved
-                            ? `The repairs waiting on their answer are approved and the rebuild resumes${many ? " on each unit" : ""}.`
+                            ? "Untick any repair they declined. The rest are approved and the rebuild resumes; a declined repair is left out."
                             : many ? "Each unit goes back to them unrepaired." : "The unit goes back to them unrepaired."}
                     </DialogDescription>
                 </DialogHeader>
-                {units && (
-                    <p className="rounded-md border bg-muted/30 p-2 font-mono text-xs">{units.join(", ")}</p>
-                )}
-                {scope.length > 0 && (
-                    <ul className="space-y-1 rounded-md border bg-muted/30 p-2 text-sm">
-                        {scope.map((item) => (
-                            <li key={item.code}>
-                                <span className="font-mono text-xs">{item.code}</span>
-                                {item.name ? ` · ${item.name}` : ""}
-                                {item.why.length > 0 && (
-                                    <span className="text-muted-foreground"> — {item.why.join("; ")}</span>
-                                )}
-                            </li>
-                        ))}
+                {approved && !many && units[0] && (
+                    <ul className="space-y-2 rounded-md border p-2 text-sm">
+                        {(units[0].awaiting_authorisation ?? []).map((item) => {
+                            const id = String(units[0].id);
+                            const off = isDeclined(id, item.code);
+                            return (
+                                <li key={item.code} className="flex items-start gap-2">
+                                    <Checkbox
+                                        aria-label={`Approve ${item.code}`}
+                                        checked={!off}
+                                        onCheckedChange={(v) => setItem(id, item.code, v === true)}
+                                        className="mt-0.5"
+                                    />
+                                    <div>
+                                        <span className="font-mono text-xs">{item.code}</span>
+                                        {item.name ? ` · ${item.name}` : ""}
+                                        {item.why.length > 0 && (
+                                            <span className="text-muted-foreground"> — {item.why.join("; ")}</span>
+                                        )}
+                                        {off && (
+                                            <p className={item.required ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+                                                {item.required
+                                                    ? "Required for the rebuild: declining it returns the unit unrepaired."
+                                                    : "Declined: the unit is rebuilt without it."}
+                                            </p>
+                                        )}
+                                    </div>
+                                </li>
+                            );
+                        })}
                     </ul>
+                )}
+                {approved && many && (
+                    <div className="overflow-x-auto rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Unit</TableHead>
+                                    {columns.map((c) => (
+                                        <TableHead key={c.code} className="text-center">
+                                            <div className="font-mono text-xs">{c.code}</div>
+                                            {c.required && <div className="text-[10px] font-normal text-muted-foreground">required</div>}
+                                            <div className="mt-1 flex justify-center gap-1">
+                                                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs"
+                                                    onClick={() => setColumn(c.code, true)}>All</Button>
+                                                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs"
+                                                    onClick={() => setColumn(c.code, false)}>None</Button>
+                                            </div>
+                                        </TableHead>
+                                    ))}
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {units.map((u) => {
+                                    const id = String(u.id);
+                                    const codes = new Set((u.awaiting_authorisation ?? []).map((i) => i.code));
+                                    return (
+                                        <TableRow key={id}>
+                                            <TableCell className="font-mono text-xs">
+                                                {u.serial_number || u.core_number}
+                                                {goingBack.includes(u) && (
+                                                    <div className="font-sans text-[10px] text-destructive">goes back unrepaired</div>
+                                                )}
+                                            </TableCell>
+                                            {columns.map((c) => (
+                                                <TableCell key={c.code} className="text-center">
+                                                    {codes.has(c.code) ? (
+                                                        <Checkbox
+                                                            aria-label={`Approve ${c.code} on ${u.core_number}`}
+                                                            checked={!isDeclined(id, c.code)}
+                                                            onCheckedChange={(v) => setItem(id, c.code, v === true)}
+                                                        />
+                                                    ) : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+                {!approved && many && (
+                    <p className="rounded-md border bg-muted/30 p-2 font-mono text-xs">
+                        {units.map((u) => u.core_number).join(", ")}
+                    </p>
+                )}
+                {goingBack.length > 0 && (
+                    <p className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm text-destructive">
+                        {many
+                            ? `${goingBack.length} unit(s) go back unrepaired: a required repair was declined.`
+                            : "The unit goes back unrepaired: a required repair was declined."}
+                    </p>
                 )}
                 <div className="grid gap-3">
                     <div className="grid gap-1.5">
@@ -550,8 +655,9 @@ export function CustomerAnswerDialog({ coreId, coreNumber, units, approved, pend
                 <DialogFooter>
                     <Button variant="outline" onClick={onCancel}>Cancel</Button>
                     <Button disabled={pending || !contact.trim()}
-                        onClick={() => onConfirm({ contact, method, reference, note })}>
-                        Record {approved ? "approval" : "decline"}
+                        variant={!approved || allBack ? "destructive" : "default"}
+                        onClick={() => onConfirm({ contact, method, reference, note, declinedByCore: declined })}>
+                        {!approved || allBack ? "Record decline" : "Record answer"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -29,6 +29,13 @@ class ShipmentItem(BaseModel):
     serials: list[str] = []        # unit serials, or the lot number for material
 
 
+class DeclinedWork(BaseModel):
+    """A repair the customer declined on one of their units: it shipped without it."""
+    unit: str                      # serial (our number), as the item list shows it
+    code: str
+    name: Optional[str] = None
+
+
 class ShipmentDocumentContext(BaseModel):
     our_org: str
     shipment_number: str
@@ -50,6 +57,9 @@ class ShipmentDocumentContext(BaseModel):
     # What was done to the units, for the certification sentence: "manufactured",
     # "repaired", "remanufactured" — joined when a shipment mixes them.
     work_done: str = "manufactured"
+    # Repairs the customer declined on units in this shipment: the units were rebuilt
+    # without them, and the paperwork says so rather than reading as fully repaired.
+    declined_work: list[DeclinedWork] = []
     issued_date: date
 
 
@@ -87,6 +97,7 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
     groups: dict = {}
     orders: list[str] = []
     kinds: list[str] = []
+    declined: list[tuple[str, str]] = []   # (unit label, code)
     for p in (shipment.parts.select_related(  # tenant-safe: reverse FK from a scoped shipment
             "part_type", "order", "work_order__related_order", "work_order__order_line",
             "core_role")
@@ -104,6 +115,7 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
             label = (f"{core.serial_number} ({core.core_number})"
                      if core.serial_number else core.core_number)
             kind = "repaired"
+            declined.extend((label, code) for code in (core.declined_repair_codes or []))
         elif core is not None:
             label, kind = p.ERP_id, "remanufactured"
         else:
@@ -123,6 +135,12 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
         items.append(ShipmentItem(part_type=lot.item_name or "Material",
                                   quantity=f"{qty} {lot.unit_of_measure}".strip(),
                                   serials=[f"Lot {lot.lot_number}"]))
+    names = {}
+    if declined:
+        from Tracker.models import RepairCode
+        names = dict(RepairCode.objects  # tenant-safe: .objects auto-scopes
+                     .filter(code__in={c for _, c in declined}, archived=False,
+                             is_current_version=True).values_list('code', 'name'))
     customer = shipment.customer
     return ShipmentDocumentContext(
         our_org=tenant.name,
@@ -142,6 +160,7 @@ def build_shipment_document_context(shipment, tenant, user=None, *,
         authorized_by=(_name(user) if user is not None
                        and user.has_tenant_perm('approve_disposition', tenant) else None),
         work_done=" or ".join(kinds) if kinds else "manufactured",
+        declined_work=[DeclinedWork(unit=u, code=c, name=names.get(c)) for u, c in declined],
         issued_date=tenant_today(tenant),
     )
 

@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,6 +53,8 @@ export function RepairCodeFormPage() {
     const [trigger, setTrigger] = useState<Trigger>("RECONDITION");
     const [componentType, setComponentType] = useState<string>(ANY_COMPONENT);
     const [notes, setNotes] = useState("");
+    // Required (the safe default): declining it returns the unit unrepaired.
+    const [required, setRequired] = useState(true);
 
     useEffect(() => {
         if (mode !== "edit" || !existing) return;
@@ -60,6 +63,7 @@ export function RepairCodeFormPage() {
         setTrigger((existing.trigger as Trigger) ?? "RECONDITION");
         setComponentType(existing.component_type ? String(existing.component_type) : ANY_COMPONENT);
         setNotes(existing.notes ?? "");
+        setRequired(existing.required ?? true);
     }, [mode, existing]);
 
     const partTypes = useMemo(() => partTypesData?.results ?? [], [partTypesData]);
@@ -80,6 +84,7 @@ export function RepairCodeFormPage() {
             trigger,
             component_type: componentType === ANY_COMPONENT ? null : componentType,
             notes,
+            required,
         };
         const onSuccess = () => {
             toast.success(mode === "edit" ? "Repair code updated" : "Repair code created");
@@ -235,6 +240,34 @@ export function RepairCodeFormPage() {
                             ))}
                         </ul>
                     )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">When the customer declines it</CardTitle>
+                    <CardDescription>
+                        A customer asked to authorise this repair on their own unit can decline
+                        it. Your call, for each repair: can the unit still be rebuilt without it?
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <label className="flex items-start gap-2 text-sm">
+                        <Checkbox
+                            checked={required}
+                            onCheckedChange={(v) => setRequired(v === true)}
+                            aria-label="Required for the rebuild"
+                            className="mt-0.5"
+                        />
+                        <span>
+                            <span className="font-medium">Required for the rebuild</span>
+                            <span className="block text-muted-foreground">
+                                {required
+                                    ? "Declining it returns the unit unrepaired."
+                                    : "Optional: if declined, the unit is rebuilt without it and its paperwork says so."}
+                            </span>
+                        </span>
+                    </label>
                 </CardContent>
             </Card>
 

@@ -142,9 +142,12 @@ For each repair waiting on the customer, the sheet lists:
   position where there is one. A repair that reworks the unit's own component
   needs none.
 
-It also carries the unit's details (serial, our core number, order, date
-received, and the rebuild level ordered) and a space for the customer's answer:
-authorise or decline, their reference, and their signature.
+Each item has its own **Authorise** and **Decline** boxes, so the customer can
+answer item by item. An item your shop marked *required* says so on the sheet:
+declining it returns the unit unrepaired. The sheet also carries the unit's
+details (serial, our core number, order, date received, and the rebuild level
+ordered), a *decline everything* box, and space for their reference and
+signature.
 
 Repairs that are pre-approved or were sold with the rebuild level are not on the
 sheet, because they are not the customer's decision. The sheet carries no prices;
@@ -152,23 +155,44 @@ price the work in the system you price in.
 
 ### Recording the answer
 
-The cores card and the core's page carry **Approved** and **Declined** once the
+The cores card and the core's page carry **Approved…** and **Declined…** once the
 unit is waiting.
 
-- **Approved** — work resumes.
-- **Declined** — the unit moves to *Scope declined*, and goes back unrepaired.
+- **Approved…** lists each repair waiting on the customer, all ticked. Untick any
+  they declined, fill in who answered, how and their reference, and **Record
+  answer**. The ticked repairs are approved and work resumes.
+- **Declined…** declines the whole unit: it moves to *Scope declined*, and goes
+  back unrepaired.
+
+What a declined repair does depends on how your shop set up that repair code
+(see [Required or optional](#required-or-optional)):
+
+| The declined repair is | What happens |
+|------------------------|--------------|
+| **Optional** | The unit is rebuilt without it. It isn't asked about again, its parts leave the kit, and the unit's CoC and packing list list it under *Work declined by the customer* |
+| **Required** | The unit can't be rebuilt without it, so the answer declines the unit. The dialog warns before you record it, and the button reads **Record decline** |
 
 **Recorded the wrong answer?** On the core's page, **Correct customer's answer…**
-turns it the other way, with a required reason:
+puts the right one on record, with a required reason:
 
-| Recorded as | Corrected to | What happens |
-|-------------|--------------|--------------|
-| Approved | Declined | The repairs that answer approved are taken back, and the unit moves to *Scope declined* |
-| Declined | Approved | The rebuild resumes, and the repairs that were waiting are approved |
+- **Correct the items** — for an approval: re-tick or untick the repairs it
+  covered, as the customer actually answered.
+- **Correct to declined** — the repairs that answer approved are taken back, and
+  the unit moves to *Scope declined*.
+- **Correct to approved** — for a decline: the rebuild resumes, and the repairs
+  that were waiting are approved.
 
-Both answers and the reason are added to the core's notes. The correction is
-refused once the repair it authorised has started, or once a declined unit has
+Both answers and the reason are added to the core's notes. A correction is refused
+once work has started on a repair it would take back, or once a declined unit has
 gone back to its customer. By then the answer has been acted on.
+
+### Required or optional
+
+Each repair code says whether a customer can decline it and still have the unit
+rebuilt. It's your shop's decision, set on the repair code under **When the
+customer declines it**: **Required for the rebuild** (the default) means declining
+it returns the unit unrepaired; unticked, the repair is optional, and a unit can
+be rebuilt without it.
 
 ### A customer's lot, together
 
@@ -177,11 +201,17 @@ answer together. On the work order's **Cores** card, tick the units: their
 customer's own units that are in rebuild or awaiting authorisation can be ticked.
 A bar above the table then offers, for the units ticked:
 
-- **Scope for customer** — one sheet for the lot: each unit with its items, and on
-  the last page a line per unit to authorise or decline;
+- **Scope for customer** — one sheet for the lot: each unit with its items to
+  authorise or decline, and on the last page *authorise every item* and a *decline
+  everything* box per unit;
 - **Send for authorisation** — sends every ticked unit that is in rebuild;
-- **Approved…** / **Declined…** — records one answer for every ticked unit that is
-  waiting, with who answered, how, and their reference.
+- **Approved…** — a grid of the units against the repairs waiting on them, all
+  ticked. Untick what the customer declined, cell by cell, or use **None** under a
+  repair to decline it on every unit (**All** puts it back). Units a declined
+  required repair sends back are marked before you record it;
+- **Declined…** — declines every ticked unit whole.
+
+Who answered, how and their reference are entered once for the lot.
 
 The units have to be one customer's, at the same stage; the bar says so when they
 aren't. Each unit gets its own record, exactly as if it had been answered on its
@@ -189,8 +219,9 @@ own, so a correction is still made on that unit's page. If any one unit can't ta
 the action (it has nothing to ask about, say), nothing is done and the message
 names that unit. Untick it and try again.
 
-If the customer authorises some units and declines others, record the two answers
-separately: tick the approved units for **Approved…**, then the rest for
+A unit the customer declined outright can go through **Approved…** with the lot:
+untick its required repairs and it is declined with the rest recorded. Or record
+the two answers separately, the approved units first, then the rest with
 **Declined…**.
 
 A **Return** button on the work order's **Cores** card then sends the unit back to

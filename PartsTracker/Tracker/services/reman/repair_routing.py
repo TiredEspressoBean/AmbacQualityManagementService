@@ -115,8 +115,10 @@ def codes_needing_approval(core) -> list[str]:
     for e in edges:
         code = e.to_step.repair_code.code
         offered[code] = offered.get(code, False) or e.pre_approved
+    # A repair the customer declined has its answer: it isn't asked about again.
+    declined = set(core.declined_repair_codes or [])
     return sorted(code for code, pre in offered.items()
-                  if not pre and not is_approved(core, code, sold=sold))
+                  if not pre and code not in declined and not is_approved(core, code, sold=sold))
 
 
 def _branch_codes_for(component, step, process) -> list:
@@ -182,9 +184,11 @@ def repair_route(part, step):
         part=part, status='COMPLETED', step__repair_code__isnull=False,
     ).values_list('step__repair_code__code', flat=True))
     sold = sold_codes(core)
+    # The customer declined it (an optional repair): the unit carries on without it.
+    declined = set(core.declined_repair_codes or [])
     for e in edges:
         rc = e.to_step.repair_code
-        if rc.code not in raised or rc.code in done:
+        if rc.code not in raised or rc.code in done or rc.code in declined:
             continue
         if is_approved(core, rc.code, e, sold=sold):
             return e.to_step

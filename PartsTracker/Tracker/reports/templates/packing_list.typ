@@ -49,6 +49,20 @@
 
 #align(right)[#text(weight: "semibold")[Serialised units: #data.total_units]]
 
+#let declined = data.at("declined_work", default: ())
+#if declined.len() > 0 [
+  #v(8pt)
+  = Work declined by the customer
+
+  #text(size: 9.5pt)[These units were repaired without the work below, at the customer's request.]
+  #v(4pt)
+  #report-table(
+    (1fr, 1.4fr),
+    ("Unit", "Repair not done"),
+    declined.map(d => (d.unit, [#text(font: mono-font, size: 8.5pt)[#d.code]#if d.name != none [ — #d.name]])),
+  )
+]
+
 #v(18pt)
 
 #signature-block((

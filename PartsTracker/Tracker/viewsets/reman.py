@@ -279,6 +279,10 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
     @extend_schema(
         request=inline_serializer(name="CoreAuthorisationInput", fields={
             "approved": serializers.BooleanField(),
+            # Approving with some repairs declined: optional ones are left out of the
+            # rebuild; declining a required one declines the unit.
+            "declined_codes": serializers.ListField(
+                child=serializers.CharField(), required=False),
             "note": serializers.CharField(required=False, allow_blank=True),
             # Who at the customer answered, how, and the reference to trace it — the
             # customer needs no login for their answer to be on record.
@@ -303,7 +307,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
                 note=request.data.get('note', ''),
                 contact=request.data.get('contact', ''),
                 method=request.data.get('method', ''),
-                reference=request.data.get('reference', ''))
+                reference=request.data.get('reference', ''),
+                declined_codes=request.data.get('declined_codes') or ())
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -354,6 +359,9 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
     @extend_schema(
         request=inline_serializer(name="CoreAuthorisationCorrectionInput", fields={
             "approved": serializers.BooleanField(help_text="What the customer actually said."),
+            "declined_codes": serializers.ListField(
+                child=serializers.CharField(), required=False,
+                help_text="The repairs they actually declined, item by item."),
             "reason": serializers.CharField(),
         }),
         responses={200: CoreSerializer, 400: inline_serializer(
@@ -368,7 +376,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         from Tracker.services.reman.release import correct_authorisation
         try:
             core = correct_authorisation(self.get_object(), bool(request.data.get('approved')),
-                                         request.user, request.data.get('reason', ''))
+                                         request.user, request.data.get('reason', ''),
+                                         declined_codes=request.data.get('declined_codes') or ())
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CoreSerializer(core, context={'request': request}).data)
@@ -437,6 +446,9 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         request=inline_serializer(name="CoreBulkAuthorisationInput", fields={
             "core_ids": serializers.ListField(child=serializers.UUIDField()),
             "approved": serializers.BooleanField(),
+            # {core id: [codes]} — the repairs declined on each unit.
+            "declined_by_core": serializers.DictField(
+                child=serializers.ListField(child=serializers.CharField()), required=False),
             "note": serializers.CharField(required=False, allow_blank=True),
             "contact": serializers.CharField(required=False, allow_blank=True),
             "method": serializers.CharField(required=False, allow_blank=True),
@@ -463,7 +475,8 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
                 note=request.data.get('note', ''),
                 contact=request.data.get('contact', ''),
                 method=request.data.get('method', ''),
-                reference=request.data.get('reference', ''))
+                reference=request.data.get('reference', ''),
+                declined_by_core=request.data.get('declined_by_core') or {})
         except DjangoValidationError as e:
             return Response({'detail': '; '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CoreSerializer(cores, many=True, context={'request': request}).data)

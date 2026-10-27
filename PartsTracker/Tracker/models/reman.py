@@ -203,6 +203,14 @@ class Core(SecureModel):
     # The codes that answer approved — what a correction of it takes back (user decision
     # 2026-10-26, Corrections #22). Empty for a decline.
     authorisation_codes = models.JSONField(default=list, blank=True)
+    # Optional repairs the customer declined while approving the rest: the unit is
+    # rebuilt without them, nobody asks again, and its paperwork lists them. (Declining
+    # a required repair declines the unit instead.)
+    declined_repair_codes = models.JSONField(
+        default=list, blank=True,
+        help_text="Optional repair codes the customer declined; the unit is rebuilt "
+                  "without them.",
+    )
     status = models.CharField(
         max_length=30,
         choices=CORE_STATUS_CHOICES,
@@ -691,6 +699,14 @@ class RepairCode(SecureModel):
     # Where the work is done is the Repair node carrying this code
     # (`Steps.repair_code`), not a list on the code: see services/reman/repair_routing.
     notes = models.TextField(blank=True)
+    # The shop's call, per code: can a customer decline this repair and still have the
+    # unit rebuilt? Required (the default, the safe choice) means declining it declines
+    # the unit; optional means the unit carries on without it and its paperwork says so.
+    required = models.BooleanField(
+        default=True,
+        help_text="Required for the rebuild: a customer who declines it has the unit "
+                  "returned unrepaired. Untick for a repair the unit can ship without.",
+    )
 
     class Meta:
         verbose_name = 'Repair Code'

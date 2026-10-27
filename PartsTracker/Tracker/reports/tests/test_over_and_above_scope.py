@@ -47,7 +47,7 @@ class TestOverAndAboveScopeAdapter(ReportAdapterTestMixin, SimpleTestCase):
         self.assertFalse([k for k in keys if any(w in k.lower() for w in _PRICE_WORDS)])
 
 
-class OverAndAboveScopeContextTests(TenantTestCase):
+class _ScopeFixture(TenantTestCase):
     """Route: Clean → Check → Assemble, with Replace (NZL-REPLACE, not pre-approved) and
     Lap (VLV-RECON, pre-approved) off Check. The nozzle was scrapped at the bench; the
     valve came out grade C."""
@@ -120,6 +120,11 @@ class OverAndAboveScopeContextTests(TenantTestCase):
     def _context(self, core=None, user=None):
         return OverAndAboveScopeAdapter().build_context(
             {'core_id': (core or self.core).id}, user or self.user_a, self.tenant_a)
+
+
+
+class OverAndAboveScopeContextTests(_ScopeFixture):
+    """The single-unit sheet's context, on the fixture route."""
 
     def test_lists_the_code_awaiting_the_customer_with_its_work_parts_and_finding(self):
         ctx = self._context()
@@ -275,3 +280,113 @@ class OverAndAboveLotTests(OverAndAboveScopeContextTests):
             'contact': 'Pat'}, format='json')
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual({c['status'] for c in resp.json()}, {'DECLINED'})
+
+
+class PerItemAnswerTests(_ScopeFixture):
+    """The customer answers item by item. The valve recondition (VLV-RECON) is made to
+    wait on them too, and the shop marks it optional; the nozzle stays required."""
+
+    def setUp(self):
+        super().setUp()
+        from Tracker.models import RepairCode, StepEdge
+        StepEdge.objects.filter(to_step=self.steps['Lap']).update(pre_approved=False)
+        RepairCode.objects.filter(code='VLV-RECON').update(required=False)
+
+    def _answer(self, declined, approved=True):
+        from Tracker.services.reman.release import record_authorisation
+        record_authorisation(self.core, approved, self.user_a, contact='Pat',
+                             declined_codes=declined)
+        self.core.refresh_from_db()
+        return self.core
+
+    def test_both_repairs_wait_and_the_scope_says_which_is_required(self):
+        from Tracker.services.reman.release import pending_authorisation_scope
+        scope = {i['code']: i['required'] for i in pending_authorisation_scope(self.core)}
+        self.assertEqual(scope, {'NZL-REPLACE': True, 'VLV-RECON': False})
+        lines = {line.code: line.required for line in self._context().lines}
+        self.assertEqual(lines, {'NZL-REPLACE': True, 'VLV-RECON': False})
+
+    def test_declining_an_optional_repair_rebuilds_without_it(self):
+        from Tracker.services.reman.repair_routing import codes_needing_approval
+        from Tracker.services.reman.rebuild import resolve_rebuild_plan
+        core = self._answer(['VLV-RECON'])
+        self.assertEqual(core.status, 'IN_REBUILD')
+        self.assertIn('NZL-REPLACE', core.approved_repair_codes)
+        self.assertNotIn('VLV-RECON', core.approved_repair_codes)
+        self.assertEqual(core.declined_repair_codes, ['VLV-RECON'])
+        self.assertEqual(codes_needing_approval(core), [])          # not asked again
+        self.assertNotIn('VLV-RECON',
+                         [r.code for r in resolve_rebuild_plan(core).expected_repairs])
+
+    def test_a_declined_repair_is_not_taken_at_the_check(self):
+        from Tracker.services.reman.repair_routing import repair_route
+        core = self._answer(['VLV-RECON'])
+        self.assertEqual(repair_route(core.part, self.steps['Check']),
+                         self.steps['Nozzle Replacement'])
+
+    def test_declining_a_required_repair_declines_the_unit(self):
+        core = self._answer(['NZL-REPLACE'])
+        self.assertEqual(core.status, 'DECLINED')
+        self.assertEqual((core.approved_repair_codes, core.declined_repair_codes), ([], []))
+        self.assertIn('required for the rebuild', core.condition_notes)
+
+    def test_a_code_not_waiting_is_refused(self):
+        from django.core.exceptions import ValidationError
+        with self.assertRaisesMessage(ValidationError, 'not waiting'):
+            self._answer(['PLG-REPLACE'])
+        self.core.refresh_from_db()
+        self.assertEqual(self.core.status, 'AWAITING_AUTHORISATION')
+
+    def test_an_item_recorded_wrong_is_corrected_on_its_own(self):
+        from Tracker.services.reman.release import correct_authorisation
+        core = self._answer(['VLV-RECON'])
+        correct_authorisation(core, True, self.user_a, 'They approved the valve too',
+                              declined_codes=[])
+        core.refresh_from_db()
+        self.assertEqual(core.status, 'IN_REBUILD')
+        self.assertEqual(sorted(core.authorisation_codes), ['NZL-REPLACE', 'VLV-RECON'])
+        self.assertEqual(core.declined_repair_codes, [])
+        # And back the other way: the valve declined after all.
+        correct_authorisation(core, True, self.user_a, 'Email says no valve',
+                              declined_codes=['VLV-RECON'])
+        core.refresh_from_db()
+        self.assertEqual(core.declined_repair_codes, ['VLV-RECON'])
+        self.assertNotIn('VLV-RECON', core.approved_repair_codes)
+
+    def test_the_same_answer_is_refused_as_a_correction(self):
+        from django.core.exceptions import ValidationError
+        from Tracker.services.reman.release import correct_authorisation
+        core = self._answer(['VLV-RECON'])
+        with self.assertRaisesMessage(ValidationError, 'already on record'):
+            correct_authorisation(core, True, self.user_a, 'no change',
+                                  declined_codes=['VLV-RECON'])
+
+    def test_the_answer_endpoint_takes_declined_items(self):
+        from rest_framework.test import APIClient
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['view_core', 'change_core', 'full_tenant_access'])
+        client = APIClient()
+        client.force_authenticate(user=self.user_a)
+        client.credentials(HTTP_X_TENANT_ID=str(self.tenant_a.id))
+        resp = client.post(f'/api/Cores/{self.core.id}/record_authorisation/', {
+            'approved': True, 'declined_codes': ['VLV-RECON'], 'contact': 'Pat'}, format='json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual((resp.json()['status'], resp.json()['declined_repair_codes']),
+                         ('IN_REBUILD', ['VLV-RECON']))
+
+
+class DeclinedWorkOnShippingDocsTests(SimpleTestCase):
+    """A unit rebuilt without a declined repair: the CoC and packing list say so."""
+
+    def test_the_coc_and_packing_list_list_declined_work(self):
+        import json
+        from pathlib import Path
+        from Tracker.reports.adapters.shipment_documents import ShipmentDocumentContext
+        from Tracker.reports.services.typst_generator import generate_typst_pdf
+        data = json.loads((Path(__file__).parent / 'fixtures' / 'shipment_document_sample.json')
+                          .read_text(encoding='utf-8'))
+        data['declined_work'] = [{'unit': 'SN-1 (CORE-1)', 'code': 'VLV-RECON',
+                                  'name': 'Lap valve seat'}]
+        ctx = ShipmentDocumentContext(**data).model_dump(mode='json')
+        for template in ('shipment_coc.typ', 'packing_list.typ'):
+            self.assertTrue(generate_typst_pdf(template, ctx).startswith(b'%PDF'))

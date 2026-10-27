@@ -39,7 +39,8 @@
 #info-box[
   Teardown and inspection of this unit found the conditions below. Each needs work
   beyond the rebuild level ordered, so it goes ahead only with your authorisation.
-  Each item lists the work, the parts it needs, and the finding behind it.
+  Each item lists the work, the parts it needs, and the finding behind it. Authorise
+  or decline each one.
 ]
 
 #scope-items(data.lines)
@@ -49,13 +50,14 @@
 #block(breakable: false)[
   = Your answer
   #text(size: 9.5pt)[
-    Tick one and return this sheet, quoting our reference #text(font: mono-font)[#data.core_number].
+    Tick authorise or decline for each item above and return this sheet, quoting our
+    reference #text(font: mono-font)[#data.core_number]. Items you decline are left out of
+    the rebuild; declining an item marked required returns the unit unrepaired.
   ]
   #v(6pt)
   #grid(
-    columns: (auto, 1fr), column-gutter: 8pt, row-gutter: 8pt, align: horizon,
-    tick(), [Authorise the work above],
-    tick(), [Decline — return the unit unrepaired],
+    columns: (auto, 1fr), column-gutter: 8pt, align: horizon,
+    tick(), [Or decline everything — return the unit unrepaired],
   )
   #v(18pt)
   #signature-block(

@@ -42,6 +42,8 @@ class ScopeLineRow(BaseModel):
     work: list[str] = []
     findings: list[str] = []
     parts: list[ScopePartRow] = []
+    # Declining a required repair returns the unit unrepaired; the sheet says so.
+    required: bool = True
 
 
 class OverAndAboveScopeContext(BaseModel):
@@ -115,6 +117,7 @@ def build_over_and_above_scope_context(core, tenant, user=None) -> OverAndAboveS
             parts=[ScopePartRow(component=p.component, part_number=p.part_number or None,
                                 position=p.position or None, finding=p.finding,
                                 source=p.source) for p in line.parts],
+            required=line.required,
         ) for line in scope.lines],
         issued_by=_name(user),
         issued_date=tenant_today(tenant),

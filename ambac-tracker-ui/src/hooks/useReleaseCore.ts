@@ -62,10 +62,15 @@ export function useCoreLifecycleAction() {
             id: string; action: "record_authorisation"; approved: boolean; note?: string;
             /** Who at the customer answered, how, and the reference — no login needed. */
             contact?: string; method?: string; reference?: string;
+            /** Repairs declined while approving the rest (a required one declines the unit). */
+            declinedCodes?: string[];
         }
         | { id: string; action: "approve_repair"; code: string; note?: string }
         /** The customer's answer was recorded wrong — until the authorised repair starts. */
-        | { id: string; action: "correct_authorisation"; approved: boolean; reason: string }
+        | {
+            id: string; action: "correct_authorisation"; approved: boolean; reason: string;
+            declinedCodes?: string[];
+        }
     >({
         mutationFn: (v) => {
             const headers = { "X-CSRFToken": getCookie("csrftoken") };
@@ -84,13 +89,14 @@ export function useCoreLifecycleAction() {
                     {
                         approved: v.approved, note: v.note ?? "",
                         contact: v.contact ?? "", method: v.method ?? "", reference: v.reference ?? "",
+                        declined_codes: v.declinedCodes ?? [],
                     },
                     { params: { id: v.id }, headers },
                 );
             }
             if (v.action === "correct_authorisation") {
                 return api.api_Cores_correct_authorisation_create(
-                    { approved: v.approved, reason: v.reason },
+                    { approved: v.approved, reason: v.reason, declined_codes: v.declinedCodes ?? [] },
                     { params: { id: v.id }, headers },
                 );
             }
@@ -127,6 +133,8 @@ export function useBulkCoreAuthorisation() {
         | {
             action: "record"; coreIds: string[]; approved: boolean; note?: string;
             contact?: string; method?: string; reference?: string;
+            /** Core id → the repairs declined on that unit (the lot grid's unticked cells). */
+            declinedByCore?: Record<string, string[]>;
         }
     >({
         mutationFn: (v) => {
@@ -138,6 +146,7 @@ export function useBulkCoreAuthorisation() {
                 {
                     core_ids: v.coreIds, approved: v.approved, note: v.note ?? "",
                     contact: v.contact ?? "", method: v.method ?? "", reference: v.reference ?? "",
+                    declined_by_core: v.declinedByCore ?? {},
                 },
                 { headers },
             );

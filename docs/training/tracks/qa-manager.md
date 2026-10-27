@@ -378,10 +378,12 @@ records what was found and what the customer said.
 1. **Needs attention** on your home page opens the core. It shows **Awaiting
    customer authorisation**.
 2. The customer's fleet manager emailed approval. **Approved…** lists the repairs
-   waiting on their answer (here, replacing the nozzle). Record who answered, how,
-   and the reference. The rebuild resumes.
+   waiting on their answer, each ticked (here, replacing the nozzle). Record who
+   answered, how, and the reference, then **Record answer**. The rebuild resumes.
 
-Had they declined, **Declined…** would send the unit back unrepaired.
+Had they declined, **Declined…** would send the unit back unrepaired. A customer can
+also decline single repairs: untick them in **Approved…**. Declining a repair your
+shop marked required declines the unit; an optional one is left out of the rebuild.
 
 ### R2. A unit out of reworks
 

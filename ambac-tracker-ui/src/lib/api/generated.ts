@@ -1882,6 +1882,8 @@ export type Core = {
    */
   pending_finding_count: number;
   approved_repair_codes: Array<string>;
+  declined_repair_codes: Array<string>;
+  authorisation_codes: Array<string>;
   /**
    * While the unit awaits the customer: each code they're asked about, its name and the findings behind it. Empty otherwise.
    */
@@ -1940,6 +1942,7 @@ export type AuthorisationScopeItem = {
   code: string;
   name: string;
   why: Array<string>;
+  required: boolean;
 };
 export type CoreAssignIdentityRequest = {
   lot: string;
@@ -8965,6 +8968,10 @@ export type RepairCode = {
   TriggerEnum | undefined;
   repair_step_names: Array<string>;
   notes?: string | undefined;
+  required?: /**
+   * Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without.
+   */
+  boolean | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -14324,6 +14331,10 @@ export type PatchedRepairCodeRequest = Partial<{
      */
   trigger: TriggerEnum;
   notes: string;
+  /**
+   * Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without.
+   */
+  required: boolean;
   archived: boolean;
 }>;
 export type PatchedSamplingRuleRequest = Partial<{
@@ -16300,6 +16311,10 @@ export type RepairCodeRequest = {
      */
   TriggerEnum | undefined;
   notes?: string | undefined;
+  required?: /**
+   * Required for the rebuild: a customer who declines it has the unit returned unrepaired. Untick for a repair the unit can ship without.
+   */
+  boolean | undefined;
   archived?: boolean | undefined;
 };
 export type RepeatDefectsResponse = {
@@ -19919,6 +19934,7 @@ const AuthorisationScopeItem = z.object({
   code: z.string(),
   name: z.string(),
   why: z.array(z.string()),
+  required: z.boolean(),
 });
 const Core = z.object({
   id: z.string().uuid(),
@@ -19961,6 +19977,8 @@ const Core = z.object({
   usable_component_count: z.number().int(),
   pending_finding_count: z.number().int(),
   approved_repair_codes: z.array(z.string()),
+  declined_repair_codes: z.array(z.string()),
+  authorisation_codes: z.array(z.string()),
   awaiting_authorisation: z.array(AuthorisationScopeItem),
   authorisation_needed: z.array(AuthorisationScopeItem),
   authorisation_answered_at: z.string().datetime({ offset: true }).nullable(),
@@ -20032,6 +20050,7 @@ const PaginatedHarvestedComponentList = z.object({
 });
 const CoreAuthorisationCorrectionInputRequest = z.object({
   approved: z.boolean(),
+  declined_codes: z.array(z.string().min(1)).optional(),
   reason: z.string().min(1),
 });
 const CoreAuthorisationCorrectionError = z.object({ detail: z.string() });
@@ -20082,6 +20101,7 @@ const RebuildPlan = z.object({
 });
 const CoreAuthorisationInputRequest = z.object({
   approved: z.boolean(),
+  declined_codes: z.array(z.string().min(1)).optional(),
   note: z.string().optional(),
   contact: z.string().optional(),
   method: z.string().optional(),
@@ -20138,6 +20158,7 @@ const CoreBulkCreateError = z
 const CoreBulkAuthorisationInputRequest = z.object({
   core_ids: z.array(z.string().uuid()),
   approved: z.boolean(),
+  declined_by_core: z.record(z.array(z.string().min(1))).optional(),
   note: z.string().optional(),
   contact: z.string().optional(),
   method: z.string().optional(),
@@ -24294,6 +24315,7 @@ const RepairCode = z.object({
   trigger: TriggerEnum.optional(),
   repair_step_names: z.array(z.string()),
   notes: z.string().optional(),
+  required: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -24311,6 +24333,7 @@ const RepairCodeRequest = z.object({
   component_type: z.string().uuid().nullish(),
   trigger: TriggerEnum.optional(),
   notes: z.string().optional(),
+  required: z.boolean().optional(),
   archived: z.boolean().optional(),
 });
 const PatchedRepairCodeRequest = z
@@ -24320,6 +24343,7 @@ const PatchedRepairCodeRequest = z
     component_type: z.string().uuid().nullable(),
     trigger: TriggerEnum,
     notes: z.string(),
+    required: z.boolean(),
     archived: z.boolean(),
   })
   .partial();

@@ -317,20 +317,25 @@ than the rebuild they bought. The unit waits, *Awaiting customer authorisation*.
 
 1. **Remanufacturing** > **Cores**, open `CORE-240212-0009`: *Awaiting customer
    authorisation*, *Repair & return — this unit goes back*.
-2. **Approved…**. The dialog lists the repairs waiting on the customer's answer:
-   *NZL-REPLACE · Replace injector nozzle*, with the finding behind it. That's the
-   scope they were asked about; the price is agreed in your own system, not here.
-   Record **who answered**, **how** (phone, email) and a **reference** you can find
-   again, then **Record approval**.
-3. *Approved, rebuild resumed.* The core is *In Rebuild*, its hold is cleared, and
+2. **Approved…**. The dialog lists the repairs waiting on the customer's answer,
+   each ticked: *NZL-REPLACE · Replace injector nozzle*, with the finding behind it.
+   That's the scope they were asked about; the price is agreed in your own system,
+   not here. A customer who declines a repair has it unticked. Untick the nozzle to
+   see what happens: it's *required for the rebuild*, so declining it would send the
+   unit back unrepaired, and the button turns to **Record decline**. Tick it again.
+3. Record **who answered**, **how** (phone, email) and a **reference** you can find
+   again, then **Record answer**. The core is *In Rebuild*, its hold is cleared, and
    the answer is added to its notes with your name.
 
-**Declined…** records a refusal the same way.
+**Declined…** declines the whole unit the same way. A repair your shop has marked
+optional can be declined on its own: the unit is rebuilt without it, and its CoC and
+packing list say so.
 
 **Recorded the wrong answer?** Until the repair it approved has started, **Correct
-customer's answer…** turns it the other way, with a reason. Corrected to declined,
-the approved repairs are taken back and the unit waits to go back unrepaired.
-Corrected to approved, the rebuild resumes. Both answers stay in the core's notes.
+customer's answer…** puts it right, with a reason: **Correct the items** re-ticks or
+unticks what the answer covered, and **Correct to declined** takes the approved
+repairs back so the unit waits to go back unrepaired. A recorded decline is
+**Correct to approved**. Both answers stay in the core's notes.
 
 ### R2. Recovered stock or buy new
 

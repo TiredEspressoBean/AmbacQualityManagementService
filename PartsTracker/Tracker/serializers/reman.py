@@ -21,7 +21,9 @@ from .fields import TenantScopedPrimaryKeyRelatedField
 # behind it. One definition: two inline copies collide as schema components.
 _AUTHORISATION_SCOPE = inline_serializer(name='AuthorisationScopeItem', many=True, fields={
     'code': serializers.CharField(), 'name': serializers.CharField(),
-    'why': serializers.ListField(child=serializers.CharField())})
+    'why': serializers.ListField(child=serializers.CharField()),
+    # The shop's setting on the code: declining a required repair declines the unit.
+    'required': serializers.BooleanField()})
 
 
 # ===== CORE SERIALIZERS =====
@@ -62,6 +64,12 @@ class CoreSerializer(SecureModelMixin):
     # schema says list-of-codes, not "unknown".
     approved_repair_codes = serializers.ListField(
         child=serializers.CharField(), read_only=True)
+    # Optional repairs the customer declined; the unit is rebuilt without them.
+    declined_repair_codes = serializers.ListField(
+        child=serializers.CharField(), read_only=True)
+    # The repairs the customer's last answer approved — what a correction can change.
+    authorisation_codes = serializers.ListField(
+        child=serializers.CharField(), read_only=True)
     # The customer order this unit is here for. It lives on the core's PART, so it
     # follows the unit through teardown, split and rebuild. Required for a
     # repair-and-return core (`receipt_order_refusal`); set at receipt, and correctable
@@ -87,7 +95,8 @@ class CoreSerializer(SecureModelMixin):
             'core_credit_value', 'core_credit_issued', 'core_credit_issued_at',
             'work_order', 'part', 'order', 'order_number',
             'harvested_component_count', 'usable_component_count', 'pending_finding_count',
-            'approved_repair_codes', 'awaiting_authorisation', 'authorisation_needed',
+            'approved_repair_codes', 'declined_repair_codes', 'authorisation_codes',
+            'awaiting_authorisation', 'authorisation_needed',
             # When the customer's answer was recorded — there is one to correct.
             'authorisation_answered_at',
             'created_at', 'updated_at', 'archived'
@@ -505,7 +514,7 @@ class RepairCodeSerializer(SecureModelMixin):
         model = RepairCode
         fields = (
             'id', 'code', 'name', 'component_type', 'component_type_name',
-            'trigger', 'repair_step_names', 'notes',
+            'trigger', 'repair_step_names', 'notes', 'required',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')
