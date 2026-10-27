@@ -1,13 +1,11 @@
-"""An INFEASIBLE solve has to explain itself.
+"""Overload plans and reports; an INFEASIBLE solve has to explain itself.
 
-Every lot-op's start and end are bounded by the horizon, so all admitted work must
-finish inside the window. Ask for more hours than the window holds and CP-SAT returns
-INFEASIBLE — no plan, and no reason. The planner then sees an empty board with nothing
-to act on, which is worse than a bad plan.
-
-Until deferral lets the solver spill work out of the window, the guard at least names
-the resource that overflowed. These tests pin that it fires on a genuinely overloaded
-window, stays quiet on a healthy one, and never itself breaks a solve.
+More hours than the window holds no longer fail the solve: the excess spills past the
+horizon end, stays off the board, and its work orders are reported (Not scheduled,
+"Doesn't fit in the horizon"). A solve that still finds no plan keeps the live one and
+must say why — `diagnose_infeasible` names the overloaded resource when there is one.
+These tests pin that the overload plans, the diagnosis reads the capacity figures, a
+healthy plan carries no reason, and a broken diagnosis never itself breaks a solve.
 """
 from datetime import time as dtime, timedelta
 
@@ -69,23 +67,20 @@ class InfeasibilityGuardTests(TenantContextMixin, TestCase):
             Parts.objects.create(tenant=self.tenant, ERP_id=f"OL-{i}-P",
                                  part_type=self.pt, work_order=wo, step=self.step)
 
-    def test_an_overloaded_window_explains_itself(self):
-        """30 × 2h onto one machine in a ~24h window. The result is still INFEASIBLE —
-        the guard doesn't fix that — but it must say why, and name the resource."""
+    def test_an_overloaded_window_still_plans_and_reports_the_overflow(self):
+        """30 × 2h onto one machine in a ~24h window. The plan is still made — what
+        fits is on the board, what doesn't is listed — instead of an empty board."""
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
+
         self._orders(30)
         result = solve_schedule(self.tenant, time_limit_seconds=15)
 
-        self.assertEqual(result.solver_status, "INFEASIBLE")
-        self.assertEqual(result.tasks.count(), 0)
-        self.assertTrue(result.infeasible_reason,
-                        "an empty board with no explanation is the failure mode this "
-                        "guard exists to prevent")
-        self.assertIn("window", result.infeasible_reason.lower())
-        # Names a specific short resource, not just "something went wrong".
-        self.assertTrue(
-            "Cell A" in result.infeasible_reason
-            or "Labor" in result.infeasible_reason,
-            result.infeasible_reason)
+        self.assertIn(result.solver_status, ("OPTIMAL", "FEASIBLE"))
+        self.assertTrue(result.tasks.exists())
+        self.assertTrue(result.past_horizon)
+        self.assertEqual(result.infeasible_reason, "")
+        rows = diagnose_unscheduled(self.tenant, horizon_days=3)['work_orders']
+        self.assertIn('past_horizon', {r['reason'] for r in rows})
 
     def test_a_feasible_solve_records_no_reason(self):
         """The field is a failure explanation — a healthy plan must leave it blank, or
@@ -122,9 +117,17 @@ class InfeasibilityGuardTests(TenantContextMixin, TestCase):
         """The guard is advisory. If it raises, the schedule must still be written —
         losing a plan to a failed explanation would be a self-inflicted outage."""
         from unittest.mock import patch
+        from ortools.sat.python import cp_model
 
-        self._orders(30)
-        with patch("Tracker.services.scheduling.infeasibility.diagnose_infeasible",
+        self._orders(3)
+        # Overload no longer fails a solve, so stand in for one that does.
+        def solve_then_say_infeasible(solver, model):
+            solver.solve(model)
+            return cp_model.INFEASIBLE
+
+        with patch("Tracker.services.scheduling.solver._solve_until_stalled",
+                   side_effect=solve_then_say_infeasible), \
+             patch("Tracker.services.scheduling.infeasibility.diagnose_infeasible",
                    side_effect=RuntimeError("boom")):
             result = solve_schedule(self.tenant, time_limit_seconds=15)
         self.assertEqual(result.solver_status, "INFEASIBLE")

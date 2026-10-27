@@ -34,6 +34,7 @@ REASON_ORDER = (
     'material_gated',
     'material_short',
     'stale_schedule',
+    'past_horizon',
     'not_solved',
 )
 
@@ -52,6 +53,7 @@ REASON_LABELS = {
     'material_gated': "Waiting on material",
     'outside_horizon': "Starts past the horizon",
     'stale_schedule': "Added since the last solve",
+    'past_horizon': "Doesn't fit in the horizon",
     'not_solved': "Not placed by the last solve",
 }
 
@@ -387,11 +389,19 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
                 f"before this work order's current state.",
                 "Re-solve to pick it up.")
 
+    # The shop was full: the solve placed this work past the horizon end rather than
+    # fail the whole plan, and kept it off the board.
+    if str(wo.id) in (schedule.past_horizon or ()):
+        return ('past_horizon',
+                f"{open_units - covered} unit(s) don't fit before {horizon_end_date:%b %d}: "
+                f"the work ahead of them fills the horizon.",
+                "Add capacity (overtime, another eligible machine), move lower-priority "
+                "work out, or widen the planning horizon.")
+
     return ('not_solved',
             f"{open_units - covered} unit(s) have no task on the active schedule and "
-            f"nothing above explains it — the solve most likely ran out of horizon "
-            f"or time.",
-            "Re-solve with a longer time limit, or widen the horizon.")
+            f"nothing above explains it — the solve most likely ran out of time.",
+            "Re-solve with a longer time limit.")
 
 
 def _is_untimed(t) -> bool:

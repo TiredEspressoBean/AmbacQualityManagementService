@@ -42,8 +42,9 @@ Layers built so far:
 - Time fences + warm-start: frozen-zone and planner-pinned operations are HELD (hard,
   decided 2026-10-21) — same machine, same operator where possible, same order on the
   machine, start only sliding later. One that can't happen there any more is freed
-  and reported with its reason; held ops that collide are released a few at a time
-  (CP-SAT names them); only if that fails does the fence go soft for the solve.
+  and reported with its reason; held ops that collide slide in order. The solver
+  never loosens the fence: a solve that still finds no plan fails, and the live plan
+  stays on the board with the reason.
   Slushy operations carry a stickiness cost on the lateness scale; liquid ones are
   only warm-start hints.
 - Cross-WO pegs: a component WO must finish (+ staging buffer) before its parent
@@ -54,7 +55,7 @@ discretized to integer minutes from `horizon.start`; results are written back as
 absolute datetimes.
 
 Shape: `shop.Shop` loads the inputs once; `_Phase` builds and solves one CP-SAT model
-over them; `_solve_with_fence` runs the phases and the frozen-fence release loop;
+over them; `_solve_with_fence` runs the phases;
 `write_back.persist` writes the result back. The pure terms (durations, penalties,
 minute arithmetic) are in `solver_terms`.
 """
@@ -143,29 +144,15 @@ class _Phase:
     steps to the cheap cumulative (the fast MACHINE phase); 'named' forces exact
     per-operator assignment (the OPERATOR phase).
 
-    `hard_fence=False` is the fallback when fixing every valid frozen/pinned
-    operation made the model infeasible (fixed blocks that the changed world can
-    no longer fit together): they are then held only by slushy stickiness and all
-    reported as freed with reason `conflict`.
-
-    `release`: held operations ((part_ids, step_id)) a previous attempt found in
-    an infeasible core — re-planned this time and reported as `conflict`. Each
-    hold is enforced through an assumption literal, so when the fixed set can't
-    fit together CP-SAT names the operations that conflict instead of the whole
-    fence being dropped.
-
     NB: scheduled breaks/lunch are NOT enforced here. In the lights-out model a
     machine keeps running through a break; operator presence for the attended
     portions is a Layer-2 concern, and dispatch already honors break TimeEntries."""
 
-    def __init__(self, shop: Shop, labor_override=None, hard_fence=True,
-                 release=frozenset()):
+    def __init__(self, shop: Shop, labor_override=None):
         from ortools.sat.python import cp_model
 
         self.shop = shop
         self.labor_override = labor_override
-        self.hard_fence = hard_fence
-        self.release = release
         self.model = cp_model.CpModel()
         self.tasks: list[dict] = []
         self.machine_intervals: dict = defaultdict(list)
@@ -186,9 +173,8 @@ class _Phase:
         self.kept = 0           # frozen/pinned operations held exactly
         self.fixed_by_operator: dict = defaultdict(list)  # user_id -> [(s, e)] attended, fixed
         self.fixed_attended: list = []   # [(s, e)] attended spans of held work (crew cap)
-        self.holds: list = []   # (assumption_lit, (part_ids, step_id)) per held operation
         self.slide_terms: list = []   # minutes each held operation slid past its planned start
-        self.held_on_machine: dict = defaultdict(list)  # equip -> [(planned, start, end, step, setup, wo, hold)]
+        self.held_on_machine: dict = defaultdict(list)  # equip -> [(planned_raw, start, end, step, setup, wo)]
         self.wo_starts: dict = defaultdict(list)   # wo_id -> [start vars] (for peg gating)
         self.wo_ends: dict = defaultdict(list)     # wo_id -> [end vars]   (for peg completion)
         self.wo_step_starts: dict = defaultdict(list)  # (wo_id, step_id) -> [start vars]
@@ -252,8 +238,10 @@ class _Phase:
             timing = shop.timings.get(step_id)
             eligible = [a for a in shop.affinities.get(step_id, []) if a.is_schedulable]
             key = f"{lot['label']}_{step_id}"
-            start = model.NewIntVar(0, H, f"s_{key}")
-            end = model.NewIntVar(0, H, f"e_{key}")
+            # Up to H_ext, not H: work that doesn't fit the horizon overflows past it
+            # (reported, not written) instead of making the whole solve infeasible.
+            start = model.NewIntVar(0, shop.H_ext, f"s_{key}")
+            end = model.NewIntVar(0, shop.H_ext, f"e_{key}")
             op = dict(wo=wo, lot=lot, step_id=step_id, timing=timing, eligible=eligible,
                       key=key, start=start, end=end, release_min=release_min,
                       due_minutes=due_minutes, penalty=penalty)
@@ -301,9 +289,10 @@ class _Phase:
         # Lateness is per-LOT (the lot is late or not) — not per piece, so a big
         # WO no longer swamps the objective with count-many identical late terms.
         if due_minutes is not None and penalty > 0 and lot_ends:
-            lot_done = model.NewIntVar(0, H, f"done_{lot['label']}")
+            lot_done = model.NewIntVar(0, shop.H_ext, f"done_{lot['label']}")
             model.AddMaxEquality(lot_done, lot_ends)   # DAG completion = last sink
-            lateness = model.NewIntVar(0, 2 * H, f"late_{lot['label']}")
+            # Due can be up to H in the past (`_due_minutes`).
+            lateness = model.NewIntVar(0, shop.H_ext + H, f"late_{lot['label']}")
             model.Add(lateness >= lot_done - due_minutes)
             self.lateness_cost.append(lateness * penalty)
             self.lateness_terms.append((lateness, penalty))  # for the isolated total
@@ -336,7 +325,7 @@ class _Phase:
                 raw = -int(-(first - shop.horizon.start).total_seconds() // 60)
                 if 0 <= raw < shop.frozen_min:
                     model.Add(start >= min(raw, max(0, H - dur)))
-        self.tasks.append({'part_ids': lot['part_ids'],
+        self.tasks.append({'part_ids': lot['part_ids'], 'wo_id': wo.wo_id,
                            'step_id': step_id, 'start': start, 'end': end,
                            'choices': [], 'pinned': ret is not None,
                            'planner_pinned': False, 'named_assign': [],
@@ -384,7 +373,7 @@ class _Phase:
             choices.append((lit, fixed_m))
         else:
             model.NewIntervalVar(start, remaining, end, f"ipi_{key}")
-        self.tasks.append({'part_ids': lot['part_ids'],
+        self.tasks.append({'part_ids': lot['part_ids'], 'wo_id': wo.wo_id,
                            'step_id': step_id, 'start': start, 'end': end,
                            'choices': choices, 'pinned': True,
                            'planner_pinned': False, 'named_assign': [],
@@ -420,7 +409,7 @@ class _Phase:
         fence = self._fence(wo, lot, step_id, timing, key, start, end, release_min, mat_lb,
                             choices, durs, dur_free, lm, named_assign, front_len)
 
-        self.tasks.append({'part_ids': lot['part_ids'],
+        self.tasks.append({'part_ids': lot['part_ids'], 'wo_id': wo.wo_id,
                            'step_id': step_id,
                            'start': start, 'end': end, 'choices': choices,
                            'pinned': fence['pinned'], 'planner_pinned': fence['planner_pinned'],
@@ -572,50 +561,51 @@ class _Phase:
         prev_start = max(0, min(H, prev_raw))
         fence_held = any_pinned or prev_raw < shop.frozen_min
         why = None
-        hold_key = (lot['part_ids'], step_id)
-        if fence_held and hold_key in self.release:
-            why = ('conflict', "it couldn't be held together with other "
-                   "fixed work as the shop now stands")
-        elif fence_held and self.hard_fence:
+        if fence_held:
             why = shop.frozen_refusal(
                 prev_raw=prev_raw, rep=rep, release_min=release_min,
                 mat_lb=mat_lb, choices=choices, durs=durs,
                 dur_free=dur_free, step_id=step_id, lm=lm, front_len=front_len,
                 fixed_attended=self.fixed_attended)
-        elif fence_held:
-            why = ('conflict', "it couldn't be held together with the other "
-                   "fixed work as the shop now stands")
         if fence_held and why is None:
+            # Held: same machine, start no earlier than its slot. Held work on a
+            # machine keeps its order and slides back together (`_add_held_order`),
+            # so held work colliding with held work is never infeasible — it slides.
             fixed_m = rep.machine_id if choices else None
             op_dur = durs.get(fixed_m) if fixed_m else dur_free
-            hold = model.NewBoolVar(f"hold_{key}")
-            self.holds.append((hold, hold_key))
-            model.Add(start >= prev_start).OnlyEnforceIf(hold)
-            slide = model.NewIntVar(0, H, f"slide_{key}")
+            model.Add(start >= prev_start)
+            slide = model.NewIntVar(0, shop.H_ext, f"slide_{key}")
             model.Add(slide >= start - prev_start)
             self.slide_terms.append(slide)
             if fixed_m is not None:
+                # Ordered by the planned minute itself — negative for a slot gone
+                # by. Clamped to "now", every passed slot tied at 0 and could be
+                # put in any order, e.g. a part's second op ahead of its first:
+                # a cycle with the route, so no plan at all.
                 self.held_on_machine[fixed_m].append(
-                    (prev_start, start, end, step_id,
+                    (prev_raw, start, end, step_id,
                      int(round(timing.setup_minutes)) if timing else 0,
-                     wo.wo_id, hold))
+                     wo.wo_id))
             for lit, eqid in choices:
-                model.Add(lit == (1 if eqid == fixed_m else 0)).OnlyEnforceIf(hold)
+                model.Add(lit == (1 if eqid == fixed_m else 0))
             # Keep its operator too — unless that person is already held
             # on other fixed work then. Operators on the live plan may
             # come from Dispatch, which models attention differently
             # from this solve; fixing every one exactly double-booked
             # people and made the whole fixed set infeasible (walk
-            # 2026-10-21). Time and machine still hold; the solve
-            # picks the operator.
+            # 2026-10-21). Nor someone whose cert for the step lapses in
+            # the horizon: held work may slide, and sliding past the lapse
+            # would leave no way to finish it. Time and machine still hold;
+            # the solve picks the operator.
             op_id = rep.assigned_operator_id
             if op_id is not None and named_assign:
                 att = front_len if front_len is not None else op_dur
                 span = (prev_start, prev_start + (att or 0))
-                if att and not _overlaps(span[0], span[1],
-                                         self.fixed_by_operator.get(op_id, ())):
+                if (att and op_id not in shop.qual_lapse.get(step_id, {})
+                        and not _overlaps(span[0], span[1],
+                                          self.fixed_by_operator.get(op_id, ()))):
                     for op, lit in named_assign:
-                        model.Add(lit == (1 if op == op_id else 0)).OnlyEnforceIf(hold)
+                        model.Add(lit == (1 if op == op_id else 0))
                     self.fixed_by_operator[op_id].append(span)
                 else:
                     # Reported if the plan does give it to someone else.
@@ -641,7 +631,7 @@ class _Phase:
             if 0 <= prev_raw < shop.slushy_min:
                 # Slushy (or a freed frozen op): prefer staying put,
                 # priced against lateness so moving saves real time.
-                dev = model.NewIntVar(0, H, f"stick_{key}")
+                dev = model.NewIntVar(0, shop.H_ext, f"stick_{key}")
                 model.AddAbsEquality(dev, start - prev_start)
                 self.stick_terms.append(('dev', dev, shop.slushy_per_min))
                 if rep.machine_id:
@@ -673,7 +663,7 @@ class _Phase:
                 gated = self.wo_starts.get(parent_id)
             if not gated:
                 continue   # parent produced no (matching) tasks — e.g. already past it
-            child_done = model.NewIntVar(0, self.shop.H, f"child_done_{wo.wo_id}")
+            child_done = model.NewIntVar(0, self.shop.H_ext, f"child_done_{wo.wo_id}")
             model.AddMaxEquality(child_done, child_ends)
             for ps in gated:
                 model.Add(ps >= child_done + self.shop.staging_buffer)
@@ -688,7 +678,7 @@ class _Phase:
             for a, b in zip(held, held[1:]):
                 gap = _transition(shop.changeover, equipment_id, a[3], b[3], b[4],
                                   a[5], b[5], shop.job_change_min)
-                self.model.Add(b[1] >= a[2] + gap).OnlyEnforceIf([a[6], b[6]])
+                self.model.Add(b[1] >= a[2] + gap)
 
     def _add_machine_capacity(self):
         """Machine capacity. Lights-out machines (the default) run 24/7 and are blocked
@@ -814,7 +804,8 @@ class _Phase:
     def _set_objective(self):
         if not self.tasks:
             return
-        shop, model, H = self.shop, self.model, self.shop.H
+        shop, model = self.shop, self.model
+        H = shop.H_ext   # every bound below reaches past the horizon too
         stick_terms = self.stick_terms
         makespan = model.NewIntVar(0, H, "makespan")
         model.AddMaxEquality(makespan, [t['end'] for t in self.tasks])
@@ -834,7 +825,7 @@ class _Phase:
             stick_max = (sum(w * (H if kind == 'dev' else 1) for kind, _v, w in stick_terms)
                          + _SLIDE_WEIGHT_FACTOR * max(1, _penalty_cents_per_min(shop.config, 1))
                          * H * len(self.slide_terms))
-            w_unc = (len(self.tasks) * 2 * H * max_pen + H + stick_max
+            w_unc = (len(self.tasks) * (H + shop.H) * max_pen + H + stick_max
                      + len(self.affinity_cost) * _AFFINITY_PENALTY_DEFAULT
                      + len(self.max_time_penalty) * _CURE_WINDOW_WEIGHT + 1)
             obj = obj + w_unc * sum(self.named_uncovered)
@@ -872,40 +863,23 @@ class _Phase:
 
     # --- solving ---------------------------------------------------------------
 
-    def solve(self, tlimit, find_core=False) -> dict:
+    def solve(self, tlimit) -> dict:
         from ortools.sat.python import cp_model
 
-        model = self.model
-        if self.holds:
-            if find_core:
-                # Only to name an infeasible set: assumptions switch off much of
-                # CP-SAT's presolve and neighbourhood search, so an ordinary solve
-                # with them lands far worse (walk 2026-10-21: 1.2M vs 73k lateness).
-                model.AddAssumptions([h for h, _k in self.holds])
-            else:
-                for h, _k in self.holds:
-                    model.Add(h == 1)
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = tlimit
-
-        cp_status = _solve_until_stalled(solver, model) if self.tasks else cp_model.OPTIMAL
+        cp_status = _solve_until_stalled(solver, self.model) if self.tasks else cp_model.OPTIMAL
         solved = cp_status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
-        conflicts = []
-        if self.holds and cp_status == cp_model.INFEASIBLE:
-            by_index = {h.Index(): k for h, k in self.holds}
-            conflicts = [by_index[i] for i in solver.SufficientAssumptionsForInfeasibility()
-                         if i in by_index]
         return {'cp_status': cp_status, 'solver': solver, 'tasks': self.tasks,
                 'lateness_terms': self.lateness_terms, 'solved': solved,
                 'max_time_viols': self.max_time_viols, 'stick_terms': self.stick_terms,
-                'freed': self.freed, 'kept': self.kept, 'conflicts': conflicts}
+                'freed': self.freed, 'kept': self.kept}
 
 
-def _solve_phase(shop, labor_override, machine_hints, tlimit, hard_fence=True,
-                 release=frozenset(), find_core=False) -> dict:
-    phase = _Phase(shop, labor_override, hard_fence, release)
+def _solve_phase(shop, labor_override, machine_hints, tlimit) -> dict:
+    phase = _Phase(shop, labor_override)
     phase.build(machine_hints)
-    return phase.solve(tlimit, find_core)
+    return phase.solve(tlimit)
 
 
 def _wall_ms(phase_result) -> int:
@@ -913,55 +887,30 @@ def _wall_ms(phase_result) -> int:
 
 
 def _solve_with_fence(shop, time_limit_seconds):
-    """The phases, then the frozen-fence release loop. Returns
+    """The phases, with the frozen fence held. Returns
     `(final_phase_result, machine_solve_ms, operator_solve_ms)`.
 
     Two-phase when operator matching is on AND a crew is rostered: solve machines
     (pooled labor, ~40% of the budget), then re-solve assigning specific operators
     warm-started from that layout (~60%). Else a single fast machine solve. The
     per-phase wall-clock is surfaced to the planner: how long the machine (Layer-1)
-    vs named-operator (Layer-2 in-solve) side each took."""
-    match = bool(getattr(shop.config, 'match_operators', False)) and bool(shop.all_op_ids)
+    vs named-operator (Layer-2 in-solve) side each took.
 
-    def _run(hard, release=frozenset(), find_core=False):
-        if match:
-            _ta = max(1, int(time_limit_seconds * 0.4))
-            _pa = _solve_phase(shop, 'pool', None, _ta, hard, release, find_core)
-            if not _pa['solved']:
-                return _pa, _wall_ms(_pa), 0
-            _sa = _pa['solver']
-            _hints = {i: (_sa.Value(t['start']), _chosen_machine(t, _sa))
-                      for i, t in enumerate(_pa['tasks'])}
-            _pb = _solve_phase(shop, 'named', _hints, max(1, time_limit_seconds - _ta), hard,
-                               release, find_core)
-            return (_pb if _pb['solved'] else _pa), _wall_ms(_pa), _wall_ms(_pb)
-        out = _solve_phase(shop, None, None, time_limit_seconds, hard, release, find_core)
-        return out, _wall_ms(out), 0
-
-    final, machine_solve_ms, operator_solve_ms = _run(True)
-    # Held blocks that can't fit together: free the ones CP-SAT names as the
-    # conflict (its infeasible core) and try again, so one collision doesn't drop
-    # the whole fence. A few rounds; then the whole-fence fallback below.
-    released: set = set()
-    for _round in range(5):
-        if final['solved'] or not final['kept']:
-            break
-        if not final['conflicts']:
-            # Infeasible with plain holds: re-solve once with assumptions so CP-SAT
-            # names the conflicting ones.
-            final, machine_solve_ms, operator_solve_ms = _run(
-                True, frozenset(released), find_core=True)
-            if final['solved'] or not final['conflicts']:
-                break
-        released |= set(final['conflicts'])
-        logger.info("Frozen fence: releasing %s conflicting held operation(s), round %s.",
-                    len(final['conflicts']), _round + 1)
-        final, machine_solve_ms, operator_solve_ms = _run(True, frozenset(released))
-    if not final['solved'] and final['kept']:
-        # The fixed blocks no longer fit together (a duration grew, crew shrank
-        # under them). Rather than return no plan, re-plan them with stickiness and
-        # say so — each reported as freed with reason `conflict`.
-        logger.warning("Hard frozen fence infeasible (%s held); re-solving with it soft.",
-                       final['kept'])
-        final, machine_solve_ms, operator_solve_ms = _run(False)
-    return final, machine_solve_ms, operator_solve_ms
+    The fence is never loosened by the solver (user decision 2026-10-27, standard
+    time-fence practice: only a person moves frozen work). Held work that can't happen
+    where it is isn't held (`Shop.frozen_refusal`, with its reason), and held work
+    colliding with held work slides in order. If a solve still finds no plan, it
+    fails: the live plan stays on the board, stale, with the reason
+    (`write_back.persist`)."""
+    if bool(getattr(shop.config, 'match_operators', False)) and bool(shop.all_op_ids):
+        _ta = max(1, int(time_limit_seconds * 0.4))
+        _pa = _solve_phase(shop, 'pool', None, _ta)
+        if not _pa['solved']:
+            return _pa, _wall_ms(_pa), 0
+        _sa = _pa['solver']
+        _hints = {i: (_sa.Value(t['start']), _chosen_machine(t, _sa))
+                  for i, t in enumerate(_pa['tasks'])}
+        _pb = _solve_phase(shop, 'named', _hints, max(1, time_limit_seconds - _ta))
+        return (_pb if _pb['solved'] else _pa), _wall_ms(_pa), _wall_ms(_pb)
+    out = _solve_phase(shop, None, None, time_limit_seconds)
+    return out, _wall_ms(out), 0

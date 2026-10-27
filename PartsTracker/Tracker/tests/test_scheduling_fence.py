@@ -169,6 +169,25 @@ class FrozenFenceTests(TenantContextMixin, TestCase):
         self.assertEqual(t2.machine_id, t.machine_id)
         self.assertGreaterEqual(t2.start_time, timezone.now().replace(second=0, microsecond=0))
 
+    def test_c_passed_slots_keep_their_planned_order_on_the_machine(self):
+        """Every passed slot slides to "now"; held work must still keep the order it
+        was planned in. Clamped to now, they all tied and took build order instead —
+        which, with a route between them, could make a cycle and no plan at all."""
+        later, (p_later,) = self._wo("WO-ORD-B", 1, due_days=5)    # built first
+        earlier, (p_earlier,) = self._wo("WO-ORD-A", 1, due_days=5)
+        r1 = self._solve()
+        now = timezone.now()
+        ScheduledTask.objects.filter(schedule=r1, step=self.turn, part=p_earlier).update(
+            machine=self.m1, start_time=now - timedelta(hours=5), end_time=now - timedelta(hours=4))
+        ScheduledTask.objects.filter(schedule=r1, step=self.turn, part=p_later).update(
+            machine=self.m1, start_time=now - timedelta(hours=3), end_time=now - timedelta(hours=2))
+        r2 = self._solve()
+        self.assertIn(r2.solver_status, SOLVED)
+        a = r2.tasks.get(step=self.turn, part=p_earlier)
+        b = r2.tasks.get(step=self.turn, part=p_later)
+        self.assertEqual((a.machine_id, b.machine_id), (self.m1.id, self.m1.id))
+        self.assertLess(a.start_time, b.start_time, "held work lost its planned order")
+
     def test_c_passed_slots_that_cant_all_fit_now_say_the_slot_passed(self):
         """Two lots planned side by side, both slots gone by unstarted, and one operator
         on shift now: they can't both slide to "now", so one is re-planned — and the

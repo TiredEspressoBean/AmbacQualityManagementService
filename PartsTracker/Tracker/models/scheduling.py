@@ -533,6 +533,12 @@ class ScheduleResult(SecureModel):
                   "with no reason is the worst result the scheduler can give. Blank "
                   "on any solve that produced a plan.",
     )
+    past_horizon = models.JSONField(
+        default=list, blank=True,
+        help_text="Work orders (ids) with operations that didn't fit inside the horizon: "
+                  "the shop was full. Those operations aren't on the board; their units "
+                  "are reported in Not scheduled.",
+    )
     is_stale = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=False, db_index=True)
     is_draft = models.BooleanField(

@@ -335,6 +335,23 @@ class SolverTests(TenantContextMixin, TestCase):
         t2 = ScheduledTask.objects.get(schedule=result, part=part, step=self.step2)
         self.assertGreaterEqual(t2.start_time, t1.end_time)
 
+    def test_more_work_than_the_horizon_holds_goes_to_not_scheduled(self):
+        # Standard overload handling: the plan is still made; what doesn't fit is kept
+        # off the board and reported, instead of the whole solve failing (it used to
+        # be INFEASIBLE — every op had to end inside the horizon).
+        from Tracker.models import OptimizationConfig
+        from Tracker.services.scheduling.diagnostics import diagnose_unscheduled
+        OptimizationConfig.objects.create(tenant=self.tenant, horizon_days=1)
+        for i in range(20):   # 20 × 90 min on one machine > the 1-day horizon
+            self._wo(f"WO-OV{i}", 1)
+        result = solve_schedule(self.tenant, time_limit_seconds=20)
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertTrue(result.past_horizon)
+        self.assertTrue(result.tasks.exists())
+        self.assertTrue(all(t.start_time < result.horizon_end for t in result.tasks.all()))
+        reasons = {r['reason'] for r in diagnose_unscheduled(self.tenant, horizon_days=1)['work_orders']}
+        self.assertIn('past_horizon', reasons)
+
     def test_parts_queued_at_one_machine_are_not_running(self):
         # Arrival is not a start: parts waiting (PENDING) at a single-machine step are
         # planned one after another, not all pinned "running" at now on that machine —

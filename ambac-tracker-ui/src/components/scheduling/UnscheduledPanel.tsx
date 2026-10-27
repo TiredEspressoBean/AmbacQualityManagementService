@@ -36,6 +36,7 @@ const TONE: Record<UnscheduledReason, string> = {
   material_gated: "border-l-amber-500",
   material_short: "border-l-amber-500",
   stale_schedule: "border-l-sky-500",
+  past_horizon: "border-l-amber-500",
   not_solved: "border-l-sky-500",
 };
 

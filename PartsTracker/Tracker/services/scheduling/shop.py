@@ -38,6 +38,12 @@ class Shop:
         horizon = self.horizon = data.get_schedule_horizon(tenant)
         self.unrunnable = data.get_unrunnable_steps(tenant, horizon)  # every machine down
         H = self.H = max(1, _minute(horizon.end, horizon.start))
+        # Room past the horizon end. More work than the horizon holds used to make the
+        # whole solve infeasible; now the excess lands out here, isn't written to the
+        # board, and is reported in Not scheduled (standard APS overload handling).
+        # Calendars, downtime and crew aren't modelled past H — it only has to hold the
+        # overflow long enough to say what didn't fit.
+        self.H_ext = 3 * H
         self.wos = data.get_active_workorders(tenant)
         self.timings = data.get_step_timings(tenant)
         self.affinities = data.get_step_equipment_affinities(tenant)

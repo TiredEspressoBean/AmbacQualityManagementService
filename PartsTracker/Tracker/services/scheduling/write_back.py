@@ -78,6 +78,13 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
         if (tasks and solved) else 0
     )
 
+    # Overload: work that didn't fit the horizon overflowed past its end. It isn't
+    # written to the board; its work orders are recorded so Not scheduled can say so.
+    past_horizon: list = []
+    if tasks and solved:
+        past_horizon = sorted({str(t['wo_id']) for t in tasks
+                               if solver.Value(t['start']) >= shop.H})
+
     # Proven optimality gap: how far the found objective is from the solver's best
     # bound. 0.0 when OPTIMAL; small positive on a time-limited FEASIBLE result.
     relative_gap = None
@@ -126,6 +133,7 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
         stickiness_cost=stickiness_cost,
         relative_gap=relative_gap,
         infeasible_reason=infeasible_reason,
+        past_horizon=past_horizon,
         is_active=not draft and not failed,
         is_draft=draft,
     )
@@ -137,6 +145,8 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
         # bars, so a lot renders as one bar.
         rows = []
         for t in tasks:
+            if solver.Value(t['start']) >= shop.H:
+                continue   # past the horizon: reported in Not scheduled, not drawn
             machine_id = _chosen_machine(t, solver)
             start_dt = horizon.start + timedelta(minutes=solver.Value(t['start']))
             end_dt = horizon.start + timedelta(minutes=solver.Value(t['end']))
