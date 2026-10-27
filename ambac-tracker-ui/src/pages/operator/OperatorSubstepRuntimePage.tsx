@@ -1137,7 +1137,7 @@ function ReviewStage({
                 <div className="flex items-center justify-end gap-3 border-t pt-4">
                     {!stepExecutionAvailable && (
                         <span className="text-xs text-amber-600">
-                            {"Add `?execution=<id>` to the URL to enable submit."}
+                            This step isn&rsquo;t started for this part. Start it from Start Work to record and complete it.
                         </span>
                     )}
                     <Button
@@ -1183,13 +1183,9 @@ function ReviewStage({
 function MissingStepIdScreen() {
     return (
         <div className="p-6">
-            <h1 className="text-xl font-semibold">Operator runtime</h1>
+            <h1 className="text-xl font-semibold">No step to show</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-                Missing stepId. Navigate to{" "}
-                <code className="font-mono text-xs">
-                    /operator/steps/$stepId/substeps?part=&lt;id&gt;&amp;execution=&lt;id&gt;
-                </code>
-                .
+                Open a step from <strong>Start Work</strong> on the work order, or scan the part.
             </p>
         </div>
     );

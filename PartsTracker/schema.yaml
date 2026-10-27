@@ -51590,6 +51590,18 @@ components:
           type: string
           format: uuid
           nullable: true
+        part_erp_id:
+          type: string
+          readOnly: true
+          nullable: true
+        step_name:
+          type: string
+          readOnly: true
+          nullable: true
+        work_order_erp_id:
+          type: string
+          readOnly: true
+          nullable: true
         quality_reports:
           type: array
           items:
@@ -51662,16 +51674,19 @@ components:
       - initiated_by_info
       - initiated_date
       - is_overdue
+      - part_erp_id
       - problem_statement
       - rca_records
       - severity
       - severity_display
       - status
       - status_display
+      - step_name
       - tasks
       - updated_at
       - verifications
       - verified_by_info
+      - work_order_erp_id
       - work_order_ids
     CAPARequest:
       type: object
@@ -83015,6 +83030,15 @@ components:
           - $ref: '#/components/schemas/AuthUserCompany'
           nullable: true
           readOnly: true
+        user_type:
+          allOf:
+          - $ref: '#/components/schemas/UserTypeEnum'
+          readOnly: true
+          description: |-
+            Type of user account
+
+            * `INTERNAL` - Internal
+            * `PORTAL` - Portal
       required:
       - date_joined
       - default_shift
@@ -83026,6 +83050,7 @@ components:
       - is_superuser
       - parent_company
       - pk
+      - user_type
       - username
       - work_center_memberships
     TenantAwareUserDetailsRequest:
@@ -86240,6 +86265,14 @@ components:
       - name
       - slug
       - tier
+    UserTypeEnum:
+      enum:
+      - INTERNAL
+      - PORTAL
+      type: string
+      description: |-
+        * `INTERNAL` - Internal
+        * `PORTAL` - Portal
     UserWorkCenterMembership:
       type: object
       description: |-

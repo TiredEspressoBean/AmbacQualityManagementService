@@ -41,10 +41,6 @@ You see only orders you are the customer on, or were invited to. Other customers
 orders, the shop's internal work and costs are not hidden from you: they were never
 sent to you.
 
-!!! note "Menus that refuse you"
-    The sidebar still lists the shop's own pages (Processes, Scheduling, CAPAs).
-    Opening one shows nothing of yours. Your work is under **Tracker**.
-
 ---
 
 ## 2. One order

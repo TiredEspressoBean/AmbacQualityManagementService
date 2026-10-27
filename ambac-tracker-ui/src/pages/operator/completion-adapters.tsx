@@ -247,8 +247,8 @@ async function completePart(ctx: CompletionContext): Promise<void> {
         materialLotId, queue, navigate, submit, completeStep } = ctx;
 
     if (!stepExecutionId) {
-        toast.error("Missing step_execution", {
-            description: "Add `?execution=<id>` to the URL to enable submit.",
+        toast.error("This step isn't started for this part", {
+            description: "Start it from Start Work, then complete it.",
         });
         return;
     }

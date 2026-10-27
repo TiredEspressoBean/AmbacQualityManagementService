@@ -91,3 +91,21 @@ class PartHistoryTests(TenantTestCase):
         changes = AuditLogSerializer(entries, many=True).data[0]["changes_display"]
         detected = [c for c in changes if c["field"] == "detected by"]
         self.assertEqual(detected[0]["new"], "Jennifer Walsh")  # the person, not their id
+
+    def test_a_time_reads_on_the_plant_clock_and_a_capture_draft_is_not_listed(self):
+        from types import SimpleNamespace as NS
+        from Tracker.models import StepExecution
+        from Tracker.services.core.audit_display import display_changes
+        from Tracker.utils.tenant_context import tenant_context
+        self.tenant_a.default_timezone = "America/Chicago"
+        self.tenant_a.save(update_fields=["default_timezone"])
+        entry = NS(content_type=NS(model_class=lambda: StepExecution), changes_dict={
+            "capture_draft": ["{}", '{"bore": "4.01"}'],
+            "exited_at": ["None", "2026-10-27 14:03:00.123456+00:00"],
+            "started_at": ["None", "2026-10-27 13:00:00.5"],  # auditlog's naive UTC
+        })
+        with tenant_context(self.tenant_a):
+            changes = display_changes(entry, {})
+        self.assertEqual([(c.field, c.old, c.new) for c in changes],
+                         [("exited at", None, "Oct 27, 2026 09:03"),  # CDT, not raw UTC
+                          ("started at", None, "Oct 27, 2026 08:00")])

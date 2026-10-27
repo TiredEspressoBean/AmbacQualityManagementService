@@ -1257,3 +1257,17 @@ class TenantMembershipTests(TestCase):
         # And is NOT listed in an unrelated tenant.
         self.assertNotIn(self.user.id, list(member_user_ids(Tenant.objects.create(
             name="Gamma", slug="gamma"))))
+
+
+class AuthUserPayloadTests(TestCase):
+    def test_the_login_payload_says_whether_the_user_is_a_customer(self):
+        """The sidebar hides the staff sections from a portal user; it reads user_type
+        from the login payload."""
+        user = get_user_model().objects.create_user(
+            username="portal@example.com", email="portal@example.com", password="x",
+            user_type="PORTAL")
+        client = APIClient()
+        client.force_authenticate(user=user)
+        resp = client.get("/auth/user/")
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["user_type"], "PORTAL")

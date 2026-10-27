@@ -17,7 +17,7 @@ import { useSupplierQualificationStatus } from "@/hooks/useSupplierQualification
 import { EntityDocumentsEditor } from "@/components/documents/EntityDocumentsEditor";
 import { RejectDispositionDialog, type RejectDispositionValues } from "@/components/reject-disposition-dialog";
 import { ExtendShelfLifeDialog } from "@/components/receiving/ExtendShelfLifeDialog";
-import { LotHoldBadges, canExtend } from "@/components/receiving/lotStatus";
+import { LotHoldBadges, canExtend, lotHolds } from "@/components/receiving/lotStatus";
 import { LotHoldPanel } from "@/components/receiving/LotHoldPanel";
 import { ReportButton } from "@/components/reports/ReportButton";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
@@ -26,13 +26,17 @@ import { FileText } from "lucide-react";
 type Char = NonNullable<Schema<"SamplePlanResponse">["characteristics"]>[number];
 
 /** Warns when the lot's supplier isn't qualified for its part type. */
-function QualificationBanner({ supplierId, partTypeId }: { supplierId?: string | null; partTypeId?: string | null }) {
+function QualificationBanner({ supplierId, partTypeId, held }: {
+    supplierId?: string | null; partTypeId?: string | null; held: boolean;
+}) {
     const { data: q } = useSupplierQualificationStatus(supplierId ?? undefined, partTypeId ?? undefined);
     if (!supplierId || !q || q.qualified) return null;
     return (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-            ⚠ This lot's supplier is <b>not qualified</b> for this part type. If the part type requires
-            qualification, the lot was held — qualify the supplier (Approved Suppliers) before accepting.
+            ⚠ This lot's supplier is <b>not qualified</b> for this item.{" "}
+            {held
+                ? "The lot is held for it until a quality manager releases the hold or the supplier is qualified under Approved Suppliers."
+                : "The lot isn't held for it."}
         </div>
     );
 }
@@ -259,7 +263,8 @@ export function ReceivingInspectionPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <LotHoldPanel lot={lot} />
-                    <QualificationBanner supplierId={lot.supplier as string | null} partTypeId={lot.material_type as string | null} />
+                    <QualificationBanner supplierId={lot.supplier as string | null} partTypeId={lot.material_type as string | null}
+                        held={lotHolds(lot).includes("SUPPLIER_UNQUALIFIED")} />
                     <CocCapture lotId={lotId} cocUrl={lot.certificate_of_conformance as string | null} required={!!lot.item_requires_coc} />
                     {noPlan && (
                         <p className="text-sm text-destructive">

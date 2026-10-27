@@ -329,7 +329,7 @@ function View(props: NodeViewProps) {
                             }
                         }}
                     >
-                        <SelectTrigger className="h-8 w-32 text-sm">
+                        <SelectTrigger className="h-8 w-32 text-sm" aria-label={label || "Measurement"}>
                             <SelectValue placeholder="—" />
                         </SelectTrigger>
                         <SelectContent>
@@ -343,6 +343,7 @@ function View(props: NodeViewProps) {
                             type="text"
                             inputMode="decimal"
                             disabled={!isOperator}
+                            aria-label={unit ? `${label || "Measurement"} (${unit})` : label || "Measurement"}
                             placeholder="—"
                             value={rawValue}
                             onChange={(e) => isOperator && writeValue(e.target.value)}

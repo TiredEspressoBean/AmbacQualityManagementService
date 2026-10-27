@@ -1711,6 +1711,10 @@ class CAPASerializer(SecureModelMixin):
     is_overdue = serializers.SerializerMethodField()
     blocking_items = serializers.SerializerMethodField()
     work_order_ids = serializers.SerializerMethodField()
+    # Names for the related items, so the page doesn't show their ids.
+    part_erp_id = serializers.CharField(source='part.ERP_id', read_only=True, allow_null=True)
+    step_name = serializers.CharField(source='step.name', read_only=True, allow_null=True)
+    work_order_erp_id = serializers.CharField(source='work_order.ERP_id', read_only=True, allow_null=True)
 
     class Meta:
         model = CAPA
@@ -1726,6 +1730,7 @@ class CAPASerializer(SecureModelMixin):
             'approved_by', 'approved_by_info', 'approved_at',
             'allow_self_verification',
             'part', 'step', 'work_order',
+            'part_erp_id', 'step_name', 'work_order_erp_id',
             'quality_reports', 'dispositions',
             'tasks', 'rca_records', 'verifications',
             'completion_percentage', 'is_overdue', 'blocking_items',

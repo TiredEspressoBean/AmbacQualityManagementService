@@ -21885,6 +21885,9 @@ export interface components {
             step?: string | null;
             /** Format: uuid */
             work_order?: string | null;
+            readonly part_erp_id: string | null;
+            readonly step_name: string | null;
+            readonly work_order_erp_id: string | null;
             quality_reports?: string[];
             dispositions?: string[];
             readonly tasks: components["schemas"]["CapaTasks"][];
@@ -38044,6 +38047,13 @@ export interface components {
             /** Format: date-time */
             readonly date_joined: string;
             readonly parent_company: components["schemas"]["AuthUserCompany"] | null;
+            /**
+             * @description Type of user account
+             *
+             *     * `INTERNAL` - Internal
+             *     * `PORTAL` - Portal
+             */
+            readonly user_type: components["schemas"]["UserTypeEnum"];
         };
         /**
          * @description dj-rest-auth user-details payload + the fields the frontend needs.
@@ -39504,6 +39514,12 @@ export interface components {
             tier: string;
             is_current: boolean;
         };
+        /**
+         * @description * `INTERNAL` - Internal
+         *     * `PORTAL` - Portal
+         * @enum {string}
+         */
+        UserTypeEnum: "INTERNAL" | "PORTAL";
         /**
          * @description Which stations a user is eligible at (ISA-95 PersonnelClass-style).
          *     See Documents/WORK_CENTER_DESIGN.md.

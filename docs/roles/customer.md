@@ -16,12 +16,6 @@ This guide is for external customers who access uqmes to view their order status
     customer, delivery date, days remaining, current stage and progress through
     the stages.
 
-!!! note "You will see internal menu items you cannot open"
-    The sidebar is not yet filtered by role, so entries like Processes,
-    Scheduling and CAPAs are listed. They refuse you — the data behind them is
-    row-filtered and the endpoints return "permission denied". Ignore them and
-    use **Tracker**.
-
 ## Your Access
 
 As a Customer user, you can:

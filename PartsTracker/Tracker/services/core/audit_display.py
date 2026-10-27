@@ -17,6 +17,8 @@ from dataclasses import dataclass
 # Bookkeeping every row carries; it says nothing about the change.
 BOILERPLATE = {'id', 'created_at', 'updated_at', 'modified_at', 'tenant', 'version',
                'is_current_version', 'previous_version', 'archived'}
+# Working state saved as the operator types — the finished capture is the record.
+WORKING_STATE = {'capture_draft'}
 
 _EMPTY_MANAGER = re.compile(r'^\w+\.\w+\.None$')
 # A Python object repr ("<...Manager object at 0x...>") is never a value worth printing.
@@ -66,6 +68,30 @@ def _fk_model(model, field):
     return f.related_model if getattr(f, 'many_to_one', False) else None
 
 
+def _is_datetime(model, field) -> bool:
+    from django.db import models
+    try:
+        return isinstance(model._meta.get_field(field), models.DateTimeField)
+    except Exception:  # noqa: BLE001 - no model, or a field since removed
+        return False
+
+
+def _plant_time(value, tz) -> str:
+    """A stored timestamp on the plant's clock ("Oct 27, 2026 09:03"), not raw UTC."""
+    from django.utils.dateparse import parse_datetime
+    try:
+        dt = parse_datetime(str(value))
+    except ValueError:
+        dt = None
+    if dt is None:
+        return str(value)
+    if dt.tzinfo is None:
+        # auditlog writes a datetime as naive UTC.
+        from datetime import timezone as dt_timezone
+        dt = dt.replace(tzinfo=dt_timezone.utc)
+    return dt.astimezone(tz).strftime('%b %d, %Y %H:%M')
+
+
 def resolve_fk_names(entries) -> dict[tuple[type, str], str]:
     """Names for the foreign-key values in these entries' changes, one query per model."""
     from django.contrib.auth import get_user_model
@@ -99,8 +125,9 @@ def display_changes(entry, names: dict) -> tuple[DisplayChange, ...]:
     changes = entry.changes_dict if isinstance(entry.changes_dict, dict) else {}
     from Tracker.services.core.audit_visibility import MASK, credential_fields
     hidden = credential_fields()
+    tz = None
     for field, pair in changes.items():
-        if field in BOILERPLATE:
+        if field in BOILERPLATE or field in WORKING_STATE:
             continue
         label = field.replace('_', ' ')
         if field in hidden:
@@ -115,12 +142,18 @@ def display_changes(entry, names: dict) -> tuple[DisplayChange, ...]:
             continue
         old, new = (list(pair) + [None, None])[:2] if isinstance(pair, (list, tuple)) else (None, pair)
         related = _fk_model(model, field)
+        if _is_datetime(model, field) and tz is None:
+            from Tracker.services.core.clock import plant_tz
+            tz = plant_tz()
+        as_time = tz if _is_datetime(model, field) else None
 
         def show(v):
             # "Tracker.QualityReports.None" is auditlog's text for an empty related
             # manager on create — no value, not a value to print.
             if v in _EMPTY or _EMPTY_MANAGER.match(str(v)) or _OBJECT_REPR.match(str(v)):
                 return None
+            if as_time is not None:
+                return _plant_time(v, as_time)
             return names.get((related, str(v)), str(v)) if related else str(v)
 
         o, n = show(old), show(new)

@@ -886,7 +886,8 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         # Apply tenant scoping first, then user filtering
         queryset = super().get_queryset()
         queryset = queryset.select_related(
-            'initiated_by', 'assigned_to', 'verified_by', 'approved_by'
+            'initiated_by', 'assigned_to', 'verified_by', 'approved_by',
+            'part', 'step', 'work_order',
         ).prefetch_related(
             'tasks', 'rca_records', 'verifications'
         )

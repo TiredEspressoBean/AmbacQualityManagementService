@@ -163,19 +163,19 @@ export function CapaOverviewTab({ capa }: CapaOverviewTabProps) {
                             {capa?.part && (
                                 <div>
                                     <span className="text-muted-foreground">Part</span>
-                                    <p className="font-medium">Part #{capa.part}</p>
+                                    <p className="font-medium">{capa.part_erp_id ?? "Part"}</p>
                                 </div>
                             )}
                             {capa?.step && (
                                 <div>
                                     <span className="text-muted-foreground">Process Step</span>
-                                    <p className="font-medium">Step #{capa.step}</p>
+                                    <p className="font-medium">{capa.step_name ?? "Step"}</p>
                                 </div>
                             )}
                             {capa?.work_order && (
                                 <div>
                                     <span className="text-muted-foreground">Work Order</span>
-                                    <p className="font-medium">WO #{capa.work_order}</p>
+                                    <p className="font-medium">{capa.work_order_erp_id ?? "Work order"}</p>
                                 </div>
                             )}
                         </div>

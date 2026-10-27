@@ -253,10 +253,12 @@ class TenantAwareUserDetailsSerializer(BaseUserDetailsSerializer):
             # Crew rostering — the scheduling calendar's "My crew" preset reads it.
             'default_shift',
             'full_name', 'date_joined', 'parent_company',
+            # A customer (PORTAL) sees the portal, not the staff navigation.
+            'user_type',
         )
         read_only_fields = BaseUserDetailsSerializer.Meta.read_only_fields + (
             'is_staff', 'is_superuser', 'is_active', 'groups', 'work_center_memberships',
-            'default_shift', 'full_name', 'date_joined', 'parent_company',
+            'default_shift', 'full_name', 'date_joined', 'parent_company', 'user_type',
         )
 
     def get_full_name(self, obj) -> str:

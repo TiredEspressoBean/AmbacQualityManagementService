@@ -983,6 +983,9 @@ export type CAPA = {
     (string | null)
     | undefined;
   work_order?: (string | null) | undefined;
+  part_erp_id: string | null;
+  step_name: string | null;
+  work_order_erp_id: string | null;
   quality_reports?: Array<string> | undefined;
   dispositions?: Array<string> | undefined;
   tasks: Array<CapaTasks>;
@@ -17806,6 +17809,13 @@ export type TenantAwareUserDetails = {
   full_name: string;
   date_joined: string;
   parent_company: AuthUserCompany;
+  /**
+     * Type of user account
+    
+    * `INTERNAL` - Internal
+    * `PORTAL` - Portal
+     */
+  user_type: UserTypeEnum;
 };
 export type AuthUserTenantGroup = {
   id: string;
@@ -17823,6 +17833,14 @@ export type AuthUserCompany = {
   id: string;
   name: string;
 };
+export type UserTypeEnum =
+  /**
+   * * `INTERNAL` - Internal
+   * `PORTAL` - Portal
+   *
+   * @enum INTERNAL, PORTAL
+   */
+  "INTERNAL" | "PORTAL";
 export type TenantCreate = {
   /**
    * Display name of the organization
@@ -19418,6 +19436,9 @@ const CAPA = z.object({
   part: z.string().uuid().nullish(),
   step: z.string().uuid().nullish(),
   work_order: z.string().uuid().nullish(),
+  part_erp_id: z.string().nullable(),
+  step_name: z.string().nullable(),
+  work_order_erp_id: z.string().nullable(),
   quality_reports: z.array(z.string().uuid()).optional(),
   dispositions: z.array(z.string().uuid()).optional(),
   tasks: z.array(CapaTasks),
@@ -29169,6 +29190,7 @@ const AuthUserWorkCenterMembership = z.object({
   is_primary: z.boolean(),
 });
 const AuthUserCompany = z.object({ id: z.string().uuid(), name: z.string() });
+const UserTypeEnum = z.enum(["INTERNAL", "PORTAL"]);
 const TenantAwareUserDetails = z.object({
   pk: z.number().int(),
   username: z
@@ -29187,6 +29209,7 @@ const TenantAwareUserDetails = z.object({
   full_name: z.string(),
   date_joined: z.string().datetime({ offset: true }),
   parent_company: AuthUserCompany.nullable(),
+  user_type: UserTypeEnum,
 });
 const TenantAwareUserDetailsRequest = z.object({
   username: z
@@ -30490,6 +30513,7 @@ export const schemas = {
   AuthUserTenantGroup,
   AuthUserWorkCenterMembership,
   AuthUserCompany,
+  UserTypeEnum,
   TenantAwareUserDetails,
   TenantAwareUserDetailsRequest,
   PatchedTenantAwareUserDetailsRequest,

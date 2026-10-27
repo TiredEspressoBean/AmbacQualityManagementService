@@ -157,12 +157,17 @@ export function AppSidebar({
     // Platform staff (your SaaS employees) bypass permission checks for support access
     const isPlatformStaff = user?.is_staff ?? false
 
+    // A customer (portal user) never gets the staff sections: view_orders would
+    // otherwise open Production and Scheduling, whose pages refuse them. Approvals
+    // sent to them still show, on their own permissions.
+    const isStaffUser = user?.user_type !== "PORTAL"
+
     // Show sections based on effective permissions
     const showPersonal = isPlatformStaff || hasAny('respond_to_approval', 'view_approvalrequest')
-    const showProduction = isPlatformStaff || hasAny('view_workorder', 'view_orders', 'view_processes')
-    const showInventory = isPlatformStaff || hasAny('view_materiallot', 'view_receivinginspectionplan')
-    const showReman = isPlatformStaff || hasAny('view_core', 'view_harvestedcomponent')
-    const showQuality = isPlatformStaff || hasAny('view_qualityreports', 'view_capa', 'view_trainingrecord')
+    const showProduction = isPlatformStaff || (isStaffUser && hasAny('view_workorder', 'view_orders', 'view_processes'))
+    const showInventory = isPlatformStaff || (isStaffUser && hasAny('view_materiallot', 'view_receivinginspectionplan'))
+    const showReman = isPlatformStaff || (isStaffUser && hasAny('view_core', 'view_harvestedcomponent'))
+    const showQuality = isPlatformStaff || (isStaffUser && hasAny('view_qualityreports', 'view_capa', 'view_trainingrecord'))
     const showApprovals = isPlatformStaff || hasAny('view_approvalrequest', 'respond_to_approval')
     const showTools = isPlatformStaff || hasAny('view_documents', 'view_chatsession')
 
