@@ -793,9 +793,23 @@ CELERY_TASK_TRACK_STARTED = True
 
 CELERY_TASK_TIME_LIMIT = 30 * 60        # hard limit
 CELERY_TASK_SOFT_TIME_LIMIT = 20 * 60   # soft limit
-broker_transport_options = {"visibility_timeout": 60 * 60}  # > hard limit
-task_acks_late = True                   # make tasks idempotent!
-task_reject_on_worker_lost = True
+
+# Every setting here needs the CELERY_ prefix: celery_app.py reads settings with
+# namespace='CELERY', and the unprefixed names these used to have were silently
+# ignored (the live worker ran Celery's defaults).
+#
+# Redis redelivers a message that isn't acknowledged within visibility_timeout. With
+# late acks a running task is unacknowledged until it finishes, so this must exceed the
+# longest task: a solve runs for the planner's own time limit (no ceiling, plus a
+# 10-minute margin), so 24 hours covers an overnight run. The health check and
+# keepalive keep an idle broker connection from being dropped unnoticed.
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 24 * 60 * 60,
+    "health_check_interval": 25,
+    "socket_keepalive": True,
+}
+CELERY_TASK_ACKS_LATE = True            # make tasks idempotent!
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # Global retry defaults (can be overridden per-task)
 CELERY_TASK_ANNOTATIONS = {
@@ -804,16 +818,18 @@ CELERY_TASK_ANNOTATIONS = {
         'default_retry_delay': 60,  # 60 seconds between retries
     }
 }
-worker_cancel_long_running_tasks_on_connection_loss = True
-worker_prefetch_multiplier = 1          # fairness on single queue
-broker_heartbeat = 30
-broker_pool_limit = 20
+CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1   # fairness on single queue
+CELERY_BROKER_HEARTBEAT = 30
+CELERY_BROKER_POOL_LIMIT = 20
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
-# Single queue
-task_default_queue = "default"
+# One queue, Celery's default ("celery"). A rename would strand anything queued under
+# the old name at deploy time, for no gain.
 
-# Celery results kept lean (since they're in Postgres and included in backups)
-result_expires = 60 * 60 * 24          # 24h; adjust if needed
+# Celery results kept lean (since they're in Postgres and included in backups).
+# Pruned daily by Celery's own `celery.backend_cleanup` beat task.
+CELERY_RESULT_EXPIRES = 60 * 60 * 24    # 24h
 
 # Legacy serialization settings (kept for compatibility)
 CELERY_TASK_SERIALIZER = 'json'
@@ -824,12 +840,40 @@ CELERY_ACCEPT_CONTENT = ['json']
 from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# The ONE beat schedule. celery_app.py used to set a second one that never reached the
+# DatabaseScheduler, so escalations, scheduled notifications, the auto re-solve and the
+# overdue-CAPA check never ran; they live here now. Times are CELERY_TIMEZONE.
 CELERY_BEAT_SCHEDULE = {
     # Notification dispatch (runs every 5 minutes, processes pending NotificationTask records)
     "dispatch-pending-notifications": {
         "task": "Tracker.tasks.dispatch_pending_notifications",
         "schedule": crontab(minute="*/5"),
         "options": {"expires": 240},
+    },
+    # Scheduled notifications: each due schedule gets a fire_one_schedule task.
+    "tick-notification-schedules": {
+        "task": "Tracker.tasks.tick_notification_schedules",
+        "schedule": crontab(minute="*/5"),
+        "options": {"expires": 240},
+    },
+    # Escalation timers are hours long; a minute tick keeps "due" to "fired" tight.
+    "tick-escalations": {
+        "task": "Tracker.tasks.tick_escalations",
+        "schedule": crontab(minute="*"),
+        "options": {"expires": 50},
+    },
+    # Re-solve schedules gone stale, for tenants opted into auto re-solve; each
+    # tenant's min-interval batches a burst of changes into one re-solve.
+    "tick-auto-resolve": {
+        "task": "Tracker.tasks.tick_auto_resolve",
+        "schedule": crontab(minute="*/15"),
+        "options": {"expires": 600},
+    },
+    # Daily check for overdue CAPAs
+    "check-overdue-capas": {
+        "task": "Tracker.tasks.check_overdue_capas",
+        "schedule": crontab(hour=8, minute=0),
+        "options": {"expires": 3600},
     },
     # Daily check for overdue approvals - sends reminders to pending approvers
     "check-overdue-approvals": {
@@ -906,11 +950,6 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup-processed-webhooks": {
         "task": "integrations.tasks.cleanup_processed_webhooks",
         "schedule": crontab(hour=3, minute=0),  # Daily at 3am
-    },
-    # Keep django-db Celery results small before backups
-    "cleanup-celery-results": {
-        "task": "django_celery_results.tasks.cleanup_expired_results",
-        "schedule": crontab(minute=5),
     },
 
     # If you trigger backups via Celery, add them here (still single queue):
