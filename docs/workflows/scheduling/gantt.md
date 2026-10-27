@@ -83,6 +83,19 @@ work order's earliest release date.
 
 **What-if** explores a change without committing to it.
 
+### How long a solve runs
+
+You decide, in **Scheduling settings** (the gear):
+
+- **Solve time limit (seconds)** is the longest a solve may run. A few minutes
+  suits a re-plan during the day; an overnight run can be given hours.
+- **Relative gap limit** stops a solve early once its plan is proven within that
+  distance of the best possible: *0.02* stops within 2%. At *0* it runs to the
+  time limit unless it proves the plan is the best there is.
+
+A solve stops at whichever comes first. **Solve**, **What-if** and the automatic
+re-solve of a stale plan all use these settings.
+
 ### When there's more work than the window holds
 
 Work that doesn't fit inside the planning horizon is left off the board, and the
@@ -141,7 +154,10 @@ the step and the training it needs:
 > → Certify or roster a qualified operator, or set the step's labor model to off.
 
 A step whose every machine is down for the whole window is handled the same way,
-as **No machine available**.
+as **No machine available**. A step with **no eligible machine at all** is
+different: it's planned with no machine, so it's on the board but in no machine's
+lane, and nothing in **Not scheduled** points at it. See [Machine
+Eligibility](setup.md#machine-eligibility).
 
 !!! warning "This is a staffing problem wearing a scheduling costume"
     No scheduling setting fixes it. The answer is to train someone, roster
@@ -450,7 +466,7 @@ applies):
 | **No routing to schedule** | The process has no steps |
 | **No timings authored** | Steps exist with no cycle time — nothing to place |
 | **No qualified operator rostered** | No one qualified could run a training-gated step; planned up to the step before (see [When nobody can run a step](#when-nobody-can-run-a-step)) |
-| **No machine available** | A step has no machine to run on — down, or none eligible; planned up to the step before |
+| **No machine available** | Every machine eligible for a step is down for the whole window; planned up to the step before |
 | **Starts past the horizon** | It releases beyond the planning window |
 | **Waiting on material** | Gated until stock arrives |
 | **Material short** | Nothing on hand, nothing on order |

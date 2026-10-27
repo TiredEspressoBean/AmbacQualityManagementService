@@ -155,7 +155,7 @@ and they are checked in order — the first that applies is the one you are show
 | 7 | **No routing to schedule** | The process has no usable route |
 | 8 | **No timings authored** | Operations carry no cycle time |
 | 9 | **No qualified operator rostered** | Nobody certified and rostered can run a gated step. It's planned up to the step before; that step and what follows wait |
-| 10 | **No machine available** | A step has no machine to run on (down, or none eligible). Planned up to the step before; that step and what follows wait |
+| 10 | **No machine available** | Every machine eligible for a step is down for the whole window. Planned up to the step before; that step and what follows wait |
 | 11 | **Starts past the horizon** | Real, but beyond the window solved for |
 | 12 | **Waiting on material** | Gated on material that has not arrived |
 | 13 | **Material short** | Not enough to cover it |
