@@ -199,14 +199,14 @@ class DispatchTests(TenantContextMixin, TestCase):
     def test_operator_only_available_during_rostered_shift(self):
         # An 8-hour day shift never yields an availability window longer than 8h,
         # so the operator is provably not on the floor round-the-clock.
-        from Tracker.services.scheduling import data
+        from Tracker.services.scheduling import calendars, data
         day = Shift.objects.create(
             tenant=self.tenant, name="Days", code="DYS",
             start_time=dtime(6, 0), end_time=dtime(14, 0),
             days_of_week="0,1,2,3,4,5,6", is_active=True)
         op = self._operator("op-day", shift=day)
         horizon = data.get_schedule_horizon(self.tenant)
-        windows = data.get_operator_shift_windows(self.tenant, horizon)
+        windows = calendars.get_operator_shift_windows(self.tenant, horizon)
         self.assertIn(op.id, windows)
         longest_h = max((e - s).total_seconds() / 3600 for s, e in windows[op.id])
         self.assertLessEqual(longest_h, 8.01, "a 06:00–14:00 shift caps windows at 8h")

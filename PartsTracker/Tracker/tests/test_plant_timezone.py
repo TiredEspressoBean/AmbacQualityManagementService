@@ -16,7 +16,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from Tracker.models import Shift, Tenant
-from Tracker.services.scheduling.data import get_working_windows, plant_tz
+from Tracker.services.core.clock import plant_tz
+from Tracker.services.scheduling.calendars import get_working_windows
 from Tracker.tests.base import TenantContextMixin
 
 EASTERN = ZoneInfo("America/New_York")

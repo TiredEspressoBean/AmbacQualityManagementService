@@ -1298,7 +1298,7 @@ class LaborCalendarBlock(SecureModel):
     Unlike PlantCalendarException (which closes the WHOLE plant, blocking machines
     AND operators), this affects **operators only**: the scheduler drops the covered
     windows from the affected operators' on-shift time (see
-    services.scheduling.data.get_operator_shift_windows), so Layer-1 pooled headcount
+    services.scheduling.calendars.get_operator_shift_windows), so Layer-1 pooled headcount
     and Layer-2 dispatch treat them as out — but a lights-out machine keeps running
     through, say, an all-hands. `user` null = the whole company; set = that person.
 
@@ -1374,7 +1374,7 @@ class OvertimeWindow(SecureModel):
     rostered to that shift, and to every attended machine (the shop is running).
     Lights-out machines already run 24/7. Plant closures still win — overtime does not
     override a PlantCalendarException (don't mark a day a closure if you intend to run
-    it). See services.scheduling.data.get_overtime_windows / get_overtime_machine_windows.
+    it). See services.scheduling.calendars.get_overtime_windows / get_overtime_machine_windows.
 
     `recurrence` picks which fields say WHEN to run the shift:
       - ONCE   → `start_date` / `end_date`: run it on each date in the range (this

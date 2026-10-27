@@ -26,6 +26,7 @@ from datetime import date, datetime, timedelta
 
 from django.utils import timezone
 
+from Tracker.services.scheduling import calendars
 from Tracker.services.scheduling import data as sched_data
 from Tracker.services.planning.material_load import material_series
 
@@ -55,7 +56,7 @@ def _month_buckets(tenant, start: datetime, months: int) -> list[Bucket]:
         ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
         nxt = cur.replace(year=ny, month=nm)
         avail_from = max(cur, start)
-        windows = sched_data.get_working_windows(tenant, avail_from, nxt)
+        windows = calendars.get_working_windows(tenant, avail_from, nxt)
         working = sum((b - a).total_seconds() / 3600 for a, b in windows)
         calendar = (nxt - avail_from).total_seconds() / 3600
         out.append(Bucket(f"{y:04d}-{m:02d}", cur, nxt, working, calendar))
@@ -67,7 +68,7 @@ def window_bucket(tenant, start: datetime, end: datetime, label: str = "window")
     """One arbitrary [start, end) bucket — the same capacity basis as a month bucket,
     for callers that need a single span (e.g. the solver's horizon) rather than a
     monthly series."""
-    windows = sched_data.get_working_windows(tenant, start, end)
+    windows = calendars.get_working_windows(tenant, start, end)
     working = sum((b - a).total_seconds() / 3600 for a, b in windows)
     calendar = (end - start).total_seconds() / 3600
     return Bucket(label, start, end, working, calendar)
@@ -136,7 +137,7 @@ def _window_hours(tenant, bucket: Bucket, win_start: datetime,
         return 0.0, 0.0
     if a == bucket.start and b == bucket.end:
         return bucket.working_hours, bucket.calendar_hours
-    windows = sched_data.get_working_windows(tenant, a, b)
+    windows = calendars.get_working_windows(tenant, a, b)
     working = sum((y - x).total_seconds() / 3600 for x, y in windows)
     return working, (b - a).total_seconds() / 3600
 
@@ -252,7 +253,7 @@ def _with_crew_windows(ref: _RefData, tenant, start: datetime, end: datetime) ->
     to be headcount × the plant's working hours, so a week of booked holiday showed as
     full capacity until the schedule could not be staffed."""
     horizon = sched_data.HorizonData(start=start, end=end, frozen_end=start, slushy_end=start)
-    windows = sched_data.get_operator_shift_windows(tenant, horizon)
+    windows = calendars.get_operator_shift_windows(tenant, horizon)
     ref.crew_windows = {uid: w for uid, w in windows.items() if uid in ref.crew_ids}
     ref.now = start
     return ref

@@ -330,7 +330,7 @@ class TenantSettingsView(APIView):
             tenant.address = request.data['address']
         if 'default_timezone' in request.data:
             # Validate, because this one is silently forgiving downstream: an unknown
-            # zone makes `scheduling.data.plant_tz` fall back to the server's, so a
+            # zone makes `core.clock.plant_tz` fall back to the server's, so a
             # typo would not error — it would quietly shade the wrong working hours on
             # every board. Better to refuse the save.
             from zoneinfo import available_timezones

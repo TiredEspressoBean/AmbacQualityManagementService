@@ -286,7 +286,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """The tenant's working windows over the active schedule's horizon (shift
         calendar expanded to datetimes). The Gantt shades the complement — nights,
         weekends, non-shift hours. Empty list when no schedule or no shifts."""
-        from Tracker.services.scheduling.data import get_working_windows
+        from Tracker.services.scheduling.calendars import get_working_windows
         sched = self.get_queryset().filter(is_active=True).order_by('-created_at').first()
         if sched is None:
             return Response({'windows': []})

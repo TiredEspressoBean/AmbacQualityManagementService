@@ -52,7 +52,8 @@ class OperatorGroupGateTests(TenantContextMixin, TestCase):
     def test_shift_windows_gated_to_operators(self):
         self._make_operator(self.op1)
         horizon = sched_data.get_schedule_horizon(self.tenant)
-        w = sched_data.get_operator_shift_windows(self.tenant, horizon)
+        from Tracker.services.scheduling.calendars import get_operator_shift_windows
+        w = get_operator_shift_windows(self.tenant, horizon)
         self.assertIn(self.op1.id, w)
         self.assertNotIn(self.op2.id, w)
 

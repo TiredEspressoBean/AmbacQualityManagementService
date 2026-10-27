@@ -455,7 +455,7 @@ class SolverTests(TenantContextMixin, TestCase):
     # ---- shift windows / secondary resources / fixtures ------------------
 
     def test_window_gaps_helper(self):
-        from Tracker.services.scheduling.solver import _window_gaps
+        from Tracker.services.scheduling.solver_terms import _window_gaps
         from Tracker.services.scheduling.data import MachineWindow
         start = timezone.now()
         H = 600
@@ -968,10 +968,11 @@ class CalendarTests(TenantContextMixin, TestCase):
         PlantCalendarException.objects.create(
             tenant=self.tenant, name="Holiday", start_time=hol, end_time=hol + _td(days=1))
 
-        closures = sched_data.get_calendar_closures(self.tenant, self.horizon)
+        from Tracker.services.scheduling import calendars
+        closures = calendars.get_calendar_closures(self.tenant, self.horizon)
         self.assertEqual(len(closures), 1)
 
-        wins = sched_data.get_working_windows(self.tenant, self.horizon.start, self.horizon.end)
+        wins = calendars.get_working_windows(self.tenant, self.horizon.start, self.horizon.end)
         self.assertFalse(self._covered_tuples(
             wins, timezone.make_aware(datetime(2026, 9, 8, 10, 0))))  # Tue holiday: closed
         self.assertTrue(self._covered_tuples(

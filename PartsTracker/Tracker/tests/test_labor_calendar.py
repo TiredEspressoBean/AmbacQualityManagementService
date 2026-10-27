@@ -14,6 +14,7 @@ from Tracker.models import (
 from Tracker.serializers.scheduling import (
     LaborCalendarBlockSerializer, OvertimeWindowSerializer,
 )
+from Tracker.services.scheduling import calendars
 from Tracker.services.scheduling import data as sched_data
 from Tracker.tests.base import TenantContextMixin
 
@@ -42,19 +43,19 @@ class LaborCalendarEngineTests(TenantContextMixin, TestCase):
             hour=hour, minute=0, second=0, microsecond=0)
 
     def test_baseline_operator_has_windows(self):
-        w = sched_data.get_operator_shift_windows(self.tenant, self.horizon)
+        w = calendars.get_operator_shift_windows(self.tenant, self.horizon)
         self.assertIn(self.op.id, w)
         self.assertGreater(self._minutes(w[self.op.id]), 0)
 
     def test_company_once_block_reduces_all_operators(self):
         base = self._minutes(
-            sched_data.get_operator_shift_windows(self.tenant, self.horizon)[self.op.id])
+            calendars.get_operator_shift_windows(self.tenant, self.horizon)[self.op.id])
         start = self._tomorrow_at(9)  # a company all-hands 09:00–10:00 tomorrow
         LaborCalendarBlock.objects.create(
             tenant=self.tenant, user=None, kind="MEETING", recurrence="ONCE",
             start_time=start, end_time=start + timedelta(hours=1))
         after = self._minutes(
-            sched_data.get_operator_shift_windows(self.tenant, self.horizon)[self.op.id])
+            calendars.get_operator_shift_windows(self.tenant, self.horizon)[self.op.id])
         self.assertAlmostEqual(base - after, 60, delta=1)
 
     def test_user_block_only_affects_that_user(self):
@@ -66,17 +67,17 @@ class LaborCalendarEngineTests(TenantContextMixin, TestCase):
         LaborCalendarBlock.objects.create(
             tenant=self.tenant, user=self.op, kind="PTO", recurrence="ONCE",
             start_time=start, end_time=start + timedelta(hours=2))
-        w = sched_data.get_operator_shift_windows(self.tenant, self.horizon)
+        w = calendars.get_operator_shift_windows(self.tenant, self.horizon)
         self.assertAlmostEqual(
             self._minutes(w[op2.id]) - self._minutes(w[self.op.id]), 120, delta=1)
 
     def test_weekly_block_expands_over_horizon(self):
-        company, _ = sched_data.get_labor_calendar_blocks(self.tenant, self.horizon)
+        company, _ = calendars.get_labor_calendar_blocks(self.tenant, self.horizon)
         self.assertEqual(company, [])
         LaborCalendarBlock.objects.create(
             tenant=self.tenant, user=None, kind="MEETING", recurrence="WEEKLY",
             days_of_week="0", window_start=time(9, 0), window_end=time(9, 30))
-        company2, _ = sched_data.get_labor_calendar_blocks(self.tenant, self.horizon)
+        company2, _ = calendars.get_labor_calendar_blocks(self.tenant, self.horizon)
         self.assertGreaterEqual(len(company2), 4)  # ≥4 Mondays in a 30-day window
 
     def test_inactive_block_ignored(self):
@@ -84,7 +85,7 @@ class LaborCalendarEngineTests(TenantContextMixin, TestCase):
         LaborCalendarBlock.objects.create(
             tenant=self.tenant, user=None, kind="MEETING", recurrence="ONCE",
             start_time=start, end_time=start + timedelta(hours=1), is_active=False)
-        company, _ = sched_data.get_labor_calendar_blocks(self.tenant, self.horizon)
+        company, _ = calendars.get_labor_calendar_blocks(self.tenant, self.horizon)
         self.assertEqual(company, [])
 
 
@@ -103,7 +104,7 @@ class YearlyClosureTests(TenantContextMixin, TestCase):
         PlantCalendarException.objects.create(
             tenant=self.tenant, name="Founders Day", kind="HOLIDAY", recurrence="YEARLY",
             start_time=stored_start, end_time=stored_start + timedelta(days=1))
-        closures = sched_data.get_calendar_closures(self.tenant, self.horizon)
+        closures = calendars.get_calendar_closures(self.tenant, self.horizon)
         self.assertTrue(closures, "yearly closure should recur into the horizon")
 
     def test_yearly_closure_outside_horizon_excluded(self):
@@ -112,14 +113,14 @@ class YearlyClosureTests(TenantContextMixin, TestCase):
         PlantCalendarException.objects.create(
             tenant=self.tenant, name="Far Holiday", kind="HOLIDAY", recurrence="YEARLY",
             start_time=stored_start, end_time=stored_start + timedelta(days=1))
-        self.assertEqual(sched_data.get_calendar_closures(self.tenant, self.horizon), [])
+        self.assertEqual(calendars.get_calendar_closures(self.tenant, self.horizon), [])
 
     def test_once_closure_in_horizon_blocks(self):
         start = (self.horizon.start + timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
         PlantCalendarException.objects.create(
             tenant=self.tenant, name="Shutdown", kind="SHUTDOWN", recurrence="ONCE",
             start_time=start, end_time=start + timedelta(days=2))
-        self.assertTrue(sched_data.get_calendar_closures(self.tenant, self.horizon))
+        self.assertTrue(calendars.get_calendar_closures(self.tenant, self.horizon))
 
 
 class OvertimeEngineTests(TenantContextMixin, TestCase):
@@ -150,7 +151,7 @@ class OvertimeEngineTests(TenantContextMixin, TestCase):
         raise AssertionError("no Saturday in range")
 
     def _op_minutes(self):
-        w = sched_data.get_operator_shift_windows(self.tenant, self.horizon)
+        w = calendars.get_operator_shift_windows(self.tenant, self.horizon)
         return self._minutes(w.get(self.op.id, []))
 
     def test_overtime_adds_weekend_shift(self):
@@ -188,7 +189,7 @@ class OvertimeEngineTests(TenantContextMixin, TestCase):
         OvertimeWindow.objects.create(
             tenant=self.tenant, shift=self.shift, recurrence="ONCE",
             start_date=sat.date(), end_date=sat.date())
-        w = sched_data.get_operator_shift_windows(self.tenant, self.horizon)
+        w = calendars.get_operator_shift_windows(self.tenant, self.horizon)
         self.assertGreater(self._minutes(w[self.op.id]), self._minutes(w[op_night.id]))
 
 

@@ -39,7 +39,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from Tracker.services.scheduling import data
+from Tracker.services.scheduling import calendars, data
 from Tracker.utils.tenant_context import tenant_context
 
 _PRIORITY_WEIGHT = {1: 1000, 2: 500, 3: 100, 4: 25}   # URGENT, HIGH, NORMAL, LOW
@@ -179,8 +179,8 @@ def dispatch_operators(tenant, schedule=None, time_limit_seconds: int = 60) -> D
         operators = data.get_dispatchable_operators(tenant)
         op_ids = {o.user_id for o in operators}
         op_primary = {o.user_id: o.primary_work_center_ids for o in operators}
-        unavail = data.get_operator_unavailability(tenant, sched_horizon)
-        op_windows = data.get_operator_shift_windows(tenant, sched_horizon)
+        unavail = calendars.get_operator_unavailability(tenant, sched_horizon)
+        op_windows = calendars.get_operator_shift_windows(tenant, sched_horizon)
 
         def _mins(dt):
             return max(0, min(H, int((dt - H0).total_seconds() // 60)))
