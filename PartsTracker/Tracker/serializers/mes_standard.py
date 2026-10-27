@@ -151,9 +151,8 @@ class ShiftSerializer(SecureModelMixin):
     _HHMM = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
 
     def validate_break_windows(self, value):
-        """Shape-check the JSONField: the solver iterates it as a list of
-        {'start': 'HH:MM', 'end': 'HH:MM'} dicts (`data.py::get_break_windows`);
-        anything else accepted here would 500 every subsequent solve. Strict on
+        """Shape-check the JSONField: a list of {'start': 'HH:MM', 'end': 'HH:MM'}
+        dicts, which the shifts editor and the CSV import/export read back. Strict on
         extra keys — the only writer is our own shifts editor."""
         if value in (None, []):
             return value or []

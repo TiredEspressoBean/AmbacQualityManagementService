@@ -205,7 +205,7 @@ class PickListAdapter(ReportAdapter):
         from Tracker.reports.services.barcodes import render_barcode_svg
         from Tracker.services.mes.bom import buy_line_item
         from Tracker.services.mes.consumption import plan_draw
-        from Tracker.services.scheduling.manual_move import _process_graph
+        from Tracker.services.scheduling.data import process_graph
         from Tracker.services.scheduling.routing import resolve_route
 
         today = tenant_today(tenant)
@@ -262,7 +262,7 @@ class PickListAdapter(ReportAdapter):
             # worse failure than over-picking, because the picker cannot see the absence.
             route_steps = None
             if wo.process_id:
-                nodes, edges = _process_graph(wo.process_id)
+                nodes, edges = process_graph(wo.process_id)
                 if nodes:
                     ids, _ = resolve_route(
                         min(nodes, key=lambda n: n.order).step_id, nodes, edges)

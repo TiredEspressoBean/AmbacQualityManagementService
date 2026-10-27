@@ -126,27 +126,6 @@ def build_policy(tenant, config=None) -> ReleasePolicy:
 
 # --- work content ----------------------------------------------------------
 
-def _graph(cache: dict, process_id):
-    """Steps + edges for a process in the shape `resolve_route` expects (memoised)."""
-    from Tracker.models import ProcessStep, StepEdge
-    from Tracker.services.scheduling import data as sched_data
-
-    if process_id not in cache:
-        steps = tuple(
-            sched_data.StepNode(
-                step_id=ps.step_id, is_terminal=ps.step.is_terminal,
-                requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-                order=ps.order)
-            for ps in ProcessStep.objects.filter(process_id=process_id)
-            .select_related('step').order_by('order'))
-        edges = tuple(
-            sched_data.EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
-                                edge_type=e.edge_type, max_minutes=e.max_minutes)
-            for e in StepEdge.objects.filter(process_id=process_id))
-        cache[process_id] = (steps, edges)
-    return cache[process_id]
-
-
 def work_content(ref, work_order, cache: dict) -> dict:
     """Remaining work content of a POOL order, keyed like the capacity dict.
 
@@ -161,7 +140,8 @@ def work_content(ref, work_order, cache: dict) -> dict:
 
     if work_order.process_id is None:
         return {}
-    steps, edges = _graph(cache, work_order.process_id)
+    from Tracker.services.scheduling.data import process_graph
+    steps, edges = process_graph(work_order.process_id, cache)
     if not steps:
         return {}
 

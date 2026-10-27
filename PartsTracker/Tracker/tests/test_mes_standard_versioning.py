@@ -479,10 +479,9 @@ class ShiftSerializerRoutingTestCase(TenantTestCase):
         self.assertEqual(ShiftSerializer(result).data['break_windows'], breaks)
 
     def test_break_windows_rejects_malformed_shapes(self):
-        """break_windows is a JSONField the solver iterates as a list of
-        {'start','end'} HH:MM dicts — a malformed shape accepted here would
-        crash every subsequent solve (get_break_windows), so the serializer
-        must reject it at the door."""
+        """break_windows is a JSONField read back as a list of {'start','end'}
+        HH:MM dicts (shifts editor, CSV export) — a malformed shape accepted here
+        would break those readers, so the serializer must reject it at the door."""
         bad_payloads = [
             {'start': '09:00', 'end': '09:15'},                # dict, not list
             ['09:00-09:15'],                                   # list of strings

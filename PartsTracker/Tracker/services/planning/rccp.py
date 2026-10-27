@@ -500,9 +500,9 @@ def _candidate_route(part_type_id) -> tuple[list, str]:
     proc, why_not = _build_process(part_type_id)
     if proc is None:
         return [], f'No approved process/routing defined for that part type ({why_not}).'
-    from Tracker.services.scheduling.manual_move import _process_graph
+    from Tracker.services.scheduling.data import process_graph
     from Tracker.services.scheduling.routing import resolve_route
-    nodes, edges = _process_graph(proc.id)
+    nodes, edges = process_graph(proc.id)
     if not nodes:
         return [], 'The part type has a process but no routing steps.'
     head = min(nodes, key=lambda nd: nd.order).step_id

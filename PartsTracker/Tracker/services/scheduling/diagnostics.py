@@ -65,7 +65,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
     the planner does about it). Empty ⇒ every open unit is on the board.
     """
     from Tracker.models import (
-        ProcessStep, ScheduledTask, ScheduleResult, StepEdge, WorkOrder, WorkOrderStatus,
+        ScheduledTask, ScheduleResult, WorkOrder, WorkOrderStatus,
     )
     from Tracker.services.scheduling import data
     from Tracker.services.scheduling.preflight import find_unstaffable_steps
@@ -120,25 +120,6 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
             gated_by_wo[key[0]].append(msg)
 
     graph_cache: dict = {}
-
-    def _graph(process_id):
-        """Steps + edges for a process, in the shape `resolve_route` expects."""
-        if process_id not in graph_cache:
-            steps = tuple(
-                data.StepNode(step_id=ps.step_id, is_terminal=ps.step.is_terminal,
-                              requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-                              order=ps.order)
-                for ps in ProcessStep.objects.filter(process_id=process_id)
-                .select_related('step').order_by('order')
-            )
-            edges = tuple(
-                data.EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
-                              edge_type=e.edge_type, max_minutes=e.max_minutes)
-                for e in StepEdge.objects.filter(process_id=process_id)
-            )
-            graph_cache[process_id] = (steps, edges)
-        return graph_cache[process_id]
-
     rows = []
     total_open = 0
     open_route: set = set()   # every step some open unit still has to pass
@@ -162,7 +143,8 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
         wo_route: set = set()
         if wo.process_id is not None:
             for p in open_parts:
-                wo_route.update(resolve_route(p.step_id, *_graph(wo.process_id))[0])
+                wo_route.update(resolve_route(
+                    p.step_id, *data.process_graph(wo.process_id, graph_cache))[0])
         open_route |= wo_route
         # The solve plans a unit only up to a step nobody rostered can run, so a unit
         # with tasks can still have the rest of its route waiting — report it.
@@ -172,7 +154,7 @@ def diagnose_unscheduled(tenant, horizon_days: int = 30) -> dict:
 
         reason, detail, fix = _classify(
             wo, open_parts, open_units, covered, schedule, horizon_end_date,
-            timings, unstaffable, short_by_wo, gated_by_wo, _graph, resolve_route,
+            timings, unstaffable, short_by_wo, gated_by_wo, graph_cache, resolve_route,
             manual_release, at_end=at_end, unrunnable=unrunnable,
         )
         rows.append({
@@ -277,7 +259,7 @@ def _lapsing_in_horizon(tenant, horizon, route_step_ids: set) -> list[dict]:
 
 
 def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
-              timings, unstaffable, short_by_wo, gated_by_wo, graph, resolve_route,
+              timings, unstaffable, short_by_wo, gated_by_wo, graph_cache, resolve_route,
               manual_release, at_end: int = 0, unrunnable=None):
     """The single most actionable reason this WO isn't (fully) on the board.
 
@@ -321,7 +303,8 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
                 f"All {wo.quantity} unit(s) are finished, shipped, scrapped or quarantined.",
                 "Close the work order, or release the quarantined units.")
 
-    steps, edges = graph(wo.process_id)
+    from Tracker.services.scheduling.data import process_graph
+    steps, edges = process_graph(wo.process_id, graph_cache)
     if not steps:
         return ('no_routing',
                 f"Process “{wo.process.name}” has no steps.",

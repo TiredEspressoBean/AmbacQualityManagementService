@@ -231,14 +231,12 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
     def test_timing_data_methods(self):
         from Tracker.services.scheduling.data import TimingData
         t = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
-                       load_unload_per_piece=1, external_setup_minutes=0,
-                       attention_type='full', cycle_source='timing')
+                       load_unload_per_piece=1, attention_type='full', cycle_source='timing')
         self.assertEqual(t.machine_wall_time(3), 8 + 5 * 3)   # 23
-        self.assertEqual(t.first_piece_done(), 8 + 5 + 1)     # 14
         self.assertEqual(t.operator_attended_time(3), 23)     # full attention
         lu = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
-                        load_unload_per_piece=1, external_setup_minutes=0,
-                        attention_type='load_unload', cycle_source='timing')
+                        load_unload_per_piece=1, attention_type='load_unload',
+                        cycle_source='timing')
         self.assertEqual(lu.operator_attended_time(3), 8 + 1 * 3)  # 11 (unattended run)
 
         # Unattended: a robot does the handling, so setup only — and the stale per-piece
@@ -246,8 +244,8 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         # value: it states a fact about the cell instead of relying on someone having
         # zeroed a field, which is indistinguishable from never having filled it in.
         un = TimingData(step_id=self.s_timing.id, cycle_time_minutes=5, setup_minutes=8,
-                        load_unload_per_piece=1, external_setup_minutes=0,
-                        attention_type='unattended', cycle_source='timing')
+                        load_unload_per_piece=1, attention_type='unattended',
+                        cycle_source='timing')
         self.assertEqual(un.operator_attended_time(3), 8)
         self.assertEqual(un.machine_wall_time(3), 23,
                          "the machine is still occupied for the full run")
@@ -310,24 +308,6 @@ class SchedulingDataLayerTests(TenantContextMixin, TestCase):
         self.assertEqual(len(prev.tasks), 1)
         self.assertTrue(prev.tasks[0].is_pinned)
         self.assertEqual(prev.tasks[0].machine_id, self.machine.id)
-
-    def test_get_break_windows_expands(self):
-        from datetime import datetime
-        from Tracker.models import Shift
-        from Tracker.services.scheduling.data import HorizonData, get_break_windows
-        Shift.objects.create(
-            tenant=self.tenant, name="Day", code="DAY",
-            start_time=dtime(0, 0), end_time=dtime(23, 59),
-            days_of_week="0,1,2,3,4,5,6", is_active=True,
-            break_windows=[{"start": "12:00", "end": "12:30"}])
-        start = timezone.make_aware(datetime(2026, 8, 17, 0, 0))
-        horizon = HorizonData(start=start, end=start + timedelta(days=1),
-                              frozen_end=start, slushy_end=start)
-        breaks = get_break_windows(self.tenant, horizon)
-        self.assertEqual(len(breaks), 1)
-        bs, be = breaks[0]
-        self.assertEqual((bs - start).total_seconds() / 60, 12 * 60)         # 12:00
-        self.assertEqual((be - start).total_seconds() / 60, 12 * 60 + 30)    # 12:30
 
     def test_downtime_is_subtracted(self):
         self._all_week()

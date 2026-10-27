@@ -97,29 +97,6 @@ def build_release_context(tenant, horizon_days: int = 30) -> _Context:
     )
 
 
-def _graph(ctx: _Context, process_id):
-    """Steps + edges for a process, in the shape `resolve_route` expects (memoised)."""
-    from Tracker.models import ProcessStep, StepEdge
-    from Tracker.services.scheduling import data
-
-    if process_id not in ctx.graphs:
-        steps = tuple(
-            data.StepNode(
-                step_id=ps.step_id, is_terminal=ps.step.is_terminal,
-                requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-                order=ps.order)
-            for ps in ProcessStep.objects.filter(process_id=process_id)
-            .select_related('step').order_by('order')
-        )
-        edges = tuple(
-            data.EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
-                          edge_type=e.edge_type, max_minutes=e.max_minutes)
-            for e in StepEdge.objects.filter(process_id=process_id)
-        )
-        ctx.graphs[process_id] = (steps, edges)
-    return ctx.graphs[process_id]
-
-
 def evaluate_release(work_order: WorkOrder, ctx: _Context | None = None) -> ReleaseReadiness:
     """Can this work order be planned as written?
 
@@ -164,7 +141,8 @@ def evaluate_release(work_order: WorkOrder, ctx: _Context | None = None) -> Rele
         return ReleaseReadiness(str(work_order.id), work_order.ERP_id, not blockers,
                                 tuple(blockers), tuple(warnings))
 
-    steps, edges = _graph(ctx, work_order.process_id)
+    from Tracker.services.scheduling.data import process_graph
+    steps, edges = process_graph(work_order.process_id, ctx.graphs)
     route_ids: set = set()
     for u in open_parts:
         ids, _ = resolve_route(u.step_id, steps, edges)

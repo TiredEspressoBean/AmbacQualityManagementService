@@ -568,18 +568,15 @@ class SolverTests(TenantContextMixin, TestCase):
         self.assertEqual(self._peak_concurrency(s1), 3,
                          "no rostered crew → attended work is not labor-capped")
 
-    def test_scheduled_breaks_expand_and_solve_stays_feasible(self):
+    def test_a_shift_with_breaks_solves(self):
+        # Breaks are not a Layer-1 constraint (machines run through them; dispatch
+        # honours actual break clock-outs) — a shift that defines them still solves.
         from Tracker.models import Shift
-        from Tracker.services.scheduling import data as sdata
         Shift.objects.create(
             tenant=self.tenant, name="Day", code="DAY",
             start_time=dtime(0, 0), end_time=dtime(23, 59),
             days_of_week="0,1,2,3,4,5,6", is_active=True,
             break_windows=[{"start": "12:00", "end": "12:30"}])
-        # Lunch expands to a break interval per day across the horizon.
-        breaks = sdata.get_break_windows(self.tenant, sdata.get_schedule_horizon(self.tenant))
-        self.assertTrue(breaks)
-        # The solver adds the attended-task break constraint and stays feasible.
         self._wo("WO-BR", 1)
         result = solve_schedule(self.tenant)
         self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))

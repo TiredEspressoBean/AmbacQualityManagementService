@@ -21,7 +21,7 @@ from datetime import datetime, time, timedelta
 from django.db import transaction
 from django.utils import timezone
 
-from .data import EdgeData, StepNode
+from .data import process_graph
 from .routing import resolve_route
 
 
@@ -62,27 +62,6 @@ def _aware_start_of_day(d) -> datetime:
     return dt
 
 
-def _process_graph(process_id):
-    """(nodes, edges) for a process — the same shape `resolve_route` consumes,
-    mirroring data.get_active_workorders._graph."""
-    from Tracker.models import ProcessStep, StepEdge
-
-    nodes = [
-        StepNode(
-            step_id=ps.step_id,
-            is_terminal=ps.step.is_terminal,
-            requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-            order=ps.order,
-        )
-        for ps in ProcessStep.objects.filter(process_id=process_id).select_related('step')
-    ]
-    edges = [
-        EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id, edge_type=e.edge_type)
-        for e in StepEdge.objects.filter(process_id=process_id)
-    ]
-    return nodes, edges
-
-
 def _unit_sibling_tasks(task):
     """This unit's other scheduled tasks in the same schedule, keyed by step id."""
     from Tracker.models.scheduling import ScheduledTask
@@ -97,7 +76,7 @@ def _unit_sibling_tasks(task):
 def _route_successors(wo):
     """`step_id -> [successor step_ids]` along the unit's nominal route."""
     from collections import defaultdict
-    nodes, edges = _process_graph(wo.process_id)
+    nodes, edges = process_graph(wo.process_id)
     _, prec = resolve_route(None, nodes, edges)
     succ = defaultdict(list)
     for f, t in prec:
@@ -198,7 +177,7 @@ def _validate_move(task, new_start: datetime, schedule, *, check_successors=True
 
     # 3) Route precedence against this unit's already-scheduled neighbours.
     if wo and wo.process_id and task.step_id:
-        nodes, edges = _process_graph(wo.process_id)
+        nodes, edges = process_graph(wo.process_id)
         _, prec = resolve_route(None, nodes, edges)  # full nominal-route adjacency
         preds = {f for (f, t) in prec if t == task.step_id}
         succs = {t for (f, t) in prec if f == task.step_id}

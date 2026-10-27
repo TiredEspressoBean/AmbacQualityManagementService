@@ -54,17 +54,12 @@ class TimingData:
     cycle_time_minutes: float
     setup_minutes: float
     load_unload_per_piece: float
-    external_setup_minutes: float
-    attention_type: str  # 'full' | 'load_unload'
+    attention_type: str  # 'full' | 'load_unload' | 'unattended'
     cycle_source: str  # 'timing' | 'history' | 'expected' | 'none'
 
     def machine_wall_time(self, quantity: int) -> float:
         """Minutes the machine is occupied for a batch: internal setup + run."""
         return self.setup_minutes + self.cycle_time_minutes * max(0, quantity)
-
-    def first_piece_done(self) -> float:
-        """Minutes until the first piece is complete (enables transfer batches)."""
-        return self.setup_minutes + self.cycle_time_minutes + self.load_unload_per_piece
 
     def operator_attended_time(self, quantity: int) -> float:
         """Operator-attention minutes: full attention = the whole machine run;
@@ -147,7 +142,6 @@ class WorkOrderData:
     expected_start: date | None  # earliest-release gate (no task starts before this)
     pegged_to_wo_id: UUID | None  # parent assembly WO this component job feeds (#9)
     pegged_consumes_step_id: UUID | None  # the parent step that consumes it (#9); None → whole parent waits
-    lockstep_batch: bool | None  # per-WO lot cohesion; None → inherit tenant default
     quantity: int
     process_id: UUID
     parts: tuple  # tuple[PartData, ...] — reman cores included; a core is a part
@@ -250,7 +244,6 @@ def get_step_timings(tenant, min_samples: int = 20) -> dict[UUID, TimingData]:
             cycle_time_minutes=cycle,
             setup_minutes=t.setup_minutes if t else 0.0,
             load_unload_per_piece=t.load_unload_per_piece if t else 0.0,
-            external_setup_minutes=t.external_setup_minutes if t else 0.0,
             attention_type=t.attention_type if t else AttentionType.FULL,
             cycle_source=source,
         )
@@ -297,8 +290,7 @@ def get_outside_process_data(tenant, config, horizon) -> dict:
         expected return as minutes from the horizon start (`shipped_at + turnaround`), so a
         re-solve pins the in-flight op to its expected return instead of re-planning it.
     """
-    from datetime import timedelta
-    from Tracker.models import Steps, OutsideProcessShipment, StepExecution
+    from Tracker.models import OutsideProcessShipment, StepExecution
 
     step_days = get_outside_process_step_days(tenant, config)
     step_minutes = {sid: d * 24 * 60 for sid, d in step_days.items()}  # calendar → minutes
@@ -441,6 +433,28 @@ def get_schedule_horizon(tenant, horizon_days: int | None = None) -> HorizonData
 
 # --- Active work orders (the routing graph to schedule) ---------------------
 
+def process_graph(process_id, cache: dict | None = None) -> tuple:
+    """`(steps, edges)` for a process — the shape `routing.resolve_route` consumes.
+    Pass a dict as `cache` to resolve each process once across many work orders."""
+    from Tracker.models import ProcessStep, StepEdge
+
+    if cache is not None and process_id in cache:
+        return cache[process_id]
+    steps = tuple(
+        StepNode(step_id=ps.step_id, is_terminal=ps.step.is_terminal,
+                 requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
+                 order=ps.order)
+        for ps in ProcessStep.objects.filter(process_id=process_id)
+        .select_related('step').order_by('order'))
+    edges = tuple(
+        EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
+                 edge_type=e.edge_type, max_minutes=e.max_minutes)
+        for e in StepEdge.objects.filter(process_id=process_id))
+    if cache is not None:
+        cache[process_id] = (steps, edges)
+    return steps, edges
+
+
 def _release_mode(tenant) -> str:
     """The tenant's release mode, defaulting to AUTO when unconfigured — an absent
     config must never hide every work order from the scheduler."""
@@ -465,7 +479,7 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
     past the solver's horizon, and the filter below is a solver-arithmetic guard, not
     a statement that far-dated work is unreal. See the comment on the filter."""
     from Tracker.models import (
-        ProcessStep, StepEdge, StepExecution, WorkOrder, WorkOrderStatus,
+        StepExecution, WorkOrder, WorkOrderStatus,
     )
     from Tracker.models.scheduling import ReleaseMode
 
@@ -525,30 +539,9 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
                   for se in open_rows if se['started_at'] is not None}
 
     graph_cache: dict[UUID, tuple] = {}
-
-    def _graph(process_id):
-        if process_id not in graph_cache:
-            steps = tuple(
-                StepNode(
-                    step_id=ps.step_id,
-                    is_terminal=ps.step.is_terminal,
-                    requires_first_piece_inspection=ps.step.requires_first_piece_inspection,
-                    order=ps.order,
-                )
-                for ps in ProcessStep.objects.filter(process_id=process_id)
-                .select_related('step').order_by('order')
-            )
-            edges = tuple(
-                EdgeData(from_step_id=e.from_step_id, to_step_id=e.to_step_id,
-                         edge_type=e.edge_type, max_minutes=e.max_minutes)
-                for e in StepEdge.objects.filter(process_id=process_id)
-            )
-            graph_cache[process_id] = (steps, edges)
-        return graph_cache[process_id]
-
     result: list[WorkOrderData] = []
     for wo in wos:
-        steps, edges = _graph(wo.process_id)
+        steps, edges = process_graph(wo.process_id, graph_cache)
         parts = tuple(
             PartData(
                 part_id=p.id, current_step_id=p.step_id,
@@ -572,7 +565,6 @@ def get_active_workorders(tenant, within_horizon: bool = True) -> list[WorkOrder
             expected_completion=wo.expected_completion, expected_start=wo.expected_start,
             pegged_to_wo_id=wo.pegged_to_workorder_id,
             pegged_consumes_step_id=consumes_step_id,
-            lockstep_batch=wo.lockstep_batch,
             quantity=wo.quantity,
             process_id=wo.process_id, parts=parts, steps=steps, edges=edges,
         ))
@@ -587,7 +579,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
     machine's own `operating_shifts` when set (per-machine calendar — a bottleneck can run
     more shifts than the floor), else the tenant-wide active shift calendar. (Plant closures
     are applied separately by the solver, which blocks every machine.)"""
-    from Tracker.models import DowntimeEvent, Equipments, Shift
+    from Tracker.models import Equipments, Shift
 
     tenant_shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
     tz = plant_tz(tenant)
@@ -603,16 +595,7 @@ def get_machine_availability(tenant, horizon: HorizonData) -> dict[UUID, list[Ma
             base_cache[key] = _expand_shifts(own, horizon.start, horizon.end, tz)
         return base_cache[key]
 
-    downtime: dict[UUID, list[tuple]] = {}
-    for d in (
-        DowntimeEvent.objects.filter(archived=False, tenant=tenant, equipment__isnull=False)
-        .filter(start_time__lt=horizon.end)
-        .exclude(end_time__lt=horizon.start)
-    ):
-        downtime.setdefault(d.equipment_id, []).append(
-            (d.start_time, d.end_time or horizon.end)
-        )
-
+    downtime = get_machine_downtime(tenant, horizon)
     result: dict[UUID, list[MachineWindow]] = {}
     for eq in (Equipments.objects.filter(archived=False, is_current_version=True, tenant=tenant)
                .select_related('equipment_type').prefetch_related('operating_shifts')):
@@ -1126,52 +1109,6 @@ def get_continuous_machines(tenant) -> list[ContinuousMachineData]:
     ]
 
 
-def get_break_windows(tenant, horizon: HorizonData) -> list[tuple]:
-    """Scheduled break/lunch intervals ([start, end] datetimes) over the horizon,
-    expanded from active shifts' `break_windows`. Attended (full-attention) work is
-    kept out of these; actual clock-out/in lives in TimeEntry BREAK/LUNCH."""
-    from Tracker.models import Shift
-
-    shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
-    tz = plant_tz(tenant)
-    intervals: list[tuple] = []
-    day = timezone.localtime(horizon.start, tz).date()
-    last = timezone.localtime(horizon.end, tz).date()
-    while day <= last:
-        weekday = day.weekday()
-        for sh in shifts:
-            active_days = _parse_days(sh.days_of_week)
-            if active_days and weekday not in active_days:
-                continue
-            # Serializer validates shape on write; the isinstance guards keep a
-            # legacy/hand-edited bad row degrading to "break ignored", not a
-            # crashed solve.
-            windows = sh.break_windows if isinstance(sh.break_windows, list) else []
-            for br in windows:
-                if not isinstance(br, dict):
-                    continue
-                bs, be = _parse_hhmm(br.get('start')), _parse_hhmm(br.get('end'))
-                if bs is None or be is None:
-                    continue
-                w_start = max(_combine_in(tz, day, bs), horizon.start)
-                w_end = min(_combine_in(tz, day, be), horizon.end)
-                if w_start < w_end:
-                    intervals.append((w_start, w_end))
-        day += timedelta(days=1)
-    return _merge_intervals(intervals)
-
-
-def _parse_hhmm(raw):
-    from datetime import time as _time
-    if not raw or ':' not in str(raw):
-        return None
-    try:
-        h, m = str(raw).split(':')[:2]
-        return _time(int(h), int(m))
-    except (ValueError, TypeError):
-        return None
-
-
 def get_previous_schedule(tenant) -> PreviousScheduleData | None:
     """The active schedule's tasks — warm-start hints + the pinned tasks the
     solver must keep fixed. None when no active schedule exists yet."""
@@ -1399,16 +1336,6 @@ def get_operator_shift_windows(tenant, horizon: HorizonData) -> dict[int, list[t
         if windows:
             out[uid] = windows
     return out
-
-
-def get_shift_windows(tenant, horizon: HorizonData) -> list[tuple]:
-    """The tenant's active shift calendar expanded to concrete [start, end] datetime
-    windows over the horizon — the times operators can be on the floor at all. No
-    per-operator roster exists yet, so this is shared across operators."""
-    from Tracker.models import Shift
-
-    shifts = list(Shift.objects.filter(archived=False, tenant=tenant, is_active=True, is_current_version=True))
-    return _expand_shifts(shifts, horizon.start, horizon.end, plant_tz(tenant))
 
 
 def get_operator_unavailability(tenant, horizon: HorizonData,

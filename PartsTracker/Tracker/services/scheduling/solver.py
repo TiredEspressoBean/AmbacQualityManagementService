@@ -96,9 +96,6 @@ _OTWindow = _namedtuple('_OTWindow', ('start', 'end'))
 SLUSHY_STICKINESS = 0.25
 _SLIDE_WEIGHT_FACTOR = 4
 
-# Seed each solve with a dispatch-rule plan (`_greedy_plan`) for the work the live plan
-# doesn't already hint. A module flag so a benchmark can compare with and without.
-USE_GREEDY_HINT = True
 _SLUSHY_MACHINE_MINUTES = 60
 # Blowing a max-time-between-ops window (cure/coat/pot-life) means the part scraps or
 # reworks — heavily penalized (flat, per violated edge) so the solver only relaxes it when
@@ -211,12 +208,17 @@ def _release_minutes(start_date, horizon_start, H) -> int:
     return max(0, min(H, int((rel_dt - horizon_start).total_seconds() // 60)))
 
 
+def _minute(dt, horizon_start) -> int:
+    """Whole minutes from the horizon start (floored; negative before it)."""
+    return int((dt - horizon_start).total_seconds() // 60)
+
+
 def _to_minutes(intervals, horizon_start, H) -> list[tuple]:
     """Datetime intervals → clipped integer-minute [start, end] tuples from H0."""
     out = []
     for s, e in intervals:
-        ms = max(0, int((s - horizon_start).total_seconds() // 60))
-        me = min(H, int((e - horizon_start).total_seconds() // 60))
+        ms = max(0, _minute(s, horizon_start))
+        me = min(H, _minute(e, horizon_start))
         if ms < me:
             out.append((ms, me))
     return out
@@ -228,13 +230,7 @@ def _window_gaps(windows, horizon_start, H) -> list[tuple]:
     always-available so a tenant with no shift config still schedules)."""
     if not windows:
         return []
-    mins = []
-    for w in windows:
-        s = max(0, int((w.start - horizon_start).total_seconds() // 60))
-        e = min(H, int((w.end - horizon_start).total_seconds() // 60))
-        if s < e:
-            mins.append((s, e))
-    mins.sort()
+    mins = sorted(_to_minutes([(w.start, w.end) for w in windows], horizon_start, H))
     gaps = []
     cursor = 0
     for s, e in mins:
@@ -246,23 +242,6 @@ def _window_gaps(windows, horizon_start, H) -> list[tuple]:
     return gaps
 
 
-def _merge_minute_gaps(gaps) -> list[tuple]:
-    """Merge integer-minute [s, e) gaps into a disjoint, sorted set — so the blocked
-    intervals fed to a single AddNoOverlap never overlap each other (which would make the
-    constraint infeasible)."""
-    if not gaps:
-        return []
-    gaps = sorted(gaps)
-    out = [gaps[0]]
-    for s, e in gaps[1:]:
-        ls, le = out[-1]
-        if s <= le:
-            out[-1] = (ls, max(le, e))
-        else:
-            out.append((s, e))
-    return out
-
-
 def _staffing_segments(op_windows, horizon_start, H):
     """Piecewise operator headcount over [0, H] from the rostered shift windows:
     a list of (start_min, end_min, count) covering the whole horizon (count 0 where
@@ -271,12 +250,9 @@ def _staffing_segments(op_windows, horizon_start, H):
     from unstaffed hours (count 0) while machines keep running lights-out."""
     delta: dict = defaultdict(int)
     for windows in op_windows.values():
-        for s, e in windows:
-            ms = max(0, int((s - horizon_start).total_seconds() // 60))
-            me = min(H, int((e - horizon_start).total_seconds() // 60))
-            if ms < me:
-                delta[ms] += 1
-                delta[me] -= 1
+        for ms, me in _to_minutes(windows, horizon_start, H):
+            delta[ms] += 1
+            delta[me] -= 1
     if not delta:
         return 0, []
     points = sorted(set([0, H]) | set(delta))
@@ -418,7 +394,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
 
         horizon = data.get_schedule_horizon(tenant)
         unrunnable = data.get_unrunnable_steps(tenant, horizon)  # every machine down
-        H = max(1, int((horizon.end - horizon.start).total_seconds() // 60))
+        H = max(1, _minute(horizon.end, horizon.start))
         wos = data.get_active_workorders(tenant)
         timings = data.get_step_timings(tenant)
         affinities = data.get_step_equipment_affinities(tenant)
@@ -432,7 +408,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         skill_pools = data.get_step_operator_pools(tenant)  # gated step -> qualified crew
         # step -> {op: minute their cert for it lapses}, for lapses inside the horizon.
         qual_lapse = {
-            sid: {uid: max(0, int((lapse - horizon.start).total_seconds() // 60))
+            sid: {uid: max(0, _minute(lapse, horizon.start))
                   for uid, (lapse, _name) in by_op.items()}
             for sid, by_op in data.get_operator_qualification_lapses(tenant, horizon).items()}
         labor_models = data.get_step_labor_models(tenant)  # step -> off|pool|named
@@ -458,8 +434,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         prev_map = {}
         if prev is not None:
             prev_map = {(t.part_id, t.step_id): t for t in prev.tasks}
-        frozen_min = int((horizon.frozen_end - horizon.start).total_seconds() // 60)
-        slushy_min = int((horizon.slushy_end - horizon.start).total_seconds() // 60)
+        frozen_min = _minute(horizon.frozen_end, horizon.start)
+        slushy_min = _minute(horizon.slushy_end, horizon.start)
         staging_buffer = config.staging_buffer_minutes if config else 0
         move_min = config.default_move_minutes if config else 0  # inter-op transfer/queue gap
         # Plant closures (holidays/shutdowns) block EVERY machine, in minute space.
@@ -467,7 +443,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
         # covered in full (flooring the end would leave its final sub-minute schedulable).
         closure_gaps = []
         for _cs, _ce in closures:
-            ms = max(0, int((_cs - horizon.start).total_seconds() // 60))
+            ms = max(0, _minute(_cs, horizon.start))
             me = min(H, -(-int((_ce - horizon.start).total_seconds()) // 60))  # ceil to minute
             if ms < me:
                 closure_gaps.append((ms, me))
@@ -488,7 +464,8 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             # its shift windows — but with no shift calendar those windows are empty,
             # read as "always available", and a machine down for days stayed bookable.
             gaps += _to_minutes(machine_downtime.get(equipment_id, []), horizon.start, H)
-            return _merge_minute_gaps(gaps + closure_gaps)
+            # Merged, so the blocked intervals fed to one AddNoOverlap never overlap.
+            return data._merge_intervals(gaps + closure_gaps)
 
         op_minutes = {u: _to_minutes(w, horizon.start, H) for u, w in op_windows.items()}
         _crew_cap, crew_segs = _staffing_segments(op_windows, horizon.start, H)
@@ -1308,7 +1285,7 @@ def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
             for var, minute in warm_hints:            # warm-start from the previous schedule
                 model.AddHint(var, minute)
 
-            if machine_hints is None and USE_GREEDY_HINT and tasks:
+            if machine_hints is None and tasks:
                 # A dispatch-rule starting plan for every operation the live plan doesn't
                 # already hint (`_greedy_plan`) — CP-SAT then improves on it rather than
                 # searching from nothing, which is where run-to-run swings came from.
