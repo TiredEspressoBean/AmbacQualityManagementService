@@ -36,6 +36,14 @@ logger = logging.getLogger(__name__)
 ASYNC_ADVANCE_THRESHOLD = 50
 
 
+def _queue_lot_advance(**kwargs):
+    """Queue a cohort's advancement. A seam of our own for tests to patch: patching
+    `.delay` on the Celery task object corrupts eager-result state for the rest of a
+    test run."""
+    from Tracker.tasks import advance_lot_task
+    advance_lot_task.delay(**kwargs)
+
+
 @dataclass(frozen=True)
 class SealResult:
     batch_id: str
@@ -161,13 +169,12 @@ def seal_batch(*, batch: "BatchExecution", user: "User") -> SealResult:
         # advance hundreds of parts inline and risk a timeout, so dispatch the
         # advancement to Celery after commit; the batch is sealed regardless.
         if len(parts) > ASYNC_ADVANCE_THRESHOLD:
-            from Tracker.tasks import advance_lot_task
             wo_id = str(batch.work_order_id)
             step_id = str(batch.step_id)
             tenant_id = str(batch.tenant_id)
             operator_id = getattr(user, 'id', None)
             transaction.on_commit(
-                lambda: advance_lot_task.delay(
+                lambda: _queue_lot_advance(
                     work_order_id=wo_id,
                     step_id=step_id,
                     tenant_id=tenant_id,

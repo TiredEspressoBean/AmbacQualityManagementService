@@ -180,7 +180,7 @@ class BatchCohortIntegrityTests(TenantContextMixin, VectorTestCase):
         self._capture_batch_substep(batch)
         with mock.patch(
             "Tracker.services.dwi.batch_lifecycle.ASYNC_ADVANCE_THRESHOLD", 1
-        ), mock.patch("Tracker.tasks.advance_lot_task.delay") as delay:
+        ), mock.patch("Tracker.services.dwi.batch_lifecycle._queue_lot_advance") as delay:
             with self.captureOnCommitCallbacks(execute=True):
                 seal_batch(batch=batch, user=self.user)
         delay.assert_called_once()

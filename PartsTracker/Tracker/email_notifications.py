@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+def _queue_invitation_email(invitation_id):
+    """Queue the invitation email. A seam of our own for tests to patch: patching
+    `.delay` on the Celery task object corrupts eager-result state for the rest of a
+    test run."""
+    from .tasks import send_invitation_email_task
+    return send_invitation_email_task.delay(invitation_id)
+
+
 def send_invitation_email(invitation_id: int, immediate: bool = False):
     """
     Send invitation email to a user.
@@ -35,7 +43,7 @@ def send_invitation_email(invitation_id: int, immediate: bool = False):
     else:
         # Queue to Celery after the enclosing transaction commits.
         def _dispatch():
-            result = send_invitation_email_task.delay(invitation_id)
+            result = _queue_invitation_email(invitation_id)
             logger.info(f"Queued invitation email for invitation {invitation_id} (task_id: {result.id})")
         transaction.on_commit(_dispatch)
         return None

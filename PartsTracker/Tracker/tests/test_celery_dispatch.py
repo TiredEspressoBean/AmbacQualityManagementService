@@ -119,7 +119,7 @@ class CeleryRollbackDispatchTestCase(TenantContextMixin, TransactionTestCase):
         # emit was NOT invoked because the transaction rolled back.
         self.assertEqual(mock_emit.call_count, 0)
 
-    @patch('Tracker.tasks.send_invitation_email_task.delay')
+    @patch('Tracker.email_notifications._queue_invitation_email')
     def test_invitation_helper_fires_immediately_outside_transaction(self, mock_delay):
         """
         send_invitation_email(immediate=False) wraps its .delay in

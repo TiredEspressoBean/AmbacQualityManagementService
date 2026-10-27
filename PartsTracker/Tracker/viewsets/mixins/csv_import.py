@@ -41,6 +41,14 @@ MAX_IMPORT_ROWS = MAX_UPLOAD_ROWS
 MAX_IMPORT_BYTES = MAX_UPLOAD_BYTES
 
 
+def _queue_import(*, kwargs, task_id):
+    """Queue a background import. A seam of our own for tests to patch: patching
+    `apply_async` on the Celery task object corrupts eager-result state for the rest of
+    a test run."""
+    from Tracker.tasks import process_import_task
+    return process_import_task.apply_async(kwargs=kwargs, task_id=task_id)
+
+
 class CSVImportMixin:
     """
     Mixin to add CSV/Excel import functionality to ViewSets.
@@ -566,7 +574,6 @@ class CSVImportMixin:
     def _queue_background_import(self, rows, mode, serializer_class, tenant, user):
         """Queue large imports to Celery."""
         from uuid import uuid4
-        from Tracker.tasks import process_import_task
 
         # Get serializer path for task
         serializer_path = f"{serializer_class.__module__}.{serializer_class.__name__}"
@@ -596,7 +603,7 @@ class CSVImportMixin:
         # Who may read this task's status: the user who started it, in this tenant.
         from django.core.cache import cache
         cache.set(f"import-owner:{task_id}", f"{tenant_id}:{user_id}", 60 * 60 * 24)
-        transaction.on_commit(lambda: process_import_task.apply_async(
+        transaction.on_commit(lambda: _queue_import(
             kwargs={
                 'rows': rows,
                 'model_name': model_name,

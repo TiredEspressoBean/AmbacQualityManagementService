@@ -794,9 +794,13 @@ class SendNotificationTaskTestCase(TenantTestCase):
 
 
 class DispatchNotificationsTestCase(TenantTestCase):
-    """Test the dispatch_pending_notifications task"""
+    """Test the dispatch_pending_notifications task.
 
-    @patch('Tracker.tasks.send_notification_task.delay')
+    Patches `_queue_notification_send`, never `.delay` on the Celery task object:
+    that corrupts eager-result state, and test_scheduling_api's solve-status tests
+    then read PENDING when run after this module."""
+
+    @patch('Tracker.tasks._queue_notification_send')
     def test_dispatch_pending_notifications(self, mock_send_delay):
         """Test dispatching pending notifications"""
         from Tracker.tasks import dispatch_pending_notifications
@@ -834,7 +838,7 @@ class DispatchNotificationsTestCase(TenantTestCase):
         self.assertEqual(result['dispatched'], 2)
         self.assertEqual(mock_send_delay.call_count, 2)
 
-    @patch('Tracker.tasks.send_notification_task.delay')
+    @patch('Tracker.tasks._queue_notification_send')
     def test_an_archived_row_is_not_dispatched(self, mock_send_delay):
         """An archived row is retired, even when it was left PENDING."""
         from Tracker.tasks import dispatch_pending_notifications

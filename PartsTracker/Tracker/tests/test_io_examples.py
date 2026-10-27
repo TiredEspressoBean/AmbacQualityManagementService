@@ -54,11 +54,13 @@ class MaterialImportExportTests(ImportExportTestCase):
         f.name = "big.csv"
         queued = {}
 
-        def capture(args=None, kwargs=None, **_):
-            queued.update(args=args or (), kwargs=kwargs or {})
-            return mock.Mock(id="t1")
+        def capture(*, kwargs, task_id):
+            queued.update(args=(), kwargs=kwargs)
+            return mock.Mock(id=task_id)
 
-        with mock.patch.object(process_import_task, "apply_async", side_effect=capture), \
+        # Patch our own seam, not apply_async on the task object (that corrupts
+        # eager-result state for later tests in the run).
+        with mock.patch("Tracker.viewsets.mixins.csv_import._queue_import", side_effect=capture), \
                 self.captureOnCommitCallbacks(execute=True):
             r = self.client.post("/api/Materials/import/", {"file": f, "mode": "create"},
                                  format="multipart")

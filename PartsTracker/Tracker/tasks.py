@@ -699,6 +699,12 @@ def advance_lot_task(self, work_order_id, step_id, tenant_id, operator_id=None):
         raise self.retry(exc=exc, countdown=30) from exc
 
 
+def _queue_notification_send(notification_id):
+    """Queue one send. A seam of our own for tests to patch: patching `.delay` on the
+    Celery task object corrupts eager-result state for the rest of a test run."""
+    send_notification_task.delay(notification_id)
+
+
 @shared_task
 def dispatch_pending_notifications():
     """
@@ -736,7 +742,7 @@ def dispatch_pending_notifications():
     dispatched_count = 0
     for notification_id in ready_notifications:
         # Queue the send task (will set tenant context from notification)
-        send_notification_task.delay(notification_id)
+        _queue_notification_send(notification_id)
         dispatched_count += 1
         logger.info(f"Dispatched notification {notification_id}")
 
