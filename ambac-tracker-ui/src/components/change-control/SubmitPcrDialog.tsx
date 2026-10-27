@@ -91,10 +91,9 @@ export function SubmitPcrDialog({ open, onOpenChange, pcr, onSubmitted }: Props)
             toast.success(`${pcr.artifact_number ?? "PCR"} submitted for approval`);
             onOpenChange(false);
             onSubmitted?.();
-        } catch (err) {
-            toast.error("Submit failed", {
-                description: err instanceof Error ? err.message : undefined,
-            });
+        } catch {
+            // The global mutation handler shows the server's reason (e.g. a draft that
+            // changes nothing); the dialog stays open to correct and retry.
         }
     };
 

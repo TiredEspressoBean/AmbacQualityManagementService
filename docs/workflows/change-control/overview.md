@@ -84,7 +84,14 @@ A proposal to change a specific approved process.
 
 Submitting a PCR snapshots the in-flight work orders it would affect and records
 the baseline process version, so the impact is captured at proposal time rather
-than reconstructed later.
+than reconstructed later. For a [temporary change](#temporary-changes-deviations)
+the count is of the work orders it *could* apply to: it runs only on those chosen
+when it is implemented.
+
+A PCR whose draft is the same as the approved routing can't be submitted: *"The
+draft is the same as the approved routing — there is nothing to review."* Make the
+change in the draft first. (An extension of a temporary change is the exception:
+it moves the end date and changes no routing.)
 
 !!! important "What a PCR points at is fixed when it is proposed"
     The **target process** and the **draft** it forked are set at proposal and

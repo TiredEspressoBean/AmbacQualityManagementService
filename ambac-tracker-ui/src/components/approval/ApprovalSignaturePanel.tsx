@@ -97,6 +97,12 @@ export function ApprovalSignaturePanel({
                                 {respondedCount} of {requiredCount} signatures collected.
                             </span>
                         )}
+                        {current.status === "CANCELLED" && (
+                            <span className="ml-1">
+                                The signature request was closed without these signatures; nobody is
+                                waiting on them.
+                            </span>
+                        )}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -114,8 +120,13 @@ export function ApprovalSignaturePanel({
                                     </span>
                                     {response ? (
                                         <StatusBadge status={response.decision} label={response.decision_display} />
-                                    ) : (
+                                    ) : current.status === "PENDING" ? (
                                         <StatusBadge status="PENDING" label="Pending" />
+                                    ) : (
+                                        // The request closed without this signature (withdrawn, or a
+                                        // change approved where signatures aren't required): nobody is
+                                        // still waiting on them.
+                                        <span className="text-xs text-muted-foreground">Not signed</span>
                                     )}
                                 </div>
                             );

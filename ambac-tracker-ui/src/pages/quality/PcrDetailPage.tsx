@@ -163,8 +163,15 @@ export function PcrDetailPage() {
                         )}
                         {typeof pcr.affected_workorders_count === "number" && (
                             <div>
-                                <div className="text-xs text-muted-foreground">Affected in-flight WOs</div>
+                                {/* A temporary change applies only to the work orders chosen when it
+                                    is implemented, so here the count is what it could apply to. */}
+                                <div className="text-xs text-muted-foreground">
+                                    {pcr.is_temporary ? "In-flight WOs it could apply to" : "Affected in-flight WOs"}
+                                </div>
                                 <div>{pcr.affected_workorders_count}</div>
+                                {pcr.is_temporary && (
+                                    <div className="text-xs text-muted-foreground">Only those chosen at implementation run on it.</div>
+                                )}
                             </div>
                         )}
                     </div>

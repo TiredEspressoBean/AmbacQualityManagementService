@@ -111,6 +111,20 @@ def compute_process_diff(from_process: "Processes", to_process: "Processes") -> 
     return diff
 
 
+def diff_has_changes(diff: Dict[str, Any] | None) -> bool:
+    """Whether a diff from `compute_process_diff` changes anything at all."""
+    if not diff:
+        return False
+    steps = diff.get("steps") or {}
+    edges = diff.get("edges") or {}
+    return bool(
+        diff.get("process")
+        or steps.get("added") or steps.get("removed") or steps.get("modified")
+        or edges.get("added") or edges.get("removed")
+        or diff.get("substeps")
+    )
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------

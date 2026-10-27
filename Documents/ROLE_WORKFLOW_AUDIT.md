@@ -430,9 +430,7 @@ who, when and old→new, but never a reason.
 | **The frozen fence is presented as a lock** | Scheduler | It's a soft penalty. See the note under Scheduler. |
 | **Priority changed by import has no reason** | Shift Lead C1 | CSV import and the master workbook bypass `change_priority`. |
 | **In Simplified mode one person can carry a process change alone** | Change control | The default mode for every tenant. **Approve** needs only the authoring permissions, nothing stops the submitter approving, no signature is collected, and the PCO is created already approved. By design, but a decision to make knowingly: Regulated mode enforces the signed, independent path. Docs now say so (`change-control/overview.md`) |
-| **Change-control loose ends** | Engineering C1 / 8 | A PCR with an empty diff can be submitted and approved. *Affected in-flight WOs* counts every WO on the process even for a temporary change. After a Simplified approval the signatures panel reads *Cancelled* while the approver's row still reads *Pending*. **Move back to baseline** has no confirmation |
 | **The over-and-above scope has no document** | Shift Lead R2, Production Manager R1 | The customer's answer is recorded (`viewsets/reman.py:279`), but nothing produces the scope to send the customer: what work, what parts, and the finding behind each. The product boundary says UQMES exports it. Found by the documents session 2026-10-20 |
-| **The Pick Sheet has no button** | Receiving 11 | `pick_sheet` is registered, but no screen offers it. Found by the documents session 2026-10-20 |
 | **Every report is gated by one permission** | | All reports sit behind `export_data` (`reports/viewsets.py`, `CanExportReports`), so who can print a CoC is the same as who can print a training record. Worth deciding whether any documents need narrower gates |
 | **Small copy and accessibility** | | `OperatorSubstepRuntimePage.tsx:1271` and `completion-adapters.tsx:261` show developer copy (*"Add `?execution=<id>`…"*); the measurement input's accessible name is `—`; the receiving hold panel hedges (*"If the part type requires qualification, the lot was held"*); part Activity History dumps a raw `Capture Draft: {…}` field and prints `Expires At` as a raw UTC timestamp; CAPA **Related Items** shows raw UUIDs for the step and work order; the CAPA prefill chip shows the report's UUID, not its number; the FPI incomplete message says *"finish the step's captures"* when it means the first piece's. |
 
@@ -693,6 +691,9 @@ One line each, newest first. The full write-ups are in git history.
 
 | Finding | Resolution |
 |---|---|
+| A cancelled PCR's draft blocked every later revision of the process | The one-draft guard ignores archived drafts (2026-10-27, walked) |
+| Change-control loose ends: a PCR whose draft changed nothing could be submitted; the affected-WO count misread for a temporary change; the signatures panel showed *Pending* on a closed request; the submit dialog doubled its error | Submit refuses an unchanged draft (extensions excepted); the count reads *In-flight WOs it could apply to* for a temporary change; a closed request reads *Not signed* and says nobody is waiting; one error toast (2026-10-27, walked). *Move back to baseline* already confirmed |
+| The Pick Sheet has no button | Stale: **Pick Sheet** and **Kit Sheet** are on the Staging page (checked 2026-10-27) |
 | `/orders/<order number>` errored; only the id loaded | An order opens from its number and settles on its id; the orders list searches by order number (2026-10-27, walked) |
 | A returned reman unit had no paperwork route | Returns ship as a `CustomerShipment` with packing list and CoC; exchange stock ships on an order (`ac85a3e`, 2026-10-20, not walked) |
 | A FAIL reached by editing a report opened a disposition without a quarantine | `on_report_failed` runs the FAIL consequences on the move into FAIL, from PATCH and from DWI findings (2026-10-20, not walked) |

@@ -42,7 +42,7 @@ from Tracker.models import (
     ProcessStatus,
     WorkOrder,
 )
-from Tracker.services.change_control.diff import compute_process_diff
+from Tracker.services.change_control.diff import compute_process_diff, diff_has_changes
 from Tracker.services.change_control.impact_analysis import (
     list_affected_workorders,
     snapshot_affected_workorders,
@@ -176,6 +176,13 @@ def submit_pcr(
                 pcr.target_process,
                 pcr.draft_process_version,
             )
+            # A change with nothing in it would go through review and implementation
+            # and change nothing. An extension is the exception: it moves a temporary
+            # change's end date and carries no process edit.
+            if pcr.extends_request_id is None and not diff_has_changes(pcr.proposed_change_diff):
+                raise ValueError(
+                    "The draft is the same as the approved routing — there is nothing to "
+                    "review. Make the change in the draft first.")
             update_fields.append('proposed_change_diff')
 
         pcr.submitted_at = timezone.now()

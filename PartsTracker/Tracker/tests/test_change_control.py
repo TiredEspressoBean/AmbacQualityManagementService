@@ -317,6 +317,29 @@ class PcrLifecycleTestCase(TenantTestCase):
             submit_pcr(self.pcr, user=self.user_a)
         self.assertIn('justification', str(ctx.exception))
 
+    def test_submit_refuses_a_draft_that_changes_nothing(self):
+        """A proposed change whose draft is the approved routing unchanged would go
+        through review and implementation and change nothing (Engineering walk)."""
+        from Tracker.services.change_control.process_change import propose_process_change
+        pcr, _draft = propose_process_change(
+            self.process, user=self.user_a, title='No-op', proposed_change='Nothing',
+            justification='Testing an empty change', risk_analysis='None')
+        with self.assertRaises(ValueError) as ctx:
+            submit_pcr(pcr, user=self.user_a)
+        self.assertIn('nothing to review', str(ctx.exception))
+        pcr.refresh_from_db()
+        self.assertEqual(pcr.status, ProcessChangeRequest.Status.DRAFT)
+
+    def test_a_cancelled_proposals_draft_does_not_block_the_next_change(self):
+        """Cancelling a PCR archives its draft; the next change to the process must
+        still be approvable (it was refused: 'A draft revision already exists')."""
+        from Tracker.services.change_control.process_change import propose_process_change
+        proposed, _draft = propose_process_change(self.process, user=self.user_a, title='Dropped')
+        cancel_pcr(proposed, user=self.user_a, reason='Not needed')
+        submit_pcr(self.pcr, user=self.user_a)
+        pco = approve_pcr(self.pcr, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
+        self.assertIsNotNone(pco)
+
     def test_submit_rejects_missing_template(self):
         ApprovalTemplate.objects.filter(
             approval_type=Approval_Type.PCR_APPROVAL,
@@ -556,7 +579,9 @@ class PcrRebaseTestCase(TenantTestCase):
         # Sanity: when there's nothing to rebase against, approval is
         # the normal flow. Refresh-from-db inside approve_pcr was the
         # subtle gotcha during implementation.
-        pcr, _ = self._propose(title='Single')
+        pcr, draft = self._propose(title='Single')
+        draft.name = f'{draft.name} (renamed)'
+        draft.save(update_fields=['name'])
         submit_pcr(pcr, user=self.user_a)
         approve_pcr(pcr, user=self.user_a, mode=ChangeControlMode.SIMPLIFIED)
 
@@ -1032,11 +1057,13 @@ class RegulatedModeEndToEndTestCase(TenantTestCase):
 
     def _submitted_pcr(self):
         from Tracker.services.change_control.process_change import propose_process_change
-        pcr, _draft = propose_process_change(
+        pcr, draft = propose_process_change(
             self.baseline, user=self.user_a,
             title='Regulated change', proposed_change='c',
             justification='c', risk_analysis='c',
         )
+        draft.name = 'Regulated Proc (renamed)'
+        draft.save(update_fields=['name'])
         return pcr, submit_pcr(pcr, user=self.user_a)
 
     def test_two_signatures_required_pco_stays_draft(self):
