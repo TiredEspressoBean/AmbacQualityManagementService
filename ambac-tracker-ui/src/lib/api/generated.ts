@@ -16898,10 +16898,11 @@ export type SolverStatusEnum =
    * `INFEASIBLE` - Infeasible
    * `MODEL_INVALID` - Model invalid
    * `UNKNOWN` - Unknown
+   * `QUICK` - Quick plan (rule-based)
    *
-   * @enum OPTIMAL, FEASIBLE, INFEASIBLE, MODEL_INVALID, UNKNOWN
+   * @enum OPTIMAL, FEASIBLE, INFEASIBLE, MODEL_INVALID, UNKNOWN, QUICK
    */
-  "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
+  "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN" | "QUICK";
 export type FrozenFreed = {
   part: string;
   step: string;
@@ -24827,6 +24828,7 @@ const SolverStatusEnum = z.enum([
   "INFEASIBLE",
   "MODEL_INVALID",
   "UNKNOWN",
+  "QUICK",
 ]);
 const FrozenFreed = z.object({
   part: z.string(),

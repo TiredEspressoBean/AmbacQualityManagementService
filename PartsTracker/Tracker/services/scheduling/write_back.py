@@ -31,7 +31,8 @@ def _freed_report(freed: list) -> list[dict]:
 
 def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     """Write the solve back and return the new `ScheduleResult`."""
-    from Tracker.models.scheduling import ScheduledTask, ScheduleResult
+    from ortools.sat.python import cp_model
+    from Tracker.models.scheduling import ScheduledTask, ScheduleResult, SolverStatus
 
     tenant, horizon = shop.tenant, shop.horizon
     solver = final['solver']
@@ -39,6 +40,27 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     lateness_terms = final['lateness_terms']
     cp_status = final['cp_status']
     solved = final['solved']
+
+    # Out of time before finding any plan (UNKNOWN — not INFEASIBLE): the dispatch-rule
+    # plan stands in, flagged QUICK (machine times; crew limits and changeovers not
+    # checked) — but only when there's no live plan to keep, or for a draft. A proper
+    # earlier plan beats a crude new one (user decision 2026-10-27; standard APS: a
+    # timeout still yields a plan).
+    quick = None
+    if (tasks and not solved and cp_status == cp_model.UNKNOWN
+            and (draft or not ScheduleResult.objects.filter(
+                tenant=tenant, is_active=True, is_draft=False).exists())):
+        quick = {id(t): pos for t, pos in shop.greedy_plan(tasks)}
+    placed = solved or quick is not None
+
+    def start_of(t):
+        return quick[id(t)][0] if quick else solver.Value(t['start'])
+
+    def end_of(t):
+        return quick[id(t)][1] if quick else solver.Value(t['end'])
+
+    def machine_of(t):
+        return quick[id(t)][2] if quick else _chosen_machine(t, solver)
 
     # The fence report: what was held, and what had to be re-planned and why.
     frozen_kept = final['kept']
@@ -73,17 +95,24 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
 
     # The lateness term on its own — priority-weighted late-minutes, isolated from
     # the makespan + pin-stickiness terms that dominate the raw objective.
-    weighted_lateness = (
-        sum(solver.Value(var) * penalty for var, penalty in lateness_terms)
-        if (tasks and solved) else 0
-    )
+    weighted_lateness = 0
+    if tasks and solved:
+        weighted_lateness = sum(solver.Value(var) * penalty for var, penalty in lateness_terms)
+    elif quick:
+        # Same measure from the quick plan: each lot's last end against its due date.
+        lot_end: dict = {}
+        for t in tasks:
+            if t['due'] is not None and t['prio']:
+                key = (t['part_ids'], t['due'], t['prio'])
+                lot_end[key] = max(lot_end.get(key, 0), end_of(t))
+        weighted_lateness = sum(max(0, end - due) * prio
+                                for (_p, due, prio), end in lot_end.items())
 
     # Overload: work that didn't fit the horizon overflowed past its end. It isn't
     # written to the board; its work orders are recorded so Not scheduled can say so.
     past_horizon: list = []
-    if tasks and solved:
-        past_horizon = sorted({str(t['wo_id']) for t in tasks
-                               if solver.Value(t['start']) >= shop.H})
+    if tasks and placed:
+        past_horizon = sorted({str(t['wo_id']) for t in tasks if start_of(t) >= shop.H})
 
     # Proven optimality gap: how far the found objective is from the solver's best
     # bound. 0.0 when OPTIMAL; small positive on a time-limited FEASIBLE result.
@@ -97,7 +126,7 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     # terms before writing the (empty) result — an unexplained blank board is the
     # worst thing this can produce. Diagnosis must never itself break the solve.
     infeasible_reason = ''
-    if not (tasks and solved):
+    if not (tasks and placed):
         try:
             from Tracker.services.scheduling.infeasibility import diagnose_infeasible
             infeasible_reason = diagnose_infeasible(tenant, horizon)['summary']
@@ -107,7 +136,7 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     # A solve that found no plan never replaces the live one: the floor keeps the
     # last good plan (marked stale), and the failed result is kept beside it with
     # its reason (walk 2026-10-22 — one downtime emptied the board).
-    failed = bool(tasks) and not solved
+    failed = bool(tasks) and not placed
     if draft:
         # A draft is a reviewable what-if; it never supersedes the live schedule.
         # Replace only the prior draft (scratch — cascade-deletes its tasks).
@@ -121,7 +150,7 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
     result = ScheduleResult.objects.create(
         tenant=tenant,
         horizon_start=horizon.start, horizon_end=horizon.end,
-        solver_status=_map_status(cp_status),
+        solver_status=SolverStatus.QUICK if quick else _map_status(cp_status),
         solve_time_ms=(machine_solve_ms + operator_solve_ms) if tasks else 0,
         machine_solve_ms=machine_solve_ms,
         operator_solve_ms=operator_solve_ms,
@@ -138,31 +167,33 @@ def persist(shop, final, machine_solve_ms, operator_solve_ms, draft):
         is_draft=draft,
     )
 
-    if tasks and solved:
+    if tasks and placed:
         # Write back per PART (and per core) so tracking, pins, and pegging stay
         # part-grained: every part in a lot gets its own ScheduledTask sharing the
         # lot-operation's machine/time window. The Gantt merges contiguous same-WO
         # bars, so a lot renders as one bar.
         rows = []
         for t in tasks:
-            if solver.Value(t['start']) >= shop.H:
+            start_min = start_of(t)
+            if start_min >= shop.H:
                 continue   # past the horizon: reported in Not scheduled, not drawn
-            machine_id = _chosen_machine(t, solver)
-            start_dt = horizon.start + timedelta(minutes=solver.Value(t['start']))
-            end_dt = horizon.start + timedelta(minutes=solver.Value(t['end']))
+            machine_id = machine_of(t)
+            start_dt = horizon.start + timedelta(minutes=start_min)
+            end_dt = horizon.start + timedelta(minutes=end_of(t))
             if (t.get('fixed_start_dt') is not None
-                    and t.get('held_minute') == solver.Value(t['start'])):
+                    and t.get('held_minute') == start_min):
                 # Held operations keep their exact time. Minutes are counted from a
                 # horizon that starts "now", so writing the minute back would creep
                 # each held task up to a minute earlier on every re-solve.
                 span = end_dt - start_dt
                 start_dt = t['fixed_start_dt']
                 end_dt = start_dt + span
-            fence = _fence_zone(solver.Value(t['start']), shop.frozen_min, shop.slushy_min)
+            fence = _fence_zone(start_min, shop.frozen_min, shop.slushy_min)
             # Persist the NAMED phase's operator choice (the one assign lit set to 1),
             # so a match_operators solve produces a covered schedule directly instead of
-            # leaving assigned_operator for a separate Dispatch pass.
-            assigned_op_id = next(
+            # leaving assigned_operator for a separate Dispatch pass. A quick plan picks
+            # no operators; Dispatch does.
+            assigned_op_id = None if quick else next(
                 (op for op, lit in t.get('named_assign', ()) if solver.Value(lit) == 1),
                 None)
             common = dict(

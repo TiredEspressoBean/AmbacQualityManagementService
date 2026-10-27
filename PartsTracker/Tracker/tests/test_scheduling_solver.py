@@ -352,6 +352,52 @@ class SolverTests(TenantContextMixin, TestCase):
         reasons = {r['reason'] for r in diagnose_unscheduled(self.tenant, horizon_days=1)['work_orders']}
         self.assertIn('past_horizon', reasons)
 
+    def _out_of_time(self):
+        """CP-SAT stops at its limit with no plan found (UNKNOWN, not INFEASIBLE)."""
+        from unittest import mock
+        from ortools.sat.python import cp_model
+
+        def solve_then_out_of_time(solver, model):
+            solver.solve(model)
+            return cp_model.UNKNOWN
+        return mock.patch("Tracker.services.scheduling.solver._solve_until_stalled",
+                          side_effect=solve_then_out_of_time)
+
+    def test_out_of_time_with_no_live_plan_writes_a_quick_plan(self):
+        # Standard APS: a timeout still yields a plan — the rule-based one, flagged.
+        self._wo("WO-QK", 2)
+        with self._out_of_time():
+            result = solve_schedule(self.tenant, time_limit_seconds=5)
+        self.assertEqual(result.solver_status, SolverStatus.QUICK)
+        self.assertTrue(result.is_active)
+        self.assertEqual(result.tasks.count(), 4)   # 2 parts × 2 steps
+        self.assertFalse(result.tasks.filter(assigned_operator__isnull=False).exists())
+        s1 = result.tasks.filter(step=self.step1).first()
+        s2 = result.tasks.filter(step=self.step2).first()
+        self.assertGreaterEqual(s2.start_time, s1.end_time)   # the route still holds
+
+    def test_out_of_time_keeps_the_live_plan_rather_than_a_quick_one(self):
+        # A proper earlier plan beats a crude new one: the live plan stays, stale.
+        self._wo("WO-QL", 1)
+        live = solve_schedule(self.tenant, time_limit_seconds=10)
+        self._wo("WO-QL2", 1)
+        with self._out_of_time():
+            result = solve_schedule(self.tenant, time_limit_seconds=5)
+        self.assertEqual(result.solver_status, SolverStatus.UNKNOWN)
+        self.assertFalse(result.is_active)
+        live.refresh_from_db()
+        self.assertTrue(live.is_active)
+        self.assertTrue(live.is_stale)
+
+    def test_out_of_time_on_a_draft_writes_a_quick_draft(self):
+        self._wo("WO-QD", 1)
+        solve_schedule(self.tenant, time_limit_seconds=10)
+        with self._out_of_time():
+            draft = solve_schedule(self.tenant, time_limit_seconds=5, draft=True)
+        self.assertEqual(draft.solver_status, SolverStatus.QUICK)
+        self.assertTrue(draft.is_draft)
+        self.assertTrue(draft.tasks.exists())
+
     def test_parts_queued_at_one_machine_are_not_running(self):
         # Arrival is not a start: parts waiting (PENDING) at a single-machine step are
         # planned one after another, not all pinned "running" at now on that machine —

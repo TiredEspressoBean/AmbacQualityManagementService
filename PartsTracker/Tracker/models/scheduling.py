@@ -460,6 +460,10 @@ class SolverStatus(models.TextChoices):
     INFEASIBLE = 'INFEASIBLE', 'Infeasible'
     MODEL_INVALID = 'MODEL_INVALID', 'Model invalid'
     UNKNOWN = 'UNKNOWN', 'Unknown'
+    # The optimizer ran out of time before finding any plan, so the dispatch-rule plan
+    # (machine times; crew limits and changeovers not checked) was written instead —
+    # only when there was no live plan to keep, or for a draft.
+    QUICK = 'QUICK', 'Quick plan (rule-based)'
 
 
 class ScheduleResult(SecureModel):

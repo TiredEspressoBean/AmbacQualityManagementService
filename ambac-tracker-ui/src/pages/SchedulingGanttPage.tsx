@@ -1138,14 +1138,18 @@ export function SchedulingGanttPage() {
                   title={
                     schedule.solver_status === "OPTIMAL"
                       ? "The solver proved this is the best possible schedule for the objective."
+                      : schedule.solver_status === "QUICK"
+                        ? "The optimizer ran out of time before finding a plan, so this is a quick rule-based one: machine times only — crew limits and changeovers weren't checked, and no operators are assigned. Re-solve with more time."
                       : schedule.relative_gap != null
                         ? `Time-limited: proven within ${(schedule.relative_gap * 100).toFixed(1)}% of the best possible objective.`
                         : "A feasible schedule (optimality not proven)."
                   }
                 >
-                  {schedule.solver_status}
+                  {schedule.solver_status === "QUICK" ? "Quick plan" : schedule.solver_status}
                   {schedule.solver_status === "OPTIMAL"
                     ? " · proven best"
+                    : schedule.solver_status === "QUICK"
+                      ? " · re-solve with more time"
                     : schedule.relative_gap != null && schedule.relative_gap > 0.0001
                       ? ` · within ${(schedule.relative_gap * 100).toFixed(schedule.relative_gap < 0.01 ? 1 : 0)}%`
                       : ""}

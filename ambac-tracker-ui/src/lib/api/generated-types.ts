@@ -35968,9 +35968,10 @@ export interface components {
          *     * `INFEASIBLE` - Infeasible
          *     * `MODEL_INVALID` - Model invalid
          *     * `UNKNOWN` - Unknown
+         *     * `QUICK` - Quick plan (rule-based)
          * @enum {string}
          */
-        SolverStatusEnum: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN";
+        SolverStatusEnum: "OPTIMAL" | "FEASIBLE" | "INFEASIBLE" | "MODEL_INVALID" | "UNKNOWN" | "QUICK";
         SourceRequirement: {
             material: string;
             buy_kind: string;

@@ -79414,6 +79414,7 @@ components:
       - INFEASIBLE
       - MODEL_INVALID
       - UNKNOWN
+      - QUICK
       type: string
       description: |-
         * `OPTIMAL` - Optimal
@@ -79421,6 +79422,7 @@ components:
         * `INFEASIBLE` - Infeasible
         * `MODEL_INVALID` - Model invalid
         * `UNKNOWN` - Unknown
+        * `QUICK` - Quick plan (rule-based)
     SourceRequirement:
       type: object
       properties:
