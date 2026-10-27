@@ -104,13 +104,50 @@ def add_numbers(x, y):
 # Solve and dispatch run in the background so they can take the minutes a large,
 # well-batched schedule needs to converge — the synchronous endpoints capped them
 # at 30s. Tasks take the tenant id (a primitive) and re-fetch, per the async
-# convention. Time limits are generous; the result backend (django-db) makes the
-# task state pollable.
+# convention. The result backend (django-db) makes the task state pollable.
+#
+# How long a run takes is the planner's choice (Scheduling settings → Solve time
+# limit; user decision 2026-10-27), so Celery's own limits are set per call from it
+# (`queue_solve`) — a fixed ten-minute cap on the task killed any longer run, an
+# overnight one included. The margin covers loading the shop and writing back.
+_TASK_MARGIN_SECONDS = 600
 
-@shared_task(bind=True, soft_time_limit=600, time_limit=660)
-def run_solve_task(self, tenant_id: str, time_limit_seconds: int = 180, draft: bool = False):
+
+def _planner_time_limit(tenant_id) -> int:
+    from Tracker.models.scheduling import OptimizationConfig
+    cfg = OptimizationConfig.all_tenants.filter(tenant_id=tenant_id).first()  # tenant-safe: explicit tenant_id
+    return int(getattr(cfg, 'solver_time_limit_seconds', None) or 180)
+
+
+def solve_task_options(tenant_id, *, draft: bool = False) -> dict:
+    """`apply_async` options for a solve at the planner's time limit, Celery's limits
+    to match. Separate from `queue_solve` so tests can check them without patching
+    the task object (which corrupts eager-result state for the rest of the run)."""
+    limit = _planner_time_limit(tenant_id)
+    return {'args': [str(tenant_id)],
+            'kwargs': {'time_limit_seconds': limit, 'draft': draft},
+            'soft_time_limit': limit + _TASK_MARGIN_SECONDS,
+            'time_limit': limit + _TASK_MARGIN_SECONDS + 60}
+
+
+def queue_solve(tenant_id, *, draft: bool = False):
+    """Queue a solve at the planner's time limit, with Celery's limits to match."""
+    return run_solve_task.apply_async(**solve_task_options(tenant_id, draft=draft))
+
+
+def queue_dispatch(tenant_id):
+    """Queue an operator dispatch at the planner's time limit, Celery's limits to match."""
+    opts = solve_task_options(tenant_id)
+    opts['kwargs'] = {'time_limit_seconds': opts['kwargs']['time_limit_seconds']}
+    return run_dispatch_task.apply_async(**opts)
+
+
+@shared_task(bind=True)
+def run_solve_task(self, tenant_id: str, time_limit_seconds: int | None = None,
+                   draft: bool = False):
     """Run the Layer-1 machine solve for a tenant; returns the new ScheduleResult id.
-    `draft=True` produces a reviewable what-if that leaves the live schedule untouched."""
+    `draft=True` produces a reviewable what-if that leaves the live schedule untouched.
+    Queue it with `queue_solve`, which sets Celery's limits from the planner's."""
     from Tracker.models.core import Tenant
     from Tracker.services.scheduling.solver import solve_schedule
     tenant = Tenant.objects.get(id=tenant_id)
@@ -131,9 +168,10 @@ def tick_auto_resolve():
     return {'queued': len(ids)}
 
 
-@shared_task(bind=True, soft_time_limit=600, time_limit=660)
+@shared_task(bind=True)
 def run_dispatch_task(self, tenant_id: str, time_limit_seconds: int = 180):
-    """Run the Layer-2 operator dispatch for a tenant; returns the coverage summary."""
+    """Run the Layer-2 operator dispatch for a tenant; returns the coverage summary.
+    Queue it with `queue_dispatch`, which sets Celery's limits from the planner's."""
     from Tracker.models.core import Tenant
     from Tracker.services.scheduling.dispatch import dispatch_operators
     tenant = Tenant.objects.get(id=tenant_id)

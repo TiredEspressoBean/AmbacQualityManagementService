@@ -125,7 +125,7 @@ class InfeasibilityGuardTests(TenantContextMixin, TestCase):
             solver.solve(model)
             return cp_model.INFEASIBLE
 
-        with patch("Tracker.services.scheduling.solver._solve_until_stalled",
+        with patch("Tracker.services.scheduling.solver._cp_solve",
                    side_effect=solve_then_say_infeasible), \
              patch("Tracker.services.scheduling.infeasibility.diagnose_infeasible",
                    side_effect=RuntimeError("boom")):

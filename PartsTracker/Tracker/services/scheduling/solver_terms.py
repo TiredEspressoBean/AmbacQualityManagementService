@@ -280,48 +280,10 @@ def _chosen_machine(task, solver) -> object | None:
     return None
 
 
-# Stop a phase once it has had a plan and found nothing better for this long. A re-solve
-# with held work can rarely PROVE its plan best, so it ran the whole time budget (~180 s
-# against ~30 s cold) while its plan barely moved — the time went to proof, not to
-# planning (walk 2026-10-22). Interim fix; why the bound stays loose under holds is
-# still to be investigated.
-STALL_SECONDS = 15.0
-
-
-def _solve_until_stalled(solver, model, stall_seconds: float = STALL_SECONDS):
-    """`solver.Solve(model)`, stopped early once the incumbent hasn't improved for
-    `stall_seconds`. A watchdog thread calls StopSearch (thread-safe); the result is
-    then FEASIBLE with the best plan found, exactly as at the time limit."""
-    import threading
-    import time
-    from ortools.sat.python import cp_model
-
-    class _Tracker(cp_model.CpSolverSolutionCallback):
-        def __init__(self):
-            super().__init__()
-            self.last_improved = None
-            self.best = None
-
-        def on_solution_callback(self):
-            obj = self.objective_value
-            if self.best is None or obj < self.best - 1e-9:
-                self.best = obj
-                self.last_improved = time.monotonic()
-
-    tracker = _Tracker()
-    done = threading.Event()
-
-    def watchdog():
-        while not done.wait(1.0):
-            if (tracker.last_improved is not None
-                    and time.monotonic() - tracker.last_improved > stall_seconds):
-                solver.stop_search()
-                return
-
-    thread = threading.Thread(target=watchdog, daemon=True)
-    thread.start()
-    try:
-        return solver.solve(model, tracker)
-    finally:
-        done.set()
-        thread.join(timeout=2.0)
+def _cp_solve(solver, model):
+    """Run CP-SAT. Its stopping rules are the planner's alone — the solve time limit
+    and the relative gap limit from Scheduling settings, set on `solver.parameters` by
+    the caller (user decision 2026-10-27: how long a run takes is the planner's
+    choice). Nothing of ours stops it early; an internal stall stop that did was
+    removed. Kept as a seam tests can stand a solve outcome in for."""
+    return solver.solve(model)

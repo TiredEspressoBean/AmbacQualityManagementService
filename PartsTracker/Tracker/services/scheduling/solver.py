@@ -71,7 +71,7 @@ from Tracker.services.scheduling.solver_terms import (
     _AFFINITY_PENALTY_DEFAULT, _CURE_WINDOW_WEIGHT, _SLIDE_WEIGHT_FACTOR,
     _affinity_penalty, _batch_cycle_dur, _chosen_machine, _due_minutes, _dur,
     _dur_on_machine, _overlaps, _penalty_cents_per_min, _release_minutes,
-    _solve_until_stalled, _staffing_segments, _transition,
+    _cp_solve, _staffing_segments, _transition,
 )
 from Tracker.services.scheduling.write_back import persist
 from Tracker.utils.tenant_context import tenant_context
@@ -79,12 +79,18 @@ from Tracker.utils.tenant_context import tenant_context
 logger = logging.getLogger(__name__)
 
 
-def solve_schedule(tenant, time_limit_seconds: int = 300, draft: bool = False):
+def solve_schedule(tenant, time_limit_seconds: int | None = None, draft: bool = False):
     """Solve the Layer-1 machine schedule for a tenant and persist it as the new
     active `ScheduleResult`. Returns the ScheduleResult (empty + OPTIMAL when there
-    is no work)."""
+    is no work).
+
+    `time_limit_seconds` None = the planner's Solve time limit from Scheduling
+    settings — how long a run takes is theirs to choose."""
     with tenant_context(str(tenant.id)):
         shop = Shop(tenant)
+        if time_limit_seconds is None:
+            time_limit_seconds = int(
+                getattr(shop.config, 'solver_time_limit_seconds', None) or 180)
         final, machine_solve_ms, operator_solve_ms = _solve_with_fence(shop, time_limit_seconds)
         return persist(shop, final, machine_solve_ms, operator_solve_ms, draft)
 
@@ -867,8 +873,14 @@ class _Phase:
         from ortools.sat.python import cp_model
 
         solver = cp_model.CpSolver()
+        # The planner's stopping rules, both from Scheduling settings: the time limit
+        # (split across phases by the caller) and the relative gap at which a plan
+        # is proven good enough. Nothing else stops the search.
         solver.parameters.max_time_in_seconds = tlimit
-        cp_status = _solve_until_stalled(solver, self.model) if self.tasks else cp_model.OPTIMAL
+        gap = getattr(self.shop.config, 'relative_gap_limit', None)
+        if gap is not None:
+            solver.parameters.relative_gap_limit = float(gap)
+        cp_status = _cp_solve(solver, self.model) if self.tasks else cp_model.OPTIMAL
         solved = cp_status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
         return {'cp_status': cp_status, 'solver': solver, 'tasks': self.tasks,
                 'lateness_terms': self.lateness_terms, 'solved': solved,

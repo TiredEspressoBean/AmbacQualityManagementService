@@ -352,6 +352,38 @@ class SolverTests(TenantContextMixin, TestCase):
         reasons = {r['reason'] for r in diagnose_unscheduled(self.tenant, horizon_days=1)['work_orders']}
         self.assertIn('past_horizon', reasons)
 
+    def test_a_solve_runs_to_the_planners_settings(self):
+        # How long a run takes is the planner's choice (user decision 2026-10-27): the
+        # Solve time limit and the Relative gap limit are the only stopping rules.
+        from unittest import mock
+        from Tracker.models import OptimizationConfig
+        OptimizationConfig.objects.create(
+            tenant=self.tenant, solver_time_limit_seconds=42, relative_gap_limit=0.05)
+        self._wo("WO-SET", 1)
+        seen = []
+
+        def capture(solver, model):
+            seen.append((solver.parameters.max_time_in_seconds,
+                         solver.parameters.relative_gap_limit))
+            return solver.solve(model)
+
+        with mock.patch("Tracker.services.scheduling.solver._cp_solve", side_effect=capture):
+            result = solve_schedule(self.tenant)   # no limit passed: the planner's
+        self.assertIn(result.solver_status, (SolverStatus.OPTIMAL, SolverStatus.FEASIBLE))
+        self.assertEqual(sum(limit for limit, _gap in seen), 42)
+        self.assertTrue(all(abs(gap - 0.05) < 1e-9 for _limit, gap in seen))
+
+    def test_a_queued_solve_lets_celery_run_as_long_as_the_planner_set(self):
+        # An overnight limit must not be cut off by the task's own cap. (Checked on
+        # the options, not by patching the task: that corrupts eager results.)
+        from Tracker.models import OptimizationConfig
+        from Tracker import tasks
+        OptimizationConfig.objects.create(tenant=self.tenant, solver_time_limit_seconds=8 * 3600)
+        opts = tasks.solve_task_options(self.tenant.id, draft=True)
+        self.assertEqual(opts['kwargs'], {'time_limit_seconds': 8 * 3600, 'draft': True})
+        self.assertGreater(opts['soft_time_limit'], 8 * 3600)
+        self.assertGreater(opts['time_limit'], opts['soft_time_limit'])
+
     def _out_of_time(self):
         """CP-SAT stops at its limit with no plan found (UNKNOWN, not INFEASIBLE)."""
         from unittest import mock
@@ -360,7 +392,7 @@ class SolverTests(TenantContextMixin, TestCase):
         def solve_then_out_of_time(solver, model):
             solver.solve(model)
             return cp_model.UNKNOWN
-        return mock.patch("Tracker.services.scheduling.solver._solve_until_stalled",
+        return mock.patch("Tracker.services.scheduling.solver._cp_solve",
                           side_effect=solve_then_out_of_time)
 
     def test_out_of_time_with_no_live_plan_writes_a_quick_plan(self):

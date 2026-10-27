@@ -87,8 +87,8 @@ def run_due_auto_resolves(queue=None):
     patch the Celery task object, which corrupts eager-result state for the run.
     """
     if queue is None:
-        from Tracker.tasks import run_solve_task
-        queue = run_solve_task.delay
+        # At the planner's time limit, like a solve from the board.
+        from Tracker.tasks import queue_solve as queue
     ids = due_auto_resolve_tenant_ids()
     for tenant_id in ids:
         queue(str(tenant_id))

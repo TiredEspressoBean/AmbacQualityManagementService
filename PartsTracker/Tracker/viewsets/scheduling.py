@@ -39,7 +39,7 @@ from Tracker.services.scheduling.manual_move import (
 from Tracker.services.scheduling.scenario import (
     commit_draft, compare_draft, discard_draft,
 )
-from Tracker.tasks import run_dispatch_task, run_solve_task
+from Tracker.tasks import queue_dispatch, queue_solve
 from Tracker.services.scheduling.run_status import (
     current_run, mark_finished, mark_started,
 )
@@ -48,9 +48,9 @@ from Tracker.serializers.csv_import import create_import_serializer_for_model
 from .core import ListMetadataMixin
 from .mixins import CSVImportMixin, DataExportMixin
 
-# Solve/dispatch time cap lives on `OptimizationConfig.solver_time_limit_seconds`
-# (default 180s, editable from the scheduling settings dialog); CP-SAT returns
-# best-so-far when it elapses. See ScheduleViewSet._time_limit.
+# Solve/dispatch run to the planner's Scheduling settings (`solver_time_limit_seconds`,
+# `relative_gap_limit`); CP-SAT returns best-so-far when the limit elapses. Queued via
+# `tasks.queue_solve` / `queue_dispatch`, which set Celery's limits from the same.
 
 
 def _int_param(request, name: str, default: int, lo: int, hi: int) -> int:
@@ -101,9 +101,6 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """The tenant's solver config, created with defaults on first access."""
         config, _ = OptimizationConfig.objects.get_or_create(tenant=self.tenant)
         return config
-
-    def _time_limit(self) -> int:
-        return self._get_config().solver_time_limit_seconds
 
     @extend_schema(
         methods=['GET'], request=None, responses={200: OptimizationConfigSerializer})
@@ -298,7 +295,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     def solve(self, request):
         """Kick off the Layer-1 machine solve in the background, replacing the live
         schedule. Returns a task id; poll `solve_status?task_id=`, then re-read `current`."""
-        task = run_solve_task.delay(str(self.tenant.id), self._time_limit())
+        task = queue_solve(self.tenant.id)
         mark_started(self._get_config(), task.id, 'solve')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -308,7 +305,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         """Kick off a what-if solve in the background that produces a *draft* — the live
         schedule is untouched. Returns a task id; poll `solve_status?task_id=`, then read
         `draft` / `compare` and `commit` or `discard`."""
-        task = run_solve_task.delay(str(self.tenant.id), self._time_limit(), draft=True)
+        task = queue_solve(self.tenant.id, draft=True)
         mark_started(self._get_config(), task.id, 'draft')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
@@ -417,7 +414,7 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     def run_dispatch(self, request):
         """Kick off Layer-2 operator dispatch in the background. Returns a task id; poll
         `solve_status?task_id=` for the coverage summary."""
-        task = run_dispatch_task.delay(str(self.tenant.id), self._time_limit())
+        task = queue_dispatch(self.tenant.id)
         mark_started(self._get_config(), task.id, 'dispatch')
         return Response({'task_id': task.id}, status=status.HTTP_202_ACCEPTED)
 
