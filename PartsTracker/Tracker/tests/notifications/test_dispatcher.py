@@ -103,6 +103,19 @@ class DispatcherRuleResolutionTests(TenantContextMixin, TestCase):
         rows = NotificationOutbox.objects.filter(event_code='ncr.opened')
         self.assertEqual(rows.count(), 1)
 
+    def test_re_emitting_the_same_key_is_a_no_op(self):
+        """A daily sweep run twice, or a task re-delivered after a worker restart,
+        emits the same idempotency key again. It used to raise on the unique key and
+        fail the task; it now writes nothing more."""
+        u = make_user_in_groups(self.tenant, self.qa_group)
+        make_tenant_rule(self.tenant, 'ncr.opened', recipient_users=[u], channels=['in_app'])
+        payload = make_event_payload('ncr.opened', tenant_id=str(self.tenant.id))
+
+        emit('ncr.opened', tenant=self.tenant, payload=payload, idempotency_key='sweep:day-1')
+        emit('ncr.opened', tenant=self.tenant, payload=payload, idempotency_key='sweep:day-1')
+
+        self.assertEqual(NotificationOutbox.objects.filter(event_code='ncr.opened').count(), 1)
+
 
 class DispatcherCelFilterTests(TenantContextMixin, TestCase):
     """CEL conditions narrow which rules fire."""

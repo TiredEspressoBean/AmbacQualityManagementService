@@ -192,6 +192,8 @@ def on_notification_event(
                     source_ct_id=source_ct_id,
                     source_oid=source_oid,
                 )
+                if _already_written(row):
+                    continue
                 render_outbox_row(row, payload_dict, language="en")
                 row.save()
                 rows_to_queue.append(str(row.id))
@@ -222,6 +224,8 @@ def on_notification_event(
                     source_ct_id=source_ct_id,
                     source_oid=source_oid,
                 )
+                if _already_written(row):
+                    continue
                 render_outbox_row(row, payload_dict, language="en")
                 row.save()
                 rows_to_queue.append(str(row.id))
@@ -258,6 +262,16 @@ def on_notification_event(
 # =============================================================================
 # Cooldown lookup
 # =============================================================================
+
+def _already_written(row) -> bool:
+    """Whether an outbox row with this row's idempotency key exists already — an event
+    re-emitted (a daily sweep run twice, a task re-delivered after a worker restart). The
+    key is unique, so saving it again would raise; skipping makes the re-run a no-op,
+    which is what the key is for."""
+    from Tracker.models import NotificationOutbox
+    return NotificationOutbox.objects.filter(  # tenant-safe: dispatcher runs in emit-site tenant_context
+        event_code=row.event_code, idempotency_key=row.idempotency_key).exists()
+
 
 def _within_cooldown(
     *,
