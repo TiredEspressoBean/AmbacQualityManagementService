@@ -510,8 +510,13 @@ class _Phase:
                     # Assign a SPECIFIC qualified operator to this lot (exact
                     # dual-resource): optional per-operator intervals a
                     # per-operator NoOverlap serialises, so a scarce specialist
-                    # pushes the work late rather than leaving it uncovered. A
-                    # soft `uncov` fallback keeps the model feasible.
+                    # pushes the work late rather than leaving it uncovered.
+                    # Coverage is HARD (exactly one operator) whenever someone
+                    # qualified is on shift in the horizon with a cert that lasts it
+                    # (user decision 2026-10-27): the old soft fallback needed a
+                    # weight above everything else in the objective, which wrecked
+                    # CP-SAT's bound. Only an op whose qualified people all lapse or
+                    # are never on shift keeps the soft `uncov` escape.
                     pool = shop.skill_pools.get(step_id)
                     qualified = (pool if pool is not None else shop.all_op_ids) & shop.all_op_ids
                     assign_lits = []
@@ -529,7 +534,10 @@ class _Phase:
                         self.named_op_intervals[op].append(oiv)
                         assign_lits.append(lit)
                         named_assign.append((op, lit))
-                    if assign_lits:
+                    if assign_lits and any(op not in lapses and shop.op_minutes.get(op)
+                                           for op in qualified):
+                        model.AddExactlyOne(assign_lits)
+                    elif assign_lits:
                         uncov = model.NewBoolVar(f"nunc_{key}")
                         model.Add(sum(assign_lits) + uncov == 1)
                         self.named_uncovered.append(uncov)   # weighted coverage-first below
