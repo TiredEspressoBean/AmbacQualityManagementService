@@ -99,7 +99,7 @@ A unit can be sent to **Awaiting authorisation** when the customer has to approv
 work beyond what was sold. That is a lead's deliberate act; nothing sends a unit
 there automatically.
 
-**Authorise…** is on the work order's **cores card**, not the core's own page,
+**Authorise…** is on the work order's **cores card** and on the core's own page,
 and it appears once the unit is **in rebuild** — after release, when the findings
 have shown what the job actually needs.
 
@@ -126,9 +126,34 @@ have shown what the job actually needs.
     the shop's own, so the decision is the shop's. Use the lead approval on the
     core instead.
 
+### Printing the scope for the customer
+
+**Scope for customer** on the core's page prints the over-and-above scope: the
+sheet you send the customer so they can decide. It is there while the unit is in
+rebuild with something to ask about, and while it is awaiting authorisation.
+Choose **Download PDF**, or **Email me** to have it sent to your own inbox.
+
+For each repair waiting on the customer, the sheet lists:
+
+- the repair, by code and name;
+- the **work** — the repair operation the unit would go through;
+- the **finding behind it** — what teardown or the bench found;
+- the **parts needed** — each replacement part, with its part number and
+  position where there is one. A repair that reworks the unit's own component
+  needs none.
+
+It also carries the unit's details (serial, our core number, order, date
+received, and the rebuild level ordered) and a space for the customer's answer:
+authorise or decline, their reference, and their signature.
+
+Repairs that are pre-approved or were sold with the rebuild level are not on the
+sheet, because they are not the customer's decision. The sheet carries no prices;
+price the work in the system you price in.
+
 ### Recording the answer
 
-The same card carries **Approved** and **Declined** once the unit is waiting.
+The cores card and the core's page carry **Approved** and **Declined** once the
+unit is waiting.
 
 - **Approved** — work resumes.
 - **Declined** — the unit moves to *Scope declined*, and goes back unrepaired.

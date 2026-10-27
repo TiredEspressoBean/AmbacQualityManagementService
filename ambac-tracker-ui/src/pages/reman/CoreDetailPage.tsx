@@ -1,5 +1,6 @@
 import { RecordHistoryCard } from "@/components/data-management/RecordHistoryCard";
 import { RequestAuthorisationButton } from "@/components/reman/RequestAuthorisationButton";
+import { ReportButton } from "@/components/reports/ReportButton";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { useState } from "react";
@@ -137,6 +138,14 @@ export function CoreDetailPage() {
                     )}
                     {core.status === 'IN_REBUILD' && core.returns_to_customer && (
                         <RequestAuthorisationButton coreId={id!} coreNumber={core.core_number} variant="outline" size="default" />
+                    )}
+                    {/* The over-and-above scope sheet for the customer: what work, what
+                        parts, and the finding behind each — before sending, and while
+                        their answer is awaited. Scope only; pricing is not UQMES's. */}
+                    {core.returns_to_customer && (core.status === 'AWAITING_AUTHORISATION'
+                        || (core.status === 'IN_REBUILD' && (core.authorisation_needed?.length ?? 0) > 0)) && (
+                        <ReportButton reportType="over_and_above_scope" params={{ core_id: id! }}
+                            label="Scope for customer" size="default" />
                     )}
                     {core.status === 'AWAITING_AUTHORISATION' && (
                         <>

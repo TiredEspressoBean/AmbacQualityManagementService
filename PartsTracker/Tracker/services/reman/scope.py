@@ -70,6 +70,15 @@ def default_preset_for(core_type):
     )
 
 
+def raised_by(code, slot) -> bool:
+    """Whether `slot`'s resolution raises `code`: matched on (resolution, component
+    type), with a null component_type meaning "whatever the component" — whole-unit
+    work like a final test, raised by any slot taking that resolution."""
+    if code.trigger != slot.resolution:
+        return False
+    return not code.component_type_id or str(code.component_type_id) == slot.component_type_id
+
+
 def resolve_scope(core, slots, preset=None) -> ResolvedScope:
     """The repair codes this unit's rebuild raises, and the repairs they'll route it
     to, given its resolved slots.
@@ -101,9 +110,7 @@ def resolve_scope(core, slots, preset=None) -> ResolvedScope:
             "should author one."
         )
 
-    # Codes raised by findings. Matched on (component type, resolution), with a
-    # null component_type meaning "whatever the component" — whole-unit work like a
-    # final test, which is raised by any slot taking that resolution.
+    # Codes raised by findings (`raised_by`).
     resolutions = {s.resolution for s in slots}
     candidates = (
         RepairCode.objects.filter(  # tenant-safe: .objects auto-scopes to the request tenant
@@ -116,7 +123,7 @@ def resolve_scope(core, slots, preset=None) -> ResolvedScope:
 
     for slot in slots:
         for code in by_trigger.get(slot.resolution, []):
-            if code.component_type_id and str(code.component_type_id) != slot.component_type_id:
+            if not raised_by(code, slot):
                 continue
             where = slot.position or slot.component_type_name
             _raise(code, f"{where}: {slot.finding}")

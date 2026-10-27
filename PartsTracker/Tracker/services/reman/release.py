@@ -15,6 +15,8 @@ already answers it, and a second field would be a place for the two to disagree.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from Tracker.services.reman.core_part import move_core, sync_part_status
 
 from django.core.exceptions import ValidationError
@@ -174,6 +176,81 @@ def pending_authorisation_scope(core, *, asking: bool = False) -> list[dict]:
                  .filter(code__in=codes, archived=False).values_list('code', 'name'))
     return [{'code': c, 'name': names.get(c, ''), 'why': [str(w) for w in why.get(c, [])]}
             for c in codes]
+
+
+@dataclass(frozen=True)
+class ScopePart:
+    """A part one over-and-above repair needs: the slot it fills and why."""
+    component: str
+    part_number: str
+    position: str
+    finding: str
+    source: str          # 'Replacement part' | 'From recovered stock'
+
+
+@dataclass(frozen=True)
+class ScopeLine:
+    """One repair the customer is asked to authorise: the work, its parts, and the
+    findings behind it."""
+    code: str
+    name: str
+    work: list = field(default_factory=list)      # the repair step(s) the code sends it to
+    findings: list = field(default_factory=list)
+    parts: list = field(default_factory=list)     # [ScopePart]
+
+
+@dataclass(frozen=True)
+class OverAndAboveScope:
+    """What goes to the customer with an authorisation request. Scope only: UQMES
+    does not price, quote or raise orders (§3.2) — pricing happens in the system that
+    owns it."""
+    awaiting: bool                 # already sent and waiting, or what a request would send
+    entry_scope: str | None        # the rebuild level they bought
+    lines: list = field(default_factory=list)   # [ScopeLine]
+
+
+_PART_SOURCE = {'REPLACE_BUY': 'Replacement part', 'REPLACE_POOL': 'From recovered stock'}
+
+
+def over_and_above_scope(core) -> OverAndAboveScope | None:
+    """The over-and-above scope document's content: each repair awaiting the customer's
+    answer (or that a request would ask about, for a unit in rebuild), the work it is,
+    the parts it needs, and the findings behind it. None when there is nothing to ask.
+
+    Built on `pending_authorisation_scope` — which codes are asked is its answer — and
+    the rebuild plan, whose slots and expected repairs say what each code means for
+    this unit. Writes nothing."""
+    from Tracker.models import PartTypes, RepairCode
+    from Tracker.services.reman.rebuild import resolve_rebuild_plan
+    from Tracker.services.reman.scope import raised_by
+
+    awaiting = core.status == 'AWAITING_AUTHORISATION'
+    asked = pending_authorisation_scope(core, asking=not awaiting)
+    if not asked:
+        return None
+    plan = resolve_rebuild_plan(core)
+    codes = {c.code: c for c in RepairCode.objects.filter(  # tenant-safe: .objects auto-scopes
+        code__in=[a['code'] for a in asked], is_current_version=True, archived=False)}
+    replaced = [s for s in plan.slots if s.resolution in _PART_SOURCE]
+    numbers = dict(PartTypes.objects.filter(  # tenant-safe: .objects auto-scopes
+        id__in={s.component_type_id for s in replaced}).values_list('id', 'ERP_id'))
+    numbers = {str(k): v or '' for k, v in numbers.items()}
+
+    lines = []
+    for a in asked:
+        code = codes.get(a['code'])
+        work = []
+        for r in plan.expected_repairs:
+            if r.code == a['code'] and r.step_name not in work:
+                work.append(r.step_name)
+        parts = [ScopePart(component=s.component_type_name,
+                           part_number=numbers.get(s.component_type_id, ''),
+                           position=s.position or '', finding=s.finding,
+                           source=_PART_SOURCE[s.resolution])
+                 for s in replaced if code is not None and raised_by(code, s)]
+        lines.append(ScopeLine(code=a['code'], name=a['name'], work=work,
+                               findings=list(a['why']), parts=parts))
+    return OverAndAboveScope(awaiting=awaiting, entry_scope=plan.entry_scope, lines=lines)
 
 
 @transaction.atomic
