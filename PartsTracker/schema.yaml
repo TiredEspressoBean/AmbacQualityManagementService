@@ -73093,6 +73093,7 @@ components:
           type: string
           format: uuid
           readOnly: true
+          nullable: true
         implementation_plan:
           type: string
           description: How the change will be carried out, who is responsible, what

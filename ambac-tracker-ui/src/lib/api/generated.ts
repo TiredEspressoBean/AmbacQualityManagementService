@@ -7640,7 +7640,7 @@ export type ProcessChangeOrder = {
   request_is_extension: boolean;
   request_temporary_until: string | null;
   target_process_name: string;
-  draft_process_version_id: string;
+  draft_process_version_id: string | null;
   /**
    * How the change will be carried out, who is responsible, what artifacts will be modified.
    */
@@ -28598,7 +28598,7 @@ const ProcessChangeOrder = z.object({
   request_is_extension: z.boolean(),
   request_temporary_until: z.string().nullable(),
   target_process_name: z.string(),
-  draft_process_version_id: z.string().uuid(),
+  draft_process_version_id: z.string().uuid().nullable(),
   implementation_plan: z.string(),
   effective_date: z.string().nullish(),
   migration_disposition: ProcessChangeOrderMigrationDispositionEnum.optional(),

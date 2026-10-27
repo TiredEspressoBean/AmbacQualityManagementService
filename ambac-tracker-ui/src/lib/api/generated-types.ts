@@ -32924,7 +32924,7 @@ export interface components {
             readonly request_temporary_until: string | null;
             readonly target_process_name: string;
             /** Format: uuid */
-            readonly draft_process_version_id: string;
+            readonly draft_process_version_id: string | null;
             /** @description How the change will be carried out, who is responsible, what artifacts will be modified. */
             implementation_plan: string;
             /**

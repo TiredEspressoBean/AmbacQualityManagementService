@@ -94,6 +94,12 @@ function gateFrom(e: unknown): TrainingGateInfo | null {
 function rethrow(e: unknown, what: string): never {
     const gate = gateFrom(e);
     if (gate) throw new TrainingGateError(gate);
+    // A refusal the server wrote for people (an ended temporary change, a hold) is
+    // shown as it is — not prefixed "Claim failed: HTTP 400:".
+    const body = apiErrorBody(e);
+    const detail = typeof body === "object" && body !== null
+        ? (body as { detail?: unknown }).detail : undefined;
+    if (typeof detail === "string" && detail) throw new Error(detail);
     throw new Error(`${what}: ${describeApiError(e)}`);
 }
 

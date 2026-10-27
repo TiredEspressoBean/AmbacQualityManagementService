@@ -297,6 +297,9 @@ def _edge_summary(edge) -> Dict[str, Any]:
     return {
         "from_step": str(edge.from_step_id),
         "to_step": str(edge.to_step_id),
+        # Names for the reader; the ids above are what rebase resolves.
+        "from_step_name": edge.from_step.name,
+        "to_step_name": edge.to_step.name,
         "edge_type": edge.edge_type,
         "pre_approved": edge.pre_approved,
     }

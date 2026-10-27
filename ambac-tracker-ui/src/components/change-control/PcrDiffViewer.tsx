@@ -10,7 +10,12 @@ type StepEntry = {
     changes?: Record<string, ScalarDiff | { changed: true }>;
 };
 
-type EdgeEntry = { from_step: string; to_step: string; edge_type: string };
+// Names arrive on diffs captured since they were added; an older diff falls back to ids.
+type EdgeEntry = {
+    from_step: string; to_step: string; edge_type: string;
+    from_step_name?: string; to_step_name?: string;
+};
+const edgeEnd = (name: string | undefined, id: string) => name ?? `${id.slice(0, 8)}…`;
 
 type SubstepEntry = {
     id: string;
@@ -160,13 +165,13 @@ export function PcrDiffViewer({ diff }: { diff: ProcessDiff | null | undefined }
                         {edgesAdded.map((e, i) => (
                             <div key={`ea-${i}`} className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                                 <Plus className="h-3.5 w-3.5" />
-                                {e.from_step.slice(0, 8)}… → {e.to_step.slice(0, 8)}… <span className="text-muted-foreground">({e.edge_type})</span>
+                                {edgeEnd(e.from_step_name, e.from_step)} → {edgeEnd(e.to_step_name, e.to_step)} <span className="text-muted-foreground">({e.edge_type})</span>
                             </div>
                         ))}
                         {edgesRemoved.map((e, i) => (
                             <div key={`er-${i}`} className="flex items-center gap-2 text-destructive line-through">
                                 <Minus className="h-3.5 w-3.5" />
-                                {e.from_step.slice(0, 8)}… → {e.to_step.slice(0, 8)}… <span>({e.edge_type})</span>
+                                {edgeEnd(e.from_step_name, e.from_step)} → {edgeEnd(e.to_step_name, e.to_step)} <span>({e.edge_type})</span>
                             </div>
                         ))}
                     </div>

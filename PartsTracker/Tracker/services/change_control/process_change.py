@@ -756,6 +756,12 @@ def propose_temporary_extension(temporary_pcr: ProcessChangeRequest, *, user,
         raise ValueError(
             f"{temporary_pcr.artifact_number} isn't a temporary change in force, so there "
             f"is nothing to extend.")
+    # Refused here, not first at submit: an extension that ends sooner can never be
+    # submitted, so it shouldn't be raised.
+    if version.temporary_until and temporary_until <= version.temporary_until:
+        raise ValueError(
+            f"An extension must end after {version.temporary_until:%Y-%m-%d}, the date "
+            f"{temporary_pcr.artifact_number} ends now.")
     number = next_artifact_number(tenant_id=temporary_pcr.tenant_id, artifact_type='PCR')
     return ProcessChangeRequest.objects.create(
         tenant=temporary_pcr.tenant,

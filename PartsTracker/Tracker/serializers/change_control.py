@@ -198,9 +198,12 @@ class ProcessChangeOrderSerializer(SecureModelMixin):
         source='request.target_process.name',
         read_only=True,
     )
+    # Null for an extension's PCO: it moves an end date and drafts no process. Declared
+    # non-null, the client refused the extension's PCO page outright.
     draft_process_version_id = serializers.PrimaryKeyRelatedField(
         source='draft_process_version',
         read_only=True,
+        allow_null=True,
     )
     approved_by_username = serializers.CharField(
         source='approved_by.username',

@@ -34,6 +34,9 @@ export function useSubmitProcessChangeRequest() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "process-change-requests" });
+            // The PCR's own page: without this it stayed on DRAFT, Submit still offered,
+            // until a reload.
+            queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "process-change-request" });
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "pcr-for-draft" });
         },
     });

@@ -10,8 +10,8 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 
 from Tracker.models import (
-    Parts, PartTypes, ProcessChangeMigrationDisposition, ProcessChangeOrder, Processes,
-    StepExecution,
+    Parts, PartTypes, ProcessChangeMigrationDisposition, ProcessChangeOrder,
+    ProcessChangeRequest, Processes, StepExecution,
 )
 from Tracker.services.change_control import approve_pcr, implement_pco, submit_pcr
 from Tracker.services.change_control.process_change import (
@@ -123,13 +123,15 @@ class TemporaryChangeTests(TenantTestCase):
         self.assertEqual(temporary.temporary_until, new_until)
 
     def test_an_extension_must_end_later(self):
+        """Refused when it is raised, not first at submit: one that ends sooner could
+        never be submitted (Engineering walk 2026-10-27)."""
         pcr = self._temporary_pcr(until=self.today + timedelta(days=30))
         self._implement(pcr)
-        extension = propose_temporary_extension(
-            pcr, user=self.user_a, temporary_until=self.today + timedelta(days=10),
-            justification="Fixture still late")
         with self.assertRaisesMessage(ValueError, "must end after"):
-            submit_pcr(extension, user=self.user_a)
+            propose_temporary_extension(
+                pcr, user=self.user_a, temporary_until=self.today + timedelta(days=10),
+                justification="Fixture still late")
+        self.assertFalse(ProcessChangeRequest.objects.filter(extends_request=pcr).exists())
 
     def test_a_work_order_returns_to_the_baseline(self):
         pco = self._implement(self._temporary_pcr())

@@ -798,9 +798,11 @@ export default function ProcessFlowPage() {
   const processStatus = processWithSteps?.status as string | undefined;
   const isProcessEditable = isDemo || processStatus === 'DRAFT';
 
-  // Provenance: is this DRAFT the working copy of an open PCR?
+  // Provenance: is this DRAFT the working copy of an open PCR — or, once implemented,
+  // a temporary version, which keeps naming its PCR and end date (it is APPROVED by then).
   const { data: linkedPcr } = usePcrForDraftProcess(
-    processStatus === 'DRAFT' && !isDemo ? (processId ?? undefined) : undefined,
+    (processStatus === 'DRAFT' || processWithSteps?.is_temporary) && !isDemo
+      ? (processId ?? undefined) : undefined,
   );
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const { has: hasPerm } = usePermissionSet();

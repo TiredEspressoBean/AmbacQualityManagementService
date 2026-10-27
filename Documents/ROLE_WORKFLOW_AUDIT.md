@@ -428,6 +428,7 @@ who, when and old→new, but never a reason.
 
 | Finding | Where | Note |
 |---|---|---|
+| **Editing a step makes its connections look changed** | Engineering, PCR diff | Edges are compared by step id (`diff._EDGE_KEY_FIELDS`), and editing a step gives it a new version and id, so every connection to it shows as removed and re-added although the routing is the same. Names now show instead of ids. Comparing by step identity needs rebase (`rebase.py`, which replays edges by id) changed with it. Found on the 2026-10-27 walk |
 
 ### Walked 2026-10-19 — the day's builds
 
@@ -461,11 +462,18 @@ database, not just the screen.
 - The PCR submit dialog let Justification and Risk analysis through blank, and
   the client then refused with a Zodios error.
 
-**Not walked:**
-- the expiry refusal (the end date is in the future; tests cover it)
-- **Extend…**
-- the PCN text
-- the process-editor banner on a temporary version
+**Walked 2026-10-27** (PCR-2026-0011, a temporary change on Injector Reman, one
+teardown WO named, then moved back to the baseline):
+- the PCN text: temporary, the end date, the WO, the baseline current for the rest
+- the process-editor banner: *Temporary change PCR-… — in force until …* (fixed: it
+  never showed, see Resolved)
+- **Extend…**: raised, submitted, approved, implemented; the end date moved and the
+  register reads *Extends PCR-…* (fixed: an earlier date was accepted until submit,
+  and the extension's PCO page didn't load)
+- the expiry refusal: end date set to yesterday for the check, then restored; the
+  register badge and the PCR card turn red, and **Work** is refused with the
+  documented message (fixed: it was prefixed *Claim failed: HTTP 400:*)
+- **Move back to baseline**, with its confirmation
 
 ### Parked
 
@@ -689,6 +697,7 @@ One line each, newest first. The full write-ups are in git history.
 | A cancelled PCR's draft blocked every later revision of the process | The one-draft guard ignores archived drafts (2026-10-27, walked) |
 | Change-control loose ends: a PCR whose draft changed nothing could be submitted; the affected-WO count misread for a temporary change; the signatures panel showed *Pending* on a closed request; the submit dialog doubled its error | Submit refuses an unchanged draft (extensions excepted); the count reads *In-flight WOs it could apply to* for a temporary change; a closed request reads *Not signed* and says nobody is waiting; one error toast (2026-10-27, walked). *Move back to baseline* already confirmed |
 | The Pick Sheet has no button | Stale: **Pick Sheet** and **Kit Sheet** are on the Staging page (checked 2026-10-27) |
+| Temporary-change walk 2026-10-27: the process-editor banner never showed on a temporary version; an extension ending sooner was accepted until submit; an extension's PCO page didn't load; the PCR page stayed on Draft after submit; the PCR diff showed connections as ids; an expired change's refusal read *Claim failed: HTTP 400:* | The editor looks up a temporary version's PCR too; raising an extension refuses an earlier date; the PCO's draft version is nullable in the schema (an extension drafts none); submitting refreshes the PCR page; connections show step names; a server refusal shows as written |
 | The over-and-above scope had no document | **Scope for customer** on the core prints it (5a6f87a): per repair awaiting the customer, the work, the finding behind it and the parts, with an authorise/decline space; no prices. A customer's lot is sent, printed and answered together from the work order's Cores card (ea2ab19). The answer stays all-or-nothing per unit; per-item answers wait on deciding which repairs are required (2026-10-27) |
 | Every report is gated by one permission | Decided (user, 2026-10-27): keep the single `export_data` gate. At shops up to ~100 people the same few produce every report; customers don't hold it. Adapters read by tenant, not by the requester's per-model perms or `for_user`, so revisit if a tenant needs narrower gates |
 | In Simplified mode one person can carry a process change alone | Decided (user): in Simplified mode the author may approve their own PCR; Regulated mode is the signed, independent path. `change-control/overview.md` says so |
