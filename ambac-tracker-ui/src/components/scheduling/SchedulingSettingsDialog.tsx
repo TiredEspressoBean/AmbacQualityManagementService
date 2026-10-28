@@ -124,7 +124,9 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
   const onSave = () => {
     // Coerce numeric fields; leave decimals as strings; booleans/select pass through.
     const payload: Record<string, unknown> = {};
-    for (const f of [...SOLVER, ...FENCES, ...FLOW, ...AUTO_INT]) {
+    // Every numeric field the dialog shows — the release ceiling (NORM) was left out,
+    // so editing it did nothing.
+    for (const f of [...SOLVER, ...FENCES, ...FLOW, ...NORM, ...AUTO_INT]) {
       const raw = form[f.key];
       if (raw === "" || raw == null) continue;
       payload[f.key] = f.kind === "decimal" ? String(raw) : Number(raw);
@@ -279,8 +281,8 @@ export function SchedulingSettingsDialog({ open, onOpenChange }: Props) {
                         applied while behaving identically to the default. */}
                     {form.release_policy === "constraint" && (
                       <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                        Mark the governing station as the bottleneck under Admin → Work
-                        Centers. Until one is marked, this behaves the same as
+                        Mark the governing station as the bottleneck under Data Management →
+                        Work Centers. Until one is marked, this behaves the same as
                         balancing every resource.
                       </p>
                     )}
