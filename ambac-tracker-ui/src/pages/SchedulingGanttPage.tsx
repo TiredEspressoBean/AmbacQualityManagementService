@@ -1592,7 +1592,7 @@ export function SchedulingGanttPage() {
                 {z.name === "Frozen" && schedConfig
                   ? `Frozen: next ${schedConfig.frozen_zone_days} day${schedConfig.frozen_zone_days === 1 ? "" : "s"} (locked)`
                   : z.name === "Slushy" && schedConfig
-                    ? `Slushy: to day ${schedConfig.frozen_zone_days + schedConfig.slushy_zone_days}`
+                    ? `Slushy: to day ${(schedConfig.frozen_zone_days ?? 0) + (schedConfig.slushy_zone_days ?? 0)}`
                     : z.name === "Liquid" && schedConfig
                       ? `Liquid: plans ${schedConfig.horizon_days} days out`
                       : z.name}
