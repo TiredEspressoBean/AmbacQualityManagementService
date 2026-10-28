@@ -211,6 +211,7 @@ A lot can also be held by hand. **Place hold** in the lot page header opens
 **Hold &lt;lot&gt;**, which needs a reason. It is offered on **Accepted**, **In
 Use**, **Received**, **Awaiting Inspection** and **Quarantine** lots, to holders
 of `hold_materiallot` — QA Inspector, QA Manager and Tenant Admin by default.
+It is not offered on a lot of cores, whose units are held one by one.
 Nothing can be drawn from the lot while it is held, and the hold shows as
 **Held by QA**. It is released through **Review hold** like any other hold.
 

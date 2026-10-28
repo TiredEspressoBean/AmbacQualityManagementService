@@ -573,8 +573,11 @@ released the lot is inspected, and it can be rejected from the inspection."*
 opens **Hold &lt;lot&gt;**, which needs a reason. It is offered on **Accepted**,
 **In Use**, **Received**, **Awaiting Inspection** and **Quarantine** lots, to
 holders of `hold_materiallot` — QA Inspector, QA Manager and Tenant Admin by
-default. Nothing can be drawn from the lot while it is held, and the hold shows
-as **Held by QA**. It is released through **Review hold**, with a reason, by
+default. It is not offered on a lot of cores, whose units are held one by one.
+Nothing can be drawn from the lot while it is held, and the hold shows as
+**Held by QA**. Without the permission, the panel says: *"A quality manager can
+release this hold. Released, the lot goes back to what it was — into stock, or
+on to its inspection."* It is released through **Review hold**, with a reason, by
 someone holding the disposition-approval permission. A lot held from stock goes
 back to what it was, **Accepted** or **In Use**, not through receiving again.
 
