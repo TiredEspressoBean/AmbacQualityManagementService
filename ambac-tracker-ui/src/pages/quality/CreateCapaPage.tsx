@@ -134,6 +134,8 @@ const required = {
 // Search params type for URL query parameters
 type CreateCapaSearchParams = {
     quality_reports?: string
+    /** A drafted problem statement (Defect Records' Create CAPA). */
+    problem?: string
 }
 
 // Simple debounce hook
@@ -258,7 +260,7 @@ function CreateCapaForm() {
         defaultValues: {
             capa_type: undefined,
             severity: undefined,
-            problem_statement: "",
+            problem_statement: searchParams.problem ?? "",
             immediate_action: null,
             assigned_to: null,
             due_date: null,

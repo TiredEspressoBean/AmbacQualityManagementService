@@ -17871,6 +17871,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/defect-records-export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Every Defect Records row matching the filters, as CSV (the table loads 100). Needs export_data; refused past the export row limit. Logged as a bulk export. */
+        get: operations["api_dashboard_defect_records_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/defect-trend/": {
         parameters: {
             query?: never;
@@ -72489,6 +72506,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefectRecordsResponse"];
+                };
+            };
+        };
+    };
+    api_dashboard_defect_records_export_retrieve: {
+        parameters: {
+            query?: {
+                days?: number;
+                defect_type?: string;
+                part_type?: string;
+                process?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
         };

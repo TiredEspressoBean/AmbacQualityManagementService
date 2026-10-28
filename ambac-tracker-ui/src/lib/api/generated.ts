@@ -35824,6 +35824,36 @@ Response:
   },
   {
     method: "get",
+    path: "/api/dashboard/defect-records-export/",
+    alias: "api_dashboard_defect_records_export_retrieve",
+    description: `Every Defect Records row matching the filters, as CSV (the table loads 100). Needs export_data; refused past the export row limit. Logged as a bulk export.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "days",
+        type: "Query",
+        schema: z.number().int().optional().default(30),
+      },
+      {
+        name: "defect_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "part_type",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "process",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/dashboard/defect-records/",
     alias: "api_dashboard_defect_records_retrieve",
     description: `Get filtered defect (failed quality report) records for drill-down table.
@@ -40637,7 +40667,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "patch",
     path: "/api/JobRoles/:id/",
@@ -40657,10 +40690,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/JobRoles/:id/",
@@ -44933,7 +44963,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "delete",
     path: "/api/OrderLines/:id/",
@@ -44948,10 +44981,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "post",
     path: "/api/OrderLines/:id/plan/",
@@ -50657,7 +50687,10 @@ Usage:
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/close/",
@@ -50680,10 +50713,7 @@ the completion blockers.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/decide/",
@@ -55947,7 +55977,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/pending/",
@@ -55955,10 +55988,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
     description: `List pending override requests that need approval`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/Steps/",
@@ -61120,7 +61150,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/:id/access-history/",
@@ -61135,10 +61168,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.array(AuditLog),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "post",
     path: "/api/User/bulk-activate/",

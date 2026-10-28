@@ -31,6 +31,8 @@ export type DispositionSearchParams = z.infer<typeof DispositionSearch>;
  *  list shouldn't block raising the CAPA. */
 export const CreateCapaSearch = z.object({
     quality_reports: z.string().optional(),
+    /** A drafted problem statement — Defect Records fills it from the view it was opened on. */
+    problem: z.string().optional().catch(undefined),
 });
 export type CreateCapaSearchParams = z.infer<typeof CreateCapaSearch>;
 

@@ -16,6 +16,7 @@ from django.db.models import Count, Q, F
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -1360,6 +1361,36 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         process = request.query_params.get('process')
         part_type = request.query_params.get('part_type')
 
+        queryset = self._defect_records_queryset(request)
+
+        # Get total before pagination
+        total = queryset.count()
+
+        # Apply pagination
+        queryset = queryset.distinct()[offset:offset + limit]
+
+        data = [self._defect_record_row(report) for report in queryset]
+
+        return Response({
+            'data': data,
+            'total': total,
+            'filters_applied': {
+                'defect_type': defect_type,
+                'process': process,
+                'part_type': part_type,
+                'days': days,
+            }
+        })
+
+    def _defect_records_queryset(self, request):
+        """Failed quality reports matching the Defect Records filters (days,
+        defect_type, process, part_type), newest first — shared by the table and its
+        export so the two can't disagree."""
+        days = int(request.query_params.get('days', 30))
+        defect_type = request.query_params.get('defect_type')
+        process = request.query_params.get('process')
+        part_type = request.query_params.get('part_type')
+
         start_date = timezone.now() - timedelta(days=days)
 
         # Base query: failed quality reports
@@ -1389,24 +1420,20 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
         if part_type:
             queryset = queryset.filter(part__part_type__name__icontains=part_type)
 
-        # Get total before pagination
-        total = queryset.count()
+        return queryset
 
-        # Apply pagination
-        queryset = queryset.distinct()[offset:offset + limit]
+    @staticmethod
+    def _defect_record_row(report) -> dict:
+        """One Defect Records row for a failed quality report."""
+        error_types = [err.error_name for err in report.errors.all() if err.error_name]
+        first_operator = report.operators.first()
 
-        # Build response data
-        data = []
-        for report in queryset:
-            error_types = [err.error_name for err in report.errors.all() if err.error_name]
-            first_operator = report.operators.first()
+        # Get disposition info if exists
+        disposition = report.dispositions.first()
+        disposition_status = disposition.current_state if disposition else None
+        disposition_type = disposition.disposition_type if disposition else None
 
-            # Get disposition info if exists
-            disposition = report.dispositions.first()
-            disposition_status = disposition.current_state if disposition else None
-            disposition_type = disposition.disposition_type if disposition else None
-
-            data.append({
+        return {
                 'id': report.id,
                 'part_erp_id': report.part.ERP_id if report.part else 'N/A',
                 'part_id': report.part.id if report.part else None,
@@ -1425,18 +1452,61 @@ class DashboardViewSet(TenantAwareMixin, viewsets.GenericViewSet):
                 'disposition_status': disposition_status,
                 'disposition_type': disposition_type,
                 'description': report.description[:100] + '...' if report.description and len(report.description) > 100 else (report.description or ''),
-            })
+        }
 
-        return Response({
-            'data': data,
-            'total': total,
-            'filters_applied': {
-                'defect_type': defect_type,
-                'process': process,
-                'part_type': part_type,
-                'days': days,
-            }
-        })
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='days', type=int, required=False, default=30),
+            OpenApiParameter(name='defect_type', type=str, required=False),
+            OpenApiParameter(name='process', type=str, required=False),
+            OpenApiParameter(name='part_type', type=str, required=False),
+        ],
+        responses={(200, 'text/csv'): OpenApiTypes.BINARY},
+        description="Every Defect Records row matching the filters, as CSV (the table "
+                    "loads 100). Needs export_data; refused past the export row limit. "
+                    "Logged as a bulk export.",
+    )
+    @action(detail=False, methods=['get'], url_path='defect-records-export')
+    def defect_records_export(self, request):
+        import csv
+        import io
+        from django.http import HttpResponse
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        from Tracker.services.core.access_log import record_access
+        from Tracker.services.spreadsheet_safety import csv_safe
+        from Tracker.throttling import get_client_ip
+        from Tracker.viewsets.mixins.data_export import MAX_EXPORT_ROWS
+
+        if not request.user.has_tenant_perm('export_data'):
+            raise PermissionDenied("Exporting needs the export data permission.")
+        queryset = self._defect_records_queryset(request).distinct()
+        row_count = queryset.count()
+        if row_count > MAX_EXPORT_ROWS:
+            raise ValidationError({'detail': (
+                f"{row_count:,} rows is more than one export returns ({MAX_EXPORT_ROWS:,}). "
+                "Filter the list first, then export.")})
+
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerow(["Part", "Part Type", "Process", "Defect Types", "Date", "Inspector",
+                         "Order", "Work Order", "Disposition"])
+        for report in queryset:
+            r = self._defect_record_row(report)
+            writer.writerow([csv_safe(v) for v in (
+                r['part_erp_id'], r['part_type'], r['step'], "; ".join(r['error_types']), r['date'],
+                r['inspector'], r['order'], r['work_order'], r['disposition_type'] or "Pending")])
+        filename = f"defects-{timezone.now().date().isoformat()}.csv"
+        response = HttpResponse(out.getvalue().encode('utf-8-sig'), content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        record_access(
+            obj=QualityReports, user=request.user, action_type='bulk_export',
+            object_repr=f'Export csv: Defect records ({row_count} rows)',
+            remote_addr=get_client_ip(request),
+            payload={'model': 'QualityReports', 'export_format': 'csv', 'row_count': row_count,
+                     'filename': filename, 'filters': {k: request.query_params.get(k) for k in
+                                                       ('days', 'defect_type', 'process', 'part_type')}},
+        )
+        return response
 
     @extend_schema(
         parameters=[

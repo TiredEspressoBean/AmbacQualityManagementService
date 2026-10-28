@@ -22,6 +22,9 @@ import {
     BarChart3,
     Hash,
 } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/lib/api/generated";
+import { blobErrorMessage, downloadBlob } from "@/lib/download";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -227,11 +230,46 @@ export function DefectAnalysisPage() {
         }
     }, [records, selectedIds.size]);
 
-    // CSV Export
-    const exportToCsv = useCallback(() => {
-        const dataToExport = selectedIds.size > 0
-            ? records.filter(r => selectedIds.has(r.id))
-            : records;
+    // Create CAPA, pre-filled from this view: a drafted problem statement from the
+    // filters and period, with the failed reports linked — the ticked ones, or else the
+    // matching ones, up to CAPA_LINK_CAP (the statement says when it stopped short).
+    const CAPA_LINK_CAP = 50;
+    const capaPrefill = useMemo(() => {
+        const chosen = selectedIds.size > 0 ? records.filter(r => selectedIds.has(r.id)) : records;
+        const linked = chosen.slice(0, CAPA_LINK_CAP);
+        const matching = selectedIds.size > 0 ? selectedIds.size : totalRecords;
+        const scope = [
+            filters.defect_type && `defect type ${filters.defect_type}`,
+            filters.part_type && `part type ${filters.part_type}`,
+            filters.process && `process ${filters.process}`,
+        ].filter(Boolean).join(", ");
+        const problem = `${matching} failed inspection${matching === 1 ? "" : "s"} in the last ${days} days`
+            + (scope ? ` (${scope})` : "") + "."
+            + (matching > linked.length
+                ? ` The first ${linked.length} are linked; the rest are on Defect Records.` : "");
+        return { reports: linked.map(r => String(r.id)).join(","), problem };
+    }, [records, selectedIds, totalRecords, filters, days]);
+
+    // CSV Export. Nothing ticked: every row matching the filters, from the server (the
+    // table loads only 100). Rows ticked: just those, which are all loaded.
+    const [exporting, setExporting] = useState(false);
+    const exportToCsv = useCallback(async () => {
+        if (selectedIds.size === 0) {
+            setExporting(true);
+            try {
+                const response = await api.axios.get("/api/dashboard/defect-records-export/", {
+                    params: { days, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) },
+                    responseType: "blob",
+                });
+                downloadBlob(response.data, `defects-${new Date().toISOString().split("T")[0]}.csv`);
+            } catch (e) {
+                toast.error(await blobErrorMessage(e, "Export failed."));
+            } finally {
+                setExporting(false);
+            }
+            return;
+        }
+        const dataToExport = records.filter(r => selectedIds.has(r.id));
 
         const headers = ["Part", "Part Type", "Process", "Defect Types", "Date", "Inspector", "Order", "Disposition"];
         const rows = dataToExport.map(r => [
@@ -253,7 +291,7 @@ export function DefectAnalysisPage() {
         a.download = `defects-${new Date().toISOString().split("T")[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-    }, [records, selectedIds]);
+    }, [records, selectedIds, days, filters]);
 
     return (
         <div className="container mx-auto p-5 space-y-4">
@@ -530,17 +568,20 @@ export function DefectAnalysisPage() {
                             </CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                            {selectedIds.size > 0 && (
+                            {records.length > 0 && (
                                 <Button variant="default" size="sm" asChild>
-                                    <Link to="/quality/capas">
+                                    <Link to="/quality/capas/new"
+                                        search={{ quality_reports: capaPrefill.reports, problem: capaPrefill.problem }}>
                                         <Plus className="h-4 w-4 mr-1" />
                                         Create CAPA
                                     </Link>
                                 </Button>
                             )}
-                            <Button variant="outline" size="sm" onClick={exportToCsv}>
+                            <Button variant="outline" size="sm" onClick={() => void exportToCsv()} disabled={exporting}
+                                title={selectedIds.size > 0 ? "Export the selected rows"
+                                    : `Export all ${totalRecords} matching rows`}>
                                 <Download className="h-4 w-4 mr-1" />
-                                Export
+                                {exporting ? "Exporting…" : selectedIds.size > 0 ? "Export selected" : "Export"}
                             </Button>
                         </div>
                     </CardHeader>

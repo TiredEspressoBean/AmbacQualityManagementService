@@ -43711,6 +43711,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/DefectRecordsResponse'
           description: ''
+  /api/dashboard/defect-records-export/:
+    get:
+      operationId: api_dashboard_defect_records_export_retrieve
+      description: Every Defect Records row matching the filters, as CSV (the table
+        loads 100). Needs export_data; refused past the export row limit. Logged as
+        a bulk export.
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+          default: 30
+      - in: query
+        name: defect_type
+        schema:
+          type: string
+      - in: query
+        name: part_type
+        schema:
+          type: string
+      - in: query
+        name: process
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/dashboard/defect-trend/:
     get:
       operationId: api_dashboard_defect_trend_retrieve
