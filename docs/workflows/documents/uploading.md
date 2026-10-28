@@ -24,8 +24,11 @@ PDF is recommended for controlled documents (non-editable, consistent display).
 
 ## File Size Limits
 
-- **Maximum file size**: 10 MB through the upload and revision forms. A file
-  uploaded under a record's **Attach Document** may be up to 100 MB.
+- **Maximum file size**: 100 MB — the same on the Documents upload form,
+  **Create Revision** and a record's **Attach Document**. The upload form's hint
+  reads *"PDF, Office, images, CAD and text, up to 100 MB"*; a larger file under
+  **Attach Document** is refused with *"File too large — documents can be up to
+  100 MB."*
 - **Recommended**: Under 5 MB for best performance
 
 For large files, consider:

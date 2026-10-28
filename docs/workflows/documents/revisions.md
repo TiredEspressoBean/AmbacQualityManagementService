@@ -124,12 +124,21 @@ Creating the revision is what makes it current — not approving it:
 
 ## Uncontrolled Documents
 
-For documents without approval requirements the same thing happens, with no
-approval step in between:
+For documents whose type has **Requires approval** off the same thing happens,
+with no approval step in between:
 
 1. Create new revision
 2. Immediately becomes current
 3. The previous revision stays in the history, still visible and not archived
+4. **Release** in the document header puts the Draft in force directly — its
+   dates are set and the earlier released revision is made obsolete. It is
+   offered to holders of `release_documents`
+
+The draft's **Approval** tab reads *"No approval needed — This document's type
+doesn't require approval. It is put in force with Release, by someone who can
+release documents."* A draft of a type that requires approval can't be released
+before it is approved: *"This document's type requires approval. Must be
+approved before release — submit it for approval first."*
 
 ## Draft Revisions
 

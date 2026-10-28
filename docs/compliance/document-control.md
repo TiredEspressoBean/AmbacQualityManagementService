@@ -42,7 +42,7 @@ Secret** — plus per-document links and customer access control.
     Confidential will not do it.
 
 ### Audit Trail
-- All changes logged
+- Changes made in the application logged — see [Audit Trails](audit-trails.md)
 - Who, what, when recorded
 - Immutable records
 
@@ -90,23 +90,18 @@ are separate* above.
 
 1. Open existing document
 2. Click **Create Revision**
-3. Upload new file
-4. Document change notes
-5. Submit for approval
-6. On approval:
-   - New revision becomes current
-   - Previous becomes obsolete
+3. Enter the **Change Justification** (required) and, optionally, a new file
+4. Click **Create Revision** — the new revision, in Draft, becomes the current
+   version of the document
+5. Submit it for approval — or, if its document type needs no approval,
+   release the draft directly
+6. Release it once approved — releasing it makes the previously released
+   revision obsolete
 
 ## Change Documentation
 
-For each revision, document:
-
-| Field | Description |
-|-------|-------------|
-| **Change Summary** | What changed |
-| **Reason** | Why the change |
-| **Impact** | Affected areas |
-| **ECO Reference** | Engineering change order |
+Each revision carries one field for its change record: the **Change
+Justification** — what changed and why. A revision is refused without it.
 
 ## Distribution Control
 
@@ -128,8 +123,8 @@ Track document distribution:
 
 ## Obsolete Document Handling
 
-Obsoleting is **always a deliberate act** — approving a new revision does not
-do it for you.
+Releasing a new revision obsoletes earlier released revisions automatically;
+obsoleting a document with no successor is a deliberate act (`release_documents`).
 
 When documents become obsolete:
 - Clearly marked as obsolete
@@ -137,24 +132,16 @@ When documents become obsolete:
 - Retained for historical reference
 - Accessible for audit purposes
 
-## Training Integration
-
-Link documents to training:
-- Document release triggers training update
-- Users notified of new versions
-- Training records track acknowledgment
-
 ## Periodic Review
 
-Configure document review cycles:
+A document type carries a **Review Period (days)**. When a document of that type
+is released, its **review date** is set to the effective date plus that period.
 
-| Setting | Description |
-|---------|-------------|
-| **Review Interval** | Months between reviews |
-| **Owner** | Who reviews |
-| **Reminder** | Days before due |
-
-System notifies owners when review due.
+Released documents whose review date has arrived are listed as due for review —
+the **Periodic review due** list on the Home page of the Document Controller,
+QA Manager and Tenant Admin, and a **Due for review** count. There is no review
+owner and no reminder notification; whoever keeps the document library reads
+that list.
 
 ## Document Retention
 
@@ -167,31 +154,15 @@ Retention per document type:
 | Certificates | Per certification body |
 | Contracts | Per legal requirements |
 
-## Compliance Reports
-
-### Document Status Report
-- All documents by status
-- Pending approvals
-- Overdue reviews
-
-### Revision History Report
-- Changes over time
-- By document type
-- Approval tracking
-
-### Access Report
-- Who accessed what
-- When accessed
-- Download tracking
-
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
 | `view_documents` | View documents |
-| `add_documents` | Create documents |
-| `change_documents` | Edit, submit for approval |
-| `classify_documents` | Set document classification level |
+| `add_documents` | Create documents and revisions; submit for approval |
+| `change_documents` | Edit |
+| `release_documents` | Release, mark obsolete, and reinstate |
+| `classify_documents` | Change a document's classification after upload — the uploader picks any classification at upload |
 | `view_confidential_documents` | Access CONFIDENTIAL docs |
 | `view_restricted_documents` | Access RESTRICTED docs |
 | `view_secret_documents` | Access SECRET docs |

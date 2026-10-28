@@ -25,26 +25,30 @@ Audit trails are required by:
 
 ## What is Logged
 
-### All Record Changes
-Every create, update, delete is logged:
+### Record Changes
+Changes made through the application's normal save path are logged:
 - What changed (before/after values)
 - Who made the change
 - When (timestamp)
-- System information
+
+Bulk system updates, which bypass that path, are not logged, and changes made
+with no acting user (background and system writes) are not visible in the
+tenant's audit log.
 
 ### Authentication events are **not** logged
 
 !!! danger "There is no authentication audit trail in uqmes"
-    Logins, failed logins, logouts and session timeouts leave **no trace** in
-    the audit log. Do not offer this as evidence, and do not plan an
+    Failed logins, logouts and session timeouts leave **no trace** in the audit
+    log, and sign-ins are not recorded as authentication events. Do not offer
+    the audit log as evidence of who signed in, and do not plan an
     investigation around it.
 
     If you need to show who signed in, or investigate repeated failed attempts,
     that evidence comes from your **identity provider** or your **web server
     logs**, not from here. Establish where it lives *before* an assessor asks.
 
-    What uqmes does record is what a signed-in user **did** — every create,
-    update and delete against a record, attributed and timestamped. The identity
+    What uqmes does record is what a signed-in user **did** — the creates,
+    updates and deletes they make against records, attributed and timestamped. The identity
     is proven at the edge; the accountability is kept here.
 
 ### Electronic Signatures
@@ -55,7 +59,8 @@ Every create, update, delete is logged:
 
 ### Permission Changes
 - Group assignments
-- Permission grants/revocations
+- Permission grants/revocations — in the group's history, as a change to
+  **permissions** (add or delete) with who made it
 - User status changes
 
 ## Audit Trail Characteristics
@@ -67,11 +72,17 @@ the database, not only in the application, and there are two independent
 layers.
 
 **PostgreSQL triggers prevent the write.** `setup_audit_triggers` installs
-triggers that reject UPDATE and DELETE on the audit tables — **including for
-superusers** — covering:
+triggers that block UPDATE and DELETE on the audit tables by any role,
+superusers included, while the trigger is installed — covering:
 
 `auditlog_logentry`, `permissionchangelog`, `steptransitionlog`,
-`samplingauditlog`, `approvalresponse`, `capastatustransition`, `recordedit`.
+`samplingauditlog`, `capastatustransition`, `recordedit`.
+
+`approvalresponse` has its own trigger: a recorded approval response can only be
+withdrawn, delegated, or answered again after withdrawal. Any other change, and
+any deletion, is refused (*COMPLIANCE VIOLATION: An approval response can only be
+withdrawn, delegated, or answered again after withdrawal.*). Each withdrawal and
+re-answer is also kept as a correction (`recordedit`) and in the audit log.
 
 The command runs as step 4 of `setup_database`, which containers run on
 start, so a normal deployment has them without anyone remembering to.
@@ -111,8 +122,6 @@ Deliberately not `all`: those three classes are the accountability set.
 
 ### User Attribution
 - Unique user identification
-- Cannot use shared accounts
-- Session tracking
 
 ## Viewing Audit Data
 
@@ -166,7 +175,7 @@ Log**, and in any record's **Activity History** section.
 | Property | Implementation |
 |----------|----------------|
 | Secure, computer-generated timestamps | Server-side UTC timestamps |
-| Audit trail for changes | All changes logged |
+| Audit trail for changes | Changes through the normal save path logged (see [Record Changes](#record-changes)) |
 | Record of operator identity | User ID on all records |
 | Previous values retained | Before/after values stored |
 | Traceability | Part-to-lot-to-material tracking |

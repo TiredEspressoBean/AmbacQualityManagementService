@@ -554,6 +554,7 @@ A held lot shows an amber **Held at receiving** panel on its inspection page.
 | **Unapproved part** | A quality manager releases it |
 | **Held by a quality gate** | A quality rule stopped the lot rather than a missing document |
 | **Whole-lot reject requested** | Someone confirms or declines — see [Who can reject a whole lot](#who-can-reject-a-whole-lot) |
+| **Held by QA** | Placed by hand with **Place hold**; a quality manager releases it |
 
 **The first three clear themselves.** You are not asking permission, you are
 supplying what was needed — the heat-number box above is on the panel itself, and
@@ -567,6 +568,15 @@ reason**, to someone holding the disposition-approval permission. The lot then
 continues with **that one check waived** — any other hold still applies. Anyone
 without the permission sees: *"A quality manager can release this hold. Once
 released the lot is inspected, and it can be rejected from the inspection."*
+
+**A hold can also be placed by hand.** **Place hold** in the lot page header
+opens **Hold &lt;lot&gt;**, which needs a reason. It is offered on **Accepted**,
+**In Use**, **Received**, **Awaiting Inspection** and **Quarantine** lots, to
+holders of `hold_materiallot` — QA Inspector, QA Manager and Tenant Admin by
+default. Nothing can be drawn from the lot while it is held, and the hold shows
+as **Held by QA**. It is released through **Review hold**, with a reason, by
+someone holding the disposition-approval permission. A lot held from stock goes
+back to what it was, **Accepted** or **In Use**, not through receiving again.
 
 !!! note "A hold is not a rejection"
     A delivery missing its certificate waits for the paperwork rather than

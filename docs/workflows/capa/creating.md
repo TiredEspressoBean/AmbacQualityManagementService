@@ -37,6 +37,7 @@ the CAPA list and link the reports it answers.
 | **Problem Statement** | Clear description of the issue | Yes |
 | **Due Date** | Target closure date | No |
 | **Assigned To** | Responsible person | No |
+| **Allow Self-Verification** | Lets the initiator or assignee verify their own work. Only someone with `verify_capa` (by default QA Manager and Tenant Admin) can set it; for anyone else it is disabled — *"Only QA (who can verify CAPAs) can turn this on."* See [Verification](verification.md) | No |
 
 ### Problem Definition
 

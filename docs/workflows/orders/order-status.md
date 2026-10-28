@@ -62,7 +62,7 @@ Click an order to open it. The page carries:
 
 The first time an order's delivery date changes, uqmes keeps the earlier date as
 the **original**, and it is never overwritten after that. It counts as a move
-whoever made it: an edit to the order, the CRM sync, or a work order
+whoever made it: an edit to the order, an Orders import, the CRM sync, or a work order
 whose expected completion pushed the order later. An order given its first date
 has not slipped.
 

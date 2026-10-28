@@ -121,9 +121,13 @@ Use for consistent spread across the lot.
 
 | Parameter | Description |
 |-----------|-------------|
-| **Value (%)** | Inspect N% of lot |
+| **Value (%)** | Inspect N% of parts |
 
-Scales with lot size.
+Each part's answer comes from a hash of its identity, so the same part always
+gets the same answer, whatever else is at the step. It comes to about N% overall,
+not an exact count per lot — a small lot can get none; 0% selects none and 100%
+selects all. For guaranteed coverage of every lot, use **Every Nth Part** or
+**First N Parts**.
 
 ### First N Parts
 
@@ -158,8 +162,8 @@ Fixed sample size regardless of lot size.
 !!! warning "The value is a percentage, not a count of parts"
     Setting it to `5` does **not** sample five parts. It gives every part a 5%
     chance, so a lot of 20 may yield one part and a lot of 1000 about fifty. If you
-    want a fixed number of parts, use **Exact Count**; for a fixed proportion with
-    predictable behaviour, use **Percentage of Parts**.
+    want a fixed number of parts, use **Exact Count**; for a proportion whose
+    selection can be reproduced, use **Percentage of Parts**.
 
 !!! danger "Do not choose Pure Random for auditability"
     It is the one rule type deliberately built so a selection **cannot** be
@@ -167,8 +171,9 @@ Fixed sample size regardless of lot size.
     intent is a genuinely unpredictable spot check, not a repeatable one.
 
     **If you need a selection an auditor can reproduce, use Percentage of Parts.**
-    That is what it is for: it walks the parts in order and takes the first slice,
-    so the same lot always yields the same sample.
+    That is what it is for: it hashes each part's identity, on a step and on a
+    substep alike, so the same part always gets the same answer whatever else is
+    at the step.
 
 ## Lot-Acceptance Rule Types
 

@@ -106,9 +106,13 @@ For each quarantined part:
 
 ## Releasing from Quarantine
 
-Parts leave quarantine through a disposition. There are **five**, and the
-decision needs `approve_disposition` — or a co-signature from someone who holds
-it:
+Parts leave quarantine through a disposition. While a part has an open
+disposition, its status can't be changed by editing the part or by the bulk
+status action: *"&lt;part&gt; has an open disposition (&lt;DISP-…&gt;); its
+status changes through that disposition."* The disposition's decision moves it.
+
+There are **five** decisions, and the decision needs `approve_disposition` — or
+a co-signature from someone who holds it:
 
 | Decision | What happens to the part |
 |----------|--------------------------|
@@ -204,7 +208,7 @@ The narrow permissions are the ones that decide what happens next:
 | Permission | Allows | Held by |
 |------------|--------|---------|
 | `view_parts` | See quarantined parts | Every staff role |
-| `add_parts` / `change_parts` | Put a part into or out of quarantine | Every staff role |
+| `add_parts` / `change_parts` | Put a part into quarantine; change its status while it has no open disposition | Every staff role |
 | `approve_disposition` | **Decide** what happens to it | QA Manager, Tenant Admin |
 | `close_disposition` | **Close** the disposition once resolved | QA Inspector, Shift Lead, Production Manager, QA Manager, Tenant Admin |
 

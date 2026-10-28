@@ -56,11 +56,12 @@ Random selection — deliberately not reproducible:
     substep. If you need a selection you can re-derive, use **Percentage**.
 
 !!! note "If you need a sample an auditor can reproduce, use Percentage"
-    **Percentage** is deterministic. On a substep it hashes the part's identity
-    (SHA-256), so the same part always gets the same answer and the selection
-    can be re-derived from the record. On a step it takes the first slice of
-    the parts at the step, in creation order, so the answer depends on which
-    parts are there when it runs.
+    **Percentage** is deterministic. On a step and on a substep alike it hashes
+    the part's identity (SHA-256), so the same part always gets the same answer,
+    whatever else is at the step, and the selection can be re-derived from the
+    record. It comes to about the percentage overall, not an exact count per lot;
+    0% selects none and 100% selects all. If every lot needs guaranteed coverage,
+    use **Every Nth Part** or **First N Parts**.
     **Pure Random** does the opposite on purpose — it is the stronger choice against
     gaming, and the weaker one for reconstruction. Pick the property you need.
 
@@ -142,7 +143,7 @@ choice is really about *which failure you are trying to catch*.
 | **First N Parts** | Setup and first-off errors | Anything that develops during the run |
 | **Last N Parts** | Tool wear, drift, thermal growth | Setup errors — the lot is already made |
 | **Every Nth Part** | Steady-state process shift | Periodic faults that sync with your interval |
-| **Percentage** | Scales coverage with lot size | Small lots get very few samples |
+| **Percentage** | Scales coverage with lot size | Small lots get very few samples, possibly none — it is about the percentage overall, not per lot |
 | **Pure Random** | Anything — it has no pattern to defeat | Nothing systematic, but the workload is unpredictable |
 | **Exact Count** | Gives a fixed, plannable workload | Detection power falls as lots get bigger |
 

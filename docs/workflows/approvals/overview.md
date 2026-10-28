@@ -122,8 +122,8 @@ There is one action — **Submit Response** — which opens a dialog with a
 
 | Decision | Effect |
 |----------|--------|
-| **Approve** | You approve |
-| **Reject** | You reject, with a comment saying why; the requester can revise and resubmit |
+| **Approve** | You approve: draw your signature, confirm it, and re-enter your password. The server refuses an approval without a signature (*Sign to approve.*) or without the password (*Enter your password to approve.*) |
+| **Reject** | You reject, with a comment saying why — the dialog says *Comments are required when rejecting*, and the server refuses a rejection with no reason (*Say why you are rejecting it.*); the requester can revise and resubmit |
 | **Delegate** | You pass the decision on. Offered only when the template's **Delegation** is **Optional**; the starter templates allow it on every type except Critical CAPA Approval, and a new template starts at **Disabled** |
 
 There is no "request more information" decision. If you need more before you can
@@ -131,7 +131,7 @@ decide, leave the request open and ask outside it, or reject with comments
 saying what is missing.
 
 Your response records your identity, the decision, a timestamp, the
-verification method used, and your comments. See [Electronic
+verification method used (*Password* for an approval), and your comments. See [Electronic
 Signatures](../../compliance/signatures.md).
 
 ## Putting a response or a request right

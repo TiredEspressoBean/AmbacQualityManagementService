@@ -130,7 +130,7 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 | AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
 | AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
 | AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
-| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on seven audit tables, superusers included (`setup_audit_triggers`, run by `setup_database` from the app container, so present on every deployment). pgAudit adds statement-level logging on the self-hosted Compose stack only — a managed Postgres does not have it |
+| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on six audit tables, superusers included, and on approval responses allow only withdraw, delegate, or answer again after withdrawal (`setup_audit_triggers`, run by `setup_database` from the app container, so present on every deployment). pgAudit adds statement-level logging on the self-hosted Compose stack only — a managed Postgres does not have it |
 | AU.L2-3.3.9 | Audit access restriction | ✅ | `view_auditlog` / `view_logentry` for reading, `export_auditlog` for extraction; the log viewset is read-only and tenant-scoped |
 
 !!! warning "3.3.4 is a deployment step, not a code gap — but it is still yours to close"
@@ -256,7 +256,7 @@ than the control itself. Claiming them as implemented overstates it.
 |----------|---------------------|---------------------------|
 | **IR.L2-3.6.1–3** | CAPA gives a structured investigation and corrective-action record, with root-cause analysis and effectiveness verification | Incident *classification*, reporting timelines, and the judgement that something is a security incident rather than a quality one |
 | **PS.L2-3.9.1–2** | `is_active`, bulk deactivation, and an audit trail of permission changes | Screening before access, and the offboarding process that triggers deactivation |
-| **CA.L2-3.12.1–4** | `PermissionChangeLog` and the audit trail as evidence for review | The security assessment, the SSP, and the POA&M themselves |
+| **CA.L2-3.12.1–4** | The audit trail, including group permission changes, as evidence for review | The security assessment, the SSP, and the POA&M themselves |
 | **SI.L2-3.14.1–7** | Structured error handling; scoped rate limiting on abuse-prone unauthenticated endpoints | Flaw remediation, malicious-code protection, and monitoring — none of which live in the application |
 
 !!! note "CAPA is not an incident response plan"
@@ -279,7 +279,7 @@ Everything below is an organizational responsibility rather than a POA&M item:
 | AC.L2-3.1.20 | Integration logging (HubSpot sync) | External system inventory in SSP |
 | CM.L2-3.4.4 | `change_justification`, approval workflow | Security impact review process |
 | IR.L2-3.6.2 | CAPA system for incident tracking | Security incident classification |
-| CA.L2-3.12.3 | PermissionChangeLog, audit trail | Security monitoring procedures |
+| CA.L2-3.12.3 | Audit trail, including group permission changes | Security monitoring procedures |
 
 ## Assessment Preparation
 

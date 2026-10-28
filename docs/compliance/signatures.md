@@ -23,16 +23,15 @@ The standards uqmes targets require that approvals be **attributable** and
 
 ## Signature Meanings
 
-Common signature meanings:
+Where the recorded meaning comes from:
 
-| Context | Meaning Example |
-|---------|-----------------|
-| **Document Approval** | "I approve this document for release" |
-| **Disposition** | "I authorize this disposition decision" |
-| **CAPA Closure** | "I verify effectiveness and approve closure" |
-| **Quality Report** | "I confirm this non-conformance record" |
+| Context | Meaning recorded |
+|---------|------------------|
+| **Approval response** (documents, CAPAs, change control) | The statement the approval dialog submits with an approval: *"I approve this item and confirm it meets all requirements"* |
+| **Work-instruction signature block** | The block's label, falling back to the substep's title |
+| **QA release of a lot** | *"QA release of {step} for {work order}"*, derived by the server |
 
-Meanings are configured per approval template.
+An approval's meaning is not set per approval template.
 
 ## How a signature in a work instruction is taken
 
@@ -160,7 +159,13 @@ So the fair answer to "could you?" is: **the signing mechanism has the shape Par
 describes, and the surrounding programme would be yours to build and validate.**
 
 Wrong passwords are rate-limited, so a terminal left signed in can't be used to
-guess a password. See [Authoring Work Instructions](../workflows/dwi/authoring.md#sign-off-blocks)
+guess a password. The same throttle covers every re-entry of your own password —
+work-instruction signatures, QA releases, first-piece buy-offs, approval responses
+and CAPA task signatures: 5 failures at one gate, or 10 across all of them, within
+15 minutes. A wrong password reads *That password isn't right.*; past
+the limit the answer is *Too many failed authorization attempts. Try again in a few
+minutes.*, and it is refused even with the right password until the window passes.
+See [Authoring Work Instructions](../workflows/dwi/authoring.md#sign-off-blocks)
 for turning it on.
 
 ## Signing Process
@@ -168,20 +173,32 @@ for turning it on.
 ### For Approvals
 
 1. Review the item requiring approval
-2. Click **Submit Response**
+2. Click **Submit Response** (on some records, **Sign / Respond**)
 3. Choose a **Decision** — Approve, Reject, or Delegate
 4. Add comments (required when rejecting)
-5. Sign, if the approval template requires verification
+5. To approve, draw your signature, confirm it, and re-enter your password
 6. Submit
 
+An approval always takes both the signature and the password; there is no
+template setting that waives them. The server refuses an approval without a
+signature (*Sign to approve.*) or without the password (*Enter your password to
+approve.*), and a rejection with no reason (*Say why you are rejecting it.*).
+
 The response is recorded with your identity, the decision, a timestamp, the
-verification method used, and the originating IP address.
+verification method (*Password* for an approval), and the client's IP address —
+taken from the trusted proxy header where the deployment configures one, not
+from a header the client could set.
 
 ### Viewing signatures
 
 On a signed record, open its **Signatures** or **Approvals** section. Each entry
 shows who signed, when, what the signature meant, and any comments. Signatures
-are part of the audit trail and cannot be modified.
+are part of the audit trail. With the audit triggers installed, a recorded
+approval response cannot be modified, only withdrawn, delegated, or answered again
+after withdrawal; the database refuses any other change, and any deletion
+(*COMPLIANCE VIOLATION: An approval response can only be withdrawn, delegated, or
+answered again after withdrawal.*). Each withdrawal and re-answer is also kept as a
+correction and in the audit log.
 
 !!! note "Signature reporting is not built"
     There is no signature report — no "all signatures in a period", "by user" or
@@ -219,20 +236,21 @@ the record by the server.
 |----------|----------------|
 | Unique to the individual | The signer's user id, taken from the account itself. Accounts are suspended rather than deleted, so an id is never reassigned to a different person. |
 | Identity verification | `verification_method` — `PASSWORD`, `SSO`, or `NONE` |
-| Signature meaning | `signature_meaning`, e.g. "I approve as QA Manager" |
+| Signature meaning | `signature_meaning` — see [Signature Meanings](#signature-meanings) |
 | Signature image | `signature_data`, a base64 PNG, when one is captured |
 | Date and time | Server UTC timestamp |
-| Origin | `ip_address` of the signing request |
+| Origin | `ip_address` — the trusted client IP of the signing request |
 
 !!! warning "`NONE` is a valid verification method"
-    Signing can be configured to require no identity verification at all. A
-    signature recorded with `verification_method = NONE` attributes the action
-    to a user account but does **not** evidence that the account holder
-    personally authorized it.
+    A work-instruction block or QA release authored as a check-off records no
+    identity verification. A signature recorded with
+    `verification_method = NONE` attributes the action to a user account but
+    does **not** evidence that the account holder personally authorized it.
 
-    If you are relying on signatures as controls, confirm your approval
-    templates require `PASSWORD` or `SSO` — the model does not enforce this
-    for you.
+    Approval responses made in the application are not configurable this way:
+    an approval always takes a signature and the password, and is recorded as
+    `PASSWORD`. If you are relying on work-instruction signatures as controls,
+    author those blocks as **signature + password**.
 
 ## Next Steps
 

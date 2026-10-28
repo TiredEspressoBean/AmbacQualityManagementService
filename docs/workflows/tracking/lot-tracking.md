@@ -207,12 +207,20 @@ supplier or unapproved part, expired shelf life, a quality-gate rule, or an
 inspector's whole-lot reject request. It shows under **Held**. **Review hold**
 opens it; release each hold with a reason, or reject the lot.
 
+A lot can also be held by hand. **Place hold** in the lot page header opens
+**Hold &lt;lot&gt;**, which needs a reason. It is offered on **Accepted**, **In
+Use**, **Received**, **Awaiting Inspection** and **Quarantine** lots, to holders
+of `hold_materiallot` — QA Inspector, QA Manager and Tenant Admin by default.
+Nothing can be drawn from the lot while it is held, and the hold shows as
+**Held by QA**. It is released through **Review hold** like any other hold.
+
 !!! warning "Releasing a hold is a quality decision"
     Releasing takes the `approve_disposition` permission, not edit rights on the
-    lot — accepting stock that was held is a disposition. The released lot does
-    not simply go back to in use: it routes on through receiving as if it had
-    just arrived, so it lands in inspection, or on hand if the material has no
-    RECEIVING step.
+    lot — accepting stock that was held is a disposition. A lot held by hand
+    from stock goes back to what it was, **Accepted** or **In Use**. Any other
+    released lot does not simply go back to in use: it routes on through
+    receiving as if it had just arrived, so it lands in inspection, or on hand
+    if the material has no RECEIVING step.
 
 ## Traceability
 
@@ -242,7 +250,7 @@ In the order they appear:
 | **History** | The record's own change history |
 
 Its header carries the lot's primary action (**Inspect**, or **Review hold**
-when held; **Inspection** once decided), **Label**, **Move**, **Documents**,
+when held; **Inspection** once decided), **Label**, **Move**, **Place hold**, **Documents**,
 **Trace (PDF)** and **Inspection record** — plus **RTV sheet** while the lot is
 waiting to go back to its supplier or once returned — and a hold panel when the
 lot is held.

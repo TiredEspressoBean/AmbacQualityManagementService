@@ -107,7 +107,7 @@ Measurements may require calibrated equipment:
 
     | Gauge state | What happens |
     |-------------|--------------|
-    | **Out of service**, or its last calibration **failed** | The capture is **refused**: *"Equipment 'X' is OUT_OF_SERVICE (failed or missing calibration). Recalibrate or pick a different gauge."* |
+    | **Out of service**, or its last calibration **failed** | The reading is **refused** on every path — operator capture, the measurements API, bulk recording, and an edit to a recorded reading that names the gauge: *"Equipment '&lt;name&gt;' is OUT_OF_SERVICE (failed or missing calibration). Recalibrate or pick a different gauge."* |
     | Calibration **overdue** | Marked *calibration overdue* in the picker; the reading **is recorded**, and you are told |
 
     A failed check is evidence the gauge was wrong, so anything it measures is
@@ -131,8 +131,8 @@ Measurements may require calibrated equipment:
 There is no **Measurements** tab on a part. A measurement recorded at an
 inspection-point substep is written as a measurement result against the
 **Quality Report** that substep produced, and that report is where the numeric
-evidence is listed — name, value, specification, pass/fail, and when it was
-captured.
+evidence is listed — characteristic, value, specification, result, and
+**Recorded by**: who recorded it, with the date and time.
 
 Numeric results also flow into SPC, so they appear in control charts and
 capability analysis without anything further being done to them. See [SPC

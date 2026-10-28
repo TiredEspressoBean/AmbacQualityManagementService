@@ -96,6 +96,12 @@ the parts are made to the agreed spec and never become nonconforming. The
 reference, the date, and who authorized the decision are all stored on the
 record.
 
+Once the disposition is decided, that concession record — **Requires
+Approval**, **Approval Received**, **Approval Reference** and **Approval Date**
+— can't be edited. The edit page greys the fields out: *"It was recorded with
+the decision and can't be changed now."* Deciding again brings its own
+reference through **Decide**.
+
 Scrap, Rework, and Return to Supplier need no approval reference.
 
 !!! warning "There is no scrap value threshold"
@@ -149,6 +155,12 @@ Either way the record stores **who authorized it and when** — that pair is wha
 | **Critical** | Safety or regulatory impact; needs special handling |
 | **Major** | Affects function, correctable (the default) |
 | **Minor** | Cosmetic, no functional impact |
+
+After the decision, severity can be **raised but not lowered** — it decides what
+the close demands, so lowering it would dodge the containment check. The field
+reads *"Decided at this severity: it can be raised, not lowered."*, and an edit
+that lowers it is refused (*"…can't change after the decision (severity may only
+be raised)."*).
 
 !!! note "Annotation severity is a different scale"
     A marker on the part's 3D model carries its own severity, Low to Critical.
@@ -211,6 +223,11 @@ with two guards that are worth understanding, because they explain cases where
 the part *doesn't* move.
 
 **A disposition is a documented decision, not a routing action.**
+
+**While a part has an open disposition, its status changes only through that
+disposition.** Editing the part's status, or setting it with the bulk status
+action, is refused: *"&lt;part&gt; has an open disposition (&lt;DISP-…&gt;); its
+status changes through that disposition."* The disposition's decision moves it.
 
 **Rework and Repair only route a part that is still held** — quarantined, or
 not yet started. If the operator has already routed the part onward (in

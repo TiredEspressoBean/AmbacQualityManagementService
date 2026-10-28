@@ -43,8 +43,9 @@ defense, aerospace, automotive and general manufacturing.
     - **Approval workflows**: APR-2024-0015 shows multi-step approval with electronic signatures
     - **RBAC enforcement**: Customer Tom Bradley can only view Midwest Fleet orders (tenant isolation)
     - **Training compliance**: Dave Wilson blocked from Flow Testing due to expired certification
-    - **Calibration**: a gauge whose calibration **failed** is refused for
-      capture outright; one merely **overdue** records the reading and warns —
+    - **Calibration**: a gauge that is out of service or whose calibration
+      **failed** is refused on every path that records a reading; one merely
+      **overdue** records the reading and warns —
       the two are deliberately different controls
     - **Document control**: version history and approval workflow on a
       controlled document
@@ -70,18 +71,19 @@ This analysis covers the **software application layer**:
 | Session management | Django session framework |
 | Approval workflows | ApprovalRequest/Response models |
 | Document versioning | SecureModel with version tracking |
-| Tenant isolation | Application-level scoping, with database Row-Level Security beneath it |
+| Tenant isolation | Application-level scoping, with database Row-Level Security beneath it where RLS is enabled |
 
-!!! note "Tenant isolation is two layers, and you can cite both"
+!!! note "Tenant isolation is two layers where RLS is enabled"
     **In the application**, every tenant-scoped model's default manager filters
     to the current tenant, which middleware sets per request. Reaching across
     tenants requires explicitly asking for it, and those call sites are
     deliberate and documented.
 
-    **In the database**, RLS policies cover the tenant-scoped tables using
+    **In the database**, where RLS is enabled (`ENABLE_RLS`, off by default —
+    see *RLS is opt-in* below), RLS policies cover the tenant-scoped tables using
     `FORCE ROW LEVEL SECURITY`, so the policy binds the table owner too.
 
-    Either would hold on its own. The one thing RLS does not cover is
+    Where RLS is enabled, either would hold on its own. The one thing RLS does not cover is
     **superusers** — a property of PostgreSQL rather than a gap here, which
     makes control over those accounts part of the same answer.
 
@@ -129,7 +131,7 @@ The following depend on deployment configuration and are **not application featu
 
 - **django-auditlog** with `AUDITLOG_INCLUDE_ALL_MODELS=True`
 - **Immutable logs**: PostgreSQL triggers block UPDATE/DELETE on audit tables
-- **PermissionChangeLog**: Tracks all permission grants/revocations
+- **Permission changes**: group permission grants and revocations are in the audit log, with who made them
 - **Document access logging**: `Documents.log_access()` captures user, IP, classification
 
 **Key files**: `PartsTrackerApp/settings.py`, `Tracker/models/core.py`, `Tracker/management/commands/setup_audit_triggers.py`
@@ -202,7 +204,7 @@ The following depend on deployment configuration and are **not application featu
 
 - **ApprovalTemplate**: Define sequential/parallel approval flows
 - **ApprovalRequest/Response**: Track individual approvals
-- **Signature capture**: Password verification, optional handwritten
+- **Signature capture**: an approval requires a drawn signature and the approver's password
 - **Self-approval detection**: `self_approved` flag for audit
 
 **Key files**: `Tracker/models/core.py`, `Tracker/signals.py`

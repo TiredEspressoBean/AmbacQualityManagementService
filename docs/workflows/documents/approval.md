@@ -16,6 +16,19 @@ Document types that typically require approval:
 
 Your administrator configures which types require approval.
 
+### A type that needs no approval
+
+A Draft of a type with **Requires approval** off skips the workflow below. The
+document header shows **Release** to holders of `release_documents`, and
+releasing puts the Draft in force directly — its dates are set and the earlier
+released revision is made obsolete. Its **Approval** tab reads *"No approval
+needed — This document's type doesn't require approval. It is put in force with
+Release, by someone who can release documents."*
+
+A Draft of a type that requires approval can't be released before it is
+approved: *"This document's type requires approval. Must be approved before
+release — submit it for approval first."*
+
 ## Approval Workflow
 
 ```

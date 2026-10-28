@@ -60,8 +60,13 @@ Common verification tasks:
     is the default, not a preference.
 
     It can be allowed per CAPA, and only deliberately: the CAPA must carry
-    `allow_self_verification`, which is **off** unless someone turns it on, and the
-    verification then also requires a written justification of at least ten
+    `allow_self_verification` (**Allow Self-Verification** on the form that raises the CAPA), which
+    is **off** unless someone turns it on. Only someone with `verify_capa` — by
+    default QA Manager and Tenant Admin — can turn it on or off, including on a
+    CAPA they own; anyone else sees the checkbox disabled with *"Only QA (who can
+    verify CAPAs) can turn this on."*, and the server refuses the change: *"Only QA
+    (who can verify CAPAs) can change whether this CAPA allows
+    self-verification."* The verification then also requires a written justification of at least ten
     characters. The record is flagged **self-verified** so an auditor can see which
     CAPAs were closed on their owner's own word.
 
@@ -147,8 +152,11 @@ then attributed to **them**, not to you.
     request — but at **creation**, not at closure, using its severity's template
     (else `CAPA_APPROVAL`), and only when your tenant keeps one of those
     templates. That is the request you see on the Approval
-    tab. Approving it does not close the CAPA, and a CAPA can close whether or not
-    it was ever approved.
+    tab. Approving it does not close the CAPA. But until it is approved, the
+    root-cause analysis can't be worked or verified, and effectiveness can't be
+    recorded without a verified cause — so a CAPA that raised an approval closes
+    only once approved (unless its RCA was verified before the request was
+    raised).
 
 ## Closure Summary
 
