@@ -149,16 +149,10 @@ record they can open:
 Audit data can be **viewed and filtered** in the UI at **Admin** > **Audit
 Log**, and in any record's **Activity History** section.
 
-!!! warning "Audit data cannot be exported from the UI"
-    Export is turned off on the audit log viewer. To get audit data
-    out for an audit or a report, use the API:
-
-    ```
-    GET /api/auditlog/
-    ```
-
-    Filter it with the same parameters available in the UI. Browsing it needs
-    `view_auditlog`, as on screen.
+The audit log exports to Excel or CSV from the same screen — see [Export for
+Auditors](#export-for-auditors). It can also be read through the API, `GET
+/api/auditlog/`, with the same filter parameters; that needs `view_auditlog`,
+as on screen.
 
 ### Planned
 
@@ -200,26 +194,35 @@ Audit logs are never auto-deleted.
 
 ## Export for Auditors
 
-There is **no PDF or CSV export button** on the audit log — export is turned off
-on that screen, as noted above. Preparing data for an external audit means:
+Preparing data for an external audit:
 
-1. Filter to the audit scope in **Admin** > **Audit Log** to confirm what you
-   need, then
-2. Pull the same range from `GET /api/auditlog/`, using the same filter
-   parameters
-3. Format it as the auditor asked for it
+1. Filter **Admin** > **Audit Log** to the audit scope — user, record type,
+   action, search
+2. **Export** > **Export as Excel** or **Export as CSV**. The file holds what
+   the list shows, newest first: Timestamp, User, Action, Record type, Record,
+   Record id, Changes and IP address
+3. Hand it over, or format it as the auditor asked for it
 
-Reading the API across records needs `view_auditlog`, the same permission as
-the screen: by default Tenant Admin, QA Manager, Document Controller and
-Auditor. One record's history needs only `view_logentry`. `export_auditlog` exists but nothing checks it,
-so do not cite it as a control over who can extract the audit trail.
+**Who can extract the audit trail is a control.** Exporting needs
+`export_auditlog` — by default Tenant Admin and Document Controller — and the
+server enforces it: *Exporting the audit log needs the export audit log
+permission.* Browsing needs only `view_auditlog` (Tenant Admin, QA Manager,
+Document Controller and Auditor), so a QA Manager can review the log on screen
+without being able to take it out. One record's history needs only
+`view_logentry`.
+
+**Every export is itself logged** — an access entry *Export csv: Audit log
+(&lt;n&gt; rows)* (or *xlsx*) with the person, their IP address, the row count
+and the filters used. An export is refused past 50,000 rows; filter first.
+
+There is no PDF of the audit log.
 
 ## Permissions
 
 | Permission | Allows | Groups |
 |------------|--------|--------|
 | `view_auditlog` | View full system audit trail | Tenant Admin, QA Manager, Document Controller, Auditor |
-| `export_auditlog` | Export audit data for auditors (nothing checks it) | Tenant Admin, Document Controller |
+| `export_auditlog` | Export the audit log to Excel or CSV | Tenant Admin, Document Controller |
 
 Standard users see history of records they can access via record detail pages.
 

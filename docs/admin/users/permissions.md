@@ -166,7 +166,7 @@ or export-control status is what needs looking at.
 | Permission | Allows |
 |------------|--------|
 | `export_data` | Export CSV/PDF reports |
-| `export_auditlog` | Exists, but nothing checks it — the audit log has no export |
+| `export_auditlog` | Export the audit log to Excel or CSV |
 
 ### Admin Permissions
 

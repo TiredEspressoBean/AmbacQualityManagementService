@@ -148,9 +148,10 @@ See [API Overview](../integrations/api.md) for details.
 
 ## Audit Trail Export
 
-The **Admin** > **Audit Log** page has no **Export**: the log is viewed and
-filtered there. To take it out, use the REST API endpoint `GET /api/auditlog/`
-with filters.
+The **Admin** > **Audit Log** page exports to Excel or CSV what its filters and
+search show, for holders of `export_auditlog` (by default Tenant Admin and
+Document Controller). Each export is recorded in the audit log. See [Audit
+Trail](audit-trail.md#exporting-audit-data).
 
 Audit log data includes:
 

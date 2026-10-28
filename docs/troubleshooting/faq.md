@@ -143,11 +143,10 @@ Trails](../compliance/audit-trails.md#immutability).
 ### How do I export data for an audit?
 It depends what you need.
 
-**Audit log data cannot be exported from the UI** — export is deliberately
-disabled on the audit log viewer. Filter it on screen to confirm the scope, then
-pull the same range from `GET /api/auditlog/` with the same filter parameters.
-That needs `export_auditlog`. See
-[Audit Trails](../compliance/audit-trails.md).
+**Audit log data** — filter **Admin** > **Audit Log** to the audit scope, then
+**Export** as Excel or CSV. That needs `export_auditlog`, by default Tenant
+Admin and Document Controller. See
+[Audit Trails](../compliance/audit-trails.md#export-for-auditors).
 
 **Other data** — wherever a list's toolbar offers **Export**, it exports CSV or
 Excel. If a list has no Export button, that model cannot be exported; it is not

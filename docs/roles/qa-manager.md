@@ -301,7 +301,7 @@ When control charts show issues:
 
 - CAPA report and NCR report — PDFs from the record itself
 - Training records report
-- The audit log, read on screen — it has no export
+- The audit log, read on screen — you can browse it, but exporting it needs `export_auditlog` (Tenant Admin, Document Controller)
 - NCR trend and aging, from NCR Analysis
 
 ## Configuration Responsibilities

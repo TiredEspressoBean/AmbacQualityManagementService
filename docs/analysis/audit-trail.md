@@ -154,18 +154,23 @@ There are no saved searches.
 ## Audit Reports
 
 There are no pre-built audit reports — no user-activity, record-history or
-change-summary PDF. Audit data is read on screen or through the API.
+change-summary PDF. Audit data is read on screen, exported to Excel or CSV, or
+read through the API.
 
 ## Exporting Audit Data
 
-!!! note "No export from the audit log screen"
-    The audit log viewer has no Export control. To take audit data out, read it
-    from the REST API — `GET /api/auditlog/` — with the same filters, and format
-    it as the auditor asks.
+**Admin** > **Audit Log** has an **Export** menu — **Export as Excel** or
+**Export as CSV** — for holders of `export_auditlog`. It writes what the list
+shows: the same filters (user, record type, action) and search, only entries
+for records you can open, newest first. The columns are Timestamp, User
+(*System* for automatic changes), Action, Record type, Record, Record id,
+Changes and IP address.
 
-    Reading the API across records needs `view_auditlog`, the same as the
-    screen, and it returns only entries for records you can open. A separate
-    `export_auditlog` permission exists, but nothing checks it.
+- An export is refused past 50,000 rows: *Filter the list first, then export.*
+- Each export is itself recorded in the audit log, as an access entry naming
+  who exported, the format, the row count and the filters.
+- Browsing without exporting needs only `view_auditlog`; without
+  `export_auditlog` the menu is not shown, and the server refuses the export.
 
 ## Retention
 
@@ -192,7 +197,7 @@ out of reach in the first place.
 |------------|--------|
 | `view_logentry` | The history of a record you can open — by default, every staff role |
 | `view_auditlog` | Browse the audit trail across records — by default Tenant Admin, QA Manager, Document Controller and Auditor |
-| `export_auditlog` | Exists, but nothing checks it — there is no export to gate |
+| `export_auditlog` | Export the audit log to Excel or CSV — by default Tenant Admin and Document Controller |
 
 !!! note "Credentials are not recorded"
     Passwords, API keys, integration secrets and invitation tokens are left out
