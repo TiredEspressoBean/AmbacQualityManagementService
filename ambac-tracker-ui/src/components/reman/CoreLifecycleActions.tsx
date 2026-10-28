@@ -17,6 +17,7 @@ import { api } from "@/lib/api/generated";
 import { getCookie } from "@/lib/utils";
 import { isScrappable } from "@/lib/reman/core-stages";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 function detailOf(err: unknown, fallback: string) {
     const d = apiErrorMessage(err);
@@ -29,7 +30,9 @@ export function ScrapCoreButton({ core }: {
     const [open, setOpen] = useState(false);
     const [reason, setReason] = useState("");
     const scrap = useScrapCore();
-    if (!isScrappable(core.status)) return null;
+    // Who may scrap a core is the shop's choice, through the scrap_core perm.
+    const canScrap = usePermissionSet().has("scrap_core");
+    if (!isScrappable(core.status) || !canScrap) return null;
     const theirs = core.fulfilment_mode === "REPAIR_RETURN";
 
     const submit = () =>

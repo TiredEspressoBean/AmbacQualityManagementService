@@ -40,3 +40,19 @@ class SubstepSamplingRuleTests(TenantTestCase):
         r = self.client.patch(f"/api/Substeps/{substep.id}/", {"sampling_rule": r.json()["id"]}, format="json")
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["sampling_rule_info"], {"rule_type": "PERCENTAGE", "value": 20})
+
+    def test_a_replaced_or_cleared_rule_does_not_linger(self):
+        from Tracker.models import SamplingRule
+        substep = Substep.objects.create(tenant=self.tenant_a, step=self.step, order=1, title="Gauge bore")
+        self.grant_tenant_permissions(self.user_a, self.tenant_a,
+                                      ['view_substep', 'change_substep', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        first = create_substep_rule(self.step, "PERCENTAGE", 20)
+        second = create_substep_rule(self.step, "EVERY_NTH_PART", 5)
+        self.client.patch(f"/api/Substeps/{substep.id}/", {"sampling_rule": str(first.id)}, format="json")
+        self.client.patch(f"/api/Substeps/{substep.id}/", {"sampling_rule": str(second.id)}, format="json")
+        self.assertTrue(SamplingRule.objects.get(pk=first.pk).archived)
+        self.assertFalse(SamplingRule.objects.get(pk=second.pk).archived)
+        r = self.client.patch(f"/api/Substeps/{substep.id}/", {"sampling_rule": None}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(SamplingRule.objects.get(pk=second.pk).archived)

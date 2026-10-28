@@ -49,6 +49,27 @@ class CoreDecisionGateTests(TenantTestCase):
                 self.assertIn(perm, _perms(group), (group, perm))
 
 
+class ScrapCoreGateTests(TenantTestCase):
+    """Who may scrap a core is the shop's choice: its own perm, not the POST default
+    (add_core), which receiving needs. Granted to the same groups as add_core."""
+
+    def _scrap(self, perms):
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, perms + ['full_tenant_access'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        return self.client.post(f"/api/Cores/{uuid.uuid4()}/scrap/", {"reason": "x"},
+                                format="json").status_code
+
+    def test_add_core_alone_does_not_scrap(self):
+        self.assertEqual(self._scrap(['view_core', 'add_core', 'change_core']), 403)
+
+    def test_scrap_core_is_the_gate(self):
+        self.assertEqual(self._scrap(['view_core', 'scrap_core']), 404)
+
+    def test_defaults_are_unchanged(self):
+        holders = lambda perm: {p['name'] for p in GROUP_PRESETS.values() if perm in p['permissions']}
+        self.assertEqual(holders('scrap_core'), holders('add_core'))
+
+
 class TeardownOverrideTests(TenantTestCase):
 
     def setUp(self):

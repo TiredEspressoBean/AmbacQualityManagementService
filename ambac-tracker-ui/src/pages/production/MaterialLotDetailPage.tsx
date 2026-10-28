@@ -131,7 +131,7 @@ export function MaterialLotDetailPage() {
                         && ["ACCEPTED", "IN_USE", "RECEIVED", "AWAITING_INSPECTION", "QUARANTINE"].includes(l.status ?? "")
                         && !(l.hold_reasons ?? []).includes("MANUAL") && (
                         <ReasonActionButton
-                            label="Place hold" destructive
+                            label="Place hold" destructive variant="destructive"
                             title={`Hold ${l.lot_number}`}
                             description={<>Nothing can be drawn from it while it&rsquo;s held. It is released through{" "}
                                 <strong>Review hold</strong>, with a reason, by someone who can decide holds; stock goes

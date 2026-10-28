@@ -296,6 +296,10 @@ export function SubstepEditorPage() {
                 "You have unsaved changes. Leave this page and discard them?",
             );
         },
+        // The effect above owns reload / tab close, and only when something is staged.
+        // Left at its default (true) the router added its own beforeunload that
+        // prompted on every reload, changes or not.
+        enableBeforeUnload: false,
     });
 
     const setPendingFor = useCallback(
@@ -1155,10 +1159,16 @@ function SubstepExpandedBody({
                         <Select
                             value={workingSampling?.rule_type ?? "ALL"}
                             disabled={!editable}
-                            onValueChange={(v) => mergePending({
-                                sampling: v === "ALL" ? null
-                                    : { rule_type: v, value: workingSampling?.value ?? (v === "PERCENTAGE" || v === "RANDOM" ? 20 : 5) },
-                            })}
+                            onValueChange={(v) => {
+                                if (v === "ALL") { mergePending({ sampling: null }); return; }
+                                // Keep the number only when it means the same thing (a % to
+                                // a %, an N to an N); otherwise the new type's default.
+                                const unit = SUBSTEP_SAMPLING_OPTIONS.find((o) => o.value === v)?.unit;
+                                const keep = workingSampling && samplingUnit === unit;
+                                mergePending({
+                                    sampling: { rule_type: v, value: keep ? workingSampling.value : (unit === "%" ? 20 : 5) },
+                                });
+                            }}
                         >
                             <SelectTrigger id={`sampling-${substep.id}`} className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>

@@ -129,8 +129,13 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
+        from Tracker.services.dwi.substep_sampling import retire_if_unused
         self._assert_step_editable(serializer.instance.step)
+        former_rule = serializer.instance.sampling_rule_id
         serializer.save()
+        # A sampling choice changed or cleared: its old rule goes once nothing uses it.
+        if 'sampling_rule' in serializer.validated_data:
+            retire_if_unused(former_rule)
 
     def perform_destroy(self, instance):
         self._assert_step_editable(instance.step)

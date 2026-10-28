@@ -127,6 +127,10 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'correct_receipt_action': ['change_core'],
         # A return is a shipment, so it also takes the perm the Shipping board does.
         'return_to_customer': ['change_core', 'add_customershipment'],
+        # Scrapping a core is its own perm, so a shop can choose who may (2026-10-28).
+        # It rode the POST default, add_core — which receiving needs — so restricting
+        # it broke receiving. Granted where add_core is, so nothing changes by default.
+        'scrap': ['scrap_core'],
         # Approving a repair the process doesn't pre-approve decides what work goes into
         # the unit — the same lead/QA tier as deciding a finding (accept_component).
         'approve_repair': ['accept_component'],
@@ -137,7 +141,7 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
         'request_authorisation_action', 'record_authorisation_action',
         'bulk_request_authorisation', 'bulk_record_authorisation',
         'correct_authorisation_action', 'correct_receipt_action',
-        'return_to_customer', 'approve_repair',
+        'return_to_customer', 'approve_repair', 'scrap',
     }
 
     def get_serializer_class(self):

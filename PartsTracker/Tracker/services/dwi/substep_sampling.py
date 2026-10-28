@@ -15,6 +15,23 @@ SUBSTEP_RULE_TYPES = ("PERCENTAGE", "RANDOM", "EVERY_NTH_PART", "FIRST_N_PARTS")
 _PERCENT_TYPES = ("PERCENTAGE", "RANDOM")
 
 
+def retire_if_unused(rule_id) -> bool:
+    """Archive a substep's former rule once no substep (archived ones included, for
+    history) refers to it — a changed or cleared choice otherwise leaves one rule row
+    behind per save. Only rules in a substep set; a step plan's rules are never
+    touched. Returns whether it archived."""
+    from Tracker.models import SamplingRule, Substep
+    if rule_id is None:
+        return False
+    rule = SamplingRule.objects.filter(  # tenant-safe: .objects auto-scopes
+        id=rule_id, archived=False, ruleset__origin=SUBSTEP_ORIGIN).first()
+    if rule is None or Substep.objects.filter(sampling_rule_id=rule_id).exists():  # tenant-safe: auto-scoped
+        return False
+    rule.archived = True
+    rule.save(update_fields=['archived', 'updated_at'])
+    return True
+
+
 def create_substep_rule(step, rule_type: str, value, user=None):
     """A new rule for a substep of `step`. Raises ValueError for a rule type the
     substep engine doesn't evaluate, or a value out of range."""
