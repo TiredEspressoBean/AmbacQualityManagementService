@@ -4444,17 +4444,18 @@ class ProcessWithStepsViewSet(TenantScopedMixin, DataExportMixin, viewsets.Model
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
-        description="Directly approve a draft process for production use (bypasses formal approval workflow). Once approved, the process cannot be modified.",
+        description="Directly approve a draft process for production use, with no signatures. Refused in Regulated change-control mode (submit for approval instead) and for a draft that belongs to a process change request. Once approved, the process cannot be modified.",
         request=None,
         responses={200: ProcessWithStepsSerializer}
     )
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Directly approve a draft process, making it available for work orders (bypasses approval workflow)."""
+        """Directly approve a draft process, where change control allows it."""
+        from Tracker.services.mes.processes import approve_process_directly
         process = self.get_object()
 
         try:
-            process.approve(user=request.user)
+            approve_process_directly(process, request.user)
             serializer = self.get_serializer(process)
             return Response(serializer.data)
         except ValueError as e:

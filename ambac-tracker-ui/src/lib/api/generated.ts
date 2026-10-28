@@ -49498,7 +49498,7 @@ Usage:
     method: "post",
     path: "/api/Processes_with_steps/:id/approve/",
     alias: "api_Processes_with_steps_approve_create",
-    description: `Directly approve a draft process for production use (bypasses formal approval workflow). Once approved, the process cannot be modified.`,
+    description: `Directly approve a draft process for production use, with no signatures. Refused in Regulated change-control mode (submit for approval instead) and for a draft that belongs to a process change request. Once approved, the process cannot be modified.`,
     requestFormat: "json",
     parameters: [
       {

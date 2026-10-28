@@ -28,6 +28,8 @@ import { useRetrieveProcessWithSteps } from '@/hooks/useRetrieveProcessWithSteps
 import { useUpdateProcess } from '@/hooks/useUpdateProcessWithSteps';
 import { useRetrievePartTypes } from '@/hooks/useRetrievePartTypes';
 import { useApproveProcess } from '@/hooks/useApproveProcess';
+import { useSubmitProcessForApproval } from '@/hooks/useSubmitProcessForApproval';
+import { useTenantContext } from '@/components/tenant-provider';
 import { useDeprecateProcess } from '@/hooks/useDeprecateProcess';
 import { useDuplicateProcess } from '@/hooks/useDuplicateProcess';
 import { useProposeProcessChange } from '@/hooks/useProposeProcessChange';
@@ -144,6 +146,11 @@ export default function ProcessFlowPage() {
   // Mutations for process actions
   const updateProcess = useUpdateProcess();
   const approveProcess = useApproveProcess();
+  const submitProcess = useSubmitProcessForApproval();
+  // Regulated change control: a routing is submitted to its approvers, never approved
+  // by its author from here (the server refuses the direct approve too).
+  const { changeControlMode } = useTenantContext();
+  const isRegulated = changeControlMode === 'REGULATED';
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
   const deprecateProcess = useDeprecateProcess();
   const duplicateProcess = useDuplicateProcess();
@@ -727,15 +734,21 @@ export default function ProcessFlowPage() {
   const handleApprove = useCallback(async () => {
     if (!processId) return;
     try {
-      await approveProcess.mutateAsync(processId);
-      toast.success('Process approved successfully');
+      if (isRegulated) {
+        await submitProcess.mutateAsync(processId);
+        toast.success('Submitted for approval');
+      } else {
+        await approveProcess.mutateAsync(processId);
+        toast.success('Process approved successfully');
+      }
       setEditMode(false);
     } catch (error) {
       console.error('Failed to approve process:', error);
       // The server names what's wrong with the routing; show it.
-      toast.error(apiErrorMessage(error) ?? 'Failed to approve process');
+      toast.error(apiErrorMessage(error)
+        ?? (isRegulated ? 'Failed to submit for approval' : 'Failed to approve process'));
     }
-  }, [processId, approveProcess]);
+  }, [processId, approveProcess, submitProcess, isRegulated]);
 
   const handleDeprecate = useCallback(async () => {
     if (!processId) return;
@@ -1062,7 +1075,11 @@ export default function ProcessFlowPage() {
               </div>
               <CardDescription>
                 {!isDemo && !isProcessEditable
-                  ? 'This process is locked. Duplicate to make changes.'
+                  ? processStatus === 'APPROVED'
+                    ? 'This process is locked. Propose Change to revise it.'
+                    : processStatus === 'PENDING_APPROVAL'
+                      ? 'Submitted for approval: locked until its approvers sign.'
+                      : 'This process is locked.'
                   : currentModeInfo?.description || 'Visualize manufacturing process steps'}
               </CardDescription>
             </div>
@@ -1175,21 +1192,25 @@ export default function ProcessFlowPage() {
                     <DropdownMenuLabel>Process Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
 
-                    {/* Approve - only for draft */}
-                    {processStatus === 'DRAFT' && (
+                    {/* Approve (Simplified) / Submit for approval (Regulated) — only for a
+                        draft that isn't a change request's: that one goes through its PCR. */}
+                    {processStatus === 'DRAFT' && !linkedPcr && (
                       <DropdownMenuItem
                         onClick={() => setApproveConfirmOpen(true)}
-                        disabled={approveProcess.isPending || hasChanges || hasValidationErrors}
+                        disabled={approveProcess.isPending || submitProcess.isPending
+                          || hasChanges || hasValidationErrors}
                       >
                         <ShieldCheck className="h-4 w-4 mr-2 text-green-600" />
                         <div className="flex flex-col">
-                          <span>Approve</span>
+                          <span>{isRegulated ? 'Submit for approval' : 'Approve'}</span>
                           <span className="text-xs text-muted-foreground">
                             {hasValidationErrors
                               ? 'Fix validation errors first'
                               : hasChanges
                                 ? 'Save changes first'
-                                : 'Lock for production use'}
+                                : isRegulated
+                                  ? 'Send to its approvers to sign'
+                                  : 'Lock for production use'}
                           </span>
                         </div>
                       </DropdownMenuItem>
@@ -1320,10 +1341,13 @@ export default function ProcessFlowPage() {
           <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Approve this routing for production?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isRegulated ? 'Submit this routing for approval?' : 'Approve this routing for production?'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Work orders can run it once it's approved, and it can no longer be edited —
-                  changes go through a change request.
+                  {isRegulated
+                    ? "It goes to its approvers and can't be edited while they review it. Once they sign, work orders can run it; if they reject it, it comes back as a draft."
+                    : "Work orders can run it once it's approved, and it can no longer be edited — changes go through a change request."}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               {validation.warnings.length > 0 && (
@@ -1339,7 +1363,9 @@ export default function ProcessFlowPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={() => void handleApprove()}>
-                  {validation.warnings.length > 0 ? 'Approve anyway' : 'Approve'}
+                  {isRegulated
+                    ? (validation.warnings.length > 0 ? 'Submit anyway' : 'Submit')
+                    : (validation.warnings.length > 0 ? 'Approve anyway' : 'Approve')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

@@ -9825,7 +9825,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Directly approve a draft process for production use (bypasses formal approval workflow). Once approved, the process cannot be modified. */
+        /** @description Directly approve a draft process for production use, with no signatures. Refused in Regulated change-control mode (submit for approval instead) and for a draft that belongs to a process change request. Once approved, the process cannot be modified. */
         post: operations["api_Processes_with_steps_approve_create"];
         delete?: never;
         options?: never;

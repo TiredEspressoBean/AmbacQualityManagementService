@@ -141,29 +141,37 @@ Step 1 → Inspection → Pass → Step 2
 
 ## Process Approval
 
-To activate a process:
+How a new routing is approved depends on the tenant's change-control mode. In
+either mode, **Process Actions** offers it only once the **Validation Issues**
+panel has no errors and there are no unsaved changes.
 
-1. Complete all steps and configuration
-2. Click **Submit for Approval**
-3. Select approval template
-4. Approvers review
-5. On approval, status becomes **Approved**
+- **Simplified:** **Process Actions** > **Approve — Lock for production use**.
+  It is approved at once, and the author may approve their own routing.
+- **Regulated:** **Process Actions** > **Submit for approval**. The routing moves
+  to **Pending approval**, locked, and goes to the approvers on the tenant's
+  **Process Approval** template. Its author can't sign it unless that template
+  allows self-approval. When they sign, it becomes **Approved**; if they reject
+  it, it returns to **Draft**.
 
-!!! warning "Approval cannot be skipped"
-    There is no *Activate* or *Make Current* shortcut for when approval "isn't
-    enforced". Submitting for approval is the only route to Approved, and it
-    refuses outright if the tenant has no **PROCESS_APPROVAL** template:
+!!! warning "Regulated mode has no direct approve"
+    In Regulated mode the direct approve is refused, from the editor or the API,
+    so a routing's first version is signed by someone else just as every revision
+    of it is. Submitting refuses outright if the tenant has no **PROCESS_APPROVAL**
+    template:
 
     > *PROCESS_APPROVAL approval template not found. Please configure approval
     > templates.*
 
-    Two other prerequisites refuse in the same way: the process must still be a
-    **draft**, and it must have **at least one step**.
+    The process must also still be a **draft**, with **at least one step**.
+
+A draft forked by **Propose Change** belongs to its process change request and is
+approved through that request, in either mode. See [Change
+Control](../../workflows/change-control/overview.md).
 
 ## Duplicating a process
 
 Use **Duplicate as Template** in the Process Flow editor. It copies the whole
-process as a new draft, which you then modify and submit for approval.
+process as a new draft, which you then modify and approve as above.
 
 !!! note "There is no template flag, and no step-level copy"
     A process is not *marked* as a template — duplicating one is the whole

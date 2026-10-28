@@ -170,6 +170,36 @@ def approve_process(process: Processes, user=None, *, temporary_until=None) -> P
     return process
 
 
+def approve_process_directly(process: Processes, user) -> Processes:
+    """The process editor's Approve: lock a routing for production with no signatures.
+
+    Only where change control allows it. A draft forked for a process change request is
+    approved through that request (its PCO), in either mode. In REGULATED mode a routing
+    is submitted for approval instead, so someone other than the author signs its first
+    version just as they sign every revision of it. Internal callers (PCO
+    implementation, temporary changes, a completed approval request) call
+    `approve_process` and are not gated here.
+
+    Raises:
+        ValueError: the draft belongs to a PCR, or the tenant is REGULATED, or any
+            reason `approve_process` refuses.
+    """
+    from Tracker.models import ProcessChangeRequest
+    from Tracker.services.change_control.process_change import (
+        ChangeControlMode, resolve_change_control_mode,
+    )
+    # tenant-safe: SecureManager .objects auto-scopes to the request tenant
+    if ProcessChangeRequest.objects.filter(draft_process_version=process).exists():
+        raise ValueError(
+            "This draft belongs to a process change request. It is approved through "
+            "that request, not from the editor.")
+    if resolve_change_control_mode(process.tenant) == ChangeControlMode.REGULATED:
+        raise ValueError(
+            "Change control is Regulated: submit the routing for approval. Someone "
+            "other than its author signs it.")
+    return approve_process(process, user)
+
+
 def submit_process_for_approval(process: Processes, user) -> ApprovalRequest:
     """Submit a draft process for formal approval workflow.
 

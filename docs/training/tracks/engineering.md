@@ -178,8 +178,9 @@ routing yet, so it starts from a copy instead.
 4. Read the **Validation Issues** panel before you go further: it names any step
    with no way out and any path that never reaches a terminal step.
 5. **Process Actions** > **Approve — Lock for production use**. In *Simplified*
-   mode you can approve your own routing; a *Regulated* shop routes it for someone
-   else's signature.
+   mode you can approve your own routing. In a *Regulated* shop the item reads
+   **Submit for approval** instead: the routing goes to its approvers, and someone
+   other than you signs it.
 
 Once it's approved, changing it goes through change control like any other routing.
 

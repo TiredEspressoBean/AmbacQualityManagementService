@@ -142,15 +142,20 @@ same edits, so it holds however you reach it:
 
 ## Process Approval
 
-1. Create or edit the process as a **Draft**
-2. Submit it, which moves it to **Pending approval**
-3. Its approvers respond
-4. On approval it becomes **Approved**, and work orders can use it
-5. The version it replaces becomes **Deprecated** — still running its existing
-   jobs, hidden from new ones
+A new routing is created as a **Draft**. What happens next depends on the
+tenant's change-control mode:
+
+- **Simplified:** **Approve** it from the editor's **Process Actions**; it becomes
+  **Approved** at once, and work orders can use it.
+- **Regulated:** **Submit for approval**, which moves it to **Pending approval**.
+  Its approvers respond; on approval it becomes **Approved**, on rejection it
+  returns to **Draft**. Its author can't sign it unless the template allows
+  self-approval.
 
 Who may respond comes from the approval template, not from `change_processes`.
-See [Approvals](../../workflows/approvals/overview.md).
+See [Approvals](../../workflows/approvals/overview.md). A revision of an approved
+routing goes through a process change request instead. See [Creating
+Processes](creating.md#process-approval).
 
 ## Linking Processes
 
