@@ -102,7 +102,9 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
         qs = super().get_queryset()
         # A stable order, newest first: limit/offset over an unordered queryset could
         # repeat or skip orders as the Tracker scrolled.
-        return qs.select_related('current_milestone__template').order_by('-created_at', '-id')
+        return (qs.select_related('current_milestone__template')
+                .prefetch_related('orderviewer_set__user')
+                .order_by('-created_at', '-id'))
 
     @extend_schema(
         request=inline_serializer(

@@ -28,6 +28,7 @@ import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { useAcknowledgeFpi } from "@/hooks/useAcknowledgeFpi";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useReportActivity } from "@/hooks/useReportActivity";
+import { fpiForContext as forContext } from "@/lib/fpi-context";
 
 // The `*_info` fields are declared shapes now rather than DictField, so the
 // row type comes from the client instead of being guessed at here.
@@ -50,14 +51,18 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
     const canSignOff = usePermissionSet().has("sign_off_fpi");
     const [signing, setSigning] = useState<{ row: FpiRow; verdict: FpiVerdict } | null>(null);
 
-    // The latest record per step decides: PENDING → waiting on QA; FAILED → held.
+    // The latest record per step AND context decides (a Per Shift / Per Equipment step
+    // has one first piece per shift day / machine): PENDING → waiting on QA; FAILED →
+    // held; WAIVED → released, and a buy-off authority may correct it with a new one.
     const latestByStep = new Map<string, FpiRow>();
     for (const r of data?.results ?? []) {
-        const key = String(r.step ?? "");
+        const key = `${r.step ?? ""}|${r.shift_date ?? ""}|${r.equipment ?? ""}`;
         if (!latestByStep.has(key)) latestByStep.set(key, r);
     }
     const rows: FpiRow[] = [...latestByStep.values()].filter((r) => r.status === "PENDING");
     const held: FpiRow[] = [...latestByStep.values()].filter((r) => r.status === "FAILED");
+    const waived: FpiRow[] = canSignOff
+        ? [...latestByStep.values()].filter((r) => r.status === "WAIVED") : [];
     useReportActivity(rows.length + held.length > 0, onActivity);
 
     if (isLoading) {
@@ -69,18 +74,39 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
         );
     }
 
-    // Self-hiding: a WO with no pending or held FPI shouldn't occupy space on Control.
-    if (rows.length === 0 && held.length === 0) return null;
+    // Self-hiding: a WO with no pending, held or (for a buy-off authority) waived FPI
+    // shouldn't occupy space on Control.
+    if (rows.length === 0 && held.length === 0 && waived.length === 0) return null;
 
     return (
         <>
+            {waived.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                        First piece waived at {r.step_info?.name ?? "this step"}{forContext(r)}
+                        {r.waive_reason ? <span className="italic text-muted-foreground"> — “{r.waive_reason}”</span> : null}
+                    </div>
+                    {/* A waiver is corrected by a new first piece; the waiver stays on record. */}
+                    <Button size="sm" variant="outline" disabled={startNew.isPending}
+                            onClick={() => startNew.mutate(
+                                { work_order: workOrderId, step: String(r.step),
+                                  ...(r.equipment ? { equipment: String(r.equipment) } : {}),
+                                  ...(r.shift_date ? { shift_date: String(r.shift_date) } : {}) },
+                                {
+                                    onSuccess: () => toast.success("New first piece started — the waiver is marked superseded."),
+                                    onError: (e) => toast.error(apiErrorMessage(e) ?? "Could not start a new first piece"),
+                                })}>
+                        Start a new first piece
+                    </Button>
+                </div>
+            ))}
             {held.map((r) => (
                 <div key={r.id} className="rounded-lg border-2 border-destructive/50 bg-destructive/10 p-4">
                     <div className="flex flex-wrap items-start gap-3">
                         <ShieldAlert className="mt-0.5 h-5 w-5 text-destructive" />
                         <div className="min-w-0 flex-1 space-y-1">
                             <p className="font-medium">
-                                First piece failed at {r.step_info?.name ?? "this step"} — run held
+                                First piece failed at {r.step_info?.name ?? "this step"}{forContext(r)} — run held
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 No part moves past this step. Correct the setup, then start a new
@@ -128,7 +154,7 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="font-medium">
-                                        {row.step_info?.name ?? "Step"}
+                                        {row.step_info?.name ?? "Step"}{forContext(row)}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         {row.designated_part_info?.erp_id

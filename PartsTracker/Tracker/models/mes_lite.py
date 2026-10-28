@@ -807,11 +807,12 @@ class Steps(SecureModel):
     )
     """Per-step expected scrap fraction; null = inherit the process default."""
 
+    # What one first piece releases — see services/qms/fpi_scope.py. Per Operator was
+    # removed 2026-10-28: it never keyed a record, so it behaved as Per Work Order.
     FPI_SCOPE_CHOICES = [
         ('PER_WORKORDER', 'Per Work Order'),
         ('PER_SHIFT', 'Per Shift'),
         ('PER_EQUIPMENT', 'Per Equipment'),
-        ('PER_OPERATOR', 'Per Operator'),
     ]
     fpi_scope = models.CharField(
         max_length=20,
@@ -1126,90 +1127,36 @@ class Steps(SecureModel):
 
         return True
 
-    def get_fpi_status(self, work_order):
+    def get_fpi_status(self, work_order, part=None):
         """
-        Get First Piece Inspection status for this step and work order.
+        First Piece Inspection status for this step and work order — for `part`'s
+        context under the step's scope (its shift or machine), or for all the work
+        order's parts at the step when no part is given. See services/qms/fpi_scope.py.
 
         Returns dict with:
         - status: 'NOT_REQUIRED' | 'PENDING' | 'PASSED' | 'FAILED' | 'WAIVED'
         - fpi_record_id: UUID of the FPIRecord (if any)
         - designated_part_id: UUID of the designated part (if any)
         - blocked_parts_count: Number of parts waiting for FPI to pass
+        - context_label: who the first piece is for ("" per work order)
         """
-        from .qms import FPIRecord, FPIStatus
-
         if not self.requires_first_piece_inspection:
             return {
                 'status': 'NOT_REQUIRED',
                 'fpi_record_id': None,
                 'designated_part_id': None,
-                'blocked_parts_count': 0
+                'blocked_parts_count': 0,
+                'context_label': '',
             }
+        from Tracker.services.qms.fpi_scope import step_status
+        return step_status(self, work_order, part=part)
 
-        # Find FPI records for this (work_order, step) using the dedicated FPIRecord model
-        fpi_records = FPIRecord.objects.filter(
-            work_order=work_order,
-            step=self,
-            archived=False
-        ).order_by('-created_at')
-
-        # Check for passed or waived FPI
-        passed_fpi = fpi_records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).first()
-        if passed_fpi:
-            return {
-                'status': 'PASSED' if passed_fpi.status == FPIStatus.PASSED else 'WAIVED',
-                'fpi_record_id': str(passed_fpi.id),
-                'designated_part_id': str(passed_fpi.designated_part_id) if passed_fpi.designated_part_id else None,
-                'blocked_parts_count': 0
-            }
-
-        # Check for failed FPI (most recent)
-        failed_fpi = fpi_records.filter(status=FPIStatus.FAILED).first()
-        if failed_fpi:
-            # Count parts waiting at this step
-            blocked_count = Parts.objects.filter(
-                work_order=work_order,
-                step=self
-            ).count()
-
-            return {
-                'status': 'FAILED',
-                'fpi_record_id': str(failed_fpi.id),
-                'designated_part_id': str(failed_fpi.designated_part_id) if failed_fpi.designated_part_id else None,
-                'blocked_parts_count': blocked_count
-            }
-
-        # Check for pending FPI
-        pending_fpi = fpi_records.filter(status=FPIStatus.PENDING).first()
-        blocked_count = Parts.objects.filter(work_order=work_order, step=self).count()
-
-        return {
-            'status': 'PENDING',
-            'fpi_record_id': str(pending_fpi.id) if pending_fpi else None,
-            'designated_part_id': str(pending_fpi.designated_part_id) if pending_fpi and pending_fpi.designated_part_id else None,
-            'blocked_parts_count': blocked_count
-        }
-
-    def needs_fpi(self, work_order):
-        """
-        Check if this step still needs a First Piece Inspection for the given work order.
-
-        Returns True if:
-        - Step requires FPI
-        - No passing FPI exists yet for this (work_order, step)
-        """
+    def needs_fpi(self, work_order, part=None):
+        """Whether this step still needs a First Piece Inspection for `part`'s context
+        (or the work order's parts at the step)."""
         if not self.requires_first_piece_inspection:
             return False
-
-        from .qms import FPIRecord, FPIStatus
-
-        # Check if FPI already passed or waived
-        return not FPIRecord.objects.filter(
-            work_order=work_order,
-            step=self,
-            status__in=[FPIStatus.PASSED, FPIStatus.WAIVED],
-            archived=False
-        ).exists()
+        return self.get_fpi_status(work_order, part=part)['status'] not in ('PASSED', 'WAIVED')
 
     def get_active_sampling_ruleset(self, part_type):
         """Get the currently active ruleset for this step"""
@@ -1310,9 +1257,11 @@ class Steps(SecureModel):
 
         # 3. Check FPI requirement (Parts-only — FPI doesn't apply to teardown).
         if part is not None and self.requires_first_piece_inspection:
-            fpi_status = self.get_fpi_status(work_order)
+            fpi_status = self.get_fpi_status(work_order, part=part)
             if fpi_status['status'] not in ('PASSED', 'WAIVED', 'NOT_REQUIRED'):
-                blockers.append(f"First Piece Inspection required: {fpi_status['status']}")
+                ctx = fpi_status.get('context_label')
+                blockers.append(f"First Piece Inspection required{f' for {ctx}' if ctx else ''}: "
+                                f"{fpi_status['status']}")
 
         # 4. Check sampling requirement (Parts-only — sampling doesn't apply to teardown).
         if part is not None and self.sampling_required and part.requires_sampling:

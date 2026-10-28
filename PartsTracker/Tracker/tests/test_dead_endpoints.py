@@ -50,7 +50,6 @@ ALLOWED_UNREACHABLE = {
     ('ShiftNoteViewSet', 'destroy'),               # retracted via change_shiftnote
     ('MilestoneTemplateViewSet', 'destroy'),       # templates archived, not deleted
     ('StepOverrideViewSet', 'destroy'),            # audit trail of an override
-    ('FPIRecordViewSet', 'destroy'),               # quality evidence
     ('BatchExecutionViewSet', 'destroy'),          # execution history
     ('OutsideProcessShipmentViewSet', 'destroy'),  # shipment record
     # Life tracking: all three are already in test_permission_coverage's

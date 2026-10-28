@@ -388,7 +388,7 @@ export function OperatorSubstepRuntimePage() {
                 <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
                     <div className="w-full max-w-3xl space-y-4">
                         {search.workOrder && (
-                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} />
+                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} partId={search.part} />
                         )}
                         {search.part && <ReworkLimitBanner partId={search.part} />}
                         {search.part && (
@@ -525,7 +525,7 @@ export function OperatorSubstepRuntimePage() {
                 <main className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
                     <div className="w-full max-w-3xl space-y-4">
                         {search.workOrder && (
-                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} />
+                            <FpiStatusBanner workOrderId={search.workOrder} stepId={stepId} partId={search.part} />
                         )}
                         {search.part && <ReworkLimitBanner partId={search.part} />}
                         {search.part && (

@@ -21,6 +21,17 @@ export type FpiCheckStatusResponse = {
      *  signer's login) or "PASSWORD" (they re-enter their own). The buy-off IS
      *  this step's QA release, so it meets the same bar. */
     assurance?: string;
+    /** The step's scope, and who this first piece is for under it ("" per work
+     *  order): "the 28 Oct shift", or the machine's name. */
+    scope?: string;
+    context_label?: string;
+    /** False on a Per Equipment step when the part's machine isn't recorded. */
+    context_known?: boolean;
+    equipment_id?: string | null;
+    /** The standing waiver, when the newest record is one; `can_restart` says this
+     *  user may correct it by starting a new first piece. */
+    waived_fpi_id?: string | null;
+    can_restart?: boolean;
     message: string;
 };
 
@@ -63,12 +74,17 @@ export function useFpiRecords(
     });
 }
 
-export const fpiCheckStatusOptions = (workOrderId: string | undefined, stepId: string | undefined) => queryOptions({
-    queryKey: ["fpi-status", workOrderId, stepId] as const,
+// `partId` answers for that part's context under the step's scope (its machine, for
+// Per Equipment). The key keeps workOrderId/stepId first, so invalidating by those
+// two still reaches every part's entry.
+export const fpiCheckStatusOptions = (workOrderId: string | undefined, stepId: string | undefined,
+                                      partId?: string) => queryOptions({
+    queryKey: ["fpi-status", workOrderId, stepId, partId ?? null] as const,
     queryFn: () => api.api_FPIRecords_check_status_retrieve({
         queries: {
             work_order: workOrderId!,
-            step: stepId!
+            step: stepId!,
+            ...(partId ? { part: partId } : {}),
         }
     }) as Promise<FpiCheckStatusResponse>,
 });
@@ -79,10 +95,11 @@ export const fpiCheckStatusOptions = (workOrderId: string | undefined, stepId: s
 export function useFpiCheckStatus(
     workOrderId: string | undefined,
     stepId: string | undefined,
-    options?: Omit<ReturnType<typeof fpiCheckStatusOptions>, "queryKey" | "queryFn">
+    options?: Omit<ReturnType<typeof fpiCheckStatusOptions>, "queryKey" | "queryFn">,
+    partId?: string,
 ) {
     return useQuery({
-        ...fpiCheckStatusOptions(workOrderId, stepId),
+        ...fpiCheckStatusOptions(workOrderId, stepId, partId),
         enabled: !!workOrderId && !!stepId,
         ...options
     });
@@ -100,6 +117,8 @@ export function useFpiGetOrCreate() {
         mutationFn: (data: {
             work_order: string;
             step: string;
+            /** The part starting it: its machine is the context on a Per Equipment step. */
+            part?: string;
             equipment?: string;
             shift_date?: string;
         }) => api.api_FPIRecords_get_or_create_create(data, {
@@ -110,7 +129,7 @@ export function useFpiGetOrCreate() {
 
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] === "fpi-records" });
-            queryClient.invalidateQueries(fpiCheckStatusOptions(variables.work_order, variables.step));
+            queryClient.invalidateQueries({ queryKey: ["fpi-status", variables.work_order, variables.step] });
         },
     });
 }

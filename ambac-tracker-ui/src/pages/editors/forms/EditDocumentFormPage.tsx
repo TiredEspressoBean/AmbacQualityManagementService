@@ -614,7 +614,8 @@ export default function DocumentFormPage() {
                                                 onSearch={setRawObjectSearch}
                                                 placeholder="Select record"
                                                 searchPlaceholder="Search..."
-                                                emptyText="No items found."
+                                                // Undefined until the record type's query returns.
+                                                emptyText={objects === undefined ? "Loading…" : "No items found."}
                                             />
                                         </FormControl>
                                         <FormMessage />

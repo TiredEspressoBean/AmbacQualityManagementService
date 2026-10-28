@@ -188,6 +188,7 @@ export default function ProcessFlowPage() {
         pass_threshold: step.pass_threshold as number | undefined,
         requires_first_piece_inspection: step.requires_first_piece_inspection as boolean | undefined,
         fpi_scope: step.fpi_scope as string | undefined,
+        sequencing_mode: step.sequencing_mode as string | undefined,
         is_outside_process: step.is_outside_process as boolean | undefined,
         outside_supplier: step.outside_supplier as string | null,
         outside_supplier_name: step.outside_supplier_name as string | null,
@@ -417,6 +418,7 @@ export default function ProcessFlowPage() {
           passThreshold: updatedStep.pass_threshold,
           requiresFirstPieceInspection: updatedStep.requires_first_piece_inspection,
           fpiScope: updatedStep.fpi_scope,
+          sequencingMode: updatedStep.sequencing_mode,
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
@@ -493,6 +495,7 @@ export default function ProcessFlowPage() {
         pass_threshold: step.pass_threshold,
         requires_first_piece_inspection: step.requires_first_piece_inspection || false,
         fpi_scope: step.fpi_scope || 'PER_WORKORDER',
+        sequencing_mode: step.sequencing_mode || 'sequential',
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,

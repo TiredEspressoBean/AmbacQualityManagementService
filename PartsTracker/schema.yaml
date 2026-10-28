@@ -11264,6 +11264,7 @@ paths:
           - NOT_REQUIRED
           - PASSED
           - PENDING
+          - SUPERSEDED
           - VOIDED
           - WAIVED
         description: |-
@@ -11275,6 +11276,7 @@ paths:
           * `FAILED` - Failed
           * `WAIVED` - Waived
           * `VOIDED` - Voided
+          * `SUPERSEDED` - Superseded
       - in: query
         name: step
         schema:
@@ -11348,115 +11350,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/FPIRecord'
           description: ''
-    put:
-      operationId: api_FPIRecords_update
-      description: |-
-        ViewSet for managing First Piece Inspection (FPI) records.
-
-        FPI ensures the first piece of a production run meets quality standards
-        before batch production proceeds. Configurable per step via fpi_scope:
-        - per_workorder: One FPI per work order per step
-        - per_shift: One FPI per shift per step
-        - per_equipment: One FPI per equipment per step
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this FPI Record.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FPIRecordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/FPIRecordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/FPIRecordRequest'
-        required: true
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FPIRecord'
-          description: ''
-    patch:
-      operationId: api_FPIRecords_partial_update
-      description: |-
-        ViewSet for managing First Piece Inspection (FPI) records.
-
-        FPI ensures the first piece of a production run meets quality standards
-        before batch production proceeds. Configurable per step via fpi_scope:
-        - per_workorder: One FPI per work order per step
-        - per_shift: One FPI per shift per step
-        - per_equipment: One FPI per equipment per step
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this FPI Record.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedFPIRecordRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedFPIRecordRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedFPIRecordRequest'
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FPIRecord'
-          description: ''
-    delete:
-      operationId: api_FPIRecords_destroy
-      description: |-
-        ViewSet for managing First Piece Inspection (FPI) records.
-
-        FPI ensures the first piece of a production run meets quality standards
-        before batch production proceeds. Configurable per step via fpi_scope:
-        - per_workorder: One FPI per work order per step
-        - per_shift: One FPI per shift per step
-        - per_equipment: One FPI per equipment per step
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this FPI Record.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/FPIRecords/{id}/acknowledge/:
     post:
       operationId: api_FPIRecords_acknowledge_create
@@ -11675,6 +11568,12 @@ paths:
       operationId: api_FPIRecords_check_status_retrieve
       description: Check FPI status for a work order at a step
       parameters:
+      - in: query
+        name: part
+        schema:
+          type: string
+        description: Part UUID — answers for its context under the step's scope (its
+          machine, for Per Equipment)
       - in: query
         name: step
         schema:
@@ -57370,6 +57269,7 @@ components:
             * `FAILED` - Failed
             * `WAIVED` - Waived
             * `VOIDED` - Voided
+            * `SUPERSEDED` - Superseded
         status_display:
           type: string
           readOnly: true
@@ -57584,6 +57484,7 @@ components:
       - FAILED
       - WAIVED
       - VOIDED
+      - SUPERSEDED
       type: string
       description: |-
         * `NOT_REQUIRED` - Not Required
@@ -57592,6 +57493,7 @@ components:
         * `FAILED` - Failed
         * `WAIVED` - Waived
         * `VOIDED` - Voided
+        * `SUPERSEDED` - Superseded
     FPIRecordStepInfo:
       type: object
       properties:
@@ -58182,13 +58084,11 @@ components:
       - PER_WORKORDER
       - PER_SHIFT
       - PER_EQUIPMENT
-      - PER_OPERATOR
       type: string
       description: |-
         * `PER_WORKORDER` - Per Work Order
         * `PER_SHIFT` - Per Shift
         * `PER_EQUIPMENT` - Per Equipment
-        * `PER_OPERATOR` - Per Operator
     FrozenFreed:
       type: object
       description: A frozen or planner-pinned operation that couldn't be held where
@@ -68732,36 +68632,6 @@ components:
           description: Free-form label, e.g. 'primary', 'quality', 'procurement'.
           maxLength: 64
         enabled:
-          type: boolean
-    PatchedFPIRecordRequest:
-      type: object
-      description: Serializer for First Piece Inspection records.
-      properties:
-        work_order:
-          type: string
-          format: uuid
-        step:
-          type: string
-          format: uuid
-        part_type:
-          type: string
-          format: uuid
-        designated_part:
-          type: string
-          format: uuid
-          nullable: true
-          description: The part designated for FPI
-        equipment:
-          type: string
-          format: uuid
-          nullable: true
-          description: Equipment being used (for per-equipment FPI)
-        shift_date:
-          type: string
-          format: date
-          nullable: true
-          description: Date of the shift for per-shift FPI
-        archived:
           type: boolean
     PatchedFishboneRequest:
       type: object
@@ -79705,7 +79575,12 @@ components:
             * `PER_WORKORDER` - Per Work Order
             * `PER_SHIFT` - Per Shift
             * `PER_EQUIPMENT` - Per Equipment
-            * `PER_OPERATOR` - Per Operator
+        sequencing_mode:
+          type: string
+          description: How this Op's substeps are ordered for the operator. 'sequential'
+            = substep N requires N-1 complete; 'free_order' = any order. Choices defined
+            in Tracker.models.dwi.SequencingMode.
+          maxLength: 20
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'
@@ -80789,7 +80664,13 @@ components:
             * `PER_WORKORDER` - Per Work Order
             * `PER_SHIFT` - Per Shift
             * `PER_EQUIPMENT` - Per Equipment
-            * `PER_OPERATOR` - Per Operator
+        sequencing_mode:
+          type: string
+          minLength: 1
+          description: How this Op's substeps are ordered for the operator. 'sequential'
+            = substep N requires N-1 complete; 'free_order' = any order. Choices defined
+            in Tracker.models.dwi.SequencingMode.
+          maxLength: 20
         step_type:
           allOf:
           - $ref: '#/components/schemas/StepTypeEnum'

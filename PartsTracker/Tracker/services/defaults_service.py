@@ -165,10 +165,10 @@ APPROVAL_TEMPLATES = [
         "default_groups_names": ["QA Manager", "Document Controller"],
     },
     {
-        # A Major/Critical CAPA's plan is decided by a QA Manager or a Production
-        # Manager — either one, the first approval decides it (user, 2026-10-20). Not
-        # Tenant Admin: an administrator account, not a quality role. A requester who
-        # is the only eligible approver may self-approve with a justification
+        # A Major/Critical CAPA's plan is decided by a QA Manager only (user,
+        # 2026-10-20; Production Manager removed 2026-10-28, B3). Not Tenant Admin: an
+        # administrator account, not a quality role. A requester who is the only
+        # eligible approver may self-approve with a justification
         # (services/core/approval.self_approval_permitted). Critical differs from
         # Major in urgency, not in who decides: shorter due/escalation, no delegating.
         "template_name": "Critical CAPA Approval",
@@ -180,7 +180,7 @@ APPROVAL_TEMPLATES = [
         "allow_self_approval": False,
         "default_due_days": 3,
         "escalation_days": 1,
-        "default_groups_names": ["QA Manager", "Production Manager"],
+        "default_groups_names": ["QA Manager"],
     },
     {
         "template_name": "Major CAPA Approval",
@@ -192,7 +192,7 @@ APPROVAL_TEMPLATES = [
         "allow_self_approval": False,
         "default_due_days": 5,
         "escalation_days": 2,
-        "default_groups_names": ["QA Manager", "Production Manager"],
+        "default_groups_names": ["QA Manager"],
     },
     # No ECO template: approving an engineering change is a PLM act, and UQMES
     # does no PLM (user, 2026-10-12; CLAUDE.md's product boundary). Nothing in the

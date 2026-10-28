@@ -118,7 +118,9 @@ export function ShipDialog({ group, partIds, initialLots, open, onOpenChange, on
                         {group?.customer_name ? `To ${group.customer_name}` : "Say who it's going to"}
                         {group?.order_number ? ` · ${group.order_number}` : ""}.
                         {partIds.length > 0 ? " Each part at a Ship step completes it, so its sign-off checks must be done." : ""}
-                        {group?.requires_coc ? " The CoC prints with the packing list." : ""}
+                        {group?.requires_coc
+                            ? " The CoC prints with the packing list; a unit going back unrepaired gets a returned-as-received note instead."
+                            : ""}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-3 py-1 sm:grid-cols-2">

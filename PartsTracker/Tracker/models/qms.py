@@ -3009,6 +3009,10 @@ class FPIStatus(models.TextChoices):
     # A pass given in error, voided with a reason (a RecordEdit of `status`). Kept as
     # recorded; a fresh PENDING record takes its place and the run holds behind it.
     VOIDED = 'VOIDED', 'Voided'
+    # A waiver corrected by a new first piece (user decision 2026-10-28, B2). Kept as
+    # recorded — waived, waived_by and waive_reason stand — but it releases nothing:
+    # the newer record decides.
+    SUPERSEDED = 'SUPERSEDED', 'Superseded'
 
 
 class FPIResult(models.TextChoices):
@@ -3025,11 +3029,10 @@ class FPIRecord(SecureModel):
     Tracks FPI requirements and results for a work order/step/equipment combination.
     FPI verifies setup correctness before full production begins.
 
-    FPI scope options (defined on Step):
+    FPI scope options (defined on Step; enforced by services/qms/fpi_scope.py):
     - per_workorder: One FPI per work order at this step
-    - per_shift: One FPI per shift per step
+    - per_shift: One FPI per shift (shift_date) per step per work order
     - per_equipment: One FPI per equipment per step per work order
-    - per_operator: One FPI per operator per step per work order
     """
 
     work_order = models.ForeignKey(

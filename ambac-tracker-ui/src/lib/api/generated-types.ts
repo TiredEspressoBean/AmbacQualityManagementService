@@ -4256,39 +4256,12 @@ export interface paths {
         };
         /** @description Retrieve a specific FPI record */
         get: operations["api_FPIRecords_retrieve"];
-        /**
-         * @description ViewSet for managing First Piece Inspection (FPI) records.
-         *
-         *     FPI ensures the first piece of a production run meets quality standards
-         *     before batch production proceeds. Configurable per step via fpi_scope:
-         *     - per_workorder: One FPI per work order per step
-         *     - per_shift: One FPI per shift per step
-         *     - per_equipment: One FPI per equipment per step
-         */
-        put: operations["api_FPIRecords_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description ViewSet for managing First Piece Inspection (FPI) records.
-         *
-         *     FPI ensures the first piece of a production run meets quality standards
-         *     before batch production proceeds. Configurable per step via fpi_scope:
-         *     - per_workorder: One FPI per work order per step
-         *     - per_shift: One FPI per shift per step
-         *     - per_equipment: One FPI per equipment per step
-         */
-        delete: operations["api_FPIRecords_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description ViewSet for managing First Piece Inspection (FPI) records.
-         *
-         *     FPI ensures the first piece of a production run meets quality standards
-         *     before batch production proceeds. Configurable per step via fpi_scope:
-         *     - per_workorder: One FPI per work order per step
-         *     - per_shift: One FPI per shift per step
-         *     - per_equipment: One FPI per equipment per step
-         */
-        patch: operations["api_FPIRecords_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/FPIRecords/{id}/acknowledge/": {
@@ -24522,6 +24495,7 @@ export interface components {
              *     * `FAILED` - Failed
              *     * `WAIVED` - Waived
              *     * `VOIDED` - Voided
+             *     * `SUPERSEDED` - Superseded
              */
             readonly status: components["schemas"]["FPIRecordStatusEnum"];
             readonly status_display: string;
@@ -24618,9 +24592,10 @@ export interface components {
          *     * `FAILED` - Failed
          *     * `WAIVED` - Waived
          *     * `VOIDED` - Voided
+         *     * `SUPERSEDED` - Superseded
          * @enum {string}
          */
-        FPIRecordStatusEnum: "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED" | "VOIDED";
+        FPIRecordStatusEnum: "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED" | "VOIDED" | "SUPERSEDED";
         FPIRecordStepInfo: {
             id: string;
             name: string | null;
@@ -24890,10 +24865,9 @@ export interface components {
          * @description * `PER_WORKORDER` - Per Work Order
          *     * `PER_SHIFT` - Per Shift
          *     * `PER_EQUIPMENT` - Per Equipment
-         *     * `PER_OPERATOR` - Per Operator
          * @enum {string}
          */
-        FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
+        FpiScopeEnum: "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT";
         /** @description A frozen or planner-pinned operation that couldn't be held where it was. */
         FrozenFreed: {
             part: string;
@@ -30346,31 +30320,6 @@ export interface components {
             /** @description Free-form label, e.g. 'primary', 'quality', 'procurement'. */
             role?: string;
             enabled?: boolean;
-        };
-        /** @description Serializer for First Piece Inspection records. */
-        PatchedFPIRecordRequest: {
-            /** Format: uuid */
-            work_order?: string;
-            /** Format: uuid */
-            step?: string;
-            /** Format: uuid */
-            part_type?: string;
-            /**
-             * Format: uuid
-             * @description The part designated for FPI
-             */
-            designated_part?: string | null;
-            /**
-             * Format: uuid
-             * @description Equipment being used (for per-equipment FPI)
-             */
-            equipment?: string | null;
-            /**
-             * Format: date
-             * @description Date of the shift for per-shift FPI
-             */
-            shift_date?: string | null;
-            archived?: boolean;
         };
         /** @description Fishbone diagram RCA serializer */
         PatchedFishboneRequest: {
@@ -36090,9 +36039,10 @@ export interface components {
              *     * `PER_WORKORDER` - Per Work Order
              *     * `PER_SHIFT` - Per Shift
              *     * `PER_EQUIPMENT` - Per Equipment
-             *     * `PER_OPERATOR` - Per Operator
              */
             fpi_scope?: components["schemas"]["FpiScopeEnum"];
+            /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
+            sequencing_mode?: string;
             /**
              * @description Visual type for flow editor.
              *
@@ -36694,9 +36644,10 @@ export interface components {
              *     * `PER_WORKORDER` - Per Work Order
              *     * `PER_SHIFT` - Per Shift
              *     * `PER_EQUIPMENT` - Per Equipment
-             *     * `PER_OPERATOR` - Per Operator
              */
             fpi_scope?: components["schemas"]["FpiScopeEnum"];
+            /** @description How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode. */
+            sequencing_mode?: string;
             /**
              * @description Visual type for flow editor.
              *
@@ -48634,8 +48585,9 @@ export interface operations {
                  *     * `FAILED` - Failed
                  *     * `WAIVED` - Waived
                  *     * `VOIDED` - Voided
+                 *     * `SUPERSEDED` - Superseded
                  */
-                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "VOIDED" | "WAIVED";
+                status?: "FAILED" | "NOT_REQUIRED" | "PASSED" | "PENDING" | "SUPERSEDED" | "VOIDED" | "WAIVED";
                 /** @description Filter by step UUID */
                 step?: string;
                 /** @description Filter by work order UUID */
@@ -48693,83 +48645,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FPIRecord"];
-                };
-            };
-        };
-    };
-    api_FPIRecords_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this FPI Record. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FPIRecordRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["FPIRecordRequest"];
-                "multipart/form-data": components["schemas"]["FPIRecordRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FPIRecord"];
-                };
-            };
-        };
-    };
-    api_FPIRecords_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this FPI Record. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_FPIRecords_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this FPI Record. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedFPIRecordRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedFPIRecordRequest"];
-                "multipart/form-data": components["schemas"]["PatchedFPIRecordRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {
@@ -48951,6 +48826,8 @@ export interface operations {
     api_FPIRecords_check_status_retrieve: {
         parameters: {
             query: {
+                /** @description Part UUID — answers for its context under the step's scope (its machine, for Per Equipment) */
+                part?: string;
                 /** @description Step UUID */
                 step: string;
                 /** @description Work order UUID */

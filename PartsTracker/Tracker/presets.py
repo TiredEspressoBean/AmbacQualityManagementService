@@ -167,6 +167,11 @@ CLASSIFIED_DOCUMENT_VIEW = [
 #   - authoring of definitions  -> AUTHORING_PERMISSIONS (change control)
 #   - approve/verify/close      -> SOD_APPROVAL_PERMISSIONS (segregation of duties)
 #   - export control, secret docs, access admin, notification config -> below
+# Removing a sampling rule follows authoring, QA-led (user decision 2026-10-28, B9):
+# Tenant Admin and QA Manager only. It sat in the manager-tier deletes, which gave it
+# to Production Manager and Document Controller, who can't write a rule.
+SAMPLING_RULE_DELETE = ['delete_samplingrule', 'delete_samplingruleset']
+
 # Append-only audit models (recordedit, capastatustransition, ...) have no
 # write grants anywhere — enforced by test_permission_coverage.py + DB triggers.
 
@@ -549,10 +554,13 @@ MANAGER_DELETE_PERMISSIONS = [
     'delete_qaapproval', 'delete_quarantinedisposition',
     'delete_capa', 'delete_capatasks', 'delete_capataskassignee', 'delete_capaverification',
     'delete_rcarecord', 'delete_fishbone', 'delete_fivewhys', 'delete_rootcause',
-    'delete_measurementresult', 'delete_spcbaseline',
+    # delete_measurementresult removed 2026-10-28 (B10): no endpoint deletes one — a
+    # measurement is corrected by voiding the substep completion and re-capturing.
+    'delete_spcbaseline',
     'delete_generatedreport',
     'delete_approvalrequest',
-    'delete_samplingrule', 'delete_samplingruleset', 'delete_samplinganalytics',
+    # delete_samplingrule / delete_samplingruleset moved to SAMPLING_RULE_DELETE (B9).
+    'delete_samplinganalytics',
     'delete_trainingrecord',
     'delete_companies', 'delete_externalapiorderidentifier',
     'delete_facility', 'delete_archivereason',
@@ -679,6 +687,7 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             'cancel_workorder',
+            *SAMPLING_RULE_DELETE,
             *STAFF_VIEW_PERMISSIONS,
             *TIME_APPROVAL_PERMISSIONS,
             *AUDIT_TRAIL_BROWSE_PERMISSIONS,
@@ -733,6 +742,7 @@ GROUP_PRESETS = {
         'description': 'Quality management, approvals, CAPA control',
         'permissions': [
             'apply_cyclecount',
+            *SAMPLING_RULE_DELETE,
             *STAFF_VIEW_PERMISSIONS,
             *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,

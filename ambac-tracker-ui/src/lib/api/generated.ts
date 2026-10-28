@@ -3227,6 +3227,7 @@ export type FPIRecord = {
     * `FAILED` - Failed
     * `WAIVED` - Waived
     * `VOIDED` - Voided
+    * `SUPERSEDED` - Superseded
      */
   status: FPIRecordStatusEnum;
   status_display: string;
@@ -3323,10 +3324,17 @@ export type FPIRecordStatusEnum =
    * `FAILED` - Failed
    * `WAIVED` - Waived
    * `VOIDED` - Voided
+   * `SUPERSEDED` - Superseded
    *
-   * @enum NOT_REQUIRED, PENDING, PASSED, FAILED, WAIVED, VOIDED
+   * @enum NOT_REQUIRED, PENDING, PASSED, FAILED, WAIVED, VOIDED, SUPERSEDED
    */
-  "NOT_REQUIRED" | "PENDING" | "PASSED" | "FAILED" | "WAIVED" | "VOIDED";
+  | "NOT_REQUIRED"
+  | "PENDING"
+  | "PASSED"
+  | "FAILED"
+  | "WAIVED"
+  | "VOIDED"
+  | "SUPERSEDED";
 export type FPIRecordResultEnum =
   /**
    * * `PASS` - Pass
@@ -7974,9 +7982,14 @@ export type Step = {
     * `PER_WORKORDER` - Per Work Order
     * `PER_SHIFT` - Per Shift
     * `PER_EQUIPMENT` - Per Equipment
-    * `PER_OPERATOR` - Per Operator
      */
   FpiScopeEnum | undefined;
+  sequencing_mode?: /**
+   * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
+   *
+   * @maxLength 20
+   */
+  string | undefined;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -8095,11 +8108,10 @@ export type FpiScopeEnum =
    * * `PER_WORKORDER` - Per Work Order
    * `PER_SHIFT` - Per Shift
    * `PER_EQUIPMENT` - Per Equipment
-   * `PER_OPERATOR` - Per Operator
    *
-   * @enum PER_WORKORDER, PER_SHIFT, PER_EQUIPMENT, PER_OPERATOR
+   * @enum PER_WORKORDER, PER_SHIFT, PER_EQUIPMENT
    */
-  "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT" | "PER_OPERATOR";
+  "PER_WORKORDER" | "PER_SHIFT" | "PER_EQUIPMENT";
 export type StepTypeEnum =
   /**
    * * `TASK` - Task
@@ -17313,9 +17325,15 @@ export type StepRequest = {
     * `PER_WORKORDER` - Per Work Order
     * `PER_SHIFT` - Per Shift
     * `PER_EQUIPMENT` - Per Equipment
-    * `PER_OPERATOR` - Per Operator
      */
   FpiScopeEnum | undefined;
+  sequencing_mode?: /**
+   * How this Op's substeps are ordered for the operator. 'sequential' = substep N requires N-1 complete; 'free_order' = any order. Choices defined in Tracker.models.dwi.SequencingMode.
+   *
+   * @minLength 1
+   * @maxLength 20
+   */
+  string | undefined;
   step_type?: /**
      * Visual type for flow editor.
     
@@ -20998,6 +21016,7 @@ const FPIRecordStatusEnum = z.enum([
   "FAILED",
   "WAIVED",
   "VOIDED",
+  "SUPERSEDED",
 ]);
 const FPIRecordResultEnum = z.enum(["PASS", "FAIL", "CONDITIONAL"]);
 const FPIRecord = z.object({
@@ -21053,17 +21072,6 @@ const FPIRecordRequest = z.object({
   shift_date: z.string().nullish(),
   archived: z.boolean().optional(),
 });
-const PatchedFPIRecordRequest = z
-  .object({
-    work_order: z.string().uuid(),
-    step: z.string().uuid(),
-    part_type: z.string().uuid(),
-    designated_part: z.string().uuid().nullable(),
-    equipment: z.string().uuid().nullable(),
-    shift_date: z.string().nullable(),
-    archived: z.boolean(),
-  })
-  .partial();
 const api_FPIRecords_fail_create_Body = z
   .object({
     notes: z.string(),
@@ -23670,12 +23678,7 @@ const StepTiming = z
   .partial();
 const LaborModelEnum = z.enum(["off", "pool", "named"]);
 const QaSignoffAssuranceEnum = z.enum(["NONE", "PASSWORD"]);
-const FpiScopeEnum = z.enum([
-  "PER_WORKORDER",
-  "PER_SHIFT",
-  "PER_EQUIPMENT",
-  "PER_OPERATOR",
-]);
+const FpiScopeEnum = z.enum(["PER_WORKORDER", "PER_SHIFT", "PER_EQUIPMENT"]);
 const StepTypeEnum = z.enum([
   "TASK",
   "START",
@@ -23722,6 +23725,7 @@ const Step = z.object({
   requires_batch_completion: z.boolean().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
   fpi_scope: FpiScopeEnum.optional(),
+  sequencing_mode: z.string().max(20).optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -29418,6 +29422,7 @@ const StepRequest = z.object({
   requires_batch_completion: z.boolean().optional(),
   requires_first_piece_inspection: z.boolean().optional(),
   fpi_scope: FpiScopeEnum.optional(),
+  sequencing_mode: z.string().min(1).max(20).optional(),
   step_type: StepTypeEnum.optional(),
   is_decision_point: z.boolean().optional(),
   decision_type: z.union([DecisionTypeEnum, BlankEnum]).optional(),
@@ -29683,7 +29688,6 @@ export const schemas = {
   FPIRecord,
   PaginatedFPIRecordList,
   FPIRecordRequest,
-  PatchedFPIRecordRequest,
   api_FPIRecords_fail_create_Body,
   api_FPIRecords_pass_create_Body,
   VoidFpiPassInputRequest,
@@ -39471,6 +39475,7 @@ operations against the quantity available (cumulative capacity).`,
             "NOT_REQUIRED",
             "PASSED",
             "PENDING",
+            "SUPERSEDED",
             "VOIDED",
             "WAIVED",
           ])
@@ -39518,79 +39523,6 @@ operations against the quantity available (cumulative capacity).`,
       },
     ],
     response: FPIRecord,
-  },
-  {
-    method: "put",
-    path: "/api/FPIRecords/:id/",
-    alias: "api_FPIRecords_update",
-    description: `ViewSet for managing First Piece Inspection (FPI) records.
-
-FPI ensures the first piece of a production run meets quality standards
-before batch production proceeds. Configurable per step via fpi_scope:
-- per_workorder: One FPI per work order per step
-- per_shift: One FPI per shift per step
-- per_equipment: One FPI per equipment per step`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: FPIRecordRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: FPIRecord,
-  },
-  {
-    method: "patch",
-    path: "/api/FPIRecords/:id/",
-    alias: "api_FPIRecords_partial_update",
-    description: `ViewSet for managing First Piece Inspection (FPI) records.
-
-FPI ensures the first piece of a production run meets quality standards
-before batch production proceeds. Configurable per step via fpi_scope:
-- per_workorder: One FPI per work order per step
-- per_shift: One FPI per shift per step
-- per_equipment: One FPI per equipment per step`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedFPIRecordRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: FPIRecord,
-  },
-  {
-    method: "delete",
-    path: "/api/FPIRecords/:id/",
-    alias: "api_FPIRecords_destroy",
-    description: `ViewSet for managing First Piece Inspection (FPI) records.
-
-FPI ensures the first piece of a production run meets quality standards
-before batch production proceeds. Configurable per step via fpi_scope:
-- per_workorder: One FPI per work order per step
-- per_shift: One FPI per shift per step
-- per_equipment: One FPI per equipment per step`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
   },
   {
     method: "post",
@@ -39694,6 +39626,11 @@ before batch production proceeds. Configurable per step via fpi_scope:
     description: `Check FPI status for a work order at a step`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "part",
+        type: "Query",
+        schema: z.string().optional(),
+      },
       {
         name: "step",
         type: "Query",
@@ -40657,10 +40594,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/JobRoles/:id/",
@@ -40715,7 +40649,10 @@ const endpoints2 = makeApi([
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "delete",
     path: "/api/JobRoles/:id/",
@@ -44948,10 +44885,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/OrderLines/:id/",
@@ -45016,7 +44950,10 @@ correct-looking job that builds the wrong thing.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderLines/export/:export_format/",
@@ -50653,10 +50590,7 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/QuarantineDispositions/:id/",
@@ -50738,7 +50672,10 @@ the completion blockers.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/reopen/",
@@ -55983,10 +55920,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/:id/",
@@ -56041,7 +55975,10 @@ const endpoints5 = makeApi([
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -61149,10 +61086,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "put",
     path: "/api/User/:id/",
@@ -61207,7 +61141,10 @@ const endpoints6 = makeApi([
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/:id/access-history/",

@@ -19,6 +19,9 @@ import { toast } from "sonner";
 type FpiStatusBannerProps = {
     workOrderId: string;
     stepId: string;
+    /** The part at this station. Under a Per Shift / Per Equipment scope the first
+     *  piece is for its context (today's shift, the machine it runs on). */
+    partId?: string;
     stepName?: string;
     /** Called when FPI status changes (e.g., after pass/fail/waive) */
     onStatusChange?: () => void;
@@ -42,6 +45,7 @@ type FpiStatusBannerProps = {
 export function FpiStatusBanner({
     workOrderId,
     stepId,
+    partId,
     stepName,
     onStatusChange,
     compact = false,
@@ -54,9 +58,10 @@ export function FpiStatusBanner({
     const [voidOpen, setVoidOpen] = useState(false);
     const [voidReason, setVoidReason] = useState("");
 
-    const { data: fpiStatus, isLoading, refetch } = useFpiCheckStatus(workOrderId, stepId);
+    const { data: fpiStatus, isLoading, refetch } = useFpiCheckStatus(workOrderId, stepId, undefined, partId);
     const getOrCreateMutation = useFpiGetOrCreate();
     const voidMutation = useFpiVoidPass();
+    const [restartOpen, setRestartOpen] = useState(false);
 
     const afterChange = () => {
         refetch();
@@ -66,9 +71,24 @@ export function FpiStatusBanner({
     if (isLoading) return null;
     if (!fpiStatus?.requires_fpi) return null;
 
+    // Who the first piece is for under the step's scope: "the 28 Oct shift", "CNC-1".
+    const forContext = fpiStatus.context_label ? ` for ${fpiStatus.context_label}` : "";
+
+    const handleCreateFpi = async () => {
+        try {
+            await getOrCreateMutation.mutateAsync({ work_order: workOrderId, step: stepId, part: partId });
+            toast.success("FPI started — first piece designated");
+            setRestartOpen(false);
+            afterChange();
+        } catch (e: unknown) {
+            toast.error(apiErrorMessage(e) ?? "Failed to start FPI");
+        }
+    };
+
     // ---- Satisfied: run released --------------------------------------------
     if (fpiStatus.satisfied) {
         if (compact) return null;
+        const waived = Boolean(fpiStatus.waived_fpi_id);
         const voidable = fpiStatus.can_sign_off ? fpiStatus.passed_fpi_id : null;
         const handleVoid = async () => {
             if (!voidable || !voidReason.trim()) return;
@@ -87,9 +107,13 @@ export function FpiStatusBanner({
                 <div className="flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5 text-green-600" />
                     <div className="flex-1">
-                        <p className="font-medium text-sm">First Piece Inspection signed off</p>
+                        <p className="font-medium text-sm">
+                            {waived ? "First Piece Inspection waived" : "First Piece Inspection signed off"}{forContext}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                            Setup verified — all parts can proceed through this step.
+                            {waived
+                                ? "Released without a first-piece buy-off — parts can proceed through this step."
+                                : "Setup verified — all parts can proceed through this step."}
                         </p>
                     </div>
                     {voidable && (
@@ -97,8 +121,33 @@ export function FpiStatusBanner({
                             Void pass
                         </Button>
                     )}
+                    {/* A waiver is corrected by a new first piece (a pass by Void pass). */}
+                    {fpiStatus.can_restart && (
+                        <Button size="sm" variant="ghost" onClick={() => setRestartOpen(true)}>
+                            Start a new first piece
+                        </Button>
+                    )}
                     <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
+                <Dialog open={restartOpen} onOpenChange={setRestartOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Start a new first piece</DialogTitle>
+                            <DialogDescription>
+                                The waiver stays on record, marked superseded. The run holds{forContext} until
+                                the new first piece is passed or waived. Parts already past this step are not
+                                pulled back.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setRestartOpen(false)}
+                                disabled={getOrCreateMutation.isPending}>Cancel</Button>
+                            <Button onClick={handleCreateFpi} disabled={getOrCreateMutation.isPending}>
+                                {getOrCreateMutation.isPending ? "Starting…" : "Start a new first piece"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
                     <DialogContent>
                         <DialogHeader>
@@ -129,27 +178,22 @@ export function FpiStatusBanner({
     const partLabel = fpiStatus.designated_part_label;
     const firstPiece = partLabel ? `first piece ${partLabel}` : "first piece";
 
-    const handleCreateFpi = async () => {
-        try {
-            await getOrCreateMutation.mutateAsync({ work_order: workOrderId, step: stepId });
-            toast.success("FPI started — first piece designated");
-            afterChange();
-        } catch {
-            toast.error("Failed to start FPI");
-        }
-    };
-
     const isPending = fpiStatus.has_pending;
     const ready = fpiStatus.first_piece_ready;
     const canSignOff = fpiStatus.can_sign_off;
 
     // Pick the banner's shape from the flow state.
     let icon = <Lock className="h-5 w-5 text-amber-600" />;
-    let title = "First Piece Inspection Required";
+    let title = `First Piece Inspection Required${forContext}`;
     let detail = "Start FPI to designate the first piece and hold the run until buy-off.";
     let actions: React.ReactNode = null;
 
-    if (!isPending) {
+    if (fpiStatus.context_known === false) {
+        // Per Equipment, and nothing says which machine this part runs on.
+        title = "First Piece Inspection Required — machine not recorded";
+        detail = "This step needs a first piece per machine. Record the machine this part runs on, then start the FPI.";
+        actions = compact ? <Badge variant="secondary">FPI required</Badge> : null;
+    } else if (!isPending) {
         actions = !compact ? (
             <Button size="sm" onClick={handleCreateFpi} disabled={getOrCreateMutation.isPending}>
                 Start FPI

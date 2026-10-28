@@ -69,8 +69,14 @@ export const FPI_SCOPE_OPTIONS = [
   { value: 'PER_WORKORDER', label: 'Per Work Order' },
   { value: 'PER_SHIFT', label: 'Per Shift' },
   { value: 'PER_EQUIPMENT', label: 'Per Equipment' },
-  { value: 'PER_OPERATOR', label: 'Per Operator' },
 ] as const;
+
+/** What one passed (or waived) first piece releases, per scope. */
+const FPI_SCOPE_HINT = {
+  PER_WORKORDER: "One first piece releases this step for the whole work order.",
+  PER_SHIFT: "Each shift day needs its own first piece on the work order.",
+  PER_EQUIPMENT: "Each machine needs its own first piece on the work order. A part with no machine recorded is held.",
+} as const;
 
 export interface StepEditorPanelProps {
   node: Node;
@@ -131,6 +137,8 @@ type StepNodeData = {
   requiresFirstPieceInspection?: boolean;
   requiresBatchCompletion?: boolean;
   fpiScope?: string;
+  /** Substep order for the operator: 'sequential' (default) or 'free_order'. */
+  sequencingMode?: string;
   samplingRequired?: boolean;
   minSamplingRate?: number;
   passThreshold?: number;
@@ -1211,8 +1219,35 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {FPI_SCOPE_HINT[(data.fpiScope || 'PER_WORKORDER') as keyof typeof FPI_SCOPE_HINT]}
+                </p>
               </div>
             )}
+
+            {/* Sequencing — the order the operator works this step's substeps in. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="sequencing-mode" className="text-sm font-normal">Sequencing</Label>
+              {editable ? (
+                <Select value={data.sequencingMode || 'sequential'}
+                        onValueChange={(v) => onUpdate(node.id, { sequencing_mode: v })}>
+                  <SelectTrigger id="sequencing-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sequential">Sequential</SelectItem>
+                    <SelectItem value="free_order">Free order</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant="secondary">
+                  {data.sequencingMode === 'free_order' ? 'Free order' : 'Sequential'}
+                </Badge>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {data.sequencingMode === 'free_order'
+                  ? "Substeps can be done in any order."
+                  : "Each substep needs the one before it done first."}
+              </p>
+            </div>
 
             {/* Batch completion */}
             <div className="flex items-center justify-between">

@@ -4,7 +4,7 @@ from django.utils import timezone
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, inline_serializer, extend_schema_view, OpenApiParameter, OpenApiTypes
-from rest_framework import viewsets, status, filters, serializers
+from rest_framework import viewsets, status, filters, serializers, mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import LimitOffsetPagination
@@ -1862,7 +1862,8 @@ class StepOverrideViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelVi
     retrieve=extend_schema(description="Retrieve a specific FPI record"),
 )
 class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
-                       viewsets.ModelViewSet):
+                       mixins.CreateModelMixin, mixins.RetrieveModelMixin,
+                       mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     ViewSet for managing First Piece Inspection (FPI) records.
 
@@ -1874,6 +1875,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
     """
     from Tracker.models import FPIRecord
     queryset = FPIRecord.unscoped.all()
+    # No update or destroy routes: a record changes only through its actions (pass /
+    # fail / waive / void / a new first piece). DELETE archived one, and PATCH could set
+    # `archived` — either lifted a waiver with no reason (B2, 2026-10-28). Nothing in
+    # the product edits one.
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['work_order', 'step', 'status', 'part_type', 'equipment', 'shift_date']
     ordering_fields = ['created_at', 'shift_date', 'inspected_at']
@@ -2364,98 +2369,46 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Build filter based on fpi_scope. Scope is stored uppercase
-        # (PER_WORKORDER / PER_SHIFT / PER_EQUIPMENT / PER_OPERATOR) — compare
-        # against that, not lowercase, or per-shift/per-equipment scoping is
-        # silently ignored and everything collapses to per-workorder.
-        fpi_scope = getattr(step, 'fpi_scope', 'PER_WORKORDER')
-        lookup = {
-            'work_order': work_order,
-            'step': step,
-            'status': FPIStatus.PENDING,
-        }
-
-        if fpi_scope == 'PER_SHIFT':
-            shift_date = request.data.get('shift_date')
-            if not shift_date:
-                shift_date = tenant_today(self.tenant)
-            lookup['shift_date'] = shift_date
-
-        if fpi_scope == 'PER_EQUIPMENT':
-            equipment_id = request.data.get('equipment')
-            if not equipment_id:
-                return Response(
-                    {"detail": "equipment required for per_equipment FPI scope"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            try:
-                equipment = Equipments.objects.filter(tenant=tenant).get(id=equipment_id)
-                lookup['equipment'] = equipment
-            except Equipments.DoesNotExist:
-                return Response(
-                    {"detail": "Equipment not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-        # Try to find existing pending FPI using tenant-scoped queryset
-        fpi = self.get_queryset().filter(**lookup).first()
-
-        if fpi:
-            serializer = self.get_serializer(fpi)
-            return Response({
-                "created": False,
-                "fpi": serializer.data
-            })
-
-        # Create new FPI record with tenant
-        create_data = {
-            'tenant': tenant,
-            'work_order': work_order,
-            'step': step,
-            # FPI is per (work order, step); the step's part_type is the
-            # reliable source. WorkOrder has no part_type attribute (it routes
-            # through process), and process is nullable — Steps.part_type is
-            # non-null (PROTECT), so it's always present.
-            'part_type': step.part_type,
-            'status': FPIStatus.PENDING,
-        }
-        # Designate the first piece — the part the buy-off is made against. An FPI with
-        # none can't be inspected, and its fail / waive skipped the segregation-of-
-        # duties check (that check reads the first piece's substep signers), so it is
-        # not created. Raised from the operator runtime a part is always at the step.
-        designated = self._designate_first_piece(tenant, work_order, step)
-        if designated is None:
-            return Response(
-                {"detail": "No part has reached this step yet — start the FPI from a part "
-                           "at the step.",
-                 "code": "fpi_no_first_piece"},
-                status=status.HTTP_400_BAD_REQUEST)
-        create_data['designated_part'] = designated
-
-        if fpi_scope == 'PER_SHIFT':
-            create_data['shift_date'] = lookup.get('shift_date', tenant_today(self.tenant))
-
-        if fpi_scope == 'PER_EQUIPMENT' and 'equipment' in lookup:
-            create_data['equipment'] = lookup['equipment']
-
-        fpi = FPIRecord.objects.create(**create_data)  # tenant-safe: create_data['tenant'] set above
-
-        # The andon call: a machine and operator may be idle from this moment.
-        from Tracker.services.qms.fpi import notify_fpi_requested
-        notify_fpi_requested(fpi)
+        # The context the first piece is for comes from the step's scope (shift date,
+        # or the machine — given, or the one the part runs on). services/qms/fpi.py.
+        from Tracker.models import Parts
+        from Tracker.services.qms.fpi import start_fpi
+        part = equipment = None
+        if request.data.get('part'):
+            part = Parts.objects.filter(tenant=tenant, id=request.data['part']).first()
+            if part is None:
+                return Response({"detail": "Part not found"}, status=status.HTTP_404_NOT_FOUND)
+        if request.data.get('equipment'):
+            equipment = Equipments.objects.filter(tenant=tenant, id=request.data['equipment']).first()
+            if equipment is None:
+                return Response({"detail": "Equipment not found"}, status=status.HTTP_404_NOT_FOUND)
+        from django.utils.dateparse import parse_date
+        shift_date = None
+        if request.data.get('shift_date'):
+            shift_date = parse_date(str(request.data['shift_date']))
+            if shift_date is None:
+                return Response({"detail": "shift_date must be YYYY-MM-DD"},
+                                status=status.HTTP_400_BAD_REQUEST)
+        try:
+            fpi, created = start_fpi(work_order, step, request.user, part=part,
+                                     equipment=equipment, shift_date=shift_date)
+        except ValueError as e:
+            message = str(e)
+            code = "fpi_no_first_piece" if message.startswith("No part has reached") else "fpi_refused"
+            return Response({"detail": message, "code": code}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(fpi)
-
-        return Response({
-            "created": True,
-            "fpi": serializer.data
-        }, status=status.HTTP_201_CREATED)
+        return Response({"created": created, "fpi": serializer.data},
+                        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     @extend_schema(
         description="Check FPI status for a work order at a step",
         parameters=[
             OpenApiParameter(name='work_order', description='Work order UUID', required=True, type=str),
             OpenApiParameter(name='step', description='Step UUID', required=True, type=str),
+            OpenApiParameter(name='part', description="Part UUID — answers for its context "
+                             "under the step's scope (its machine, for Per Equipment)",
+                             required=False, type=str),
         ],
         responses={200: dict}
     )
@@ -2492,23 +2445,26 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
                 "message": "Step does not require FPI"
             })
 
-        # Check for passed/waived FPI using tenant-scoped queryset
-        base_qs = self.get_queryset()
-        passed_fpi = base_qs.filter(
-            work_order_id=work_order_id,
-            step_id=step_id,
-            status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]
-        ).exists()
+        # The records for the context this part (or today's shift) needs under the
+        # step's scope — services/qms/fpi_scope.py.
+        from Tracker.models import Parts, WorkOrder
+        from Tracker.services.qms.fpi_scope import context_for, records_for
+        work_order = WorkOrder.objects.filter(tenant=tenant, id=work_order_id).first()
+        if work_order is None:
+            return Response({"detail": "Work order not found"}, status=status.HTTP_404_NOT_FOUND)
+        part_id = request.query_params.get('part')
+        part = Parts.objects.filter(tenant=tenant, id=part_id).first() if part_id else None
+        ctx = context_for(step, work_order, part=part)
+        records = records_for(step, work_order, ctx)
+        latest = records.first()
+        passed_fpi = records.filter(status__in=[FPIStatus.PASSED, FPIStatus.WAIVED]).exists()
         # The pass a buy-off authority may void if it was given in error.
-        passed_id = (base_qs.filter(work_order_id=work_order_id, step_id=step_id,
-                                    status=FPIStatus.PASSED)
-                     .order_by('-created_at').values_list('id', flat=True).first())
-
-        pending_fpi = base_qs.filter(
-            work_order_id=work_order_id,
-            step_id=step_id,
-            status=FPIStatus.PENDING
-        ).select_related('designated_part').first()
+        passed_id = (records.filter(status=FPIStatus.PASSED)
+                     .values_list('id', flat=True).first())
+        pending_fpi = records.filter(status=FPIStatus.PENDING).select_related('designated_part').first()
+        can_sign_off = bool(request.user.has_tenant_perm('sign_off_fpi'))
+        # A waiver is corrected by a new first piece (B2), by a buy-off authority.
+        waived_id = str(latest.id) if latest is not None and latest.status == FPIStatus.WAIVED else None
 
         # First-piece state: is the designated first piece's inspection done
         # (so a buy-off is now possible)? Drives the operator banner's wording
@@ -2517,10 +2473,10 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
         designated = pending_fpi.designated_part if pending_fpi else None
         first_piece_ready = False
         if pending_fpi is not None and designated is not None:
-            from Tracker.models import StepExecution, WorkOrder
+            from Tracker.models import StepExecution
             se = StepExecution.get_current_execution(designated)
             if se is not None and str(se.step_id) == str(step_id):
-                wo = WorkOrder.objects.filter(tenant=tenant, id=work_order_id).first()
+                wo = work_order
                 if wo is not None:
                     _, blockers = step.can_advance_from_step(se, wo)
                     # Match the filter in `pass_inspection` below: FPI Pass
@@ -2546,7 +2502,18 @@ class FPIRecordViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMixin,
             "first_piece_ready": first_piece_ready,
             # Whether THIS user may buy off (drives showing the sign-off action
             # vs an "awaiting buy-off" message to the operator).
-            "can_sign_off": bool(request.user.has_tenant_perm('sign_off_fpi')),
+            "can_sign_off": can_sign_off,
+            # Who the first piece is for under the step's scope ("" per work order):
+            # "the 28 Oct shift", "CNC-1". `context_known` is False for a Per
+            # Equipment step whose machine isn't recorded for this part.
+            "scope": step.fpi_scope,
+            "context_label": ctx.label,
+            "context_known": ctx.known,
+            "equipment_id": str(ctx.equipment_id) if ctx.equipment_id else None,
+            # The standing waiver, when the newest record is one — a buy-off
+            # authority may correct it by starting a new first piece.
+            "waived_fpi_id": waived_id,
+            "can_restart": bool(waived_id) and can_sign_off,
             # How the step's author asked a release to be signed. The buy-off is
             # this step's QA release, so it meets the same bar — and the dialog
             # needs to know up front, or an inspector signing from their own

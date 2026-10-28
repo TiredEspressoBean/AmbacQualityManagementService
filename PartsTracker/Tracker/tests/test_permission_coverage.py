@@ -119,6 +119,8 @@ WITHHELD_PERMS = {
     'add_generatedreport': 'report audit rows are written by the report service',
     'change_generatedreport': 'report audit rows are written by the report service',
     'change_measurementresult': 'measurement results are immutable once recorded',
+    'delete_measurementresult': 'no endpoint deletes a result; void the substep completion '
+                                'and re-capture (2026-10-28, B10)',
 }
 
 # delete_ intentionally not granted — these soft-delete / void, or hard-delete

@@ -41,6 +41,7 @@ import { useMyPendingApprovals } from "@/hooks/useMyPendingApprovals";
 import { usePendingFpis } from "@/hooks/usePendingFpis";
 import { ScanBox } from "@/components/home/home-blocks";
 import { parseDateOnly } from "@/lib/date-only";
+import { fpiForContext } from "@/lib/fpi-context";
 
 type InboxType = InspectionInboxRow["type"];
 
@@ -110,7 +111,7 @@ function FpiBanner() {
                         <Siren className="h-7 w-7 shrink-0 text-red-600" />
                         <div className="min-w-0 flex-1">
                             <div className="font-semibold">
-                                First piece waiting{f.step_info?.name ? ` — ${f.step_info.name}` : ""}
+                                First piece waiting{f.step_info?.name ? ` — ${f.step_info.name}` : ""}{fpiForContext(f)}
                             </div>
                             <div className="truncate text-sm text-muted-foreground">
                                 {[

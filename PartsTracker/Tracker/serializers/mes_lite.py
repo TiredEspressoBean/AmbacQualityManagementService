@@ -434,9 +434,9 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
             'invitation_type': serializers.CharField(),
         })))
     def get_viewers(self, obj):
-        from Tracker.models import OrderViewer
-        rows = (OrderViewer.objects.filter(order=obj).select_related('user')
-                .order_by('invited_at'))
+        # Prefetched by TrackerOrderViewSet (orderviewer_set__user), so a list page
+        # doesn't run one query per order.
+        rows = sorted(obj.orderviewer_set.all(), key=lambda r: r.invited_at)
         return [{'name': r.user.display_name, 'invitation_type': r.get_invitation_type_display()}
                 for r in rows if not r.is_expired]
 
@@ -1886,6 +1886,8 @@ class StepSerializer(SecureModelMixin):
             "requires_batch_completion",
             # First Piece Inspection
             "requires_first_piece_inspection", "fpi_scope",
+            # Substep order for the operator: 'sequential' or 'free_order'
+            "sequencing_mode",
             # Workflow engine - step type & behavior
             "step_type", "is_decision_point", "decision_type",
             # Repair node (reman)

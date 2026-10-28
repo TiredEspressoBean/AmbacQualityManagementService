@@ -280,6 +280,93 @@ def void_fpi_pass(fpi: FPIRecord, user, reason: str) -> FPIRecord:
     return fresh
 
 
+def _first_piece_in(work_order, step, ctx, prefer=None):
+    """The part a first piece for `ctx` is made against: `prefer` when it is at the step
+    and in the context, else the first part to enter the step in the context (earliest
+    open visit), else the lowest-numbered such part. None if there is none."""
+    from Tracker.models import Parts, StepExecution
+    from Tracker.services.qms.fpi_scope import PER_EQUIPMENT, machine_of
+
+    def fits(part):
+        if part is None or part.work_order_id != work_order.id or part.step_id != step.id:
+            return False
+        if ctx.scope == PER_EQUIPMENT:
+            m = machine_of(part, step)
+            return m is not None and m.id == ctx.equipment_id
+        return True
+
+    if fits(prefer):
+        return prefer
+    visits = (StepExecution.objects.filter(  # tenant-safe: .objects auto-scopes
+        step=step, exited_at__isnull=True, part__work_order=work_order, part__step=step)
+        .select_related('part').order_by('entered_at'))
+    for se in visits:
+        if fits(se.part):
+            return se.part
+    for part in Parts.objects.filter(work_order=work_order, step=step).order_by('ERP_id'):
+        if fits(part):
+            return part
+    return None
+
+
+def start_fpi(work_order, step, user, *, part=None, equipment=None, shift_date=None):
+    """Start a first piece for the context `part` (or the given machine / shift) needs
+    under the step's scope. Returns ``(record, created)``.
+
+    - An open (PENDING) first piece in the context is returned, not duplicated.
+    - After a pass nothing is started: a pass given in error is voided (Void pass).
+    - After a waiver, a new first piece corrects it (B2): only a buy-off authority may
+      start one, and the waiver is marked SUPERSEDED, with the person and reason kept.
+    - After a fail, the new first piece is the recovery, as before.
+
+    Raises:
+        ValueError: the context can't be told (a Per Equipment step with no machine),
+            no part of the context is at the step, it already passed, or a waiver is
+            being superseded by someone without `sign_off_fpi`.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import RecordEdit
+    from Tracker.services.qms.fpi_scope import context_for, records_for
+
+    ctx = context_for(step, work_order, part=part, equipment=equipment, shift_date=shift_date)
+    if not ctx.known:
+        raise ValueError("This step needs a first piece per machine, and the machine this "
+                         "part runs on isn't recorded. Set the machine, then start the FPI.")
+    with transaction.atomic():
+        records = records_for(step, work_order, ctx).select_for_update()
+        latest = records.first()
+        if latest is not None and latest.status == FPIStatus.PENDING:
+            return latest, False
+        if latest is not None and latest.status == FPIStatus.PASSED:
+            raise ValueError("The first piece has passed. If the pass was given in error, "
+                             "void it; that opens the re-inspection.")
+        if latest is not None and latest.status == FPIStatus.WAIVED:
+            if not user.has_tenant_perm('sign_off_fpi'):
+                raise ValueError("Only someone who can sign off a first piece can replace a waiver "
+                                 "with a new one.")
+        designated = _first_piece_in(work_order, step, ctx, prefer=part)
+        if designated is None:
+            raise ValueError("No part has reached this step yet — start the FPI from a part "
+                             "at the step.")
+        if latest is not None and latest.status == FPIStatus.WAIVED:
+            RecordEdit.objects.create(
+                tenant=latest.tenant, content_type=ContentType.objects.get_for_model(FPIRecord),
+                object_id=latest.id, field_name='status', old_value=FPIStatus.WAIVED,
+                new_value=FPIStatus.SUPERSEDED,
+                reason="Corrected by a new first piece", edited_by=user)
+            latest.status = FPIStatus.SUPERSEDED
+            latest.save(update_fields=['status', 'updated_at'])
+        fpi = FPIRecord.objects.create(
+            tenant=work_order.tenant, work_order=work_order, step=step,
+            # Steps.part_type is non-null (PROTECT); WorkOrder has none of its own.
+            part_type=step.part_type, designated_part=designated, status=FPIStatus.PENDING,
+            shift_date=ctx.shift_date, equipment_id=ctx.equipment_id)
+    # The andon call: a machine and operator may be idle from this moment.
+    notify_fpi_requested(fpi)
+    return fpi, True
+
+
 # ── notifications ─────────────────────────────────────────────────────────────
 
 def _fpi_payload_kwargs(fpi: FPIRecord) -> dict:
