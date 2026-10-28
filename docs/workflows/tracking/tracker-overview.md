@@ -75,7 +75,8 @@ nothing updates while you watch it.
 
 ## Infinite Scroll
 
-Orders load 25 at a time; more load as you scroll to the bottom.
+Orders are listed newest first and load 25 at a time; more load as you scroll
+to the bottom.
 
 ## Mobile Usage
 

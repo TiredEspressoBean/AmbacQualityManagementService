@@ -6,8 +6,8 @@ Monitor order progress and understand status indicators throughout uqmes.
 
 ### Tracker Page
 
-The main **Tracker** page shows orders as cards, 25 at a time, loading more as
-you scroll:
+The main **Tracker** page shows orders as cards, newest first, 25 at a time,
+loading more as you scroll:
 
 - **Order name** and the **company** it is for
 - **Delivery date**, with a badge — days remaining ("6d"), **Today**, or a red
@@ -54,8 +54,9 @@ Click an order to open it. The page carries:
   late
 - **Details**
 - **Documents** attached to the order
-- **People** — the order's customer, and **Invite someone** to give another
-  person access
+- **People** — the order's customer, then everyone else who can see it, each
+  with how they got access (**Direct Invitation**, **Company Member** or **Staff
+  Assigned**); **Invite someone** gives another person access
 
 ### When the delivery date moves
 

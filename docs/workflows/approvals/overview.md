@@ -124,7 +124,7 @@ There is one action — **Submit Response** — which opens a dialog with a
 |----------|--------|
 | **Approve** | You approve |
 | **Reject** | You reject, with a comment saying why; the requester can revise and resubmit |
-| **Delegate** | You pass the decision on — only if the template's **Delegation** is **Optional**. The starter templates allow it on every type except Critical CAPA Approval; a new template starts at **Disabled** |
+| **Delegate** | You pass the decision on. Offered only when the template's **Delegation** is **Optional**; the starter templates allow it on every type except Critical CAPA Approval, and a new template starts at **Disabled** |
 
 There is no "request more information" decision. If you need more before you can
 decide, leave the request open and ask outside it, or reject with comments

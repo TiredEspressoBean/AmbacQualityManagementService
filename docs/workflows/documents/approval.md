@@ -116,7 +116,7 @@ Approving and rejecting are one action, not two buttons:
 |----------|--------|
 | **Approve** | You approve the document |
 | **Reject** | You reject it; the owner is notified and can revise and resubmit |
-| **Delegate** | You pass the decision to someone else |
+| **Delegate** | You pass the decision to someone else. Offered only when the approval template allows delegation |
 
 4. To approve, draw your signature, confirm it and enter your password; to
    reject, a comment is required

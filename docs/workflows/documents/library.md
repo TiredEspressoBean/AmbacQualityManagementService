@@ -33,7 +33,8 @@ Two separate things surface them, and they are not duplicates:
 
 **Documents Needing Approval** — an orange banner that appears only when there
 is something to do, e.g. *"1 document(s) require your review"*. Clicking it
-opens the document list; turn on **Needs My Approval** there to see only yours.
+opens the document list with **Needs My Approval** already on, showing only
+yours.
 
 **Pending My Approval** — a panel listing the documents themselves, with a
 count badge, each linking straight to the document. When there is nothing

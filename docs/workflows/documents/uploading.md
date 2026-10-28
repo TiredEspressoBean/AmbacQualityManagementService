@@ -117,11 +117,9 @@ Link document to records during upload:
 
 1. In the upload form
 2. Find **Link to** section
-3. Select record type — Order, Work Order, Part, Process, Step, Company,
-   Quality Report, Disposition, CAPA or 3D Model. Part Type is not on the
-   list; link a part type from the document's **Also Linked To** > **Attach**.
-   Quality Report is listed, but its record search comes up empty
-4. Search and select the record
+3. Select record type — Company, Equipment, Order, Part Type, Part, Process,
+   Error Type, Quality Report, Disposition, CAPA, Step, 3D Model or Work Order
+4. Search and select the record (quality reports are found by report number)
 5. Document uploads with links established
 
 ## Post-Upload Actions
