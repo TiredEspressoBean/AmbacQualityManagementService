@@ -162,7 +162,7 @@ def tick_auto_resolve():
     drifted stale and who opted into automatic rescheduling
     (`OptimizationConfig.auto_resolve = LIVE`). This is the half that acts on the
     staleness flag the signals set — without it, `is_stale` only ever lights up a
-    UI badge. Runs every 15 min (celery_app.py beat_schedule)."""
+    UI badge. Runs every 15 min (CELERY_BEAT_SCHEDULE in settings.py)."""
     from Tracker.services.scheduling.auto_resolve import run_due_auto_resolves
     ids = run_due_auto_resolves()
     return {'queued': len(ids)}
@@ -638,7 +638,7 @@ def tick_escalations():
     Cross-tenant via `.all_tenants`. Each queued fire re-enters its own
     tenant_context inside `fire_one_escalation`.
 
-    Runs every minute (configured in celery_app.py beat_schedule). One
+    Runs every minute (CELERY_BEAT_SCHEDULE in settings.py). One
     minute is fine — escalation timers are measured in hours, so the
     sub-minute fan-out tax is small.
     """
@@ -710,7 +710,7 @@ def dispatch_pending_notifications():
     """
     Celery Beat scheduled task to find and dispatch pending notifications.
 
-    This task runs every 5 minutes (configured in celery_app.py) and:
+    This task runs every 5 minutes (CELERY_BEAT_SCHEDULE in settings.py) and:
     1. Finds all NotificationTask records that are ready to send
     2. Queues a send_notification_task for each one
 

@@ -13,7 +13,7 @@ into it. Waiting for a staleness event would leave a tenant with a silently
 shrinking plan and newly-eligible orders nobody scheduled — the plan doesn't go
 wrong, it just runs out.
 
-This module is the half that *acts*; the `tick_auto_resolve` beat (celery_app.py)
+This module is the half that *acts*; the `tick_auto_resolve` beat (settings.py)
 calls it. Opt-in per tenant via `OptimizationConfig.auto_resolve` (default OFF —
 nothing on the floor changes without a human). `auto_resolve_min_interval_minutes`
 is an anti-churn floor covering both triggers, so a burst of changes — or a roll
