@@ -23,8 +23,12 @@ This guide covers how to initiate and set up a CAPA investigation.
 There is **no suggestion engine** — nothing proposes a CAPA to you. Recurring
 error types, several NCRs against one part type and worsening trends are all
 visible on the dashboard and in [Defect Analysis](../../analysis/defects.md),
-but noticing the pattern and deciding it warrants a CAPA is yours. Raise it from
-the CAPA list and link the reports it answers.
+but noticing the pattern and deciding it warrants a CAPA is yours.
+
+Once you have narrowed **Defect Records** to the pattern, its **Create CAPA**
+opens the form with a drafted problem statement and the failed reports already
+linked — see [Defect Analysis](../../analysis/defects.md). Otherwise raise it
+from the CAPA list and link the reports it answers.
 
 ## CAPA Form
 

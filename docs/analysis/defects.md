@@ -61,13 +61,21 @@ Beside them, **Records** lists the individual defects, newest first, up to 100
 
 Each row ends with a link that opens the part.
 
-**Export** downloads CSV — Part, Part Type, Process, Defect Types, Date,
-Inspector, Order and Disposition. With rows ticked, it exports just those;
-otherwise it exports the records listed, which follow all the filters above —
-at most the 100 the table shows.
+**Export** downloads CSV. With nothing ticked it writes **every** record
+matching the filters and period, not only the 100 the table shows — Part, Part
+Type, Process, Defect Types, Date, Inspector, Order, Work Order and Disposition.
+It needs `export_data`, is logged as a bulk export, and is refused past 50,000
+rows: *Filter the list first, then export.* With rows ticked, the button reads
+**Export selected** and writes just those.
 
-With rows ticked, **Create CAPA** also appears. It opens the CAPAs page; the
-ticked records are not carried into a new CAPA.
+**Create CAPA** opens a new CAPA filled in from what you are looking at. The
+problem statement is drafted from the count, the period and the active filters —
+in the form *&lt;M&gt; failed inspections in the last &lt;N&gt; days (defect
+type &lt;type&gt;, part type &lt;type&gt;, process &lt;process&gt;).*, naming only
+the filters that are set — and the failed reports are linked: the ticked rows, or else the
+matching ones, up to 50. When more match than are linked, the statement says
+the rest are on Defect Records. Edit both before saving. Raising the CAPA needs
+`initiate_capa`.
 
 !!! note "No severity filter"
     Defects cannot be filtered by severity here, and the page does not show
@@ -179,7 +187,8 @@ Data](exporting.md).
 |------------|--------|
 | `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 | `view_qualityreports` | See underlying data |
-| `export_data` | Generate PDF reports. This page's CSV export is built in the browser and needs only the view permissions above |
+| `export_data` | **Export** of all matching records, and PDF reports. **Export selected** needs only the view permissions above |
+| `initiate_capa` | Raise the CAPA that **Create CAPA** opens |
 
 ## Next Steps
 
