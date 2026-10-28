@@ -9,8 +9,8 @@ export default function Layout() {
     const { location } = useRouterState();
     const isHome = location.pathname === "/";
 
-    // Fullscreen routes - no sidebar/header (kiosk mode, print pages)
-    const isFullscreen = location.pathname === "/big-screen" || location.pathname.endsWith("/print");
+    // Fullscreen routes - no sidebar/header (print pages)
+    const isFullscreen = location.pathname.endsWith("/print");
 
     // Render fullscreen pages without any chrome
     if (isFullscreen) {
