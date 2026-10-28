@@ -51,11 +51,15 @@ export default function LoginPreview() {
     const { tenant } = useTenantContext()
     const tenantTagline = (tenant as { tagline?: string | null } | null)?.tagline
     // The tenant's system-use notice (Settings → Organization). Empty → nothing shows.
-    const { data: notice } = useQuery({
+    const { data: pageNotice } = useQuery({
         queryKey: ['sign-in-notice'],
         queryFn: () => api.auth_sign_in_notice_retrieve(),
         staleTime: 5 * 60_000,
     })
+    // On a shared address the page can't know the organization, so the server asks
+    // after the password, returning that organization's notice with the refusal.
+    const [askedNotice, setAskedNotice] = useState<string | null>(null)
+    const notice = askedNotice ? { text: askedNotice, requires_ack: true } : pageNotice
     const [acknowledged, setAcknowledged] = useState(false)
     const blockedByNotice = !!notice?.text && notice.requires_ack && !acknowledged
     const form = useForm<z.infer<typeof Login>>({
@@ -85,6 +89,11 @@ export default function LoginPreview() {
                 message = "Invalid email or password";
             } else if (apiError?.acknowledged_notice?.[0]) {
                 message = apiError.acknowledged_notice[0];
+                if (typeof apiError.notice === "string" && apiError.notice) {
+                    setAskedNotice(apiError.notice);
+                    setAcknowledged(false);
+                    message = "Read and acknowledge the notice, then sign in again.";
+                }
             } else if (apiError?.email?.[0]) {
                 message = apiError.email[0];
             } else if (apiError?.password?.[0]) {

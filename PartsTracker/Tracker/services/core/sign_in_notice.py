@@ -7,7 +7,8 @@ password sign-in must carry the acknowledgement, and the acknowledgement is reco
 
 The sign-in page knows its tenant the way every request does (header / subdomain, or the
 default tenant on a dedicated deployment). Where no tenant resolves — a SaaS address with
-no subdomain — no notice can apply.
+no subdomain — the login view asks after the password instead, with the signing-in
+person's own tenant's notice (ThrottledLoginView).
 """
 from __future__ import annotations
 

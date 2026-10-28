@@ -93,3 +93,48 @@ class OrganizationSaveWithBlanksTests(TenantTestCase):
         self.tenant_a.refresh_from_db()
         self.assertEqual((self.tenant_a.contact_email, self.tenant_a.website), ("", ""))
         self.assertEqual(self.tenant_a.settings['sign_in_notice'], NOTICE)
+
+
+@override_settings(DEDICATED_MODE=False)
+class SharedAddressNoticeTests(TenantTestCase):
+    """No organization resolves from the address (shared SaaS domain): the notice is
+    asked after the password, from the person's own organization (decision 2026-10-28)."""
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.client = APIClient()  # no X-Tenant-ID, no subdomain
+        self.tenant_a.settings = {**(self.tenant_a.settings or {}),
+                                  'sign_in_notice': NOTICE, 'sign_in_notice_requires_ack': True}
+        self.tenant_a.save()
+
+    def _login(self, password='testpass123', **extra):
+        return self.client.post('/auth/login/', {'email': self.user_a.email, 'password': password,
+                                                 **extra}, format='json')
+
+    def test_the_page_shows_nothing_before_sign_in(self):
+        self.assertEqual(self.client.get('/auth/sign-in-notice/').json()['text'], '')
+
+    def test_a_right_password_without_the_tick_gets_the_notice_and_no_session(self):
+        r = self._login()
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertEqual(r.json()['code'], 'notice_not_acknowledged')
+        self.assertEqual(r.json()['notice'], NOTICE)
+        self.assertNotIn('sessionid', r.cookies)
+        self.assertIn(self.client.get('/auth/user/').status_code, (401, 403))
+
+    def test_a_wrong_password_reveals_no_notice(self):
+        r = self._login(password='wrong')
+        self.assertEqual(r.status_code, 400)
+        self.assertNotIn('notice', r.json())
+
+    def test_the_second_attempt_with_the_tick_signs_in_and_is_recorded(self):
+        r = self._login(acknowledged_notice=True)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(LogEntry.objects.filter(changes__action_type='notice_acknowledged',
+                                                actor=self.user_a).exists())
+
+    def test_a_user_whose_organization_has_no_notice_is_unaffected(self):
+        r = self.client.post('/auth/login/', {'email': self.user_b.email, 'password': 'testpass123'},
+                             format='json')
+        self.assertEqual(r.status_code, 200, r.content)

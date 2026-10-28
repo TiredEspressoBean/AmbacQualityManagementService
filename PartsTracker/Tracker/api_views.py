@@ -47,16 +47,31 @@ class ThrottledLoginView(LoginView):
         from Tracker.services.core.sign_in_notice import (
             notice_for, record_acknowledgement, sign_in_tenant,
         )
+        acknowledged = request.data.get('acknowledged_notice') in (True, 'true', 'on')
+        refusal = {'acknowledged_notice': ['Acknowledge the notice to sign in.'],
+                   'code': 'notice_not_acknowledged'}
         tenant = sign_in_tenant(request)
         _, requires_ack = notice_for(tenant)
-        if requires_ack and request.data.get('acknowledged_notice') not in (True, 'true', 'on'):
-            return Response(
-                {'acknowledged_notice': ['Acknowledge the notice to sign in.'],
-                 'code': 'notice_not_acknowledged'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        response = super().post(request, *args, **kwargs)
-        if requires_ack and response.status_code == status.HTTP_200_OK:
+        if requires_ack and not acknowledged:
+            return Response(refusal, status=status.HTTP_400_BAD_REQUEST)
+
+        # dj-rest-auth's post, split so the notice can be checked between the
+        # credential check and the session/token being issued.
+        self.request = request
+        self.serializer = self.get_serializer(data=request.data)
+        self.serializer.is_valid(raise_exception=True)
+        if tenant is None:
+            # No organization resolved from the address (a shared SaaS domain): the
+            # page couldn't show a notice, so ask now, after the password, with the
+            # signing-in person's own organization's notice (user decision 2026-10-28).
+            # The text is returned only to someone whose password was right.
+            tenant = getattr(self.serializer.validated_data['user'], 'tenant', None)
+            text, requires_ack = notice_for(tenant)
+            if requires_ack and not acknowledged:
+                return Response({**refusal, 'notice': text}, status=status.HTTP_400_BAD_REQUEST)
+        self.login()
+        response = self.get_response()
+        if requires_ack:
             record_acknowledgement(tenant, self.user, request)
         return response
 
