@@ -55,6 +55,12 @@ For self-hosted installations, use the management command to generate training d
 - Django management command access
 - Superuser or admin permissions
 
+!!! warning "Seed before the audit triggers are installed"
+    The demo seed writes historical approval responses, which the database's
+    audit triggers refuse once they are installed. Run `seed_demo` before
+    `setup_audit_triggers` (which `setup_database` runs), or on an instance
+    where the triggers aren't installed yet.
+
 ### Running the Command
 
 ```bash
