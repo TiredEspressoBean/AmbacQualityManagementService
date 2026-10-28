@@ -45,8 +45,8 @@ schedule, or set by the operator. A part with **no machine recorded is held**:
 nothing says which first piece covers it. Record the machine, then start the FPI.
 
 The context shows wherever the first piece does. The blocker on a held part reads
-*First Piece Inspection required for <machine>: PENDING* (or *…for the
-<date> shift…*), and the banner, control-page cards and QA home name the
+*First Piece Inspection required for &lt;machine&gt;: PENDING* (or *…for the
+&lt;date&gt; shift…*), and the banner, control-page cards and QA home name the
 machine or shift the first piece is for.
 
 ## FPI Workflow
@@ -54,11 +54,11 @@ machine or shift the first piece is for.
 You meet FPI in three places. In the operator's step runtime, a banner that
 changes with the inspection's state (below). On the work order's **control**
 page, a *First piece waiting on QA* card for each pending first piece (titled
-with the step and, under a narrower scope, its context — *<step> for the <date>
-shift*), a *First piece failed at <step> for <machine> — run held* card for a
+with the step and, under a narrower scope, its context — *&lt;step&gt; for the &lt;date&gt;
+shift*), a *First piece failed at &lt;step&gt; for &lt;machine&gt; — run held* card for a
 held step, and — for people who can sign off a first piece — a *First piece
-waived at <step>* row for each waiver. On QA home, a *First piece waiting —
-<step> for <machine>* banner whose **Start check** opens the control page. A quality report also
+waived at &lt;step&gt;* row for each waiver. On QA home, a *First piece waiting —
+&lt;step&gt; for &lt;machine&gt;* banner whose **Start check** opens the control page. A quality report also
 carries a **First Piece Inspection (FPI)** flag; it is set when a first piece
 passes, or ticked by hand on the report form, and nothing waits on it.
 
@@ -69,11 +69,11 @@ passes, or ticked by hand on the report form, and nothing waits on it.
 
 | State | What it says | What you can do |
 |-------|--------------|-----------------|
-| **Required** — no record yet | *First Piece Inspection Required* (with the context under a narrower scope — *…Required for <machine>*) | **Start FPI** — designates the first piece and holds the run |
+| **Required** — no record yet | *First Piece Inspection Required* (with the context under a narrower scope — *…Required for &lt;machine&gt;*) | **Start FPI** — designates the first piece and holds the run |
 | **Machine not recorded** — Per Equipment step | *First Piece Inspection Required — machine not recorded*: *This step needs a first piece per machine. Record the machine this part runs on, then start the FPI.* | Record the machine first; **Start FPI** is not offered until then |
 | **In progress** — first piece not finished | *First Piece Inspection in progress* | Nothing yet. Complete the first piece's captures; no buy-off is possible until they are in |
 | **Ready for buy-off** | *First piece complete — ready for buy-off* | **Sign off & pass**, **Fail**, or **Waive** — if you hold `sign_off_fpi`. Everyone else sees *awaiting buy-off* and a **Get QA sign-off** button |
-| **Satisfied** | Green — run released (*…signed off*, or *…waived* — both with the context, e.g. *…signed off for the <date> shift*) | Parts move. A sign-off holder can **Void pass** after a pass, or **Start a new first piece** after a waiver |
+| **Satisfied** | Green — run released (*…signed off*, or *…waived* — both with the context, e.g. *…signed off for the &lt;date&gt; shift*) | Parts move. A sign-off holder can **Void pass** after a pass, or **Start a new first piece** after a waiver |
 
 **Start FPI** is refused, with the reason shown, when the machine isn't recorded
 on a Per Equipment step (*This step needs a first piece per machine, and the
@@ -142,7 +142,7 @@ A waiver is corrected by a **new first piece**. After a waiver the runtime banne
 is green, titled *First Piece Inspection waived*, with *Released without a
 first-piece buy-off — parts can proceed through this step.* People who can sign
 off a first piece see **Start a new first piece** there, and on the work order's
-control page a row *First piece waived at <step> — "<reason>"* with the same
+control page a row *First piece waived at &lt;step&gt; — "&lt;reason&gt;"* with the same
 button. The dialog says what follows:
 
 > The waiver stays on record, marked superseded. The run holds until the new

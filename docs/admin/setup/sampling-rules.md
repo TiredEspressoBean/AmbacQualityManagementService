@@ -298,7 +298,7 @@ so.
 - *Selected by every 5th part* — or *5% of parts*, *a random 10% of parts*,
   *the first 15 parts*, *exactly 3 parts*
 - *Excluded by the first 15 parts* — outside a first-N or last-N window
-- *Not selected — no rule in <rule set> chose it*
+- *Not selected — no rule in &lt;rule set&gt; chose it*
 
 A plain *Not selected* comes from a decision recorded before skips were
 attributed. Read it as "this rule set did not select it". There is no list of

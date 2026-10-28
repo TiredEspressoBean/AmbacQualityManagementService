@@ -252,7 +252,7 @@ A step done by a vendor — plating, heat treat, specialist machining — is mar
     With **Special process** set, parts can only be sent to a vendor holding an
     **active** (approved or conditional, in-date) supplier qualification for a
     special process with the **same name** — matched ignoring case. Otherwise
-    send-out is refused: *"<Vendor> has no active qualification for <process>.
+    send-out is refused: *"&lt;Vendor&gt; has no active qualification for &lt;process&gt;.
     Qualify them for it, or send the parts to a vendor who is."*
 
     It refuses rather than holds, because once parts have gone the work is

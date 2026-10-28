@@ -166,7 +166,7 @@ Row checkboxes give you *"N selected · Archive selected · Clear"*.
 
 ### Filtering
 
-On a wide screen, a **Filter** panel sits to the right of the table: *By <field>*
+On a wide screen, a **Filter** panel sits to the right of the table: *By &lt;field&gt;*
 groups of choices, the current one in bold, with a **Clear** link. Narrower
 screens keep the same filters as dropdowns in the toolbar.
 

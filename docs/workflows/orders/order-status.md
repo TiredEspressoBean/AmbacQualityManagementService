@@ -39,7 +39,7 @@ order.
 Click an order to open it. The page carries:
 
 - The **delivery date**, with the same badge — days remaining, **Today**, or
-  **Overdue · N days**. If it has moved, *Originally <date>* shows the first
+  **Overdue · N days**. If it has moved, *Originally &lt;date&gt;* shows the first
   date, struck through
 - **Progress** through its stages, and the **Stages** list itself
 - **Notes**, as a timeline

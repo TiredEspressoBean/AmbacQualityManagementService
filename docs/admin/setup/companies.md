@@ -78,7 +78,7 @@ field on the user form says what they are the contact *for*:
 
 Two places read it:
 
-- **SCAR PDF** — *Issued To* shows **Attn: <quality contact> (<email>)** above the
+- **SCAR PDF** — *Issued To* shows **Attn: &lt;quality contact&gt; (&lt;email&gt;)** above the
   supplier's address, falling back to a General contact
 - **Late deliveries** on Home — each row names the supplier's deliveries contact
   and email, falling back to General

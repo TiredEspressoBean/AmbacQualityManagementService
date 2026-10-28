@@ -54,8 +54,8 @@ count and the job will finish short.
 
 **Make-up planning tops it back up.** It reports the gap, and creating the
 replacements is an explicit action. On the work order page a **Make-up** card
-appears only when the job is short. It reads *"<good>/<target> good · <alive>
-alive · <scrapped> scrapped"* and *"<N> short of <target> good"*, with the button
+appears only when the job is short. It reads *"&lt;good&gt;/&lt;target&gt; good · &lt;alive&gt;
+alive · &lt;scrapped&gt; scrapped"* and *"&lt;N&gt; short of &lt;target&gt; good"*, with the button
 **Create N make-up part(s)**. The scheduling board's work order dialog shows the
 same card at all times.
 

@@ -269,7 +269,7 @@ When orders will be late:
 
 !!! note "The first date is kept, not the reason"
     The first time the date moves, the order keeps the earlier one and shows
-    *Originally <date>*. Later moves are not kept individually, and no reason is
+    *Originally &lt;date&gt;*. Later moves are not kept individually, and no reason is
     asked for, so put the reason in the notes.
 
 ## Working with Documents

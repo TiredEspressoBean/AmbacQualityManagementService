@@ -170,7 +170,7 @@ drops out of Late deliveries.
 
 !!! important "The ERP still gets the last word"
     If your purchasing system continues to show the line open, the **next import
-    expects it again** — and says *"was cancelled on <date> by <name>"* so you
+    expects it again** — and says *"was cancelled on &lt;date&gt; by &lt;name&gt;"* so you
     know why it came back rather than thinking the cancel failed.
 
     Cancelling here is a statement about *your* expectation. Closing the line is
@@ -347,8 +347,8 @@ exactly as they would to your own stock. You still have to know it is fit to use
 
 ### It is labelled as theirs
 
-- The lot label prints **CUSTOMER PROPERTY — <customer>**
-- Materials shows a **<customer>'s** badge
+- The lot label prints **CUSTOMER PROPERTY — &lt;customer&gt;**
+- Materials shows a **&lt;customer&gt;'s** badge
 - The lot page says *"Customer property — X. Only their work may use it."*
 
 !!! note "Why it is on the label and not just the screen"
@@ -385,7 +385,7 @@ Pounds), and **Qty** then means whatever you chose.
 
 ### Lot numbers are issued here
 
-uqmes numbers each receipt itself — **LOT-<year>-00001**. The supplier's own
+uqmes numbers each receipt itself — **LOT-&lt;year&gt;-00001**. The supplier's own
 number goes in **Supplier lot number**, which is **optional**: you record it when
 they give you one, and nothing waits on them.
 

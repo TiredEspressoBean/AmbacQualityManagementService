@@ -165,7 +165,7 @@ Visual summaries with:
 ## Common Actions
 
 ### Creating Records
-Most list pages have a **New <record type>** button in the top right - for
+Most list pages have a **New &lt;record type&gt;** button in the top right - for
 example **New Orders** on the Orders editor, **New CAPAs** on the CAPA list.
 Click it to create a new record.
 
@@ -174,7 +174,7 @@ Click a row to view details, then click **Edit** or use the action menu (three d
 
 ### Filtering Data
 On a wide screen, a **Filter** panel sits to the right of the table: *By
-<field>* groups of choices, the current one in bold, with a **Clear** link.
+&lt;field&gt;* groups of choices, the current one in bold, with a **Clear** link.
 Narrower screens show the same filters as dropdowns in the toolbar. A choice
 applies as soon as you pick it — there is no Apply button.
 

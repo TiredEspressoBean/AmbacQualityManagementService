@@ -38,7 +38,7 @@ that tree, and **counts roll up** — a rack reports what its bins hold.
     Turn the switch **off** to narrow it to what is on the rack itself.
 
 Print **location labels** as a thermal label or a Letter sheet. A label carries
-**LOC:<code>** when the location has a label code, otherwise **LOC:<name>** —
+**LOC:&lt;code&gt;** when the location has a label code, otherwise **LOC:&lt;name&gt;** —
 and older labels still scan.
 
 ### What a location can refuse

@@ -115,12 +115,12 @@ A split inherits the parent's situation rather than resetting it:
 
 !!! note "Usage of a split lot still shows on the parent"
     The parent's **Where it went** includes what its split-off lots were used
-    for, marked *from <lot>*. Splitting material does not break the trail back to
+    for, marked *from &lt;lot&gt;*. Splitting material does not break the trail back to
     the delivery it arrived in.
 
 !!! note "A split lot can see its delivery's paperwork"
     **Documents** on a split lot lists the original delivery's documents,
-    read-only, under **From lot <number>** — and the same appears in the
+    read-only, under **From lot &lt;number&gt;** — and the same appears in the
     receiving inspection documents dialog.
 
     The certificate arrived with the delivery, not with the pieces you split out
@@ -235,7 +235,7 @@ In the order they appear:
 
 | Section | Answers |
 |---------|---------|
-| **The lot** | On hand of total, how it was counted, received date, location, use-by, CoC. A lot still on order reads *"On hand 0 <unit> · <qty> expected"* |
+| **The lot** | On hand of total, how it was counted, received date, location, use-by, CoC. A lot still on order reads *"On hand 0 &lt;unit&gt; · &lt;qty&gt; expected"* |
 | **Came from** | Supplier, their lot, heat, bought from, ERP PO/line, and **split from / split into** as links |
 | **Reached** | The customers this lot reached |
 | **Where it went** | Quantity used, at which step, on which part, **built into** the assembly chain up to the top, work order · order, customer |

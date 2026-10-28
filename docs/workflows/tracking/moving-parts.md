@@ -214,11 +214,11 @@ Work down these, commonest first:
 - **The operator isn't qualified** for the step, and nobody has authorised the
   override.
 
-The part's detail page lists what is holding it, under **Blocked at <step>**.
+The part's detail page lists what is holding it, under **Blocked at &lt;step&gt;**.
 
 ### Requesting a bypass
 
-When a part is held, its detail page shows **Blocked at <step>** — *"The part
+When a part is held, its detail page shows **Blocked at &lt;step&gt;** — *"The part
 can't move on until each of these clears."* Each blocker says whether it can
 be bypassed:
 

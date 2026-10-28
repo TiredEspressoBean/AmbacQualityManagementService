@@ -209,7 +209,7 @@ for work that was authorised in advance.
     This cannot be overridden by a supervisor. There are two ways on:
 
     - **Extend…** on the PCR page raises a new PCR, *"Extend PCR-… to
-      <date>"*. It is submitted, approved and implemented like any other, and
+      &lt;date&gt;"*. It is submitted, approved and implemented like any other, and
       implementing it moves the end date. The new date must be later than the
       current one.
     - **Move back to baseline**, per work order, on the PCR's **Temporary
