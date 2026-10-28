@@ -7,16 +7,15 @@ DoD cybersecurity certification requirements for defense contractors.
     contractors*. If you handle CUI under a DoD contract, you are assessed —
     and uqmes is one system inside the boundary you are assessed on.
 
-    So this page is not a compliance claim. It answers two questions for a
-    customer building their System Security Plan:
+    So this page is not a compliance claim. It describes what the software
+    does for the practices it can reach, and with what evidence, so you can
+    cite it in your System Security Plan.
 
-    1. Which practices can you point at uqmes for, and with what evidence?
-    2. Which must you satisfy yourself, because no application can do it?
-
-    A control marked *not provided* below is usually not a shortcoming in the
-    software — it is a control that lives in your facility, your identity
-    provider, or your hosting platform. The exceptions are called out as
-    such.
+    Most CMMC practices are about your facility, your people, your identity
+    provider and the hosting the application runs on. Those are not the
+    software's job. They are listed once, under
+    [Organisation and hosting responsibilities](#organisation-and-hosting-responsibilities),
+    and not described further here.
 
 ## Overview
 
@@ -35,103 +34,59 @@ starting in 2025.
 This page maps uqmes against **CMMC Level 2**, the tier that applies to
 contractors handling CUI.
 
-## Level 2 Domain Summary
+## Where the software contributes
 
-CMMC Level 2 maps to NIST 800-171 with 110 practices across 14 domains:
+CMMC Level 2 is the 110 practices of NIST 800-171 across 14 domains. The
+software has a part in five of them; the other nine are wholly organisational,
+physical or infrastructure domains.
 
-| Domain | Practices | Provides | Yours |
-|--------|-----------|----------|-------|
-| Access Control (AC) | 22 | 15 | 7 |
-| Awareness & Training (AT) | 3 | 0 | 3 |
-| Audit & Accountability (AU) | 9 | 6 | 3 |
-| Configuration Management (CM) | 9 | 3 | 6 |
-| Identification & Authentication (IA) | 11 | 4 | 7 |
-| Incident Response (IR) | 3 | 0 | 3 |
-| Maintenance (MA) | 6 | 0 | 6 |
-| Media Protection (MP) | 9 | 3 | 6 |
-| Personnel Security (PS) | 2 | 0 | 2 |
-| Physical Protection (PE) | 6 | 0 | 6 |
-| Risk Assessment (RA) | 3 | 0 | 3 |
-| Security Assessment (CA) | 4 | 0 | 4 |
-| System & Comms Protection (SC) | 16 | 3 | 13 |
-| System & Info Integrity (SI) | 7 | 0 | 7 |
-
-The **Provides** column counts practices where uqmes is the mechanism — where
-you can point an assessor at the software. **Yours** counts the rest, and a
-large number there is the expected shape rather than a criticism of the
-product: most of CMMC is about facilities, people and networks, and no
-application reaches them.
+| Domain | What uqmes does |
+|--------|-----------------|
+| Access Control (AC) | Authentication on every API call, role-based permissions, classification and export-control filtering, tenant isolation |
+| Audit & Accountability (AU) | Change and access records, immutable at the database, browsable by permission |
+| Configuration Management (CM) | Versioned, approval-locked records and change control for documents and processes |
+| Identification & Authentication (IA) | Individual accounts, hashed passwords, optional Microsoft SSO, password re-entry at signatures |
+| Media Protection (MP) / System & Comms Protection (SC) | Classification marking and access, tenant isolation, CSRF/CORS controls |
 
 !!! info "How to read the markers"
-    A control is only ✅ where you can point an assessor at the software
-    itself:
-
     | | Meaning |
     |---|---------|
     | ✅ **Provides** | uqmes is the mechanism; cite it directly |
-    | 📋 **Evidences** | **You** run the practice — uqmes holds the records that show you ran it |
     | ⚠️ **Partial** | uqmes supplies some of it, or a setting you must configure. Say what you did, not just that the feature exists |
-    | ➖ **Yours** | A facility, identity-provider, host or process control. Listed so you can see it is accounted for, not because it is missing |
 
-    A ➖ is not a shortcoming in the software, and an assessor does not read
-    it as one. CMMC assesses an organisation, and most of an organisation is
-    not software. Where a practice *is* a genuine shortcoming here the row
-    says **gap** — one does, 3.3.4 below.
+    Where a practice *is* a genuine shortcoming in the software the row says
+    **gap** — one does, 3.3.4 below.
 
-## What CMMC Level 2 Requires
-
-### CUI Protection
-- Access limited to authorized users
-- Data classified and marked
-- Audit trail of all access
-- Encryption in transit and at rest
-
-### System Security
-- Role-based access control
-- Session management
-- Authentication controls
-- Change management
-
-### Incident Handling
-- Incident detection capability
-- Response procedures
-- Reporting mechanisms
-
-## Application Capabilities for CMMC
+## What the software does, by domain
 
 ### Access Control (AC)
 
-These are the practices the application contributes to. AC has 22 practices
-in total; the rest are organisational or network controls that no application
-can satisfy on its own — see [Shared Responsibility](#shared-responsibility-model).
-
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| AC.L2-3.1.1 | User authentication required | ✅ | `TenantMiddleware` + `IsAuthenticated` on every endpoint |
-| AC.L2-3.1.2 | Function-level authorization | ✅ | 15 role presets (`GROUP_PRESETS`) over Django model permissions, plus per-action gates |
-| AC.L2-3.1.3 | CUI flow control | ✅ | Five classification levels — Public, Internal, Confidential, Restricted, Secret — filtered in `SecureManager.for_user()` |
-| AC.L2-3.1.4 | Separation of duties | ✅ | Distinct roles, plus `self_verified` flags that record when a CAPA or RCA was verified by its own conductor |
-| AC.L2-3.1.5 | Least privilege | ✅ | Presets grant the minimum per role; the Customer role is read-only and scoped to its own company |
-| AC.L2-3.1.7 | Privilege escalation prevention | ✅ | Permission checks on every action; a user cannot grant themselves a permission |
-| AC.L2-3.1.12 | Remote access monitoring | ⚠️ | IP is captured at signing and on invitations, not on every session. There is no session-level remote-access monitor |
+| AC.L2-3.1.1 | User authentication required | ✅ | `IsAuthenticated` is the default permission on every API endpoint, alongside `TenantAccessPermission`; the session and token authenticators refuse a user who asks for a tenant they do not belong to. The few unauthenticated endpoints — sign-in, sign-up, password reset — are rate-limited per client IP |
+| AC.L2-3.1.2 | Function-level authorization | ✅ | 15 role presets (`GROUP_PRESETS` in `Tracker/presets.py`) over model permissions, enforced by `TenantModelPermissions` (HTTP method → view/add/change/delete) plus per-action gates declared on the viewsets |
+| AC.L2-3.1.3 | CUI flow control | ✅ | Five classification levels — Public, Internal, Confidential, Restricted, Secret — filtered by `for_classification()` in `SecureQuerySet`; ITAR- and EAR-flagged records are filtered by `for_export_control()`, keyed to the user's US-person, ITAR-authorisation and citizenship fields |
+| AC.L2-3.1.4 | Separation of duties | ✅ | Distinct roles. The segregation-of-duties permissions (verify a CAPA, review an RCA, approve a disposition or step override, grant supplier and part approvals) are in the QA Manager and Tenant Admin presets only. A requester decides their own approval only where the template allows it, or for a CAPA plan when nobody else can — always with a written justification, and recorded as `self_approved`. `self_verified` records when a CAPA or RCA was verified by its own conductor |
+| AC.L2-3.1.5 | Least privilege | ✅ | Presets grant per role. The Customer role sees only orders it is the customer or a viewer of, and the work, parts, documents and quality reports on them; it can also answer approval requests sent to it and invite viewers to its own orders |
+| AC.L2-3.1.7 | Privileged functions | ✅ | Group membership and group permissions can be changed only by holders of `change_tenantgroup` (Tenant Admin), so no other user can grant themselves a permission. Every such change is in the audit log with who made it |
+| AC.L2-3.1.8 | Unsuccessful logon attempts | ⚠️ | Sign-in is rate-limited per client IP (`THROTTLE_LOGIN`, default 10 a minute). There is no per-account lockout; with SSO, cite your identity provider's lockout |
+| AC.L2-3.1.10 / 3.1.11 | Session lock and termination | ⚠️ | Sessions expire after `SESSION_COOKIE_AGE` of inactivity and can be made to end on browser close; API tokens expire after `API_TOKEN_TTL_SECONDS` (default one hour). There is no screen lock that hides the page — see the session settings below |
 | AC.L2-3.1.22 | Public posting control | ✅ | Classification gates what a Customer-role user can retrieve |
 
 ### Audit & Accountability (AU)
 
-All nine AU practices are listed below, including the ones this application
-does not satisfy. A control matrix is only useful if the gaps are in it.
-
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on all models; pgAudit at the database |
-| AU.L2-3.3.2 | User attribution | ✅ | Actor, timestamp and IP on every record |
-| AU.L2-3.3.3 | Review and update logged events | 📋 | Procedural. The event set is fixed in code; nothing in the application prompts or records a periodic review of *what* is logged |
+| AU.L2-3.3.1 | Audit record creation | ✅ | django-auditlog on every model (`AUDITLOG_INCLUDE_ALL_MODELS`), including group permission and membership changes. Reads are recorded too: opening or downloading a document, generating a report, a data export and an AI query each write an access record (`services/core/access_log.py`). Credential fields — passwords, integration keys, invitation tokens — are excluded from the trail |
+| AU.L2-3.3.2 | User attribution | ✅ | Every change and access record carries the actor and a server timestamp. Approvals and QA releases also record the signer, the verification method and the trusted client IP. A change record's address is the one the auditlog middleware reads from the request, which is the first `X-Forwarded-For` entry where present — cite the actor, not that address |
 | AU.L2-3.3.4 | Alert on audit logging failure | ⚠️ **gap** | uqmes emits the signal; you route it. A failed access-log write logs at **ERROR** to the `compliance.access_control` logger with `audit_write_failed` in the record, carrying a traceback. Point your log pipeline at that marker to make it an alert — the application does not page anyone itself. Writes stay non-fatal by design: the read has already happened, so failing the request afterwards records nothing extra |
-| AU.L2-3.3.5 | Audit correlation | ⚠️ | Both layers timestamp in UTC and record the actor, which makes correlation possible by hand. No tooling correlates them |
-| AU.L2-3.3.6 | Reduction and report generation | ✅ | The audit log is filterable by actor, content type, object and action, with search and ordering; export is permission-gated on `export_auditlog` |
-| AU.L2-3.3.7 | Authoritative timestamps | ✅ | Server-side, `TIME_ZONE = 'UTC'` with `USE_TZ`. Clock synchronisation itself is the host's responsibility, not the application's |
-| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers block UPDATE/DELETE on six audit tables, superusers included, and on approval responses allow only withdraw, delegate, or answer again after withdrawal (`setup_audit_triggers`, run by `setup_database` from the app container, so present on every deployment). pgAudit adds statement-level logging on the self-hosted Compose stack only — a managed Postgres does not have it |
-| AU.L2-3.3.9 | Audit access restriction | ✅ | `view_auditlog` / `view_logentry` for reading, `export_auditlog` for extraction; the log viewset is read-only and tenant-scoped |
+| AU.L2-3.3.6 | Reduction and report generation | ⚠️ | The audit log (`/api/auditlog/`) is filterable by actor, content type, object and action, with search and ordering. There is no audit-log export: the `export_auditlog` permission exists but no endpoint uses it |
+| AU.L2-3.3.7 | Authoritative timestamps | ✅ | Timestamps are set by the server, stored in UTC (`TIME_ZONE = 'UTC'`, `USE_TZ`) |
+| AU.L2-3.3.8 | Audit protection | ✅ | PostgreSQL triggers refuse UPDATE and DELETE on six audit tables, superusers included, and on approval responses admit only withdraw, delegate, or answer again after withdrawal (`setup_audit_triggers`, which `setup_database` runs on every start or release) |
+| AU.L2-3.3.9 | Audit access restriction | ✅ | Browsing the audit trail across records needs `view_auditlog` (Tenant Admin, Document Controller, QA Manager and Auditor presets). One record's history needs `view_logentry` and being able to open that record. The log endpoint is read-only and scoped to the tenant |
+
+AU.L2-3.3.3 (review of logged events) and 3.3.5 (correlation across systems)
+are your review and SIEM practices; the software's part is the API above.
 
 !!! warning "3.3.4 is a deployment step, not a code gap — but it is still yours to close"
     An assessor will ask what happens when audit logging itself fails. Two
@@ -156,30 +111,34 @@ does not satisfy. A control matrix is only useful if the gaps are in it.
 
 ### Identification & Authentication (IA)
 
-Eleven practices. Several are deliberately delegated to the identity provider
-rather than implemented here — which is a valid answer for an assessment, but
-only if the IdP is in scope and configured.
+Where sign-in goes through Microsoft SSO (`SSO_ENABLED`), multifactor
+authentication, password reuse and lockout are the identity provider's, and
+you cite it for them. The rows below are what the software does itself.
 
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| IA.L2-3.5.1 | Identify users and devices | ✅ | Unique account per person; no shared logins by design |
-| IA.L2-3.5.2 | Authenticate before access | ✅ | Session or SSO; every endpoint requires an authenticated user |
-| IA.L2-3.5.3 | Multifactor authentication | ➖ | Yours via the IdP. Enable SSO and enforce MFA in Microsoft Entra; cite the IdP, not uqmes. **A password-only deployment cannot evidence this at all** |
-| IA.L2-3.5.4 | Replay-resistant authentication | ⚠️ | Satisfied via the IdP's OIDC flow when SSO is used; local password login is session-cookie based |
-| IA.L2-3.5.5 | Prevent identifier reuse | ➖ | Yours, as an account-administration practice. uqmes deactivates rather than deletes, which preserves history but does not itself block reuse of an address |
-| IA.L2-3.5.6 | Disable identifiers after inactivity | ⚠️ | `is_active` and bulk activate/deactivate exist; nothing disables an account automatically on inactivity |
+| IA.L2-3.5.1 | Identify users | ✅ | One account per person, signed in by email; records are attributed to that account |
+| IA.L2-3.5.2 | Authenticate before access | ✅ | Session (password or Microsoft SSO) or an expiring API token; every API endpoint but sign-in, sign-up and password reset requires an authenticated user |
+| IA.L2-3.5.3 | Multifactor authentication | ⚠️ | Not built into local password sign-in. Satisfied only through SSO with MFA enforced at the identity provider |
+| IA.L2-3.5.6 | Disable identifiers | ⚠️ | Accounts are deactivated, singly or in bulk, never deleted. Nothing deactivates an account automatically after inactivity |
 | IA.L2-3.5.7 | Password complexity | ⚠️ | Django validators: similarity to user attributes, minimum length, common-password list, all-numeric rejection. No character-class rule |
-| IA.L2-3.5.8 | Prohibit password reuse | ➖ | Yours via the IdP. uqmes keeps no password history, so a local-password deployment cannot evidence this |
-| IA.L2-3.5.9 | Temporary password on first use | ⚠️ | Invitations carry a signup link rather than a temporary password, so the practice does not map cleanly; there is no forced first-login change |
-| IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Django's password hashers; passwords are never stored or transmitted in clear |
-| IA.L2-3.5.11 | Obscure authentication feedback | ✅ | Django's default — failures do not reveal whether the account exists |
+| IA.L2-3.5.8 | Prohibit password reuse | ⚠️ | uqmes keeps no password history; satisfied only through the identity provider |
+| IA.L2-3.5.9 | Temporary password on first use | ⚠️ | Invitations carry a sign-up link rather than a temporary password, so the practice does not map cleanly; there is no forced first-login change |
+| IA.L2-3.5.10 | Cryptographically protected passwords | ✅ | Stored as salted hashes with Django's default PBKDF2-SHA256 hasher; never stored in clear |
+| IA.L2-3.5.11 | Obscure authentication feedback | ✅ | A failed sign-in does not say whether the account exists |
+
+**Re-authentication at signatures.** An approval through the API needs a drawn
+signature and the approver's own password, checked on the server; a QA release
+or a work-instruction signature asks for the password where the author set it
+to. Signing passwords are throttled — five failures per gate and ten across all
+gates per user in 15 minutes (`services/core/second_person.py`) — so an open
+session is not a password oracle. See [Electronic Signatures](signatures.md).
 
 !!! warning "Set the session lifetime for your deployment"
-    The default is 14 days with no expiry on browser close. That suits a
-    personal machine and is a real exposure on a shared shop-floor tablet,
-    where the next operator inherits the session — and in a quality system
-    every record they create is attributed to whoever logged in, which makes
-    it an attribution problem as much as an access one.
+    The default is 14 days with no expiry on browser close. On a shared
+    shop-floor tablet the next operator inherits the session — and in a
+    quality system every record they create is attributed to whoever logged
+    in, which makes it an attribution problem as much as an access one.
 
     Three environment variables control this:
 
@@ -195,91 +154,63 @@ only if the IdP is in scope and configured.
 
 ### Configuration Management (CM)
 
-Three of the nine CM practices are ones the application provides; a fourth is
-listed below so you can see where it sits. The rest — host baseline inventory,
-software allow-listing, user-installed software — are platform and
-organizational controls.
-
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
 | CM.L2-3.4.1 | Baseline configurations | ✅ | Versioned records via `create_new_version()`; `SPCBaseline` freezes a control-chart baseline |
-| CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control. A **document** revision is refused without a reason — `Documents.revise` returns 400 *"change_justification is required when creating a revision"*. A **process** change carries its own `proposed_change`, `justification` and `risk_analysis` on the change request, and cannot reach production except through it. |
-| CM.L2-3.4.5 | Access restrictions on change | ✅ | Row-level security (see SC below) and per-action permissions |
-| CM.L2-3.4.6 | Least functionality | ➖ | Yours, at the host — disabled services and ports. Role permissions narrow what users can do but are not what this practice asks about |
+| CM.L2-3.4.3 | Change tracking and approval | ✅ | `ApprovalRequest` plus change control. A **document** revision is refused without a reason — `Documents.revise` returns 400 *"change_justification is required when creating a revision"*. A **process** change carries its own `proposed_change`, `justification` and `risk_analysis` on the change request, and cannot reach production except through it |
+| CM.L2-3.4.5 | Access restrictions on change | ✅ | Per-action permissions, plus the approval lock (`services/core/approval_lock.py`): a record under approval or approved — and a closed CAPA, a verified RCA, a recorded inspection result, a closed disposition, a process out of draft — refuses client edits and deletes, and its status and approver fields change only through their workflow actions |
+
+The other CM practices — host baselines, least functionality, software
+allow-listing — concern the platform the application runs on.
 
 ### Media Protection (MP)
 
-Media protection is mostly physical. Three of the nine practices are ones the
-application provides; a fourth is listed because it is the one people most often
-try to cite it for, wrongly.
-
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| MP.L2-3.8.2 | Limit access to CUI | ✅ | Classification filtering in `SecureManager.for_user()` |
-| MP.L2-3.8.3 | Sanitize media before disposal | ➖ | Yours. **Do not cite soft delete for this** — it is backwards: soft delete *retains* the record, deliberately, so traceability survives. Sanitization applies to the storage when you dispose of it |
-| MP.L2-3.8.4 | Mark media with CUI markings | ✅ | Five `ClassificationLevel` values carried on documents and shown in the UI |
-| MP.L2-3.8.5 | Control access to media | ✅ | Classification-based permissions (`view_confidential_documents`, `view_restricted_documents`) |
+| MP.L2-3.8.2 | Limit access to CUI | ✅ | Classification and export-control filtering in `SecureQuerySet` (`for_classification()`, `for_export_control()`) |
+| MP.L2-3.8.4 | Mark media with CUI markings | ✅ | Five `ClassificationLevel` values carried on documents and shown in the UI; changing one needs `classify_documents` |
+| MP.L2-3.8.5 | Control access to media | ✅ | Classification-tier permissions: `view_confidential_documents`, `view_restricted_documents`, `view_secret_documents` |
 
 ### System & Communications Protection (SC)
 
-Sixteen practices, most of them network and boundary controls. Three are ones
-the application provides, and two more are listed because the answer depends on
-how you deploy it.
-
 | Practice | Capability | Status | Evidence |
 |----------|------------|--------|----------|
-| SC.L2-3.13.2 | Security architecture | ✅ | Two layers. Tenant isolation is enforced in the application by tenant-scoped managers, and row-level security covers **129 listed tenant-scoped tables** (`setup_rls`, run by `setup_database`) using `FORCE ROW LEVEL SECURITY`, so the policy binds the table owner too, not only unprivileged roles. Note RLS does not apply to **superusers** — keep those accounts few and accounted for |
-| SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant isolation via `SecureManager` and the RLS policies above; `perform_update()` prevents tenant reassignment |
-| SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | TLS terminates at the reverse proxy (`conf/Caddyfile`) self-hosted, or at the platform when hosted. Cite your TLS configuration; uqmes does not terminate TLS itself |
+| SC.L2-3.13.2 | Security architecture | ✅ | Tenant isolation is enforced in the application by tenant-scoped managers and tenant-membership checks at authentication. Database row-level security beneath it is **opt-in**: with `ENABLE_RLS=true`, `setup_rls` (run by `setup_database`) applies `FORCE ROW LEVEL SECURITY` and a tenant policy to the tenant-scoped tables it lists, and each request sets the tenant before it runs. RLS needs the application to connect as a non-superuser database role, since PostgreSQL does not apply it to superusers |
+| SC.L2-3.13.4 | Prevent unauthorized transfer | ✅ | Tenant-scoped querysets (and RLS where enabled); `perform_update()` refuses changing a record's tenant |
+| SC.L2-3.13.8 | Transmission confidentiality | ⚠️ | With `DEBUG` off the application marks session and CSRF cookies Secure and sends HSTS. TLS itself terminates at your proxy or platform |
 | SC.L2-3.13.15 | Communication authenticity | ✅ | CSRF protection with an explicit trusted-origin list; CORS allow-list rather than wildcard |
-| SC.L2-3.13.16 | Protect CUI at rest | ➖ | Yours, via storage-level encryption on the host or volume. uqmes encrypts one field only (a stored integration `api_key`), so do not cite application-layer encryption for CUI |
 
-### Domains with no application component
+uqmes encrypts stored integration credentials only, so do not cite
+application-layer encryption for CUI at rest (3.13.16).
 
-Four domains are wholly organizational or physical. The application cannot
-satisfy them, and a zero here reflects scope rather than a gap in the
-software:
+### Where the software supplies records for your practice
 
-| Domain | Practices | Why |
-|--------|-----------|-----|
-| **Awareness & Training (AT)** | 3 | Security awareness and role-based training are programmes, not features. The training module tracks *manufacturing* competence, not security awareness — do not offer it as evidence for AT |
-| **Maintenance (MA)** | 6 | Physical and remote maintenance of the equipment the system runs on |
-| **Physical Protection (PE)** | 6 | Facility access, visitor escort, physical media handling |
-| **Risk Assessment (RA)** | 3 | Risk assessment and vulnerability scanning of the environment |
+| Practice | What uqmes provides |
+|----------|---------------------|
+| AC.L2-3.1.20 (external connections) | Each integration sync is logged (`IntegrationSyncLog`) |
+| CM.L2-3.4.4 (security impact of changes) | The change justification and approval record on every document revision and process change |
+| IR.L2-3.6.1–3 (incident handling) | CAPA can hold an investigation and corrective-action record once you have declared an incident |
+| PS.L2-3.9.2 (personnel actions) | Account deactivation, and the audit record of group and permission changes |
+| CA.L2-3.12.1–4, SI.L2-3.14.6–7 (assessment, monitoring) | The audit trail and access records above |
 
-### Domains where the application contributes only evidence
+## Organisation and hosting responsibilities
 
-These have an application component, but it is evidence for a process rather
-than the control itself. Claiming them as implemented overstates it.
+These are not the software's job, and uqmes does not perform or schedule them:
 
-| Practice | Application provides | Organization must provide |
-|----------|---------------------|---------------------------|
-| **IR.L2-3.6.1–3** | CAPA gives a structured investigation and corrective-action record, with root-cause analysis and effectiveness verification | Incident *classification*, reporting timelines, and the judgement that something is a security incident rather than a quality one |
-| **PS.L2-3.9.1–2** | `is_active`, bulk deactivation, and an audit trail of permission changes | Screening before access, and the offboarding process that triggers deactivation |
-| **CA.L2-3.12.1–4** | The audit trail, including group permission changes, as evidence for review | The security assessment, the SSP, and the POA&M themselves |
-| **SI.L2-3.14.1–7** | Structured error handling; scoped rate limiting on abuse-prone unauthenticated endpoints | Flaw remediation, malicious-code protection, and monitoring — none of which live in the application |
+- **Your organisation:** security awareness training (AT), incident response
+  planning and reporting (IR), personnel screening and offboarding (PS),
+  physical protection (PE), risk assessment (RA), security assessment, the SSP
+  and the POA&M (CA), and the review of logged events (AU 3.3.3).
+- **Your identity provider:** multifactor authentication, password history,
+  account lockout and lifecycle, where you use SSO.
+- **Your hosting:** encryption at rest, TLS termination, network boundary and
+  segmentation, host hardening and least functionality, maintenance (MA), flaw
+  remediation and malicious-code protection (SI), backups, clock
+  synchronisation, and sanitising storage at disposal (MP 3.8.3 — soft delete
+  *retains* records on purpose and is not evidence for it).
 
-!!! note "CAPA is not an incident response plan"
-    CAPA is a genuinely good fit for tracking a security incident once one has
-    been declared, and it is worth using that way. But IR asks for detection,
-    classification and reporting, and the application does none of those.
-
-## Shared Responsibility Model
-
-**One application-level item belongs on your POA&M: 3.3.4.** Nothing pages anyone when an access-log write fails — see [Audit & Accountability](#audit-accountability-au). Closing it is a deployment step, routing a log pipeline at the `audit_write_failed` marker, but until that is done it is open and an assessor will ask.
-
-Everything below is an organizational responsibility rather than a POA&M item:
-
-| Practice | Application Provides | Organization Provides |
-|----------|---------------------|----------------------|
-| IA.L2-3.5.6 | `is_active` field, bulk activate/deactivate | User lifecycle management via IdP/HR |
-| AU.L2-3.3.3 | Audit logs via API, admin interface | Compliance review procedures |
-| AU.L2-3.3.5 | Audit data accessible via API | SIEM integration, log forwarding |
-| AU.L2-3.3.6 | Excel export, API filtering | Report formatting for auditors |
-| AC.L2-3.1.20 | Integration logging (HubSpot sync) | External system inventory in SSP |
-| CM.L2-3.4.4 | `change_justification`, approval workflow | Security impact review process |
-| IR.L2-3.6.2 | CAPA system for incident tracking | Security incident classification |
-| CA.L2-3.12.3 | Audit trail, including group permission changes | Security monitoring procedures |
+**One application-level item belongs on your POA&M until you route it: 3.3.4.**
+See [Audit & Accountability](#audit-accountability-au).
 
 ## Assessment Preparation
 
@@ -287,33 +218,34 @@ Everything below is an organizational responsibility rather than a POA&M item:
 
 The application provides evidence for these assessment objectives:
 
-**Access Control Evidence:**
-- User permission reports (who has access to what)
-- Role group definitions (`Tracker/presets.py`, `GROUP_PRESETS`); the DRF enforcement classes that read them are in `Tracker/permissions.py`
-- Tenant isolation proof (RLS policies)
+**Access control:**
+- Who has what: each group's members and permissions, and each user's groups and
+  effective permissions, from the tenant group and user-permission endpoints
+- Role definitions: `GROUP_PRESETS` in `Tracker/presets.py`; the enforcement
+  classes that read them are in `Tracker/permissions.py`
 
-**Audit Evidence:**
-- Full audit log export
-- Permission change history
-- Document access logs
+**Audit:**
+- The audit trail at `/api/auditlog/`, filterable by actor, record type, record
+  and action — including group permission and membership changes
+- Access records for document views and downloads, report generation, data
+  exports and AI queries
+- Superuser and staff accounts can also read the log in the Django admin at
+  `/admin/auditlog/logentry/`
 
-**Configuration Evidence:**
-- Version history for documents/processes
-- Approval workflow records
-- Change justification records
+**Configuration:**
+- Version history for documents and processes
+- Approval requests and responses, with signer, method, meaning and IP
+- Change justifications on document revisions and process change requests
 
-### Evidence Collection
+### Management commands
 
-**Audit logs:** Access via Django admin at `/admin/auditlog/logentry/` or query the database directly.
-
-**Permission report:** Run `python manage.py check_permissions` to verify permission structure.
-
-**Available management commands:**
 ```bash
-# Check permission structure (read-only)
+# Database integrity of the permission table: duplicate and orphaned
+# permissions (read-only unless --fix)
 python manage.py check_permissions
 
-# Re-apply the role presets to a tenant's groups
+# Reconcile preset-backed groups to their preset, adding and revoking
+# (--dry-run to preview)
 python manage.py sync_tenant_permissions
 ```
 
@@ -322,29 +254,25 @@ python manage.py sync_tenant_permissions
     It is idempotent and safe to re-run, but it is a DDL command, not a
     read-only check — don't reach for it to show an assessor that the
     triggers are in place. To *inspect* them, query `pg_trigger` directly, or
-    show that `setup_database` runs the command on every deployment.
+    show that `setup_database` runs the command on every start or release.
 
 ### Key Files for Assessors
 
 | Domain | Files |
 |--------|-------|
-| Access Control | `Tracker/presets.py` (role definitions), `Tracker/permissions.py` (enforcement), `Tracker/middleware.py` (tenant binding) |
-| Audit | `PartsTrackerApp/settings.py` (AUDITLOG), `Tracker/models/core.py` |
-| Configuration | `Tracker/models/core.py` (SecureModel) |
-| Media Protection | `Tracker/models/core.py` (ClassificationLevel) |
+| Access Control | `Tracker/presets.py` (role definitions), `Tracker/permissions.py` (enforcement), `Tracker/authentication.py` (tenant membership, token expiry), `Tracker/middleware.py` (tenant binding) |
+| Audit | `PartsTrackerApp/settings.py` (`AUDITLOG_*`), `Tracker/services/core/access_log.py`, `Tracker/management/commands/setup_audit_triggers.py` |
+| Configuration | `Tracker/models/core.py` (`SecureModel` versioning), `Tracker/services/core/approval_lock.py` |
+| Media Protection | `Tracker/models/core.py` (`ClassificationLevel`), `Tracker/services/export_control.py` |
 | System Protection | `Tracker/management/commands/setup_rls.py`, `Tracker/middleware.py` |
 
 ## SPRS Score Calculation
 
-There is no application-level SPRS subtotal to quote here.
-SPRS scores the 110 NIST 800-171 practices as the *assessed organization*
-implements them — the deduction for a practice depends on how you satisfy
-it across software, infrastructure and process, so no vendor can score a
-slice of it on your behalf.
-
-Use the [Level 2 Domain Summary](#level-2-domain-summary) instead: it tells
-you which practices you can cite this application for, which is the input
-to your own scoring, not a score itself.
+There is no application-level SPRS subtotal to quote here. SPRS scores the 110
+NIST 800-171 practices as the *assessed organization* implements them, so no
+vendor can score a slice of it on your behalf. Use
+[What the software does, by domain](#what-the-software-does-by-domain) as an
+input to your own scoring.
 
 ## Scoping Guidance
 
@@ -352,32 +280,10 @@ to your own scoring, not a score itself.
 
 | Asset Type | CUI Handling | Protection |
 |------------|--------------|------------|
-| Documents | May contain CUI | Classification + access control |
-| Parts data | May reference CUI specs | Tenant isolation |
+| Documents | May contain CUI | Classification, export-control flags, access records |
+| Parts data | May reference CUI specs | Tenant isolation, role-based access, export-control flags where set |
 | Quality reports | May reference CUI | Role-based access |
 | CAPA records | May discuss CUI issues | Role-based access |
-
-### Out of Scope
-
-- Email systems
-- File shares outside application
-- Endpoint devices
-- Network infrastructure
-
-## What the Application Does NOT Provide
-
-These are infrastructure/organizational responsibilities:
-
-| Control | Owner | Notes |
-|---------|-------|-------|
-| MFA enforcement | Identity Provider | Configure in SSO/IdP |
-| Encryption at rest | Database/hosting | PostgreSQL TDE or disk encryption |
-| Encryption in transit | Load balancer/proxy | TLS termination |
-| Network segmentation | Infrastructure | Firewall rules |
-| Vulnerability scanning | Security team | External scanning tools |
-| Security awareness training | Organization | Training program |
-| Incident response | Organization | IR procedures |
-| Physical security | Facility | Badge access, etc. |
 
 ## Related Documentation
 

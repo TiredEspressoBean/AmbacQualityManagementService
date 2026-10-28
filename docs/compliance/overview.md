@@ -113,14 +113,14 @@ The following depend on deployment configuration and are **not application featu
 
 | Framework | Target Industry | What the application covers | What it is not the mechanism for |
 |-----------|-----------------|------------------------------|-----------------------------------|
-| [NIST 800-171](nist-800-171.md) | Defense (CUI) | 41 of 110 controls implemented, 8 partial | 61 controls live in your facility, IdP, host or process |
-| [CMMC Level 2](cmmc.md) | DoD Contractors | Same 110 controls, mapped by domain | Whole domains — training, maintenance, physical, risk assessment |
+| [NIST 800-171](nist-800-171.md) | Defense (CUI) | Access control, identification and authentication, audit, configuration and media/information protection that the application itself enforces | Controls that live in your organisation, identity provider or hosting |
+| [CMMC Level 2](cmmc.md) | DoD Contractors | The same application controls, by domain | Organisational, personnel, physical and hosting practices |
 | [ISO 9001:2026](iso9001.md) | General | All 28 subclauses are mapped. Clauses 7–10 are where the software is the mechanism: documented information, production control, traceability, nonconformity, CAPA | Clauses 4–6 are mostly management activities — context, leadership, policy, objectives, risk. The page lists them and marks them yours |
 | [AS9100D](as9100.md) | Aerospace | ISO 9001 plus configuration management, FAI, part traceability | AS9102 FAI form output; authentication of independent-distributor material |
 | [IATF 16949](iatf-16949.md) | Automotive | ISO 9001 plus SPC, control plans, layered audits | **MSA / Gage R&R — not modelled at all.** PPAP and FMEA are partial: the data exists, the submission artifacts do not. See the page for which elements |
 | [ITAR](export-controls.md) | Defense/Export | Classification, access gating on `us_person` / `itar_authorized` | License tracking; the export decision itself |
 
-> **Note**: These counts are application-level only. Full compliance requires
+> **Note**: This is application-level coverage only. Full compliance requires
 > infrastructure configuration and organizational processes that no application
 > supplies. SOC 2 is not covered on this page: there is no control mapping
 > behind it yet.
@@ -138,9 +138,11 @@ The following depend on deployment configuration and are **not application featu
 
 ### 2. Multi-Layer Tenant Isolation
 
-- **Application layer**: `TenantMiddleware` sets RLS context
-- **Database layer**: Row-Level Security policies on 129 listed tenant-scoped tables
+- **Application layer**: `TenantMiddleware` sets the request's tenant, and every
+  tenant-scoped query is filtered to it
 - **API layer**: `TenantScopedMixin` filters all querysets
+- **Database layer (optional)**: Row-Level Security policies, applied only when
+  `ENABLE_RLS=true` and the application connects as a non-superuser role
 
 **Key files**: `Tracker/middleware.py`, `Tracker/management/commands/setup_rls.py`, `Tracker/viewsets/base.py`
 
