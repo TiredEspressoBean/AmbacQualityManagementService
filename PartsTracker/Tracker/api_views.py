@@ -34,6 +34,9 @@ class ThrottledLoginView(LoginView):
     # which requires email/password) as the 200 response, so the generated
     # Zodios client rejects the real `{ key }` body and treats a successful
     # login as a failure. Declare the actual token response.
+    # When the tenant sets a system-use notice and requires it acknowledged
+    # (Settings → Organization), the sign-in must carry `acknowledged_notice: true`;
+    # each acknowledged sign-in is recorded. See services/core/sign_in_notice.py.
     @extend_schema(
         responses=inline_serializer(
             name='RestAuthToken',
@@ -41,7 +44,37 @@ class ThrottledLoginView(LoginView):
         )
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        from Tracker.services.core.sign_in_notice import (
+            notice_for, record_acknowledgement, sign_in_tenant,
+        )
+        tenant = sign_in_tenant(request)
+        _, requires_ack = notice_for(tenant)
+        if requires_ack and request.data.get('acknowledged_notice') not in (True, 'true', 'on'):
+            return Response(
+                {'acknowledged_notice': ['Acknowledge the notice to sign in.'],
+                 'code': 'notice_not_acknowledged'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        response = super().post(request, *args, **kwargs)
+        if requires_ack and response.status_code == status.HTTP_200_OK:
+            record_acknowledgement(tenant, self.user, request)
+        return response
+
+
+@extend_schema(
+    responses=inline_serializer(
+        name='SignInNotice',
+        fields={'text': serializers.CharField(), 'requires_ack': serializers.BooleanField()},
+    ),
+)
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def sign_in_notice(request):
+    """The system-use notice for the sign-in page; empty text when the tenant has none."""
+    from Tracker.services.core.sign_in_notice import notice_for, sign_in_tenant
+    text, requires_ack = notice_for(sign_in_tenant(request))
+    return Response({'text': text, 'requires_ack': requires_ack})
 
 
 class ThrottledPasswordResetView(PasswordResetView):

@@ -28,7 +28,7 @@ from Tracker.ai_viewsets import AISearchViewSet, QueryViewSet, EmbeddingViewSet,
 from Tracker.api_views import (
     get_csrf_token, get_user_api_token,
     ThrottledLoginView, ThrottledPasswordResetView,
-    ThrottledPasswordResetConfirmView, ThrottledRegisterView,
+    ThrottledPasswordResetConfirmView, ThrottledRegisterView, sign_in_notice,
 )
 from dj_rest_auth.views import PasswordResetConfirmView, PasswordResetView
 
@@ -81,6 +81,7 @@ urlpatterns += [
     # spam, reset-email bombing). The includes still serve the rest
     # (logout, password-change, verify-email, etc.).
     path("auth/login/", ThrottledLoginView.as_view()),
+    path("auth/sign-in-notice/", sign_in_notice),
     path("auth/password/reset/", ThrottledPasswordResetView.as_view()),
     path("auth/registration/", ThrottledRegisterView.as_view()),
     path("auth/", include("dj_rest_auth.urls")),

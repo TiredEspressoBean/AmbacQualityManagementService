@@ -1,6 +1,7 @@
 # serializers/core.py - Core infrastructure (Users, Companies, Auth, Approvals, Audit Logs, Shared Mixins)
 from auditlog.models import LogEntry
 from dj_rest_auth.forms import AllAuthPasswordResetForm
+from dj_rest_auth.serializers import LoginSerializer as BaseLoginSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer as BasePasswordResetSerializer
 from dj_rest_auth.serializers import UserDetailsSerializer as BaseUserDetailsSerializer
 from django.contrib.contenttypes.models import ContentType
@@ -624,6 +625,12 @@ class PasswordResetSerializer(BasePasswordResetSerializer):
     def password_reset_form_class(self):
         """Force use of our custom form instead of the default AllAuth form"""
         return CustomAllAuthPasswordResetForm
+
+
+class LoginSerializer(BaseLoginSerializer):
+    """dj-rest-auth's login, plus the system-use notice acknowledgement. The login view
+    enforces it when the tenant requires it (services/core/sign_in_notice.py)."""
+    acknowledged_notice = serializers.BooleanField(required=False)
 
 
 class TenantGroupSerializer(serializers.ModelSerializer):

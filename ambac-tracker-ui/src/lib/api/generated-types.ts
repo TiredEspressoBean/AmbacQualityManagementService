@@ -20837,6 +20837,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sign-in-notice/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The system-use notice for the sign-in page; empty text when the tenant has none. */
+        get: operations["auth_sign_in_notice_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/user/": {
         parameters: {
             query?: never;
@@ -26038,11 +26055,16 @@ export interface components {
             total_parts: number;
             total_equipment: number;
         };
+        /**
+         * @description dj-rest-auth's login, plus the system-use notice acknowledgement. The login view
+         *     enforces it when the tenant requires it (services/core/sign_in_notice.py).
+         */
         LoginRequest: {
             username?: string;
             /** Format: email */
             email?: string;
             password: string;
+            acknowledged_notice?: boolean;
         };
         /** @description A later whole-lot decision on stock already accepted (reject the remainder). */
         LotDecisionRequest: {
@@ -35925,6 +35947,10 @@ export interface components {
          * @enum {string}
          */
         ShortReceiptEnum: "BACKORDERED" | "CLOSED";
+        SignInNotice: {
+            text: string;
+            requires_ack: boolean;
+        };
         SignOffStepRequestRequest: {
             /** Format: uuid */
             work_order: string;
@@ -76664,6 +76690,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RestAuthDetail"];
+                };
+            };
+        };
+    };
+    auth_sign_in_notice_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInNotice"];
                 };
             };
         };

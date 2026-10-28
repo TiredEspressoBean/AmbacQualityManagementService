@@ -13,6 +13,7 @@ import { useUploadTenantLogo, useDeleteTenantLogo } from "@/hooks/useUploadTenan
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -64,6 +65,9 @@ const formSchema = z.object({
     // Receiving: how far over the ordered quantity a delivery may be before the clerk has
     // to accept the overage. Blank = no limit. Kept in Tenant.settings.
     over_receipt_tolerance_pct: z.string().regex(/^(\d+(\.\d+)?)?$/, "A percentage, or blank for no limit"),
+    // System-use notice shown at sign-in; blank shows nothing. Kept in Tenant.settings.
+    sign_in_notice: z.string().max(4000),
+    sign_in_notice_requires_ack: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -103,15 +107,21 @@ export function OrganizationSettingsPage() {
                 const v = (settings.settings as { over_receipt_tolerance_pct?: number | null } | undefined)?.over_receipt_tolerance_pct;
                 return v == null ? "" : String(v);
             })(),
+            sign_in_notice: (settings.settings as { sign_in_notice?: string } | undefined)?.sign_in_notice ?? "",
+            sign_in_notice_requires_ack: !!(settings.settings as { sign_in_notice_requires_ack?: boolean } | undefined)?.sign_in_notice_requires_ack,
         } : undefined,
     });
 
     const onSubmit = async (values: FormValues) => {
         try {
-            const { over_receipt_tolerance_pct, ...rest } = values;
+            const { over_receipt_tolerance_pct, sign_in_notice, sign_in_notice_requires_ack, ...rest } = values;
             await updateSettings.mutateAsync({
                 ...rest,
-                settings: { over_receipt_tolerance_pct: over_receipt_tolerance_pct === "" ? null : Number(over_receipt_tolerance_pct) },
+                settings: {
+                    over_receipt_tolerance_pct: over_receipt_tolerance_pct === "" ? null : Number(over_receipt_tolerance_pct),
+                    sign_in_notice: sign_in_notice.trim(),
+                    sign_in_notice_requires_ack,
+                },
             });
             toast.success("Organization settings updated");
         } catch (error) {
@@ -520,6 +530,48 @@ export function OrganizationSettingsPage() {
                                                 any overage is taken and simply recorded.
                                             </FormDescription>
                                             <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="sign_in_notice"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Sign-in notice</FormLabel>
+                                            <FormControl>
+                                                <Textarea rows={4} placeholder="No notice" {...field} />
+                                            </FormControl>
+                                            <FormDescription>
+                                                Text shown on the sign-in page before anyone signs in — a
+                                                system-use notice, for example. Blank: nothing is shown.
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="sign_in_notice_requires_ack"
+                                    render={({ field }) => (
+                                        <FormItem className="flex items-start gap-3 space-y-0">
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                    disabled={!form.watch("sign_in_notice")?.trim()}
+                                                />
+                                            </FormControl>
+                                            <div className="grid gap-1">
+                                                <FormLabel>Require acknowledgement to sign in</FormLabel>
+                                                <FormDescription>
+                                                    Sign-in stays disabled until the person ticks "I acknowledge
+                                                    this notice". Each acknowledged sign-in is recorded in the
+                                                    access log with who and when.
+                                                </FormDescription>
+                                            </div>
                                         </FormItem>
                                     )}
                                 />

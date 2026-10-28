@@ -660,6 +660,7 @@ REST_AUTH = {
     # dj-rest-auth defaults this to False; enable so a hijacked open session
     # can't silently reset the password.
     'OLD_PASSWORD_FIELD_ENABLED': True,
+    'LOGIN_SERIALIZER': 'Tracker.serializers.core.LoginSerializer',
     'PASSWORD_RESET_SERIALIZER': 'Tracker.serializers.PasswordResetSerializer',
     'PASSWORD_RESET_CONFIRM_URL': f'{PASSWORD_RESET_PROTOCOL}://{PASSWORD_RESET_DOMAIN}/reset-password/{{uid}}/{{token}}/',
     'PASSWORD_RESET_USE_SITES_DOMAIN': False,

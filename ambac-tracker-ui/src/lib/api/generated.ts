@@ -29236,6 +29236,7 @@ const LoginRequest = z.object({
   username: z.string().optional(),
   email: z.string().email().optional(),
   password: z.string().min(1),
+  acknowledged_notice: z.boolean().optional(),
 });
 const RestAuthToken = z.object({ key: z.string() });
 const RestAuthDetail = z.object({ detail: z.string() });
@@ -29266,6 +29267,7 @@ const ResendEmailVerificationRequest = z.object({
   email: z.string().min(1).email(),
 });
 const VerifyEmailRequest = z.object({ key: z.string().min(1) });
+const SignInNotice = z.object({ text: z.string(), requires_ack: z.boolean() });
 const AuthUserTenantGroup = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -30608,6 +30610,7 @@ export const schemas = {
   Register,
   ResendEmailVerificationRequest,
   VerifyEmailRequest,
+  SignInNotice,
   AuthUserTenantGroup,
   AuthUserWorkCenterMembership,
   AuthUserCompany,
@@ -63366,6 +63369,14 @@ Accepts the following POST parameter: key.`,
       },
     ],
     response: z.object({ detail: z.string() }),
+  },
+  {
+    method: "get",
+    path: "/auth/sign-in-notice/",
+    alias: "auth_sign_in_notice_retrieve",
+    description: `The system-use notice for the sign-in page; empty text when the tenant has none.`,
+    requestFormat: "json",
+    response: SignInNotice,
   },
   {
     method: "get",

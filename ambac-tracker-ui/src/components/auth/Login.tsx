@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -25,6 +27,8 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 
 import { api, schemas } from '@/lib/api/generated'
 import { getCookie } from '@/lib/utils'
@@ -46,6 +50,14 @@ export default function LoginPreview() {
     const router = useRouter()
     const { tenant } = useTenantContext()
     const tenantTagline = (tenant as { tagline?: string | null } | null)?.tagline
+    // The tenant's system-use notice (Settings → Organization). Empty → nothing shows.
+    const { data: notice } = useQuery({
+        queryKey: ['sign-in-notice'],
+        queryFn: () => api.auth_sign_in_notice_retrieve(),
+        staleTime: 5 * 60_000,
+    })
+    const [acknowledged, setAcknowledged] = useState(false)
+    const blockedByNotice = !!notice?.text && notice.requires_ack && !acknowledged
     const form = useForm<z.infer<typeof Login>>({
         resolver: zodResolver(Login),
         defaultValues: {
@@ -58,7 +70,8 @@ export default function LoginPreview() {
         try {
             await api.auth_login_create({
                 email: values.email,
-                password: values.password
+                password: values.password,
+                ...(notice?.text && notice.requires_ack ? { acknowledged_notice: acknowledged } : {}),
             }, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
             })
@@ -70,6 +83,8 @@ export default function LoginPreview() {
             if (apiError?.non_field_errors?.[0]) {
                 // DRF returns "Unable to log in with provided credentials."
                 message = "Invalid email or password";
+            } else if (apiError?.acknowledged_notice?.[0]) {
+                message = apiError.acknowledged_notice[0];
             } else if (apiError?.email?.[0]) {
                 message = apiError.email[0];
             } else if (apiError?.password?.[0]) {
@@ -156,13 +171,33 @@ export default function LoginPreview() {
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="submit" className="w-full">
+                                {notice?.text ? (
+                                    <div className="grid gap-3 rounded-md border bg-muted/50 p-3">
+                                        <p className="text-xs whitespace-pre-wrap text-muted-foreground max-h-48 overflow-y-auto">
+                                            {notice.text}
+                                        </p>
+                                        {notice.requires_ack && (
+                                            <div className="flex items-center gap-2">
+                                                <Checkbox
+                                                    id="acknowledge-notice"
+                                                    checked={acknowledged}
+                                                    onCheckedChange={(v) => setAcknowledged(v === true)}
+                                                />
+                                                <Label htmlFor="acknowledge-notice" className="text-sm">
+                                                    I acknowledge this notice
+                                                </Label>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
+                                <Button type="submit" className="w-full" disabled={blockedByNotice}>
                                     Login
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     className="w-full"
+                                    disabled={blockedByNotice}
                                     onClick={() => {
                                         window.location.href = '/accounts/microsoft/login/'
                                     }}

@@ -49482,6 +49482,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/RestAuthDetail'
           description: ''
+  /auth/sign-in-notice/:
+    get:
+      operationId: auth_sign_in_notice_retrieve
+      description: The system-use notice for the sign-in page; empty text when the
+        tenant has none.
+      tags:
+      - auth
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInNotice'
+          description: ''
   /auth/user/:
     get:
       operationId: auth_user_retrieve
@@ -60614,6 +60628,9 @@ components:
       - total_parts
     LoginRequest:
       type: object
+      description: |-
+        dj-rest-auth's login, plus the system-use notice acknowledgement. The login view
+        enforces it when the tenant requires it (services/core/sign_in_notice.py).
       properties:
         username:
           type: string
@@ -60623,6 +60640,8 @@ components:
         password:
           type: string
           minLength: 1
+        acknowledged_notice:
+          type: boolean
       required:
       - password
     LotDecisionRequest:
@@ -79299,6 +79318,16 @@ components:
       description: |-
         * `BACKORDERED` - More coming
         * `CLOSED` - That's all
+    SignInNotice:
+      type: object
+      properties:
+        text:
+          type: string
+        requires_ack:
+          type: boolean
+      required:
+      - requires_ack
+      - text
     SignOffStepRequestRequest:
       type: object
       properties:
