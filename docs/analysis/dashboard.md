@@ -93,17 +93,6 @@ reports** in the selected period — the classic CAPA candidate. Each row names
 the defect, the part types and steps it turned up on, and the count. See
 [Repeat Defects](defects.md#repeat-defects).
 
-## Big Screen Mode
-
-**`/big-screen`** is a page with **no sidebar entry**, so you have to type the
-URL. Headed *Production Dashboard*, it lays out KPIs, a 30-day FPY trend,
-defects by type and recent activity in large type for a wall display.
-
-!!! warning "It shows sample figures, not your data"
-    Every number, chart and activity line on this page is fixed sample content —
-    it is not read from your records and does not change. Use **Analytics** for
-    real figures.
-
 ## Permissions
 
 | Permission | Allows |
