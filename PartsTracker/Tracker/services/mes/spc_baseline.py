@@ -28,6 +28,40 @@ def freeze_spc_baseline(validated_data: dict, *, user) -> SPCBaseline:
 
     Returns the newly created SPCBaseline instance.
     """
+    from django.db import transaction
+    reason = validated_data["freeze_reason"].strip()
+    with transaction.atomic():
+        replaced = list(SPCBaseline.objects.filter(  # tenant-safe: .objects auto-scopes
+            measurement_definition_id=validated_data["measurement_definition_id"],
+            status=BaselineStatus.ACTIVE).values_list('id', flat=True))
+        baseline = _create_baseline(validated_data, user=user, reason=reason)
+        # The baseline it replaced says why, and which one replaced it.
+        SPCBaseline.objects.filter(id__in=replaced).update(  # tenant-safe: ids from the scoped query
+            superseded_by=baseline, superseded_reason=f"Replaced by a new baseline: {reason}")
+    return baseline
+
+
+def supersede_spc_baseline(baseline: SPCBaseline, *, reason: str) -> SPCBaseline:
+    """Unfreeze a baseline: the chart goes back to calculating its limits. The reason is
+    required and kept on the baseline (user decision 2026-10-28).
+
+    Raises:
+        ValueError: no reason, or the baseline is already superseded.
+    """
+    from django.utils import timezone
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the limits are being unfrozen.")
+    if baseline.status == BaselineStatus.SUPERSEDED:
+        raise ValueError("Baseline is already superseded")
+    baseline.status = BaselineStatus.SUPERSEDED
+    baseline.superseded_at = timezone.now()
+    baseline.superseded_reason = reason
+    baseline.save(update_fields=['status', 'superseded_at', 'superseded_reason', 'updated_at'])
+    return baseline
+
+
+def _create_baseline(validated_data: dict, *, user, reason: str) -> SPCBaseline:
     return SPCBaseline.objects.create(
         measurement_definition_id=validated_data["measurement_definition_id"],
         chart_type=validated_data["chart_type"],
@@ -50,5 +84,6 @@ def freeze_spc_baseline(validated_data: dict, *, user) -> SPCBaseline:
         notes=validated_data.get("notes", ""),
         # Tracking
         frozen_by=user,
+        freeze_reason=reason,
         status=BaselineStatus.ACTIVE,
     )

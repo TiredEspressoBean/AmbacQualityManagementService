@@ -801,27 +801,20 @@ class SPCBaselineViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, 
     @extend_schema(
         request=inline_serializer(
             name='SupersedeRequest',
-            fields={'reason': serializers.CharField(required=False, allow_blank=True)}
+            fields={'reason': serializers.CharField()}
         ),
         responses={200: SPCBaselineSerializer},
-        description="Supersede (unfreeze) a baseline."
+        description="Supersede (unfreeze) a baseline. A reason is required."
     )
     @action(detail=True, methods=['post'], url_path='supersede')
     def supersede(self, request, pk=None):
-        """Supersede/unfreeze a baseline with optional reason."""
+        """Supersede/unfreeze a baseline, with the reason kept on it."""
+        from Tracker.services.mes.spc_baseline import supersede_spc_baseline
         baseline = self.get_object()
-
-        if baseline.status == BaselineStatus.SUPERSEDED:
-            return Response(
-                {"detail": "Baseline is already superseded"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        baseline.status = BaselineStatus.SUPERSEDED
-        baseline.superseded_at = timezone.now()
-        baseline.superseded_reason = request.data.get('reason', '')
-        baseline.save()
-
+        try:
+            baseline = supersede_spc_baseline(baseline, reason=request.data.get('reason', ''))
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(SPCBaselineSerializer(baseline).data)
 
     @extend_schema(

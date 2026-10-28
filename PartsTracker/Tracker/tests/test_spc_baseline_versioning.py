@@ -92,6 +92,7 @@ class FreezeSPCBaselineServiceTestCase(TenantTestCase):
             "mr_cl": "0.113000",
             "sample_count": 25,
             "notes": "Initial freeze",
+            "freeze_reason": "Process stable over 25 runs",
         }
 
     def test_freeze_creates_active_baseline(self):

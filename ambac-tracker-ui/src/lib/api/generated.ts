@@ -16495,6 +16495,10 @@ export type SPCBaseline = {
    * Timestamp when baseline was frozen
    */
   frozen_at: string;
+  freeze_reason?: /**
+   * Why these limits were frozen as the baseline
+   */
+  string | undefined;
   superseded_by?:
     | /**
      * The baseline that replaced this one
@@ -16606,6 +16610,11 @@ export type SPCBaselineFreezeRequest = {
    * @default ""
    */
   string | undefined;
+  /**
+   * @minLength 1
+   * @maxLength 1000
+   */
+  freeze_reason: string;
 };
 export type SPCCapabilityResponse = {
   definition: MeasurementDefinitionSPC;
@@ -28972,6 +28981,7 @@ const SPCBaseline = z.object({
   frozen_by: z.number().int().nullish(),
   frozen_by_name: z.string().nullable(),
   frozen_at: z.string().datetime({ offset: true }),
+  freeze_reason: z.string().optional(),
   superseded_by: z.string().uuid().nullish(),
   superseded_at: z.string().datetime({ offset: true }).nullable(),
   superseded_reason: z.string().optional(),
@@ -28981,7 +28991,7 @@ const SPCBaseline = z.object({
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
 });
-const SupersedeRequestRequest = z.object({ reason: z.string() }).partial();
+const SupersedeRequestRequest = z.object({ reason: z.string().min(1) });
 const SPCBaselineFreezeRequest = z.object({
   measurement_definition_id: z.string().uuid(),
   chart_type: ChartTypeEnum,
@@ -29032,6 +29042,7 @@ const SPCBaselineFreezeRequest = z.object({
     .nullish(),
   sample_count: z.number().int().optional().default(0),
   notes: z.string().optional().default(""),
+  freeze_reason: z.string().min(1).max(1000),
 });
 const MeasurementDefinitionSPC = z.object({
   id: z.string().uuid(),
@@ -54179,13 +54190,13 @@ TenantScopedMixin), and direct create/update/delete are gone.`,
     method: "post",
     path: "/api/spc-baselines/:id/supersede/",
     alias: "api_spc_baselines_supersede_create",
-    description: `Supersede (unfreeze) a baseline.`,
+    description: `Supersede (unfreeze) a baseline. A reason is required.`,
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: z.object({ reason: z.string() }).partial(),
+        schema: z.object({ reason: z.string().min(1) }),
       },
       {
         name: "id",

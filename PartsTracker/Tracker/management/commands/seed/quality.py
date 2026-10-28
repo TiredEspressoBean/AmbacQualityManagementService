@@ -428,6 +428,7 @@ class QualitySeeder(BaseSeeder):
                 mr_ucl=Decimal(str(round(std_dev * 1.128 * 3.267, 6))),  # D4 factor
                 status=BaselineStatus.ACTIVE,
                 frozen_by=qa_user,
+                freeze_reason="Process stable over the last 30 days",
                 sample_count=len(values),
                 notes=f"Auto-generated baseline from {len(values)} measurements over 30 days"
             )

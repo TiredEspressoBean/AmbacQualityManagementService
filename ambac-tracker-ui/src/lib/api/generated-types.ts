@@ -20146,7 +20146,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Supersede (unfreeze) a baseline. */
+        /** @description Supersede (unfreeze) a baseline. A reason is required. */
         post: operations["api_spc_baselines_supersede_create"];
         delete?: never;
         options?: never;
@@ -34918,6 +34918,8 @@ export interface components {
              * @description Timestamp when baseline was frozen
              */
             readonly frozen_at: string;
+            /** @description Why these limits were frozen as the baseline */
+            freeze_reason?: string;
             /**
              * Format: uuid
              * @description The baseline that replaced this one
@@ -34978,6 +34980,7 @@ export interface components {
             sample_count: number;
             /** @default  */
             notes: string;
+            freeze_reason: string;
         };
         /** @description Lightweight serializer for listing baselines. */
         SPCBaselineList: {
@@ -37845,7 +37848,7 @@ export interface components {
             archived?: boolean;
         };
         SupersedeRequestRequest: {
-            reason?: string;
+            reason: string;
         };
         /**
          * @description Base serializer for SecureModel instances.
@@ -75932,7 +75935,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["SupersedeRequestRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["SupersedeRequestRequest"];

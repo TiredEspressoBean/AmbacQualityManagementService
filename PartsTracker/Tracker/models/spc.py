@@ -132,6 +132,12 @@ class SPCBaseline(SecureModel):
         auto_now_add=True,
         help_text="Timestamp when baseline was frozen"
     )
+    # Why these limits were frozen — required at the freeze (user decision 2026-10-28).
+    # SPC stays an analysis layer: this is a record, not an approval.
+    freeze_reason = models.TextField(
+        blank=True, default='',
+        help_text="Why these limits were frozen as the baseline"
+    )
 
     # === Supersession Tracking ===
     superseded_by = models.ForeignKey(

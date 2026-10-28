@@ -15,7 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, CheckCircle, TrendingUp, Activity, FileWarning, Loader2, Lock, Unlock, HelpCircle } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -729,7 +730,7 @@ export default function SpcPage() {
     };
 
     // Freeze current limits as baseline (persisted to backend)
-    const freezeLimits = () => {
+    const freezeLimits = (reason: string) => {
         if (!calculatedLimits || !selectedMeasurementId) return;
 
         const request = toFreezeRequest(
@@ -747,11 +748,11 @@ export default function SpcPage() {
             spcData.length * subgroupSize, // sample count
         );
 
-        freezeBaselineMutation.mutate(request);
+        freezeBaselineMutation.mutate({ ...request, freeze_reason: reason }, { onSuccess: closeReason });
     };
 
     // Freeze IMR limits (persisted to backend)
-    const freezeIMRLimits = () => {
+    const freezeIMRLimits = (reason: string) => {
         if (!calculatedIMRLimits || !selectedMeasurementId) return;
 
         const request = toFreezeRequest(
@@ -768,16 +769,26 @@ export default function SpcPage() {
             imrData.length, // sample count
         );
 
-        freezeBaselineMutation.mutate(request);
+        freezeBaselineMutation.mutate({ ...request, freeze_reason: reason }, { onSuccess: closeReason });
     };
 
-    // Clear frozen limits and return to baseline mode (supersedes backend baseline)
-    const clearFrozenLimits = () => {
+    // Clear frozen limits and return to baseline mode (supersedes backend baseline).
+    // The reason is the person's own, required, and kept on the baseline.
+    const clearFrozenLimits = (reason: string) => {
         if (!activeBaseline) return;
-        supersedeBaselineMutation.mutate({
-            id: activeBaseline.id,
-            reason: "User requested unfreeze from SPC page",
-        });
+        supersedeBaselineMutation.mutate({ id: activeBaseline.id, reason }, { onSuccess: closeReason });
+    };
+
+    // Freeze and Unfreeze both ask why first (user decision 2026-10-28).
+    const [reasonFor, setReasonFor] = useState<"freeze" | "unfreeze" | null>(null);
+    const [reasonText, setReasonText] = useState("");
+    function closeReason() { setReasonFor(null); setReasonText(""); }
+    const confirmReason = () => {
+        const reason = reasonText.trim();
+        if (!reason) return;
+        if (reasonFor === "unfreeze") clearFrozenLimits(reason);
+        else if (chartMode === "i-mr") freezeIMRLimits(reason);
+        else freezeLimits(reason);
     };
 
     const outOfControl = useMemo(() => controlLimits ? detectOutOfControl(spcData, controlLimits) : [], [spcData, controlLimits]);
@@ -1180,7 +1191,7 @@ Specification Limits:
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => chartMode === "i-mr" ? freezeIMRLimits() : freezeLimits()}
+                                    onClick={() => setReasonFor("freeze")}
                                     disabled={
                                         freezeBaselineMutation.isPending ||
                                         (chartMode === "i-mr" ? !calculatedIMRLimits : !calculatedLimits) ||
@@ -1216,6 +1227,13 @@ Specification Limits:
                                 <TooltipContent side="bottom" className="max-w-[260px]">
                                     <p className="font-medium">Monitoring Mode Active</p>
                                     <p className="mt-1">Control limits are frozen from a baseline period. Out-of-control signals indicate the process has shifted from baseline.</p>
+                                    {activeBaseline && (
+                                        <p className="mt-1 text-muted-foreground">
+                                            Frozen{activeBaseline.frozen_by_name ? ` by ${activeBaseline.frozen_by_name}` : ""}
+                                            {activeBaseline.frozen_at ? ` on ${new Date(activeBaseline.frozen_at).toLocaleDateString()}` : ""}
+                                            {activeBaseline.freeze_reason ? ` — ${activeBaseline.freeze_reason}` : ""}
+                                        </p>
+                                    )}
                                 </TooltipContent>
                             </Tooltip>
                             <Tooltip>
@@ -1223,7 +1241,7 @@ Specification Limits:
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={clearFrozenLimits}
+                                        onClick={() => setReasonFor("unfreeze")}
                                         disabled={supersedeBaselineMutation.isPending}
                                         className="h-8"
                                     >
@@ -1241,6 +1259,31 @@ Specification Limits:
                             </Tooltip>
                         </>
                     )}
+                    {/* Why — asked before a freeze and before an unfreeze, kept on the baseline. */}
+                    <Dialog open={reasonFor !== null} onOpenChange={(o) => { if (!o) closeReason(); }}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>{reasonFor === "unfreeze" ? "Unfreeze control limits" : "Freeze control limits"}</DialogTitle>
+                                <DialogDescription>
+                                    {reasonFor === "unfreeze"
+                                        ? "The chart goes back to calculating its limits from the data. Your reason is kept on the baseline."
+                                        : "These limits become the baseline new data is judged against. Your reason is kept with it."}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <Textarea rows={3} value={reasonText} onChange={(e) => setReasonText(e.target.value)}
+                                aria-label="Reason"
+                                placeholder={reasonFor === "unfreeze"
+                                    ? "Why — e.g. new nozzle supplier changed the process"
+                                    : "Why — e.g. stable over 30 runs after the fixture change"} />
+                            <DialogFooter>
+                                <Button variant="outline" onClick={closeReason}>Cancel</Button>
+                                <Button onClick={confirmReason}
+                                    disabled={!reasonText.trim() || freezeBaselineMutation.isPending || supersedeBaselineMutation.isPending}>
+                                    {reasonFor === "unfreeze" ? "Unfreeze" : "Freeze limits"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 

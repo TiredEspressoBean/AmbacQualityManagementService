@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api/generated";
 import { blobErrorMessage, downloadBlob } from "@/lib/download";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -234,6 +235,8 @@ export function DefectAnalysisPage() {
     // filters and period, with the failed reports linked — the ticked ones, or else the
     // matching ones, up to CAPA_LINK_CAP (the statement says when it stopped short).
     const CAPA_LINK_CAP = 50;
+    // The CAPA form's own gate — without it the button led to "Not authorized".
+    const canInitiateCapa = usePermissionSet().has("initiate_capa");
     const capaPrefill = useMemo(() => {
         const chosen = selectedIds.size > 0 ? records.filter(r => selectedIds.has(r.id)) : records;
         const linked = chosen.slice(0, CAPA_LINK_CAP);
@@ -271,7 +274,8 @@ export function DefectAnalysisPage() {
         }
         const dataToExport = records.filter(r => selectedIds.has(r.id));
 
-        const headers = ["Part", "Part Type", "Process", "Defect Types", "Date", "Inspector", "Order", "Disposition"];
+        // The same columns as the server export.
+        const headers = ["Part", "Part Type", "Process", "Defect Types", "Date", "Inspector", "Order", "Work Order", "Disposition"];
         const rows = dataToExport.map(r => [
             r.part_erp_id,
             r.part_type,
@@ -280,6 +284,7 @@ export function DefectAnalysisPage() {
             r.date,
             r.inspector,
             r.order,
+            r.work_order,
             r.disposition_type || "Pending",
         ]);
 
@@ -568,7 +573,7 @@ export function DefectAnalysisPage() {
                             </CardTitle>
                         </div>
                         <div className="flex items-center gap-2">
-                            {records.length > 0 && (
+                            {records.length > 0 && canInitiateCapa && (
                                 <Button variant="default" size="sm" asChild>
                                     <Link to="/quality/capas/new"
                                         search={{ quality_reports: capaPrefill.reports, problem: capaPrefill.problem }}>

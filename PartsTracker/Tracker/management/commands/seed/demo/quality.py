@@ -1263,6 +1263,8 @@ class DemoQualitySeeder(BaseSeeder):
                     # Status and audit
                     'status': BaselineStatus.ACTIVE,
                     'frozen_by': qa_staff,
+                    # A freeze always carries a reason now; the seed's says what the notes do.
+                    'freeze_reason': baseline_data.get('notes', '') or 'Process stable',
                     'sample_count': baseline_data.get('sample_count', 0),
                     'notes': baseline_data.get('notes', ''),
                     # Supersession tracking - explicit nulls for active baselines

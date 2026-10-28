@@ -48491,7 +48491,7 @@ paths:
   /api/spc-baselines/{id}/supersede/:
     post:
       operationId: api_spc_baselines_supersede_create
-      description: Supersede (unfreeze) a baseline.
+      description: Supersede (unfreeze) a baseline. A reason is required.
       parameters:
       - in: path
         name: id
@@ -48513,6 +48513,7 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/SupersedeRequestRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -77184,6 +77185,9 @@ components:
           format: date-time
           readOnly: true
           description: Timestamp when baseline was frozen
+        freeze_reason:
+          type: string
+          description: Why these limits were frozen as the baseline
         superseded_by:
           type: string
           format: uuid
@@ -77310,8 +77314,13 @@ components:
         notes:
           type: string
           default: ''
+        freeze_reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
       required:
       - chart_type
+      - freeze_reason
       - measurement_definition_id
       - subgroup_size
     SPCBaselineList:
@@ -82823,6 +82832,9 @@ components:
       properties:
         reason:
           type: string
+          minLength: 1
+      required:
+      - reason
     SupplierQualification:
       type: object
       description: |-

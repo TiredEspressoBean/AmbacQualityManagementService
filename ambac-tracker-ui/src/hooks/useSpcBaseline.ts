@@ -96,7 +96,8 @@ export const useSupersedeSpcBaseline = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+        // The reason is required: it's kept on the baseline (user decision 2026-10-28).
+        mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
             const response = await api.api_spc_baselines_supersede_create(
                 { reason },
                 { params: { id } },
@@ -134,7 +135,8 @@ export const toFreezeRequest = (
     },
     sampleCount?: number,
     notes?: string
-): SpcBaselineFreezeRequest => {
+    // The caller adds freeze_reason — the person's own, asked for at the freeze.
+): Omit<SpcBaselineFreezeRequest, "freeze_reason"> => {
     const toDecimalString = (val: number | undefined) =>
         val !== undefined ? val.toFixed(6) : undefined;
 

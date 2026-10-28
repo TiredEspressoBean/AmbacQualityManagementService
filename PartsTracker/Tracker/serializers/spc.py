@@ -53,7 +53,7 @@ class SPCBaselineSerializer(SecureModelMixin):
             # Status
             'status', 'status_display',
             # Tracking
-            'frozen_by', 'frozen_by_name', 'frozen_at',
+            'frozen_by', 'frozen_by_name', 'frozen_at', 'freeze_reason',
             'superseded_by', 'superseded_at', 'superseded_reason',
             # Metadata
             'sample_count', 'notes',
@@ -112,6 +112,10 @@ class SPCBaselineFreezeSerializer(serializers.Serializer):
     # Metadata
     sample_count = serializers.IntegerField(required=False, default=0)
     notes = serializers.CharField(required=False, allow_blank=True, default='')
+    # Why the limits are being frozen — required (user decision 2026-10-28).
+    freeze_reason = serializers.CharField(max_length=1000, allow_blank=False,
+                                          error_messages={'blank': "Say why these limits are being frozen.",
+                                                          'required': "Say why these limits are being frozen."})
 
     def validate_measurement_definition_id(self, value):
         user = self.context['request'].user
