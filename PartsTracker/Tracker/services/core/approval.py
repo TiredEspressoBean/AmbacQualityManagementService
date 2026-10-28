@@ -573,15 +573,22 @@ def submit_approval_response(
     signature_meaning: str | None = None,
     password: str | None = None,
     ip_address: str | None = None,
+    require_signature: bool = False,
 ) -> ApprovalResponse:
     """Record an approval decision with signature capture + password
     re-auth. After creating the response, recomputes the parent
     request's status (which may cascade to the content object).
 
+    A rejection always needs its reason. `require_signature` makes an approval
+    need a drawn signature and the approver's password: the API passes it, since a
+    person approving through it signs. In-process callers (seeds) record what they
+    did, which is NONE when no password was given.
+
     Raises:
         PermissionDenied: approver is not authorized for this request.
         ValidationError: duplicate response, self-approval not permitted
-            (or insufficient justification), or password verification failed.
+            (or insufficient justification), a rejection without a reason, a
+            missing signature, or password verification failed or throttled.
     """
     if not approval_request.can_approve(approver):
         raise PermissionDenied("You are not authorized to approve this request")
@@ -607,11 +614,25 @@ def submit_approval_response(
         if not comments or len(comments.strip()) < 10:
             raise ValidationError("Justification required for self-approval (minimum 10 characters)")
 
+    if decision == ApprovalDecision.REJECTED and not (comments or '').strip():
+        raise ValidationError("Say why you are rejecting it.")
+
+    if require_signature and decision == ApprovalDecision.APPROVED:
+        if not signature_data:
+            raise ValidationError("Sign to approve.")
+        if not password:
+            raise ValidationError("Enter your password to approve.")
+
     verification_method = VerificationMethod.NONE
     verified_at = None
     if password:
-        if not approver.check_password(password):
-            raise ValidationError("Password incorrect. Identity verification failed.")
+        # Throttled like every other re-authentication, so an open session isn't a
+        # password oracle.
+        from Tracker.services.core.second_person import verify_own_password
+        refusal = verify_own_password(tenant=approval_request.tenant, user=approver,
+                                      password=password, throttle_prefix='approval_reauth')
+        if refusal:
+            raise ValidationError(refusal)
         verification_method = VerificationMethod.PASSWORD
         verified_at = timezone.now()
 

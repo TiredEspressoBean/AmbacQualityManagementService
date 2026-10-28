@@ -172,7 +172,7 @@ export function ApprovalResponseModal({
                         <Label>Decision</Label>
                         <RadioGroup
                             value={decision}
-                            onValueChange={(v) => setDecision(v as typeof decision)}
+                            onValueChange={(v) => { setDecision(v as typeof decision); setError(null); }}
                             className="flex gap-4"
                         >
                             <div className="flex items-center space-x-2">

@@ -289,6 +289,11 @@ export default function EditDispositionFormPage() {
     const watchDispositionType = watch("disposition_type")
     const watchSeverity = watch("severity")
     const showCustomerApproval = watchDispositionType === "USE_AS_IS" || watchDispositionType === "REPAIR"
+    // What a decision rests on doesn't change after it (the server refuses it): the
+    // severity, and the concession unless a new decision is being made with its own.
+    const isDecided = mode === "edit" && !!disposition?.disposition_type
+    const SEVERITY_RANK = ["MINOR", "MAJOR", "CRITICAL"]
+    const concessionLocked = isDecided && watchDispositionType === disposition?.disposition_type
 
     // Auto-expand containment section when severity changes to CRITICAL
     useEffect(() => {
@@ -325,8 +330,15 @@ export default function EditDispositionFormPage() {
     // Everything except the decision and the state: those move only through
     // `decide` and `close` (the approval lock refuses them on a plain edit). After
     // a decide, the form's current_state is stale, so it is never echoed back.
+    // Once decided, the concession is Decide's (it records the reference with the
+    // decision) and isn't echoed back either.
     const savePatch = async (values: FormValues) => {
-        const { disposition_type: _type, current_state, ...rest } = values
+        const { disposition_type, current_state, ...all } = values
+        const {
+            requires_customer_approval: _r, customer_approval_received: _c,
+            customer_approval_reference: _ref, customer_approval_date: _d, ...undecided
+        } = all
+        const rest = disposition_type ? undecided : all
         await api.api_QuarantineDispositions_partial_update(rest, {
             params: { id: dispositionId! },
             headers: csrf(),
@@ -340,7 +352,7 @@ export default function EditDispositionFormPage() {
     }
 
     // Authorize the disposition_type decision via the co-signable `decide` action.
-    const authorizeDecision = (values: FormValues, cosign?: { email: string; password: string }, note?: string) => {
+    const authorizeDecision = async (values: FormValues, cosign?: { email: string; password: string }, note?: string) => {
         // `decide` requires a real disposition type; the form's field allows ""
         // and undefined. Both call sites are already behind `typeChanged`, which
         // tests `!!values.disposition_type` -- this states that invariant instead
@@ -349,6 +361,14 @@ export default function EditDispositionFormPage() {
         const dispositionType = values.disposition_type
         if (!dispositionType) {
             throw new Error("authorizeDecision called without a disposition_type")
+        }
+        // A severity chosen with the first decision is saved before it: once decided,
+        // severity may only rise.
+        if (!disposition?.disposition_type && values.severity && values.severity !== disposition?.severity) {
+            await api.api_QuarantineDispositions_partial_update({ severity: values.severity }, {
+                params: { id: dispositionId! },
+                headers: csrf(),
+            })
         }
         return api.api_QuarantineDispositions_decide_create({
             disposition_type: dispositionType,
@@ -619,13 +639,18 @@ export default function EditDispositionFormPage() {
                                                         </FormControl>
                                                         <SelectContent>
                                                             {schemas.SeverityEnum.options.map((sev) => (
-                                                                <SelectItem key={sev} value={sev}>
+                                                                <SelectItem key={sev} value={sev}
+                                                                    disabled={isDecided && SEVERITY_RANK.indexOf(sev) < SEVERITY_RANK.indexOf(disposition?.severity ?? "MINOR")}>
                                                                     {severityLabels[sev] ?? sev}
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    <FormDescription>Severity classification of the nonconformance</FormDescription>
+                                                    <FormDescription>
+                                                        {isDecided
+                                                            ? "Decided at this severity: it can be raised, not lowered."
+                                                            : "Severity classification of the nonconformance"}
+                                                    </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -763,6 +788,7 @@ export default function EditDispositionFormPage() {
                                                 <h4 className="font-medium text-sm">Customer Approval Required</h4>
                                                 <p className="text-sm text-muted-foreground">
                                                     {watchDispositionType === "REPAIR" ? "Repair" : "Use As Is"} accepts nonconforming product: it requires a customer or design concession reference.
+                                                    {concessionLocked && " It was recorded with the decision and can't be changed now."}
                                                 </p>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <FormField
@@ -771,7 +797,7 @@ export default function EditDispositionFormPage() {
                                                         render={({ field }) => (
                                                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                                                 <FormControl>
-                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
+                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} disabled={concessionLocked} />
                                                                 </FormControl>
                                                                 <div className="space-y-1 leading-none">
                                                                     <FormLabel>Requires Approval</FormLabel>
@@ -785,7 +811,7 @@ export default function EditDispositionFormPage() {
                                                         render={({ field }) => (
                                                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                                                                 <FormControl>
-                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
+                                                                    <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} disabled={concessionLocked} />
                                                                 </FormControl>
                                                                 <div className="space-y-1 leading-none">
                                                                     <FormLabel>Approval Received</FormLabel>
@@ -801,7 +827,7 @@ export default function EditDispositionFormPage() {
                                                         <FormItem>
                                                             <FormLabel>Approval Reference</FormLabel>
                                                             <FormControl>
-                                                                <Input placeholder="PO#, email reference, or approval document number" {...field} />
+                                                                <Input placeholder="PO#, email reference, or approval document number" {...field} disabled={concessionLocked} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -816,7 +842,7 @@ export default function EditDispositionFormPage() {
                                                             <Popover>
                                                                 <PopoverTrigger asChild>
                                                                     <FormControl>
-                                                                        <Button variant="outline" className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                        <Button variant="outline" disabled={concessionLocked} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                                                                             {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                                         </Button>

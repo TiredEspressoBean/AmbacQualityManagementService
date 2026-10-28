@@ -701,6 +701,11 @@ class PartsSerializer(SecureModelMixin, BulkOperationsMixin):
         if 'work_order' in attrs and self.instance is not None:
             from Tracker.services.reman.reservation import assert_work_order_allowed
             assert_work_order_allowed(self.instance, attrs['work_order'])
+        if self.instance is not None and 'part_status' in attrs:
+            from Tracker.services.mes.parts import status_set_refusal
+            refusal = status_set_refusal(self.instance, attrs['part_status'])
+            if refusal:
+                raise serializers.ValidationError({'part_status': refusal})
         if self.instance is not None and ('part_status' in attrs or 'work_order' in attrs):
             self._validate_core_part(attrs)
         # Into rework only through Send to rework, which asks why and opens the NCR QA

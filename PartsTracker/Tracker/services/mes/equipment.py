@@ -66,6 +66,22 @@ def create_new_equipment_version(equipment, *, user=None, change_description=Non
     return new
 
 
+def gauge_refusal(equipment) -> str | None:
+    """Why a reading may not be recorded against `equipment`, or None if it may.
+
+    A measurement taken with an OUT_OF_SERVICE gauge is retroactively suspect
+    product, so every write path refuses it at the source. The calibration result is
+    checked as well as the status flag, which is a copy of it an edit could get out
+    of step with. Overdue is only a scheduling lapse: callers record and warn."""
+    from Tracker.models.mes_standard import EquipmentStatus
+    if equipment is None:
+        return None
+    if equipment.status == EquipmentStatus.OUT_OF_SERVICE or equipment.calibration_status == 'FAILED':
+        return (f"Equipment '{equipment.name}' is OUT_OF_SERVICE (failed or "
+                f"missing calibration). Recalibrate or pick a different gauge.")
+    return None
+
+
 def check_status_change(equipment, new_status) -> None:
     """Refuse putting a machine back IN_SERVICE while its latest calibration failed.
 

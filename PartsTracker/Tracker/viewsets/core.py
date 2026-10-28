@@ -2406,8 +2406,9 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
             )
 
         try:
-            # Use the model's submit_response method
-            response = ApprovalResponse.submit_response(
+            from Tracker.services.core.approval import submit_approval_response
+            from Tracker.throttling import get_client_ip
+            response = submit_approval_response(
                 approval_request=approval,
                 approver=request.user,
                 decision=decision,
@@ -2415,7 +2416,8 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
                 signature_data=request.data.get('signature_data'),
                 signature_meaning=request.data.get('signature_meaning'),
                 password=request.data.get('password'),
-                ip_address=request.META.get('REMOTE_ADDR')
+                ip_address=get_client_ip(request),
+                require_signature=True,
             )
 
             return Response(ApprovalResponseSerializer(response).data)

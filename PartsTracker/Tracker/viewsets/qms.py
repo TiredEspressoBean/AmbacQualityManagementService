@@ -934,9 +934,20 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
 
         return queryset
 
+    def _check_self_verification_switch(self, serializer, capa):
+        from rest_framework.exceptions import PermissionDenied
+        from Tracker.services.qms.capa import self_verification_switch_refusal
+        if 'allow_self_verification' not in serializer.validated_data:
+            return
+        refusal = self_verification_switch_refusal(
+            self.request.user, capa, serializer.validated_data['allow_self_verification'])
+        if refusal:
+            raise PermissionDenied(refusal)
+
     def perform_create(self, serializer):
         """Auto-generate CAPA number and set initiated_by"""
         from django.utils import timezone
+        self._check_self_verification_switch(serializer, None)
         capa_type = serializer.validated_data.get('capa_type')
         initiated_date = tenant_today(self.tenant)
         capa = serializer.save(
@@ -948,6 +959,7 @@ class CAPAViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewset
         stamp_promoted(capa, self.request.user)
 
     def perform_update(self, serializer):
+        self._check_self_verification_switch(serializer, serializer.instance)
         # A report linked to the CAPA later says CAPA raised too.
         from Tracker.services.qms.capa_decision import stamp_promoted
         stamp_promoted(serializer.save(), self.request.user)
@@ -2572,9 +2584,22 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             qs = qs.filter(is_current_version=True)
         return qs
 
+    def _refuse_failed_gauge(self, serializer):
+        from rest_framework.exceptions import ValidationError
+        from Tracker.services.mes.equipment import gauge_refusal
+        if 'equipment' in serializer.validated_data:
+            refusal = gauge_refusal(serializer.validated_data['equipment'])
+            if refusal:
+                raise ValidationError({'equipment': refusal})
+
     def perform_create(self, serializer):
         """Set recorded_by from request."""
+        self._refuse_failed_gauge(serializer)
         serializer.save(recorded_by=self.request.user)
+
+    def perform_update(self, serializer):
+        self._refuse_failed_gauge(serializer)
+        serializer.save()
 
     @extend_schema(
         description="Record multiple measurements at once for a step execution",

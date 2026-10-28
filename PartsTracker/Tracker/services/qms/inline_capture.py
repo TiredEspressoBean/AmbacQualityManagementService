@@ -79,12 +79,17 @@ def record_dwi_measurement(
         `QualityReports.objects.filter(step=..., part=...)` themselves.
 
     Raises:
-        ValueError: If neither `value` nor `value_string` is provided.
+        ValueError: If neither `value` nor `value_string` is provided, or the
+            equipment is out of service (`gauge_refusal`).
     """
     if value is None and not value_string:
         raise ValueError(
             "record_dwi_measurement requires either `value` or `value_string`."
         )
+    from Tracker.services.mes.equipment import gauge_refusal
+    refusal = gauge_refusal(equipment)
+    if refusal:
+        raise ValueError(refusal)
 
     with transaction.atomic():
         # Tier 1: always write process data. SecureModel.save() auto-fills

@@ -785,6 +785,26 @@ HELD_PART_STATUSES = frozenset([
 ])
 
 
+def status_set_refusal(part, new_status) -> str | None:
+    """Why `part`'s status may not be set directly to `new_status`, or None.
+
+    A part with an open disposition is QA's to release: the decision moves it (use as
+    is, rework, scrap, return), and its close records who and why. A direct set, by
+    an edit or in bulk, took a quarantined part to Completed or In Stock with the
+    disposition still undecided, and shipping, which reads only the status, then
+    offered it."""
+    from Tracker.models import QuarantineDisposition
+    if new_status == part.part_status:
+        return None
+    open_disposition = (QuarantineDisposition.objects  # tenant-safe: keyed to an in-tenant part
+                        .filter(part=part, archived=False).exclude(current_state='CLOSED')
+                        .order_by('created_at').first())
+    if open_disposition is None:
+        return None
+    return (f"{part.ERP_id} has an open disposition ({open_disposition.disposition_number}); "
+            f"its status changes through that disposition.")
+
+
 def _blocks_terminal_exit(current_status, new_status, allow_terminal_exit: bool) -> bool:
     """True when a transition would leave a terminal status without authorization.
 
@@ -912,6 +932,11 @@ def bulk_set_status(
                         id=pid, ok=False,
                         error=f"Cannot leave terminal status {part.part_status} without elevated permission",
                     ))
+                    continue
+                refusal = status_set_refusal(part, new_status)
+                if refusal:
+                    transaction.savepoint_rollback(sid)
+                    results.append(BulkResult(id=pid, ok=False, error=refusal))
                     continue
                 # A core's part follows its reman stage: an ending is refused, and a
                 # scrap is made to the stage, which cascades itself.

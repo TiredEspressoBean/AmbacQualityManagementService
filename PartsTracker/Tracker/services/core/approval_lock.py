@@ -57,6 +57,30 @@ DECISION_FIELDS = {
     'TimeEntry': ({'approved'}, "a supervisor's approval"),
 }
 
+# model name -> (predicate "decided", {fields the decision rests on},
+#                {field: scale, lowest first, that it may still rise on}, phrase)
+# Fields an edit may set before the decision and not after it. A concession's
+# customer reference is the evidence a Use-as-is or Repair decision is refused
+# without; a new decision brings its own through Decide. A disposition's severity
+# decides what its close demands (containment for Major/Critical): raising it only
+# asks more, lowering it dodged the containment check.
+DECIDED_FIELDS = {
+    'QuarantineDisposition': (
+        lambda o: bool(o.disposition_type),
+        {'severity', 'requires_customer_approval', 'customer_approval_received',
+         'customer_approval_reference', 'customer_approval_date'},
+        {'severity': ('MINOR', 'MAJOR', 'CRITICAL')},
+        "decided"),
+}
+
+
+# Fields whose blank on an edit means "keep it" (the serializer drops it), not "clear it".
+BLANK_KEEPS = {'QuarantineDisposition': {'customer_approval_date'}}
+
+
+def _rises(scale, current, value) -> bool:
+    return current in scale and value in scale and scale.index(value) >= scale.index(current)
+
 _ACTIVE = ('PENDING', 'APPROVED')
 
 # Where approval is a go-ahead rather than a sign-off of finished content: a
@@ -124,6 +148,17 @@ def edit_refusal(instance, data) -> str | None:
         if moved:
             return (f"{', '.join(moved)} on {_label(instance)} is decided through {route}, "
                     "not by editing.")
+    after = DECIDED_FIELDS.get(type(instance).__name__)
+    if after and after[0](instance):
+        _, fields, rising, phrase = after
+        keeps = BLANK_KEEPS.get(type(instance).__name__, set())
+        moved = sorted(f for f in fields & set(data)
+                       if _changed(instance, f, data[f])
+                       and not (f in keeps and data[f] in (None, ''))
+                       and not (f in rising and _rises(rising[f], getattr(instance, f), data[f])))
+        if moved:
+            return (f"{_label(instance)} is {phrase}; {', '.join(moved)} can't change after "
+                    "the decision" + (" (severity may only be raised)." if 'severity' in moved else "."))
     return None
 
 

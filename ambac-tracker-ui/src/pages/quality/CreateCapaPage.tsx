@@ -195,6 +195,7 @@ export function CreateCapaPage() {
 
 function CreateCapaForm() {
     const navigate = useNavigate()
+    const { has } = usePermissionSet()
     const searchParams = useSearch({ strict: false }) as CreateCapaSearchParams
 
     // Immediate search values (what the user types)
@@ -475,7 +476,7 @@ function CreateCapaForm() {
                                                 </SelectContent>
                                             </Select>
                                             <FormDescription>
-                                                Critical/Major: a QA Manager or Production Manager approves the plan before work beyond containment begins
+                                                Critical/Major: a QA Manager approves the plan before work beyond containment begins
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
@@ -1011,6 +1012,7 @@ function CreateCapaForm() {
                                                 <Checkbox
                                                     checked={field.value}
                                                     onCheckedChange={field.onChange}
+                                                    disabled={!has("verify_capa")}
                                                 />
                                             </FormControl>
                                             <div className="space-y-1 leading-none">
@@ -1020,6 +1022,7 @@ function CreateCapaForm() {
                                                 <FormDescription>
                                                     When enabled, the initiator or assignee may verify their own work.
                                                     Use for minor issues or when independent verification is not required.
+                                                    {!has("verify_capa") && " Only QA (who can verify CAPAs) can turn this on."}
                                                 </FormDescription>
                                             </div>
                                         </FormItem>

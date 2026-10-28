@@ -28,10 +28,16 @@ class Command(BaseCommand):
         ('Tracker_permissionchangelog', 'permission_log_immutable'),
         ('Tracker_steptransitionlog', 'transition_log_immutable'),
         ('Tracker_samplingauditlog', 'sampling_log_immutable'),
-        ('Tracker_approvalresponse', 'approval_response_immutable'),
         ('Tracker_capastatustransition', 'capa_transition_immutable'),
         ('Tracker_recordedit', 'record_edit_immutable'),
     ]
+
+    # An approval response is a signature, but one the approver may still withdraw or
+    # delegate while the request is open, and answer again after withdrawing (one row
+    # per approver; each change also lands in RecordEdit and the audit log, both
+    # immutable). So its trigger admits exactly those moves and nothing else: a
+    # signed answer's content never changes in place, and no response is deleted.
+    RESPONSE_TABLE = ('Tracker_approvalresponse', 'approval_response_immutable')
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -108,11 +114,71 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Created trigger: {trigger_name} on {actual_table}')
                 enabled_count += 1
 
+            enabled_count += self._enable_response_trigger(cursor)
+
         self.stdout.write(
             self.style.SUCCESS(
                 f'Done. Created {enabled_count} immutability triggers.'
             )
         )
+
+    def _enable_response_trigger(self, cursor):
+        table_name, trigger_name = self.RESPONSE_TABLE
+        actual_table = self._table_exists(cursor, table_name)
+        if not actual_table:
+            self.stdout.write(f'  Skip (no table): {table_name}')
+            return 0
+        cursor.execute("""
+            CREATE OR REPLACE FUNCTION guard_approval_response() RETURNS TRIGGER AS $$
+            BEGIN
+                IF TG_OP = 'UPDATE'
+                   AND NEW.id = OLD.id
+                   AND NEW.tenant_id = OLD.tenant_id
+                   AND NEW.approval_request_id = OLD.approval_request_id
+                   AND NEW.approver_id = OLD.approver_id
+                   AND NEW.created_at = OLD.created_at
+                   AND NEW.archived = OLD.archived
+                   AND NEW.deleted_at IS NOT DISTINCT FROM OLD.deleted_at
+                THEN
+                    -- Answering again after a withdrawal: a new signature in full.
+                    IF OLD.decision = 'WITHDRAWN' AND NEW.decision IN ('APPROVED', 'REJECTED') THEN
+                        RETURN NEW;
+                    END IF;
+                    -- Withdrawing (only the decision moves) or delegating (decision,
+                    -- delegatee and the reason): the signature itself stays as given.
+                    IF NEW.signature_data IS NOT DISTINCT FROM OLD.signature_data
+                       AND NEW.signature_meaning IS NOT DISTINCT FROM OLD.signature_meaning
+                       AND NEW.verified_at IS NOT DISTINCT FROM OLD.verified_at
+                       AND NEW.verification_method = OLD.verification_method
+                       AND NEW.ip_address IS NOT DISTINCT FROM OLD.ip_address
+                       AND NEW.self_approved = OLD.self_approved
+                       AND NEW.decision_date = OLD.decision_date
+                    THEN
+                        IF OLD.decision IN ('APPROVED', 'REJECTED') AND NEW.decision = 'WITHDRAWN'
+                           AND NEW.comments IS NOT DISTINCT FROM OLD.comments
+                           AND NEW.delegated_to_id IS NOT DISTINCT FROM OLD.delegated_to_id THEN
+                            RETURN NEW;
+                        END IF;
+                        IF OLD.decision <> 'DELEGATED' AND NEW.decision = 'DELEGATED' THEN
+                            RETURN NEW;
+                        END IF;
+                    END IF;
+                END IF;
+                RAISE EXCEPTION 'COMPLIANCE VIOLATION: An approval response can only be '
+                    'withdrawn, delegated, or answered again after withdrawal. '
+                    'Attempted operation: % on table: %.', TG_OP, TG_TABLE_NAME;
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
+        cursor.execute(f'DROP TRIGGER IF EXISTS {trigger_name} ON "{actual_table}";')
+        cursor.execute(f"""
+            CREATE TRIGGER {trigger_name}
+                BEFORE UPDATE OR DELETE ON "{actual_table}"
+                FOR EACH ROW
+                EXECUTE FUNCTION guard_approval_response();
+        """)
+        self.stdout.write(f'  Created trigger: {trigger_name} on {actual_table}')
+        return 1
 
     def disable_triggers(self):
         """Remove immutability triggers (for development/testing only)."""
@@ -123,7 +189,7 @@ class Command(BaseCommand):
 
         with connection.cursor() as cursor:
             disabled_count = 0
-            for table_name, trigger_name in self.AUDIT_TABLES:
+            for table_name, trigger_name in [*self.AUDIT_TABLES, self.RESPONSE_TABLE]:
                 actual_table = self._table_exists(cursor, table_name)
                 if not actual_table:
                     continue
@@ -137,6 +203,7 @@ class Command(BaseCommand):
 
             # Optionally drop the function
             cursor.execute('DROP FUNCTION IF EXISTS prevent_audit_modification();')
+            cursor.execute('DROP FUNCTION IF EXISTS guard_approval_response();')
             self.stdout.write('  Dropped function: prevent_audit_modification()')
 
         self.stdout.write(

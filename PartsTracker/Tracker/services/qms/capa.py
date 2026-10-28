@@ -136,6 +136,19 @@ def capa_plan_refusal(capa) -> str | None:
             f"Manager). Only containment can be worked until then.")
 
 
+def self_verification_switch_refusal(user, capa, new_value) -> str | None:
+    """Why `user` may not set the CAPA's allow_self_verification to `new_value`, or None.
+
+    The switch lets the CAPA's own people verify its effectiveness, so it is a QA
+    call (verify_capa: QA Manager, Tenant Admin), not anyone who can edit the CAPA.
+    A QA holder may set it on a CAPA they own (user, 2026-10-28): in a shop with one
+    QA Manager there is nobody else. `capa` is None on create."""
+    current = capa.allow_self_verification if capa is not None else False
+    if bool(new_value) == current or user.has_tenant_perm('verify_capa'):
+        return None
+    return "Only QA (who can verify CAPAs) can change whether this CAPA allows self-verification."
+
+
 def task_work_refusal(task) -> str | None:
     """`capa_plan_refusal` for working a task: containment is always workable."""
     if task.task_type == CapaTaskType.CONTAINMENT:
@@ -173,8 +186,11 @@ def complete_capa_task(
             raise ValueError("Signature is required for this task")
         if not password:
             raise ValueError("Password is required for identity verification")
-        if not user.check_password(password):
-            raise ValueError("Invalid password")
+        from Tracker.services.core.second_person import verify_own_password
+        refusal = verify_own_password(tenant=task.tenant, user=user, password=password,
+                                      throttle_prefix='capa_task_reauth')
+        if refusal:
+            raise ValueError(refusal)
 
     if task.completion_mode == CapaTaskCompletionMode.SINGLE_OWNER:
         task.status = CapaTaskStatus.COMPLETED
