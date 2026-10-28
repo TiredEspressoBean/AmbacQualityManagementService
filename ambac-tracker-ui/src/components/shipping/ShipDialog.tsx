@@ -91,7 +91,12 @@ export function ShipDialog({ group, partIds, initialLots, open, onOpenChange, on
         onSuccess: (s) => {
             toast.success(`${s.shipment_number} shipped to ${s.customer_name}.`);
             void downloadReport("packing_list", { shipment_id: s.id });
-            if (s.requires_coc) void downloadReport("shipment_coc", { shipment_id: s.id });
+            // The same rule as the shipment page: a unit going back unrepaired gets no
+            // CoC (nothing was done to it to certify), but the returned-as-received note.
+            const unrepaired = s.unrepaired_units ?? 0;
+            if (s.requires_coc && unrepaired < s.parts.length + s.lots.length)
+                void downloadReport("shipment_coc", { shipment_id: s.id });
+            if (unrepaired > 0) void downloadReport("returned_as_received", { shipment_id: s.id });
             onShipped();
             onOpenChange(false);
             void navigate({ to: "/production/shipments/$shipmentId", params: { shipmentId: s.id } });

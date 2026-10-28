@@ -2163,6 +2163,7 @@ export type CustomerOrder = {
    */
   order_number: string;
   name: string;
+  viewers: Array<OrderViewerInfo>;
   latest_note: {
     timestamp: string | null;
     user: string;
@@ -2218,6 +2219,10 @@ export type CustomerOrder = {
   customer_last_name: string | null;
   created_at: string;
   updated_at: string;
+};
+export type OrderViewerInfo = {
+  name: string;
+  invitation_type: string;
 };
 export type TrackerShipment = {
   id: string;
@@ -26820,6 +26825,10 @@ const ClockInRequest = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional().default(""),
 });
+const OrderViewerInfo = z.object({
+  name: z.string(),
+  invitation_type: z.string(),
+});
 const TrackerShipment = z.object({
   id: z.string().uuid(),
   shipment_number: z.string(),
@@ -26833,6 +26842,7 @@ const CustomerOrder = z.object({
   id: z.string().uuid(),
   order_number: z.string(),
   name: z.string(),
+  viewers: z.array(OrderViewerInfo),
   latest_note: z
     .object({
       timestamp: z.string().nullable(),
@@ -30276,6 +30286,7 @@ export const schemas = {
   PatchedTimeEntryRequest,
   ClockOutInputRequest,
   ClockInRequest,
+  OrderViewerInfo,
   TrackerShipment,
   CustomerOrder,
   PaginatedCustomerOrderList,
@@ -42517,7 +42528,7 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
     method: "post",
     path: "/api/MaterialLots/import-expected/",
     alias: "api_MaterialLots_import_expected_create",
-    description: `Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone, and a line already received is never put back on order.`,
+    description: `Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone. A line already received that the file shows open again (a replacement after a return, a blanket line released again) is expected anew as a new lot, and that row is flagged REOPENED.`,
     requestFormat: "form-data",
     parameters: [
       {

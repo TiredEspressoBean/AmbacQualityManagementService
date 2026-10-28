@@ -16567,7 +16567,9 @@ paths:
       operationId: api_MaterialLots_import_expected_create
       description: Import open purchase-order lines (.csv or .xlsx) as expected receipts,
         matched on PO number + line. Only adds and updates — a line missing from the
-        file is left alone, and a line already received is never put back on order.
+        file is left alone. A line already received that the file shows open again
+        (a replacement after a return, a blanket line released again) is expected
+        anew as a new lot, and that row is flagged REOPENED.
       tags:
       - api
       requestBody:
@@ -54356,6 +54358,11 @@ components:
         name:
           type: string
           readOnly: true
+        viewers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderViewerInfo'
+          readOnly: true
         latest_note:
           type: object
           required:
@@ -54542,6 +54549,7 @@ components:
       - process_stages
       - shipments
       - updated_at
+      - viewers
     CustomerRule:
       type: object
       description: |-
@@ -63142,6 +63150,16 @@ components:
       required:
       - lines
       - order_id
+    OrderViewerInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        invitation_type:
+          type: string
+      required:
+      - invitation_type
+      - name
     OrderWorkOrderView:
       type: object
       properties:

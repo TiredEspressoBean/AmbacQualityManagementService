@@ -6427,7 +6427,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone, and a line already received is never put back on order. */
+        /** @description Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched on PO number + line. Only adds and updates — a line missing from the file is left alone. A line already received that the file shows open again (a replacement after a return, a blanket line released again) is expected anew as a new lot, and that row is flagged REOPENED. */
         post: operations["api_MaterialLots_import_expected_create"];
         delete?: never;
         options?: never;
@@ -23083,6 +23083,7 @@ export interface components {
             /** @description Auto-generated internal order number: ORD-YYYY-#### */
             readonly order_number: string;
             readonly name: string;
+            readonly viewers: components["schemas"]["OrderViewerInfo"][];
             readonly latest_note: {
                 timestamp: string | null;
                 user: string;
@@ -27157,6 +27158,10 @@ export interface components {
             /** Format: uuid */
             order_id: string;
             lines: components["schemas"]["OrderLineShipping"][];
+        };
+        OrderViewerInfo: {
+            name: string;
+            invitation_type: string;
         };
         OrderWorkOrderView: {
             work_order_id: string;

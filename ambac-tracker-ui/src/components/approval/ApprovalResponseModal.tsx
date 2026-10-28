@@ -27,6 +27,7 @@ import {
 } from "./SignatureVerification";
 import { useSubmitApprovalResponse } from "@/hooks/useSubmitApprovalResponse";
 import { useRetrieveUsers } from "@/hooks/useRetrieveUsers";
+import { useApprovalRequest } from "@/hooks/useApprovalRequest";
 import { type ApprovalResponseDecisionEnum } from "@/lib/api/generated";
 
 interface ApprovalResponsePayload {
@@ -72,6 +73,11 @@ export function ApprovalResponseModal({
     const [error, setError] = useState<string | null>(null);
 
     const { mutate: submitResponse, isPending } = useSubmitApprovalResponse(approvalRequestId);
+
+    // The template's delegation policy: when it's Disabled the server refuses a
+    // delegation, so the choice isn't offered at all.
+    const { data: approvalRequest } = useApprovalRequest(isOpen ? approvalRequestId : undefined);
+    const canDelegate = approvalRequest?.delegation_policy === "OPTIONAL";
 
     // Fetch users for delegation dropdown
     const { data: usersData } = useRetrieveUsers(
@@ -183,13 +189,15 @@ export function ApprovalResponseModal({
                                     Reject
                                 </Label>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="DELEGATED" id="delegated" />
-                                <Label htmlFor="delegated" className="flex items-center gap-1 cursor-pointer">
-                                    <UserPlus className="h-4 w-4 text-blue-600" />
-                                    Delegate
-                                </Label>
-                            </div>
+                            {canDelegate && (
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="DELEGATED" id="delegated" />
+                                    <Label htmlFor="delegated" className="flex items-center gap-1 cursor-pointer">
+                                        <UserPlus className="h-4 w-4 text-blue-600" />
+                                        Delegate
+                                    </Label>
+                                </div>
+                            )}
                         </RadioGroup>
                     </div>
 

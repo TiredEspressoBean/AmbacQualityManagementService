@@ -100,7 +100,9 @@ class TrackerOrderViewSet(TenantScopedMixin, viewsets.ReadOnlyModelViewSet):
 
         # Apply tenant scoping first, then user filtering
         qs = super().get_queryset()
-        return qs.select_related('current_milestone__template')
+        # A stable order, newest first: limit/offset over an unordered queryset could
+        # repeat or skip orders as the Tracker scrolled.
+        return qs.select_related('current_milestone__template').order_by('-created_at', '-id')
 
     @extend_schema(
         request=inline_serializer(

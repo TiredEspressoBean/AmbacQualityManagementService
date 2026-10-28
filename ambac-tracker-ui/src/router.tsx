@@ -3,6 +3,7 @@ import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
     ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
     ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch, CalibrationRecordNewSearch, CapacitySearch,
+    DocumentsListSearch,
 } from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -411,6 +412,7 @@ const DocumentsRoute = createRoute({
 
 const DocumentsListRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/documents/list',
+    validateSearch: DocumentsListSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/DocumentsEditorPage"), "DocumentsEditorPage"),
     loader: async ({ context }) => {
         const { prefetchDocumentsEditor } = await import("@/pages/editors/DocumentsEditorPage");

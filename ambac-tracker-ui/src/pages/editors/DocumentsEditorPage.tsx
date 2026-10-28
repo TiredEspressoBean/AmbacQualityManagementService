@@ -2,7 +2,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { useState } from "react";
 import { useRetrieveDocuments, documentsOptions, documentsMetadataOptions } from "@/hooks/useRetrieveDocuments";
 import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
-import { useNavigate, Link } from "@tanstack/react-router";
+import { useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { EditDocumentsActionsCell } from "@/components/edit-documents-action-cell";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -59,7 +59,10 @@ function useDocumentsListWithFilter(needsMyApproval: boolean, documentTypeId: st
 
 export function DocumentsEditorPage() {
     const navigate = useNavigate();
-    const [needsMyApproval, setNeedsMyApproval] = useState(false);
+    // In the URL, so the dashboard's "Needs my approval" banner lands on the filter.
+    const needsMyApproval = useSearch({ from: "/documents/list" }).needsMyApproval ?? false;
+    const setNeedsMyApproval = (on: boolean) =>
+        void navigate({ to: "/documents/list", search: on ? { needsMyApproval: true } : {}, replace: true });
     const [documentTypeId, setDocumentTypeId] = useState<string | null>(null);
     const [docTypeSearch, setDocTypeSearch] = useState("");
 

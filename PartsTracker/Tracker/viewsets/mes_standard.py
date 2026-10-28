@@ -949,7 +949,9 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         description=(
             "Import open purchase-order lines (.csv or .xlsx) as expected receipts, matched "
             "on PO number + line. Only adds and updates — a line missing from the file is "
-            "left alone, and a line already received is never put back on order."),
+            "left alone. A line already received that the file shows open again (a "
+            "replacement after a return, a blanket line released again) is expected anew "
+            "as a new lot, and that row is flagged REOPENED."),
     )
     @action(detail=False, methods=['post'], url_path='import-expected',
             parser_classes=[parsers.MultiPartParser])

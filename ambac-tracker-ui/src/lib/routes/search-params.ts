@@ -108,6 +108,12 @@ export const CalibrationRecordNewSearch = z.object({
 
 /** Capacity — `?tab=simulator&part_type=&quantity=&due=` opens "Could we take this
  *  order?" prefilled (from an order line's Check capacity). */
+/** Documents list — `?needsMyApproval=true` opens it on what waits for the viewer, as
+ *  the documents dashboard's banner links it. */
+export const DocumentsListSearch = z.object({
+    needsMyApproval: z.boolean().optional().catch(undefined),
+});
+
 export const CapacitySearch = z.object({
     tab: z.enum(["heatmap", "releases", "simulator"]).optional().catch(undefined),
     part_type: z.string().uuid().optional().catch(undefined),

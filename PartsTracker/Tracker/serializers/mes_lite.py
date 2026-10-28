@@ -424,12 +424,29 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
     customer_first_name = serializers.CharField(source='customer.first_name', read_only=True, allow_null=True)
     customer_last_name = serializers.CharField(source='customer.last_name', read_only=True, allow_null=True)
 
+    # Who else was given access, for the order page's People card. Names only — a
+    # customer sees this card too, so no emails.
+    viewers = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.ListField(child=inline_serializer(
+        name='OrderViewerInfo', fields={
+            'name': serializers.CharField(),
+            'invitation_type': serializers.CharField(),
+        })))
+    def get_viewers(self, obj):
+        from Tracker.models import OrderViewer
+        rows = (OrderViewer.objects.filter(order=obj).select_related('user')
+                .order_by('invited_at'))
+        return [{'name': r.user.display_name, 'invitation_type': r.get_invitation_type_display()}
+                for r in rows if not r.is_expired]
+
     class Meta:
         model = Orders
         fields = (
             'id',
             'order_number',
             'name',
+            'viewers',
             'latest_note',
             'notes_timeline',
             'order_status',

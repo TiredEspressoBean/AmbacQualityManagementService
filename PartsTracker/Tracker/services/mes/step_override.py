@@ -177,6 +177,12 @@ def reject_step_override(
         raise ValueError(
             f"Cannot reject override with status '{override.status}'"
         )
+    # Both rules were the UI's alone; the API took a self-refusal with no reason.
+    if override.requested_by_id and override.requested_by_id == getattr(user, 'id', None):
+        raise ValueError("You can't refuse your own override request — someone else decides it.")
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the request is refused.")
 
     override.status = OverrideStatus.REJECTED
     override.approved_by = user

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { api, type WorkOrderStatusEnum } from "@/lib/api/generated";
 import { ReasonActionButton } from "@/components/common/ReasonActionButton";
 import { usePermissionSet } from "@/hooks/useMyPermissions";
-import { parseDateOnly } from "@/lib/date-only";
+import { todayLocal } from "@/lib/date-only";
 
 const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
     1: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
@@ -69,9 +69,10 @@ export function WorkOrderDetailPage() {
     // receive-back actions live on the Control page — this is a link there.
     const atOspCount = allParts.filter((p) => p.part_status === "AT_OUTSIDE_PROCESS").length;
 
-    // Check if work order is overdue
+    // Overdue once the due date has passed — not on the day itself. The date parses as
+    // local midnight, so comparing it with now flagged a job overdue all of its due day.
     const isOverdue = workOrder?.expected_completion
-        ? parseDateOnly(workOrder.expected_completion) < new Date()
+        ? workOrder.expected_completion < todayLocal()
         : false;
 
     if (isLoadingWorkOrder) {

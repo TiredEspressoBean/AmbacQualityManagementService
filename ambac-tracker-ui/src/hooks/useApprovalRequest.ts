@@ -58,6 +58,8 @@ export interface ApprovalRequest {
     approver_groups: string[];
     responses: ApprovalResponse[];
     threshold?: number;
+    /** From the template: DISABLED refuses a delegation, so the dialog doesn't offer one. */
+    delegation_policy?: "OPTIONAL" | "DISABLED";
 }
 
 export const approvalRequestOptions = (id: string) => queryOptions<ApprovalRequest>({

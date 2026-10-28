@@ -34,6 +34,7 @@ import { useRetrieveWorkOrders } from "@/hooks/useRetrieveWorkOrders";
 import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
+import { useQualityReports } from "@/hooks/useQualityReports";
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions";
 import { useListCapas } from "@/hooks/useListCapas";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
@@ -174,10 +175,12 @@ export default function DocumentFormPage() {
 
     // Normalize content types - filter to models that have GenericRelation to Documents
     const contentTypesData = Array.isArray(contentTypesRaw) ? contentTypesRaw : [];
+    // Django's model names (lowercased class names). 'parttype', 'equipment' and
+    // 'errortype' matched no content type, so those three were never offered.
     const validDocumentModels = [
-        'parttype', 'parts', 'orders', 'workorder', 'processes', 'steps',  // MES
-        'equipment', 'companies',  // Core
-        'errortype', 'qualityreports', 'quarantinedisposition', 'capa', 'threedmodel',  // QMS
+        'parttypes', 'parts', 'orders', 'workorder', 'processes', 'steps',  // MES
+        'equipments', 'companies',  // Core
+        'qualityerrorslist', 'qualityreports', 'quarantinedisposition', 'capa', 'threedmodel',  // QMS
     ];
     const contentTypeOptions = contentTypesData.filter((ct: { app_label?: string; model?: string; id?: number }) => {
         const appLabelMatch = ct.app_label?.toLowerCase() === 'tracker';
@@ -222,16 +225,17 @@ export default function DocumentFormPage() {
 
     // Object search queries - MES models
     const { data: parts } = useRetrieveParts({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parts" });
-    const { data: partTypes } = useRetrievePartTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parttype" });
+    const { data: partTypes } = useRetrievePartTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "parttypes" });
     const { data: orders } = useRetrieveOrders({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "orders" });
     const { data: workOrders } = useRetrieveWorkOrders({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "workorder" });
     const { data: processes } = useRetrieveProcesses({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "processes" });
     const { data: steps } = useRetrieveSteps({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "steps" });
     // Core models
-    const { data: equipment } = useRetrieveEquipments({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "equipment" });
+    const { data: equipment } = useRetrieveEquipments({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "equipments" });
     const { data: companies } = useRetrieveCompanies({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "companies" });
     // QMS models
-    const { data: errorTypes } = useRetrieveErrorTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "errortype" });
+    const { data: errorTypes } = useRetrieveErrorTypes({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "qualityerrorslist" });
+    const { data: qualityReports } = useQualityReports({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "qualityreports" });
     const { data: dispositions } = useRetrieveQuarantineDispositions({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "quarantinedisposition" });
     const { data: capas } = useListCapas({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "capa" });
     const { data: threeDModels } = useRetrieveThreeDModels({ search: objectSearch }, undefined, { enabled: selectedContentTypeModel === "threedmodel" });
@@ -240,14 +244,15 @@ export default function DocumentFormPage() {
     const getObjectsForModel = (model: string | undefined) => {
         switch (model) {
             case "parts": return parts?.results;
-            case "parttype": return partTypes?.results;
+            case "parttypes": return partTypes?.results;
             case "orders": return orders?.results;
             case "workorder": return workOrders?.results;
             case "processes": return processes?.results;
             case "steps": return steps?.results;
-            case "equipment": return equipment?.results;
+            case "equipments": return equipment?.results;
             case "companies": return companies?.results;
-            case "errortype": return errorTypes?.results;
+            case "qualityerrorslist": return errorTypes?.results;
+            case "qualityreports": return qualityReports?.results;
             case "quarantinedisposition": return dispositions?.results;
             case "capa": return capas?.results;
             case "threedmodel": return threeDModels?.results;
@@ -310,17 +315,17 @@ export default function DocumentFormPage() {
     const getContentTypeLabel = (model: string) => {
         const labels: Record<string, string> = {
             // MES
-            'parttype': 'Part Type',
+            'parttypes': 'Part Type',
             'parts': 'Part',
             'orders': 'Order',
             'workorder': 'Work Order',
             'processes': 'Process',
             'steps': 'Step',
             // Core
-            'equipment': 'Equipment',
+            'equipments': 'Equipment',
             'companies': 'Company',
             // QMS
-            'errortype': 'Error Type',
+            'qualityerrorslist': 'Error Type',
             'qualityreports': 'Quality Report',
             'quarantinedisposition': 'Disposition',
             'capa': 'CAPA',
@@ -336,12 +341,14 @@ export default function DocumentFormPage() {
                 return `${obj.name} (${obj.process_name || 'No process'})`;
             case "capa":
                 return `${obj.capa_number} - ${obj.title}`;
-            case "equipment":
+            case "equipments":
                 return obj.name || obj.serial_number || `#${obj.id}`;
             case "companies":
                 return obj.name || `#${obj.id}`;
-            case "errortype":
-                return obj.name || `#${obj.id}`;
+            case "qualityerrorslist":
+                return obj.error_name || obj.name || `#${obj.id}`;
+            case "qualityreports":
+                return obj.report_number || `Report #${obj.id}`;
             case "quarantinedisposition":
                 return obj.disposition_number || `Disposition #${obj.id}`;
             case "threedmodel":

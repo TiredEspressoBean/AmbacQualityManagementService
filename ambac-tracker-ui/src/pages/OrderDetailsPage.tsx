@@ -744,6 +744,18 @@ export function OrderDetailsPage() {
                                         <p className="text-xs text-muted-foreground">Customer</p>
                                     </div>
                                 </div>
+                                {/* Everyone else given access — the card used to show only the customer. */}
+                                {(data?.viewers ?? []).map((v, i) => (
+                                    <div key={`${v.name}-${i}`} className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                                            {v.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium truncate">{v.name}</p>
+                                            <p className="text-xs text-muted-foreground">{v.invitation_type}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                             <Button variant="ghost" size="sm" className="w-full mt-3 text-xs" onClick={() => setInviteModalOpen(true)}>
                                 <UserPlus className="h-3 w-3 mr-1" />
