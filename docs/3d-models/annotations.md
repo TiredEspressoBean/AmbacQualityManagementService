@@ -47,8 +47,9 @@ annotations — those are on the [heat map](heatmap-viz.md) and in the Annotator
 
 The standalone page starts from **Select Quality Reports**, which lists the
 reports carrying an error type marked **Requires 3D Annotation**. Tick the report
-or reports and click **Start Annotating**: it opens their part on its model,
-with the annotations already on that part and model. Clicking the model opens
+or reports and click **Start Annotating**: it opens their part on its model —
+see [which model it uses](uploading.md#linking-to-part-types) — with the
+annotations already on that part and model. Clicking the model opens
 *Edit Defect Annotation* straight away, and the annotation is saved when you
 close it. A disposition that is waiting on annotations links here — **Go to
 Annotator** — with its reports already selected.

@@ -24,7 +24,7 @@ contributions sum until they reach red, where they stop.
 Two things shape a defect's contribution before you touch anything:
 
 - **Severity weights it** — Critical counts double, High one and a half times,
-  Medium once, Low half
+  Medium once, Low half; an annotation with no severity counts as Medium
 - **The defaults scale themselves** — with **Auto-adjust** on (the default),
   Radius starts at 5% of the model's largest dimension, and Intensity starts
   lower the more annotations are in view (1.5 ÷ √count), so a busy map does not
@@ -65,12 +65,14 @@ This view identifies:
 
 Use the **Work order** filter to narrow the map to one work order's parts.
 
-!!! warning "The map draws the 25 most recent matching defects"
-    The viewer loads the **25 newest** annotations that match the filters and
-    draws only those. The header says so — *Showing 25 of N defects* — and the
-    Severity and Defect Type counts still cover all **N**. When N is larger,
-    narrow the filters (a date range, a work order, a defect type) until the
-    two numbers match before reading the map as the whole picture.
+!!! warning "The map draws the 200 most recent matching defects"
+    The viewer loads the **200 newest** annotations that match the filters and
+    draws only those. When more match, a banner at the top of the model reads
+    *Showing the newest &lt;N&gt; of &lt;M&gt; annotations — narrow the date range
+    or filters to see the rest.*, the header reads *Showing &lt;N&gt; of &lt;M&gt;
+    defects*, and the Severity and Defect Type counts still cover all
+    &lt;M&gt;. Narrow the filters (a date range, a work order, a defect type)
+    until the banner goes away before reading the map as the whole picture.
 
 ## Heat Map Options
 
@@ -94,7 +96,7 @@ Radius and Intensity each have a slider and a box to type a value.
 
 | Filter | Options |
 |--------|---------|
-| **Manufacturing Step** | Shown when the part type has more than one model: chooses which model — the part type's general one, or one tied to a step |
+| **Manufacturing Step** | Shown when the part type has more than one model: chooses which model. **All Steps** shows the part type's general model (the one with no step); the other options are the steps that have a model, by step name |
 | **Defect Type** | All defect types, or one of those present, with its count |
 | **Severity** | All severities, or one of those present, with its count |
 | **Date Range** | All time, last 7, 30 or 90 days, or a custom start and end — by the date the annotation was made |

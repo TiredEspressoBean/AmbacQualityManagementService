@@ -30,10 +30,11 @@ of that type — the view for systemic, location-driven problems. On the **By
 Specific Part** tab, pick a part type and a part, then **View Heatmap**, to see
 just that part's own.
 
-!!! warning "Up to 25 defects at a time"
-    The viewer draws the 25 most recent annotations that match the filters; its
-    header reads *Showing 25 of N defects* when there are more. Narrow the
-    filters until the numbers match. See [Heat Map
+!!! warning "Up to 200 defects at a time"
+    The viewer draws the 200 most recent annotations that match the filters.
+    When more match, a banner at the top of the model reads *Showing the newest
+    &lt;N&gt; of &lt;M&gt; annotations — narrow the date range or filters to see
+    the rest.* Narrow the filters until it goes away. See [Heat Map
     Visualization](../3d-models/heatmap-viz.md#by-work-order).
 
 !!! note "There is no by-order view"
@@ -71,14 +72,16 @@ recorded, its severity, notes, who reported it and when.
 
 | Filter | Options |
 |--------|---------|
-| **Manufacturing Step** | Shown when the part type has more than one model: chooses which model |
+| **Manufacturing Step** | Shown when the part type has more than one model: **All Steps** for the part type's general model, or a step that has its own model |
 | **Defect Type** | All defect types, or one of those present, with its count |
 | **Severity** | All severities, or one of those present, with its count |
 | **Date Range** | All time, last 7, 30 or 90 days, or a custom range |
 | **Work Order** | All work orders, or one |
 
 **Heatmap Settings** turns the heat on or off and adjusts how it spreads
-(**Radius**) and how strongly each defect counts (**Intensity**).
+(**Radius**) and how strongly each defect counts (**Intensity**). Severity
+weights each defect's heat: Critical double, High one and a half times, Medium
+once, Low half.
 
 ## Creating Annotations
 

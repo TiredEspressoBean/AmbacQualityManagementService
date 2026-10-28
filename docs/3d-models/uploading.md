@@ -136,25 +136,28 @@ intermediate state.
 !!! warning "Which model gets annotated"
     Each place that annotates picks one of the part type's models for you:
 
-    - **The work order page's QA panel** (**3D** tab) uses a model that has
-      finished converting, preferring one with no step; among several, the one
+    - **The work order page's QA panel** (**3D** tab) and **the Annotator**
+      (`/annotator`) both use a model that has finished converting, preferring
+      the part type's general model (one with no step); among several, the one
       that comes first alphabetically.
-    - **The Annotator** (`/annotator`) uses the part type's model that comes
-      **first alphabetically** — whatever its step, and whether or not it has
-      finished converting.
     - **A work-instruction substep** uses the model its **Part annotation**
       capture was authored with.
 
-    With more than one model on a type, name the one you want annotated so it
-    sorts first, and archive models you no longer use.
+    With more than one general model on a type, name the one you want annotated
+    so it sorts first, and archive models you no longer use.
 
 ## Model Versioning
 
 To replace a model's file, open it from the **3D Models** list (**Edit 3D
 Model**), choose the new file under **3D Model File** and **Save Changes**. That
 creates a new version of the model, which is converted again like a fresh
-upload. Annotations belong to the version they were placed on, so the earlier
-version's annotations stay with it.
+upload.
+
+The **3D Models** list shows only the current version of each model, and the
+heat map, the QA panel and the Annotator use the current version. Annotations
+belong to the version they were placed on, so the earlier version's annotations
+stay with it: the earlier version is kept, and is reachable through the REST
+API, but it is not listed or shown on the heat map.
 
 ## Thumbnails
 
