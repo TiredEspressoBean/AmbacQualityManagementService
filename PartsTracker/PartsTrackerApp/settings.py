@@ -167,7 +167,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     "django.middleware.csrf.CsrfViewMiddleware",
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'auditlog.middleware.AuditlogMiddleware',  # Must come AFTER AuthenticationMiddleware to capture user
+    # auditlog's middleware, recording the trusted client IP (not the first, client-set
+    # X-Forwarded-For entry). Must come AFTER AuthenticationMiddleware to capture user.
+    'Tracker.audit_middleware.TrustedIPAuditlogMiddleware',
     'Tracker.middleware.TenantMiddleware',  # Tenant resolution (after auth)
     'Tracker.middleware.TenantStatusMiddleware',  # Block suspended tenants (after TenantMiddleware)
     'django.contrib.messages.middleware.MessageMiddleware',
