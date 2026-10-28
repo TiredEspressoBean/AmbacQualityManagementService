@@ -170,7 +170,7 @@ and a reason, and the step is logged against your name. You did this in the
 The override is the exception. If they're genuinely trained, write the record:
 
 1. **Quality** > **Training** > **Training Records** > **New Training Records**.
-2. **Trainee**: type a name to search. Mike Rodriguez. **Training Type**: Nozzle
+2. **Trainee**: type a name to search. Mike Rodriguez. **Training Type**: Dimensional
    Inspection Certification. **Completion Date**: the day they were assessed.
    **Competency Level**: what they demonstrated, not what the course was. **Trainer**:
    who assessed them.

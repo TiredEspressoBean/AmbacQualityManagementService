@@ -41,7 +41,7 @@ Every manufacturing process has **variation**. SPC helps you:
 - **Improve consistency** - Understand your process capability
 
 !!! example "Demo: Flow Rate Variation"
-    In demo mode, view the Flow Testing SPC chart. Notice how Flow Rate measurements vary between 115-125 mL/min even when the process is stable. This is normal variation. SPC helps distinguish normal variation from problems.
+    In demo mode, view the Flow Calibration SPC chart. Notice how Flow Rate readings scatter around the 120 mL/min nominal even when nothing has changed. This is normal variation. SPC helps distinguish normal variation from problems.
 
 ### 1.2 Two Types of Variation
 
@@ -105,15 +105,13 @@ The system flags these patterns automatically:
 
 ### 2.2 Demo: SPC Violation
 
-In demo mode, the Flow Rate chart shows a **Rule 2 violation** (2 of 3 points beyond 2σ):
+To find the demo's Flow Rate chart:
 
-1. Navigate to **Analytics**, then select the **SPC** tab
-2. Select Process: Common Rail Injector Remanufacturing
-3. Select Step: Flow Testing
-4. Select Measurement: Flow Rate @ 1000 bar
-5. Look for the red-highlighted points
-
-This triggered an alert for QA Inspector Sarah Chen.
+1. Go to **Analytics**, and click **SPC** on the FPY trend card
+2. Select Process: Injector Build
+3. Select Step: Flow Calibration
+4. Select Measurement: Flow Rate
+5. Look for red-highlighted points; the **Action Needed** panel counts them
 
 ### 2.3 Control Limits vs Specification Limits
 
@@ -190,9 +188,6 @@ Answer: _______________
 - Adjust the process without approval
 - Ignore red signals "because parts are still passing"
 
-!!! tip "Demo: Operator View"
-    Log in as Mike Rodriguez (mike.ops@demo.ambac.com). If SPC alerts are configured for your workstation, you'd see a banner when Flow Testing shows a violation.
-
 ### 3.2 For QA Inspectors
 
 **What you see:** SPC charts during measurement review
@@ -210,9 +205,6 @@ Answer: _______________
 - What changed (material lot, operator, equipment)?
 - Are other measurements affected?
 
-!!! tip "Demo: Inspector View"
-    Log in as Sarah Chen (sarah.qa@demo.ambac.com). Check your Inbox for the SPC violation alert on Flow Rate. This is how the system notifies inspectors of statistical issues.
-
 ### 3.3 For QA Managers
 
 **What you see:** SPC dashboard and capability reports
@@ -224,7 +216,7 @@ Answer: _______________
 | Out-of-control points | Ensure investigation occurs, connect to CAPA if recurring |
 | Cpk < 1.33 | Initiate process improvement |
 | Cpk declining | Investigate before it becomes critical |
-| Baseline needs update | Review and approve new baseline |
+| Baseline needs update | Review it, then **Freeze Limits** on the new baseline |
 
 **Manager decisions:**
 - When to freeze/update baselines
@@ -232,7 +224,7 @@ Answer: _______________
 - How to prioritize capability improvements
 
 !!! tip "Demo: Manager View"
-    Log in as Jennifer Walsh (jennifer.mgr@demo.ambac.com). Review the Analytics dashboard to see overall capability status. CAPA-2024-003 was partially triggered by SPC data showing nozzle measurement drift.
+    Log in as Maria Santos (maria.qa@demo.ambac.com). Review the Analytics dashboard to see overall capability status. CAPA-2024-003 was partially triggered by SPC data showing nozzle measurement drift.
 
 ---
 
@@ -275,7 +267,7 @@ By the end of this module, you will:
 | High | High | Good process! |
 
 !!! example "Demo: Flow Rate Capability"
-    The demo Flow Rate measurement shows Cpk = 1.45 (Capable). This means the flow testing process can reliably produce parts within the 105-135 mL/min specification.
+    The demo Flow Rate measurement (specification 100–140 mL/min) has too few subgroups for capability to be judged yet: the page says *Capability not judged yet* and asks for at least 20. Cpk and Cp read **—** until there are enough readings.
 
 ---
 
@@ -292,11 +284,11 @@ By the end of this module, you will:
 ### Exercise 5.1: Navigate to SPC
 
 1. Log into the demo environment
-2. Navigate to **Analytics**, then select the **SPC** tab
+2. Go to **Analytics**, and click **SPC** on the FPY trend card
 3. Select:
-   - Process: Common Rail Injector Remanufacturing
-   - Step: Flow Testing
-   - Measurement: Flow Rate @ 1000 bar
+   - Process: Injector Build
+   - Step: Flow Calibration
+   - Measurement: Flow Rate
 4. Answer:
    - What is the current Cpk? ___
    - Are there any red-flagged points? ___

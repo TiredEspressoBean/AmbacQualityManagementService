@@ -105,8 +105,10 @@ recorded is kept. See [Deactivating Users](../admin/users/deactivating.md).
 2. Build its steps and their connections in **Process Flow** — a routing is a
    graph, not a numbered list
 3. Configure each step's requirements and measurements
-4. **Submit for approval** — always required, and refused if the organisation
-   has no `PROCESS_APPROVAL` template
+4. Approve it from **Process Actions**. In *Simplified* change control,
+   **Approve** locks it for production at once. In *Regulated* mode the action
+   is **Submit for approval**, refused if the organisation has no
+   `PROCESS_APPROVAL` template, and someone other than its author signs it
 
 ### Step Configuration
 
