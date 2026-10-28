@@ -209,23 +209,33 @@ Limits** stays unavailable.
 Once your process is stable, lock the control limits:
 
 1. Verify process is stable (no red flags, random scatter)
-2. Click **Freeze Limits**
+2. Click **Freeze Limits**. *Freeze control limits* asks why; **Freeze limits**
+   stays unavailable until you give a reason
 3. Control limits are locked for ongoing monitoring
 4. Future data is compared against frozen baseline
+
+The Monitoring Mode badge's tooltip then reads *Frozen by &lt;name&gt; on
+&lt;date&gt; — &lt;reason&gt;*.
 
 ### Updating Baseline
 
 When process improves significantly:
 
 1. Review new stable data period
-2. Click **Unfreeze** — the chart returns to baseline mode with recalculated
-   limits
-3. Once the new limits look right, click **Freeze Limits** to lock them
-4. Document the reason for the change
+2. Click **Unfreeze**. *Unfreeze control limits* asks why; the reason is kept
+   on the baseline, which is marked **superseded**. The chart returns to
+   baseline mode with recalculated limits
+3. Once the new limits look right, click **Freeze Limits** to lock them, with
+   its own reason
 
 !!! note "There is no single 'update baseline' action"
     Re-baselining is unfreeze-then-freeze. The chart recalculates limits from
     current data while unfrozen, so check them before you freeze again.
+
+!!! note "Reasons are recorded, not approved"
+    Both reasons are stored on the baseline with who did it and when, and the
+    change is in the audit log. Freezing or unfreezing takes no approval and
+    sends no alert; any sign-off is your procedure's.
 
 ## Histogram
 

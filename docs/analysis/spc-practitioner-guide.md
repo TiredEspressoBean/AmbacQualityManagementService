@@ -175,8 +175,9 @@ Freeze control limits when ALL of these are true:
 2. **Document current state**: Screenshot chart and capability indices
 3. **Get approval**: QA Manager sign-off required
 4. **Freeze in system**: Click **Freeze Limits** on SPC page
-5. **Record justification**: **Freeze Limits** freezes in one click and asks
-   for no note, so record the justification wherever your procedure keeps it
+5. **Record justification**: the freeze asks why, and will not go through
+   without a reason. It is kept with the baseline and shown in the Monitoring
+   Mode tooltip
 6. **Communicate**: Notify production that baseline is locked
 
 ### 3.3 When to Update a Baseline
@@ -197,10 +198,11 @@ Update (unfreeze and refreeze) when:
 3. **Verify improvement**: New Cpk should be better (or justify why acceptable)
 4. **Approve change**: QA Manager + Engineering sign-off
 5. **Update in system**: Click **Unfreeze** to return to baseline mode with
-   recalculated limits, then **Freeze Limits** once the new limits are right
-6. **Retain history**: the old baseline is kept, marked **superseded**. The
-   reason stored with it is the page's fixed *User requested unfreeze from SPC
-   page*, so keep the real justification (below) in your own records
+   recalculated limits, then **Freeze Limits** once the new limits are right.
+   Each asks for a reason
+6. **Retain history**: the old baseline is kept, marked **superseded**, with
+   the unfreeze reason stored on it. A freeze that replaces a baseline still
+   active records *Replaced by a new baseline: &lt;reason&gt;* on the old one
 
 ```
 BASELINE UPDATE JUSTIFICATION TEMPLATE:

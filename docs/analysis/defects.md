@@ -66,7 +66,7 @@ matching the filters and period, not only the 100 the table shows — Part, Part
 Type, Process, Defect Types, Date, Inspector, Order, Work Order and Disposition.
 It needs `export_data`, is logged as a bulk export, and is refused past 50,000
 rows: *Filter the list first, then export.* With rows ticked, the button reads
-**Export selected** and writes just those.
+**Export selected** and writes just those, with the same columns.
 
 **Create CAPA** opens a new CAPA filled in from what you are looking at. The
 problem statement is drafted from the count, the period and the active filters —
@@ -74,8 +74,8 @@ in the form *&lt;M&gt; failed inspections in the last &lt;N&gt; days (defect
 type &lt;type&gt;, part type &lt;type&gt;, process &lt;process&gt;).*, naming only
 the filters that are set — and the failed reports are linked: the ticked rows, or else the
 matching ones, up to 50. When more match than are linked, the statement says
-the rest are on Defect Records. Edit both before saving. Raising the CAPA needs
-`initiate_capa`.
+the rest are on Defect Records. Edit both before saving. The button shows only
+to holders of `initiate_capa`.
 
 !!! note "No severity filter"
     Defects cannot be filtered by severity here, and the page does not show
@@ -188,7 +188,7 @@ Data](exporting.md).
 | `view_documents` *or* `view_chatsession` | Makes the Analytics link appear in the sidebar |
 | `view_qualityreports` | See underlying data |
 | `export_data` | **Export** of all matching records, and PDF reports. **Export selected** needs only the view permissions above |
-| `initiate_capa` | Raise the CAPA that **Create CAPA** opens |
+| `initiate_capa` | See **Create CAPA**, and raise the CAPA it opens |
 
 ## Next Steps
 
