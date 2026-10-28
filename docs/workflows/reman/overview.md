@@ -212,6 +212,7 @@ Cores can also arrive counted but unidentified, as a lot. See
 | `request_core_authorisation` | **Send a unit for the customer's authorisation** |
 | `release_core` | **Release a torn-down unit** — to rebuild, to stock, or to harvest |
 | `complete_disassembly` | **Complete a teardown by hand**, outside its route, with a reason |
+| `scrap_core` | **Scrap a core** |
 | `grade_component` | Record or edit a harvested component |
 | `accept_component` | Accept components into stock, and apply or dismiss findings |
 | `reject_component` | Scrap a harvested component |
@@ -221,6 +222,11 @@ unit's decisions. By default Shift Lead, Production Manager, Planner and Tenant
 Admin hold them; operators keep `change_core` for routine teardown and rebuild
 work, and a finished teardown route closes the teardown without anyone's
 override.
+
+`scrap_core` is held by default by every staff role that can receive and work
+cores, operators included. It is its own permission so a shop that wants
+scrapping kept to its leads can take it out of the operators' group without
+touching receiving or teardown.
 
 ## Related Topics
 
