@@ -10,9 +10,9 @@ run may proceed. It is what catches a bad setup on part one instead of part
 two hundred.
 
 A step either requires it or it doesn't — the requirement is a setting on the
-step, not something a tool change or a shift handover raises on its own. See
-[Scope is per work order](#scope-is-per-work-order) for what the scope setting
-does and does not do.
+step, not something a tool change or a shift handover raises on its own. The
+step's [FPI scope](#fpi-scope) decides how far one buy-off reaches: the whole
+work order, one shift day, or one machine.
 
 ## Enabling FPI
 
@@ -27,33 +27,38 @@ See [Step Configuration](../../admin/processes/steps.md).
 
 When enabled, the first part at that step triggers FPI workflow.
 
-### Scope is per work order
+### FPI scope
 
-**One buy-off releases the step for the whole work order.** Once a first piece is
-signed off at a step, every part at that step may proceed — regardless of shift
-change, machine change or who is running it.
+The scope decides what one passed or waived first piece releases. Each scope is a
+real gate: a part at the step is held until a first piece **for its context** is
+passed or waived.
 
-!!! warning "The narrower scope settings do not hold work"
-    A step carries an FPI *scope* setting with four options — **per work order**,
-    **per shift**, **per equipment** and **per operator**. The setting changes
-    which inspection **records** get created: Per Shift and Per Equipment key a
-    new record to the shift date or the machine. Per Operator changes nothing.
-    But the gate that actually
-    holds parts ignores it — one PASSED or WAIVED inspection satisfies the step
-    for the entire work order, whichever scope is set.
+| Scope | One buy-off releases | A part is held when |
+|-------|----------------------|---------------------|
+| **Per Work Order** | The step for the whole work order | No first piece at the step on the work order has passed or been waived |
+| **Per Shift** | The step for one shift day on the work order, keyed by the shop-floor date | Today's shift has no passed or waived first piece. A pass on another day does not release today's run |
+| **Per Equipment** | The step for one machine on the work order | The machine it runs on has no passed or waived first piece. A pass on another machine does not release this one |
 
-    So the extra records read as per-shift control that is not enforced. **Do not
-    rely on it.** If a shift or machine change genuinely needs re-verification,
-    make it a separate step or a check in the work instruction, where it will
-    actually hold.
+Under **Per Equipment** the machine is the production machine on the part's visit
+to the step — taken from the machine authored on the step or from the live
+schedule, or set by the operator. A part with **no machine recorded is held**:
+nothing says which first piece covers it. Record the machine, then start the FPI.
+
+The context shows wherever the first piece does. The blocker on a held part reads
+*First Piece Inspection required for <machine>: PENDING* (or *…for the
+<date> shift…*), and the banner, control-page cards and QA home name the
+machine or shift the first piece is for.
 
 ## FPI Workflow
 
 You meet FPI in three places. In the operator's step runtime, a banner that
 changes with the inspection's state (below). On the work order's **control**
-page, a *First piece waiting on QA* card for each pending first piece and a
-*First piece failed* card for a held step. On QA home, a *First piece waiting*
-banner whose **Start check** opens the control page. A quality report also
+page, a *First piece waiting on QA* card for each pending first piece (titled
+with the step and, under a narrower scope, its context — *<step> for the <date>
+shift*), a *First piece failed at <step> for <machine> — run held* card for a
+held step, and — for people who can sign off a first piece — a *First piece
+waived at <step>* row for each waiver. On QA home, a *First piece waiting —
+<step> for <machine>* banner whose **Start check** opens the control page. A quality report also
 carries a **First Piece Inspection (FPI)** flag; it is set when a first piece
 passes, or ticked by hand on the report form, and nothing waits on it.
 
@@ -64,10 +69,17 @@ passes, or ticked by hand on the report form, and nothing waits on it.
 
 | State | What it says | What you can do |
 |-------|--------------|-----------------|
-| **Required** — no record yet | *First Piece Inspection Required* | **Start FPI** — designates the first piece and holds the run |
+| **Required** — no record yet | *First Piece Inspection Required* (with the context under a narrower scope — *…Required for <machine>*) | **Start FPI** — designates the first piece and holds the run |
+| **Machine not recorded** — Per Equipment step | *First Piece Inspection Required — machine not recorded*: *This step needs a first piece per machine. Record the machine this part runs on, then start the FPI.* | Record the machine first; **Start FPI** is not offered until then |
 | **In progress** — first piece not finished | *First Piece Inspection in progress* | Nothing yet. Complete the first piece's captures; no buy-off is possible until they are in |
 | **Ready for buy-off** | *First piece complete — ready for buy-off* | **Sign off & pass**, **Fail**, or **Waive** — if you hold `sign_off_fpi`. Everyone else sees *awaiting buy-off* and a **Get QA sign-off** button |
-| **Satisfied** | Green — run released | Nothing; parts move |
+| **Satisfied** | Green — run released (*…signed off*, or *…waived* — both with the context, e.g. *…signed off for the <date> shift*) | Parts move. A sign-off holder can **Void pass** after a pass, or **Start a new first piece** after a waiver |
+
+**Start FPI** is refused, with the reason shown, when the machine isn't recorded
+on a Per Equipment step (*This step needs a first piece per machine, and the
+machine this part runs on isn't recorded. Set the machine, then start the FPI.*)
+or when no part of the context is at the step yet (*No part has reached this step
+yet — start the FPI from a part at the step.*).
 
 ### Signing off
 
@@ -119,8 +131,31 @@ banner, with a required reason:
 - Parts already past the step are **not** pulled back. If they need looking at,
   that is a quality decision about them, made separately.
 
-A failed or waived first piece has nothing to void. A fail already holds the run,
-and a waiver cannot be withdrawn from the screens.
+A passed first piece is corrected only this way. **Start FPI** after a pass is
+refused: *The first piece has passed. If the pass was given in error, void it;
+that opens the re-inspection.* A fail needs no correcting — it already holds the
+run, and **Start a new first piece** on its card is the recovery.
+
+### A waiver given in error
+
+A waiver is corrected by a **new first piece**. After a waiver the runtime banner
+is green, titled *First Piece Inspection waived*, with *Released without a
+first-piece buy-off — parts can proceed through this step.* People who can sign
+off a first piece see **Start a new first piece** there, and on the work order's
+control page a row *First piece waived at <step> — "<reason>"* with the same
+button. The dialog says what follows:
+
+> The waiver stays on record, marked superseded. The run holds until the new
+> first piece is passed or waived. Parts already past this step are not pulled
+> back.
+
+- The waiver's status becomes **Superseded**. Who waived it, when and why are kept.
+- A new first piece opens, and the run holds — for the waiver's context under a
+  narrower scope — until it is passed or waived.
+- Parts already past the step are **not** pulled back.
+
+The control page confirms with *New first piece started — the waiver is marked
+superseded.* Only someone who can sign off a first piece can replace a waiver.
 
 ### Conditional Pass
 
@@ -142,6 +177,7 @@ and a waiver cannot be withdrawn from the screens.
 | **Passed** | FPI approved, batch released | Green |
 | **Failed** | FPI rejected, setup adjustment needed | Red |
 | **Waived** | Released without first-piece verification, with a reason | Green |
+| **Superseded** | A waiver replaced by a new first piece; it releases nothing | — |
 
 ### Acknowledging
 
@@ -165,12 +201,16 @@ Waivers are logged with:
 - When waived
 - Reason for waiver
 
-Use sparingly - FPI catches setup errors early.
+Use sparingly - FPI catches setup errors early. A waiver given in error is
+corrected by a new first piece — see
+[A waiver given in error](#a-waiver-given-in-error).
 
 ## Viewing FPI Status
 
-The work order's control page shows a card for each step whose first piece is
-waiting on QA or has failed. Once bought off, nothing is shown there.
+The work order's control page shows a card for each step (and, under a narrower
+scope, each shift day or machine) whose first piece is waiting on QA or has
+failed. Once passed, nothing is shown there. A waived first piece shows as a row,
+with **Start a new first piece**, to people who can sign off a first piece.
 
 ## What the first piece is inspected against
 
@@ -213,13 +253,14 @@ whom; the step tells you what was actually measured.
 
 While FPI is pending:
 
-- Other parts at that step are held
+- Other parts at that step are held — under Per Shift or Per Equipment, the
+  parts of that shift day or machine
 - Cannot proceed to next step
 - The banner and control-page card say the run is held
 
 After FPI passes:
 
-- All held parts are released
+- The held parts it covers are released
 - Can proceed normally
 - Batch production continues
 

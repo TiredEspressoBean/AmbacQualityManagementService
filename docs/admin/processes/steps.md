@@ -207,16 +207,14 @@ Enable FPI for this step:
 
 #### FPI Scope
 
-The scope decides which inspection records get created. It does not change what
-holds parts: one passed or waived first piece releases the step for the whole
-work order, whichever scope is set.
+The **FPI scope** select decides what one passed or waived first piece releases.
+Each option is a real gate; the editor shows its hint under the select.
 
-| Scope | Effect |
-|-------|--------|
-| **Per Work Order** | One record per work order |
-| **Per Shift** | A record keyed to the shift date |
-| **Per Equipment** | A record keyed to the machine |
-| **Per Operator** | No effect |
+| Scope | Hint | Effect |
+|-------|------|--------|
+| **Per Work Order** | *One first piece releases this step for the whole work order.* | One buy-off releases the step for every part on the work order |
+| **Per Shift** | *Each shift day needs its own first piece on the work order.* | Keyed by the shop-floor date: a pass on another day does not release today's run |
+| **Per Equipment** | *Each machine needs its own first piece on the work order. A part with no machine recorded is held.* | Keyed by the production machine on the part's visit to the step — from the machine authored on the step or the live schedule, or set by the operator. A pass on another machine does not release this one |
 
 See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 

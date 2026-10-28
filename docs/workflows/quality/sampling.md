@@ -323,7 +323,7 @@ result is not in the log; it is on the part's quality report.
 | `view_samplingrule` | View sampling configuration | Every staff role |
 | `add_samplingrule` / `change_samplingrule` | Author the rules | **QA Manager, QA Inspector, Tenant Admin** |
 | `add_samplingruleset` / `change_samplingruleset` | Author the sets and their plan parameters | **QA Manager, QA Inspector, Tenant Admin** |
-| `delete_samplingrule` / `delete_samplingruleset` | Remove one | Tenant Admin, QA Manager, Production Manager, Document Controller |
+| `delete_samplingrule` / `delete_samplingruleset` | Remove one | **Tenant Admin, QA Manager** |
 
 *Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
 

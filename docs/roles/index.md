@@ -178,7 +178,7 @@ their own orders.
 | **Approve** a disposition | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
 | Initiate a CAPA | – | Yes | Yes | Yes | Yes | – | – | Yes | Yes | – | – | – | Yes |
 | Verify a CAPA's effectiveness | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
-| **Approve** a CAPA † | – | – | – | Yes | Yes | – | – | – | – | – | – | – | – |
+| **Approve** a CAPA † | – | – | – | Yes | – | – | – | – | – | – | – | – | – |
 | Classify documents | – | – | – | Yes | – | – | – | – | – | – | Yes | – | Yes |
 | Author processes & routings | – | – | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
 | Cancel a work order | – | – | – | – | Yes | – | – | – | – | – | – | – | Yes |
@@ -206,6 +206,8 @@ their own orders.
 
     | Approval | Groups it assigns |
     |----------|-------------------|
+    | Critical CAPA Approval | QA Manager |
+    | Major CAPA Approval | QA Manager |
     | CAPA Approval | QA Manager |
     | Document Release | QA Manager, Document Controller |
 
@@ -221,10 +223,10 @@ their own orders.
 
     **Verifying is different and is a real permission gate.** `verify_capa` is
     granted by **group**, not assigned per request by a template — by default
-    QA Manager and Tenant Admin. So a Production Manager may *approve* a CAPA so
-    work can begin, and still cannot be the one who says it worked, unless an
-    administrator deliberately adds the permission to their group. That is the
-    separation that matters.
+    QA Manager and Tenant Admin. So a role a template names as a CAPA approver
+    may *approve* a CAPA so work can begin, and still cannot be the one who says
+    it worked, unless an administrator deliberately adds the permission to their
+    group. That is the separation that matters.
 
 !!! warning "Seeing an approval is not being assigned it"
     Home's **Approvals in flight** lists what is moving through the system. The

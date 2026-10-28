@@ -102,7 +102,7 @@ the action fails with a message naming the type:
 | `PCR_APPROVAL` | A process change request is submitted | QA Manager |
 | `PCO_APPROVAL` | A process change order is submitted | Production Manager |
 | `PCN_RELEASE` | A process change notice is released | Document Controller |
-| `CAPA_CRITICAL` | A **Critical** CAPA is created, or its approval requested | Tenant Admin |
+| `CAPA_CRITICAL` | A **Critical** CAPA is created, or its approval requested | QA Manager |
 | `CAPA_MAJOR` | A **Major** CAPA is created, or its approval requested | QA Manager |
 | `CAPA_APPROVAL` | Any other CAPA approval request, and the fallback when the two above are missing | QA Manager |
 | `TRAINING_CERT` | Reserved for certifying training | QA Manager |
@@ -140,8 +140,11 @@ has responded.
 
 ### CAPA authorisation
 
-Sequence **Sequential**, flow **All Required**, approvers QA Manager then
-Production Manager.
+Sequence **Parallel**, flow **Any**, approver group QA Manager — the first
+approval decides it. The starter **Critical CAPA Approval** and **Major CAPA
+Approval** templates have this shape: a Major or Critical CAPA's plan is approved
+by a QA Manager only. A request already open keeps the approvers it was created
+with; editing a template changes only the requests raised after it.
 
 !!! note "Severity chooses the CAPA template"
     A **Critical** CAPA raises its approval from a `CAPA_CRITICAL` template and

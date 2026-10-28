@@ -224,7 +224,6 @@ See [SPC Charts](../../analysis/spc.md) for details.
 |------------|--------|
 | `view_measurementresult` | View measurement history |
 | `add_measurementresult` | Record new measurements |
-| `delete_measurementresult` | Nothing — no screen or endpoint deletes a measurement result. Held by Tenant Admin, QA Manager, Production Manager and Document Controller. |
 
 ## Next Steps
 

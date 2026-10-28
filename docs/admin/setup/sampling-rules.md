@@ -314,7 +314,7 @@ rather than with every staff role — the same tier as SPC baselines.
 | `view_samplingrule` / `view_samplingruleset` | See the rules and sets | Every staff role |
 | `add_samplingrule` / `change_samplingrule` | Author the rules | QA Inspector, QA Manager, Tenant Admin |
 | `add_samplingruleset` / `change_samplingruleset` | Author the sets, where the scope and plan live | QA Inspector, QA Manager, Tenant Admin |
-| `delete_samplingrule` / `delete_samplingruleset` | Remove them | QA Manager, Production Manager, Document Controller, Tenant Admin |
+| `delete_samplingrule` / `delete_samplingruleset` | Remove them | QA Manager, Tenant Admin |
 
 *Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
 

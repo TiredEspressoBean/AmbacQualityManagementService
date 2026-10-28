@@ -49,8 +49,8 @@ hasn't finished by then, reload the page later rather than pressing it again.
 |---------------|------|
 | **Jennifer Walsh**, Production Manager, `jennifer.mgr@demo.ambac.com` | Every module |
 
-Every password is `demo123`. Sarah Chen, a QA inspector, raised the CAPA you decide
-in module 7.
+Every password is `demo123`. Sarah Chen, a QA inspector, raised the CAPA you look
+at in module 7.
 
 ---
 
@@ -182,21 +182,20 @@ overrides it. Nothing on this page changes an order; it suggests.
 
 ## 7. A Major CAPA's go-ahead
 
-**You will:** approve the plan for a Major CAPA, and see why you can't approve your
-own.
+**You will:** see who gives a Major CAPA its go-ahead, and what can be worked while
+it waits.
 
-A Major or Critical CAPA's plan needs a go-ahead from a QA Manager or a Production
-Manager before its corrective work starts. Containment doesn't wait.
+A Major or Critical CAPA's plan needs a go-ahead from a QA Manager before its
+corrective work starts. It is not yours to give. Containment doesn't wait.
 
-1. **Approvals** > **Overview** lists what's awaiting you. Open `CAPA-SU-2026-001`, Sarah's CAPA on
-   a supplier's receiving lot, and its **Approval** tab: *Waiting for a QA Manager
-   or Production Manager to approve the plan.*
-2. **Submit Response**, **Approve**, say what you approved, sign, and enter your
-   password. *This CAPA has been approved. Work may proceed.*
+1. Open `CAPA-SU-2026-001`, Sarah's CAPA on a supplier's receiving lot, and its
+   **Approval** tab. **Assigned Approvers** lists who decides it, and you are not
+   among them: *You are not assigned as an approver for this request.*
+2. Containment can be worked now; corrective and preventive actions and the
+   root-cause analysis wait until it's approved.
 
 **Try to break it:** open `CAPA-2024-004`, which you raised. Its Approval tab
-offers you nothing: *You requested this approval; a QA Manager or Production
-Manager decides it.* Nobody approves their own plan while someone else can.
+offers you no response either: you raised it, and a QA Manager decides it.
 
 ---
 

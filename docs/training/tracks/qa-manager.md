@@ -45,11 +45,10 @@ hasn't finished by then, reload the page later rather than pressing it again.
 | You log in as | When |
 |---------------|------|
 | **Maria Santos**, QA Manager, `maria.qa@demo.ambac.com` | Every module |
-| **Jennifer Walsh**, Production Manager, `jennifer.mgr@demo.ambac.com` | Approves a CAPA you raised, in module 4 |
 
 Every password is `demo123`. You are the shop's only QA manager. That matters twice:
-a decision that needs someone independent of you goes to the production manager, and
-work you did yourself is work you can't verify.
+a CAPA plan you raise has nobody else to approve it, so you approve it yourself with
+a written justification, and work you did yourself is work you can't verify.
 
 ---
 
@@ -179,15 +178,16 @@ A Major or Critical CAPA's plan is approved before work starts. Until then, only
 containment can be worked; corrective and preventive tasks and the root-cause
 analysis wait.
 
-**Try to break it:** open the new CAPA's **Approval** tab. You raised it, and a
-production manager can decide it, so you can't approve your own: the tab says it
-waits for them.
+3. Open the new CAPA's **Approval** tab and **Submit Response**. A Major CAPA's plan
+   is a QA Manager's to approve, and you are the only one, so nobody else can decide
+   it. The dialog says so: *You requested this approval, and nobody else can decide
+   it. You may decide it yourself; it's recorded as self-approved, with your
+   justification.* **Approve**, write the justification, sign, and enter your
+   password.
 
-3. Log in as Jennifer, open the CAPA, and **Submit Response** > **Approve**, with
-   signature and password. Log back in as Maria.
-
-A shop with no one else eligible lets the person who raised the CAPA approve it, with
-a written justification that stays on the record. Here, Jennifer is eligible.
+**Try to break it:** give a justification of a few words. It is refused:
+*You're deciding your own request: give the justification (at least 10 characters).* Where someone
+else can approve, the person who raised the CAPA can't: the request waits for them.
 
 ---
 
