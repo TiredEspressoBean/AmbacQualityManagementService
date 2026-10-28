@@ -93,7 +93,7 @@ For each change:
 | **Object ID** | Record identifier |
 | **Before State** | Previous values |
 | **After State** | New values |
-| **IP Address** | Request source, where the entry records one |
+| **IP Address** | The trusted client address of the request, where the entry records one — the same address approvals and QA releases record |
 
 ### Immutability
 
