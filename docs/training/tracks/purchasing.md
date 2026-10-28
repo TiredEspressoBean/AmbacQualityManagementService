@@ -137,8 +137,8 @@ comes from; what the part *is* (its drawing, its specs) is Engineering's.
 4. A rejected lot is where a SCAR starts. When a lot is rejected, its inspection
    page offers **Raise SCAR**: a corrective action the supplier must answer.
    **View SCARs** on the supplier's card lists what they owe you an answer on:
-   Great Lakes has one, for `RCV-MAT-0006`. Look there before raising another, as
-   nothing stops a second SCAR on the same lot.
+   Great Lakes has one, for `RCV-MAT-0006`. A lot carries one open SCAR: **Raise
+   SCAR** on a lot that already has one opens that SCAR instead of raising another.
 
 ---
 

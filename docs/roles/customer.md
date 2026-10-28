@@ -25,7 +25,7 @@ As a Customer user, you can:
 - Access shared documents
 - View part information
 
-Your access is limited to orders you own or were invited onto. It is read-only for order and production data; you can respond to approvals sent to you and invite other viewers onto your own orders.
+Your access is limited to orders you own or were invited onto. It is read-only for order and production data; you can respond to approvals sent to you and invite other viewers onto an order you can see.
 
 ## Getting Started
 
@@ -199,7 +199,7 @@ As a customer portal user:
     The portal is read-only for *order data*, but not for everything. You can
     **respond to an approval** sent to you — which records an electronic signature
     against your name — and you can **invite another viewer** onto an order you
-    own, so a colleague can follow it too. Inviting them gives them a portal
+    can see, so a colleague can follow it too. Inviting them gives them a portal
     account if they do not already have one, and sends them an invitation.
 
 ## Getting Help

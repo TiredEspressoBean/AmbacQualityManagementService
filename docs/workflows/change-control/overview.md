@@ -182,8 +182,10 @@ work — a customer agrees to 27 Nm on two named jobs, say — raise it as a
 differences:
 
 - **It applies to the work orders it names, and nothing else.** Implementing it
-  approves the revised version and moves those work orders onto it. The
-  baseline stays current, so new work and every other job keep using the
+  approves the change and moves those work orders onto it, each keeping its own
+  version with the change on top. A work order whose version differs at a step
+  the change touches is listed but can't take it. The baseline stays current,
+  so new work and every other job keep using the
   approved process. A temporary version is never offered for new work, and
   neither is a draft or superseded one.
 - **It ends.** When you submit the PCR, switch on **Temporary change
@@ -213,9 +215,10 @@ for work that was authorised in advance.
     - **Move back to baseline**, per work order, on the PCR's **Temporary
       change** card. Parts are re-pointed step by step, as in a migration. If a
       part is at a step the baseline does not have, the move is refused and the
-      stranded parts are listed. The work order returns to the line's current
-      approved version — the baseline, or its successor if a permanent change
-      has since replaced it.
+      stranded parts are listed. The work order returns to the version it
+      ran on before the change, which may be older than current. Only if that
+      version is no longer approved does it go to the line's current approved
+      version.
 
 ### How a temporary change shows
 

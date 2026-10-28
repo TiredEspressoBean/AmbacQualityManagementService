@@ -96,7 +96,8 @@ record, so anyone reading it later sees what happened and when.
 **You will:** add a characteristic to a step.
 
 Definitions are edited in the step, inside a change, so they're versioned with it.
-**Data Management** > **Measurement Definitions** lists them all, read-only.
+**Data Management** > **Measurement Definitions** lists them all and imports or
+exports them; editing is on the step.
 
 1. **Propose Change** on `Injector Build` again. In the draft, select **Wash** >
    **Configure measurements**: Wash already records *Bath Temperature*.
@@ -214,8 +215,9 @@ few real runs.
 |-----------|-------|
 | Release a controlled document | Document controller |
 | Decide a disposition or approve a CAPA | QA manager |
-| Release work, solve the schedule | Planner, production manager |
-| Machine eligibility and changeovers | Planner, production manager |
+| Solve the schedule | Planner, production manager |
+| Machine eligibility | Production manager |
+| Changeovers | Planner, production manager |
 
 ---
 

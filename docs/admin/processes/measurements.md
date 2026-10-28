@@ -22,13 +22,12 @@ Measurement definitions specify:
 4. Save
 
 !!! note "Which surface"
-    The **Process Flow** editor shows a step's measurement *count* and is where
-    you edit the step's properties and routing, but the definitions themselves
-    are edited on the step form reached from the process editor.
+    In the **Process Flow** editor, select the step and use **Configure
+    measurements**.
 
 !!! note "There is a list, but no standalone editor"
-    **Quality** > **Measurement Definitions** (`/quality/measurement-definitions`)
-    lists every definition in one place, and carries **Import** and **Export**.
+    **Data Management** > **Measurement Definitions**
+    (`/quality/measurement-definitions`) lists every definition in one place, and carries **Import** and **Export**.
     It is for finding and bulk-loading them.
 
     **Editing stays on the step**, using the procedure above — a definition

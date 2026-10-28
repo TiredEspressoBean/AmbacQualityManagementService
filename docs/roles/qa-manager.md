@@ -161,7 +161,7 @@ For each open CAPA:
 
 ### Approving root causes
 
-On a CAPA's **RCA** tab, **Approve** an unverified or disputed RCA once you
+On a CAPA's **Root Cause** tab, **Approve** an unverified or disputed RCA once you
 accept its root cause. You cannot approve one you conducted, unless the CAPA
 allows self-verification. Then you must write at least ten characters of
 justification.
@@ -183,7 +183,7 @@ Before closure:
 
 1. Open the CAPA's **Verification** tab
 2. Record the effectiveness check against the verification criteria
-3. Choose **Confirmed effective** — this closes the CAPA in the same action
+3. Choose **Effective - Confirmed** — this closes the CAPA in the same action
 
 There is no separate closure request or closure approval. The gate is
 `verify_capa`; if you don't hold it, an authorised colleague can co-sign inline
@@ -376,7 +376,7 @@ Templates](../admin/setup/approval-templates.md).
 | Record a disposition decision | Quality > Dispositions → open it → set the type |
 | Co-sign someone else's | On *their* screen — they press Update Disposition, you supply email, signature and password |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
-| Close CAPA | CAPA detail → Verification → **Confirmed effective** |
+| Close CAPA | CAPA detail → Verification → **Effective - Confirmed** |
 | Approve document | Inbox → Document → **Submit Response** → Approved |
 | View analytics | Analytics |
 

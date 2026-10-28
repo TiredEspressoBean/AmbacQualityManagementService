@@ -64,9 +64,9 @@ Log in as Mike. Your home page says *Not clocked in*.
    acknowledgement can be dismissed with **Got it** once read.
 
 **Break**, **Lunch** and **Clock out** are beside the clock. On a break the clock
-reads *On break*, with **End break** to come back. **Clock out** ends the shift at
-once, so finish or hand over a running step first: it doesn't ask. Your lead approves
-your hours.
+reads *On break*, with **End break** to come back. **Clock out** ends the shift. If a
+step of yours is still running it asks first, because clocking out leaves it open for
+the next shift, so finish or hand it over before you go. Your lead approves your hours.
 
 ---
 

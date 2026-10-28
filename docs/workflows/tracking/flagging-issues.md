@@ -24,16 +24,7 @@ found and where you are standing when you find it.
 | The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list |
 | A machine or resource is down | **Report…** downtime on the work order |
 | The problem is the process or the whole lot | Raise a **disposition** or a **CAPA** — **Report…** links to both |
-| **You can't run the job at all** | **Can't run this?** in the step player |
-
-!!! note "A blocker is not a defect"
-    *Can't run this?* is for when the work cannot proceed — missing material,
-    tooling unavailable, a quality hold, or something else. It is **not** a way
-    to report a bad part, and it does not create a quality record.
-
-    Pick the reason and the job routes to whoever owns it — Materials, your
-    lead, or QA — and **leaves your queue**, with your next job appearing. Use it
-    rather than sitting on a job you cannot start.
+| **You can't run the job at all** | Tell your lead |
 
 ### In the step player (the in-process path)
 

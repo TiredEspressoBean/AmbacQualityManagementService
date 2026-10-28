@@ -252,8 +252,8 @@ A failure's disposition opens **unassigned**. It waits on your Home page under
 *Unassigned dispositions* until someone presses **Take it**; it then moves to
 that person's **My dispositions**.
 
-While it waits, the part can't be started: the start is refused, naming the
-disposition. Rework reaches the part through the disposition.
+While it waits, the part can't be started (except to re-capture a voided result):
+the start is refused, naming the disposition. Rework reaches the part through the disposition.
 
 ### Working it
 
@@ -261,8 +261,10 @@ disposition. Rework reaches the part through the disposition.
 2. Mark the defect on the model, if the disposition asks for it
 3. Choose the decision; an approver co-signs on your screen if you don't hold
    `approve_disposition`
-4. After rework, re-inspect the part; close the disposition once the work is
-   done. See [Dispositions](../workflows/quality/dispositions.md)
+4. After rework, re-inspect the part. When it leaves the rework step its Rework
+   or Repair disposition closes by itself; if something still blocks it
+   (containment, an annotation), it stays open for you to clear and close. See
+   [Dispositions](../workflows/quality/dispositions.md)
 
 ## First Piece Inspection (FPI)
 

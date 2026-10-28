@@ -151,7 +151,7 @@ Overdue tasks:
 
 !!! warning "Overdue tasks do not block closure"
     Nothing checks task state when a CAPA is closed. Closure is the
-    *Confirmed Effective* verification and is gated on `verify_capa` alone, so
+    *Effective - Confirmed* verification and is gated on `verify_capa` alone, so
     a CAPA **can** be closed with tasks still open and overdue. Whether that is
     acceptable is a judgement the verifier makes — the system will not stop
     them.

@@ -92,7 +92,7 @@ contested.
 
 ### Approving the root cause
 
-On the CAPA's **RCA** tab, a holder of `review_rca` — by default QA Manager and
+On the CAPA's **Root Cause** tab, a holder of `review_rca` — by default QA Manager and
 Tenant Admin — presses **Approve** on an unverified or disputed RCA. Approving
 verifies the root cause, records who did it and when, and adds any
 **Verification notes**.

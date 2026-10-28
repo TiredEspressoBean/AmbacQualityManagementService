@@ -187,7 +187,7 @@ part's steps.
 
 **You will:** leave the next shift a note they must read.
 
-**Production** > **Shift notes**.
+Open `/production/shift-notes`. It isn't in the sidebar, so bookmark it.
 
 1. Choose the **Audience** (Operator), write what happened and what the next shift
    should do, and tick **High priority** and **Requires acknowledgment** when it

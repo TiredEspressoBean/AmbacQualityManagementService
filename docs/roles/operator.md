@@ -185,20 +185,8 @@ procedure and when to use each.
 
 ### If you can't run the job at all
 
-That is a different thing from a bad part, and it has its own path: **Can't run
-this?** in the step player. Pick the reason and it routes straight to the person
-who owns it —
-
-| Reason | Goes to |
-|--------|---------|
-| Missing material | Materials |
-| Tooling or fixture unavailable | Your lead |
-| Quality hold | QA |
-| Something else | Your lead |
-
-It says what will happen before you commit: the job **leaves your queue and your
-next one appears**. Use it rather than sitting on a job you cannot start, or
-leaving it for the next shift to find.
+**Can't run this?** on Home isn't in use yet. Missing material, a broken fixture
+or anything else that stops the job: go to your lead and tell them.
 
 ### When to Flag
 
@@ -297,9 +285,8 @@ stopped — because nothing was ever held open in your name.
 - **Submit, don't leave drafts.** Confirming a substep saves it as a draft;
   until you tap **Complete step** nothing is official and the part has not
   moved.
-- **Raise anything you couldn't run** with *Can't run this?* rather than leaving
-  it for the next person to rediscover — it routes to a named owner and clears
-  the job out of the queue.
+- **Tell your lead about anything you couldn't run**, rather than leaving it for
+  the next person to rediscover.
 
 ## Common Tasks Quick Reference
 
@@ -310,7 +297,7 @@ stopped — because nothing was ever held open in your name.
 | Substep can't be done | Stop and tell your supervisor; required substeps can't be skipped |
 | Finish a step | Step player → review screen → **Complete step** |
 | Flag issue | In the player: record it on the inspection substep · Otherwise: tick the part → **Quarantine** |
-| Can't run the job | Step player → **Can't run this?** → pick the reason |
+| Can't run the job | Tell your lead |
 | View instructions | They are the step player's substeps — there is no separate document to open |
 
 ## What You CAN'T Do

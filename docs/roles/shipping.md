@@ -22,8 +22,8 @@ right paperwork, and knowing afterwards whether it went on time.
 
 **Supply** > **Shipping** gathers, grouped by order:
 
-- **units that have finished their route's Ship step** — the work is done and the
-  unit is waiting to leave
+- **units waiting at their route's Ship step**: shipping them completes that step,
+  so its sign-off checks must be done
 - **finished stock on an order**
 - **a customer's own material**, under that customer
 

@@ -36,11 +36,12 @@ the old version stays readable because parts were built to it.
     what lets date snapshots resolve. Treat a step as belonging to the process
     family, not to one version of it.
 
-!!! important "Duplicate is how you revise"
-    An approved process is **locked** — the flow editor says so: *"This process
-    is locked. Duplicate to make changes."* You duplicate it, work in the Draft,
-    and approve that. A Draft sitting beside the Approved version it will replace
-    is the normal working state.
+!!! important "Propose Change is how you revise"
+    An approved process is **locked**. **Process Actions** > **Propose Change**
+    forks an editable Draft and opens a PCR against it. **Duplicate as
+    Template** copies it for a new product, with no change trail; it is not a
+    revision. A Draft sitting beside the Approved version it will replace is the
+    normal working state.
 
 See [Processes Overview](../admin/processes/overview.md).
 
@@ -62,22 +63,21 @@ An operation the planner has no time for contributes **no load**. The capacity
 heatmap then shows free capacity that doesn't exist, and promised dates come out
 too optimistic — a planning failure whose cause is a blank field.
 
-The planner looks in this order: the step's authored **step timing**, then
-measured history, then the step's own **expected duration**. Only the last one is
-yours.
+The planner looks in this order: the step's **timing**, then measured history,
+then the step's **expected duration**. Both the timing and the expected duration
+are yours, set on the step in a process draft.
 
 | Solver input | Who sets it, by default |
 |--------------|-------------------------|
-| A step's **expected duration** | **You** — it is part of the step |
-| **Step timings** — setup, cycle, load/unload, attention | Production Manager, Tenant Admin |
+| A step's **timing** and **expected duration** | **You**, in the process editor. Production Manager and Tenant Admin can also edit timings under Data Management |
 | **Machine eligibility** — which machines can run a step | Production Manager, Tenant Admin |
 | **Changeovers** | Production Manager, Tenant Admin, Planner |
 
-!!! warning "You author the route but not what the solver believes about it"
-    So when a new routing goes live, give every step an expected duration — the
-    fallback that keeps it from contributing nothing — and hand the step timings
-    and machine eligibility to Production Manager. Capacity Planning names the
-    orders that still have operations with no timing at all. See [Scheduling
+!!! warning "Time every step; machines are Production Manager's"
+    You author the route and its times, but not which machines run it. When a
+    new routing goes live, time every step and hand machine eligibility to
+    Production Manager. Capacity Planning names the orders that still have
+    operations with no timing at all. See [Scheduling
     Setup](../workflows/scheduling/setup.md).
 
 ## Life limits

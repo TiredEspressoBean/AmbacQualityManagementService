@@ -8,7 +8,7 @@ Quarantine holds suspect or non-conforming parts for investigation and dispositi
 
 - **Holds** parts from production flow
 - **Segregates** them for investigation
-- **Refuses** any start: work on the part comes through its disposition
+- **Refuses** any start except a re-capture of a voided result: work on the part comes through its disposition
 - **Requires** disposition workflow to release
 
 ## Quarantine Triggers
@@ -72,7 +72,8 @@ Quarantined parts display:
 !!! warning "A quarantined part can't be started"
     Starting work on it is refused, naming its disposition: *"… is quarantined —
     DISP-… decides what happens to it; work it from there."* Rework reaches the
-    part through the disposition, not through a fresh start.
+    part through the disposition, not through a fresh start. The one exception
+    is re-capturing a result that was voided.
 
     A part quarantined **while its step was already under way** is the one
     case a step's **Block on quarantine** flag still governs: with the flag off

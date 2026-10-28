@@ -239,14 +239,10 @@ NCRs, containment evidence) and the IATF/AS9100 set (PPAP, PSW, FMEA, 8D, FAI).
 
 ### Making Documents Obsolete
 
-Marking a document obsolete is always a deliberate act — use **Mark Obsolete**
-on the document. Creating or approving a new revision does **not** do it for
-you; the superseded revision simply stops being the current one and keeps
-whatever status it had.
-
-!!! warning "Obsoleting is yours to remember"
-    Nothing retires the old revision automatically. If your process says
-    superseded documents must read Obsolete, that is a step on your checklist.
+**Releasing** a new revision marks the released revision it replaces
+**Obsolete**, so two revisions are never in force at once. Approving one does
+not: the old revision stays in force until the new one is released. A document
+withdrawn with no replacement is obsoleted by hand, with **Mark Obsolete**.
 
 ### Handling Obsolete Docs
 

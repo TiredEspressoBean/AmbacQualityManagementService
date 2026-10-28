@@ -155,7 +155,8 @@ reinstated; revise the current revision instead.
 | Tier | Who can see it |
 |------|----------------|
 | **Public** | Everyone, including a customer, if it's attached to their order |
-| **Internal**, **Confidential**, **Restricted** | Staff |
+| **Internal** | Staff, auditors included |
+| **Confidential**, **Restricted** | Staff, except auditors |
 | **Secret** | Tenant admin and document controller |
 
 A customer sees only Public documents attached to their own order, its work orders

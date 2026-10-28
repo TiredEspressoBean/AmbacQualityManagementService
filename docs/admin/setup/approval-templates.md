@@ -156,7 +156,7 @@ Production Manager.
 !!! warning "There is no CAPA *closure* approval to configure"
     A Major or Critical CAPA raises its approval **at creation** — authorisation
     for the work to begin. **Closure is not an approval at all**: it follows
-    from recording a *Confirmed Effective* verification, gated by `verify_capa`.
+    from recording an *Effective - Confirmed* verification, gated by `verify_capa`.
 
     So do not build a template expecting to gate closure with it. Approving a
     CAPA and verifying one are different acts by potentially different people,

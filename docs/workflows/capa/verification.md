@@ -72,7 +72,7 @@ Common verification tasks:
 
 | Outcome | Meaning | Next step |
 |---------|---------|-----------|
-| **Confirmed Effective** | The action worked | The CAPA closes, there and then |
+| **Effective - Confirmed** | The action worked | The CAPA closes, there and then |
 | **Not Effective** | It did not work | Revisit the root cause and raise further action |
 | **Inconclusive** | Not yet decidable — the default | Keep monitoring and gather more data |
 
@@ -129,8 +129,8 @@ Document lessons learned:
 
 ## Closing the CAPA
 
-There is no separate closure step and no closure approval. **Recording a
-*Confirmed Effective* verification closes the CAPA**, in the same action:
+There is no separate closure step and no closure approval. **Recording an
+*Effective - Confirmed* verification closes the CAPA**, in the same action:
 
 1. Status changes to **Closed**
 2. The completion date is set to today

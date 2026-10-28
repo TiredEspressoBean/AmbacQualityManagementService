@@ -91,8 +91,8 @@ Inspection.
 
 1. Open the work order's **WO Control** (**Production** > **WO Control Center**,
    then `WO-QA-INSPECT-01`) and, on *First piece waiting on QA*, **I'm on it** (the floor sees it
-   has been picked up; it decides nothing), then **Sign off**. The same buttons sit
-   on your home page's *First piece waiting* rows.
+   has been picked up; it decides nothing), then **Sign off**. The home page's *First piece
+   waiting* rows carry **I'm on it**, and **Start check**, which opens this card.
 2. Read the readings: *Bore Diameter*, inside its limits of 3.995–4.005, taken by Mike on the CMM.
 3. **Sign off** with a note of what you checked. The card clears and the run moves.
 

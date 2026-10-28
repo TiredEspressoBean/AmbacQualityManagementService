@@ -208,8 +208,8 @@ posted here.*
 2. **Mark N as posted**: *deliveries marked as posted to the ERP.* The next sheet
    holds only what's new.
 
-Deliveries still *awaiting a decision* stay off the sheet until inspection decides
-them.
+Deliveries still *awaiting a decision* are on the sheet marked *Awaiting decision*,
+and can't be marked posted until inspection decides them.
 
 **Marked one posted that you hadn't keyed?** Open the lot: *Posted to ERP* shows the
 date with **Unmark**. Say why, and the delivery goes back on the next sheet. The mark

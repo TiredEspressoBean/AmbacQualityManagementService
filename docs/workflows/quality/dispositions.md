@@ -21,7 +21,7 @@ It opens **unassigned**. Nobody is picked for it; it waits on the QA home page,
 under *Unassigned dispositions*, until someone presses **Take it** (which needs
 `change_quarantinedisposition`). It then moves to their **My dispositions**. The part stays
 quarantined until the disposition acts on it: no one can start it in the
-meantime.
+meantime, except to re-capture a result that was voided.
 
 ## The decisions
 
@@ -123,22 +123,24 @@ authorize this disposition decision"* tick, and their **password** — captioned
     decision commits, and the record carries **their** name as the authority with
     you as the caller.
 
+    Trainees routinely read this dialog as an error. It isn't — it is the gate
+    doing its job, and it is how a routine decision keeps moving without
+    misattributing who authorised it.
+
 The disposition type is changed only through this decision. An edit to the record
 that tries to change the type is refused: *"The disposition is decided through
 Decide, which records who authorized it (a co-signer can authorize) — it can't be
 changed by editing the record."*
-
-    Trainees routinely read this dialog as an error. It isn't — it is the gate
-    doing its job, and it is how a routine decision keeps moving without
-    misattributing who authorised it.
 
 Either way the record stores **who authorized it and when** — that pair is what
 8.7 asks for.
 
 !!! tip "Closing is yours even when the decision wasn't"
     Authoring the decision and **closing** the disposition are different
-    permissions on the same record. An inspector who needed a co-signature for
-    the decision can still close it once the work is done and re-inspected.
+    permissions on the same record. A Rework or Repair disposition closes by
+    itself when the part leaves its rework step; if something still blocks it,
+    an inspector closes it once that is cleared, even one who needed a
+    co-signature for the decision.
 
 ## Severity
 
