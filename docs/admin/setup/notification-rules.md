@@ -97,7 +97,7 @@ and so notifies nobody until someone writes one.
 ## Schedules
 
 The **Schedules** tab handles recurring digests rather than event reactions —
-a daily or weekly summary sent on a timetable. Schedules are scoped the same way
+a weekly or monthly summary sent on a timetable. Schedules are scoped the same way
 rules are.
 
 !!! note "Schedules don't deliver reports"
