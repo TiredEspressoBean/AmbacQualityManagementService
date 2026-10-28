@@ -244,6 +244,12 @@ class QualityReportsSerializer(SecureModelMixin):
                             "step_execution", "substep", "batch_execution",
                             "capa_decision_note", "capa_decided_by", "capa_decided_at",
                             "superseded_at", "superseded_by", "superseded_reason", "replaced_by")
+        # DRF builds UniqueTogetherValidators for the two conditional
+        # (execution, substep) constraints because these read-only nullable fields
+        # default to None, then on PATCH it reads the condition field superseded_at
+        # from attrs, where it isn't: KeyError. Every field in those constraints is
+        # read-only here, so this serializer can't violate them; the DB enforces them.
+        validators = []
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_capa_decided_by_name(self, obj):

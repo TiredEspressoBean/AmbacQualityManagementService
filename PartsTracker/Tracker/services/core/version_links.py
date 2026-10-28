@@ -196,6 +196,7 @@ LINKS = {
     'QaApproval.step': STAYS,
     'QualityReports.step': STAYS,
     'QuarantineDisposition.step': STAYS,
+    'QuarantineDisposition.escalated_from_step': STAYS,  # where it was escalated from: history
     'SamplingRuleSet.step': MANAGED,
     'SamplingSeverityState.step': STAYS,
     'SamplingTriggerState.step': STAYS,
