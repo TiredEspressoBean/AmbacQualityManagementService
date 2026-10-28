@@ -37,6 +37,30 @@ If your organization uses direct login:
 3. Enter your **password**
 4. Click **Login**
 
+### A notice on the login page
+
+Your organization may show a notice above **Login** — typically a statement of
+who may use the system and that use is monitored. If it asks you to, tick **I
+acknowledge this notice**; **Login** and **Login with Microsoft** stay
+unavailable until you do, and a sign-in without it is refused: *Acknowledge the
+notice to sign in.*
+
+The wording is your organization's. Administrators set it under **Settings** >
+**Organization** — **Sign-in notice**, and **Require acknowledgement to sign
+in**, which is available once there is a notice. Blank shows nothing; nothing
+is shown by default.
+
+Each acknowledged sign-in with email and password is recorded in the audit
+log as an access entry — who, when, from which address, and a fingerprint of
+the wording they saw. A sign-in with Microsoft needs the box ticked on the page
+but is not recorded as an acknowledgement.
+
+!!! note "The page has to know which organization it belongs to"
+    The notice shows where the login page is your organization's own — a
+    dedicated installation, or your organization's own address on a shared
+    one. On a shared address that serves several organizations, no notice
+    applies.
+
 ## First-Time Setup
 
 ### Invited Users
