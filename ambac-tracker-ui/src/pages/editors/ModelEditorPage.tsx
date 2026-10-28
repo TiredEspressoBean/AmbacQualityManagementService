@@ -136,7 +136,9 @@ const MODEL_API_ENDPOINTS: Record<string, string> = {
     Customers: "Customers",
     Documents: "Documents",
     Groups: "Groups",
-    AuditLog: "AuditLog",
+    // The router registers it lowercase (/api/auditlog/), so its generated client and
+    // export URL are too.
+    AuditLog: "auditlog",
 
     // DMS
     ThreeDModels: "ThreeDModels",

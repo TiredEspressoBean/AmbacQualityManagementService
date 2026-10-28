@@ -2014,6 +2014,73 @@ class LogEntryViewSet(viewsets.ReadOnlyModelViewSet):
             raise Http404
         return obj
 
+    @extend_schema(
+        responses={(200, 'text/csv'): OpenApiTypes.BINARY,
+                   (200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'): OpenApiTypes.BINARY},
+        description="Export the audit-log entries matching the current filters and search, "
+                    "as CSV or Excel. Needs export_auditlog; refused past the export row limit. "
+                    "Each export is itself recorded as an access.",
+    )
+    @action(detail=False, methods=['get'], url_path=r'export/(?P<export_format>csv|xlsx)')
+    def export_data(self, request, export_format: str):
+        """Export the filtered audit trail (user decision 2026-10-28). Gated on
+        export_auditlog — defined and granted, and until now checked nowhere."""
+        import io
+        import pandas as pd
+        from django.http import HttpResponse
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        from Tracker.services.core.access_log import record_access
+        from Tracker.services.core.audit_visibility import can_browse, visible_entries
+        from Tracker.services.spreadsheet_safety import csv_safe
+        from Tracker.throttling import get_client_ip
+        from Tracker.viewsets.mixins.data_export import MAX_EXPORT_ROWS
+
+        user = request.user
+        if not (user.is_superuser or user.has_tenant_perm('export_auditlog')) or not can_browse(user):
+            raise PermissionDenied("Exporting the audit log needs the export audit log permission.")
+        # The list's own scoping and row visibility, then its filters, search and order.
+        qs = self.get_queryset()
+        if not user.is_superuser:
+            qs = visible_entries(qs, user, content_type_id=request.query_params.get('content_type'))
+        qs = self.filter_queryset(qs).select_related('actor', 'content_type')
+        row_count = qs.count()
+        if row_count > MAX_EXPORT_ROWS:
+            raise ValidationError({'detail': (
+                f"{row_count:,} rows is more than one export returns ({MAX_EXPORT_ROWS:,}). "
+                "Filter the list first, then export.")})
+
+        actions = dict(LogEntry.Action.choices)
+        df = pd.DataFrame([{
+            'Timestamp': e.timestamp.isoformat(),
+            'User': (e.actor.display_name if e.actor else 'System'),
+            'Action': actions.get(e.action, e.action),
+            'Record type': e.content_type.name if e.content_type else '',
+            'Record': e.object_repr,
+            'Record id': e.object_pk,
+            'Changes': e.changes if isinstance(e.changes, str) else str(e.changes or ''),
+            'IP address': e.remote_addr or '',
+        } for e in qs], columns=['Timestamp', 'User', 'Action', 'Record type', 'Record',
+                                 'Record id', 'Changes', 'IP address'])
+        filename = f"audit-log-{timezone.now().date().isoformat()}.{export_format}"
+        if export_format == 'csv':
+            content = df.map(csv_safe).to_csv(index=False).encode('utf-8-sig')
+            content_type = 'text/csv'
+        else:
+            buf = io.BytesIO()
+            df.map(csv_safe).to_excel(buf, index=False, sheet_name='Audit log')
+            content = buf.getvalue()
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        record_access(
+            obj=LogEntry, user=user, action_type='bulk_export',
+            object_repr=f'Export {export_format}: Audit log ({row_count} rows)',
+            remote_addr=get_client_ip(request),
+            payload={'model': 'LogEntry', 'export_format': export_format, 'row_count': row_count,
+                     'filename': filename, 'filters': dict(request.query_params.lists())},
+        )
+        return response
+
 
 class RecordEditViewSet(viewsets.ReadOnlyModelViewSet):
     """Correction reasons on one record: each field someone corrected, old -> new, and

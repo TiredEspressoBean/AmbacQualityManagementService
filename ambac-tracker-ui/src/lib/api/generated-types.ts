@@ -17716,6 +17716,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auditlog/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Export the audit-log entries matching the current filters and search, as CSV or Excel. Needs export_auditlog; refused past the export row limit. Each export is itself recorded as an access. */
+        get: operations["api_auditlog_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/content-types/": {
         parameters: {
             query?: never;
@@ -72386,6 +72403,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLog"];
+                };
+            };
+        };
+    };
+    api_auditlog_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };

@@ -31923,6 +31923,21 @@ POST: Executes the query.`,
   },
   {
     method: "get",
+    path: "/api/auditlog/export/:export_format/",
+    alias: "api_auditlog_export_retrieve",
+    description: `Export the audit-log entries matching the current filters and search, as CSV or Excel. Needs export_auditlog; refused past the export row limit. Each export is itself recorded as an access.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
     path: "/api/BatchExecutions/",
     alias: "api_BatchExecutions_list",
     description: `BatchExecution rows + seal lifecycle action.
@@ -35527,7 +35542,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CustomerShipments/delivery-performance/",
@@ -35542,10 +35560,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: DeliveryPerformance,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CustomerShipments/export/:export_format/",
@@ -40658,7 +40673,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "put",
     path: "/api/JobRoles/:id/",
@@ -40678,10 +40696,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/JobRoles/:id/",
@@ -44954,7 +44969,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "patch",
     path: "/api/OrderLines/:id/",
@@ -44974,10 +44992,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/OrderLines/:id/",
@@ -50659,7 +50674,10 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "delete",
     path: "/api/QuarantineDispositions/:id/",
@@ -50698,10 +50716,7 @@ Usage:
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/close/",
@@ -55980,7 +55995,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -55988,10 +56006,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/pending/",
@@ -61146,7 +61161,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "delete",
     path: "/api/User/:id/",
@@ -61161,10 +61179,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/:id/access-history/",

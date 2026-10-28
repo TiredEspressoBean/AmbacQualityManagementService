@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { QueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Eye } from "lucide-react";
 import type { Schema } from "@/lib/api/types";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 const col = createColumnHelper<Schema<"AuditLog">>();
 
@@ -139,12 +140,15 @@ function ObjectCell({ entry }: { entry: any }) {
 }
 
 export function AuditLogViewerPage() {
+    // Exporting the audit trail is its own permission (export_auditlog); the server
+    // refuses it too, and logs every export.
+    const canExport = usePermissionSet().has("export_auditlog");
     return (
         <ModelEditorPage
             title="Audit Log"
             modelName="AuditLog"
             showDetailsLink={true}
-            disableExport={true}
+            disableExport={!canExport}
             useList={useAuditLogList}
             sortOptions={[
                 { label: "Most Recent", value: "-timestamp" },

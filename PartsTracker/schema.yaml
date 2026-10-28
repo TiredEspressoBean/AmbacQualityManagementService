@@ -43491,6 +43491,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLog'
           description: ''
+  /api/auditlog/export/{export_format}/:
+    get:
+      operationId: api_auditlog_export_retrieve
+      description: Export the audit-log entries matching the current filters and search,
+        as CSV or Excel. Needs export_auditlog; refused past the export row limit.
+        Each export is itself recorded as an access.
+      parameters:
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/content-types/:
     get:
       operationId: api_content_types_list
