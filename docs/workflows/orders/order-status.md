@@ -26,8 +26,10 @@ order.
 
 !!! note "There is no search or filter on the Tracker"
     It lists every order you can see, completed and cancelled included, in one
-    scrolling column. Orders with no stages and no milestone yet are left off,
-    and when that leaves nothing, the page says *No active orders to display*.
+    scrolling column. An order with no stages yet says so on its card —
+    *Work hasn't started yet.*, or *Completed.*, *Cancelled.* or *On hold.* —
+    instead of drawing a progress bar. When there are no orders at all, the
+    page says *No active orders to display*.
 
     To find a particular order, use the orders list in **Data Management**,
     which searches by order number, order name, company, and customer name.
@@ -41,20 +43,25 @@ Click an order to open it. The page carries:
   date, struck through
 - **Progress** through its stages, and the **Stages** list itself
 - **Notes**, as a timeline
-- **Line Items** — per part type, ordered, planned and remaining. *N short-closed* under Planned counts units a short-closed work order neither built nor gave back
+- **Order lines** — what was ordered: each line's part type, quantity and due
+  date
+- **Line Items** — the parts on the order, grouped by part type, with how many
+  of each are done
 - **Parts on this order** — each part with its type, step and status. Staff only:
   it needs `change_orders`, and customers do not see it
-- **Shipping** — shipped against ordered per line, the shipments themselves, and
-  late lines flagged
+- **Shipping** — shipped against ordered per line (**Not shipped**, **Part
+  shipped** or **Shipped**), and the shipments themselves, each marked on time or
+  late
 - **Details**
 - **Documents** attached to the order
-- **People** with access to it
+- **People** — the order's customer, and **Invite someone** to give another
+  person access
 
 ### When the delivery date moves
 
 The first time an order's delivery date changes, uqmes keeps the earlier date as
 the **original**, and it is never overwritten after that. It counts as a move
-whoever made it: an edit to the order, an import, the CRM sync, or a work order
+whoever made it: an edit to the order, the CRM sync, or a work order
 whose expected completion pushed the order later. An order given its first date
 has not slipped.
 

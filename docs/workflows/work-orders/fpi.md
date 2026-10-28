@@ -35,9 +35,10 @@ change, machine change or who is running it.
 
 !!! warning "The narrower scope settings do not hold work"
     A step carries an FPI *scope* setting with four options — **per work order**,
-    **per shift**, **per equipment** and **per operator**. The setting does
-    change which inspection **records** get created: a new shift, a different
-    machine or a different operator mints its own. But the gate that actually
+    **per shift**, **per equipment** and **per operator**. The setting changes
+    which inspection **records** get created: Per Shift and Per Equipment key a
+    new record to the shift date or the machine. Per Operator changes nothing.
+    But the gate that actually
     holds parts ignores it — one PASSED or WAIVED inspection satisfies the step
     for the entire work order, whichever scope is set.
 
@@ -48,10 +49,13 @@ change, machine change or who is running it.
 
 ## FPI Workflow
 
-There is **one** FPI control — a banner — and it changes shape with the state of
-the inspection. You meet it on the work order **control** page, in the QA home
-**pending FPI** panel, and inside the operator's step runtime. It is the same
-banner and the same four states everywhere.
+You meet FPI in three places. In the operator's step runtime, a banner that
+changes with the inspection's state (below). On the work order's **control**
+page, a *First piece waiting on QA* card for each pending first piece and a
+*First piece failed* card for a held step. On QA home, a *First piece waiting*
+banner whose **Start check** opens the control page. A quality report also
+carries a **First Piece Inspection (FPI)** flag; it is set when a first piece
+passes, or ticked by hand on the report form, and nothing waits on it.
 
 !!! warning "There is no 'submit for FPI review' step"
     Nothing is submitted and nothing queues for review. The first piece becomes
@@ -116,7 +120,7 @@ banner, with a required reason:
   that is a quality decision about them, made separately.
 
 A failed or waived first piece has nothing to void. A fail already holds the run,
-and a waiver is put right by starting a new first piece.
+and a waiver cannot be withdrawn from the screens.
 
 ### Conditional Pass
 
@@ -134,10 +138,10 @@ and a waiver is put right by starting a new first piece.
 | Status | Meaning | Icon |
 |--------|---------|------|
 | **Not Required** | FPI not enabled for this step | — |
-| **Pending** | First piece not yet inspected | Yellow |
+| **Pending** | First piece not yet bought off | Amber |
 | **Passed** | FPI approved, batch released | Green |
 | **Failed** | FPI rejected, setup adjustment needed | Red |
-| **Waived** | FPI requirement bypassed (with approval) | Gray |
+| **Waived** | Released without first-piece verification, with a reason | Green |
 
 ### Acknowledging
 
@@ -165,17 +169,8 @@ Use sparingly - FPI catches setup errors early.
 
 ## Viewing FPI Status
 
-### On Work Order
-The work order shows FPI status for each step:
-
-```
-Step: Machining
-FPI: Passed ✓
-Parts released: 10/10
-```
-
-### On Tracker
-Orders with pending FPI show a badge or indicator.
+The work order's control page shows a card for each step whose first piece is
+waiting on QA or has failed. Once bought off, nothing is shown there.
 
 ## What the first piece is inspected against
 
@@ -220,8 +215,7 @@ While FPI is pending:
 
 - Other parts at that step are held
 - Cannot proceed to next step
-- Clear visual indicator on Tracker
-- "Waiting for FPI" status
+- The banner and control-page card say the run is held
 
 After FPI passes:
 
@@ -250,11 +244,8 @@ When FPI fails:
 
 ## FPI Metrics
 
-Track FPI performance:
-
-- **First-time pass rate**: FPIs passed on first attempt
-- **FPI duration**: Time from submission to approval
-- **Repeat FPI rate**: How often FPI must be repeated
+There are no FPI metrics. Each record keeps its status, who bought it off and
+when, so a pass rate can be worked out from the records.
 
 ## FPI vs FAI
 

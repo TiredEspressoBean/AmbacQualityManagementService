@@ -13,40 +13,34 @@ Common documents attached to orders:
 | **Work Instruction** | Manufacturing procedures |
 | **Inspection Report** | Quality inspection results |
 | **Certificate of Conformance** | Quality certification |
-| **Shipping Documents** | Packing lists, bills of lading |
+| **Proof of Delivery** | Shipping and receiving documentation, such as signed delivery receipts |
 | **Test Reports** | Lab or functional test results |
 
 ## Attaching Documents
 
 ### Upload a new document
 
-Documents are uploaded once, centrally, then attached to the records they
-relate to:
+Upload it from the order:
 
-1. Go to **Documents** and click **Upload Document**
-2. Fill in the document details and upload the file
-3. Attach it to the order (below)
+1. Go to **Data Management** > **Orders** and edit the order
+2. Under **Attach Documents**, choose the file and classification
+3. Click **Upload**
 
-See [Uploading Documents](../documents/uploading.md).
+The document is attached to that order. A document can also be uploaded from
+**Documents** and linked to the order afterwards (below). See
+[Uploading Documents](../documents/uploading.md).
 
 ### Attach an existing document
 
-From the document's own page:
+From the document's own page, either:
 
-1. Open the document
-2. **Edit** it
-3. Use **Link To (Optional)** — choose the entity type, then search for the record
-4. Save
-
-!!! note "There is no Attach button on a document"
-    Linking is part of the edit form, not a separate action.
+- On the **Overview** tab, under **Also Linked To**, click **Attach**, choose
+  **Order** and pick the order — an additional link; or
+- **Edit** the document and use **Link To (Optional)** — choose the entity
+  type, then search for the record — which sets the record it belongs to.
 
 A document can be attached to several records — its detail page lists what it
 is **Linked To** and what it is **Also Linked To**.
-
-!!! note "One attach action, not two"
-    There is no separate "link existing" versus "upload new" flow on the order.
-    Upload centrally, then attach.
 
 ## Viewing Documents
 
@@ -74,7 +68,7 @@ the document from **Documents**.
 | `view_documents` | See documents — subject to their classification |
 | `add_documents` | Upload |
 | `change_documents` | Edit, including what a document is linked to |
-| `classify_documents` | Change a document's classification |
+| `classify_documents` | Change a document's classification. The level picked at upload is the uploader's choice; changing an existing document's level needs this (QA Manager, Document Controller and Tenant Admin by default) |
 
 !!! info "Controlled Documents"
     Some document types require approval before use. These show as "Draft" until approved. See [Document Approval](../documents/approval.md).

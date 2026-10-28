@@ -63,7 +63,8 @@ Add supporting evidence:
 
 ## Error Types
 
-Standard error type categories:
+Error types are a list your administrator builds — each is a name and an
+example, optionally limited to one part type. A typical list covers:
 
 | Type | Examples |
 |------|----------|
@@ -104,6 +105,7 @@ action is recorded on it. See [Dispositions](dispositions.md).
 | **Pending** | Inspection not yet complete | Complete inspection |
 | **Pass** | Part passed inspection | Continue production |
 | **Fail** | Part failed inspection | Decide the disposition |
+| **Needs repair** | At a rebuild check, the component needs planned repair work — inspected, not failed | Repair it; no disposition opens |
 
 !!! info "What a Fail sets off"
     A report reaching **Fail** quarantines the part, alerts the step, updates
@@ -136,7 +138,7 @@ See [Dispositions](dispositions.md) for detailed workflow.
 Major or recurring issues may require CAPA:
 
 1. Open the quality report
-2. Click **Create CAPA** or **Link CAPA**
+2. Click **Create CAPA** (shown on a failed report)
 3. CAPA tracks root cause analysis and corrective actions
 4. Quality report links to CAPA record
 
@@ -163,9 +165,9 @@ Every failed report carries a CAPA decision:
     without a reason is refused.
 
 !!! note "Undecided is visible, not invisible"
-    Before this existed, a failed report nobody promoted looked exactly like one
-    nobody had **looked at**. The NCR page lists failed reports still undecided,
-    so the backlog of unevaluated nonconformities is a number you can see.
+    A failed report with no decision is listed on the NCR page under **Awaiting
+    a CAPA decision**, so the backlog of unevaluated nonconformities is a number
+    you can see.
 
 !!! tip "You can change a decision"
     A decision can be revised, and the audit log keeps the earlier one. What you
@@ -176,13 +178,17 @@ Every failed report carries a CAPA decision:
 
 Find existing reports:
 
-- By status — **Pending**, **Pass** or **Fail** (there is no Open/Closed on a
-  report; a report is not a thing that closes — its *disposition* is)
-- By error type
-- By severity
-- By date range
-- By affected part
-- By created by
+- By status — **Pending**, **Pass**, **Fail** or **Needs repair** (there is no
+  Open/Closed on a report; a report is not a thing that closes — its
+  *disposition* is)
+- By part
+- By step
+- By work order
+- Search by description or part ERP ID
+
+To find failed reports by error type, period, process or part type, use the
+**Defect Records** page (`/quality/defects`), opened from **Analytics** >
+**Defect Patterns**.
 
 ## Quality Report Metrics
 

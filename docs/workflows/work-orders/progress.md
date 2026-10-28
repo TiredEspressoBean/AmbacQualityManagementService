@@ -40,11 +40,11 @@ Due Date, Customer, Order, and a Details link.
     So the trail answers *what, who, when* **and** *why*. Setting a priority when you first create the work order needs no
     reason; there is nothing to explain yet.
 
-!!! warning "An import changes priority silently"
-    The reason is asked for on the edit form and the API. A CSV import or the
-    master workbook can change priority **without** recording one, so a bulk
-    re-prioritisation leaves no *why* behind. Worth
-    knowing before you reach for an import to move a lot of work at once.
+!!! note "Changing priority by import"
+    A CSV import or the master workbook's **Work Orders** sheet needs a reason
+    too: add a `priority_reason` column beside `priority`. A row that changes an
+    existing work order's priority without one is refused, and the reason is
+    recorded with the change as the edit form records it.
 
 ## When scrap outruns the gross-up
 
@@ -132,8 +132,8 @@ Guides](../../roles/index.md).
 | **Un-release** | Released | Withdraws the authorisation |
 | **Hold** (*Place on hold* on the control page) | Pending or in progress | Asks for a reason — waiting on material, quality hold, tooling, operator unavailable, customer hold, other — with optional details. The hold record keeps them |
 | **Resume** | On hold | Clears the hold. The work order returns to **In progress** if any work has started, otherwise to **Pending**. A quality or tooling hold needs **What resolved it** before it clears |
-| **Cancel Work Order** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
-| **Short-close** | Not on hold, with something finished | Completes it short, deciding each unfinished unit — see [Short-closing](basics.md#short-closing-a-work-order) |
+| **Cancel** | Not completed or cancelled | Asks to confirm, then cancels — see [Cancelling](basics.md#cancelling-work-orders) |
+| **Short-close** | Not on hold, completed or cancelled (refused when nothing has finished) | Completes it short, deciding each unfinished unit — see [Short-closing](basics.md#short-closing-a-work-order) |
 
 !!! note "Status is not something you set"
     These buttons are the only way to change a work order's status by hand.

@@ -3,8 +3,9 @@
 Sampling allows inspecting a subset of parts rather than 100%, based on statistical rules. This guide covers sampling configuration and use.
 
 !!! note "Rule sets follow the operation"
-    A rule set is scoped by **step and part type**, not by supplier: tightening
-    follows the operation, and applies to everything running through it.
+    A rule set is scoped by **step and part type**. A receiving step's set can
+    also name a supplier, so one supplier can be inspected tighter than the
+    rest; in-process sets apply to everything running through the step.
 
 ## What is Sampling?
 
@@ -43,31 +44,23 @@ Sample based on lot size:
 - Example: 10% of lot size
 
 ### Pure Random
-Random selection — but **whether it can be re-derived depends on where the rule
-sits**, so read the warning below before relying on either property:
+Random selection — deliberately not reproducible:
 
 - Unbiased sample
 - Nobody can work out in advance which unit will be picked
 - **Cannot be reconstructed after the fact** — the choice is not derived from the
   part, so re-running it will not produce the same answer
 
-!!! warning "Random behaves differently at step level and substep level"
-    The same **Random** rule is evaluated by two different engines:
-
-    - **On a substep** (inside a work instruction) the draw is a true random
-      number. It **cannot be reconstructed** afterwards — deliberately, so the
-      selection cannot be anticipated or replayed.
-    - **On a step** (the fallback applier) the draw is seeded from the part's
-      creation timestamp, so it **is** reproducible — asking twice gives the same
-      answer.
-
-    If reproducibility matters to you either way, do not rely on **Random**
-    guessing right. Use **Percentage**, which hashes the part's identity and is
-    reproducible wherever it runs.
+!!! warning "Random cannot be reconstructed"
+    The draw is a true random number wherever the rule is evaluated, step or
+    substep. If you need a selection you can re-derive, use **Percentage**.
 
 !!! note "If you need a sample an auditor can reproduce, use Percentage"
-    **Percentage** hashes the part's identity (SHA-256) to decide, so the same part
-    always gets the same answer and the selection can be re-derived from the record.
+    **Percentage** is deterministic. On a substep it hashes the part's identity
+    (SHA-256), so the same part always gets the same answer and the selection
+    can be re-derived from the record. On a step it takes the first slice of
+    the parts at the step, in creation order, so the answer depends on which
+    parts are there when it runs.
     **Pure Random** does the opposite on purpose — it is the stronger choice against
     gaming, and the weaker one for reconstruction. Pick the property you need.
 
@@ -223,10 +216,8 @@ When parts arrive at an inspection step:
 ## Sample Selection
 
 ### Random Selection
-A **Random** rule decides each part independently, at the rule's percentage.
-Whether that draw can be re-derived later depends on which engine evaluated it —
-see *Pure Random* above. A substep-level draw cannot be reconstructed; a
-step-level one is seeded from the part's creation timestamp and can.
+A **Random** rule decides each part independently, at the rule's percentage,
+with a draw that cannot be reconstructed afterwards.
 
 Selection is not a flag written onto the part. The system records a
 **sampling decision** for the part and the rule that decided it; what you see on
@@ -299,33 +290,31 @@ Track sampling performance:
 - Lots accepted/rejected
 - Defect rates by supplier
 - Sampling level changes
-- Skip-lot status
 
 ## Sampling Analytics
 
-Track sampling performance:
-
-| Metric | Description |
-|--------|-------------|
-| **Sample Rate** | % of parts sampled |
-| **Pass Rate** | % of samples passing |
-| **Rule Effectiveness** | Defect detection by rule |
-| **Audit Compliance** | Algorithm verification logs |
-
-!!! note "Planned Feature"
-    Sampling analytics are recorded by the system but have no screen yet. The
-    metrics above are available via the API; a **Sampling Analytics** view is
-    planned for a future release.
+There is no sampling-metrics screen or endpoint. A per-rule-set tally of parts
+sampled and defects found is kept as quality reports are written, but nothing
+shows it. Work rates out from the decisions below and the quality reports. The
+step editor's coverage figure is an estimate from the rules, not a measured
+rate.
 
 ## Sampling Audit Trail
 
-All sampling decisions are logged:
+Every step-level sampling decision is logged with:
 
-- Sampling rule applied
-- Sample size used
-- Parts selected
-- Results recorded
-- Accept/reject decision
+- Part
+- Rule and rule set applied (primary or fallback)
+- Sampled or not
+- When
+
+A step's decisions show on the work order's control page: open a part's
+history and read its **Sampling decisions** — the rule that selected or
+excluded it, and when. A substep's decisions show in the operator's step
+runtime, which marks each substep as skipped or waiting; decisions still
+pending show on the control page's pending-decisions panel, with **Reconcile
+now**. There is no list of a part's past substep decisions. The inspection
+result is not in the log; it is on the part's quality report.
 
 ## Permissions
 
@@ -334,7 +323,7 @@ All sampling decisions are logged:
 | `view_samplingrule` | View sampling configuration | Every staff role |
 | `add_samplingrule` / `change_samplingrule` | Author the rules | **QA Manager, QA Inspector, Tenant Admin** |
 | `add_samplingruleset` / `change_samplingruleset` | Author the sets and their plan parameters | **QA Manager, QA Inspector, Tenant Admin** |
-| `delete_samplingruleset` | Remove one | Manager tier |
+| `delete_samplingrule` / `delete_samplingruleset` | Remove one | Tenant Admin, QA Manager, Production Manager, Document Controller |
 
 *Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../../admin/users/roles.md).
 

@@ -143,9 +143,10 @@ email and password on the verification. The verification, and the closure, are
 then attributed to **them**, not to you.
 
 !!! note "The Approval tab is not the closure gate"
-    A CAPA of **Critical** or **Major** severity does raise a `CAPA_APPROVAL`
-    request — but at **creation**, not at closure, and only when your tenant has a
-    CAPA_APPROVAL template configured. That is the request you see on the Approval
+    A CAPA of **Critical** or **Major** severity does raise an approval
+    request — but at **creation**, not at closure, using its severity's template
+    (else `CAPA_APPROVAL`), and only when your tenant keeps one of those
+    templates. That is the request you see on the Approval
     tab. Approving it does not close the CAPA, and a CAPA can close whether or not
     it was ever approved.
 

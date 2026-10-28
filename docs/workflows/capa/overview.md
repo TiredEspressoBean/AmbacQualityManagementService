@@ -201,8 +201,8 @@ Track CAPA performance:
 
 !!! note "There is no close or approve permission"
     Closure is the verification decision, so `verify_capa` is the whole of it.
-    A Critical or Major CAPA also raises a **CAPA_APPROVAL** request at
-    creation; who may answer that is set by the approval **template's**
+    A Critical or Major CAPA also raises an approval request at creation
+    (its severity's template, else **CAPA_APPROVAL**); who may answer that is set by the approval **template's**
     approver bindings, the same as every other approval type.
 
 ## Next Steps

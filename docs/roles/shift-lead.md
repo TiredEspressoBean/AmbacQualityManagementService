@@ -106,7 +106,7 @@ not a state you set, it is simply what priority Urgent looks like.
 
 ## Speaking to the next shift
 
-**Shift notes** are yours to write and edit — the handover record for what the
+**Shift notes** are yours to write and retract — the handover record for what the
 next crew needs to know. See [Shift Notes](../workflows/tracking/shift-notes.md).
 
 ## Raising a CAPA

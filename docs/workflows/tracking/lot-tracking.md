@@ -2,8 +2,9 @@
 
 Material lots are managed from **Supply** > **Materials**
 (`/production/material-lots`), a hub of tabs — **On order**, **Late**,
-**Awaiting inspection**, **On hand**, **Held**, **Rejected** and **All** — with **Expect**,
-**Receive**, and **Inspect** actions, plus import and export.
+**Awaiting inspection**, **On hand**, **Held**, **Rejected** and **All** — with
+**Add expected delivery** and **Receive** actions, a per-row **Inspect**, plus
+**Import expected deliveries** and **Receipts for ERP**.
 
 Material lot tracking provides full traceability for raw materials, components, and consumables used in production.
 
@@ -40,8 +41,8 @@ planning counts the lot as **stock**, as **incoming supply**, or as neither.
 | Status | Meaning | Counts as |
 |--------|---------|-----------|
 | **On Order** | Expected, not yet arrived | Incoming supply |
-| **Received** | Arrived, not yet inspected or released | Neither — on the dock |
-| **Awaiting Inspection** | Held for incoming inspection | Neither |
+| **Received** | Arrived, not yet inspected or released | Incoming supply, if it was expected (has a promised date); otherwise neither |
+| **Awaiting Inspection** | Held for incoming inspection | Incoming supply, if it was expected (has a promised date); otherwise neither |
 | **Accepted** | Passed inspection | **Stock** |
 | **In Use** | Released and being drawn against | **Stock** |
 | **Quarantine** | Held — under investigation, or a receiving hold | Neither |
@@ -75,21 +76,10 @@ planning counts the lot as **stock**, as **incoming supply**, or as neither.
 ## Lot Lifecycle
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   RECEIVED   │────▶│    IN_USE    │────▶│   CONSUMED   │
-│              │     │              │     │              │
-│ Incoming     │     │ Available    │     │ Fully used   │
-│ inspection   │     │ for use      │     │              │
-└──────────────┘     └──────────────┘     └──────────────┘
-       │                    │
-       │                    │ If issue found
-       ▼                    ▼
-┌──────────────┐     ┌──────────────┐
-│   SCRAPPED   │     │  QUARANTINE  │
-│              │     │              │
-│ Disposed     │     │ Under        │
-│              │     │ investigation│
-└──────────────┘     └──────────────┘
+ON ORDER → RECEIVED / AWAITING INSPECTION → ACCEPTED → IN USE → CONSUMED
+
+Inspection failed → REJECTED → RETURNED or SCRAPPED
+A hold at any point → QUARANTINE (Held)
 ```
 
 ### Returned
@@ -156,7 +146,7 @@ step, they go to **Awaiting inspection**, and become **On hand** once
 hand straight away, with no inspection to wait for.
 
 !!! tip "Expecting material"
-    **Expect** records a lot you know is coming before it arrives, so it shows
+    **Add expected delivery** records a lot you know is coming before it arrives, so it shows
     under **On order**.
 
 ### Using Material
@@ -212,12 +202,10 @@ To divide a lot:
 
 ### Quarantining Lots
 
-When issues are suspected:
-
-1. Change lot status to QUARANTINE
-2. Document reason
-3. Investigate affected parts
-4. Either release the hold or scrap
+A lot is held automatically — paperwork missing at receipt, an unqualified
+supplier or unapproved part, expired shelf life, a quality-gate rule, or an
+inspector's whole-lot reject request. It shows under **Held**. **Review hold**
+opens it; release each hold with a reason, or reject the lot.
 
 !!! warning "Releasing a hold is a quality decision"
     Releasing takes the `approve_disposition` permission, not edit rights on the
@@ -253,9 +241,11 @@ In the order they appear:
 | **Where it went** | Quantity used, at which step, on which part, **built into** the assembly chain up to the top, work order · order, customer |
 | **History** | The record's own change history |
 
-Its header carries the lot's primary action (**Inspect** or **Resolve**),
-**Label**, **Documents** and **Inspection record** — plus **RTV sheet** once the
-lot is rejected — and a hold panel when the lot is held.
+Its header carries the lot's primary action (**Inspect**, or **Review hold**
+when held; **Inspection** once decided), **Label**, **Move**, **Documents**,
+**Trace (PDF)** and **Inspection record** — plus **RTV sheet** while the lot is
+waiting to go back to its supplier or once returned — and a hold panel when the
+lot is held.
 
 !!! warning "Reached shows what was recorded, not what is possible"
     A lot appears against a customer only where a **step recorded drawing from

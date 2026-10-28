@@ -28,9 +28,9 @@ Each card shows:
 | **Order name** | The order's name, e.g. "Great Lakes Diesel Order - 12 Injectors" |
 | **Company** | Who the order is for. The Tracker does not pass a customer name, so no individual contact appears here |
 | **Delivery** | The delivery date, with a badge: days remaining ("6d"), **Today**, or a red **Overdue · 3d** once it has passed. Counted in calendar days. A completed or cancelled order shows the date with no badge |
-| **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" — or "Not started" when no stage is current |
+| **Current stage** | The stage the order is at, e.g. "Current: Core Receiving" — or "Not started" when no stage is current. An order with no stages yet shows *Work hasn't started yet.* (or *Completed.* / *Cancelled.* / *On hold.*) instead |
 | **Progress** | A progress bar with stages completed out of total, e.g. 3/11 stages |
-| **Latest note** | The most recent note on the order, with who left it |
+| **Latest note** | Shown when the card is expanded: the most recent note on the order, with who left it |
 
 !!! note "No priority on the tracker"
     Cards carry no priority badge. Priority is a work order field — see
@@ -50,10 +50,11 @@ in place.
     order name, company and customer name. To find a **work order**, use
     **Production** > **Work Orders**.
 
-!!! note "Orders with nothing to show are left off"
-    An order with no stages yet and no milestone is not shown. When that leaves
-    nothing, the page says *No active orders to display* — which can mean the
-    orders exist but none has been started.
+!!! note "Orders not yet started"
+    Every order you can see is listed. An order with no stages yet says so on
+    its card — *Work hasn't started yet.*, or *Completed.*, *Cancelled.* or
+    *On hold.* — instead of drawing a progress bar. When there are no orders at
+    all, the page says *No active orders to display*.
 
 ## Card View
 
@@ -74,10 +75,7 @@ nothing updates while you watch it.
 
 ## Infinite Scroll
 
-Orders load as you scroll:
-
-- Initial load: Most recent/relevant orders
-- Scroll down: Older orders load
+Orders load 25 at a time; more load as you scroll to the bottom.
 
 ## Mobile Usage
 

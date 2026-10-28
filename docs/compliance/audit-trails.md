@@ -200,16 +200,17 @@ on that screen, as noted above. Preparing data for an external audit means:
    parameters
 3. Format it as the auditor asked for it
 
-Reading the API needs `view_logentry`, the same permission as the screen — by
-default held by every staff role. `export_auditlog` exists but nothing checks it,
+Reading the API across records needs `view_auditlog`, the same permission as
+the screen: by default Tenant Admin, QA Manager, Document Controller and
+Auditor. One record's history needs only `view_logentry`. `export_auditlog` exists but nothing checks it,
 so do not cite it as a control over who can extract the audit trail.
 
 ## Permissions
 
 | Permission | Allows | Groups |
 |------------|--------|--------|
-| `view_auditlog` | View full system audit trail | Admin, QA Manager, Document Controller |
-| `export_auditlog` | Export audit data for auditors | Admin |
+| `view_auditlog` | View full system audit trail | Tenant Admin, QA Manager, Document Controller, Auditor |
+| `export_auditlog` | Export audit data for auditors (nothing checks it) | Tenant Admin, Document Controller |
 
 Standard users see history of records they can access via record detail pages.
 

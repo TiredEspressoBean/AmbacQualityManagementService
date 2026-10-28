@@ -15,15 +15,16 @@ when the flow's conditions are met.
 ### Inbox
 
 Tabs for **All**, **Tasks**, **Approvals**, and **Dispositions**, each with a
-count, and a split between **Overdue** and **Upcoming**.
+count, and the list grouped by due date into **Overdue**, **Due Today**, **This
+Week** and **Upcoming**.
 
 Each approval row shows the item, its approval type, the request number
 (`APR-2026-0004`), who raised it, its status, and how overdue it is, with
 **View** and **Review** actions.
 
 !!! tip "A short list is not a missing item"
-    The tab count covers every approval; the list is split into Overdue and
-    Upcoming. If the count says 5 and you see 4, the fifth is under Upcoming.
+    The tab count covers every approval; **Upcoming** starts collapsed. If the
+    count says 5 and you see 4, open **Upcoming**.
 
 ### Approvals Overview
 
@@ -79,10 +80,13 @@ So "why can't this person approve?" is almost always a template question. See
 > Self-approval is not permitted for this approval type
 
 This is **per approval type**, not per person — the template carries an **Allow
-self-approval** switch which is off unless somebody turns it on. Where a tenant
-does allow it, the approver must also write a **justification of at least ten
-characters**, and the response is permanently flagged as self-approved so an
-auditor can find every one.
+self-approval** switch which is off unless somebody turns it on. CAPA approvals
+make one exception: when nobody else on the request can approve, the requester
+may decide it; while someone else can, the refusal reads *You requested this
+approval, and someone else can decide it — it waits for them.* Either way the
+approver must write a **justification of at least ten characters**, and the
+response is permanently flagged as self-approved so an auditor can find every
+one.
 
 !!! note "Eligibility and authorisation are different layers"
     You may well *see* **Submit Response** on your own request — being an
@@ -107,7 +111,9 @@ Two independent settings:
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
-A Threshold flow can run either sequence.
+Under **Sequential**, the flow is not used: the request closes only when every
+required approver has approved, in turn. **Threshold** and **Any** apply to
+**Parallel** requests.
 
 ## Responding
 
@@ -116,9 +122,9 @@ There is one action — **Submit Response** — which opens a dialog with a
 
 | Decision | Effect |
 |----------|--------|
-| **Approved** | You approve |
-| **Rejected** | You reject; the requester can revise and resubmit |
-| **Delegated** | You pass the decision on — **only if the template allows it**, and delegation is **disabled by default** |
+| **Approve** | You approve |
+| **Reject** | You reject, with a comment saying why; the requester can revise and resubmit |
+| **Delegate** | You pass the decision on — only if the template's **Delegation** is **Optional**. The starter templates allow it on every type except Critical CAPA Approval; a new template starts at **Disabled** |
 
 There is no "request more information" decision. If you need more before you can
 decide, leave the request open and ask outside it, or reject with comments

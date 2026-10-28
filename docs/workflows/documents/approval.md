@@ -50,8 +50,9 @@ signature, release is putting it into force.
 2. Go to the **Approval** tab — it shows *"Document Not Yet Submitted"*
 3. Click **Submit for Approval**
 
-Once submitted, the designated approvers are notified and the document moves to
-**Under Review**.
+Once submitted, each individually assigned approver is notified and the
+document moves to **Under Review**. Members of an assigned group are not
+notified; they see the request in their **Inbox**.
 
 ### Approval Templates
 
@@ -113,11 +114,12 @@ Approving and rejecting are one action, not two buttons:
 
 | Decision | Effect |
 |----------|--------|
-| **Approved** | You approve the document |
-| **Rejected** | You reject it; the owner is notified and can revise and resubmit |
-| **Delegated** | You pass the decision to someone else |
+| **Approve** | You approve the document |
+| **Reject** | You reject it; the owner is notified and can revise and resubmit |
+| **Delegate** | You pass the decision to someone else |
 
-4. Add comments, and sign if the approval template requires it
+4. To approve, draw your signature, confirm it and enter your password; to
+   reject, a comment is required
 5. Submit the response
 
 ### Changing your response
@@ -152,13 +154,15 @@ assigned when a request is raised:
 | Template setting | Effect |
 |------------------|--------|
 | **Default approvers** | Specific users assigned every time |
-| **Default groups** | Every member of those groups assigned |
-| **Auto-assign by role** | Assigns the named group, e.g. `QA Manager` |
+| **Default groups** | The group is assigned as a whole; any member may respond |
+| **Auto-assign by role** | Assigns every member of the named group individually, as a required approver, e.g. `QA Manager` |
 
 The starter **Document Release Approval** template names no individual default
-approvers, but it does seed two default groups: **QA Manager** and **Document
-Controller**. Every member of either group is assigned when a request is raised,
-so a Document Controller *can* approve a document release out of the box.
+approvers, but it auto-assigns by role **QA Manager** and seeds two default
+groups: **QA Manager** and **Document Controller**. When a request is raised,
+every QA Manager is added as a required approver and both groups may respond,
+so a Document Controller *can* respond — but the release is approved only once
+every QA Manager has approved.
 
 !!! tip "To let another role approve"
     Change the template, not the permissions — add the group to **Default
@@ -208,10 +212,11 @@ Some templates use thresholds:
 On the document:
 
 1. Open document detail
-2. View **Approvals** section
+2. Open the **Approval** tab
 3. See each approver:
    - Name
-   - Status — **Not Required**, **Pending**, **Approved**, **Rejected** or **Cancelled**
+   - Status — **Pending**, or their decision (**Approved**, **Rejected**,
+     **Delegated**)
    - Date/time of action
    - Comments
 
@@ -233,7 +238,7 @@ Approvers don't need to reject a submission that was simply made too early.
 All approvals are permanently recorded:
 
 1. Open document
-2. View **History** tab
+2. Open the **Approval** tab — **Approval History**
 3. See all approval events:
    - Submissions
    - Approvals
@@ -246,7 +251,7 @@ When fully approved:
 
 1. Document status becomes **Approved**
 2. Document available for use
-3. Owner and stakeholders notified
+3. The person who requested approval is notified
 
 !!! note "Approval does not make a revision current"
     A new revision becomes the current one the moment it is **created**, while
@@ -267,10 +272,10 @@ list on **Home** — it is pull-only, and no message is sent.
 
 ## Approval Notifications
 
-When a document approval request is raised, each assigned approver is queued a
-notification directly. This does **not** go through the notification rules, so
-there is no rule to configure, disable or get wrong — approvers are told either
-way. Approvers also see the request in their **Inbox** and on the Documents
+When a document approval request is raised, each individually assigned approver
+is queued a notification directly; members of an assigned group are not
+notified and see it in their **Inbox**. This does **not** go through the
+notification rules, so there is no rule to configure, disable or get wrong. Approvers also see the request in their **Inbox** and on the Documents
 dashboard; see [Approvals](../approvals/overview.md).
 
 Other document events — as opposed to approval requests — are rule-driven, and

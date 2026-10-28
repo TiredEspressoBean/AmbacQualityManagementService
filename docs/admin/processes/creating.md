@@ -104,10 +104,10 @@ Add measurements to inspection steps:
 
 | Field | Description |
 |-------|-------------|
-| **Name** | What's measured |
+| **Label** | What's measured |
 | **Nominal** | Target value |
-| **Upper Tolerance** | Max acceptable |
-| **Lower Tolerance** | Min acceptable |
+| **Upper Tolerance** | How far above nominal is acceptable, as a positive amount |
+| **Lower Tolerance** | How far below nominal is acceptable, as a positive amount |
 | **Unit** | Unit of measure |
 | **Required** | Must record to proceed |
 

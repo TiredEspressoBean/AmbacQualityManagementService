@@ -74,7 +74,9 @@ how many responses close the request:
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
-These are independent: a Threshold flow can run Sequential or Parallel.
+Under **Sequential**, the flow is not used: the request closes only when every
+required approver has approved, in turn. **Threshold** and **Any** apply to
+**Parallel** requests.
 
 !!! warning "Some older field names were never real"
     An earlier version of this page described a **Required Count** field, a

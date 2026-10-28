@@ -3,7 +3,7 @@
 **Operator competency across training types** — who can do what, where the gaps
 are, and which skills are a staffing risk.
 
-**Quality** > **Training** > **Matrix** (`/quality/training/matrix`)
+**Quality** > **Training** > **Training Matrix** (`/quality/training/matrix`)
 
 ## Reading the matrix
 
@@ -22,7 +22,7 @@ The footer shows **how many people can cover each skill**.
 
 | Metric | Why it matters |
 |--------|----------------|
-| **Operators** | How many people are in scope |
+| **People** | How many people are in scope |
 | **People with role gaps** | Someone is assigned a role they aren't fully qualified for |
 | **Skills at coverage risk** | One person can do it — or nobody can |
 | **Expiring soon** | Qualifications about to lapse |
@@ -49,15 +49,16 @@ See [Schedule (Gantt)](../scheduling/gantt.md#dispatch).
     A training requirement is scoped to **one** of: a **job role**, a **step**,
     a **process**, or an **equipment type**. The matrix reports **role fit** —
     whether someone meets the competence profile of the role they hold. The
-    **start gate** reads **step** requirements.
+    **start gate** reads **step** and **process** requirements.
 
     They are different questions:
 
     - Somebody can show **"1 gap"** here and still start **every step** they are
-      asked to run, because no step required the skill they are short of. That
-      is correct, not a bug.
+      asked to run, because no step or process they run required the skill they
+      are short of. That is correct, not a bug.
     - Somebody can show **"meets"** and still be refused at a step, because that
-      step carries a requirement their role profile never mentioned.
+      step or its process carries a requirement their role profile never
+      mentioned.
 
     So read a role gap as *this person does not yet fit their job description* —
     a development and staffing signal — and the refusal at a step as *this
@@ -65,8 +66,9 @@ See [Schedule (Gantt)](../scheduling/gantt.md#dispatch).
 
 ## Filtering
 
-Filter by role to see one group at a time, or highlight by level to find who
-holds a given competency.
+Filter by role or search by name. **Highlight Level 1–2** picks out trainees
+and assisted operators; **Expiry lens** picks out qualifications expiring or
+expired.
 
 ## Next Steps
 

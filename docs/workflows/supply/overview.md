@@ -32,12 +32,12 @@ in its life:
 | **Awaiting inspection** | Received, not yet inspected |
 | **On hand** | Inspected and available |
 | **Held** | Quarantined or otherwise not usable |
-| **Rejected** | Rejected, awaiting return or already **Returned** |
+| **Rejected** | Rejected, awaiting a disposition or return |
 
 An **All** tab shows everything regardless of state.
 
 **Late** counts on the plant's own day, and its badge turns **red** when anything
-is actually overdue. On the **On order** and **Late** tabs the Promised column
+is late or due within 3 days. On the **On order** and **Late** tabs the Promised column
 carries a red **Overdue** or amber **Due soon** badge, so you can see which is
 which without reading dates.
 
@@ -109,7 +109,7 @@ You must answer one of two:
 | **That's all** | Nothing more is expected on this line |
 
 The receipt is refused until you pick — *"say whether more is coming
-(back-ordered) or that's all (closed)"*.
+(back-ordered) or that's all (nothing more expected)"*.
 
 !!! important "Why you are asked rather than told"
     Closing an order short is never inferred. UQMES doesn't own purchasing, so it
@@ -179,7 +179,7 @@ drops out of Late deliveries.
 ### Handing receipts to the ERP
 
 **Receipts for ERP** on the Materials page opens a dialog: pick a **date range**,
-optionally **only deliveries received against a PO**, and download an `.xlsx`
+optionally **only deliveries received against a PO** (on by default), and download an `.xlsx`
 with one row per delivery.
 
 Each row carries **PO / line**, received date, item, supplier, **our lot and
@@ -235,7 +235,7 @@ kept on the lot.
 ### Working a row
 
 Each row carries **one primary button** for whatever that lot is waiting on —
-**Receive** on order, **Inspect** awaiting inspection, **Resolve** when held —
+**Receive** on order, **Inspect** awaiting inspection, **Review hold** when held —
 with everything else under **⋯**:
 
 | Action | |
@@ -260,7 +260,7 @@ just by lot number.
 ### What cannot be edited directly
 
 **Status** is not an editable field, and **quantity** changes only through
-**Adjust quantity**. Both follow from what happens to the lot — a receipt, an
+**Adjust quantity** or **Correct receipt**. Both follow from what happens to the lot — a receipt, an
 inspection decision, a draw, a correction — so setting either by hand would make
 the record disagree with its own history.
 
@@ -401,12 +401,14 @@ that clashes with an existing lot and the receipt is refused with a message.
 
 ### Heat number and where it came from
 
-**Receive expected lot** and batch receiving both take:
+**Receive expected lot** takes all three below; batch receiving takes Heat # and
+Source:
 
 - **Heat number**, marked *(required)* when the item demands one. Leaving it
   blank holds the lot rather than refusing the receipt — the material is on the
   dock either way.
-- **A photo or PDF of the CoC**, taken at receipt. Attaching it **clears an
+- **A photo or PDF of the CoC**, taken at receipt (Receive expected lot only).
+  Attaching it **clears an
   Awaiting-CoC hold automatically**, so the certificate and the material arrive
   together.
 - **Source (from the paperwork, if shown)** — Manufacturer, Authorized
@@ -462,9 +464,9 @@ Without it the button reads **Request whole-lot reject**, and the dialog says so
 The lot is then held as *Whole-lot reject requested*, waiting on QA — the request
 is recorded, not refused.
 
-Someone holding the permission then either:
+Someone holding the permission can **Confirm: reject whole lot** on the hold
+panel; someone holding the disposition-approval permission can instead:
 
-- **Confirm: reject whole lot** — on the hold panel; or
 - **Decline request…** — *"Why is the whole-lot reject being declined?"*, then
   **Decline — back to inspection**. The pending disposition closes and the lot
   returns to inspection, where a partial reject can be done instead.
@@ -489,8 +491,7 @@ yes and an **expected delivery is created, linked to the returned lot** — so t
 replacement is visible to planning as incoming supply instead of being something
 someone has to remember.
 
-The lot page then shows **Replacement for / Replaced by / Supplier RMA /
-Shipped**, which is the whole round trip on one record.
+The lot page then shows **Replacement for / Replaced by / Supplier RMA**, which is the whole round trip on one record.
 
 The lot then becomes **Returned**.
 
@@ -501,7 +502,8 @@ The lot then becomes **Returned**.
 
     Scrapped means gone. Returned means somewhere else.
 
-The **Rejected** tab on Materials holds lots in this state, and the **⋯** menu
+The **Rejected** tab holds lots waiting to go back; returned lots are under
+**All**. The **⋯** menu
 carries **RTV sheet (PDF)** for lots waiting to go back or already returned.
 
 ### What a disposition does to the lot
@@ -563,8 +565,8 @@ own."*
 **The next two are judgements.** They offer **Release hold…**, with a **required
 reason**, to someone holding the disposition-approval permission. The lot then
 continues with **that one check waived** — any other hold still applies. Anyone
-without the permission sees: *"A quality manager can release this hold, or the
-lot can be rejected."*
+without the permission sees: *"A quality manager can release this hold. Once
+released the lot is inspected, and it can be rejected from the inspection."*
 
 !!! note "A hold is not a rejection"
     A delivery missing its certificate waits for the paperwork rather than

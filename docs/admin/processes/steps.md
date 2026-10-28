@@ -207,14 +207,16 @@ Enable FPI for this step:
 
 #### FPI Scope
 
-Configure when FPI resets:
+The scope decides which inspection records get created. It does not change what
+holds parts: one passed or waived first piece releases the step for the whole
+work order, whichever scope is set.
 
-| Scope | FPI Required |
-|-------|--------------|
-| **Per Work Order** | Once per work order |
-| **Per Shift** | Each shift change |
-| **Per Equipment** | Each machine/equipment change |
-| **Per Operator** | Each operator change |
+| Scope | Effect |
+|-------|--------|
+| **Per Work Order** | One record per work order |
+| **Per Shift** | A record keyed to the shift date |
+| **Per Equipment** | A record keyed to the machine |
+| **Per Operator** | No effect |
 
 See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 

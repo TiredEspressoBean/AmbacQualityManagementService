@@ -39,9 +39,10 @@ step**.
 - Progress updates automatically
 
 !!! tip "Lot cohesion"
-    Parts that have not been split advance **as a cohort** — all parts at the
-    same work order and step move together, or none do. A split part advances
-    on its own as soon as its own requirements clear. This is the usual reason a
+    By default, parts that have not been split advance **as a cohort** — all
+    parts at the same work order and step move together, or none do. A step set
+    to advance per part lets each part move on its own gate, and a split part
+    always advances on its own as soon as its own requirements clear. This is the usual reason a
     finished part appears stuck: another part in its lot still has work
     outstanding.
 
@@ -100,21 +101,19 @@ Each transition records:
 
 | Data | Description |
 |------|-------------|
-| **From Step** | Previous step |
-| **To Step** | New step |
-| **Operator** | Who performed the action |
+| **Step** | The step the part moved to |
+| **Operator** | Who performed the move |
+| **Authorised by** | The lead who co-signed a manual routing, when that was someone else |
+| **Reason** | Why, for a move that had to be justified (a rollback) |
 | **Timestamp** | When it occurred |
-| **Decision** | Pass/fail/measurement value |
-| **Duration** | Time at previous step |
 
 ## Quarantine
 
 If an issue is found:
 
-1. Create a Quality Report against the part with its result set to **FAIL** —
-   it has to be FAIL *at creation*. Failing it afterwards opens a disposition
-   but does **not** quarantine the part, which leaves somebody deciding a part
-   that is still moving
+1. Create a Quality Report against the part with its result set to **FAIL**,
+   or change an existing report to FAIL. Either way the part is quarantined
+   and a disposition opens
 2. Add each defect to the report, with its own error type, count, location and
    severity. Error type is **not** a field on the report itself
 3. The part enters quarantine
@@ -142,8 +141,10 @@ For parts already in quarantine:
 If a part visits the same step too many times (rework cycles):
 
 - System tracks visit count
-- If max visits exceeded, part escalates
-- Escalated parts route to escalation handler
+- If the cap is exceeded, the part takes the step's escalation route (e.g. to
+  MRB review)
+- If the step has no escalation route, the move is refused and a lead decides
+  what happens to the part
 - Prevents infinite rework loops
 
 ## Batch Processing
@@ -162,8 +163,9 @@ taken with an overdue gauge) is sent back on **WO Control**: tick it and press
 back**, not deleted, and the part returns to the step it came from on a new visit.
 The rest of its lot waits for it, since unsplit parts move together.
 
-Each step sets **how long** a rollback can be done directly after the part left
-it, and whether it always needs approval:
+The step the part is at now sets **how long** after the part arrived a rollback
+can be done directly (15 minutes by default), and whether every rollback needs
+approval — which is on by default:
 
 | | What happens |
 |---|---|
@@ -199,7 +201,8 @@ and you take the part out once it is approved.
 
 Work down these, commonest first:
 
-- **Another part in its lot isn't done.** Unsplit parts move as a cohort, so a
+- **Another part in its lot isn't done.** Unsplit parts move as a cohort unless
+  the step advances per part, so a
   finished part waits on its slowest sibling. This is the usual answer.
 - **Required captures are missing** — a substep not completed, or a signature
   block unsigned.

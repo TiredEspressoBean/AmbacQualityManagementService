@@ -64,21 +64,23 @@ New revisions start as **Draft** until approved (for controlled documents).
 View all revisions of a document:
 
 1. Open the document
-2. Click **Revision History** or **Versions** tab
-3. See list of all revisions:
+2. Open the **Versions** tab
+3. See the list of all revisions under **Version History**:
 
 | Column | Description |
 |--------|-------------|
 | **Version** | The number — 1, 2, 3 |
+| **File Name** | The revision's file |
+| **Uploaded By** | Who created it |
 | **Date** | When created |
-| **Author** | Who created |
 | **Status** | Draft, Under Review, Released, Obsolete |
-| **Reason** | Why it changed — the required justification |
+| **Change Notes** | Why it changed — the required justification |
+| **Actions** | Open or download that revision |
 
 ### Accessing Previous Revisions
 
-1. In revision history, find the revision
-2. Click **View** or **Download**
+1. On the **Versions** tab, find the revision
+2. Use the open (↗) or download icon on its row
 3. Previous revision opens (read-only)
 
 ## Current vs Previous Revisions

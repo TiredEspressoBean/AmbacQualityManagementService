@@ -45,22 +45,24 @@ An order may have multiple work orders if:
 
 | Field | Description | Required |
 |-------|-------------|----------|
+| **Status** | Pending when left empty. Locked once the work order exists | No |
+| **Priority** | Urgent, High, Normal, or Low. Normal when left empty | No |
 | **ERP ID** | The work order's number in the system that owns it | Yes |
-| **Order** | The customer order, if there is one | No |
-| **Process** | Manufacturing workflow to follow | Yes |
-| **Priority** | Urgent, High, Normal, or Low | Yes |
-| **Due Date** | Target completion | Yes |
 | **Notes** | Instructions or comments | No |
+| **Related Order** | The customer order, if there is one | No |
+| **Process** | Manufacturing workflow to follow | No |
+| **Expected Completion Date** | Target completion | Yes |
 
 !!! note "A work order need not be tied to a customer order"
-    **Order** is optional — stock builds, internal work and rework all exist
-    without one. **Due Date** is not: the schedule is built from dates, so a work
-    order with no target completion has nothing to plan against.
+    **Related Order** is optional — stock builds, internal work and rework all
+    exist without one. **Expected Completion Date** is not: the schedule is built
+    from dates, so a work order with no target completion has nothing to plan
+    against.
 
 !!! note "Equipment Assignment"
     Equipment is assigned at the step execution level, not on the work order itself. This allows different equipment to be used for different steps. See [Assigning Work Orders](assigning.md) for details.
 
-4. Click **Save**
+4. Click **Submit**
 
 ## Work Order Status
 
@@ -92,13 +94,14 @@ Priority affects:
 
 - Queue position
 - Dashboard highlighting
-- Notification urgency
 
 ## Parts and Steps
 
 When a work order is created:
 
-1. Parts from the order are associated with the work order
+1. Parts are added to it — **Add Parts** on the WO Control Center's bulk bar,
+   or created with it when the work order is planned from the schedule or an
+   order line
 2. Each part starts at Step 1 of the process
 3. Parts advance **as a cohort**, not individually
 4. Work order tracks aggregate progress
@@ -119,53 +122,30 @@ When a work order is created:
 Progress is calculated as:
 
 ```
-Progress = Parts at final step or complete / Total parts
+Progress = Parts finished (completed, shipped, in stock, awaiting pickup or dismantled) / Total parts
 ```
 
 View progress on:
 
 - Work order list
 - Work order detail
-- Dashboard widgets
 
 ## Work Order Detail View
 
-The work order detail page shows:
-
-### Header
-- Work order number
-- Order reference
-- Status and priority
-- Due date
-
-### Progress Section
-- Parts by step (chart)
-- Completion percentage
-- Time metrics
-
-### Parts Tab
-- List of all parts
-- Current step for each
-- Quick actions (move, flag)
-
-### Documents Tab
-- Linked work instructions
-- Process documents
-- Attached files
-
-### History Tab
-- Status changes
-- Assignment changes
-- Notes and comments
+The work order detail page (`/workorder/$workOrderId`) has a header with status,
+priority and badges, and three tabs: **Overview**, **Parts** and **Materials**.
+See [Work Order Detail](progress.md#work-order-detail).
 
 ## Linking Documents
 
 Attach documents to work orders:
 
-1. Open the work order
-2. Go to **Documents** tab
-3. Click **Add Document**
-4. Upload or link existing document
+1. **Data Management** > **Work Orders**, edit the work order
+2. Under **Attach Documents**, choose the file and classification and click
+   **Upload**
+
+(Existing documents are linked from the document's **Also Linked To** >
+**Attach**, or its **Edit** > **Link To**.)
 
 Common work order documents:
 
@@ -176,37 +156,32 @@ Common work order documents:
 
 ## Work Order Notes
 
-Add notes for communication:
-
-1. Open the work order
-2. Scroll to **Notes** section
-3. Click **Add Note**
-4. Enter your message
-5. Notes are timestamped with your name
-
-Notes appear in the activity feed.
+**Notes** is a field on the work order's form in **Data Management**. It shows
+on the detail page's **Overview** tab. Changes to it are listed on the form's
+**History** card.
 
 ## Splitting Work Orders
 
 To split a work order (e.g., partial shipment):
 
-1. Open the work order
-2. Click **Split Work Order**
-3. Select parts for the new work order
-4. A new work order is created with selected parts
+1. Open the work order's control page
+2. Click **Split…** (or select parts in the table and choose **Split selection…**)
+3. Choose **Quantity**, **Selected parts** or **Rework**, then give the quantity
+   to move (or select the parts), the **New ERP id** and any notes
+4. Click **Create child WO**. A new work order is created with them
 
 ## Cancelling Work Orders
 
 To cancel:
 
 1. Open the work order
-2. Click **Cancel Work Order**
-3. Confirm
+2. Click **Cancel**
+3. Click **Confirm Cancel**
 
 No reason is asked for. The status becomes **Cancelled**, so the work order
 drops out of scheduling, and its parts keep their link to it. The record of what
 was planned stays intact. If every work order on the customer order is now
-completed or cancelled, the order completes too.
+completed or cancelled, and at least one completed, the order completes too.
 
 A work order already completed or cancelled cannot be cancelled again.
 
@@ -276,7 +251,7 @@ permission as short-closing and a required reason, kept on the work order.
 |------------|--------|
 | `view_workorder` | View work orders |
 | `add_workorder` | Create work orders |
-| `change_workorder` | Edit, release, place on hold and resume — one at a time or in bulk from the Control Center. By default every staff role holds it; without it those buttons are hidden |
+| `change_workorder` | Edit, release, place on hold and resume — one at a time or in bulk from the Control Center. By default every staff role except Auditor holds it; without it those buttons are hidden |
 | `delete_workorder` | Delete work orders |
 | `cancel_workorder` | Cancel or short-close a work order — Tenant Admin and Production Manager |
 

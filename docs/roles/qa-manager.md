@@ -95,9 +95,9 @@ Every approval in uqmes offers the same three, whatever the subject:
 
 | Decision | When to Use |
 |----------|-------------|
-| **Approved** | It is acceptable as submitted |
-| **Rejected** | It is not — say why in the comments |
-| **Delegated** | Pass it to another eligible approver |
+| **Approve** | It is acceptable as submitted |
+| **Reject** | It is not — say why in the comments |
+| **Delegate** | Pass it to another eligible approver |
 
 There is **no "Request more information"** decision. If you need more before you
 can decide, leave the request open and ask outside it, or reject with comments
@@ -106,7 +106,7 @@ saying what is missing.
 ### Signing Approval
 
 1. Click **Submit Response**
-2. Choose a **Decision** — Approved, Rejected, or Delegated
+2. Choose a **Decision** — Approve, Reject, or Delegate
 3. Add comments (especially when rejecting)
 4. Sign if the approval template requires it
 5. Submit the response
@@ -232,13 +232,13 @@ with their email and password and the closure is attributed to them.
 
 ### Approval Actions
 
-The same three decisions as everywhere else — **Approved**, **Rejected**,
-**Delegated**. Comments travel with whichever you choose; they are not a
+The same three decisions as everywhere else — **Approve**, **Reject**,
+**Delegate**. Comments travel with whichever you choose; they are not a
 decision of their own.
 
 ### Electronic Signature
 
-1. Click **Submit Response** and choose **Approved**
+1. Click **Submit Response** and choose **Approve**
 2. Review the signature meaning
 3. Sign as the template requires
 4. Submit
@@ -377,7 +377,7 @@ Templates](../admin/setup/approval-templates.md).
 | Co-sign someone else's | On *their* screen — they press Update Disposition, you supply email, signature and password |
 | Create CAPA | Quality > CAPAs → **New CAPAs** |
 | Close CAPA | CAPA detail → Verification → **Effective - Confirmed** |
-| Approve document | Inbox → Document → **Submit Response** → Approved |
+| Approve document | Inbox → Document → **Submit Response** → Approve |
 | View analytics | Analytics |
 
 ## Putting records right

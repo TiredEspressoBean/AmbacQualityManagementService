@@ -54,10 +54,14 @@ Use the **Order Name** field to enter your own reference number such as the cust
 ## Order Status
 
 A new order starts **Pending** unless you choose another status on the form. An
-order created by import, or through the API without a status, also starts
-**Pending**.
+order created through the API must carry a status. An import row with no status
+is imported as **Pending**; one whose status is not one of the six is imported
+as **Pending**, with a warning.
 
-Status progresses as work is performed:
+Status is set by hand — on the order form, or by import — with one exception: an
+order becomes **Completed** on its own once every work order on it is completed
+or cancelled and at least one was completed. Reopening a completed work order,
+or reversing a shipment on it, puts the order back to **In Progress**.
 
 | Status | Meaning |
 |--------|---------|

@@ -21,18 +21,17 @@ who has actually read it.
 
 ## Writing a note
 
-1. Click **New note**
-2. Write the note
-3. Choose the **audience**
-4. Optionally mark it **High priority** or **Requires acknowledgment**
-5. Post it
+1. In **New note**, write the note
+2. Choose the **audience**
+3. Optionally mark it **High priority** or **Requires acknowledgment**
+4. Click **Post note**
 
 ### Audience
 
 Default is **everyone on the floor**. You can narrow it to specific roles:
 
-The list is this tenant's groups, so it shows whatever groups exist here rather
-than a fixed menu.
+The list is this tenant's groups, apart from Customer and Auditor, which are
+not floor audiences.
 
 Narrow the audience when a note is only relevant to one group — a note everyone
 must dismiss but few need trains people to dismiss without reading.

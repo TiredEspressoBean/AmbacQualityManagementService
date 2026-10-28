@@ -18,15 +18,14 @@ The Document Library provides:
 
 ## Document Dashboard
 
-The Documents landing page shows two cards:
+The Documents landing page opens with four counts: **Total Documents**,
+**Pending Approval**, **Needs My Approval** and **My Uploads**. Below them:
 
-| Card | Goes to |
+| Card | Contents |
 |------|---------|
-| **View All Documents** | Browse and search documents |
-| **Upload Document** | Add a new document to the system |
-
-Below the cards is a list of recent documents, each showing its name, who
-uploaded it, and when.
+| **Quick Actions** | **View All Documents** (browse and search) and **Upload Document** (add a new document — shown if you may upload) |
+| **Pending My Approval** | Documents waiting on your response |
+| **Recently Updated** | The most recently changed documents, each with its name, uploader and last-updated date |
 
 ### When approvals are waiting for you
 
@@ -34,7 +33,7 @@ Two separate things surface them, and they are not duplicates:
 
 **Documents Needing Approval** — an orange banner that appears only when there
 is something to do, e.g. *"1 document(s) require your review"*. Clicking it
-opens the document list already filtered to what needs you.
+opens the document list; turn on **Needs My Approval** there to see only yours.
 
 **Pending My Approval** — a panel listing the documents themselves, with a
 count badge, each linking straight to the document. When there is nothing
@@ -98,17 +97,17 @@ The search box on the document list is scoped, as its placeholder says —
 
 ## Document Types
 
-Documents are categorized by type:
+Documents are categorized by type. Some of the starter types:
 
-| Type | Purpose | Typical Control |
-|------|---------|-----------------|
-| **Drawing** | Part or assembly drawings | Approved |
-| **Specification** | Technical requirements | Approved |
-| **Work Instruction** | Step-by-step procedures | Approved |
-| **Form** | Blank forms for records | Approved |
-| **Certificate** | Quality certifications | Reference |
-| **Report** | Test or inspection reports | Record |
-| **Contract** | Customer agreements | Reference |
+| Type | Purpose | Requires approval |
+|------|---------|-------------------|
+| **Drawing/Print** | Engineering drawings and prints | Yes |
+| **Specification** | Technical requirements | Yes |
+| **Work Instruction** | Step-level instructions | Yes |
+| **Form/Checklist** | Blank forms and checklist templates | Yes |
+| **Certificate of Conformance** | Supplier certificates for incoming material | No |
+| **Inspection Report** | Quality inspection reports | No |
+| **Test Report** | Test results | No |
 
 Your administrator configures available document types.
 
@@ -181,9 +180,10 @@ tiers. Operators, inspectors, the dock and auditors cannot.
     tier that does it.
 
 !!! important "QA Manager can classify, but cannot read Secret"
-    `classify_documents` is by default held by **Tenant Admin, QA Manager and Document
-    Controller**. `view_secret_documents` is by default held by **Tenant Admin and Document
-    Controller** only.
+    The level chosen at upload is the uploader's choice. Changing an existing
+    document's level needs `classify_documents`, by default held by **Tenant
+    Admin, QA Manager and Document Controller**. `view_secret_documents` is by
+    default held by **Tenant Admin and Document Controller** only.
 
     So a QA Manager can mark a document Secret and then not be able to open it.
     Worth knowing before you use that tier.
@@ -208,16 +208,16 @@ Click a document to view:
 - Linked records
 
 ### Viewing Files
-- Click **Download** to get the file
-- A browser tab opens briefly, downloads the file and closes itself
-- Nothing displays in the browser — open the downloaded file to read it
+- The **Overview** tab's **File Preview** shows images and PDFs in the page
+- Other file types show **Download to View** instead
+- **Download** saves the file to your computer
 
 ### Actions Available
 The detail page header offers:
 
 - Download
 - Create Revision
-- Edit — where linking and the rest of the metadata live
+- Edit — where the main link and the rest of the metadata live
 
 ## Downloading Documents
 
@@ -225,11 +225,8 @@ The detail page header offers:
 2. Click **Download**
 3. File downloads to your computer
 
-For controlled documents, downloads may be:
-
-- Logged in audit trail
-- Watermarked with user/date
-- Restricted to current revision
+Every download is recorded in the document's access log. Files are not
+watermarked, and earlier revisions stay downloadable from the **Versions** tab.
 
 ## Linking Documents
 
@@ -250,14 +247,13 @@ From document:
 3. Find the **Link To (Optional)** field
 4. Search and select the record, then save
 
-There is no **Link to...** button on the document itself — linking is part of
-the edit form.
+**Edit → Link To** sets the document's main record. To link it to an
+additional order, part, part type or work order as well, use **Attach** under
+**Also Linked To** on the document's **Overview** tab.
 
-From record:
-1. Open order, part, etc.
-2. Go to Documents section
-3. Click **Add Document**
-4. Search and select document
+From record: under **Attach Document** on its edit form (or a CAPA's
+**Documents** tab), **Upload** a new file — it is attached to that record. To link an existing document, do it from the document
+(above).
 
 ## Permissions
 
@@ -265,8 +261,9 @@ From record:
 |------------|--------|
 | `view_documents` | View documents |
 | `view_confidential_documents` | View confidential documents |
-| `add_documents` | Upload documents |
-| `change_documents` | Edit, create revisions |
+| `add_documents` | Upload documents, create revisions |
+| `change_documents` | Edit document details |
+| `add_documentlink` | Attach a document to an additional record |
 | `delete_documents` | Remove documents |
 | `respond_to_approval` | Respond to a document approval request (eligibility also set by the approval template) |
 

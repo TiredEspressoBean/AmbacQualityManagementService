@@ -169,8 +169,8 @@ for turning it on.
 
 1. Review the item requiring approval
 2. Click **Submit Response**
-3. Choose a **Decision** — Approved, Rejected, or Delegated
-4. Add comments (optional)
+3. Choose a **Decision** — Approve, Reject, or Delegate
+4. Add comments (required when rejecting)
 5. Sign, if the approval template requires verification
 6. Submit
 

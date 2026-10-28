@@ -24,7 +24,8 @@ PDF is recommended for controlled documents (non-editable, consistent display).
 
 ## File Size Limits
 
-- **Maximum file size**: 100 MB
+- **Maximum file size**: 10 MB through the upload and revision forms. A file
+  uploaded under a record's **Attach Document** may be up to 100 MB.
 - **Recommended**: Under 5 MB for best performance
 
 For large files, consider:
@@ -33,8 +34,8 @@ For large files, consider:
 - Using external links
 
 !!! note "The limit is fixed"
-    100 MB is built into the application. It is not a setting, and your
-    administrator cannot raise or lower it.
+    The limits are built into the application. They are not settings, and your
+    administrator cannot raise or lower them.
 
 ## Uploading a New Document
 
@@ -48,10 +49,13 @@ For large files, consider:
 
 ### From Related Record
 
-1. Open the order, part, or other record
-2. Go to **Documents** section
-3. Click **Upload Document**
-4. File automatically links to the record
+The edit forms for an order, work order, step, process, part type or part, and
+a CAPA's **Documents** tab, carry an uploader titled **Attach Document**:
+
+1. Open the record's edit form (or the CAPA's **Documents** tab)
+2. Under **Attach Document**, choose the file and classification
+3. Click **Upload**
+4. The file is attached to that record
 
 ## Document Metadata
 
@@ -75,8 +79,9 @@ so name the file the way you want it to read in the library.
 
 !!! note "Dates are not yours to set"
     Effective date, review date, obsolete date and retention date are all
-    read-only. They are calculated when the document is released, from the
-    document type's review and retention periods.
+    read-only. Effective, review and retention dates are set when the document
+    is released, from the document type's review and retention periods; the
+    obsolete date is set when it is marked obsolete.
 
 ### Classification Levels
 
@@ -112,8 +117,11 @@ Link document to records during upload:
 
 1. In the upload form
 2. Find **Link to** section
-3. Select record type (Order, Part Type, etc.)
-4. Search and select records
+3. Select record type — Order, Work Order, Part, Process, Step, Company,
+   Quality Report, Disposition, CAPA or 3D Model. Part Type is not on the
+   list; link a part type from the document's **Also Linked To** > **Attach**.
+   Quality Report is listed, but its record search comes up empty
+4. Search and select the record
 5. Document uploads with links established
 
 ## Post-Upload Actions
@@ -129,7 +137,7 @@ After upload, you can:
 The system validates:
 
 - The file extension is on the allowed list
-- The file is 100 MB or smaller
+- The file is within the size limit (above)
 
 Validation errors show before upload completes.
 

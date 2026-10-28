@@ -4,17 +4,17 @@ Capture inspection and measurement data for parts as they move through productio
 
 ## Measurement Definitions
 
-Measurements are defined once and then attached to the steps that need them.
-Both are **authoring** acts — Engineering, QA Manager, Production Manager,
+Each measurement is defined on the step that collects it, and versions with that step.
+Defining one is an **authoring** act — Engineering, QA Manager, Production Manager,
 Document Controller or Tenant Admin, not whoever administers the system. Each
 definition specifies:
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| **Name** | What's being measured | "Outer Diameter" |
+| **Label** | What's being measured | "Outer Diameter" |
 | **Nominal** | Target value | 25.000 |
-| **Upper Tolerance** | Maximum acceptable | +0.010 |
-| **Lower Tolerance** | Minimum acceptable | -0.010 |
+| **Upper Tolerance** | How far above nominal is acceptable, as a positive amount | 0.010 |
+| **Lower Tolerance** | How far below nominal is acceptable, as a positive amount | 0.010 |
 | **Unit** | Unit of measure | mm |
 | **Required** | Must be recorded to proceed | Yes/No |
 
@@ -64,8 +64,8 @@ Fail: Measured Value < Lower Limit OR Measured Value > Upper Limit
 
 | Result | Indicator |
 |--------|-----------|
-| **Pass** | Green checkmark |
-| **Fail** | Red X |
+| **Pass** | Green **In spec** badge |
+| **Fail** | Red **Out of spec** badge |
 
 !!! note "There is no warning zone"
     Evaluation is binary. A measurement definition carries a nominal, an upper
@@ -75,8 +75,7 @@ Fail: Measured Value < Lower Limit OR Measured Value > Upper Limit
 
 ## Measurement Types
 
-There are two, and only two. A definition set to anything else evaluates as
-permanently out of spec, so stick to these.
+There are two, and only two.
 
 ### Numeric Measurements
 Standard measured values with tolerances:
@@ -125,15 +124,15 @@ Measurements may require calibrated equipment:
     than failing the instant it is checked. Everything it measured since its
     last good calibration is in question, which is what ISO 9001 **7.1.5.2**
     asks you to assess. See [the gauge's exposure
-    list](../../roles/qa-manager.md).
+    list](../../admin/setup/equipment.md#recording-calibration).
 
 ## Where recorded measurements appear
 
 There is no **Measurements** tab on a part. A measurement recorded at an
 inspection-point substep is written as a measurement result against the
 **Quality Report** that substep produced, and that report is where the numeric
-evidence is listed — name, value, specification, pass/fail, who recorded it and
-when.
+evidence is listed — name, value, specification, pass/fail, and when it was
+captured.
 
 Numeric results also flow into SPC, so they appear in control charts and
 capability analysis without anything further being done to them. See [SPC
@@ -144,17 +143,17 @@ Charts](../../analysis/spc.md).
 **A recorded measurement cannot be edited.** There is no edit action, for any
 role — a measurement result is evidence, and evidence that can be quietly
 rewritten is not evidence. How you fix a wrong value depends entirely on
-whether you have confirmed it yet.
+whether you have completed the step.
 
-### Before you confirm — the review screen
+### Before you complete the step — the review screen
 
 The review screen at the end of the step player lists everything you recorded.
-This is the last easy place to fix a mistyped value: tap the entry, correct it,
-carry on. Nothing has been sealed as a completion yet.
+This is the last easy place to fix a mistyped value: tap **Edit** on the
+substep, correct it, carry on. Nothing is recorded until **Complete step**.
 
-### After you confirm — QA voids the completion
+### After you complete the step — QA voids the completion
 
-Once confirmed, the substep completion holding that measurement can only be
+Once the step is complete, the substep completion holding that measurement can only be
 **voided**, by QA Inspector, QA Manager, or Tenant Admin, with a reason. The
 work is then redone and a fresh measurement recorded.
 
@@ -183,7 +182,8 @@ no ad-hoc attach.
 When a measurement fails:
 
 ### Automatic Quarantine
-If configured, parts with failed measurements automatically enter quarantine.
+A failed measurement at an inspection-point substep fails that substep's
+quality report, which quarantines the part. There is no setting for this.
 
 ### Manual Review
 The operator decides between:
@@ -224,7 +224,7 @@ See [SPC Charts](../../analysis/spc.md) for details.
 |------------|--------|
 | `view_measurementresult` | View measurement history |
 | `add_measurementresult` | Record new measurements |
-| `delete_measurementresult` | Remove a measurement result entirely. Held by Tenant Admin, QA Manager, Production Manager and Document Controller. |
+| `delete_measurementresult` | Nothing — no screen or endpoint deletes a measurement result. Held by Tenant Admin, QA Manager, Production Manager and Document Controller. |
 
 ## Next Steps
 

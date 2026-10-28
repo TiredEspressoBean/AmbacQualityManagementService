@@ -2,8 +2,9 @@
 
 A training record says that a person completed a training, and at what level of
 competency. Training requirements on a step read these records: someone without an
-in-date record at the required level is refused when they start that step, and a
-shift lead's override is the only way past.
+in-date record at the required level is refused when they start that step, and an
+override from a supervisor (Shift Lead, QA Manager, Production Manager or Tenant
+Admin) is the only way past.
 
 So a record is operational, not clerical. A person who has been assessed and
 signed off is still refused the work until their record exists.
@@ -45,7 +46,7 @@ training is the highest level among their in-date records for it.
 - **Training Matrix** (on **Quality** > **Training**): people against
   trainings, with each person's level and what is expiring.
 - **Training Overrides** (on **Quality** > **Training**): every start
-  a shift lead authorised for someone who wasn't qualified, with the reason. A
+  a supervisor authorised for someone who wasn't qualified, with the reason. A
   person who keeps appearing here needs a record, not more overrides.
 
 ## Correcting a record

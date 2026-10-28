@@ -1,9 +1,12 @@
 # Life Tracking
 
-!!! note "No dedicated screen yet"
+!!! note "No dedicated screen"
     Life tracking is implemented in the backend — life limit definitions, usage
-    accumulation, and shelf life — and is available via the API and the data
-    editors. A dedicated life tracking screen is planned for a future release.
+    accumulation, and shelf life. Life limit definitions and their part-type
+    links are edited in Data Management; usage, resets and overrides are
+    recorded only through the API; accepting a harvested component
+    creates its transferred records, and an exceeded limit shows as a blocker
+    on the part.
 
 Life tracking monitors accumulated usage, cycles, or calendar time against defined limits. This is essential for:
 
@@ -143,8 +146,8 @@ For calendar-based items, no incrementing is needed - elapsed time is calculated
     An override extends the limits for one specific part — engineering approval
     to run past the definition's figure — and leaves the definition itself
     untouched. There is no button for it. It is an API action on the life
-    tracking record, taking the new limit values, a justification reason and the
-    approving user.
+    tracking record, taking the new limit values and a justification reason; the
+    person making the call is recorded as the approver.
 
     It is gated on the same permission as authoring life limits, by default held by **QA
     Manager, QA Inspector, Engineering and Tenant Admin**. A **Production
@@ -212,10 +215,10 @@ Create quality reports when:
 
 ### Reman Module
 
-Life tracking transfers during disassembly:
+Life tracking transfers when a harvested component is accepted to inventory:
 
 - Core life records examined
-- Applicable records transfer to components
+- Records whose definition is linked to the component's part type transfer to the new part
 - Maintains life continuity through remanufacturing
 
 ## Permissions
@@ -223,11 +226,11 @@ Life tracking transfers during disassembly:
 | Permission | Allows |
 |------------|--------|
 | `view_lifetracking` | View life tracking records |
-| `add_lifetracking` | Create tracking records |
-| `change_lifetracking` | Update values, apply overrides |
+| `add_lifetracking` | Create tracking records, and record usage (increment) |
+| `change_lifetracking` | Update a record's reference date and source |
 | `view_lifelimitdefinition` | View definitions |
 | `add_lifelimitdefinition` | Create definitions (admin) |
-| `change_lifelimitdefinition` | Modify definitions (admin) |
+| `change_lifelimitdefinition` | Modify definitions (admin). Also: apply overrides and resets (QA Manager, QA Inspector, Engineering, Tenant Admin) |
 
 ## Troubleshooting
 

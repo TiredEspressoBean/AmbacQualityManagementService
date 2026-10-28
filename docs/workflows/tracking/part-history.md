@@ -16,31 +16,36 @@ The detail page is laid out as sections on a single page, not tabs:
 
 ## Activity History
 
-The **Activity History** section shows the record's audit trail, newest first.
-Each entry carries:
+The **Activity History** section is the part's timeline: the changes to the
+part and to every record about it — step executions, measurements, material
+draws, quality reports, dispositions, overrides — newest first, 25 at a time
+with **Show older**. Each entry carries:
 
 | Element | Shows |
 |---------|-------|
-| Action badge | **Created**, **Updated**, or **Deleted**, colour-coded |
+| Record and action | The kind of record, and whether it was **created**, **updated** or **deleted** (colour-coded) |
 | Actor | Who made the change, or **System** for automated changes |
-| Time | Relative age, e.g. "3 days ago" |
-| Change details | The fields that changed, with before and after values |
+| Time | The date and time; hover for the relative age, e.g. "3 days ago" |
+| Record | The record's name |
+| Change details | The fields that changed, with before and after values — up to six, then *+N more fields* |
 
-An entry whose changes are all internal shows *"No significant changes"*, and a
-record with no entries yet shows *"No audit history."*
+A part with no entries shows *"No recorded history."* The audit log records
+changes as work happens, so a record loaded in its final state (an import, for
+instance) starts with none.
 
 ### Corrections
 
-Some changes are made with a **reason**, and those reasons show in a
-**Corrections (N)** block beside the history. Each line gives *field: old →
-new*, the reason in quotes, and who made the change and when. They come from:
+Some changes are made with a **reason**. Changing a work order's priority and
+releasing a lot's hold show in a **Decisions (N)** block; the rest show in a
+**Corrections (N)** block. Each line gives *field: old → new*, the reason in
+quotes, and who made the change and when. Corrections come from, among others:
 
 - adjusting a lot's quantity
 - cancelling or chasing an expected delivery
 - shipping, and voiding a shipment
 - moving a lot
-- changing a work order's priority
-- a receiving hold
+- correcting the lot a draw came from
+- taking a part out of a shared cycle
 - short-closing a work order
 
 The block appears on the **History** card of a Data Management record, in a
@@ -49,10 +54,10 @@ there are none. Reading it needs `view_recordedit`, which every staff role and
 the Auditor hold by default, and you must be able to open the record itself.
 There's no list of corrections across records.
 
-!!! note "Quality events are separate sections"
-    Quality reports and dispositions are not entries in the activity history —
-    they have their own **Quality Reports** and **Dispositions** sections on the
-    same page.
+!!! note "Quality events also have their own sections"
+    Quality reports and dispositions have their own **Quality Reports** and
+    **Dispositions** sections on the same page; their changes appear in the
+    activity history as well.
 
 !!! tip "For the whole story in one document, use the Traveler"
     Activity History is the record's **change log** — fields altered, by whom.
@@ -60,8 +65,8 @@ There's no list of corrections across records.
     one off the other means following several sections and links.
 
     The part's **Traveler** button produces that history as a single document:
-    *"this serial's as-built traveler — its work order's routing, filled with
-    who did each step, what was measured, the lots that went in."*
+    this serial's as-built traveler — its work order's routing, filled with who
+    did each step, what was measured, and the lots that went in.
 
     That is what to produce when an auditor asks to see everything about one
     serial, and what to attach when a customer asks what was done to their
@@ -69,51 +74,11 @@ There's no list of corrections across records.
 
 ## Event Types
 
-The history tracks all part-related events:
-
-### Step Transitions
-
-| Data | Description |
-|------|-------------|
-| From/To Step | Which steps |
-| User | Who performed |
-| Timestamp | When |
-| Duration | Time at previous step |
-| Equipment | Equipment used (if tracked) |
-
-### Measurements
-
-| Data | Description |
-|------|-------------|
-| Measurement Name | What was measured |
-| Value | Recorded value |
-| Pass/Fail | Result |
-| User | Who recorded |
-| Equipment | Measurement instrument |
-
-### Status Changes
-
-| Event | Description |
-|-------|-------------|
-| Quarantine | Part entered quarantine |
-| Released | Part released from quarantine |
-| Scrapped | Part dispositioned as scrap |
-| Complete | Part finished all steps |
-
-### Quality Events
-
-| Event | Description |
-|-------|-------------|
-| Quality Report Created | NCR linked to part |
-| Disposition Assigned | Decision recorded |
-| CAPA Linked | Part connected to CAPA |
-
-### Document Links
-
-| Event | Description |
-|-------|-------------|
-| Document Attached | File linked to part |
-| Certificate Generated | CoC or similar created |
+Each entry is a change to a record about the part — a step execution, a
+measurement, a material draw, a quality report, a disposition, an override, the
+part itself — and shows which fields changed. A status change reads as the
+part's **Part status** field changing; a step move as its **Step** field
+changing, from one step's name to the next.
 
 ## Exporting History
 
@@ -210,8 +175,8 @@ From part history, you can navigate to:
 
 | Permission | Allows |
 |------------|--------|
-| `view_parts` | View part history |
-| `view_auditlog` | View detailed audit data |
+| `view_parts` + `view_logentry` | View part history (every staff role) |
+| `view_auditlog` | Browse the tenant-wide audit trail (Tenant Admin, Document Controller, QA Manager, Auditor) |
 | `export_data` | Export history reports |
 
 ## Next Steps

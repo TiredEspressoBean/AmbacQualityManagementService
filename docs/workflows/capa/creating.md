@@ -60,7 +60,7 @@ already exists. All of these are optional:
 | **Part** | A representative part, if one part shows the problem |
 | **Step** | The process step where the issue occurred |
 | **Work Order** | The work order involved |
-| **Supplier** | The supplier the CAPA is raised against (a SCAR) |
+| **Supplier** | Set when the CAPA is raised as a SCAR from receiving; not on this form |
 | **Quality Reports** | One or more NCRs this CAPA answers |
 | **Dispositions** | Quarantine dispositions this CAPA answers |
 
@@ -88,10 +88,9 @@ down is indistinguishable from never having looked.
 Connect related items:
 
 ### Quality Reports
-1. In the **Related NCRs** section
-2. Click **Add**
-3. Search for quality reports
-4. Select to link
+1. On the create form, under **Linked Quality Reports**, search and select them
+
+The CAPA's **Overview** tab lists them under **Linked Quality Reports**.
 
 ### Parts
 1. In the **Part** field, pick a single representative part
@@ -99,12 +98,14 @@ Connect related items:
    quality reports and name the population in the problem statement
 
 ### Documents
-1. In the **Documents** section
-2. Upload or link evidence:
+1. On the **Documents** tab, upload evidence:
    - Photos
    - Test data
    - Customer communications
    - Procedures
+
+An existing document is linked to the CAPA from the document itself: **Edit** >
+**Link To**, choose **CAPA** and pick it.
 
 ## Assigning the Team
 
@@ -169,21 +170,24 @@ ready to commit to it, do not create it yet; there is nowhere to park a
 half-finished one.
 
 A **Critical** or **Major** CAPA additionally raises an approval request on
-creation, if your tenant has a CAPA_APPROVAL template configured. That approval
-does not block the investigation, and it is not the closure gate — see
+creation (its severity's template, else CAPA_APPROVAL). Until it is approved
+only containment can be worked; corrective and preventive tasks and the
+root-cause analysis wait. It is not the closure gate — see
 [Verification & Closure](verification.md).
 
 ## Notifications
 
-One notification ships with a new CAPA:
+These notifications ship with a new CAPA:
 
 | Recipient | Notification |
 |-----------|--------------|
 | The assignee | `capa.assigned` — in-app and email, on creation and on reassignment |
+| QA Managers (Major/Critical only) | Approval request for the CAPA's plan |
 
-There is nothing else. No new-CAPA alert goes to the QA Manager at creation; the
-QA Manager's CAPA rule is `capa.ready_for_verification`, which fires later, when
-the tasks and RCA are complete. Your administrator can add further rules.
+Nothing else for a Minor CAPA. Beyond that approval request, no new-CAPA alert
+goes to the QA Manager at creation; the QA Manager's CAPA rule is `capa.ready_for_verification`, which
+fires later, when the tasks and RCA are complete. Your administrator can add
+further rules.
 
 ## Permissions
 
