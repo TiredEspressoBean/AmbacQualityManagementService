@@ -71,7 +71,7 @@ For a new uqmes instance:
 4. Save
 
 Creating a user sends nothing. To let them in, use **Copy access link** on
-their row and send it to them — or **Resend invitation**, if this deployment
+their row and send it to them — or **Send invitation**, if this deployment
 sends mail. See [Adding Users](../admin/users/adding.md).
 
 ### Managing Groups
@@ -122,7 +122,7 @@ For each step:
 
 - Create new version for changes
 - Approve before it can be used
-- The previous version becomes **Deprecated**
+- The previous version stops being current and drops out of the process lists
 - In-flight work continues on the old version
 
 ## Master Data Setup
@@ -219,9 +219,9 @@ Configure:
 
 ### Notification Settings
 
-Under **Settings** > **Notifications**:
-- **Notification rules** — what event tells whom, through which channel
-- **Defaults** — what a new user receives until they change it
+Under **Settings**:
+- **Notifications** — what event tells whom, through which channel
+- **Notification Defaults** — what a new user receives until they change it
 
 See [Notification Rules](../admin/setup/notification-rules.md).
 
@@ -335,7 +335,7 @@ When you can't resolve:
 | Configure process | Data Management > Processes, then Process Flow |
 | View audit log | Admin > Audit Log |
 | System settings | Admin > Settings |
-| Put back someone suspended by mistake | User Management → their row menu → **Activate** |
+| Put back someone suspended by mistake | User Management → tick their row → **Activate** in the bar above the list |
 
 ## Related Documentation
 

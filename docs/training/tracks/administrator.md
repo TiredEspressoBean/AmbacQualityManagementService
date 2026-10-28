@@ -65,7 +65,9 @@ Management** and **Audit Log**.
 4. Leave **Company** and **Contact for** empty: those are for people at a customer
    or supplier. **Create User**.
 
-The new user is listed as *Pending invite* until they accept and set a password.
+The new user is listed as *Never signed in*. **Send invitation** or **Copy access
+link** on their row gives them a way in; from then until they accept, they're
+listed as *Pending invite*.
 
 ---
 
@@ -76,7 +78,9 @@ The new user is listed as *Pending invite* until they accept and set a password.
 Open the user > **Edit**. Untick the role that's wrong, tick the right one, and
 **Save Changes**: *User updated successfully!*
 
-Every change to a user is in that user's **History**, and in the audit log (module 5).
+Every change to a user is on their edit page: field changes under **History**, role
+changes and suspensions under **Access changes**. All of them are also in the audit
+log (module 5).
 
 ---
 
@@ -115,8 +119,9 @@ do.
 | Approve a routing, a CAPA or a document | The approver its template names |
 | Change a routing or a measurement | Engineering, under change control |
 
-Holding every permission makes you able to do these. It doesn't make them your
-decision.
+Your permissions let you write training records and change routings, which doesn't
+make those calls yours. Approvals you can't make at all unless an approval template
+names your group.
 
 ---
 

@@ -146,8 +146,8 @@ launchpad and the late-deliveries card.
 ### What every staff role can already do
 
 The table below only shows what **tells the roles apart**. Before reading it,
-know that every internal role — Operator and Shipping included — shares a common
-base and can already:
+know that every internal role except Auditor — Operator and Shipping included —
+shares a common base and can already:
 
 - view orders, work orders, parts and their histories
 - run steps, record measurements and complete work
@@ -162,7 +162,7 @@ base and can already:
     group rather than assuming the preset is already narrow. See
     [Permissions](../admin/users/permissions.md).
 
-**[Customer](customer.md) is the exception** and shares none of it: no tenant-wide
+**[Customer](customer.md) is the other exception** and shares none of it: no tenant-wide
 visibility, no write access to production, and row filtering that limits them to
 their own orders.
 
@@ -178,7 +178,7 @@ their own orders.
 | **Approve** a disposition | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
 | Initiate a CAPA | – | Yes | Yes | Yes | Yes | – | – | Yes | Yes | – | – | – | Yes |
 | Verify a CAPA's effectiveness | – | – | – | Yes | – | – | – | – | – | – | – | – | Yes |
-| **Approve** a CAPA † | – | – | – | Yes | Yes | – | – | – | – | – | – | – | Yes |
+| **Approve** a CAPA † | – | – | – | Yes | Yes | – | – | – | – | – | – | – | – |
 | Classify documents | – | – | – | Yes | – | – | – | – | – | – | Yes | – | Yes |
 | Author processes & routings | – | – | – | Yes | Yes | – | Yes | – | – | – | Yes | – | Yes |
 | Cancel a work order | – | – | – | – | Yes | – | – | – | – | – | – | – | Yes |
@@ -227,10 +227,10 @@ their own orders.
     separation that matters.
 
 !!! warning "Seeing an approval is not being assigned it"
-    Home's **Approvals in flight** lists what is moving through the system;
-    **Needs my approval** is the one that is yours. A Document Controller
-    routinely sees CAPA approvals in flight and can do nothing with them. Judge
-    by the second number, not the first.
+    Home's **Approvals in flight** lists what is moving through the system. The
+    badge on **Approvals > Overview** in the sidebar counts the ones assigned to
+    you. A Document Controller routinely sees CAPA approvals in flight and can do
+    nothing with them. Judge by the badge.
 
 **Auditor holds no write permission at all**, by design. An empty row across the
 Audit column is the feature.
