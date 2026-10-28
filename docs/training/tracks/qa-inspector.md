@@ -352,8 +352,8 @@ A core torn down as a parts source yields components, each graded at teardown.
 
 1. Its **Injector Body** is grade A. From its menu, **Accept to Inventory**: it goes
    to stock as a part with its own serial, ready for a rebuild.
-2. Its **Injector Nozzle Assembly** was graded scrap at teardown and is waiting for
-   someone to scrap it. From its menu, **Scrap Component**, with the reason.
+2. Its **Injector Nozzle Assembly** turned out unusable after teardown. From its
+   menu, **Scrap Component**, with the reason.
 
 A customer's own repair-and-return unit is never harvested: its components go back
 into that unit only.

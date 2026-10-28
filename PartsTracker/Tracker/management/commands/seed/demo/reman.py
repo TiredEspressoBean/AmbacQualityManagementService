@@ -207,10 +207,14 @@ DEMO_CORES = [
             },
             {
                 'component_name': 'Injector Nozzle Assembly',
-                # Graded scrap at teardown, not yet scrapped: the inspector scraps it.
-                'condition_grade': 'SCRAP',
-                'disposition': 'SCRAP',
-                'condition_notes': 'Exceeded maximum wear limits.',
+                # Graded C at teardown and found unusable afterwards: the inspector
+                # scraps it from its menu (Scrap Component). A component graded Scrap
+                # at teardown is scrapped in the same capture, so "graded scrap, not
+                # yet scrapped" is a state the real flow never makes.
+                'condition_grade': 'C',
+                'disposition': 'PENDING',
+                'condition_notes': 'Graded C at teardown. On a closer look the spray '
+                                   'holes are eroded past limits.',
                 'position': '',
                 'original_part_number': '',
                 'is_scrapped': False,
