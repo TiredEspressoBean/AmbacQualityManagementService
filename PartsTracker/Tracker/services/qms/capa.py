@@ -121,8 +121,8 @@ def transition_capa(capa: CAPA, new_status, user, notes: str | None = None) -> C
 def capa_plan_refusal(capa) -> str | None:
     """Why the CAPA's plan can't be worked yet, or None if it can.
 
-    A Major/Critical CAPA's plan is approved by a QA Manager or Production Manager
-    (user, 2026-10-20):
+    A Major/Critical CAPA's plan is approved by a QA Manager (user, 2026-10-20;
+    Production Manager removed 2026-10-28):
     while its approval is PENDING or was REJECTED, corrective and preventive work and
     the root-cause analysis wait. Containment never waits — stopping the immediate
     harm can't hang on a sign-off — so callers check this for everything else. A CAPA
@@ -132,8 +132,8 @@ def capa_plan_refusal(capa) -> str | None:
     if capa.approval_status == 'REJECTED':
         return (f"{capa.capa_number}'s plan was rejected; revise it and request approval "
                 f"again. Only containment can be worked until it's approved.")
-    return (f"{capa.capa_number}'s plan is awaiting approval (a QA Manager or Production "
-            f"Manager). Only containment can be worked until then.")
+    return (f"{capa.capa_number}'s plan is awaiting approval (a QA Manager). Only "
+            f"containment can be worked until then.")
 
 
 def self_verification_switch_refusal(user, capa, new_value) -> str | None:

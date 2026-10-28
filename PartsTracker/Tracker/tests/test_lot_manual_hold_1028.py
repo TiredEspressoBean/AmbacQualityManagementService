@@ -57,6 +57,12 @@ class ManualLotHoldTests(TenantTestCase):
         self.assertEqual((self.lot.status, self.lot.hold_reason), ("ACCEPTED", ""))
         self.assertIn(self.lot, _usable_lots(('MATERIAL', self.seal.id), self.tenant_a))
 
+    def test_a_lot_of_cores_is_not_held_as_a_lot(self):
+        MaterialLot.objects.filter(pk=self.lot.pk).update(holds_cores=True)
+        self.lot.refresh_from_db()
+        with self.assertRaisesMessage(ValueError, "holds cores"):
+            receiving_inspection.place_manual_hold(self.lot, self.user_a, "suspect")
+
     def test_release_needs_approve_disposition(self):
         r = self._post(['view_materiallot', 'hold_materiallot', 'change_materiallot'],
                        uuid.uuid4(), 'release-hold', {"reason": "x"})

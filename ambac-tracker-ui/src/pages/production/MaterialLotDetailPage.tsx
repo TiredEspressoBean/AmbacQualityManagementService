@@ -125,7 +125,9 @@ export function MaterialLotDetailPage() {
                         </Button>
                     )}
                     {/* A suspect lot is held by hand; it's released through Review hold. */}
-                    {hasPerm("hold_materiallot")
+                    {/* Not on a lot of cores: its units are held one by one, and it has
+                        no Review hold to release a lot-level hold from. */}
+                    {hasPerm("hold_materiallot") && !l.holds_cores
                         && ["ACCEPTED", "IN_USE", "RECEIVED", "AWAITING_INSPECTION", "QUARANTINE"].includes(l.status ?? "")
                         && !(l.hold_reasons ?? []).includes("MANUAL") && (
                         <ReasonActionButton

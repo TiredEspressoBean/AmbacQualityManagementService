@@ -420,6 +420,9 @@ def place_manual_hold(lot, user, reason: str):
     reason = (reason or "").strip()
     if not reason:
         raise ValueError("Say why the lot is being held")
+    if lot.holds_cores:
+        # A lot of cores is held unit by unit; there is no lot-level release for it.
+        raise ValueError(f"Lot {lot.lot_number} holds cores — hold the units, not the lot")
     if lot.status not in _MANUAL_HOLD_FROM:
         raise ValueError(f"Lot {lot.lot_number} is {lot.get_status_display().lower()}; it can't be held")
     if MANUAL_HOLD in lot_holds.holds(lot):
