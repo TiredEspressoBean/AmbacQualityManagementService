@@ -1352,6 +1352,7 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
         )  # Note: Embedding is automatically triggered by the post_save signal in signals.py
 
     def perform_update(self, serializer):
+        from rest_framework.exceptions import PermissionDenied
         instance = self.get_object()
         old_file = instance.file
         old_ai_readable = instance.ai_readable
@@ -1383,6 +1384,12 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
                         "status": f"Cannot release document of type '{instance.document_type.name}' without approval. "
                                   "Submit for approval first using the submit-for-approval endpoint."
                     })
+
+        # Choosing the level at upload is anyone's; changing it afterwards is classify_documents.
+        new_classification = serializer.validated_data.get('classification', instance.classification)
+        if (new_classification != instance.classification
+                and not self.request.user.has_tenant_perm('classify_documents')):
+            raise PermissionDenied("Changing a document's classification needs the classify documents permission.")
 
         doc = serializer.save()
 
@@ -1628,6 +1635,21 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # A revision would strand the pending approval on the version it replaces.
+        if document.status == 'UNDER_REVIEW':
+            return Response(
+                {"detail": "This document is awaiting approval. Withdraw the request, or wait "
+                           "for it to be decided, before revising it."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_file = request.FILES.get('file')
+        if new_file:
+            try:
+                DocumentsSerializer().validate_file(new_file)
+            except serializers.ValidationError as e:
+                return Response({"file": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             # Build field updates for new version
             field_updates = {
@@ -1639,7 +1661,6 @@ class DocumentViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, vie
             }
 
             # Handle new file if provided
-            new_file = request.FILES.get('file')
             if new_file:
                 field_updates['file'] = new_file
                 field_updates['file_name'] = request.data.get('file_name', new_file.name)

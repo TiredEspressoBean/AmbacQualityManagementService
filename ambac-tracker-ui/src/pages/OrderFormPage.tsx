@@ -46,6 +46,11 @@ import { matchKey } from "@/lib/query-filters";
 import { parseDateOnly } from "@/lib/date-only";
 
 const ORDER_STATUS = schemas.OrdersStatusEnum.options;
+// The model's labels, so the select doesn't show raw codes like IN_PROGRESS.
+const ORDER_STATUS_LABEL: Record<(typeof ORDER_STATUS)[number], string> = {
+    RFI: "RFI", PENDING: "Pending", IN_PROGRESS: "In progress",
+    COMPLETED: "Completed", ON_HOLD: "On hold", CANCELLED: "Cancelled",
+};
 // The model's default. Not ORDER_STATUS[0] ("RFI"): an edit form showed that for every
 // order before its data loaded, and a save from that state would have written it.
 const DEFAULT_ORDER_STATUS = "PENDING" as const;
@@ -187,7 +192,7 @@ export default function OrderFormPage() {
             createOrder.mutate(submitData, {
                 onSuccess: (data) => {
                     toast.success("Order created successfully!");
-                    navigate({ to: `/orders/${data.id}/edit` });
+                    navigate({ to: "/editor/orders/$id/edit", params: { id: String(data.id) } });
                 },
                 onError: (err) => {
                     console.error("Creation failed:", err);
@@ -356,7 +361,7 @@ export default function OrderFormPage() {
                                     <SelectContent>
                                         {ORDER_STATUS.map((status) => (
                                             <SelectItem key={status} value={status}>
-                                                {status}
+                                                {ORDER_STATUS_LABEL[status]}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

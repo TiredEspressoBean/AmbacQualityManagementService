@@ -71,6 +71,7 @@ def create_makeup_parts(work_order, user=None) -> dict:
         new_parts = [
             Parts(
                 tenant=work_order.tenant, work_order=work_order, part_type=part_type,
+                order_id=work_order.related_order_id,
                 step=first_ps.step, is_makeup=True, part_status=PartsStatus.PENDING,
                 ERP_id=f"{work_order.ERP_id}-MU{existing_mu + i + 1:04d}",
             )

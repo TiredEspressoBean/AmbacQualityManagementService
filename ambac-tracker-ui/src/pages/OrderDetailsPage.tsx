@@ -375,7 +375,7 @@ export function OrderDetailsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate({ to: `/orders/${orderNumber}/edit` })}
+                            onClick={() => navigate({ to: "/editor/orders/$id/edit", params: { id: orderNumber } })}
                         >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit

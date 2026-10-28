@@ -2,8 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, AlertTriangle, Lock, CheckCircle, Clock, PenLine } from "lucide-react";
-import { useFpiCheckStatus, useFpiGetOrCreate, useFpiPass, useFpiFail, useFpiVoidPass, useFpiWaive } from "@/hooks/useFpiRecords";
+import { useFpiCheckStatus, useFpiGetOrCreate, useFpiVoidPass } from "@/hooks/useFpiRecords";
 import { useState } from "react";
+import { FpiSignOffDialog, type FpiVerdict } from "@/components/fpi-sign-off-dialog";
 import {
     Dialog,
     DialogContent,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { FpiReadings } from "@/components/fpi/FpiReadings";
 
 type FpiStatusBannerProps = {
     workOrderId: string;
@@ -46,19 +46,16 @@ export function FpiStatusBanner({
     onStatusChange,
     compact = false,
 }: FpiStatusBannerProps) {
-    const [signOffOpen, setSignOffOpen] = useState(false);
-    const [failOpen, setFailOpen] = useState(false);
-    const [waiveOpen, setWaiveOpen] = useState(false);
-    const [notes, setNotes] = useState("");
-    const [waiveReason, setWaiveReason] = useState("");
+    // Pass, fail and waive all go through the shared buy-off dialog, which carries
+    // the step's password assurance, the co-sign switch when you signed the first
+    // piece yourself, and the required fail reason. This banner's own dialogs had
+    // none of the three.
+    const [verdict, setVerdict] = useState<FpiVerdict | null>(null);
     const [voidOpen, setVoidOpen] = useState(false);
     const [voidReason, setVoidReason] = useState("");
 
     const { data: fpiStatus, isLoading, refetch } = useFpiCheckStatus(workOrderId, stepId);
     const getOrCreateMutation = useFpiGetOrCreate();
-    const passMutation = useFpiPass();
-    const failMutation = useFpiFail();
-    const waiveMutation = useFpiWaive();
     const voidMutation = useFpiVoidPass();
 
     const afterChange = () => {
@@ -142,45 +139,6 @@ export function FpiStatusBanner({
         }
     };
 
-    const handleSignOff = async () => {
-        if (!pendingId) return;
-        try {
-            await passMutation.mutateAsync({ id: pendingId, notes });
-            toast.success("FPI signed off — parts can now proceed");
-            setSignOffOpen(false);
-            setNotes("");
-            afterChange();
-        } catch (e: unknown) {
-            toast.error(apiErrorMessage(e) ?? "Failed to sign off FPI");
-        }
-    };
-
-    const handleFail = async () => {
-        if (!pendingId) return;
-        try {
-            await failMutation.mutateAsync({ id: pendingId, notes });
-            toast.error("FPI failed — correct the setup and re-run the first piece");
-            setFailOpen(false);
-            setNotes("");
-            afterChange();
-        } catch (e: unknown) {
-            toast.error(apiErrorMessage(e) ?? "Failed to record FPI failure");
-        }
-    };
-
-    const handleWaive = async () => {
-        if (!pendingId || waiveReason.length < 10) return;
-        try {
-            await waiveMutation.mutateAsync({ id: pendingId, reason: waiveReason });
-            toast.success("FPI requirement waived");
-            setWaiveOpen(false);
-            setWaiveReason("");
-            afterChange();
-        } catch (e: unknown) {
-            toast.error(apiErrorMessage(e) ?? "Failed to waive FPI");
-        }
-    };
-
     const isPending = fpiStatus.has_pending;
     const ready = fpiStatus.first_piece_ready;
     const canSignOff = fpiStatus.can_sign_off;
@@ -212,17 +170,17 @@ export function FpiStatusBanner({
             <div className="flex items-center gap-2">
                 <Button
                     size="sm"
-                    onClick={() => setSignOffOpen(true)}
+                    onClick={() => setVerdict("PASS")}
                     className="bg-green-600 hover:bg-green-700"
                 >
                     <PenLine className="h-4 w-4 mr-1" />
                     Sign off &amp; pass
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => setFailOpen(true)}>
+                <Button size="sm" variant="destructive" onClick={() => setVerdict("FAIL")}>
                     <AlertTriangle className="h-4 w-4 mr-1" />
                     Fail
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setWaiveOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => setVerdict("WAIVE")}>
                     Waive
                 </Button>
             </div>
@@ -251,102 +209,18 @@ export function FpiStatusBanner({
                 </div>
             </div>
 
-            {/* Sign-off (pass) — the buy-off attestation */}
-            <Dialog open={signOffOpen} onOpenChange={setSignOffOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Sign off First Piece Inspection</DialogTitle>
-                        <DialogDescription>
-                            By signing off you attest that the setup is correct and the first piece
-                            {partLabel ? ` (${partLabel})` : ""} conforms. This is recorded against
-                            your name and releases the run.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {pendingId && <FpiReadings fpiId={pendingId} />}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Notes (optional)</label>
-                        <Textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Inspection notes / gauges used / observations…"
-                            rows={3}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setSignOffOpen(false)}>Cancel</Button>
-                        <Button
-                            onClick={handleSignOff}
-                            disabled={passMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            Confirm sign-off
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Fail — records the failure reason; first piece must be re-run */}
-            <Dialog open={failOpen} onOpenChange={setFailOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Fail First Piece Inspection</DialogTitle>
-                        <DialogDescription>
-                            The setup did not pass. The run stays held; correct the setup and re-run
-                            a new first piece for re-inspection.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {pendingId && <FpiReadings fpiId={pendingId} />}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Reason / findings</label>
-                        <Textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="What was out of spec / what needs correcting…"
-                            rows={3}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setFailOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleFail} disabled={failMutation.isPending}>
-                            Record failure
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Waive — authorized skip */}
-            <Dialog open={waiveOpen} onOpenChange={setWaiveOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Waive FPI Requirement</DialogTitle>
-                        <DialogDescription>
-                            Waiving lets parts proceed without first-piece sign-off. Use only with
-                            proper authorization.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {pendingId && <FpiReadings fpiId={pendingId} />}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Reason for waiving (min 10 characters)</label>
-                        <Textarea
-                            value={waiveReason}
-                            onChange={(e) => setWaiveReason(e.target.value)}
-                            placeholder="Justification for waiving FPI…"
-                            rows={3}
-                        />
-                        {waiveReason.length > 0 && waiveReason.length < 10 && (
-                            <p className="text-xs text-red-500">
-                                {10 - waiveReason.length} more characters required
-                            </p>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setWaiveOpen(false)}>Cancel</Button>
-                        <Button onClick={handleWaive} disabled={waiveReason.length < 10 || waiveMutation.isPending}>
-                            Waive FPI
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {verdict && pendingId && (
+                <FpiSignOffDialog
+                    key={verdict}
+                    open
+                    onOpenChange={(v) => !v && setVerdict(null)}
+                    fpiId={pendingId}
+                    canSignOff={canSignOff}
+                    partLabel={partLabel ?? null}
+                    verdict={verdict}
+                    onSigned={() => { setVerdict(null); afterChange(); }}
+                />
+            )}
         </>
     );
 }

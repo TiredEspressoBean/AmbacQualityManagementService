@@ -33,7 +33,9 @@ export function DocumentDetailPage() {
     const { has: hasPerm } = usePermissionSet()
     // Can create revision if document is current version — and the reader may write
     // documents (a view-only auditor saw both buttons, and the server refused them).
+    // Not while it awaits approval: the server refuses, as a revision would strand the request.
     const canCreateRevision = document?.is_current_version !== false && hasPerm("add_documents")
+        && document?.status !== "UNDER_REVIEW"
     const canEdit = hasPerm("change_documents")
 
     if (isLoading) {

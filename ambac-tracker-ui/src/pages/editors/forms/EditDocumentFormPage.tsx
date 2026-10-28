@@ -49,6 +49,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useUpdateDocument } from "@/hooks/useUpdateDocument";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { useRetrieveDocumentTypes } from "@/hooks/useRetrieveDocumentTypes";
 import { NewDocumentTypeDialog } from "@/components/documents/NewDocumentTypeDialog";
@@ -157,6 +158,10 @@ export default function DocumentFormPage() {
     const { data: documentTypesData } = useRetrieveDocumentTypes({ search: documentTypeSearch });
     const createDocument = useCreateDocument();
     const updateDocument = useUpdateDocument();
+
+    // The level is chosen freely at upload; changing it afterwards is classify_documents.
+    const { has: hasPerm } = usePermissionSet();
+    const classificationLocked = mode === "edit" && !hasPerm("classify_documents");
 
     // Awaiting approval: nothing can change until the request is withdrawn or decided.
     const isUnderReview = mode === "edit" && document?.status === schemas.DocumentsStatusEnum.enum.UNDER_REVIEW;
@@ -521,6 +526,7 @@ export default function DocumentFormPage() {
                                     // Ignore Radix's "" for a value it can't match yet, so the
                                     // stored classification is never blanked behind the user.
                                     onValueChange={(v) => { if (v !== "") field.onChange(v); }}
+                                    disabled={classificationLocked}
                                 >
                                     <FormControl>
                                         <SelectTrigger className="w-full">
@@ -536,7 +542,9 @@ export default function DocumentFormPage() {
                                     </SelectContent>
                                 </Select>
                                 <FormDescription>
-                                    Security level determines who can access this document
+                                    {classificationLocked
+                                        ? "Changing the level of an existing document needs the classify documents permission"
+                                        : "Security level determines who can access this document"}
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

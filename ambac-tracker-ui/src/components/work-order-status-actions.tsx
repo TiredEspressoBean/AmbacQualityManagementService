@@ -352,7 +352,8 @@ export function WorkOrderStatusActions({
                             <AlertDialogTitle>Cancel Work Order?</AlertDialogTitle>
                             <AlertDialogDescription>
                                 This action will cancel the work order. This cannot be undone.
-                                All associated parts will need to be reassigned to a new work order.
+                                It drops out of scheduling; its parts stay on it. To carry unfinished
+                                parts to other work, short-close it instead.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

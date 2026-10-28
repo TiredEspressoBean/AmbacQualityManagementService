@@ -26,7 +26,7 @@ import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { parseDateOnly } from "@/lib/date-only";
 
 const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
-    1: { label: "Critical", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+    1: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
     2: { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
     3: { label: "Normal", className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
     4: { label: "Low", className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },

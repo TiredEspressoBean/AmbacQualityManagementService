@@ -91,7 +91,10 @@ export function FpiSignOffDialog({
     const { data: record } = useQuery({ ...fpiRecordOptions(fpiId), enabled: open });
     const selfSigned = !!me && (record?.first_piece_signer_ids ?? []).includes(me.pk);
     const canSignOff = canSignOffProp && !selfSigned;
-    const needsOwnPassword = canSignOff && assurance === "PASSWORD" && verdict !== "FAIL";
+    // A caller that doesn't know the step's assurance (the runtime banner) gets it
+    // from the record, so no surface can sign around a password-assured step.
+    const stepAssurance = assurance ?? record?.step_info?.qa_signoff_assurance;
+    const needsOwnPassword = canSignOff && stepAssurance === "PASSWORD" && verdict !== "FAIL";
     const [notes, setNotes] = useState("");
     const [ownPassword, setOwnPassword] = useState("");
     const [cosignEmail, setCosignEmail] = useState("");

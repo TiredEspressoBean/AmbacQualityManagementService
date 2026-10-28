@@ -681,7 +681,18 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         'cancel_expected': ['change_materiallot'],
         'move': ['change_materiallot'],
         'chase': ['change_materiallot'],
+        # Receiving inspection (purchased material, Flow A).
+        'accept': ['change_materiallot'],
+        'reject': ['change_materiallot'],
+        'extend_shelf_life': ['change_materiallot'],
+        # raise_scar creates a real CAPA row (SUPPLIER type) via
+        # open_scar_for_lot. Without this it would fall through to the CRUD
+        # gate (POST -> add_materiallot) and become a side door around the
+        # initiate_capa gate on CAPAViewSet.create.
+        'raise_scar': ['initiate_capa'],
     }
+    # One dict for the whole class: a second `action_permissions` further down the
+    # body silently replaced this one, and every gate above went dead.
     # A move changes an existing lot (or splits one), a chase notes one — not creates.
     crud_exempt_actions = {'move', 'chase'}
 
@@ -1080,17 +1091,7 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)
 
     # ===== RECEIVING INSPECTION (purchased material, Flow A) =====
-
-    action_permissions = {
-        'accept': ['change_materiallot'],
-        'reject': ['change_materiallot'],
-        'extend_shelf_life': ['change_materiallot'],
-        # raise_scar creates a real CAPA row (SUPPLIER type) via
-        # open_scar_for_lot. Without this it would fall through to the CRUD
-        # gate (POST -> add_materiallot) and become a side door around the
-        # initiate_capa gate on CAPAViewSet.create.
-        'raise_scar': ['initiate_capa'],
-    }
+    # Its action gates are in action_permissions at the top of the class.
 
     def _qr_response(self, report):
         return Response(QualityReportsSerializer(report, context={'request': self.request}).data)

@@ -1094,8 +1094,9 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     def update(self, instance, validated_data):
         """Priority goes through change_priority, which records the reason; the rest
         saves as before."""
-        from Tracker.services.mes.work_order import change_priority
+        from Tracker.services.mes.work_order import change_priority, parts_follow_order
         reason = validated_data.pop('priority_reason', '')
+        old_order_id = instance.related_order_id
         new_priority = validated_data.pop('priority', None)
         if new_priority is not None and new_priority != instance.priority:
             request = self.context.get('request')
@@ -1104,7 +1105,9 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
                                 user=getattr(request, 'user', None))
             except ValueError as e:
                 raise serializers.ValidationError({'priority': str(e)})
-        return super().update(instance, validated_data)
+        work_order = super().update(instance, validated_data)
+        parts_follow_order(work_order, old_order_id)
+        return work_order
 
     class Meta:
         model = WorkOrder

@@ -72,6 +72,9 @@ def create_parts_batch(
             parts_to_create.append(Parts(
                 tenant=work_order.tenant,
                 work_order=work_order,
+                # The order page, its line items and the Tracker's progress read the
+                # parts through Parts.order; left empty, a real order showed none.
+                order_id=work_order.related_order_id,
                 part_type=part_type,
                 step=step,
                 ERP_id=erp_id,
@@ -92,6 +95,18 @@ def create_parts_batch(
     work_order._bulk_evaluate_sampling(fresh_parts)
 
     return fresh_parts
+
+
+def parts_follow_order(work_order, old_order_id) -> int:
+    """After `work_order` moved from order `old_order_id` to its current one, carry
+    its parts across: those on the old order, or on none. A part someone put on a
+    different order on purpose stays there. Returns how many moved."""
+    from django.db.models import Q
+    if work_order.related_order_id == old_order_id:
+        return 0
+    return (Parts.objects.filter(work_order=work_order)
+            .filter(Q(order_id=old_order_id) | Q(order__isnull=True))
+            .update(order_id=work_order.related_order_id))
 
 
 def start_refusal(work_order) -> str | None:

@@ -176,9 +176,9 @@ class OrderSeeder(BaseSeeder):
                 parts = work_order.create_parts_batch(order_part_type, initial_step, work_order_details['quantity'])
 
                 if created:
-                    # Only do setup for newly created work orders
-                    # Set order reference
-                    Parts.objects.filter(id__in=[p.id for p in parts]).update(order=work_order.related_order)
+                    # Only do setup for newly created work orders.
+                    # create_parts_batch puts the parts on the work order's order itself,
+                    # as the product does; the seed no longer sets it behind its back.
 
                     # Backdate parts
                     parts_timestamp = wo_timestamp + timedelta(minutes=random.randint(10, 60))

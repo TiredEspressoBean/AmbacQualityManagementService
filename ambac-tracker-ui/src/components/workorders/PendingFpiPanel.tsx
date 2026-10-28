@@ -141,7 +141,9 @@ export function PendingFpiPanel({ workOrderId, onActivity }: {
 
                                 {row.acknowledged_at ? (
                                     <Badge variant="outline">Seen by {ackName}</Badge>
-                                ) : (
+                                ) : canSignOff && (
+                                    // Acknowledging is the inspector's word that they're coming;
+                                    // the server takes it only from someone who can sign off.
                                     <Button
                                         size="sm"
                                         variant="outline"

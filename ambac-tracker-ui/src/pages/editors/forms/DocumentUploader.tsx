@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 
 import { useCreateDocument } from "@/hooks/useCreateDocument";
+import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { schemas } from "@/lib/api/generated.ts";
 
 const formSchema = z.object({
@@ -39,6 +40,7 @@ export function DocumentUploader({
                                      compact = false,
                                  }: {
     objectId: string | number;
+    // A content type id, or a Tracker model name ("orders", "workorder") resolved to one.
     contentType: string;
     documentTypeCode?: string; // e.g., "CUST_APPR" for customer approval evidence
     title?: string;
@@ -55,7 +57,14 @@ export function DocumentUploader({
 
     const { mutate: uploadDocument, isPending, isSuccess } = useCreateDocument();
 
+    const isModelName = !/^\d+$/.test(contentType);
+    const { data: contentTypes } = useRetrieveContentTypes({}, undefined, { enabled: isModelName });
+    const contentTypeId = isModelName
+        ? contentTypes?.find((ct) => ct.app_label === "Tracker" && ct.model === contentType)?.id
+        : Number(contentType);
+
     function onSubmit(values: FormValues) {
+        if (contentTypeId === undefined) return;
         // A plain object, not a hand-rolled FormData: api_Documents_create is
         // generated with requestFormat "form-data", so the client builds the
         // multipart body itself and validates the object first. A FormData
@@ -67,7 +76,7 @@ export function DocumentUploader({
             file_name: values.file.name,
             classification: values.classification,
             object_id: String(objectId),
-            content_type: Number(contentType),
+            content_type: contentTypeId,
             ...(documentTypeCode ? { document_type_code: documentTypeCode } : {}),
         }, {
             onSuccess: () => {
@@ -126,7 +135,7 @@ export function DocumentUploader({
                         )}
                     />
 
-                    <Button type="submit" disabled={isPending}>
+                    <Button type="submit" disabled={isPending || contentTypeId === undefined}>
                         {isPending ? "Uploading..." : "Upload"}
                     </Button>
                 </form>
