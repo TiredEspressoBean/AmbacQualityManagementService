@@ -376,7 +376,7 @@ def _classify(wo, open_parts, open_units, covered, schedule, horizon_end_date,
     if wo.id in short_by_wo:
         return ('material_short',
                 "; ".join(short_by_wo[wo.id]),
-                "Raise a purchase order, or receive the outstanding stock.")
+                "Order it in your purchasing system, or receive the outstanding stock.")
 
     if schedule is None:
         return ('not_solved',
