@@ -89,7 +89,7 @@ order is held and the resource is named.
     Internally each verdict carries its blocking resource and the hours that
     order would add. On screen that arrives as the **Load if released** panel
     for your current selection — which names the policy and the ceiling inline,
-    as *"Workload control @ 85%"*, and lists the four most-loaded resources —
+    as *"Workload control (balance every resource) @ 100%"*, and lists the four most-loaded resources —
     not as a per-row explanation. The blockers and warnings on a row are a
     separate readiness check, not the workload verdict.
 
@@ -147,7 +147,7 @@ release to the constraint wins instead.
     If no work centre is flagged as a constraint it falls back to gating
     everything, since a policy gating on nothing would release the whole pool.
     The settings dialog warns you about this when you pick the policy: mark the
-    governing station as the bottleneck under **Admin → Work Centers**, or it
+    governing station as the bottleneck under **Data Management → Work Centers**, or it
     behaves identically to balancing.
 
 ## Two traps the gate is built to avoid

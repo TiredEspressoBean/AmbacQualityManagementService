@@ -117,9 +117,9 @@ puts it back.
    it lands.*
 2. When it lands, the header reads *DRAFT (what-if)* and **What-if draft — review vs
    live** compares the two: makespan, lateness and how many tasks it moves.
-3. Read the note under it: *Differences this small are within the solvers' gap —
-   they may not be real.* A draft that's only slightly better hasn't proved
-   anything.
+3. If the two differ by less than the solvers' gap, a note under it says so:
+   *Differences this small are within the solvers' gap — they may not be real.* A
+   draft that's only slightly better hasn't proved anything.
 4. **Commit draft** makes it the live plan; **Discard** drops it (*Draft
    discarded*). With nothing changed, discard it.
 

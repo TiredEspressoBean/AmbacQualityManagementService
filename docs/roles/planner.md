@@ -15,9 +15,9 @@ admitted, and where it runs** — the planning and scheduling side of uqmes.
 
     !!! warning "They are not identical, and the difference bites"
         A Planner holds the **calendars** (shifts, overtime, holidays, PTO),
-        **changeovers**, **rostering**, the solver settings and the board itself
-        — including removing a slot and deleting a shift, which the manager
-        cannot.
+        **changeovers**, **rostering**, the solver settings and the board itself,
+        including removing a slot and deleting a shift. The manager holds all of
+        these too.
 
         A Planner does **not** hold two of the solver's own inputs: **step
         timings** (cycle times) and **machine eligibility**. Those sit with
@@ -189,7 +189,7 @@ separately. **Unpin** is what a pinned-successor refusal is asking for.
 
 | Symptom | Look at | Yours to fix? |
 |---------|---------|---------------|
-| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **No** — the step's own duration is [Engineering](engineering.md)'s |
+| Dates look too comfortable | [Step Timings](../workflows/scheduling/setup.md#step-timings) — an operation with no timing of any kind contributes no load | **No** — Production Manager or Tenant Admin; a step's own expected duration is [Engineering](engineering.md)'s |
 | Work lands on the wrong machine | [Machine Eligibility](../workflows/scheduling/setup.md#machine-eligibility) | **No** — Production Manager or Tenant Admin |
 | The solver interleaves similar jobs | [Changeovers](../workflows/scheduling/setup.md#changeovers) | Yes |
 | Nobody can run a gated step | The training matrix — a binding resource can be a certification | Rostering yes; the certification itself no |

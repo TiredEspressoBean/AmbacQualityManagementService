@@ -135,7 +135,7 @@ material cell shows its **part number** and **preferred supplier** under the
 name. Tick rows and **Add expected deliveries (N)** opens *Add expected
 deliveries*.
 
-You give one **PO number** for the whole set, then per row a **quantity**
+You can give one **PO number** for the whole set (optional), then per row a **quantity**
 (pre-filled with the shortage), a **promised date** (pre-filled one lead time
 from today), a **supplier** (pre-filled with the preferred one) and a **PO
 line**. It records every row or none.
@@ -149,7 +149,7 @@ incoming supply.
     The buying itself happens in the system that owns it — you are recording the
     answer, not making it.
 
-    Which is why it asks for a PO number: you are telling UQMES an order already
+    Which is why it offers a PO number: you are telling UQMES an order already
     exists. See [Loading what is on
     order](../supply/overview.md#loading-what-is-on-order).
 
