@@ -55,11 +55,19 @@ log as an access entry — who, when, from which address, and a fingerprint of
 the wording they saw. A sign-in with Microsoft needs the box ticked on the page
 but is not recorded as an acknowledgement.
 
-!!! note "The page has to know which organization it belongs to"
-    The notice shows where the login page is your organization's own — a
-    dedicated installation, or your organization's own address on a shared
-    one. On a shared address that serves several organizations, no notice
-    applies.
+!!! note "On a shared address, the notice comes after your password"
+    Where the login page is your organization's own — a dedicated installation,
+    or your organization's own address — the notice shows before you sign in.
+
+    On an address several organizations share, the page cannot know whose
+    notice to show until it knows who you are. It shows nothing at first.
+    After a correct email and password, if your organization requires the
+    notice, you are not signed in yet: the notice and **I acknowledge this
+    notice** appear, with *Read and acknowledge the notice, then sign in
+    again.* Tick it and click **Login** again. A wrong password shows only
+    *Invalid email or password*, never a notice.
+
+    **Login with Microsoft** on a shared address shows no notice.
 
 ## First-Time Setup
 
