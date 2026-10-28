@@ -17,6 +17,16 @@ DoD cybersecurity certification requirements for defense contractors.
     [Organisation and hosting responsibilities](#organisation-and-hosting-responsibilities),
     and not described further here.
 
+!!! important "Which installation this page describes"
+    A CMMC facility runs uqmes **on premises**, installed with Docker Compose
+    and set to dedicated mode (`DEPLOYMENT_MODE=dedicated`), so the whole
+    installation is one organization's. Everything below describes that
+    installation.
+
+    The shared hosted service serves several organizations and is not a
+    FedRAMP environment, so it is not for CUI. A cloud deployment for CMMC
+    would need a FedRAMP-authorized one.
+
 ## Overview
 
 CMMC is the Department of Defense's framework for assessing and certifying
@@ -70,7 +80,7 @@ physical or infrastructure domains.
 | AC.L2-3.1.5 | Least privilege | ✅ | Presets grant per role. The Customer role sees only orders it is the customer or a viewer of, and the work, parts, documents and quality reports on them; it can also answer approval requests sent to it and invite viewers to its own orders |
 | AC.L2-3.1.7 | Privileged functions | ✅ | Group membership and group permissions can be changed only by holders of `change_tenantgroup` (Tenant Admin), so no other user can grant themselves a permission. Every such change is in the audit log with who made it |
 | AC.L2-3.1.8 | Unsuccessful logon attempts | ⚠️ | Sign-in is rate-limited per client IP (`THROTTLE_LOGIN`, default 10 a minute). There is no per-account lockout; with SSO, cite your identity provider's lockout |
-| AC.L2-3.1.9 | Privacy and security notices | ✅ | The tenant sets a system-use notice for the login page (**Settings** > **Organization** > **Sign-in notice**) and can require it acknowledged. Password sign-in without the acknowledgement is refused by the server, and each acknowledgement is an access entry with the user, trusted IP and a hash of the wording. The wording is the shop's; none ships. A Microsoft sign-in is gated on the page only, and not recorded. It shows where the login page resolves the organization — a dedicated deployment or the organization's subdomain |
+| AC.L2-3.1.9 | Privacy and security notices | ✅ | The tenant sets a system-use notice for the login page (**Settings** > **Organization** > **Sign-in notice**) and can require it acknowledged. Password sign-in without the acknowledgement is refused by the server, and each acknowledgement is an access entry with the user, trusted IP and a hash of the wording. The wording is the shop's; none ships. A Microsoft sign-in is gated on the page only, and not recorded. On a dedicated installation the notice is always the organization's |
 | AC.L2-3.1.10 / 3.1.11 | Session lock and termination | ⚠️ | Sessions expire after `SESSION_COOKIE_AGE` of inactivity and can be made to end on browser close; API tokens expire after `API_TOKEN_TTL_SECONDS` (default one hour). There is no screen lock that hides the page — see the session settings below |
 | AC.L2-3.1.22 | Public posting control | ✅ | Classification gates what a Customer-role user can retrieve |
 
