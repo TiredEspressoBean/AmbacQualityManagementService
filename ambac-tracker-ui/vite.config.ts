@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
     // eslint-disable-next-line no-restricted-syntax -- dev-only default; .env is the real source in production
     const LANGGRAPH_API_TARGET = env.VITE_LANGGRAPH_API_URL || "http://127.0.0.1:2025"
 
+    // eslint-disable-next-line no-restricted-syntax -- dev-only default
+    const DOCS_TARGET = env.VITE_DOCS_TARGET || "http://127.0.0.1:8001"
+
     if (!API_TARGET) {
         throw new Error('VITE_API_TARGET is not defined in .env or process.env');
     }
@@ -76,6 +79,18 @@ export default defineConfig(({ mode }) => {
                     changeOrigin: true,
                     secure: false,
                     agent: keepAliveAgent,
+                },
+                // Help & Docs: `mkdocs serve` on 8001 (see CLAUDE.md commands). Prod and
+                // the local Caddy stack strip /docs the same way. /livereload is the
+                // reload script's own path, requested from the site root.
+                '/docs': {
+                    target: DOCS_TARGET,
+                    changeOrigin: true,
+                    rewrite: (p) => p.replace(/^\/docs/, '') || '/',
+                },
+                '/livereload': {
+                    target: DOCS_TARGET,
+                    changeOrigin: true,
                 },
                 '/auth': {
                     target: API_TARGET,

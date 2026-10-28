@@ -2,8 +2,9 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /docs
 
-# Install MkDocs and extensions
-RUN pip install --no-cache-dir mkdocs pymdown-extensions
+# Install MkDocs and extensions — the same pins as local `mkdocs serve`
+COPY docs/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy docs source
 COPY mkdocs.yml ./
