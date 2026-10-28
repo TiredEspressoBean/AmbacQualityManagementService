@@ -9,9 +9,11 @@
 
 Training exercises require realistic data to be meaningful. This guide explains how to populate your training environment with demo data that matches the examples used throughout the training guides.
 
-## Option 1: Use Demo Mode (Recommended)
+## Option 1: Seed the Demo Tenant (Recommended)
 
-If your organization has demo mode enabled, training data is pre-populated automatically.
+Run `python manage.py seed_demo` on the training instance (see [Option
+2](#option-2-run-population-command)). It creates the demo tenant, its accounts and
+the training shop. Nothing is populated until it runs.
 
 ### Demo Accounts
 
@@ -34,8 +36,8 @@ All demo accounts use password: `demo123`
 |----------|----------|
 | **Orders** | ORD-2024-0042 (in progress), ORD-2024-0038 (completed), ORD-2024-0048 (pending) |
 | **Parts** | INJ-0042-001 through INJ-0042-024 (various statuses) |
-| **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 and -02 (the QA Inspector exhibits) |
-| **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — numbered `QR-{order}-{part}-{step}`, where `FT` is Flow Testing and `NI` is Nozzle Inspection |
+| **Work Orders** | WO-2024-0042-A, WO-2024-0038-A, WO-2024-0048-A, plus WO-QA-INSPECT-01 to -06 and WO-QA-MANAGE-01 (the QA exhibits) |
+| **Quality Reports** | QR-0042-001-FT, QR-0038-003-NI — both are Flow Calibration reports |
 | **Dispositions** | The QA Inspector exhibits' rework on INJ-QA-INSPECT-013, plus the history the quality seeder writes |
 | **CAPA** | CAPA-2024-003 (nozzle defect investigation) |
 | **Equipment** | Flow Test Stand #1, #2, Torque Wrench TW-25 (overdue calibration) |
@@ -90,9 +92,11 @@ python manage.py seed_dev --modules users manufacturing orders
 
 | Scale | Orders | Parts | Use Case |
 |-------|--------|-------|----------|
-| `small` | ~10 | ~100 | Quick setup, individual training (default) |
-| `medium` | ~50 | ~500 | Standard training |
-| `large` | ~200 | ~2000 | Load testing, comprehensive demos |
+| `small` | ~10 | ~100 | Quick setup (default) |
+| `medium` | ~50 | ~1,000 | Larger dev dataset |
+| `large` | ~200 | ~6,500 | Load testing |
+
+Scale applies to `seed_dev` only; `seed_demo` always creates the same shop.
 
 ### What Gets Created
 
@@ -100,7 +104,7 @@ The command creates:
 
 1. **Users** - Demo accounts for each role
 2. **Customers** - Sample companies
-3. **Part Types** - Common Rail Injector, HEUI Injector, Unit Injector
+3. **Part Types** - Common Rail Injector (`seed_dev` adds HEUI and Unit Injector)
 4. **Processes** - Manufacturing workflows with steps
 5. **Orders & Work Orders** - In various states
 6. **Parts** - Distributed across workflow steps
@@ -141,8 +145,9 @@ Navigate to **Data Management > Companies**:
 
 Navigate to **Data Management > Part Types**:
 - Name: Training Part
-- Part Number: TRAIN-001
-- Default Process: (select existing process)
+- ERP ID: TRAIN-001
+
+A part type carries no process; each process names the part type it is for.
 
 #### 4. Order with Parts
 
@@ -173,7 +178,7 @@ Navigate to **Production > Work Orders**:
 #### Scenario: Quarantined Parts
 
 1. Create quality report for a part
-2. Select QUARANTINED status
+2. Set its status to FAIL: the part is quarantined and a disposition opens
 3. Part available for disposition practice
 
 #### Scenario: CAPA Investigation
@@ -204,8 +209,8 @@ Navigate to **Production > Work Orders**:
 - [ ] Measurement definitions with specs
 - [ ] Quality report examples
 
-**Exercise support:** WO-QA-INSPECT-01 and -02 — see the
-[shop day](../shop-day.md). The QA Inspector track is being rebuilt against them.
+**Exercise support:** WO-QA-INSPECT-01 to -06 and WO-QA-MANAGE-01 — see the
+[shop day](../shop-day.md) and the [QA Inspector track](../tracks/qa-inspector.md).
 
 ### QA Manager Training
 
@@ -255,7 +260,7 @@ Navigate to **Production > Work Orders**:
 
 ## Exercise Data Matrix
 
-This matrix lists all specific training records referenced in exercise instructions. These records should be created by the `seed_demo` command.
+These are the legacy exercise records `seed_demo` creates; the role tracks name their own exhibits.
 
 ### Orders
 
@@ -263,7 +268,7 @@ This matrix lists all specific training records referenced in exercise instructi
 |----|-------------|---------|-------|
 | TRAIN-001 | Basic operator training order | Operator | In progress, 10 parts at various steps |
 | TRAIN-PM-001 | Production manager exercise order | Production Manager | Pending, 5 parts ready to process |
-| TRAIN-BOTTLE | Bottleneck scenario | Production Manager | In progress, 8 parts stuck at one step |
+| TRAIN-BOTTLE | Bottleneck scenario | Production Manager | In progress, 6 of 8 parts stuck at one step |
 | TRAIN-HOLD | Quality hold scenario | Production Manager | On hold for QA issue, 6 parts |
 
 ### Assessment Orders
@@ -285,7 +290,7 @@ This matrix lists all specific training records referenced in exercise instructi
 | ID | Description | Used By | State |
 |----|-------------|---------|-------|
 | TRAIN-001-* | Parts in TRAIN-001 order (10 total) | Operator | Distributed across process steps |
-| ASSESS-003-002 | Part for operator assessment lookup exercise | Operator | At inspection step |
+| ASSESS-003-002 | Part for operator assessment lookup exercise | Operator | At an early working step |
 
 ### CAPAs
 
@@ -293,13 +298,6 @@ This matrix lists all specific training records referenced in exercise instructi
 |----|-------------|---------|-------|
 | CAPA-TRAIN-COMPLETE | Verification closure exercise | QA Manager | Pending verification, all tasks complete |
 | CAPA-ASSESS-READY | Assessment CAPA - ready for closure verification | QA Manager | Pending verification, all actions complete |
-
-### Documents
-
-| ID | Description | Used By | State |
-|----|-------------|---------|-------|
-| WI-TRAIN-001 | Work instruction exercise | Document Controller, QA Manager | Pending approval |
-| DOC-REJECT-TRAIN | Rejection scenario document | Document Controller | Pending (should be rejected) |
 
 ---
 
@@ -313,11 +311,14 @@ After setup, verify data is ready:
 # Count records (if using command line)
 python manage.py shell -c "
 from Tracker.models import *
-print(f'Users: {User.objects.count()}')
-print(f'Orders: {Orders.objects.count()}')
-print(f'Parts: {Parts.objects.count()}')
-print(f'Quality Reports: {QualityReports.objects.count()}')
-print(f'CAPAs: {CAPA.objects.count()}')
+from Tracker.utils.tenant_context import tenant_context
+t = Tenant.objects.get(slug='demo')
+with tenant_context(t.id):
+    print(f'Users: {User.objects.filter(tenant=t).count()}')
+    print(f'Orders: {Orders.objects.count()}')
+    print(f'Parts: {Parts.objects.count()}')
+    print(f'Quality Reports: {QualityReports.objects.count()}')
+    print(f'CAPAs: {CAPA.objects.count()}')
 "
 ```
 
@@ -330,7 +331,7 @@ print(f'CAPAs: {CAPA.objects.count()}')
 | Quality reports | Quality > Quality Reports | Sample NCRs visible |
 | CAPA active | Quality > CAPAs | At least one open |
 | Equipment | Data Management > Equipment | Items with calibration |
-| SPC data | Analytics (SPC tab) | Chart displays with points |
+| SPC data | Analytics > **SPC** (on the FPY Trend card) | Chart displays with points |
 
 ---
 
@@ -371,19 +372,9 @@ pg_restore -d ambac_training training_backup.dump
 
 ## Separating Training from Production
 
-### Recommended: Separate Tenant
-
-Create a dedicated training tenant:
-- Isolated from production data
-- Can be reset without affecting real work
-- Users can make mistakes safely
-
-### Alternative: Training Flag
-
-If using same database:
-- Create orders with prefix "TRAIN-"
-- Use dedicated training customer
-- Filter by prefix in production views
+Training runs on a separate uqmes instance seeded with `seed_demo`. No company
+data goes into it, and it is reset by regenerating the demo data. See the
+[training program](../index.md).
 
 ---
 

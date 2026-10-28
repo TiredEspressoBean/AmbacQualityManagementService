@@ -8,11 +8,6 @@ Each role's track is its slice of this day, so tracks compose: an inspector and 
 shift lead taking their own tracks are working the same Tuesday. Every name and
 record here is one the training instance's seed creates.
 
-!!! warning "This day is being written"
-    Each moment below is an outline until its role's track is built and walked on
-    the training instance. The **QA Inspector** moments, 08:30 to 11:30, are
-    written.
-
 ## The shop
 
 The shop builds new **common rail injectors** and remanufactures used ones, on two
@@ -32,27 +27,29 @@ people hold more than one role.
 
 | Person | Role | Login |
 |--------|------|-------|
-| Jennifer Walsh | Production Manager, who also plans | `jennifer.mgr@demo.ambac.com` |
+| Jennifer Walsh | Production Manager | `jennifer.mgr@demo.ambac.com` |
+| Sam Okafor | Planner | `sam.plan@demo.ambac.com` |
 | Casey Cross | Shift Lead, and an inspector when covering | `casey.dual@demo.ambac.com` |
 | Mike Rodriguez | Operator | `mike.ops@demo.ambac.com` |
 | Dave Wilson | Operator whose certification has lapsed | `dave.wilson@demo.ambac.com` |
 | Sarah Chen | QA Inspector | `sarah.qa@demo.ambac.com` |
 | Maria Santos | QA Manager | `maria.qa@demo.ambac.com` |
 | Lisa Park | Document Controller | `lisa.docs@demo.ambac.com` |
+| Jordan Reyes | Engineering | `jordan.eng@demo.ambac.com` |
+| Priya Nair | Purchasing | `priya.buy@demo.ambac.com` |
+| Luis Ortega | Receiving | `luis.recv@demo.ambac.com` |
+| Rosa Kim | Shipping | `rosa.ship@demo.ambac.com` |
+| Alex Morgan | Auditor | `alex.audit@demo.ambac.com` |
 | Tom Bradley | Customer contact at Midwest Fleet Services | `tom.bradley@midwestfleet.com` |
 
 Every password is `demo123`.
-
-**Roles in the day with no login yet:** Engineering, Purchasing, Receiving,
-Shipping and Auditor. Their moments are outlined below, and get a person when
-their track is built.
 
 **The companies:**
 
 | Company | Is |
 |---------|----|
 | Midwest Fleet Services | The customer whose repair runs through the day |
-| Great Lakes Diesel | A customer, and the supplier of the purchased lots received at the dock |
+| Great Lakes Diesel | A customer, and the supplier of most purchased lots received at the dock |
 | Northern Trucking Co | Another customer |
 | Apex Plating Co | The nitride-coating subcontractor, qualified for nitriding |
 | Lakeshore Seals Inc | A seals supplier whose qualification has lapsed |
@@ -60,7 +57,7 @@ their track is built.
 
 ## The day
 
-### 06:00 — Jennifer reads the board
+### 06:00 — Sam reads the board
 
 The schedule is stale. They re-solve, and the solve can't staff a gated step. They
 open **Pull in work** and admit work against the recommendation.
@@ -72,15 +69,15 @@ open **Pull in work** and admit work against the recommendation.
 Several lots arrive against expected receipts. One fails incoming inspection and is
 held.
 
-> **Track:** Receiving (no login yet). **Opens:** Purchasing at 07:00, and the
-> shortage Jennifer plans around at 14:30.
+> **Track:** Receiving. **Opens:** Purchasing at 07:00, and the shortage
+> Jennifer plans around at 14:30.
 
 ### 07:00 — Purchasing chases, and raises a SCAR
 
 The held lot is the supplier's second rejection, so Purchasing raises a supplier
 corrective action request. A separate late delivery gets chased.
 
-> **Track:** Purchasing (no login yet).
+> **Track:** Purchasing.
 
 ### 07:30 — Casey starts the shift
 
@@ -88,7 +85,7 @@ Mike is the only operator free for Body Inspection, and Mike's inspection
 certification doesn't cover it. Casey decides to let the work start on Casey's
 own authority.
 
-> **Track:** Shift Lead. **Closes:** Jennifer's 06:00 labour gap. **Opens:** the
+> **Track:** Shift Lead. **Closes:** Sam's 06:00 labour gap. **Opens:** the
 > training record Maria writes at 15:30.
 
 ### 08:00 — Mike runs the first piece
@@ -120,7 +117,8 @@ out: `Micrometer MIC-2` failed its calibration this morning.
 ### 09:30 — What arrives
 
 The incoming queue holds a purchased lot to inspect, `RCV-MAT-0002`, and a held lot,
-`RCV-MAT-HOLD`, missing its heat number. Shipment `OSP-2026-000002` is back from Apex
+`RCV-MAT-HOLD`, from Bargain Bolts LLC: missing its heat number and from an
+unqualified supplier. Shipment `OSP-2026-000002` is back from Apex
 Plating Co, and the return needs inspecting before it rejoins the line.
 
 > **Track:** QA Inspector. **Closes:** the 06:30 delivery, for the lots it inspects.
@@ -170,7 +168,7 @@ turned up repeatedly. Casey resolves the decision point and raises a CAPA.
 The CAPA's cause is in the process. Engineering drafts a new version of it and
 submits it for approval.
 
-> **Track:** Engineering (no login yet). **Opens:** Lisa's revision at 13:30 and
+> **Track:** Engineering. **Opens:** Lisa's revision at 13:30 and
 > Maria's approval at 14:00.
 
 ### 13:30 — Lisa revises the work instruction
@@ -190,15 +188,15 @@ The process change and the document revision are both waiting for Maria.
 
 ### 14:30 — Jennifer re-promises
 
-With the held lot still short, Midwest Fleet Services asks whether a second
-repair can be promised. Jennifer answers from capable-to-promise.
+Great Lakes Diesel's order `ORD-2024-0051` asks for 6 new injectors in three weeks.
+Jennifer checks capacity on its line before promising.
 
-> **Track:** Planner. **Closes:** the 06:30 shortage.
+> **Track:** Production Manager. **Closes:** the 06:30 shortage.
 
 ### 15:00 — Jennifer takes the order
 
-Midwest Fleet Services confirms. Jennifer creates the order and its work order,
-and adds the parts against the work order.
+Jennifer plans the order's line into a work order, which creates its parts, and
+releases it.
 
 > **Track:** Production Manager.
 
@@ -214,7 +212,7 @@ refusing Mike.
 
 Finished work orders ship with their paperwork.
 
-> **Track:** Shipping (no login yet).
+> **Track:** Shipping.
 
 ### 17:30 — Casey hands over
 
@@ -230,7 +228,7 @@ disposition and its containment, and who signed what. Tom Bradley at Midwest
 Fleet Services sees their own orders and nothing else, and can answer an approval
 request the shop sends them.
 
-> **Orientation:** Auditor (no login yet) and Customer.
+> **Orientation:** Auditor and Customer.
 
 ## If your shop remanufactures
 
@@ -246,7 +244,7 @@ A Midwest Fleet Services unit arrives for repair and return, is torn down, and
 waits on its release decision. Being the customer's own, it can only be rebuilt
 and returned, never harvested.
 
-> **Track:** Receiving (no login yet) and Shift Lead, reman additions.
+> **Track:** Receiving and Shift Lead, reman additions.
 
 ### 16:30 — Harvested components
 
@@ -259,13 +257,13 @@ the good ones into stock and scraps the rest.
 
 A rebuilt repair goes back to its owner on its own shipment.
 
-> **Track:** Shipping (no login yet), reman addition.
+> **Track:** Shipping, reman addition.
 
 ## The interlocks
 
 | Opened | Closed | What connects them |
 |--------|--------|--------------------|
-| 06:00 Jennifer's solve can't staff a step | 07:30 Casey decides, 08:00 the authorisation | The planning gap is a person without a certification |
+| 06:00 Sam's solve can't staff a step | 07:30 Casey decides, 08:00 the authorisation | The planning gap is a person without a certification |
 | 07:30 Casey's override | 15:30 Maria's training record | An override is a decision, not a fix |
 | 06:30 a lot is held | 07:00 the SCAR, 14:30 Jennifer's promise | A dock decision is a supplier fact and a planning constraint |
 | 08:00 Mike's first piece | 08:30 Sarah's buy-off | The run waits for a second person's judgement |

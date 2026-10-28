@@ -18,8 +18,7 @@ practise doing it, on data made for practising.
 |---|---|
 | [The Shop Day](shop-day.md) | One working day at the training shop, with every role's moments and the handoffs between them. Every track is a slice of it |
 | **Role tracks** | One per role: exercises on the shop day, ending in a final task your trainer watches you do |
-| **Drills** | Short, repeatable rehearsals for rare, heavy jobs such as a disposition, a CAPA or a change request. Run one before you do the real thing |
-| **Running training** | For whoever runs training at your site: preparing super-users, observing the final task, and rehearsing your own kind of day |
+| **Running training** | For whoever runs training at your site: loading the training shop onto the training instance |
 
 Roles compose. Someone who is a QA Inspector by day and a Shift Lead when covering
 takes both tracks, and each teaches only what that role adds.
@@ -38,11 +37,6 @@ takes both tracks, and each teaches only what that role adds.
     it.
 
 ## Role tracks
-
-!!! warning "The tracks are being rebuilt"
-    The tracks below predate the current product and are being rebuilt one role
-    at a time against the shop day. Until a track says it has been rebuilt, its
-    exercises may not match what you see. **QA Inspector** has been rebuilt.
 
 | Role | Track |
 |---|---|
