@@ -71,6 +71,7 @@ import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useGLTF } from "@react-three/drei";
 import { matchKey } from "@/lib/query-filters";
+import { HEATMAP_MAX_POINTS } from "@/components/heatmap-shader";
 
 // Helper to normalize media URLs to relative paths (for Vite proxy to work)
 function normalizeMediaUrl(url: string | undefined | null): string | undefined {
@@ -604,7 +605,7 @@ function HeatMapViewerContent({
         if (!availableModels.length) return null;
 
         if (selectedStepId !== null) {
-            return availableModels.find(m => m.step === selectedStepId) || null;
+            return availableModels.find(m => m.step != null && String(m.step) === selectedStepId) || null;
         } else {
             return availableModels.find(m => m.step === null) || availableModels[0];
         }
@@ -647,7 +648,11 @@ function HeatMapViewerContent({
 
     // Step 5b: Fetch annotations with all filters (including defect_type and severity)
     const annotationFilters = useMemo(() => {
-        const filters = { ...baseFilters };
+        // As many as the heat map can draw, newest first. Without a limit the API sent
+        // its default page of 25, and the shader drew at most 50.
+        const filters: Record<string, string | number> = {
+            ...baseFilters, limit: HEATMAP_MAX_POINTS, ordering: "-created_at",
+        };
 
         // Add defect type filter (server-side)
         if (selectedErrorTypes.length > 0) {
@@ -683,14 +688,16 @@ function HeatMapViewerContent({
     // Compute per-annotation intensity weights based on severity
     // critical=2.0, high=1.5, medium=1.0, low=0.5
     const heatmapIntensities = useMemo(() => {
+        // Keyed uppercase, as severity is stored; the lowercase keys never matched, so
+        // every annotation weighed 1.0.
         const severityWeights: Record<string, number> = {
-            critical: 2.0,
-            high: 1.5,
-            medium: 1.0,
-            low: 0.5,
+            CRITICAL: 2.0,
+            HIGH: 1.5,
+            MEDIUM: 1.0,
+            LOW: 0.5,
         };
         return filteredAnnotations.map(
-            (a) => severityWeights[a.severity || "medium"] ?? 1.0
+            (a) => severityWeights[(a.severity || "MEDIUM").toUpperCase()] ?? 1.0
         );
     }, [filteredAnnotations]);
 
@@ -940,9 +947,13 @@ function HeatMapViewerContent({
                                     </SelectTrigger>
                                     <SelectContent container={containerRef.current}>
                                         <SelectItem value="all">All Steps</SelectItem>
-                                        {availableModels.map((model) => (
-                                            <SelectItem key={model.id} value={model.id.toString()}>
-                                                {model.step_display || "Default"}
+                                        {/* The value is the STEP id — what `targetModel` looks the
+                                            model up by. It was the model id, so choosing a step
+                                            matched nothing ("No 3D Model Found"). A model with no
+                                            step is what "All Steps" shows. */}
+                                        {availableModels.filter((model) => model.step != null).map((model) => (
+                                            <SelectItem key={model.id} value={String(model.step)}>
+                                                {model.step_display || "Step"}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1245,6 +1256,16 @@ function HeatMapViewerContent({
 
                 {/* 3D Viewport */}
                 <div className="flex-1 relative min-h-0">
+                    {/* More match than the heat map can draw: say so, rather than let a
+                        partial picture pass for the whole one. */}
+                    {(annotationsData?.count ?? 0) > filteredAnnotations.length && (
+                        <div className="absolute top-4 left-1/2 z-10 -translate-x-1/2">
+                            <div className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-50/95 px-3 py-2 text-xs shadow dark:bg-amber-950/80">
+                                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                                Showing the newest {filteredAnnotations.length} of {annotationsData?.count} annotations — narrow the date range or filters to see the rest.
+                            </div>
+                        </div>
+                    )}
                     {/* Navigation Instructions - Bottom Left */}
                     <div className="absolute bottom-4 left-4 z-10">
                         <div className="bg-background/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border max-w-xs">
@@ -1343,10 +1364,12 @@ function HeatMapViewerContent({
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="low">Low</SelectItem>
-                                                        <SelectItem value="medium">Medium</SelectItem>
-                                                        <SelectItem value="high">High</SelectItem>
-                                                        <SelectItem value="critical">Critical</SelectItem>
+                                                        {/* The API's choices are uppercase; lowercase values
+                                                            showed blank and were refused on save. */}
+                                                        <SelectItem value="LOW">Low</SelectItem>
+                                                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                                                        <SelectItem value="HIGH">High</SelectItem>
+                                                        <SelectItem value="CRITICAL">Critical</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>

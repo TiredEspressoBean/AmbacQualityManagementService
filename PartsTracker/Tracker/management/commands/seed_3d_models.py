@@ -176,7 +176,7 @@ class Command(BaseCommand):
                 position_y=ann_data['y'],
                 position_z=ann_data['z'],
                 defect_type=ann_data['defect_type'],
-                severity=ann_data['severity'],
+                severity=ann_data['severity'].upper(),  # stored choices are uppercase
                 notes=f"Demo annotation - {ann_data['defect_type']} detected during inspection",
                 created_by=operator,
             )

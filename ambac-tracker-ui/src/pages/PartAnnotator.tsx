@@ -251,9 +251,11 @@ export function PartAnnotator({
         // If this is an existing annotation (has an id), persist to API
         if (annotation.id) {
             try {
+                // Severity is kept lowercase here for display; the API's choices are
+                // uppercase (the create path already converts it).
                 await updateAnnotation.mutateAsync({
                     id: annotation.id,
-                    data: { [field]: value },
+                    data: { [field]: field === "severity" ? value.toUpperCase() : value },
                 });
             } catch (error) {
                 console.error("Failed to update annotation:", error);

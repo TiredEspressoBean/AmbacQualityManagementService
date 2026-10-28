@@ -1590,6 +1590,11 @@ class ThreeDModelViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMix
         if getattr(self, 'swagger_fake_view', False):
             return ThreeDModel.objects.none()
         qs = super().get_queryset()
+        # Current versions only when listing: a replaced file left the old version
+        # listed and pickable. Not on by-id fetches — annotations point at the version
+        # they were made on (as WorkCenterViewSet does).
+        if self.action == 'list':
+            qs = qs.filter(is_current_version=True)
         return qs.select_related('part_type', 'step')
 
 

@@ -1,5 +1,11 @@
 import * as THREE from "three";
 
+/** The most annotations the heat map draws. Two uniform arrays of this length sit in the
+ *  fragment shader (a vec3 and a float per point, ~2 uniform vectors each), so it stays
+ *  well inside WebGL's fragment-uniform budget on ordinary GPUs. The viewer asks the API
+ *  for this many — the newest — and says so when more match. */
+export const HEATMAP_MAX_POINTS = 200;
+
 // Vertex shader
 const vertexShader = `
   varying vec3 vWorldPosition;
@@ -14,8 +20,8 @@ const vertexShader = `
 
 // Fragment shader
 const fragmentShader = `
-  uniform vec3 annotationPositions[50];
-  uniform float annotationIntensities[50];
+  uniform vec3 annotationPositions[${HEATMAP_MAX_POINTS}];
+  uniform float annotationIntensities[${HEATMAP_MAX_POINTS}];
   uniform int annotationCount;
   uniform float heatRadius;
   uniform float heatIntensity;
@@ -52,7 +58,7 @@ const fragmentShader = `
     float totalHeat = 0.0;
 
     // Calculate heat contribution from each annotation
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < ${HEATMAP_MAX_POINTS}; i++) {
       if (i >= annotationCount) break;
 
       vec3 annotationPos = annotationPositions[i];
@@ -97,11 +103,11 @@ export function createHeatMapMaterial({
   heatIntensity = 1.0,
   baseColor = new THREE.Color(0x94a3b8),
 }: HeatMapShaderProps): THREE.ShaderMaterial {
-  // Pad positions array to 50 (shader limit)
-  const paddedPositions = new Float32Array(150); // 50 * 3 (x, y, z)
-  const paddedIntensities = new Float32Array(50); // 50 intensities
+  // Pad to the shader's fixed array length
+  const paddedPositions = new Float32Array(HEATMAP_MAX_POINTS * 3); // x, y, z each
+  const paddedIntensities = new Float32Array(HEATMAP_MAX_POINTS);
 
-  annotationPositions.slice(0, 50).forEach((pos, i) => {
+  annotationPositions.slice(0, HEATMAP_MAX_POINTS).forEach((pos, i) => {
     paddedPositions[i * 3] = pos.x;
     paddedPositions[i * 3 + 1] = pos.y;
     paddedPositions[i * 3 + 2] = pos.z;
@@ -113,7 +119,7 @@ export function createHeatMapMaterial({
     uniforms: {
       annotationPositions: { value: paddedPositions },
       annotationIntensities: { value: paddedIntensities },
-      annotationCount: { value: Math.min(annotationPositions.length, 50) },
+      annotationCount: { value: Math.min(annotationPositions.length, HEATMAP_MAX_POINTS) },
       heatRadius: { value: heatRadius },
       heatIntensity: { value: heatIntensity },
       baseColor: { value: baseColor },

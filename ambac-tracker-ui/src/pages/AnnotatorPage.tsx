@@ -70,12 +70,15 @@ export function AnnotatorPage() {
     const { data: modelsData, isLoading: isLoadingModel } = useRetrieveThreeDModels({
         part_type: partData?.part_type,
         // archived filter not supported by api_ThreeDModels_list
-        limit: 1,
     }, undefined, {
         enabled: !!partData?.part_type,
     });
 
-    const model3D = modelsData?.count && modelsData.count > 0 ? modelsData.results[0] : null;
+    // The same choice as the work order's QA panel: a model that finished converting,
+    // preferring the part type's general model over one attached to a step. This took
+    // the first by name (limit 1), unconverted or step-bound alike.
+    const readyModels = (modelsData?.results ?? []).filter((m) => m.processing_status === "COMPLETED");
+    const model3D = readyModels.find((m) => !m.step) ?? readyModels[0] ?? null;
 
     const handleToggleReport = (reportId: string) => {
         setSelectedReportIds(prev =>
