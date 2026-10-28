@@ -180,7 +180,9 @@ fact.
 
 To void one:
 
-1. **Work Orders** > the work order > **Control**
+1. Open the work order's control page: **View in Control Center →** on the work
+   order's **Overview** tab, or click its row in **Production** > **WO Control
+   Center**
 2. Expand the part in the parts list — the chevron at the far left of the row,
    not the checkbox
 3. In the **Traveler** table, find the step and expand **Checks (N)** in the
@@ -283,15 +285,14 @@ afterwards.
 
 ### Harvested components — teardown
 
-One row per component you take off the unit:
+One row per component the unit should give up, already listed:
 
 | Field | |
 |-------|---|
-| **Component type** | What it is |
-| **Condition grade** | A, B, C or Scrap — **your** assessment, at the bench |
-| **Position** | Where on the unit it came from |
-| **Missing** | Tick when the position was empty |
-| **Condition notes**, **original part number** | Optional detail |
+| Component and position | Filled in from what the unit should give up. One you didn't expect is added with **Found something unexpected?** |
+| **Grade** | A, B, C or Scrap — **your** assessment, at the bench |
+| **Missing** | Switch on when the position was empty |
+| **Notes** | Optional detail |
 
 Submitting creates the harvested component records, and anything graded **Scrap**
 is scrapped in the same action — you do not scrap it separately afterwards.

@@ -24,10 +24,10 @@ that explains it.
 
 | Mistake | What puts it right | Who | |
 |---------|--------------------|-----|---|
-| A reading keyed wrong, not yet confirmed | Fix it on the step player's review screen | Operator | [Recording Measurements](tracking/measurements.md#correcting-a-measurement) |
-| A reading or check wrong after confirming (wrong value, gauge or method) | **Void** the completion with a reason, then capture it again | QA Inspector, QA Manager | [Voiding a completion](dwi/running.md#voiding-a-completion) |
+| A reading keyed wrong, before **Complete step** | Fix it on the step player's review screen | Operator | [Recording Measurements](tracking/measurements.md#correcting-a-measurement) |
+| A reading or check wrong after **Complete step** (wrong value, gauge or method) | **Void** the completion with a reason, then capture it again | QA Inspector, QA Manager | [Voiding a completion](dwi/running.md#voiding-a-completion) |
 | Recorded against the wrong part | Void it on that part; capture on the right one | QA Inspector, QA Manager | [Capturing it again](dwi/running.md#capturing-it-again) |
-| A part moved on too soon | **Previous step**, with a reason. Past the step's window it goes to QA for approval | Shift Lead | [Sending a part back a step](tracking/moving-parts.md#sending-a-part-back-a-step) |
+| A part moved on too soon | **Previous step**, with a reason. It goes to QA for approval unless the step allows a direct rollback and it's within the step's window | Shift Lead | [Sending a part back a step](tracking/moving-parts.md#sending-a-part-back-a-step) |
 | The wrong part loaded into a shared cycle | **Take this part out**, from the part's history | Shift Lead | [The wrong part in a shared cycle](tracking/moving-parts.md#the-wrong-part-in-a-shared-cycle) |
 | A draw recorded against the wrong lot | **Wrong lot?** on that lot's page: move the draw to the lot used | Shift Lead and up | [A draw recorded against the wrong lot](tracking/lot-tracking.md#a-draw-recorded-against-the-wrong-lot) |
 | Wrong clock-in or clock-out | **Correct times**, before approving | Shift Lead | [Approving time](scheduling/overview.md#approving-time) |

@@ -15,8 +15,11 @@ This guide covers building substeps on a step. See
 4. In its properties panel, use the **Substeps** control
 
 The editor opens at
-`/editor/processes/{processId}/steps/{stepId}/substeps`. With Edit Mode off the
-same control opens the substeps read-only.
+`/editor/processes/{processId}/steps/{stepId}/substeps`. Whether you can edit
+there depends on the process, not on Edit Mode: substeps are editable on a draft,
+and read-only on an approved or deprecated process, or while a draft still shares
+the step with an approved version (open the step from the process flow with Edit
+Mode on, and the draft takes its own copy).
 
 ## Adding a substep
 
@@ -25,9 +28,12 @@ same control opens the substeps read-only.
    progress rail, so "Measure orifice diameter" beats "Measurement"
 3. Build the body from the node library
 4. Set its behaviour (below)
-5. **Save**
+5. **Save draft**, at the top of the page. Nothing is stored until you press it;
+   the page warns if you leave with unsaved changes.
 
-Use **Preview** to see the substep as the operator will.
+The **Operator view** pane beside the editor shows the substep as the operator
+will see it, whenever no node is selected (selecting a node shows its
+**Properties** there instead).
 
 ## The node library
 
@@ -40,9 +46,9 @@ These tell the operator what to do. They capture nothing.
 | Node | Use for |
 |------|---------|
 | **Callout** | A warning, caution, or note that must stand out |
-| **Media** | An image or video demonstrating the work. For a 3D model, use **Part annotation** — Media does not render one |
+| **Media** | An image or video demonstrating the work. For a 3D model, use **Callouts (3D)** — Media does not render one |
 | **Document link** | A link to a controlled document |
-| **Part callout** | Highlighting a feature on the part |
+| **Callouts (3D)** | Numbered guidance balloons on the part's 3D model |
 | **Measurement spec** | Showing the specification an operator is working to |
 
 ### Capture nodes
@@ -51,26 +57,26 @@ These ask the operator for something and create the record.
 
 | Node | Captures |
 |------|----------|
-| **Measurement input** | A numeric value, checked against its spec |
+| **Measurement** | A numeric value, checked against its spec |
 | **Text input** | Free text |
-| **Choice input** | One option from a list you define |
-| **Photo capture** | An image |
-| **File capture** | An uploaded file of any kind — use it when the operator needs to attach a video |
-| **Scan input** | A barcode or QR code |
+| **Choice** | One option from a list you define |
+| **Photo** | An image |
+| **File** | An uploaded file of any kind — use it when the operator needs to attach a video |
+| **Scan** | A barcode or QR code |
 | **Timer** | A countdown or stopwatch |
-| **Computed value** | A value derived by formula from other captures |
-| **Attestation checkpoint** | A confirmation or signature |
-| **Quality status field** | PASS / FAIL / PENDING |
-| **Error types field** | Defect findings |
-| **Equipment roles** / **Personnel roles** | Who and what was involved |
+| **Computed** | A value derived by formula from other captures |
+| **Sign-off** | A confirmation or signature — see [Sign-off blocks](#sign-off-blocks) |
+| **Quality status** | PASS / FAIL / PENDING |
+| **Defect findings** | Defects, picked from error types |
+| **Equipment + roles** / **Personnel + roles** | Who and what was involved |
 | **Inspection signatures** | Detected-by and verified-by signatures |
-| **Part annotation** | A marked point on the part's 3D model |
-| **Harvested component capture** | Components recovered during teardown, with their grades (reman) |
-| **Component install capture** | Which components went into the unit — its as-built record |
-| **Rebuild finding capture** | A component found worse than its teardown grade, for a lead to apply or dismiss (reman) |
+| **Defect annotation (3D)** | Defects the operator marks on the part's 3D model. It makes the substep an inspection point: the switch is locked on |
+| **Harvested components** | Components recovered during teardown, with their grades (reman) |
+| **Components installed** | Which components went into the unit — its as-built record |
+| **Rebuild finding** | A component found worse than its teardown grade, for a lead to apply or dismiss (reman) |
 
 !!! tip "Measurements are more than a number field"
-    Use **Measurement input** rather than a text input for numeric values. Only
+    Use **Measurement** rather than a text input for numeric values. Only
     measurement captures are evaluated against the specification and flow into
     SPC and measurement reporting.
 
@@ -78,36 +84,54 @@ These ask the operator for something and create the record.
 
 ### Sequencing
 
-Set on the step, governing all its substeps:
+Set on the step, governing all its substeps: the **Sequencing** select in the
+process editor's step panel. It can be changed on a draft process with Edit Mode
+on; otherwise it shows as a read-only badge.
 
-- **Sequential** — each substep unlocks the next. Use when order matters for
-  safety or correctness.
-- **Free order** — operators complete substeps in any order. Use when the work
+- **Sequential** (the default) — *"Each substep needs the one before it done
+  first."* Use when order matters for safety or correctness.
+- **Free order** — *"Substeps can be done in any order."* Use when the work
   genuinely has no required sequence.
+
+The server enforces Sequential: a substep is refused until the required
+substeps before it are done.
 
 ### Per part or per batch
 
-Set per substep:
+Set per substep, with the **Batch (once per lot)** switch:
 
-- **Per part (sampling)** — runs once per part. The default.
-- **Per batch** — runs once for the whole batch. Use only for processes that
-  act on the lot as a whole: heat-treat cycles, plating baths, wash tanks,
-  oven cures.
+- **Off** — runs once per part. The default.
+- **On** — runs once for the whole batch. Use only for processes that act on
+  the lot as a whole: heat-treat cycles, plating baths, wash tanks, oven cures.
 
 A single step can mix both.
 
 ### Sampling
 
-Leave a per-part substep's sampling rule empty for a 100% check. Attach a
-sampling rule to check only the parts that rule selects. See
-[Sampling Rules](../quality/sampling.md).
+A per-part substep (**Batch (once per lot)** off) has a **Sampling** select:
+
+| Option | Applies the substep to |
+|--------|------------------------|
+| **Every part** | Every part — a 100% check. The default |
+| **Percentage** | A set percentage of parts, chosen by a stable per-part hash, so a given part gets the same answer however many others there are |
+| **Random** | A percentage of parts, at random |
+| **Every Nth part** | Every Nth part of the work order |
+| **First N parts** | The first N parts of the work order |
+
+Beside it, a number box takes the percentage (20 by default) or N (5 by
+default). The choice is saved with **Save draft**, and only on a draft process.
+On a substep you've just added, the switch and the select appear once it has
+been saved.
+
+A substep's sampling is its own: it is not part of the step's sampling plan.
+See [Sampling Rules](../quality/sampling.md) for sampling a step.
 
 ### Optional and safety-critical
 
 | Setting | Effect | Use when |
 |---------|--------|----------|
 | **Optional** | May be skipped; nothing is recorded | The substep genuinely may not be needed and you don't need to know |
-| **Safety-critical** | Shown to the operator as critical | Torque on safety-critical fasteners, witnessed sign-offs, final dimensional verification |
+| **Critical** | Shown to the operator as safety-critical | Torque on safety-critical fasteners, witnessed sign-offs, final dimensional verification |
 
 There is no "not applicable" setting. If a substep only applies to some of the
 parts that run the step, either the step is wrong for the others (give them their
@@ -143,12 +167,14 @@ covers the whole load rather than each part in it.
 
 ### Inspection points
 
-Mark a substep an **inspection point** when its result should be a queryable
+Turn on **Inspection point** when a substep's result should be a queryable
 quality record, not just an entry in the substep audit trail. Its structured
 captures then also write a Quality Report.
 
-Adding an inspection point pre-seeds the minimum capture set a quality report
-needs.
+**Add inspection substep** adds a new substep with the switch on and the minimum
+capture set a quality report needs already in its body. Turning **Inspection
+point** on for an existing substep adds no captures; put them in yourself. A
+substep containing a **Defect annotation (3D)** is always an inspection point.
 
 ## Changing published instructions
 

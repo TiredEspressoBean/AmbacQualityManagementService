@@ -19,10 +19,10 @@ In order down the screen:
 |-------|------------|
 | **Findings to decide** | Components the bench graded worse than teardown did. Apply or Dismiss. |
 | **Proposed, not committed** | The plan's **warnings** — everything the resolver wants to tell you |
-| **Operations** | The work this rebuild needs, each with the reason it is there |
+| **Expected repairs** | The work this rebuild needs, each with the reason it is there |
 | **Slots** | One row per position, headed *"N need a decision · M settled"* |
 
-Operations come before slots deliberately: what we will *do* to the unit is the
+Expected repairs come before slots deliberately: what we will *do* to the unit is the
 bigger commitment.
 
 !!! tip "The warnings panel is the diagnostic channel"
@@ -138,8 +138,8 @@ columns are **Repair**, **Code**, **At check**, **Approval** and **Because**:
 
 | Repair | Code | At check | Approval | Because |
 |--------|------|----------|----------|---------|
-| Nozzle Recondition | NZL-RECON | Nozzle Inspection | Pre-approved | Injector Nozzle Assembly: Grade C, from this unit |
-| Nozzle Replacement | NZL-REPLACE | Nozzle Inspection | Needs approval | Injector Nozzle Assembly: Grade D, from this unit |
+| Nozzle Recondition | NZL-RECON | Nozzle Inspection | Goes ahead | Injector Nozzle Assembly: Grade C, from this unit |
+| Nozzle Replacement | NZL-REPLACE | Nozzle Inspection | Needs approval | Injector Nozzle Assembly: scrapped at the bench |
 
 !!! important "These are branches, not the route"
     **Every operation on the route runs.** The rebuild route is one approved
@@ -167,7 +167,8 @@ has an answer attached to the repair.
     own unit. The panel shows you that in advance, so the answer can be sought
     before the unit is standing still waiting for it.
 
-    **Pre-approved** means the repair goes ahead on the inspector's finding.
+    **Goes ahead** means the repair is pre-approved at that check and goes ahead
+    on the inspector's finding.
     That is set per edge on the approved process, so the same repair can be
     routine at teardown and need an answer at final test.
 
@@ -183,8 +184,8 @@ A repair code with **no component type** means *whatever the component* —
 whole-unit work like a final test, raised by any slot taking that resolution.
 
 !!! info "Where the master data lives"
-    **Repair Codes** and **Rebuild Levels** are authored under the
-    Remanufacturing section. They are what scope resolves against.
+    **Repair Codes** and **Rebuild Levels** are authored in **Data Management**
+    › **Supply & reman**. They are what scope resolves against.
 
     A core type with neither is still released to rebuild perfectly well — the
     unit walks its main line and no repair branch is ever offered. What release
@@ -314,8 +315,10 @@ consume a part the customer is owed.
 
 ## Finishing
 
-As with teardown, there is no *Finish rebuild* button: the unit reaches the end
-of its route in the operator runtime and the stage moves on its own.
+There is no *Finish rebuild* button: the unit reaches the end of its route in
+the operator runtime and the stage moves on its own. (Teardown differs here: a
+lead can close one by hand with a recorded reason — see
+[How teardown finishes](disassembly.md#how-teardown-finishes).)
 
 !!! note "Nothing is skipped"
     Every unit walks the whole main line of its rebuild route. Scope decides

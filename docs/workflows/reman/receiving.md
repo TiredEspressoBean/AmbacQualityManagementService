@@ -59,7 +59,7 @@ with **Submit N cores**.
 |-------|-------------|
 | **Serial Number** | Original equipment serial number |
 | **Reference Number** | RMA, PO, or other reference |
-| **Customer** | Who the core came from. For a **Purchased** core this lists **suppliers** (the broker it was bought from); for every other source it lists **customers** |
+| **Customer** | Who the core came from. For a **Purchased** core the field reads **Bought from** and lists **suppliers** (the broker it was bought from); for every other source it lists **customers** |
 | **Credit Value ($)** | Core credit owed for the return — informational only |
 | **Condition Notes** | Detailed observations |
 
@@ -174,8 +174,7 @@ pallet at inspection.
 
 !!! warning "Condition grade is required"
     A unit cannot be identified without one. It is the first real assessment of
-    that unit, and everything downstream — whether it is worth rebuilding, what
-    its components are likely to grade — reads from it.
+    that unit, recorded for whoever handles it next.
 
 ### Only exchange cores can arrive in bulk
 

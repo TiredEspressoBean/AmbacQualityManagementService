@@ -21,6 +21,9 @@ An operator runs the work; you settle what the work runs into.
 | **Resolve a manual decision point** | The step, when it asks for a branch | Choosing the routing branch is a supervisor call |
 | **Close a disposition** | [Dispositions](../workflows/quality/dispositions.md) | Ends a nonconformance's open state |
 | **Accept or reject a harvested component** | [Components](../workflows/reman/components.md) | Puts a used part back into customer product, or destroys it |
+| **Release a torn-down core to its exit** | The work order's **Cores** card, or the core's page — see [Teardown](../workflows/reman/disassembly.md#deciding-the-units-exit) | Rebuild, stock or harvest decides the unit's whole future |
+| **Send a core for the customer's authorisation** | **Authorise…** on the **Cores** card or the core's page | Stops the unit until the customer answers |
+| **Complete a teardown by hand** | **Complete teardown** on the **Cores** card, with a reason | Closes the teardown outside its route; finishing the route closes it without you |
 | **Override the training gate** | At claim / work-start | Nobody clears their own competency gap |
 | **Clear somebody else's unsubmitted signature** | The substep they signed | Unblocks work when the signer has gone home |
 | **Apply a cycle count** | [Locations & Cycle Counts](../workflows/supply/locations.md) | Counting is the counter's job; changing stock on the strength of it isn't |

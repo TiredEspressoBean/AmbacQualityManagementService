@@ -109,14 +109,20 @@ It has two exits:
   in their own right, and the core itself consumed
 
 So an exchange core is offered **Rebuild to stock** and **Release to
-inventory**. A repair-and-return unit is offered one button, **Release into
-rebuild** — releasing someone else's unit into your stock is refused outright,
-with the reason given.
+inventory** on the work order's **Cores** card (**Rebuild to stock** and
+**Harvest for parts** on the core's page). A repair-and-return unit is offered
+one button, **Release into rebuild** on the card (**Release to rebuild** on the
+core's page) — releasing someone else's unit into your stock is refused
+outright, with the reason given.
+
+Releasing a torn-down unit is a lead's decision: it needs the `release_core`
+permission. Without it, the card reads *A lead releases it* and the core's page
+*Torn down — a lead releases it*.
 
 ## The Remanufacturing dashboard
 
 **Remanufacturing > Dashboard** (`/reman`) is the section's front door, and the
-only place the receive paths are linked from.
+only place all three receive paths are linked from.
 
 Four counts across the top — **Total Cores**, **Awaiting Disassembly**, **In
 Disassembly**, **Usable Components** (shown as usable of total) — then two cards
@@ -167,7 +173,7 @@ supervisor override bypasses this** — unlike the training gate, which a
 supervisor can authorise past.
 
 Sending a unit for authorisation is a lead's deliberate act, not something the
-system does on its own.
+system does on its own. It needs the `request_core_authorisation` permission.
 
 ## Key concepts
 
@@ -202,11 +208,19 @@ Cores can also arrive counted but unidentified, as a lot. See
 |------------|--------|
 | `view_core` | View cores and their stages |
 | `add_core` | Receive cores |
-| `change_core` | Move a core through its stages |
-| `complete_disassembly` | **Release a torn-down unit** — to rebuild, to stock, or to harvest |
+| `change_core` | Work a core through teardown and rebuild, and record or correct the customer's answer |
+| `request_core_authorisation` | **Send a unit for the customer's authorisation** |
+| `release_core` | **Release a torn-down unit** — to rebuild, to stock, or to harvest |
+| `complete_disassembly` | **Complete a teardown by hand**, outside its route, with a reason |
 | `grade_component` | Record or edit a harvested component |
 | `accept_component` | Accept components into stock, and apply or dismiss findings |
 | `reject_component` | Scrap a harvested component |
+
+`request_core_authorisation`, `release_core` and `complete_disassembly` are the
+unit's decisions. By default Shift Lead, Production Manager, Planner and Tenant
+Admin hold them; operators keep `change_core` for routine teardown and rebuild
+work, and a finished teardown route closes the teardown without anyone's
+override.
 
 ## Related Topics
 

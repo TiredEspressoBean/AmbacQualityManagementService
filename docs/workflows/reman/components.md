@@ -140,7 +140,7 @@ time**.
 ## Filtering Components
 
 The list has a single control — a **search** box ("Search harvested
-components...") — plus **Import** and **Export**. Search matches a component's
+components...") — plus **Export**. Search matches a component's
 **position** and **original part number** only, not its core number or type.
 
 !!! note "No filter dropdowns"
@@ -186,8 +186,8 @@ When a component is accepted to inventory:
    - Part type matches component type
 
 2. **Life Tracking Transferred**
-   - Applicable life records copied
-   - Source marked as `TRANSFERRED`
+   - Applicable life records copied onto the new part, with source
+     `TRANSFERRED`; the core's own records are unchanged
    - Accumulated values preserved
 
 3. **Ready for Production**

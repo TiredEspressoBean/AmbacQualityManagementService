@@ -248,16 +248,24 @@ routine drift.
 If the shop remans, one planning decision is yours and it is not reversible:
 **what happens to a core after teardown**.
 
-A torn-down unit sits at *Disassembled*, on hold, until you choose its exit. What
-you're offered depends on how it is being fulfilled:
+A torn-down unit sits at *Disassembled*, on hold, until you choose its exit
+(the `release_core` permission, which Planner holds by default). What you're
+offered depends on how it is being fulfilled; the names below are the work
+order's **Cores** card's, and the core's page has the same choices:
 
-- **Repair and return** — one option, *Release into rebuild*. It is the
-  customer's own unit, so it goes back to them. Releasing it to inventory is
-  **refused outright**, and the refusal says why: its components are that
-  customer's property and cannot become your stock.
-- **Exchange** — *Rebuild to stock* or *Release to inventory*. The customer
-  already has a unit from stock, so this one is the shop's and both are
-  legitimate.
+- **Repair and return** — one option, *Release into rebuild* (*Release to
+  rebuild* on the core's page). It is the customer's own unit, so it goes back
+  to them. Releasing it to inventory is **refused outright**, and the refusal
+  says why: its components are that customer's property and cannot become your
+  stock.
+- **Exchange** — *Rebuild to stock* or *Release to inventory* (*Harvest for
+  parts* on the core's page). The customer already has a unit from stock, so
+  this one is the shop's and both are legitimate.
+
+Sending a unit for the customer's authorisation (`request_core_authorisation`)
+and closing a teardown by hand with a reason (**Complete teardown**,
+`complete_disassembly`) are also yours by default — see
+[Teardown](../workflows/reman/disassembly.md).
 
 A rebuilt exchange unit ends at **Rebuilt to stock** and **keeps its identity** —
 same unit, same core number — ready to go out against the next exchange.

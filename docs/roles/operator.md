@@ -313,6 +313,7 @@ These are withheld from the Operator role and enforced on the server:
 | **Verify a CAPA worked** (which is what closes it) | QA Manager |
 | **Void a substep completion** | QA Inspector, QA Manager, Tenant Admin |
 | **Write a training record** | Shift Lead, QA Manager, Production Manager, Engineering, Document Controller |
+| **Release a torn-down core, send it for the customer's authorisation, or complete its teardown by hand** | Shift Lead, Production Manager, Planner, Tenant Admin |
 | **Manage users** | Tenant Admin |
 
 These are the default groups an organisation starts with. Group permissions can be changed, so check your own in [Roles & Groups](../admin/users/roles.md).
@@ -321,6 +322,11 @@ These are the default groups an organisation starts with. Group permissions can 
     The shared staff base is broad: an Operator **can** create orders and work
     orders, upload documents, and raise a quality report. Whether you *should*
     is your shop's procedure, not a permission.
+
+    On a remanufactured core you work its teardown and rebuild steps as usual;
+    finishing the teardown route closes the teardown on its own. Releasing the
+    torn-down unit is your lead's call: the work order's **Cores** card reads
+    *A lead releases it*, and the core's page *Torn down — a lead releases it*.
 
 ### If you recorded something wrong
 

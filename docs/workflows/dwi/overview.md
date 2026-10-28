@@ -42,14 +42,15 @@ and the kind of capture determines what the operator sees:
 | **Equipment / Personnel** | Which equipment and people were involved |
 | **Inspection signatures** | Detected-by and verified-by signatures |
 | **Defects** | Defect findings against error types |
-| **Part annotation** | A marked point on the part's 3D model |
+| **Defect annotation (3D)** | Defects marked on the part's 3D model |
 | **Harvested components** | Components recovered during teardown, with their grades (reman) |
 | **Component install** | Which components went into the unit — its as-built record |
 | **Rebuild finding** | A component found worse than its teardown grade, for a lead to decide (reman) |
 
 Not every substep asks for something. Callouts, document links, embedded
-media — an image, a video, a 3D model — and measurement specs are instruction
-content the author places for the operator to read; they record nothing.
+media — an image or a video — 3D callouts on the part's model, and measurement
+specs are instruction content the author places for the operator to read; they
+record nothing.
 
 Numeric measurements are stored as measurement results, so they flow into SPC
 and the usual measurement reporting. The other captures are stored as substep
@@ -66,11 +67,12 @@ This is why there is no "move to next step" button — see
 
 ### Sequencing
 
-A step's substeps run in one of two modes:
+A step's substeps run in one of two modes, set with the step's **Sequencing**
+select in the process editor (see [Authoring](authoring.md#sequencing)):
 
 | Mode | Behaviour |
 |------|-----------|
-| **Sequential** | Substep *N* can only be completed once every **required** substep before it is complete |
+| **Sequential** (default) | Substep *N* can only be completed once every **required** substep before it is complete. The server enforces it |
 | **Free order** | Any substep may be completed in any order; the step's signoff checks that all required substeps are done |
 
 !!! note "An optional substep never holds up the one after it"
@@ -80,12 +82,13 @@ A step's substeps run in one of two modes:
 
 ### Per part or per batch
 
-Each substep declares how it maps onto the parts at the step:
+Each substep declares how it maps onto the parts at the step, with its **Batch
+(once per lot)** switch (off is per part):
 
 | Scope | Runs | Use for |
 |-------|------|---------|
-| **Per part (sampling)** | Once per part | Anything specific to an individual part — measurements, visual checks, scans |
-| **Per batch** | Once for the whole batch | Processes that happen to the lot as a whole — heat-treat cycles, plating baths, wash tanks, oven cures |
+| **Per part** (switch off) | Once per part | Anything specific to an individual part — measurements, visual checks, scans |
+| **Per batch** (switch on) | Once for the whole batch | Processes that happen to the lot as a whole — heat-treat cycles, plating baths, wash tanks, oven cures |
 
 The choice is made per substep, not per step, so one step can mix both. A
 plating operation might scan each part in (per part), run the bath once (per
@@ -97,9 +100,11 @@ batch), then do a final visual on each part (per part).
 
 ### Sampling
 
-A per-part substep can carry a **sampling rule**. Without one it runs for every
-part — a 100% sample. With one, the rule decides which parts it applies to, and
-each part gets an outcome:
+A per-part substep can carry a **sampling rule**, chosen with its **Sampling**
+select: **Every part**, **Percentage**, **Random**, **Every Nth part** or
+**First N parts** (see [Authoring](authoring.md#sampling)). With **Every part**
+it runs for every part — a 100% sample. Otherwise the rule decides which parts
+it applies to, and each part gets an outcome:
 
 | Outcome | Meaning |
 |---------|---------|
@@ -126,7 +131,7 @@ superseded by the resolved one, so the outcome is a record of both.
 | Setting | Effect |
 |---------|--------|
 | **Optional** | May be skipped without recording anything |
-| **Safety-critical** | Shown to the operator as critical: torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification |
+| **Critical** | Shown to the operator as safety-critical: torque on a safety-critical fastener, a witnessed sign-off, final dimensional verification |
 
 Everything else is required. There is no "not applicable": a substep that doesn't
 apply to some parts belongs on a step only the others run, or is optional, or

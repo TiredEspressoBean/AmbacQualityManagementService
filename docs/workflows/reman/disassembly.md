@@ -11,23 +11,27 @@ the unit next.
 
 ## Starting
 
-From the core's page, or the work order's cores card:
+From the core's page:
 
 | Core stage | Button | What it does |
 |------------|--------|--------------|
-| Received | **Start teardown** | Opens a teardown work order and takes you into the runtime |
+| Received, on no work order | **Start teardown** | Opens a teardown work order and takes you into the runtime |
+| Received, on a work order | **Start teardown** | Opens the unit at its step on that work order |
 | In disassembly | **Continue teardown** | Reopens the unit at the step it is at |
 | In rebuild | **Continue rebuild** | Same, on the rebuild side |
 
-!!! warning "Don't put a core on a work order before starting its teardown"
-    **Start teardown** creates the teardown work order itself. A core that is
-    already linked to one is refused — *"Core … is already linked to a work
-    order"* — so planning it onto a work order first is the one thing that stops
-    this working.
+On the work order's **Cores** card the same thing is one button, **Work**, which
+opens the unit at the step it is at.
 
-    The runtime opens a unit *at a step*, so **Continue teardown** and
-    **Continue rebuild** do need the unit to be on a work order and placed at a
-    step. That is the normal state after **Start teardown** has run.
+!!! note "Starting several at once"
+    From **Remanufacturing > Cores**, tick the cores and use **Start teardown
+    batch** in the selection bar. It asks for the **Disassembly process** and
+    opens one teardown work order for them. It refuses a core that is already on
+    a work order — *"Core … is already linked to a work order"*.
+
+The runtime opens a unit *at a step*, so **Continue teardown** and **Continue
+rebuild** need the unit to be on a work order and placed at a step. That is the
+normal state once teardown has started.
 
 ## Recording what came out
 
@@ -48,12 +52,21 @@ traceable back to this core.
 
 ## How teardown finishes
 
-There is no *Finish teardown* button. Teardown ends when the unit **reaches the
-end of its route** in the operator runtime — the last step is completed and the
-core moves to **Disassembled** on its own.
+Teardown normally ends when the unit **reaches the end of its route** in the
+operator runtime — the last step is completed and the core moves to
+**Disassembled** on its own.
 
-That is why the stage is trustworthy: it records that the work was actually
-done, step by step, rather than that someone said it was.
+A lead can also close it by hand: **Complete teardown** on the work order's
+**Cores** card, for a unit in teardown. It is an override and needs the
+`complete_disassembly` permission. The dialog, *Complete &lt;core&gt;'s teardown
+by hand*, explains that finishing the route closes it on its own, and that
+closing it here opens the unit's exit — rebuild, or harvest to stock — now. A
+reason is required (*"Say why the teardown is being completed by hand"*), and it
+is kept on the core as a record edit, with who made it. Without the permission,
+the card reads *In teardown*.
+
+That is why the stage is trustworthy: either the route was finished, step by
+step, or a lead closed it with a recorded reason.
 
 ## Deciding the unit's exit
 
@@ -61,7 +74,20 @@ At **Disassembled** the core's part is **On Hold** —
 not being worked, and deliberately not schedulable, until someone decides what
 happens to it.
 
-What you are offered depends on how the unit is being fulfilled:
+Releasing is a lead's decision and needs the `release_core` permission. Without
+it, the **Cores** card reads *A lead releases it* and the core's page *Torn down —
+a lead releases it*. The buttons are named slightly differently in the two
+places:
+
+| Fulfilment | Cores card | Core's page |
+|------------|------------|-------------|
+| Repair and return | **Release into rebuild** | **Release to rebuild** |
+| Exchange | **Rebuild to stock**, **Release to inventory** | **Rebuild to stock**, **Harvest for parts** |
+
+Harvesting asks you to confirm first, since the unit is consumed.
+
+What you are offered depends on how the unit is being fulfilled (named below as
+on the **Cores** card):
 
 === "Repair and return"
 
@@ -101,7 +127,10 @@ there automatically.
 
 **Authorise…** is on the work order's **cores card** and on the core's own page,
 and it appears once the unit is **in rebuild** — after release, when the findings
-have shown what the job actually needs.
+have shown what the job actually needs. In the step player, **Repairs at this
+check** offers **Send for the customer's authorisation** when a repair there is
+waiting on the customer. Sending, from any of these, needs the
+`request_core_authorisation` permission; without it the buttons are not shown.
 
 !!! important "There has to be something to authorise"
     The request is refused when every repair raised on the unit is already
@@ -123,8 +152,9 @@ have shown what the job actually needs.
 !!! warning "An exchange unit has no customer to ask"
     Sending one for authorisation is refused: *"… is an exchange unit — it has
     no customer to ask. A lead approves its repairs on the core."* The unit is
-    the shop's own, so the decision is the shop's. Use the lead approval on the
-    core instead.
+    the shop's own, so the decision is the shop's. Approve it in the step
+    player instead: **Repairs at this check** › **Approve &lt;code&gt;**, which
+    needs the `accept_component` permission.
 
 ### Printing the scope for the customer
 
@@ -227,13 +257,14 @@ the two answers separately, the approved units first, then the rest with
 A **Return** button on the work order's **Cores** card then sends the unit back to
 its customer, from either *Rebuilt* or *Scope declined*. It opens the ship dialog
 (carrier, tracking, ERP shipper number, expected delivery, notes) and creates a
-shipment, so the packing list prints, and the CoC too when the customer has *CoC
-with every shipment*. The unit moves to *Returned to customer* or *Returned
-unrepaired*, and its return reference is the shipment number. Return needs
-`change_core` and `add_customershipment`.
+shipment, so the packing list prints. When the customer has *CoC with every
+shipment*, the CoC prints with it for a rebuilt unit; a unit going back
+unrepaired gets a returned-as-received note instead. The unit moves to *Returned
+to customer* or *Returned unrepaired*, and its return reference is the shipment
+number. Return needs `add_customershipment`.
 
-A unit with no customer recorded can't be returned: *"… has no customer recorded,
-so there is no one to return it to."*
+If the unit has no customer recorded, the ship dialog asks for one (**Customer**)
+before it will ship.
 
 !!! danger "The authorisation hold cannot be overridden"
     A unit awaiting authorisation cannot be started, captured on, or advanced,
@@ -268,26 +299,27 @@ What a core type is expected to yield:
 
 | Field | Description |
 |-------|-------------|
-| **Component Type** | The component expected |
-| **Expected Qty** | How many per core |
-| **Fallout Rate** | The proportion typically unusable |
+| **Component** | The component expected |
+| **Per core** | How many per core |
+| **Fallout %** | The proportion typically unusable |
 
 It drives the teardown capture's rows and feeds component-availability planning.
 
 ## Life tracking transfer
 
 When a component is accepted into stock, life-tracking records from the core are
-examined, those applicable to the component type transfer with it, and the source
-is marked `TRANSFERRED`. Accumulated life follows the component rather than being
-lost with the unit.
+examined, and those applicable to the component type are copied onto the new
+part with source `TRANSFERRED`. The core's own records are left as they were.
+Accumulated life follows the component rather than being lost with the unit.
 
 ## Troubleshooting
 
 ### Can't start a teardown
 
 - The core must be at **Received**
-- It must **not** already be on a work order — **Start teardown** creates one,
-  and refuses a core that has one already
+- **Start teardown batch** on the **Cores** list refuses a core that is already
+  on a work order. Open that core's page instead: its **Start teardown** opens
+  the unit at its step on the work order it is on
 - Check your permissions
 
 There also has to be a teardown route to put it on. Two config gaps refuse the
@@ -296,9 +328,9 @@ start, and neither is something an operator can fix:
 - **No disassembly process for that core type** — *"No eligible disassembly
   Process found for core_type X"*. A `Process` has to be approved and flagged as
   a disassembly process. Ask an administrator.
-- **More than one, with no default** — the system will not guess. Pick the
-  process explicitly from the teardown action on the **Cores** list, or have a
-  default set for that core type.
+- **More than one, with no default** — the system will not guess. Tick the core
+  on the **Cores** list and pick the **Disassembly process** in **Start teardown
+  batch**, or have a default set for that core type.
 
 ### Nothing happens on "Continue teardown"
 
