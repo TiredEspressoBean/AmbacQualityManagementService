@@ -2592,14 +2592,14 @@ class StepExecutionMeasurementViewSet(TenantScopedMixin, ListMetadataMixin, view
             if refusal:
                 raise ValidationError({'equipment': refusal})
 
+    # A recorded reading is evidence: it is never edited or deleted. A wrong one is
+    # voided and captured again (the report's void / re-capture), which keeps both.
+    http_method_names = ['get', 'post', 'head', 'options']
+
     def perform_create(self, serializer):
         """Set recorded_by from request."""
         self._refuse_failed_gauge(serializer)
         serializer.save(recorded_by=self.request.user)
-
-    def perform_update(self, serializer):
-        self._refuse_failed_gauge(serializer)
-        serializer.save()
 
     @extend_schema(
         description="Record multiple measurements at once for a step execution",

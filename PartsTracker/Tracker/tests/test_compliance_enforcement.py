@@ -225,6 +225,8 @@ class FailedGaugeTests(TenantTestCase):
         self.assertEqual(self.gauge.calibration_status, "FAILED")
         self.grant_tenant_permissions(self.user_a, t, [
             "add_stepexecutionmeasurement", "view_stepexecutionmeasurement",
+            # Held, and still no edit or delete: the routes don't exist.
+            "change_stepexecutionmeasurement", "delete_stepexecutionmeasurement",
             "full_tenant_access"])
         self.authenticate_as(self.user_a, t)
 
@@ -240,6 +242,21 @@ class FailedGaugeTests(TenantTestCase):
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("OUT_OF_SERVICE", r.content.decode())
         self.assertFalse(StepExecutionMeasurement.objects.filter(equipment=self.gauge).exists())
+
+    def test_a_recorded_reading_is_not_edited_or_deleted(self):
+        good = Equipments.objects.create(tenant=self.tenant_a, name="MIC-GOOD",
+                                         equipment_type=self.gauge.equipment_type,
+                                         status=EquipmentStatus.IN_SERVICE)
+        reading = StepExecutionMeasurement.objects.create(
+            tenant=self.tenant_a, step_execution=self.step_execution,
+            measurement_definition=self.md, substep=self.substep, value=10.01,
+            equipment=good, recorded_by=self.user_a)
+        url =f"/api/StepExecutionMeasurements/{reading.id}/"
+        self.assertEqual(self.client.patch(url, {"value": "10.30"}, format="json").status_code, 405)
+        self.assertEqual(self.client.put(url, {"value": "10.30"}, format="json").status_code, 405)
+        self.assertEqual(self.client.delete(url).status_code, 405)
+        reading.refresh_from_db()
+        self.assertEqual(float(reading.value), 10.01)
 
     def test_bulk_record_is_refused(self):
         r = self.client.post("/api/StepExecutionMeasurements/bulk-record/", {

@@ -25309,22 +25309,6 @@ const StepExecutionMeasurementRequest = z.object({
   substep: z.string().uuid().nullish(),
   archived: z.boolean().optional(),
 });
-const PatchedStepExecutionMeasurementRequest = z
-  .object({
-    step_execution: z.string().uuid().nullable(),
-    batch_execution: z.string().uuid().nullable(),
-    measurement_definition: z.string().uuid(),
-    value: z
-      .string()
-      .regex(/^-?\d{0,8}(?:\.\d{0,4})?$/)
-      .nullable(),
-    string_value: z.string().max(100),
-    recorded_by: z.number().int(),
-    equipment: z.string().uuid().nullable(),
-    substep: z.string().uuid().nullable(),
-    archived: z.boolean(),
-  })
-  .partial();
 const api_StepExecutionMeasurements_bulk_record_create_Body = z
   .object({
     step_execution: z.string().uuid(),
@@ -30168,7 +30152,6 @@ export const schemas = {
   StepExecutionMeasurement,
   PaginatedStepExecutionMeasurementList,
   StepExecutionMeasurementRequest,
-  PatchedStepExecutionMeasurementRequest,
   api_StepExecutionMeasurements_bulk_record_create_Body,
   StepExecutionStatusEnum,
   StepExecutionList,
@@ -54782,70 +54765,6 @@ Response:
     response: StepExecutionMeasurement,
   },
   {
-    method: "put",
-    path: "/api/StepExecutionMeasurements/:id/",
-    alias: "api_StepExecutionMeasurements_update",
-    description: `ViewSet for managing measurements recorded during step execution.
-
-Measurements are validated against MeasurementDefinition specs
-and can block step advancement if out of spec.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: StepExecutionMeasurementRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: StepExecutionMeasurement,
-  },
-  {
-    method: "patch",
-    path: "/api/StepExecutionMeasurements/:id/",
-    alias: "api_StepExecutionMeasurements_partial_update",
-    description: `ViewSet for managing measurements recorded during step execution.
-
-Measurements are validated against MeasurementDefinition specs
-and can block step advancement if out of spec.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: PatchedStepExecutionMeasurementRequest,
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: StepExecutionMeasurement,
-  },
-  {
-    method: "delete",
-    path: "/api/StepExecutionMeasurements/:id/",
-    alias: "api_StepExecutionMeasurements_destroy",
-    description: `ViewSet for managing measurements recorded during step execution.
-
-Measurements are validated against MeasurementDefinition specs
-and can block step advancement if out of spec.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
     method: "post",
     path: "/api/StepExecutionMeasurements/bulk-record/",
     alias: "api_StepExecutionMeasurements_bulk_record_create",
@@ -56000,10 +55919,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepOverrides/:id/reject/",
@@ -56039,7 +55955,10 @@ const endpoints5 = makeApi([
     description: `List pending override requests that need approval`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/Steps/",
@@ -61166,10 +61085,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/User/:id/",
@@ -61219,7 +61135,10 @@ const endpoints6 = makeApi([
       },
     ],
     response: z.array(AuditLog),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/User/bulk-activate/",

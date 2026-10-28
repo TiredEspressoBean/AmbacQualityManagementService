@@ -12710,30 +12710,12 @@ export interface paths {
         };
         /** @description Retrieve a specific measurement */
         get: operations["api_StepExecutionMeasurements_retrieve"];
-        /**
-         * @description ViewSet for managing measurements recorded during step execution.
-         *
-         *     Measurements are validated against MeasurementDefinition specs
-         *     and can block step advancement if out of spec.
-         */
-        put: operations["api_StepExecutionMeasurements_update"];
+        put?: never;
         post?: never;
-        /**
-         * @description ViewSet for managing measurements recorded during step execution.
-         *
-         *     Measurements are validated against MeasurementDefinition specs
-         *     and can block step advancement if out of spec.
-         */
-        delete: operations["api_StepExecutionMeasurements_destroy"];
+        delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description ViewSet for managing measurements recorded during step execution.
-         *
-         *     Measurements are validated against MeasurementDefinition specs
-         *     and can block step advancement if out of spec.
-         */
-        patch: operations["api_StepExecutionMeasurements_partial_update"];
+        patch?: never;
         trace?: never;
     };
     "/api/StepExecutionMeasurements/bulk-record/": {
@@ -31667,40 +31649,6 @@ export interface components {
              * @description Per-piece cycle on THIS machine, overriding StepTiming (a faster or slower machine for the same step).
              */
             cycle_time_override?: number | null;
-            archived?: boolean;
-        };
-        /** @description Serializer for step execution measurements. */
-        PatchedStepExecutionMeasurementRequest: {
-            /**
-             * Format: uuid
-             * @description The part-visit this reading belongs to. Null for BATCH-scope measurements, which key on batch_execution instead.
-             */
-            step_execution?: string | null;
-            /**
-             * Format: uuid
-             * @description The batch this reading belongs to, for BATCH-scope substeps (one cycle reading for the whole load). Mutually exclusive with step_execution.
-             */
-            batch_execution?: string | null;
-            /** Format: uuid */
-            measurement_definition?: string;
-            /**
-             * Format: decimal
-             * @description Numeric measurement value
-             */
-            value?: string | null;
-            /** @description String value for pass/fail or text measurements */
-            string_value?: string;
-            recorded_by?: number;
-            /**
-             * Format: uuid
-             * @description Equipment used for measurement
-             */
-            equipment?: string | null;
-            /**
-             * Format: uuid
-             * @description Substep this measurement was captured from, when the source was a DWI MeasurementInput node. Null means the measurement was recorded at the Op level (legacy path or non-DWI workflow).
-             */
-            substep?: string | null;
             archived?: boolean;
         };
         /**
@@ -63253,83 +63201,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StepExecutionMeasurement"];
-                };
-            };
-        };
-    };
-    api_StepExecutionMeasurements_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Execution Measurement. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StepExecutionMeasurementRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["StepExecutionMeasurementRequest"];
-                "multipart/form-data": components["schemas"]["StepExecutionMeasurementRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StepExecutionMeasurement"];
-                };
-            };
-        };
-    };
-    api_StepExecutionMeasurements_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Execution Measurement. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    api_StepExecutionMeasurements_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Step Execution Measurement. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedStepExecutionMeasurementRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedStepExecutionMeasurementRequest"];
-                "multipart/form-data": components["schemas"]["PatchedStepExecutionMeasurementRequest"];
-            };
-        };
         responses: {
             200: {
                 headers: {
