@@ -412,7 +412,7 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                             <div className="space-y-1 leading-none">
                                 <FormLabel>First Piece Inspection (FPI)</FormLabel>
                                 <FormDescription>
-                                    Mark this as the first piece inspection for setup verification. Required before other parts can proceed at this step.
+                                    Labels this report as a first-piece inspection. It doesn't hold the run: the step's first-piece buy-off does that, and sets this on the report it passes.
                                 </FormDescription>
                             </div>
                         </FormItem>
