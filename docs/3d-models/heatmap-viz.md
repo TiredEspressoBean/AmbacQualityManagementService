@@ -25,9 +25,10 @@ Two things shape a defect's contribution before you touch anything:
 
 - **Severity weights it** — Critical counts double, High one and a half times,
   Medium once, Low half
-- **The defaults scale themselves** — Radius starts at 5% of the model's largest
-  dimension, and Intensity starts lower the more annotations are in view
-  (1.5 ÷ √count), so a busy map does not turn solid red
+- **The defaults scale themselves** — with **Auto-adjust** on (the default),
+  Radius starts at 5% of the model's largest dimension, and Intensity starts
+  lower the more annotations are in view (1.5 ÷ √count), so a busy map does not
+  turn solid red
 
 !!! tip "Red means saturated, not 'the most'"
     Once an area reaches red, more defects there change nothing, so two areas
@@ -42,8 +43,10 @@ Two things shape a defect's contribution before you touch anything:
 ### By Part Type
 
 1. Navigate to **Quality** > **Heat Map**
-2. Select a Part Type
-3. Heat map shows all defects across parts of that type
+2. On the **By Part Type** tab, select a part type — only part types with a 3D
+   model are listed
+3. Heat map shows the defects annotated on that part type's model, across all
+   its parts
 
 This view identifies:
 - Systemic location issues
@@ -52,7 +55,9 @@ This view identifies:
 
 ### By Specific Part
 
-1. Navigate to `/heatMapViewer/part/{partId}`
+1. On the Heat Map page's **By Specific Part** tab, choose the **Part Type**
+   and the **Part**, then **View Heatmap** — or open
+   `/heatMapViewer/part/{partId}`
 2. Heat map shows defects on that specific part
 3. Useful for part-specific investigation
 
@@ -60,17 +65,28 @@ This view identifies:
 
 Use the **Work order** filter to narrow the map to one work order's parts.
 
+!!! warning "The map draws the 25 most recent matching defects"
+    The viewer loads the **25 newest** annotations that match the filters and
+    draws only those. The header says so — *Showing 25 of N defects* — and the
+    Severity and Defect Type counts still cover all **N**. When N is larger,
+    narrow the filters (a date range, a work order, a defect type) until the
+    two numbers match before reading the map as the whole picture.
+
 ## Heat Map Options
 
-Two sliders shape how the heat map renders:
+Under **Heatmap Settings**:
 
 | Option | Effect |
 |--------|--------|
+| **Enable Heatmap** | Turns the heat on or off; the annotation markers stay |
+| **Auto-adjust** | On: Radius and Intensity are multipliers on the self-scaling defaults, with the resulting value shown beneath each. Off: they are set directly |
 | **Radius** | How far each defect's heat spreads from its point |
 | **Intensity** | How strongly each defect contributes to the colour |
 
+Radius and Intensity each have a slider and a box to type a value.
+
 !!! note "No opacity, interpolation or contour controls"
-    The two sliders above are the whole of it — there is no point size,
+    The settings above are the whole of it — there is no point size,
     opacity, interpolation or contour setting, and no choice between count,
     rate and per-severity maps. To see one severity, filter by it.
 
@@ -78,11 +94,13 @@ Two sliders shape how the heat map renders:
 
 | Filter | Options |
 |--------|---------|
-| **Manufacturing Step** | All steps, or one |
-| **Defect Type** | All defect types, or one |
-| **Severity** | All, Low, Medium, High or Critical |
-| **Date Range** | All time, last 7, 30 or 90 days, or a custom start and end |
+| **Manufacturing Step** | Shown when the part type has more than one model: chooses which model — the part type's general one, or one tied to a step |
+| **Defect Type** | All defect types, or one of those present, with its count |
+| **Severity** | All severities, or one of those present, with its count |
+| **Date Range** | All time, last 7, 30 or 90 days, or a custom start and end — by the date the annotation was made |
 | **Work Order** | All work orders, or one |
+
+**Clear All Filters** resets Defect Type, Severity, Date Range and Work Order.
 
 ## Interpreting Heat Maps
 

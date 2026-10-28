@@ -19,11 +19,15 @@ SPC applies statistical methods to:
 | SPC Report | Button on the SPC page | Generates a PDF SPC report, downloaded — or emailed to you, where this deployment sends mail |
 | Analysis Dashboard | `/analysis` | Overview with links to SPC |
 
-Navigate to **Analytics**, then select **SPC**, or go directly to `/spc`
+Navigate to **Analytics**, then select **SPC** (on the FPY Trend card) or the
+**First Pass Yield** card, or go directly to `/spc`. The page is headed
+*Statistical Process Control*.
 
 ## Control Charts
 
-The system supports three chart types, selected via the **Chart Type** toggle:
+The system supports three chart types. The **Chart Type** toggle chooses
+between a subgroup chart and **I-MR**; which subgroup chart you get — X̄-R or
+X̄-S — follows the subgroup size:
 
 ### X̄-R (X-bar and Range)
 For subgroups of 2-8 samples. Uses Range to estimate variation.
@@ -78,17 +82,17 @@ A process can be in control but not capable (or vice versa).
 
 Use the dropdowns at the top to select:
 
-1. **Process** - The manufacturing process (e.g., "Injector Build")
-2. **Step** - The specific step within the process (e.g., "Flow Calibration")
-3. **Measurement** - The measurement definition to analyze (e.g., "Flow Rate")
+1. **Process** - The manufacturing process
+2. **Step** - The specific step within the process
+3. **Measurement** - The measurement definition to analyze
 
 ### Chart Settings
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| **Chart Type** | X̄-R, X̄-S, I-MR | Auto-selects X̄-S for subgroups > 8 |
-| **Date Range** | 30, 60, 90, 180 days | How far back to pull data |
-| **Subgroup Size (n)** | 2-25 | Number of consecutive measurements per point |
+| **Chart Type** | Subgroup (X̄-R or X̄-S), I-MR | The subgroup chart is X̄-S when the subgroup size is over 8, X̄-R otherwise |
+| **Date Range** | Last 30, 60, 90 or 180 days | How far back to pull data. Starts at 90 |
+| **Subgroup Size (n)** | 2–10, 15, 20, 25 | Number of consecutive measurements per point. Subgroup charts only; starts at 5 |
 
 Standard practice is subgroup size of 5. Larger subgroups detect smaller shifts but require more data.
 
@@ -96,15 +100,20 @@ Standard practice is subgroup size of 5. Larger subgroups detect smaller shifts 
 
 The SPC view shows:
 
-- Control chart with data points
-- Control limits (calculated)
+- The measurement's **Nominal**, **Tolerance**, **USL** and **LSL**
+- A plain-language summary — *Action Needed*, *Monitor Closely*, *Process
+  Healthy* or *Capability not judged yet* — with a suggested next step
+- Control chart with data points, under **Control Charts**; **Histogram** and
+  **Data Table** are the other two tabs
+- Control limits (calculated, or frozen)
 - Specification limits (from measurement definition)
-- Out-of-control points highlighted
-- Trend indicators
+- Out-of-control points highlighted, and listed under **Out of Control Points
+  Detected** with the rule each broke
+
+Click a point to open its subgroup — its mean, range and individual values —
+with **Investigate (Create CAPA)**.
 
 ## Out-of-Control Rules
-
-Points are flagged for:
 
 uqmes applies the **Western Electric** rules. The numbering matters: the
 practitioner guide escalates by rule number, so Rule 2 has to mean the same
@@ -179,16 +188,19 @@ Based on overall variation (not just within-subgroup):
 
 ## Capability Summary
 
-The SPC page shows:
+Four cards sit above the charts:
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| Cp | 1.45 | Capable |
-| Cpk | 1.32 | Capable |
-| Mean | 25.002 | Centered |
-| Std Dev | 0.003 | - |
-| USL | 25.010 | - |
-| LSL | 24.990 | - |
+| Card | Shows |
+|------|-------|
+| **Cpk** | Against a target of ≥ 1.33 |
+| **Cp** | Process potential |
+| **Out of Control** | Points flagged |
+| **Process σ** | Estimated within-subgroup spread, in the measurement's unit |
+
+Below the charts, **Process Capability Summary** gives **Cp**, **Cpk**, **Pp**
+and **Ppk** together. Until there are enough subgroups — or while the readings
+show no spread at all — capability is shown as not yet judged, and **Freeze
+Limits** stays unavailable.
 
 ## Baseline Management
 
@@ -217,11 +229,9 @@ When process improves significantly:
 
 ## Histogram
 
-View distribution of measurements:
-
-- Normal curve overlay
-- Specification limits shown
-- Visual capability assessment
+The **Histogram** tab (*Process Distribution*) shows the distribution of the
+measurements as bars, with the **LSL** and **USL** marked — a visual capability
+check. There is no normal-curve overlay.
 
 ## SPC Reports
 

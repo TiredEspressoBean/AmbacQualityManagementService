@@ -12,8 +12,10 @@ The 3D model viewer allows you to inspect parts visually and interact with defec
 
 ### From the work order page
 
-Select a part, and the **QA panel** on the right shows its part type's model —
-see [which model it uses](uploading.md#linking-to-part-types).
+Select a part, and the **QA panel** on the right gains a **3D** tab with its part
+type's model — see [which model it uses](uploading.md#linking-to-part-types).
+The tab appears only when the part type has a model that has finished
+converting.
 
 ### Direct Access
 
@@ -21,9 +23,10 @@ Navigate to `/heatMapViewer/partType/{id}` or `/heatMapViewer/part/{id}`
 
 ## Viewer Interface
 
-The model fills the page, with the filters and heat map settings beside it and a
-short controls reminder in the bottom-left corner. Selecting an annotation opens
-its panel alongside the model.
+The model fills the page, with the filters and heat map settings beside it, a
+**Lighting Settings** button in its top-left corner and a short controls reminder
+in the bottom-left. A list button in the bottom-right opens the **Annotations**
+list. Selecting an annotation opens its panel alongside the model.
 
 ## Navigation Controls
 
@@ -59,17 +62,22 @@ its panel alongside the model.
 The viewer flies a camera rather than spinning a turntable, so movement is
 WASD as in a game. The mouse still orbits, pans and zooms.
 
+The keys work while navigating — on the heat map viewer, and in the annotator
+when it is set to **Navigate View**. While annotating, only the mouse and touch
+controls move the view. `G` (fullscreen) belongs to the heat map viewer.
+
 ## Toolbar Controls
 
 ### Lighting
 
-The one settings panel adjusts lighting: **Ambient**, **Main Light** and
-**Fill Light**.
+The one settings panel adjusts lighting: **Ambient**, **Main Light**, **Fill
+Light** and **Headlamp (camera)**, with **Reset** to put the lighting back to
+its defaults.
 
 !!! warning "The rest of the toolbar does not exist"
-    There is no Reset, Zoom to Fit, Front/Back/Side preset, Perspective/Ortho
-    toggle, Wireframe, X-Ray, Points, Show All, Filter or Hide, and no
-    double-click or double-tap action.
+    There is no view Reset, Zoom to Fit, Front/Back/Side preset,
+    Perspective/Ortho toggle, Wireframe, X-Ray, Points, Show All, Filter or Hide,
+    and no double-click or double-tap action.
 
     To get back to a view you lost, reload the page.
 
@@ -85,15 +93,18 @@ The one settings panel adjusts lighting: **Ambient**, **Main Light** and
 
 ## How annotations appear
 
-Annotations are drawn as **heat** on the model's surface, not as separate
-markers: each one warms the area around its point, weighted by severity. See
+Each annotation is a small **marker** on the model, coloured by severity
+(red Critical, orange High, yellow Medium, green Low; the selected one turns
+yellow). On the heat map viewer it also shows as **heat** on the model's
+surface: each one warms the area around its point. See
 [Heat Map Visualization](heatmap-viz.md) for how the colour is built.
 
 ## Selecting an annotation
 
-Click on or near an annotated spot to select that annotation. Its panel shows
-the **error type**, **severity**, **notes**, **who reported it**, the **date
-found** and the **part**, with **Edit Annotation** for the first three.
+Click an annotation's marker, or pick it from the **Annotations** list, to
+select it. Its panel shows the **error type**, **severity**, **position**,
+**notes**, **who reported it**, the **date found** and the **part**, with an
+edit button (**Edit Annotation**) for the error type, severity and notes.
 
 !!! note "No links out from the panel"
     The panel has no *View NCR*, *View Part* or *View Similar* action. Open the
@@ -101,10 +112,11 @@ found** and the **part**, with **Edit Annotation** for the first three.
 
 ## Filtering
 
-On the heat map viewer: **Manufacturing Step**, **Defect Type**, **Severity**
-(Low, Medium, High, Critical), **Date Range** (all time, last 7, 30 or 90 days,
-or custom) and **Work Order**. To see one part rather than a whole part type,
-open `/heatMapViewer/part/{id}`.
+On the heat map viewer: **Manufacturing Step** (when the part type has more
+than one model), **Defect Type**, **Severity** (the severities present, with
+their counts), **Date Range** (all time, last 7, 30 or 90 days, or custom) and
+**Work Order**. To see one part rather than a whole part type, use the **By
+Specific Part** tab on the Heat Map page, or open `/heatMapViewer/part/{id}`.
 
 ## Exporting Views
 

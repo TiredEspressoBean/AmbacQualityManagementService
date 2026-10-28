@@ -25,9 +25,16 @@ Visualization](../3d-models/heatmap-viz.md).
 
 ## Choosing what to show
 
-Pick a **Part Type** to see defects across every part of that type — the view
-for systemic, location-driven problems — or a single **Part** to see just its
-own.
+On the **By Part Type** tab, pick a part type to see defects across every part
+of that type — the view for systemic, location-driven problems. On the **By
+Specific Part** tab, pick a part type and a part, then **View Heatmap**, to see
+just that part's own.
+
+!!! warning "Up to 25 defects at a time"
+    The viewer draws the 25 most recent annotations that match the filters; its
+    header reads *Showing 25 of N defects* when there are more. Narrow the
+    filters until the numbers match. See [Heat Map
+    Visualization](../3d-models/heatmap-viz.md#by-work-order).
 
 !!! note "There is no by-order view"
     To look at one job, narrow by **Work Order** in the filters below.
@@ -38,20 +45,22 @@ When 3D models are configured:
 
 ### Interactive Viewer
 - Rotate, zoom, pan the model
-- Defect locations shown as colored points
+- Defect locations shown as points coloured by severity, with heat around them
 - Click points for defect details
 
 ### Color Scale
 ```
 Low ─────────────────────────────── High
-Blue    Green    Yellow    Orange    Red
+Blue    Cyan    Green    Yellow    Red
 ```
 
 ### Navigation
 - **Scroll**: Zoom in/out
 - **Drag**: Rotate model
-- **Shift+Drag**: Pan
+- **Right-drag** or **Shift+Drag**: Pan
 - **Click point**: View defect detail
+
+See [Viewing Models](../3d-models/viewing.md) for the keyboard controls.
 
 ## Heat Map Data
 
@@ -62,13 +71,14 @@ recorded, its severity, notes, who reported it and when.
 
 | Filter | Options |
 |--------|---------|
-| **Manufacturing Step** | All steps, or one |
-| **Defect Type** | All defect types, or one |
-| **Severity** | All, **Low**, **Medium**, **High** or **Critical** |
+| **Manufacturing Step** | Shown when the part type has more than one model: chooses which model |
+| **Defect Type** | All defect types, or one of those present, with its count |
+| **Severity** | All severities, or one of those present, with its count |
 | **Date Range** | All time, last 7, 30 or 90 days, or a custom range |
 | **Work Order** | All work orders, or one |
 
-**Heatmap Settings** adjusts how the points are drawn.
+**Heatmap Settings** turns the heat on or off and adjusts how it spreads
+(**Radius**) and how strongly each defect counts (**Intensity**).
 
 ## Creating Annotations
 
@@ -78,15 +88,19 @@ An annotation has to belong to a **quality report**: the annotator asks you to
 ### Where
 
 - **In the step player**, where a substep carries a **Part annotation** capture
-- **On the work order page**, from the QA panel on the right when a part is
-  selected
+- **On the work order page**, from the **3D** tab of the QA panel on the right
+  when a part is selected
+- **In the Annotator** (`/annotator`), which a disposition waiting on
+  annotations links to
 
 ### Placing one
 
+From the work order page:
+
 1. Choose the quality report
 2. Click the defect location on the 3D model
-3. Fill in **Error Type**, **Severity Level** and **Notes**
-4. Save
+3. Click the marker and fill in **Error Type**, **Severity Level** and **Notes**
+4. **Save New**
 
 See [Annotations](../3d-models/annotations.md) for the full procedure.
 

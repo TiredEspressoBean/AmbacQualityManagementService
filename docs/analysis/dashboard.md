@@ -8,7 +8,7 @@ is the Quality dashboard.
 
 | Dashboard | Route | Focus |
 |-----------|-------|-------|
-| **Analytics** | `/analysis` | Quality KPIs, FPY trend, what needs attention, top defects. Headed *Quality Dashboard* |
+| **Analytics** | `/analysis` | Quality KPIs, FPY trend, what needs attention, top defects, downtime. Headed *Quality Dashboard* |
 | **Quality dashboard** | `/quality` | **CAPAs** — counts, quick actions, approvals, your tasks |
 | **NCR Analysis** | `/quality/ncrs` | NCR trend, aging, disposition breakdown |
 | **Defect Analysis** | `/quality/defects` | Defects by type, process, part — with filters and CSV export. See [Defect Analysis](defects.md) |
@@ -19,31 +19,40 @@ is the Quality dashboard.
 
 Navigate to **Analytics** in the sidebar.
 
+A status banner at the top sums things up — *Quality on track*, *Some issues
+need attention* or *Immediate attention required* — with **View Issues** jumping
+to the attention list.
+
 ### KPI cards
 
-| KPI | Description |
-|-----|-------------|
-| **First Pass Yield** | Percentage passing without rework, against a **95%** target |
-| **Scrap Rate** | Percentage of parts scrapped |
-| **Rework Rate** | Percentage of parts reworked |
-| **Open Issues** | Open quality issues |
-| **Active CAPAs** | CAPAs in progress |
-| **Overdue** | CAPAs past their due date |
+| KPI | Description | Opens |
+|-----|-------------|-------|
+| **First Pass Yield** | Percentage passing first time over the last 7 days, against a **95%** target. Planned repairs are left out, and their share is shown as *needed repair* | SPC |
+| **Scrap Rate** | Percentage of parts scrapped | NCR Analysis |
+| **Rework Rate** | Percentage of parts reworked | NCR Analysis |
+| **Open Issues** | Open NCRs plus parts in quarantine | Dispositions |
+| **Active CAPAs** | CAPAs not yet closed | CAPAs |
+| **Overdue** | CAPAs past their due date | CAPAs |
 
 ### Below the cards
 
-- **FPY Trend** — first pass yield over the period, with the target line, and a
-  link to SPC
-- **Needs attention** — the urgent items; *All Clear — No urgent issues* when
-  there are none
-- **Top Defects** — the most frequent error types, linking to Defect Analysis
-- Links to **NCRs**, **CAPAs** and the quality reports list
+- **FPY Trend** — first pass yield over the period, with its average and the
+  target line, and a link to SPC
+- **Needs Attention** — up to five urgent items, each linking to where it is
+  dealt with; *All Clear — No urgent issues* when there are none
+- **Top Defects** — the five most frequent error types, with **Full Analysis**
+  linking to Defect Analysis
+- **Downtime** — hours lost over the period, **By cause** and **By machine**
+- **Explore** links to **NCR Analysis**, **Defect Patterns**, **CAPA
+  Management** and **All Reports**
 
 ### Period
 
-The page has one control: a period toggle of **30**, **60** or **90 days**.
+The page has one control: a period toggle of **30**, **60** or **90 days**, on
+the FPY Trend card. It sets the FPY trend, scrap and rework rates, Top Defects
+and Downtime; the other cards are current counts.
 
-!!! note "No dimension filters, drill-down, export or refresh"
+!!! note "No dimension filters, chart drill-down, export or refresh"
     There is no part type, process, customer or error type filter here, no
     custom date range, nothing to click through from a chart, and no export.
     To see the records behind a number, open the page that owns them: [Defect
@@ -70,8 +79,14 @@ Below: **Quick Actions** (*View All CAPAs*, *Create New CAPA*), the items
 
 ## NCR Analysis (`/quality/ncrs`)
 
-NCRs over time, how long they stay open, and how their dispositions break down —
-scrap, rework, use as is, return to supplier.
+Headed *NCR & Disposition Analysis*, with the same **30 / 60 / 90 day** toggle.
+Cards for **Total NCRs**, **Open NCRs**, **Avg Age** and **Closure Rate**; then
+the **NCR Trend** (created against closed), the **Disposition Breakdown** —
+rework, repair, scrap, use as is, return to supplier, not a nonconformance — the
+**NCR Aging** buckets and **Summary Statistics**.
+
+**Awaiting a CAPA decision** lists failed reports nobody has yet decided a CAPA
+on, and **Open Dispositions** the non-conforming parts still being dispositioned.
 
 **Repeat defects** lists every defect recorded **three or more times on failed
 reports** in the selected period — the classic CAPA candidate. Each row names
@@ -80,16 +95,14 @@ the defect, the part types and steps it turned up on, and the count. See
 
 ## Big Screen Mode
 
-For shop floor displays:
+**`/big-screen`** is a page with **no sidebar entry**, so you have to type the
+URL. Headed *Production Dashboard*, it lays out KPIs, a 30-day FPY trend,
+defects by type and recent activity in large type for a wall display.
 
-1. Go to **`/big-screen`** directly — it is a real page but has **no sidebar
-   entry**, so you have to type the URL
-2. Full-screen optimized display (press F11)
-3. Large, readable fonts
-4. Shows KPIs, FPY trend, defects by type, and recent activity
-
-!!! note "Planned Feature"
-    Big screen configuration options (metrics selection, rotation interval, display theme) are planned for a future release.
+!!! warning "It shows sample figures, not your data"
+    Every number, chart and activity line on this page is fixed sample content —
+    it is not read from your records and does not change. Use **Analytics** for
+    real figures.
 
 ## Permissions
 

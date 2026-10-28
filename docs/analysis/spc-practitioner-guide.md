@@ -15,8 +15,8 @@ SPC data connects to several pages in uqmes:
 | **Analysis Dashboard** | `/analysis` | KPI overview: FPY trends, needs attention, defect pareto |
 | **SPC Charts** | `/spc` | Control charts, capability indices, baseline management |
 | **SPC Report** | Button on the SPC page | Generates a PDF SPC report, downloaded — or emailed to you, where this deployment sends mail |
-| **Quality Dashboard** | `/quality` | Quality metrics, open NCRs, CAPA status |
-| **Defect Analysis** | `/quality/defects` | Defect trends by type, supplier, part type |
+| **Quality Dashboard** | `/quality` | CAPA counts, CAPA quick actions, your approvals and CAPA tasks |
+| **Defect Analysis** | `/quality/defects` | Defect trends by defect type, process and part type |
 | **CAPA List** | `/quality/capas` | Active CAPAs, some triggered by SPC |
 | **Heat Map** | `/heatmap` | Visual defect location analysis |
 | **Calibrations** | `/quality/calibrations` | Equipment calibration status (affects measurement validity) |
@@ -27,7 +27,7 @@ SPC data connects to several pages in uqmes:
 Sidebar (standalone links, no section header)
     ├── Documents (/documents)
     ├── Analytics (/analysis)
-    │       └── Links to: SPC, Defects, Process Flow
+    │       └── Links to: SPC, NCR Analysis, Defect Analysis, CAPAs, Quality Reports
     └── AI Chat (/ai-chat)
 
     From Analytics page:
@@ -38,6 +38,8 @@ Quality (sidebar)
     ├── Dashboard (/quality)
     ├── CAPAs (/quality/capas)
     ├── Quality Reports (/editor/quality-reports)
+    ├── Change Control (/quality/change-control)
+    ├── Dispositions (/production/dispositions)
     ├── Training (/quality/training)
     ├── Calibrations (/quality/calibrations)
     └── Heat Map (/heatmap)
@@ -95,7 +97,7 @@ PARTS AFFECTED: INJ-0417, INJ-0419
 
 INVESTIGATION:
 ☑ Material: Lot 2024-0088 (supplier A) - DIFFERENT from prior lots
-☐ Machine: Flow Test Stand #1 - same as prior
+☐ Machine: Test stand A - same as prior
 ☐ Method: WI-001-A Rev 3 - no changes
 ☐ Measurement: Same gauge, same calibration
 ☐ Man: same experienced operator as prior runs
@@ -173,8 +175,8 @@ Freeze control limits when ALL of these are true:
 2. **Document current state**: Screenshot chart and capability indices
 3. **Get approval**: QA Manager sign-off required
 4. **Freeze in system**: Click **Freeze Limits** on SPC page
-5. **Record justification**: the **notes** field is optional — the system will
-   freeze without one, so write it anyway if your procedure expects a reason
+5. **Record justification**: **Freeze Limits** freezes in one click and asks
+   for no note, so record the justification wherever your procedure keeps it
 6. **Communicate**: Notify production that baseline is locked
 
 ### 3.3 When to Update a Baseline
@@ -196,8 +198,9 @@ Update (unfreeze and refreeze) when:
 4. **Approve change**: QA Manager + Engineering sign-off
 5. **Update in system**: Click **Unfreeze** to return to baseline mode with
    recalculated limits, then **Freeze Limits** once the new limits are right
-6. **Retain history**: the old baseline is kept, marked **superseded**, with
-   the reason given
+6. **Retain history**: the old baseline is kept, marked **superseded**. The
+   reason stored with it is the page's fixed *User requested unfreeze from SPC
+   page*, so keep the real justification (below) in your own records
 
 ```
 BASELINE UPDATE JUSTIFICATION TEMPLATE:
@@ -325,6 +328,11 @@ To find parts produced during an out-of-control period:
 ```
 GET /api/Parts/?step={step_id}&created_at__gte={start}&created_at__lte={end}
 ```
+
+This returns parts **currently at** that step and **created** within the
+range — a starting point, not an exact "ran the step in this window" list. For
+who went through a step, `GET /api/StepExecutions/?step={step_id}` lists its
+visits, newest first, each with its entry and exit times.
 
 ### 5.4 Disposition Considerations
 

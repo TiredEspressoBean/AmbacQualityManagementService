@@ -9,7 +9,6 @@ The audit trail captures:
 | Category | Events |
 |----------|--------|
 | **Records** | Create, update, delete of all data |
-| **Access** | Login, logout, session activity |
 | **Documents** | Uploads, approvals, revisions |
 | **Quality** | NCRs, dispositions, CAPA actions |
 | **Parts** | Step transitions, measurements, status changes |
@@ -55,44 +54,28 @@ card.
 
 | Column | Description |
 |--------|-------------|
-| **Timestamp** | When the action occurred |
+| **Time** | When the action occurred — how long ago, and the date and time |
 | **User** | Who performed the action |
-| **Action** | Create, Update, Delete |
-| **Record Type** | What kind of record |
-| **Record** | Link to the record |
-| **Changes** | What changed |
+| **Action** | Created, Updated, Deleted or Accessed |
+| **Object** | The kind of record and its name, linking to the record (a deleted one is struck through, without a link) |
+| **Changes** | Up to four changed fields, old value → new value |
 
-### Filtering
+### Searching and sorting
 
-Filter the audit log:
+The page has a **search** box, which matches the record's name and the text of
+the changes, and a sort: **Most Recent**, **Oldest First**, **User (A-Z)** or
+**User (Z-A)**.
 
-| Filter | Options |
-|--------|---------|
-| **Date Range** | Start and end dates |
-| **User** | Specific user |
-| **Action** | Create, Update, Delete |
-| **Record Type** | Orders, Parts, NCRs, etc. |
-| **Search** | Text search in changes |
+!!! note "No filter panel"
+    There is no date-range, user, action or record-type filter on the page.
+    The API takes `actor`, `action`, `content_type` and `object_pk` filters —
+    `GET /api/auditlog/`.
 
 ### Change Details
 
-Click an entry to see details:
-
-```
-Record: Part WA-001
-Action: Update
-User: jane.smith@company.com
-Timestamp: 2026-03-15 10:30:45 UTC
-
-Changes:
-┌────────────────┬─────────────┬─────────────┐
-│ Field          │ Before      │ After       │
-├────────────────┼─────────────┼─────────────┤
-│ current_step   │ Machining   │ Inspection  │
-│ updated_at     │ 2026-03-15  │ 2026-03-15  │
-│ updated_by     │ john.doe    │ jane.smith  │
-└────────────────┴─────────────┴─────────────┘
-```
+Each row's details link opens the entry: **Event Details** (action, timestamp,
+IP address), **Audited Object** (its type, name and ID), **User**, and every
+**Change**, old value and new.
 
 ## Audit Data
 
@@ -111,7 +94,6 @@ For each change:
 | **Before State** | Previous values |
 | **After State** | New values |
 | **IP Address** | Request source, where the entry records one |
-| **Session** | Session identifier |
 
 ### Immutability
 
@@ -119,8 +101,7 @@ Audit records are **immutable**:
 
 - Cannot be edited
 - Cannot be deleted
-- Protected at database level
-- Tamper-evident
+- Protected at database level, by triggers that refuse any update or delete
 
 !!! warning "Compliance Requirement"
     Audit log immutability is required for regulatory compliance (AS9100D, IATF 16949, ISO 9001).
@@ -157,43 +138,23 @@ User permission changes:
 
 ### Basic Search
 
-Search text in change details:
-- Field names
-- Values (before/after)
-- Record identifiers
+The search box matches:
+- The record's name
+- The text of the changes — field names and values, before and after
 
-### Advanced Search
+### Combining criteria
 
-Combine filters:
-- User AND date range
-- Record type AND action
-- Multiple criteria
+On the page, search is the only narrowing. To combine a user, an action and a
+record type, query `GET /api/auditlog/` with its `actor`, `action`,
+`content_type` and `object_pk` filters. For one record's whole history, open
+the record — see [Record-Level History](#record-level-history).
 
-### Saved Searches
-
-!!! note "Planned Feature"
-    Saved search functionality is planned for a future release.
-
-When available:
-
-1. Configure filters
-2. Click **Save Search**
-3. Name the search
-4. Access from saved list
+There are no saved searches.
 
 ## Audit Reports
 
-!!! note "Planned Feature"
-    Pre-built audit reports and custom report generation are planned for a future release. Currently, audit data can be viewed in the UI or accessed via the API.
-
-When available, standard reports will include:
-
-- **User Activity Report**: Actions by user
-- **Record History Report**: Changes to specific records
-- **Login Report**: Authentication activity
-- **Change Summary**: Aggregate change statistics
-
-Custom and compliance-focused reports (AS9100D, IATF 16949, ISO 9001) are also planned.
+There are no pre-built audit reports — no user-activity, record-history or
+change-summary PDF. Audit data is read on screen or through the API.
 
 ## Exporting Audit Data
 

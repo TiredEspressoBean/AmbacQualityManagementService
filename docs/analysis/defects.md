@@ -4,7 +4,9 @@ Analyze defect data to identify patterns, prioritize improvements, and track qua
 
 ## Accessing Defect Analysis
 
-Navigate to **Analytics**, then click **Defects**, or go directly to `/quality/defects`
+Navigate to **Analytics**, then click **Full Analysis** on the Top Defects card
+or **Defect Patterns** under Explore, or go directly to `/quality/defects`. The
+page is headed *Defect Records*.
 
 ## Pareto Analysis
 
@@ -35,33 +37,41 @@ Focus improvement efforts on the "vital few":
 | Control | Purpose |
 |---------|---------|
 | **Period** | 30, 60, or 90 days |
-| **Part type** | All part types, or one |
+| **Part type** | All part types, or one — the selector beside the period |
 | **Defect type** | Click a bar in **By Defect Type** |
 | **Process** | Click a bar in **By Process** |
 
-Active filters show as chips above the charts; click one to remove it, or
-**Clear** to remove them all.
+Active filters show as chips below the trend chart; click a chip's **×** to
+remove it, or **Clear all** to remove them all.
 
 Across the top, four cards: **Total Defects**, **Defect Rate**, **Top Type** and
 **Trend**, with a **Defect Trend** chart beneath. Then the two breakdowns, **By
-Defect Type** and **By Process**, each with a count. Below that, **Defect
-Records** lists the individual defects:
+Defect Type** and **By Process**, each showing its top eight with a count.
+Beside them, **Records** lists the individual defects, newest first, up to 100
+(*Showing 100 of N* when there are more):
 
 | Column | Shows |
 |--------|-------|
 | **Part** | The affected part |
 | **Part Type** | Its type |
-| **Process** | The process it was running |
+| **Process** | The step it was found at |
 | **Defect** | The error type recorded |
 | **Date** | When it was found |
-| **Status** | Where the defect stands |
+| **Status** | The disposition decided for it, or *Pending* |
 
-**Export** downloads CSV. With rows ticked, it exports just those; otherwise it
-exports every record in the current view, respecting all the filters above.
+Each row ends with a link that opens the part.
+
+**Export** downloads CSV — Part, Part Type, Process, Defect Types, Date,
+Inspector, Order and Disposition. With rows ticked, it exports just those;
+otherwise it exports the records listed, which follow all the filters above —
+at most the 100 the table shows.
+
+With rows ticked, **Create CAPA** also appears. It opens the CAPAs page; the
+ticked records are not carried into a new CAPA.
 
 !!! note "No severity filter"
-    Defects cannot be filtered by severity here. Severity lives on the CAPA
-    and the disposition, not on the defect record shown in this view.
+    Defects cannot be filtered by severity here, and the page does not show
+    the severity recorded on each defect.
 
 ### How the filters apply
 
@@ -125,10 +135,6 @@ rejected, reject rate, certificate-of-conformance (CoC) compliance, on-time
 delivery, and open supplier corrective action requests (SCARs). See
 [Supply](../workflows/supply/overview.md#supplier-quality).
 
-!!! example "Demo: Supplier Quality Issue"
-    Analysis of nozzle defects in order ORD-2024-0038 traced the issue to a specific Delphi batch. This data supported CAPA-2024-003's root cause finding.
-
-
 ## Repeat Defects
 
 The **Repeat defects** card on **NCR Analysis** (`/quality/ncrs`) lists every
@@ -154,9 +160,8 @@ repeated in this period*.
 ## Clicking a chart filters, it does not drill down
 
 Clicking a bar in **By Defect Type** or **By Process** adds that filter; it does
-not open a list. The records behind the numbers are the **Defect Records** table
-on the same page, already narrowed to match. Its rows are not links — to open a
-part, look it up by its ID.
+not open a list. The records behind the numbers are the **Records** table on
+the same page, already narrowed to match; each row's link opens its part.
 
 !!! note "No comparison, custom or scheduled reports"
     There is no period-over-period comparison, no benchmark line, no report

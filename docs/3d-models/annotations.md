@@ -30,19 +30,28 @@ Create annotations when:
 
 ### Method 1: From the work order page
 
-1. Open the work order, and select the part
-2. The **QA panel** on the right loads the part type's model with its existing
-   annotations — see [which model it uses](uploading.md#linking-to-part-types)
-3. Choose the quality report the defect belongs to
-4. Click the location on the model where the defect is
-5. Fill in **Error Type**, **Severity Level** and **Notes**
-6. Save
+1. Open the work order, select the part, and open the **3D** tab of the **QA
+   panel** on the right — see [which model it uses](uploading.md#linking-to-part-types)
+2. Under **Quality Report**, choose the report the defect belongs to. The list
+   offers the work order's **Fail** reports that carry an error type marked
+   **Requires 3D Annotation**
+3. Click the location on the model where the defect is — a marker appears
+4. Click the marker to open *Edit Defect Annotation*, and fill in **Error
+   Type**, **Severity Level** and **Notes**
+5. Click **Save New (N)**
+
+This panel shows only the markers you are placing now, not the part's earlier
+annotations — those are on the [heat map](heatmap-viz.md) and in the Annotator.
 
 ### Method 2: The Annotator (`/annotator`)
 
-The standalone page starts from **Select Quality Reports**: pick the report or
-reports, and it opens their part on its model. A disposition that is waiting on
-annotations links here — **Go to Annotator**.
+The standalone page starts from **Select Quality Reports**, which lists the
+reports carrying an error type marked **Requires 3D Annotation**. Tick the report
+or reports and click **Start Annotating**: it opens their part on its model,
+with the annotations already on that part and model. Clicking the model opens
+*Edit Defect Annotation* straight away, and the annotation is saved when you
+close it. A disposition that is waiting on annotations links here — **Go to
+Annotator** — with its reports already selected.
 
 !!! note "There is no 'Add Annotation' button"
     Annotations are created by clicking the model itself while in annotate
@@ -67,14 +76,14 @@ substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
 | Field | Description |
 |-------|-------------|
 | **Location** | Captured from your click on the model (X, Y, Z) — you do not type it |
-| **Error Type** | Category of defect |
-| **Severity Level** | Low, Medium, High or Critical |
+| **Error Type** | Category of defect — the error types marked **Requires 3D Annotation** (from the work order page, those on the chosen report). Starts at the first one |
+| **Severity Level** | Low, Medium, High or Critical. Starts at Low |
 | **Notes** | Free text |
 
 !!! note "The quality report is not an optional field"
     An annotation belongs to a report — in standalone QA review you select the
-    report *before* the model accepts a click, and from Method 1 the report is
-    the one you are working in. There is no "Linked NCR" picker on the form.
+    report *before* the model accepts a click, and in a substep capture the
+    report is the substep's own. There is no "Linked NCR" picker on the form.
 
 ## Where the annotation lands
 
@@ -86,18 +95,17 @@ in annotate mode.
 
 | Change | Where |
 |--------|-------|
-| **Error type, severity, notes** | **Edit Annotation** on the heat map viewer |
+| **Error type, severity, notes** | **Edit Annotation** on the heat map viewer, or *Edit Defect Annotation* in the annotator |
 | **Delete it** | Select it in the annotator — *Edit Defect Annotation* — and delete. Once its quality report is finished, only the quality team can |
 | **Move it** | Not possible. Delete it and place a new one |
 
 !!! important "Deleting is open while inspecting, closed once the report is finished"
-    While every quality report an annotation belongs to is still **Pending** —
-    or it belongs to none, as a work-instruction capture's markers do — anyone
-    on staff can delete it, so an inspector can remove a misplaced marker as
-    they work.
+    While every quality report an annotation belongs to is still **Pending**,
+    anyone on staff can delete it, so an inspector can remove a misplaced
+    marker as they work.
 
-    Once **any** of its reports is **Pass** or **Fail**, the annotation is
-    inspection evidence. Deleting it then needs
+    Once **any** of its reports is no longer Pending — **Pass**, **Fail** or
+    **Needs repair** — the annotation is inspection evidence. Deleting it then needs
     `delete_submitted_heatmapannotations`, by default held by **QA Inspector,
     QA Manager and Tenant Admin**; anyone else does not see **Delete**, and the
     server refuses — *"This annotation is on a finished quality report, so it is
@@ -113,15 +121,17 @@ through the annotation itself.
 
 ## Viewing Existing Annotations
 
-Annotations show as points on the model. Select one to open it:
+Annotations show as markers on the model, and in the **Annotations** list that
+the list button in the viewer's bottom-right corner opens. Select one, on the
+model or in the list, to open it:
 
 - In the **annotator**, it opens *Edit Defect Annotation* — error type,
   severity, notes, and delete
 - On the **heat map viewer**, it shows its details — including **Date Found**
   and **Reported By** — with **Edit Annotation**
 
-There is no annotation list beside the model. To see many at once, use the
-[heat map](heatmap-viz.md), with its filters.
+To see many at once across parts, use the [heat map](heatmap-viz.md), with its
+filters.
 
 ## Annotation Permissions
 
@@ -130,14 +140,14 @@ There is no annotation list beside the model. To see many at once, use the
 | `add_heatmapannotations` | Create annotations |
 | `change_heatmapannotations` | Edit an annotation's type, severity and notes |
 | `delete_heatmapannotations` | Remove an annotation whose reports are all still Pending, or that has none |
-| `delete_submitted_heatmapannotations` | Remove an annotation on a finished (Pass / Fail) report |
+| `delete_submitted_heatmapannotations` | Remove an annotation on a finished (Pass, Fail or Needs repair) report |
 | `view_heatmapannotations` | View annotations |
 
 ## Troubleshooting
 
 ### Can't Click on Model
 - Ensure model is fully loaded
-- Check annotation mode is enabled
+- Check the annotator is set to **Annotate Defects**, not **Navigate View**
 - Try different view angle
 
 ### Annotation Appears Wrong Location

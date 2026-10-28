@@ -16,9 +16,8 @@
 Up to **50 MB**. Everything is converted to **GLB**, whatever you send.
 
 !!! warning "FBX is not supported"
-    Convert to one of the formats above first. A file outside that list is
-    rejected with *"Unsupported format: `.fbx`"* and the list of what is
-    accepted.
+    Convert to one of the formats above first. The upload form's file picker
+    takes only the extensions in the table, so it will not accept an FBX file.
 
 ### Things worth knowing per format
 
@@ -39,7 +38,10 @@ Up to **50 MB**. Everything is converted to **GLB**, whatever you send.
 
     So a model is **not viewable the moment you upload it**, and a model that
     never appears in the viewer is worth checking for a failed conversion
-    rather than assumed missing.
+    rather than assumed missing. The status and the failure reason are not
+    shown on screen; in the **3D Models** list, a new model's **File Type**
+    reads **glb** once conversion has completed and **N/A** until then — or
+    for good, if it failed.
 
 ### Recommended: glTF
 
@@ -60,14 +62,14 @@ glTF (GL Transmission Format) is preferred because:
 
 | Field | Description |
 |-------|-------------|
-| **Name** | Display name |
-| **File** | The model file |
+| **Model Name** | Display name |
+| **3D Model File** | The model file |
 | **Part Type** | The part type it shows — required |
 | **Step** | Optional: the step whose intermediate state it shows, when it is not the finished part |
 
 A model is versioned for you; there is no version field to fill in.
 
-5. Click **Upload**
+5. Click **Upload Model**
 
 ### File Size Guidelines
 
@@ -116,7 +118,8 @@ STL files usually work directly, but consider:
 ## Model Positioning
 
 !!! warning "There are no orientation, scale or units controls"
-    The upload form has four fields — Name, File, Part Type and Step — and
+    The upload form has four fields — Model Name, 3D Model File, Part Type and
+    Step — and
     nothing to rotate, centre, set an "up" direction, choose units or apply
     a scale factor.
 
@@ -130,25 +133,33 @@ Every model belongs to a **part type**, chosen on the form. A part type can have
 **several** models — the finished part, and others tied to a **step** to show an
 intermediate state.
 
-!!! warning "The work order page annotates on the first model by name"
-    When you annotate a part from the work order page's QA panel, it uses the
-    part type's model that comes **first alphabetically** — whatever its step,
-    and whether or not it has finished converting. With more than one model on a
-    type, name the one you want annotated so it sorts first, and archive models
-    you no longer use.
+!!! warning "Which model gets annotated"
+    Each place that annotates picks one of the part type's models for you:
 
-    Annotating from a work-instruction substep uses the model that substep's
-    **Part annotation** capture was authored with.
+    - **The work order page's QA panel** (**3D** tab) uses a model that has
+      finished converting, preferring one with no step; among several, the one
+      that comes first alphabetically.
+    - **The Annotator** (`/annotator`) uses the part type's model that comes
+      **first alphabetically** — whatever its step, and whether or not it has
+      finished converting.
+    - **A work-instruction substep** uses the model its **Part annotation**
+      capture was authored with.
+
+    With more than one model on a type, name the one you want annotated so it
+    sorts first, and archive models you no longer use.
 
 ## Model Versioning
 
-There is no **Upload New Version** action on a 3D model. Upload the updated file
-as a new model record and archive the old one. Annotations belong to the model
-they were placed on, so the old model's annotations stay with it.
+To replace a model's file, open it from the **3D Models** list (**Edit 3D
+Model**), choose the new file under **3D Model File** and **Save Changes**. That
+creates a new version of the model, which is converted again like a fresh
+upload. Annotations belong to the version they were placed on, so the earlier
+version's annotations stay with it.
 
 ## Thumbnails
 
-There are none. Models are listed by name; open one to see it.
+There are none. Models are listed by name; to see one, open its part type on the
+**Heat Map** page.
 
 ## Permissions
 
