@@ -117,6 +117,12 @@ export function OrganizationSettingsPage() {
             const { over_receipt_tolerance_pct, sign_in_notice, sign_in_notice_requires_ack, ...rest } = values;
             await updateSettings.mutateAsync({
                 ...rest,
+                // Blank → null: the generated body schema validates these as email/URL,
+                // so "" is refused client-side and the save never left the page.
+                contact_email: rest.contact_email || null,
+                website: rest.website || null,
+                contact_phone: rest.contact_phone || null,
+                address: rest.address || null,
                 settings: {
                     over_receipt_tolerance_pct: over_receipt_tolerance_pct === "" ? null : Number(over_receipt_tolerance_pct),
                     sign_in_notice: sign_in_notice.trim(),

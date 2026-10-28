@@ -73,3 +73,23 @@ class SignInNoticeTests(TenantTestCase):
     def test_blank_text_with_the_flag_on_is_no_notice(self):
         self._set("   ", True)
         self.assertEqual(self._login().status_code, 200)
+
+
+class OrganizationSaveWithBlanksTests(TenantTestCase):
+    """The page sends null for a cleared contact email / website (the generated client
+    refuses ""); null clears rather than hitting the not-null column."""
+
+    def test_null_clears_the_organization_fields_and_the_notice_saves(self):
+        self.tenant_a.contact_email = "qa@example.com"
+        self.tenant_a.website = "https://example.com"
+        self.tenant_a.save()
+        self.grant_tenant_permissions(self.user_a, self.tenant_a, ['change_tenantgroup'])
+        self.authenticate_as(self.user_a, self.tenant_a)
+        r = self.client.patch('/api/tenant/settings/', {
+            'contact_email': None, 'website': None, 'contact_phone': None, 'address': None,
+            'settings': {'sign_in_notice': NOTICE, 'sign_in_notice_requires_ack': True},
+        }, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.tenant_a.refresh_from_db()
+        self.assertEqual((self.tenant_a.contact_email, self.tenant_a.website), ("", ""))
+        self.assertEqual(self.tenant_a.settings['sign_in_notice'], NOTICE)

@@ -319,15 +319,17 @@ class TenantSettingsView(APIView):
             # Merge settings (don't replace entirely)
             tenant.settings.update(request.data['settings'])
 
-        # Update organization fields
+        # Update organization fields. The columns are blank-not-null; the client sends
+        # null for a cleared field (its generated body schema can't express "" for an
+        # email/URL), so null clears.
         if 'contact_email' in request.data:
-            tenant.contact_email = request.data['contact_email']
+            tenant.contact_email = request.data['contact_email'] or ''
         if 'contact_phone' in request.data:
-            tenant.contact_phone = request.data['contact_phone']
+            tenant.contact_phone = request.data['contact_phone'] or ''
         if 'website' in request.data:
-            tenant.website = request.data['website']
+            tenant.website = request.data['website'] or ''
         if 'address' in request.data:
-            tenant.address = request.data['address']
+            tenant.address = request.data['address'] or ''
         if 'default_timezone' in request.data:
             # Validate, because this one is silently forgiving downstream: an unknown
             # zone makes `core.clock.plant_tz` fall back to the server's, so a
