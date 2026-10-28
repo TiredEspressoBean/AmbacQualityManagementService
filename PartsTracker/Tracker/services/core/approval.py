@@ -301,8 +301,11 @@ def _check_sequential_status(request: ApprovalRequest, approvals):
 
 
 def update_approval_status(request: ApprovalRequest) -> ApprovalRequest:
-    """Recompute status from responses, persist, and cascade to the
-    content object if the status changed."""
+    """Recompute status from responses and persist it. Saving a changed status
+    cascades it to the content object, through the handle_approval_decision
+    receiver — once. This used to cascade a second time here too, harmless for a
+    document or CAPA (the same fields rewritten) but fatal for a process, whose
+    second approve() refused it as no longer pending."""
     new_status, _pending = check_approval_status(request)
 
     if new_status != request.status:
@@ -310,7 +313,6 @@ def update_approval_status(request: ApprovalRequest) -> ApprovalRequest:
         if new_status in [Approval_Status_Type.APPROVED, Approval_Status_Type.REJECTED]:
             request.completed_at = timezone.now()
         request.save()
-        trigger_content_object_update(request, new_status)
 
     return request
 

@@ -2897,11 +2897,13 @@ class ApprovalRequest(SecureModel):
         # `self.pk` — SecureModel assigns pks at instantiation, so
         # `if self.pk:` is always True and fires on insert too.
         if not self._state.adding:
-            try:
-                old = ApprovalRequest.objects.get(pk=self.pk)
-                self._old_status = old.status
-            except ApprovalRequest.DoesNotExist:
-                pass
+            # The handle_approval_decision receiver cascades the decision only when
+            # this is set, so read it whatever the tenant context (a task has none).
+            # tenant-safe: pk lookup of this row itself (globally-unique UUID)
+            old_status = (ApprovalRequest.all_tenants.filter(pk=self.pk)
+                          .values_list('status', flat=True).first())
+            if old_status is not None:
+                self._old_status = old_status
         super().save(*args, **kwargs)
 
     def notify_approvers(self):
