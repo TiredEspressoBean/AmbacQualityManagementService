@@ -81,7 +81,8 @@ example:
 
 Take that warning seriously. The orders it counts are the ones where an
 operation has no authored cycle time, no measured history **and** no expected
-duration on the step — those operations contribute **no load**, so the heatmap shows more free capacity than exists and release dates
+duration on the step — those operations contribute **no run time** (at most
+their setup), so the heatmap shows more free capacity than exists and release dates
 come out too late. The more operations missing times, the more optimistic — and
 the more wrong — the whole picture.
 

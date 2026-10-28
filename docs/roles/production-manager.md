@@ -85,9 +85,10 @@ As a Production Manager, you:
 | **Order Name** | Your PO/SO number | **Yes — the only one** |
 | **Company** / **Customer** | Who placed it | No |
 | **Estimated Completion** | Target completion | No |
-| **Notes** | Special instructions | No |
 
 4. Click **Create Order**
+
+Notes are added once the order is saved, from its edit page.
 
 The order *number* (`ORD-YYYY-NNNN`) is generated for you. Orders have **no
 priority field** — priority lives on the work order.

@@ -339,8 +339,10 @@ days finished on time or early*. Click a bar for the detail, for example *planne
 turn, so the job that should have run then is late, or that the step's standard time
 is padded. **Mark out-of-order starts** flags ops started well ahead of plan.
 
-The two thresholds are your shop's definition of on time. Set them once and leave
-them, or the percentage moves for reasons that have nothing to do with the floor.
+The two thresholds start at 15 and 60 minutes each time the view opens, and a
+change applies only to your view until you leave it. Compare adherence figures
+only at the same thresholds, or the percentage moves for reasons that have nothing
+to do with the floor.
 
 !!! important "Capture records; it does not react"
     Stamping an actual deliberately **does not** re-time the plan or mark the
@@ -401,19 +403,17 @@ task.
 
 ## Why the schedule goes stale
 
-A stale schedule is normal, not an error. Two different things cause it:
-
-**Drift** — the world changed under the plan: a quality hold, new demand, lost
-capacity, a material receipt.
-
-**The roll** — nothing happened at all. The detailed window is anchored at the
-moment of the solve, so a plan solved with a 30-day horizon covers only 20 days
-of future a week and a half later, while work that was beyond the window has
-since come into it. The plan doesn't go *wrong*; it runs out.
-
-This is why pages derived from the schedule — the [staging
+A stale schedule is normal, not an error. It goes stale when the world changes
+under the plan: a quality hold, new demand, lost capacity, a material receipt, or
+a hand edit on the board. Pages derived from the schedule — the [staging
 list](overview.md#staging-list) especially — warn when they're working from a
 stale solve.
+
+The plan also runs out without going stale. The detailed window is anchored at the
+moment of the solve, so a plan solved with a 30-day horizon covers only 20 days of
+future a week and a half later, while work that was beyond the window has since
+come into it. Nothing marks this: re-solve to reach further. With **Live** auto
+re-solve on, the plan re-solves by itself once two thirds of the window are left.
 
 ## Working on several tasks
 

@@ -146,7 +146,7 @@ the cost of keeping work already under way in place, so it isn't a quality score
    hold. Each says what fixes it.
 
 3. **Dispatch** puts named operators on the plan's work, by their qualifications and
-   shifts. A bar then says how it went: *Dispatch assigned N of M tasks. K have no
+   shifts. A bar then says how it went: *Dispatch assigned N of M operations. K have no
    qualified operator free.* **Show them in People** switches the board to one row
    per person, with the uncovered work under **— Unassigned —**.
 4. **What-if** solves a draft beside the live plan; the live plan doesn't change. The

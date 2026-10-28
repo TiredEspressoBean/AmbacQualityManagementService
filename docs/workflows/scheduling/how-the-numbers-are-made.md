@@ -140,7 +140,8 @@ useful thing on the screen, since it turns "no" into something you can offer.
 !!! warning "Cycle times are what make all of this honest"
     Where a step has no authored cycle time, the planner falls back to measured
     history, then to the step's own expected duration. An operation with **none**
-    of those contributes **no load**. The heatmap then shows more free capacity
+    of those contributes **no run time**, only its setup if one is recorded. The
+    heatmap then shows more free capacity
     than exists, release dates come out too late, and promises come out too
     generous — so treat the figures as a floor.
 
