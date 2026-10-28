@@ -28,6 +28,16 @@ from Tracker.tests.base import TenantTestCase
 class SchedulingAPITests(TenantTestCase):
     def setUp(self):
         super().setUp()
+        # Celery copies task_store_eager_result onto each task once, when tasks are
+        # first bound. If an earlier test bound them (any direct task call does), the
+        # override above no longer reaches them and the result is never stored, so
+        # solve_status reads PENDING. Set it on the tasks themselves.
+        from unittest import mock
+        from Tracker.tasks import run_dispatch_task, run_solve_task
+        for task in (run_solve_task, run_dispatch_task):
+            patcher = mock.patch.object(task, 'store_eager_result', True)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         t = self.tenant_a
         self.pt = PartTypes.objects.create(tenant=t, name="Injector")
         self.process = Processes.objects.create(tenant=t, name="P", part_type=self.pt)
