@@ -43,6 +43,30 @@ def complete_core_disassembly(core: Core, user) -> Core:
     return core
 
 
+def override_teardown_completion(core: Core, user, reason: str) -> Core:
+    """Close a teardown by hand, outside its route (user decision 2026-10-28, B4).
+
+    Finishing the teardown route closes it on its own; this is the override, so it
+    needs a reason, recorded as an edit of the core's status with the person.
+
+    Raises:
+        ValueError: no reason, or the core isn't in teardown.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
+    from Tracker.models import RecordEdit
+
+    reason = (reason or '').strip()
+    if not reason:
+        raise ValueError("Say why the teardown is being completed by hand")
+    with transaction.atomic():
+        RecordEdit.objects.create(
+            tenant=core.tenant, content_type=ContentType.objects.get_for_model(Core),
+            object_id=core.id, field_name='status', old_value=core.status,
+            new_value='DISASSEMBLED', reason=reason, edited_by=user)
+        return complete_core_disassembly(core, user)
+
+
 def scrap_core(core: Core, reason: str = '') -> Core:
     """Mark a Core as scrapped.
 

@@ -172,6 +172,18 @@ CLASSIFIED_DOCUMENT_VIEW = [
 # to Production Manager and Document Controller, who can't write a rule.
 SAMPLING_RULE_DELETE = ['delete_samplingrule', 'delete_samplingruleset']
 
+# Holding a suspect lot by hand is a QA act (user decision 2026-10-28, B12). Releasing
+# it is approve_disposition, through the existing release-hold path.
+LOT_HOLD = ['hold_materiallot']
+
+# A remanufactured unit's decisions, out of the shared floor tier (user decision
+# 2026-10-28, B4/B5): send it for the customer's authorisation, release it to its exit
+# (rebuild, stock, harvest), and close a teardown by hand with a reason. Operators keep
+# change_core for routine teardown capture; a finished route still closes a teardown.
+CORE_DECISION_PERMISSIONS = [
+    'request_core_authorisation', 'release_core', 'complete_disassembly',
+]
+
 # Append-only audit models (recordedit, capastatustransition, ...) have no
 # write grants anywhere — enforced by test_permission_coverage.py + DB triggers.
 
@@ -221,7 +233,8 @@ STAFF_OPERATIONAL_WRITE = [
     # acting on it. What moved out is accept/reject — see
     # COMPONENT_DISPOSITION_PERMISSIONS.
     'add_core', 'change_core',
-    'start_disassembly', 'complete_disassembly', 'scrap_core',
+    # complete_disassembly moved to CORE_DECISION_PERMISSIONS (B4/B5, 2026-10-28).
+    'start_disassembly', 'scrap_core',
     'grade_component',
     'add_harvestedcomponent', 'change_harvestedcomponent',
     # Materials & BOM usage
@@ -688,6 +701,8 @@ GROUP_PRESETS = {
             'apply_cyclecount',
             'cancel_workorder',
             *SAMPLING_RULE_DELETE,
+            *LOT_HOLD,
+            *CORE_DECISION_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *TIME_APPROVAL_PERMISSIONS,
             *AUDIT_TRAIL_BROWSE_PERMISSIONS,
@@ -743,6 +758,7 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             *SAMPLING_RULE_DELETE,
+            *LOT_HOLD,
             *STAFF_VIEW_PERMISSIONS,
             *AUDIT_TRAIL_BROWSE_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
@@ -790,6 +806,7 @@ GROUP_PRESETS = {
         'name': 'QA Inspector',
         'description': 'Perform inspections, create quality reports, initiate CAPAs',
         'permissions': [
+            *LOT_HOLD,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,
@@ -823,6 +840,7 @@ GROUP_PRESETS = {
         'permissions': [
             'apply_cyclecount',
             'cancel_workorder',
+            *CORE_DECISION_PERMISSIONS,
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *TIME_APPROVAL_PERMISSIONS,
@@ -881,6 +899,7 @@ GROUP_PRESETS = {
         'description': 'Floor supervisor: runs work like an operator plus team visibility and quality oversight',
         'permissions': [
             'apply_cyclecount',
+            *CORE_DECISION_PERMISSIONS,
             *GATE_SIGNATURE_CLEAR_PERMISSIONS,
             *SHIFT_NOTE_AUTHOR_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
@@ -1022,6 +1041,7 @@ GROUP_PRESETS = {
         'description': 'Owns the plan: releasing work, promising dates, running and '
                        'adjusting the schedule, and the calendars it is built on',
         'permissions': [
+            *CORE_DECISION_PERMISSIONS,
             *STAFF_VIEW_PERMISSIONS,
             *CLASSIFIED_DOCUMENT_VIEW,
             *STAFF_OPERATIONAL_WRITE,

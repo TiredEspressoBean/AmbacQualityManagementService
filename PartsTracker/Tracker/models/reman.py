@@ -273,8 +273,14 @@ class Core(SecureModel):
         ]
         permissions = [
             ('start_disassembly', 'Can start core disassembly'),
+            # Closing a teardown by hand, outside its route — an override, with a
+            # reason (B4, 2026-10-28). Finishing the route closes it without this.
             ('complete_disassembly', 'Can complete core disassembly'),
             ('scrap_core', 'Can scrap a core'),
+            # The unit's decisions, split out of change_core so operators keep routine
+            # teardown capture without them (user decision 2026-10-28, B5).
+            ('request_core_authorisation', 'Can send a unit for customer authorisation'),
+            ('release_core', 'Can release a torn-down unit to its exit'),
         ]
 
     def save(self, *args, **kwargs):

@@ -8,6 +8,7 @@ import {
 import { useStartTeardownBatch } from "@/hooks/useStartTeardownBatch";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { useReleaseCore } from "@/hooks/useReleaseCore";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
 
 type WorkableCore = {
@@ -31,6 +32,7 @@ export function WorkThisUnit({ core }: { core: WorkableCore }) {
     const { workUnit, pending } = useWorkUnit();
     const startTeardown = useStartTeardownBatch();
     const release = useReleaseCore();
+    const canRelease = usePermissionSet().has("release_core");
     const partId = core.part != null ? String(core.part) : null;
     const woId = core.work_order ?? null;
 
@@ -84,6 +86,10 @@ export function WorkThisUnit({ core }: { core: WorkableCore }) {
     // Repair-and-return goes into its rebuild, opening there at its first in-scope
     // operation. Exchange is the shop's unit: normally rebuilt to stock, keeping its
     // identity; harvested for parts when its body fails or cores are surplus.
+    // Releasing it is a lead / planner decision (B5, 2026-10-28).
+    if (partId && woId && core.status === "DISASSEMBLED" && !canRelease) {
+        return <span className="text-sm text-muted-foreground">Torn down — a lead releases it</span>;
+    }
     if (partId && woId && core.status === "DISASSEMBLED") {
         const rebuildIt = () =>
             release.mutate(

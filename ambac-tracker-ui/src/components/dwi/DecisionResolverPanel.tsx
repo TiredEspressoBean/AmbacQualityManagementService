@@ -84,7 +84,7 @@ function RepairBranches({ branches, hold, coreId, customerUnit }: {
             {coreId && waiting.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                     {customerUnit ? (
-                        has("change_core") && (
+                        has("request_core_authorisation") && (
                             <Button size="sm" variant="outline" disabled={act.isPending}
                                 onClick={() => run({ id: coreId, action: "request_authorisation" },
                                     "Sent for the customer's authorisation — record their answer on the work order.")}>

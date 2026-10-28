@@ -110,18 +110,18 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
     # Releasing is the terminal act of teardown, so it rides the perm that governs
     # completing one rather than adding a third codename for the same authority.
     action_permissions = {
-        # The act the `complete_disassembly` codename is named for. It was left on the
-        # CRUD mapping while the two actions that merely FOLLOW it rode the codename —
-        # so the perm governed the consequences of closing a teardown but not the
-        # closing itself.
+        # The unit's decisions are the lead / planner tier (B4, B5 — 2026-10-28): the
+        # teardown override (closing it outside its route, with a reason), releasing a
+        # unit to its exit, and sending it for the customer's authorisation. Operators
+        # keep change_core for routine teardown capture.
         'complete_disassembly': ['complete_disassembly'],
-        'release_to_rebuild': ['complete_disassembly'],
-        'release_to_inventory': ['complete_disassembly'],
-        # Gate and dispatch are core-lifecycle changes, gated on change_core rather
-        # than inventing codenames for each transition.
-        'request_authorisation_action': ['change_core'],
+        'release_to_rebuild': ['release_core'],
+        'release_to_inventory': ['release_core'],
+        'request_authorisation_action': ['request_core_authorisation'],
+        'bulk_request_authorisation': ['request_core_authorisation'],
+        # Recording the customer's answer and correcting it stay core-lifecycle
+        # changes, gated on change_core.
         'record_authorisation_action': ['change_core'],
-        'bulk_request_authorisation': ['change_core'],
         'bulk_record_authorisation': ['change_core'],
         'correct_authorisation_action': ['change_core'],
         'correct_receipt_action': ['change_core'],
@@ -163,15 +163,21 @@ class CoreViewSet(TenantScopedMixin, CSVImportMixin, DataExportMixin, viewsets.M
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
-        request=inline_serializer(name="CompleteDisassemblyInput", fields={}),
-        responses={200: CoreSerializer}
+        request=inline_serializer(name="CompleteDisassemblyInput", fields={
+            'reason': serializers.CharField(),
+        }),
+        responses={200: CoreSerializer},
+        description="Close a teardown by hand, outside its route — an override, with a "
+                    "required reason kept on the core. Finishing the route closes it "
+                    "without this.",
     )
     @action(detail=True, methods=['post'])
     def complete_disassembly(self, request, pk=None):
-        """Complete disassembly of a core"""
+        """Complete a core's teardown by hand (override, with a reason)."""
+        from Tracker.services.reman.core import override_teardown_completion
         core = self.get_object()
         try:
-            core.complete_disassembly(user=request.user)
+            override_teardown_completion(core, request.user, request.data.get('reason', ''))
             return Response(CoreSerializer(core, context={'request': request}).data)
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

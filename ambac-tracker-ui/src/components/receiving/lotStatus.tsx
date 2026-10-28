@@ -15,6 +15,8 @@ export const HOLD_LABELS: Record<string, string> = {
     WHOLE_LOT_REJECT_REQUESTED: "Whole-lot reject requested",
     GAUGE_UNAVAILABLE: "Gauge unavailable",
     QUALITY_GATE: "Held by a quality gate",
+    // Placed by a person (Place hold), with a reason on the lot's history.
+    MANUAL: "Held by QA",
 };
 
 // Holds that clear themselves once the missing thing is supplied (mirrors

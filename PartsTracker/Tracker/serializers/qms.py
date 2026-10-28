@@ -131,6 +131,8 @@ class MeasurementResultSerializer(SecureModelMixin):
     report = serializers.CharField(read_only=True)
     is_within_spec = serializers.BooleanField(read_only=True)
     created_by = serializers.IntegerField(read_only=True, source='created_by_id')
+    # Who recorded it, by name, for the report's measurements table (B11, 2026-10-28).
+    created_by_name = serializers.SerializerMethodField()
     # Denormalised spec context so a QR view can render a full measurement row
     # (label, unit, nominal ± tol) without a second round-trip per definition.
     definition_info = serializers.SerializerMethodField()
@@ -141,7 +143,11 @@ class MeasurementResultSerializer(SecureModelMixin):
         model = MeasurementResult
         fields = ["id", "report", "definition", "definition_info", "value_numeric",
                   "value_pass_fail", "is_within_spec", "sample_number",
-                  "created_by", "created_at", "archived"]
+                  "created_by", "created_by_name", "created_at", "archived"]
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_created_by_name(self, obj):
+        return obj.created_by.display_name if obj.created_by_id else None
 
     @extend_schema_field(serializers.DictField(allow_null=True))
     def get_definition_info(self, obj):

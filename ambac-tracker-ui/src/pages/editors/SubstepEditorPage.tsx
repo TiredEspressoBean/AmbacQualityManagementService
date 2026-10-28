@@ -51,6 +51,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { api } from "@/lib/api/generated";
 import {
     ChevronDown,
     ChevronRight,
@@ -168,7 +170,20 @@ type PendingEdits = {
     is_critical?: boolean;
     scope?: "sampled" | "batch";
     once_per_lot?: boolean;
+    /** Which parts the substep applies to: a rule, or null for every part. Saved as a
+     *  new rule (POST Substeps/sampling-rule) and then the substep's `sampling_rule`. */
+    sampling?: SubstepSampling | null;
 };
+
+type SubstepSampling = { rule_type: string; value: number };
+
+/** The per-part rules the substep engine evaluates, as the editor names them. */
+const SUBSTEP_SAMPLING_OPTIONS: { value: string; label: string; unit: string }[] = [
+    { value: "PERCENTAGE", label: "Percentage", unit: "%" },
+    { value: "RANDOM", label: "Random", unit: "%" },
+    { value: "EVERY_NTH_PART", label: "Every Nth part", unit: "N" },
+    { value: "FIRST_N_PARTS", label: "First N parts", unit: "N" },
+];
 
 /**
  * A new substep the engineer has added but not yet saved. Held purely in
@@ -423,9 +438,18 @@ export function SubstepEditorPage() {
                     p && Object.keys(p).length > 0 && !pendingDeletes.has(id),
             );
             await Promise.all(
-                rowEntries.map(([id, data]) =>
-                    update.mutateAsync({ id, data: data }),
-                ),
+                rowEntries.map(async ([id, pendingRow]) => {
+                    // A sampling choice becomes a rule first, then the substep's
+                    // sampling_rule; null = every part.
+                    const { sampling, ...data } = pendingRow;
+                    const payload: Record<string, unknown> = { ...data };
+                    if (sampling !== undefined) {
+                        payload.sampling_rule = sampling === null ? null
+                            : (await api.api_Substeps_sampling_rule_create(
+                                { step: stepId, rule_type: sampling.rule_type, value: sampling.value })).id;
+                    }
+                    return update.mutateAsync({ id, data: payload });
+                }),
             );
 
             // 4. Reorder (existing-only — pending creates haven't joined
@@ -959,6 +983,11 @@ function SubstepExpandedBody({
     const workingScope = pending?.scope ?? (substep.scope ?? "sampled");
     const workingOncePerLot =
         pending?.once_per_lot ?? ((substep as { once_per_lot?: boolean }).once_per_lot ?? false);
+    // The saved rule, unless a change is staged (null = every part).
+    const workingSampling: SubstepSampling | null = pending?.sampling !== undefined
+        ? pending.sampling
+        : ((substep as { sampling_rule_info?: SubstepSampling | null }).sampling_rule_info ?? null);
+    const samplingUnit = SUBSTEP_SAMPLING_OPTIONS.find((o) => o.value === workingSampling?.rule_type)?.unit ?? "";
     const workingBody =
         (pending?.body_blocks as object | undefined) ??
         (substep.body_blocks ?? { type: "doc", content: [] });
@@ -986,7 +1015,9 @@ function SubstepExpandedBody({
                 const backendValue =
                     k === "body_blocks"
                         ? (substep.body_blocks as unknown)
-                        : (substep[k as keyof Substep] as unknown);
+                        : k === "sampling"
+                            ? ((substep as { sampling_rule_info?: unknown }).sampling_rule_info ?? null)
+                            : (substep[k as keyof Substep] as unknown);
                 if (!_deepEqual(merged[k], backendValue)) {
                     (cleaned as Record<string, unknown>)[k] = merged[k];
                 }
@@ -1111,6 +1142,46 @@ function SubstepExpandedBody({
                         >
                             Once per lot
                         </Label>
+                    </div>
+                )}
+
+                {/* Which parts the substep applies to — per-part substeps only. */}
+                {workingScope === "sampled" && (
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor={`sampling-${substep.id}`} className="text-xs"
+                            title="Which parts this substep applies to. Every part, or a sampling rule: the substep runs only on the parts the rule selects (Sampled), and is skipped on the rest.">
+                            Sampling
+                        </Label>
+                        <Select
+                            value={workingSampling?.rule_type ?? "ALL"}
+                            disabled={!editable}
+                            onValueChange={(v) => mergePending({
+                                sampling: v === "ALL" ? null
+                                    : { rule_type: v, value: workingSampling?.value ?? (v === "PERCENTAGE" || v === "RANDOM" ? 20 : 5) },
+                            })}
+                        >
+                            <SelectTrigger id={`sampling-${substep.id}`} className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">Every part</SelectItem>
+                                {SUBSTEP_SAMPLING_OPTIONS.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {workingSampling && (
+                            <>
+                                <Input type="number" min={1}
+                                    max={samplingUnit === "%" ? 100 : undefined}
+                                    value={workingSampling.value}
+                                    disabled={!editable}
+                                    aria-label={samplingUnit === "%" ? "Percent" : "N"}
+                                    onChange={(e) => mergePending({
+                                        sampling: { rule_type: workingSampling.rule_type, value: Number(e.target.value) },
+                                    })}
+                                    className="h-8 w-16 text-xs" />
+                                <span className="text-xs text-muted-foreground">{samplingUnit}</span>
+                            </>
+                        )}
                     </div>
                 )}
 

@@ -93,10 +93,12 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     # an inspection. Exempt these from the CRUD gate and require the
     # operator-capture perm instead, so any staff member who can complete a
     # substep can run an inspection (everyone with STAFF_OPERATIONAL_WRITE).
-    crud_exempt_actions = {'submit', 'ensure_inspection_qr'}
+    crud_exempt_actions = {'submit', 'ensure_inspection_qr', 'sampling_rule'}
     action_permissions = {
         'submit': ['add_substepcompletion'],
         'ensure_inspection_qr': ['add_substepcompletion'],
+        # Authoring a substep's sampling is a substep edit (B7, 2026-10-28).
+        'sampling_rule': ['change_substep'],
     }
 
     # ----- DRAFT-only authoring guard -----
@@ -133,6 +135,38 @@ class SubstepViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         self._assert_step_editable(instance.step)
         instance.delete()
+
+    @extend_schema(
+        request=inline_serializer(name='SubstepSamplingRuleRequest', fields={
+            'step': drf_serializers.UUIDField(),
+            # PERCENTAGE, RANDOM, EVERY_NTH_PART or FIRST_N_PARTS — checked by the
+            # service (a plain string: a choice set here collides with SamplingRule's enum).
+            'rule_type': drf_serializers.CharField(),
+            'value': drf_serializers.IntegerField(),
+        }),
+        responses={201: inline_serializer(name='SubstepSamplingRule', fields={
+            'id': drf_serializers.UUIDField(),
+            'rule_type': drf_serializers.CharField(),
+            'value': drf_serializers.IntegerField(),
+        })},
+        description="Create a sampling rule for a substep of a DRAFT step. The editor then "
+                    "saves it as the substep's `sampling_rule` with its other edits.",
+    )
+    @action(detail=False, methods=['post'], url_path='sampling-rule')
+    def sampling_rule(self, request):
+        from Tracker.models import Steps
+        from Tracker.services.dwi.substep_sampling import create_substep_rule
+        step = Steps.objects.filter(tenant=self.tenant, id=request.data.get('step')).first()
+        if step is None:
+            return Response({'detail': 'Step not found'}, status=status.HTTP_404_NOT_FOUND)
+        self._assert_step_editable(step)
+        try:
+            rule = create_substep_rule(step, request.data.get('rule_type'),
+                                       request.data.get('value'), user=request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'id': str(rule.id), 'rule_type': rule.rule_type, 'value': rule.value},
+                        status=status.HTTP_201_CREATED)
 
     @extend_schema(
         request=inline_serializer(

@@ -179,7 +179,10 @@ class SamplingSystemTestCase(TenantTestCase):
         self.assertEqual(excluded.rule, first_2)
 
     def test_percentage_sampling(self):
-        SamplingRule.objects.create(
+        """A per-part hash (shared with the substep engine), so about 20% — exactly the
+        parts the hash picks, whatever else is at the step."""
+        from Tracker.services.dwi.sampling_decisions import percentage_selects
+        rule = SamplingRule.objects.create(
             ruleset=self.ruleset,
             rule_type='PERCENTAGE',
             value=20,
@@ -188,7 +191,9 @@ class SamplingSystemTestCase(TenantTestCase):
         parts = self.create_test_parts(100)
         selected = self.evaluate_parts_sampling(parts)
 
-        self.assertEqual(len(selected), 20)
+        expected = {p.ERP_id for p in parts if percentage_selects(p.id, rule.id, 20)}
+        self.assertEqual({s['erp_id'] for s in selected}, expected)
+        self.assertTrue(5 <= len(selected) <= 40, len(selected))
 
     def test_first_n_parts_sampling(self):
         SamplingRule.objects.create(

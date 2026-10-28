@@ -5735,7 +5735,9 @@ paths:
   /api/Cores/{id}/complete_disassembly/:
     post:
       operationId: api_Cores_complete_disassembly_create
-      description: Complete disassembly of a core
+      description: Close a teardown by hand, outside its route — an override, with
+        a required reason kept on the core. Finishing the route closes it without
+        this.
       parameters:
       - in: path
         name: id
@@ -5746,6 +5748,18 @@ paths:
         required: true
       tags:
       - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteDisassemblyInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CompleteDisassemblyInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CompleteDisassemblyInputRequest'
+        required: true
       security:
       - cookieAuth: []
       - tokenAuth: []
@@ -15825,6 +15839,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityReports'
+          description: ''
+  /api/MaterialLots/{id}/place-hold/:
+    post:
+      operationId: api_MaterialLots_place_hold_create
+      description: Hold a suspect lot by hand, with a reason. Released through release-hold,
+        like any other hold.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Material Lot.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlaceHoldRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlaceHoldRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceHoldRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
           description: ''
   /api/MaterialLots/{id}/raise_scar/:
     post:
@@ -35692,6 +35743,35 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/Substeps/sampling-rule/:
+    post:
+      operationId: api_Substeps_sampling_rule_create
+      description: Create a sampling rule for a substep of a DRAFT step. The editor
+        then saves it as the substep's `sampling_rule` with its other edits.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubstepSamplingRuleRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubstepSamplingRuleRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubstepSamplingRuleRequestRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubstepSamplingRule'
+          description: ''
   /api/SupplierQualifications/:
     get:
       operationId: api_SupplierQualifications_list
@@ -53066,6 +53146,14 @@ components:
         * `2` - Level 2 - Assisted (output checked)
         * `3` - Level 3 - Qualified (independent)
         * `4` - Level 4 - Expert (can train/sign off others)
+    CompleteDisassemblyInputRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     CompleteStepResponse:
       type: object
       properties:
@@ -62023,6 +62111,10 @@ components:
         created_by:
           type: integer
           readOnly: true
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
         created_at:
           type: string
           format: date-time
@@ -62032,6 +62124,7 @@ components:
       required:
       - created_at
       - created_by
+      - created_by_name
       - definition
       - definition_info
       - id
@@ -72670,6 +72763,16 @@ components:
           type: boolean
       required:
       - is_pinned
+    PlaceHoldRequest:
+      type: object
+      description: Hold a suspect lot by hand. The reason is kept on record beside
+        the person.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - reason
     PlanOrderLineInputRequest:
       type: object
       properties:
@@ -81923,6 +82026,11 @@ components:
           description: Only meaningful when scope=SAMPLED. If set, the substep only
             applies to parts this rule selects. Null = substep always applies to every
             part visiting the step (100% sample). Ignored when scope=BATCH.
+        sampling_rule_info:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         source_library_substep_id:
           type: integer
           maximum: 2147483647
@@ -81955,6 +82063,7 @@ components:
       - created_at
       - id
       - is_editable
+      - sampling_rule_info
       - step
       - step_name
       - title
@@ -82651,6 +82760,35 @@ components:
       - node_id
       - responded_by
       - substep
+    SubstepSamplingRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        rule_type:
+          type: string
+        value:
+          type: integer
+      required:
+      - id
+      - rule_type
+      - value
+    SubstepSamplingRuleRequestRequest:
+      type: object
+      properties:
+        step:
+          type: string
+          format: uuid
+        rule_type:
+          type: string
+          minLength: 1
+        value:
+          type: integer
+      required:
+      - rule_type
+      - step
+      - value
     SubstepSubmitRequestRequest:
       type: object
       properties:

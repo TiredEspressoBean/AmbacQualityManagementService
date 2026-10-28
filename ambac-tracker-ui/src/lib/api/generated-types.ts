@@ -1838,7 +1838,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Complete disassembly of a core */
+        /** @description Close a teardown by hand, outside its route — an override, with a required reason kept on the core. Finishing the route closes it without this. */
         post: operations["api_Cores_complete_disassembly_create"];
         delete?: never;
         options?: never;
@@ -6054,6 +6054,23 @@ export interface paths {
         put?: never;
         /** @description Material lot tracking with split capability */
         post: operations["api_MaterialLots_open_inspection_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/{id}/place-hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Hold a suspect lot by hand, with a reason. Released through release-hold, like any other hold. */
+        post: operations["api_MaterialLots_place_hold_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14375,6 +14392,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Substeps/sampling-rule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a sampling rule for a substep of a DRAFT step. The editor then saves it as the substep's `sampling_rule` with its other edits. */
+        post: operations["api_Substeps_sampling_rule_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/SupplierQualifications/": {
         parameters: {
             query?: never;
@@ -22492,6 +22526,9 @@ export interface components {
          * @enum {integer}
          */
         CompetencyLevelEnum: 1 | 2 | 3 | 4;
+        CompleteDisassemblyInputRequest: {
+            reason: string;
+        };
         CompleteStepResponse: {
             status: string;
             reason?: string;
@@ -26673,6 +26710,7 @@ export interface components {
             readonly is_within_spec: boolean;
             readonly sample_number: number | null;
             readonly created_by: number;
+            readonly created_by_name: string | null;
             /** Format: date-time */
             readonly created_at: string;
             archived?: boolean;
@@ -32721,6 +32759,10 @@ export interface components {
         PinRequestRequest: {
             is_pinned: boolean;
         };
+        /** @description Hold a suspect lot by hand. The reason is kept on record beside the person. */
+        PlaceHoldRequest: {
+            reason: string;
+        };
         PlanOrderLineInputRequest: {
             /** @description Units to plan. Defaults to everything still unplanned. */
             quantity?: number;
@@ -37337,6 +37379,9 @@ export interface components {
              * @description Only meaningful when scope=SAMPLED. If set, the substep only applies to parts this rule selects. Null = substep always applies to every part visiting the step (100% sample). Ignored when scope=BATCH.
              */
             sampling_rule?: string | null;
+            readonly sampling_rule_info: {
+                [key: string]: unknown;
+            } | null;
             /** @description Forward-compatible: id of the LibrarySubstep this was inserted from. */
             source_library_substep_id?: number | null;
             /** @description Forward-compatible: version of the LibrarySubstep at insert time. */
@@ -37752,6 +37797,18 @@ export interface components {
             value_json?: unknown;
             /** @description Operator who captured the response. */
             responded_by: number;
+        };
+        SubstepSamplingRule: {
+            /** Format: uuid */
+            id: string;
+            rule_type: string;
+            value: number;
+        };
+        SubstepSamplingRuleRequestRequest: {
+            /** Format: uuid */
+            step: string;
+            rule_type: string;
+            value: number;
         };
         SubstepSubmitRequestRequest: {
             /** Format: uuid */
@@ -44615,7 +44672,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteDisassemblyInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CompleteDisassemblyInputRequest"];
+                "multipart/form-data": components["schemas"]["CompleteDisassemblyInputRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -52235,6 +52298,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityReports"];
+                };
+            };
+        };
+    };
+    api_MaterialLots_place_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Material Lot. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["PlaceHoldRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PlaceHoldRequest"];
+                "application/json": components["schemas"]["PlaceHoldRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
                 };
             };
         };
@@ -66333,6 +66424,31 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    api_Substeps_sampling_rule_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubstepSamplingRuleRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SubstepSamplingRuleRequestRequest"];
+                "multipart/form-data": components["schemas"]["SubstepSamplingRuleRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubstepSamplingRule"];
                 };
             };
         };

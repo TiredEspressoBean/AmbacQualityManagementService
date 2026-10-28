@@ -22,18 +22,30 @@ from Tracker.services.core.clock import tenant_today
 # Release / lifecycle transitions
 # =========================================================================
 
+def releases_without_approval(document) -> bool:
+    """Whether this document's type puts it in force without an approval: such a
+    draft is released directly (user decision 2026-10-28, B17). A document with no
+    type is treated as controlled — it goes through approval."""
+    return bool(document.document_type and not document.document_type.requires_approval)
+
+
 def release_document(document, user, effective_date=None):
-    """Flip an approved document to RELEASED and calculate compliance dates.
+    """Flip an approved document — or a draft of a type that needs no approval — to
+    RELEASED and calculate compliance dates.
 
     Pure status transition on the existing version — no content fields change,
     so `.save()` is correct here (no `create_new_version` needed).
 
     Raises:
-        ValueError: document is not in APPROVED status.
+        ValueError: document is neither APPROVED nor a no-approval-type DRAFT.
     """
     from django.db import transaction
 
-    if document.status != 'APPROVED':
+    if not (document.status == 'APPROVED'
+            or (document.status == 'DRAFT' and releases_without_approval(document))):
+        if document.status == 'DRAFT':
+            raise ValueError("This document's type requires approval. Must be approved before "
+                             "release — submit it for approval first.")
         raise ValueError(
             f"Cannot release document with status {document.status}. Must be approved."
         )
@@ -138,10 +150,10 @@ def submit_document_for_approval(document, user):
             f"Cannot submit document with status {document.status}. Must be draft."
         )
 
-    if document.document_type and not document.document_type.requires_approval:
+    if releases_without_approval(document):
         raise ValueError(
             f"Document type '{document.document_type.name}' does not require approval. "
-            "Use release_document() directly or update the document type settings."
+            "Release it directly."
         )
 
     template = None

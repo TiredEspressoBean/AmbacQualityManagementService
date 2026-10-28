@@ -5013,6 +5013,7 @@ export type MeasurementResult = {
   is_within_spec: boolean;
   sample_number: number | null;
   created_by: number;
+  created_by_name: string | null;
   created_at: string;
   archived?: boolean | undefined;
 };
@@ -10698,6 +10699,7 @@ export type Substep = {
      */
     (string | null)
     | undefined;
+  sampling_rule_info: {};
   source_library_substep_id?:
     | /**
      * Forward-compatible: id of the LibrarySubstep this was inserted from.
@@ -20037,6 +20039,7 @@ const CoreApproveRepairInputRequest = z.object({
   note: z.string().optional(),
 });
 const CoreApproveRepairError = z.object({ detail: z.string() });
+const CompleteDisassemblyInputRequest = z.object({ reason: z.string().min(1) });
 const HarvestedComponent = z.object({
   id: z.string().uuid(),
   core: z.string().uuid(),
@@ -21898,6 +21901,7 @@ const MeasurementResult = z.object({
   is_within_spec: z.boolean(),
   sample_number: z.number().int().nullable(),
   created_by: z.number().int(),
+  created_by_name: z.string().nullable(),
   created_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
 });
@@ -22022,6 +22026,7 @@ const MoveLotRequestRequest = z.object({
     .nullish(),
   reason: z.string().optional().default(""),
 });
+const PlaceHoldRequest = z.object({ reason: z.string().min(1) });
 const RaiseScarResponse = z.object({
   capa_id: z.string().uuid(),
   capa_number: z.string(),
@@ -26257,6 +26262,7 @@ const Substep = z.object({
   expected_duration: z.string().nullish(),
   scope: ScopeEnum.optional(),
   sampling_rule: z.string().uuid().nullish(),
+  sampling_rule_info: z.object({}).partial().passthrough().nullable(),
   source_library_substep_id: z.number().int().gte(0).lte(2147483647).nullish(),
   source_library_version: z.number().int().gte(0).lte(2147483647).nullish(),
   is_editable: z.boolean(),
@@ -26358,6 +26364,16 @@ const SubstepSubmitResponse = z.object({
 const SubstepReorderRequestRequest = z.object({
   step: z.string().uuid(),
   order: z.array(z.string().uuid()),
+});
+const SubstepSamplingRuleRequestRequest = z.object({
+  step: z.string().uuid(),
+  rule_type: z.string().min(1),
+  value: z.number().int(),
+});
+const SubstepSamplingRule = z.object({
+  id: z.string().uuid(),
+  rule_type: z.string(),
+  value: z.number().int(),
 });
 const ScopeTypeEnum = z.enum(["PART_TYPE", "COMMODITY", "SPECIAL_PROCESS"]);
 const BasisEnum = z.enum([
@@ -29567,6 +29583,7 @@ export const schemas = {
   PatchedCoreRequest,
   CoreApproveRepairInputRequest,
   CoreApproveRepairError,
+  CompleteDisassemblyInputRequest,
   HarvestedComponent,
   PaginatedHarvestedComponentList,
   CoreAuthorisationCorrectionInputRequest,
@@ -29792,6 +29809,7 @@ export const schemas = {
   ReceivingVerdict,
   ExtendShelfLifeRequest,
   MoveLotRequestRequest,
+  PlaceHoldRequest,
   RaiseScarResponse,
   ReceiveExpectedLotRequest,
   RecordBulkRequestRequest,
@@ -30236,6 +30254,8 @@ export const schemas = {
   SubstepSubmitRequestRequest,
   SubstepSubmitResponse,
   SubstepReorderRequestRequest,
+  SubstepSamplingRuleRequestRequest,
+  SubstepSamplingRule,
   ScopeTypeEnum,
   BasisEnum,
   CertificationTypeEnum,
@@ -34589,9 +34609,14 @@ Alternative: scrap -&gt; status: scrapped (if core not suitable)`,
     method: "post",
     path: "/api/Cores/:id/complete_disassembly/",
     alias: "api_Cores_complete_disassembly_create",
-    description: `Complete disassembly of a core`,
+    description: `Close a teardown by hand, outside its route — an override, with a required reason kept on the core. Finishing the route closes it without this.`,
     requestFormat: "json",
     parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
       {
         name: "id",
         type: "Path",
@@ -42053,6 +42078,26 @@ nothing has been taken from the lot. Not shrinkage: that&#x27;s adjust-quantity.
   },
   {
     method: "post",
+    path: "/api/MaterialLots/:id/place-hold/",
+    alias: "api_MaterialLots_place_hold_create",
+    description: `Hold a suspect lot by hand, with a reason. Released through release-hold, like any other hold.`,
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ reason: z.string().min(1) }),
+      },
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: MaterialLot,
+  },
+  {
+    method: "post",
     path: "/api/MaterialLots/:id/raise_scar/",
     alias: "api_MaterialLots_raise_scar_create",
     description: `Raise a Supplier Corrective Action (SCAR) for this lot&#x27;s supplier, linking the lot&#x27;s receiving inspection report. If one is already open on the lot, returns it (200, already_open) instead.`,
@@ -44920,7 +44965,10 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "post",
     path: "/api/OrderLines/:id/plan/",
@@ -44950,10 +44998,7 @@ correct-looking job that builds the wrong thing.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderLines/export/:export_format/",
@@ -50652,7 +50697,10 @@ the completion blockers.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/decide/",
@@ -50672,10 +50720,7 @@ the completion blockers.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "post",
     path: "/api/QuarantineDispositions/:id/reopen/",
@@ -55955,7 +56000,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepOverrides/:id/reject/",
@@ -55975,10 +56023,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -58002,6 +58047,21 @@ transaction every time.`,
         schema: z.object({}).partial().passthrough(),
       },
     ],
+  },
+  {
+    method: "post",
+    path: "/api/Substeps/sampling-rule/",
+    alias: "api_Substeps_sampling_rule_create",
+    description: `Create a sampling rule for a substep of a DRAFT step. The editor then saves it as the substep&#x27;s &#x60;sampling_rule&#x60; with its other edits.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: SubstepSamplingRuleRequestRequest,
+      },
+    ],
+    response: SubstepSamplingRule,
   },
   {
     method: "get",
@@ -61106,7 +61166,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "patch",
     path: "/api/User/:id/",
@@ -61141,10 +61204,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/:id/access-history/",

@@ -35,6 +35,7 @@ import { useRetrieveEquipments } from "@/hooks/useRetrieveEquipments";
 import { useRetrieveCompanies } from "@/hooks/useRetrieveCompanies";
 import { useRetrieveErrorTypes } from "@/hooks/useRetrieveErrorTypes";
 import { useQualityReports } from "@/hooks/useQualityReports";
+import { DOCUMENT_MAX_BYTES, DOCUMENT_MAX_LABEL } from "@/lib/upload-limits";
 import { useRetrieveQuarantineDispositions } from "@/hooks/useRetrieveQuarantineDispositions";
 import { useListCapas } from "@/hooks/useListCapas";
 import { useRetrieveThreeDModels } from "@/hooks/useRetrieveThreeDModels";
@@ -67,7 +68,7 @@ const createFormSchema = (mode: "create" | "edit") => z.object({
             .any()
             .refine(
                 (file) => file instanceof File || (Array.isArray(file) && file.length > 0),
-                "A file is required - please select a document to upload (PDF, DOCX, or image up to 10MB)"
+                `A file is required - please select a document to upload (up to ${DOCUMENT_MAX_LABEL})`
             ),
     classification: z
         .string()
@@ -429,7 +430,7 @@ export default function DocumentFormPage() {
                                                     form.setValue("file", undefined);
                                                 }
                                             }}
-                                            dropzoneOptions={{ maxFiles: 1, maxSize: 1024 * 1024 * 10 }}
+                                            dropzoneOptions={{ maxFiles: 1, maxSize: DOCUMENT_MAX_BYTES }}
                                             className="relative bg-background rounded-lg p-2"
                                         >
                                             <FileInput
@@ -442,7 +443,7 @@ export default function DocumentFormPage() {
                                                         <span className="font-semibold">Click to upload</span> or drag and drop
                                                     </p>
                                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                        PDF, DOCX, Images up to 10MB
+                                                        PDF, Office, images, CAD and text, up to {DOCUMENT_MAX_LABEL}
                                                     </p>
                                                 </div>
                                             </FileInput>

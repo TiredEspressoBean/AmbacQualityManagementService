@@ -66,6 +66,14 @@ def quarantine_lot(lot):
     )
 
 
+def restore_after_hold(lot, to: str):
+    """QUARANTINE → ACCEPTED / IN_USE: a manual hold on stock is lifted and the lot is
+    what it was before — not received again."""
+    if to not in ("ACCEPTED", "IN_USE"):
+        raise ValueError(f"A held lot goes back to stock, not to {to}.")
+    return _transition(lot, allowed_from=("QUARANTINE",), to=to)
+
+
 def release_hold(lot):
     """QUARANTINE → RECEIVED: a receiving hold is lifted and the lot goes back through
     routing (inspection or dock-to-stock), exactly as if it had just arrived. Only a

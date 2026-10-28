@@ -1849,6 +1849,10 @@ class MaterialLot(SecureModel):
             # pieces found bad. Granted to QA managers by default; a tenant may grant
             # it to inspectors. Without it, a whole-lot reject is held as a request.
             ('reject_whole_lot', 'Can reject a whole lot back to the vendor'),
+            # Holding a suspect lot by hand — stock already accepted or in use, say
+            # (user decision 2026-10-28, B12). A QA act; releasing it is the existing
+            # release-hold path (approve_disposition).
+            ('hold_materiallot', 'Can place a hold on a material lot'),
         ]
         indexes = [
             models.Index(fields=['lot_number']),

@@ -10,6 +10,7 @@ import {
 import { useRetrieveCore } from "@/hooks/useRetrieveCore";
 import { useCoreLifecycleAction } from "@/hooks/useReleaseCore";
 import { apiErrorMessage } from "@/lib/api/describeApiError";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 
 export function RequestAuthorisationButton({ coreId, coreNumber, size = "sm", variant = "ghost" }: {
     coreId: string;
@@ -20,12 +21,15 @@ export function RequestAuthorisationButton({ coreId, coreNumber, size = "sm", va
     const [open, setOpen] = useState(false);
     const lifecycle = useCoreLifecycleAction();
     const { data: core } = useRetrieveCore(open ? coreId : "");
+    // Sending a unit for authorisation is a lead / planner decision (B5, 2026-10-28).
+    const canRequest = usePermissionSet().has("request_core_authorisation");
     const scope = core?.authorisation_needed ?? [];
     const send = () =>
         lifecycle.mutate({ id: coreId, action: "request_authorisation" }, {
             onSuccess: () => { toast.success(`${coreNumber ?? "Core"} — sent for customer authorisation`); setOpen(false); },
             onError: (e) => toast.error(apiErrorMessage(e) ?? "Couldn't send for authorisation"),
         });
+    if (!canRequest) return null;
     return (
         <>
             <Button type="button" size={size} variant={variant} onClick={() => setOpen(true)}>

@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -37,7 +38,7 @@ export function QRMeasurementsSection({ modelData }: { modelData: Record<string,
                                 <TableHead>Value</TableHead>
                                 <TableHead>Spec</TableHead>
                                 <TableHead>Result</TableHead>
-                                <TableHead className="text-right">Captured</TableHead>
+                                <TableHead className="text-right">Recorded by</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -56,8 +57,10 @@ export function QRMeasurementsSection({ modelData }: { modelData: Record<string,
                                     <TableCell>
                                         <SpecBadge inSpec={m.is_within_spec} type={m.definition_info?.type} />
                                     </TableCell>
+                                    {/* Who and when, as the first-piece readings show it. */}
                                     <TableCell className="text-right text-xs text-muted-foreground">
-                                        {m.created_at ? new Date(m.created_at).toLocaleString() : "—"}
+                                        {m.created_by_name || "—"}
+                                        {m.created_at ? ` · ${format(new Date(m.created_at), "PP p")}` : ""}
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -75,6 +78,7 @@ type MeasurementRow = {
     value_pass_fail: "PASS" | "FAIL" | null;
     is_within_spec: boolean;
     sample_number: number | null;
+    created_by_name?: string | null;
     created_at: string | null;
     definition_info: {
         id: number;

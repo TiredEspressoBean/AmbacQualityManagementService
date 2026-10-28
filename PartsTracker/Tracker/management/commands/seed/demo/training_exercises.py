@@ -597,14 +597,16 @@ class TrainingExercisesSeeder(BaseSeeder):
             self._capas[capa_config['number']] = capa
 
     def _give_go_ahead(self, capa):
-        """Its corrective work is done, so its plan was approved first: the QA Manager
-        raised it, and a Production Manager (an eligible approver who isn't the
-        requester) approved it, through the approval service."""
+        """Its corrective work is done, so its plan was approved first, through the
+        approval service. Only a QA Manager approves a Major/Critical CAPA's plan (B3,
+        2026-10-28), and Maria is the shop's only one: having raised it, she approves it
+        herself — allowed for a CAPA when nobody else is eligible, with the comment as
+        her justification, and flagged self-approved on the record."""
         from datetime import timedelta
         from Tracker.models import ApprovalRequest, ApprovalDecision, ApprovalResponse, User
         from Tracker.services.core.approval import submit_approval_response
         request = ApprovalRequest.objects.filter(object_id=str(capa.id), status='PENDING').first()
-        approver = User.objects.filter(email='jennifer.mgr@demo.ambac.com').first()
+        approver = User.objects.filter(email='maria.qa@demo.ambac.com').first()
         if request is None or approver is None or not request.can_approve(approver):
             self.log(f"  Warning: no go-ahead given for {capa.capa_number}", warning=True)
             return

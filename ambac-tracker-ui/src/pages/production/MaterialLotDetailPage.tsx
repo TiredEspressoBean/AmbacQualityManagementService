@@ -124,6 +124,21 @@ export function MaterialLotDetailPage() {
                             <MapPin className="mr-1 h-4 w-4" /> Move
                         </Button>
                     )}
+                    {/* A suspect lot is held by hand; it's released through Review hold. */}
+                    {hasPerm("hold_materiallot")
+                        && ["ACCEPTED", "IN_USE", "RECEIVED", "AWAITING_INSPECTION", "QUARANTINE"].includes(l.status ?? "")
+                        && !(l.hold_reasons ?? []).includes("MANUAL") && (
+                        <ReasonActionButton
+                            label="Place hold" destructive
+                            title={`Hold ${l.lot_number}`}
+                            description={<>Nothing can be drawn from it while it&rsquo;s held. It is released through{" "}
+                                <strong>Review hold</strong>, with a reason, by someone who can decide holds; stock goes
+                                back to what it was. Your reason is kept on the lot.</>}
+                            placeholder="Why — e.g. supplier recall notice for this batch"
+                            done={`${l.lot_number} is on hold.`}
+                            run={(reason) => api.api_MaterialLots_place_hold_create({ reason }, { params: { id: lotId } })}
+                        />
+                    )}
                     <Button size="sm" variant="outline" onClick={() => setDocsOpen(true)}>
                         <FileText className="mr-1 h-4 w-4" /> Documents
                     </Button>

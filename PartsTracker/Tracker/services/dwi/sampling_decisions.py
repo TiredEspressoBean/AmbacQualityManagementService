@@ -33,6 +33,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def percentage_selects(part_id, rule_id, value) -> bool:
+    """A PERCENTAGE rule's answer for one part: reproducible, the same wherever it is
+    evaluated (step or substep), and independent of how many other parts exist.
+
+    SHA-256 of "part:rule" puts each part in one of 256 buckets; the rule takes the
+    lowest `value`% of them (0 takes none, 100 takes all). Shared by the step engine
+    (services/mes/sampling_applier.py) so the two can't drift — the step engine used
+    to take the first slice of the parts at the step, which moved as parts arrived
+    and sampled nothing on a small lot (user decision 2026-10-28, B8).
+    """
+    bucket = hashlib.sha256(f"{part_id}:{rule_id}".encode('utf-8')).digest()[0]  # 0-255
+    return bucket * 100 < float(value) * 256
+
+
 def evaluate_substep_sampling(step_execution: "StepExecution") -> None:
     """Write one SamplingDecision per Substep on the StepExecution's
     parent Step. Idempotent: re-running on the same execution is safe
@@ -160,13 +174,8 @@ def _evaluate_rule(rule: "SamplingRule", part: "Parts") -> tuple[str, int]:
         )
 
     if rule_type == SamplingRuleType.PERCENTAGE and value:
-        digest = hashlib.sha256(
-            f"{part.id}:{rule.id}".encode('utf-8')
-        ).digest()
-        bucket = digest[0]  # 0-255
-        threshold = int(255 * value / 100)
         return (
-            SamplingOutcome.SELECTED.value if bucket < threshold
+            SamplingOutcome.SELECTED.value if percentage_selects(part.id, rule.id, value)
             else SamplingOutcome.DESELECTED.value,
             ruleset_version,
         )

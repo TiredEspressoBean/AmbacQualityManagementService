@@ -56,7 +56,8 @@ export function useCoreLifecycleAction() {
     return useMutation<
         unknown,
         unknown,
-        | { id: string; action: "complete_disassembly" }
+        /** Closing a teardown by hand is an override, so it carries a reason (B4). */
+        | { id: string; action: "complete_disassembly"; reason: string }
         | { id: string; action: "request_authorisation" }
         | {
             id: string; action: "record_authorisation"; approved: boolean; note?: string;
@@ -75,7 +76,7 @@ export function useCoreLifecycleAction() {
         mutationFn: (v) => {
             const headers = { "X-CSRFToken": getCookie("csrftoken") };
             if (v.action === "complete_disassembly") {
-                return api.api_Cores_complete_disassembly_create(undefined, {
+                return api.api_Cores_complete_disassembly_create({ reason: v.reason }, {
                     params: { id: v.id }, headers,
                 });
             }

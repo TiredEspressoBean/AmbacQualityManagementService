@@ -917,6 +917,11 @@ class DockMetricsSerializer(serializers.Serializer):
     ppm_rejected = serializers.IntegerField(allow_null=True)
 
 
+class PlaceHoldSerializer(serializers.Serializer):
+    """Hold a suspect lot by hand. The reason is kept on record beside the person."""
+    reason = serializers.CharField(allow_blank=False)
+
+
 class ReleaseHoldSerializer(serializers.Serializer):
     """Lift a receiving hold. The reason is kept on record beside the decision."""
     reason = serializers.CharField(allow_blank=False)

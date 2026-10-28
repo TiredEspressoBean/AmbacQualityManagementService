@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/file-upload";
 import { CloudUpload, Paperclip, Loader2 } from "lucide-react";
 import { useReviseDocument } from "@/hooks/useReviseDocument";
+import { DOCUMENT_MAX_BYTES, DOCUMENT_MAX_LABEL } from "@/lib/upload-limits";
 
 interface DocumentRevisionModalProps {
     documentId: string;
@@ -111,7 +112,7 @@ export function DocumentRevisionModal({
                         <FileUploader
                             value={files}
                             onValueChange={setFiles}
-                            dropzoneOptions={{ maxFiles: 1, maxSize: 1024 * 1024 * 10 }}
+                            dropzoneOptions={{ maxFiles: 1, maxSize: DOCUMENT_MAX_BYTES }}
                             className="relative bg-background rounded-lg p-2"
                         >
                             <FileInput
@@ -124,7 +125,7 @@ export function DocumentRevisionModal({
                                         <span className="font-semibold">Click to upload</span> or drag and drop
                                     </p>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        Leave empty to keep the current file
+                                        Up to {DOCUMENT_MAX_LABEL}. Leave empty to keep the current file
                                     </p>
                                 </div>
                             </FileInput>

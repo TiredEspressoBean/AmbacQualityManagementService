@@ -25,6 +25,8 @@ export function DocumentLifecycleActions({ document }: {
         id: string | number; file_name?: string | null; status?: string | null;
         /** Set on an obsolete document a later revision replaced — it can't be reinstated. */
         superseded_by_version?: number | null;
+        /** Its type; a type that needs no approval is released straight from Draft. */
+        document_type_info?: unknown;
     };
 }) {
     const qc = useQueryClient();
@@ -51,9 +53,14 @@ export function DocumentLifecycleActions({ document }: {
 
     if (!has("release_documents")) return null;
     const status = document.status ?? "";
+    // A draft whose type needs no approval (a CoC, a test report…) is put in force
+    // directly; the server holds the same rule (services/core/documents.py).
+    const noApproval = (document.document_type_info as { requires_approval?: unknown } | null | undefined)
+        ?.requires_approval === false;
+    const releasable = status === "APPROVED" || (status === "DRAFT" && noApproval);
     return (
         <>
-            {status === "APPROVED" && (
+            {releasable && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button disabled={release.isPending}>

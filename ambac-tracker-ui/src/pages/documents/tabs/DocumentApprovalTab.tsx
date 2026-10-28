@@ -72,6 +72,27 @@ export function DocumentApprovalTab({ document }: DocumentApprovalTabProps) {
         });
     };
 
+    // A draft whose type needs no approval is released directly (the Release button in
+    // the header, for release_documents holders) — there is nothing to submit.
+    const noApproval = (document.document_type_info as { requires_approval?: unknown } | null | undefined)
+        ?.requires_approval === false;
+    if (isDraft && noApproval) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <ShieldCheck className="h-5 w-5" />
+                        No approval needed
+                    </CardTitle>
+                    <CardDescription>
+                        This document&rsquo;s type doesn&rsquo;t require approval. It is put in force with
+                        Release, by someone who can release documents.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+
     // Draft status - can submit for approval
     if (isDraft) {
         return (

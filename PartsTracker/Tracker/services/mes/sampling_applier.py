@@ -110,16 +110,17 @@ class SamplingFallbackApplier:
             return (index + 1) % rule.value == 0
 
         elif rule.rule_type == "PERCENTAGE":
-            threshold = int(len(parts) * (rule.value / 100))
-            return index < threshold
+            # The same per-part hash the substep engine uses, so a part's answer
+            # doesn't depend on how many parts are at the step (B8, 2026-10-28).
+            from Tracker.services.dwi.sampling_decisions import percentage_selects
+            return percentage_selects(self.part.id, rule.id, rule.value)
 
         elif rule.rule_type == "RANDOM":
             # Deliberately NOT reproducible — an unpredictable spot check. The
-            # reproducible option is PERCENTAGE, just above, which walks the
-            # ordered list and takes the first slice; `services/dwi/
-            # sampling_decisions.py` says the same ("deterministic random should
-            # be PERCENTAGE") and the two paths must agree or the same rule means
-            # two different things depending on who evaluates it.
+            # reproducible option is PERCENTAGE, just above (a per-part hash shared
+            # with `services/dwi/sampling_decisions.py`), and the two paths must
+            # agree or the same rule means two different things depending on who
+            # evaluates it.
             #
             # This used to call `random.seed(part.created_at.timestamp())`, which
             # was wrong twice over. It made RANDOM a slower, lumpier PERCENTAGE —

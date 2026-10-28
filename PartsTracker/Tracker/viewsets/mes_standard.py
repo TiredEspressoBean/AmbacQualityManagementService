@@ -37,7 +37,7 @@ from Tracker.serializers.mes_standard import (
     MaterialLotSerializer, MaterialLotSplitSerializer,
     CancelExpectedReceiptSerializer, ChaseExpectedReceiptSerializer, ExtendShelfLifeSerializer, ExpectedReceiptSerializer, ReceiveExpectedLotSerializer,
     BulkExpectedReceiptSerializer, ExpectedReceiptImportResultSerializer, LateDeliverySerializer,
-    ReleaseHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
+    ReleaseHoldSerializer, PlaceHoldSerializer, AdjustQuantitySerializer, StorageLocationSerializer,
     RejectLotSerializer, RejectLotResponseSerializer, LotDecisionSerializer, ShipBackSerializer,
     LotTraceSerializer, DockMetricsSerializer,
     MaterialUsageSerializer, CorrectUsageLotSerializer, CorrectLotSourceSerializer,
@@ -668,6 +668,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # edit rights on the lot.
     action_permissions = {
         'release_hold': ['approve_disposition'],
+        # Holding a suspect lot by hand is a QA act (B12, 2026-10-28).
+        'place_hold': ['hold_materiallot'],
         'adjust_quantity': ['change_materiallot'],
         'correct_receipt': ['change_materiallot'],
         'reopen_remainder': ['change_materiallot'],
@@ -694,7 +696,8 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
     # One dict for the whole class: a second `action_permissions` further down the
     # body silently replaced this one, and every gate above went dead.
     # A move changes an existing lot (or splits one), a chase notes one — not creates.
-    crud_exempt_actions = {'move', 'chase'}
+    # place_hold: a hold changes a lot, not creates one — its own perm is the gate.
+    crud_exempt_actions = {'move', 'chase', 'place_hold'}
 
     @extend_schema(request=ChaseExpectedReceiptSerializer, responses={200: MaterialLotSerializer},
                    description="Record a chase of an expected delivery — what the supplier said, and "
@@ -803,6 +806,22 @@ class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewS
         try:
             lot = receiving_inspection.release_hold(lot, request.user, ser.validated_data['reason'],
                                                     code=ser.validated_data.get('code') or None)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(MaterialLotSerializer(lot, context={'request': request}).data)
+
+    @extend_schema(request=PlaceHoldSerializer, responses={200: MaterialLotSerializer},
+                   description="Hold a suspect lot by hand, with a reason. Released through "
+                               "release-hold, like any other hold.")
+    @action(detail=True, methods=['post'], url_path='place-hold')
+    def place_hold(self, request, pk=None):
+        """Put a lot on a manual hold — stock already accepted or in use, or a lot in
+        receiving. No draw can take from it until the hold is released."""
+        lot = self.get_object()
+        ser = PlaceHoldSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        try:
+            lot = receiving_inspection.place_manual_hold(lot, request.user, ser.validated_data['reason'])
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(MaterialLotSerializer(lot, context={'request': request}).data)

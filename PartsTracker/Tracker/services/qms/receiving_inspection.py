@@ -402,6 +402,52 @@ def reevaluate_hold(lot, user) -> bool:
     return True
 
 
+MANUAL_HOLD = "MANUAL"
+# What a manual hold can be placed on: stock, and a lot still in receiving.
+_MANUAL_HOLD_FROM = ("ACCEPTED", "IN_USE", "RECEIVED", "AWAITING_INSPECTION", "QUARANTINE")
+
+
+def place_manual_hold(lot, user, reason: str):
+    """A person holds a suspect lot (user decision 2026-10-28, B12): stock already
+    accepted or in use, or a lot still in receiving. The lot is quarantined — no draw
+    can take from it — with a MANUAL hold beside any it already has. The reason and the
+    person are recorded as an edit of ``hold_reason``; the status it was held from is
+    recorded as an edit of ``status``, so releasing it puts stock back as it was.
+    Released through `release_hold`, like every other hold."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+
+    reason = (reason or "").strip()
+    if not reason:
+        raise ValueError("Say why the lot is being held")
+    if lot.status not in _MANUAL_HOLD_FROM:
+        raise ValueError(f"Lot {lot.lot_number} is {lot.get_status_display().lower()}; it can't be held")
+    if MANUAL_HOLD in lot_holds.holds(lot):
+        raise ValueError(f"Lot {lot.lot_number} is already held by hand")
+    ct = ContentType.objects.get_for_model(lot.__class__)
+    with transaction.atomic():
+        if lot.status != "QUARANTINE":
+            RecordEdit.objects.create(
+                tenant=lot.tenant, content_type=ct, object_id=lot.id, field_name="status",
+                old_value=lot.status, new_value="QUARANTINE", reason=reason, edited_by=user)
+        RecordEdit.objects.create(
+            tenant=lot.tenant, content_type=ct, object_id=lot.id, field_name="hold_reason",
+            old_value="", new_value=MANUAL_HOLD, reason=reason, edited_by=user)
+        lot_holds.hold(lot, MANUAL_HOLD)
+    lot.refresh_from_db()
+    return lot
+
+
+def _held_from_stock(lot) -> str | None:
+    """The stock status a manual hold took the lot from (ACCEPTED / IN_USE), or None."""
+    from django.contrib.contenttypes.models import ContentType
+    from Tracker.models import RecordEdit
+    edit = (RecordEdit.objects.filter(  # tenant-safe: .objects auto-scopes; a lot's own edits
+        content_type=ContentType.objects.get_for_model(lot.__class__), object_id=lot.id,
+        field_name="status", new_value="QUARANTINE").order_by("-edited_at").first())
+    return edit.old_value if edit is not None and edit.old_value in ("ACCEPTED", "IN_USE") else None
+
+
 def release_hold(lot, user, reason: str, code: str | None = None):
     """A person lifts one receiving hold — accepting stock from an unqualified supplier
     for this lot, say. The decision and its reason are recorded as an edit of
@@ -439,6 +485,9 @@ def release_hold(lot, user, reason: str, code: str | None = None):
             decline_whole_lot_request(lot, user, reason)
         if remaining:
             pass  # still held for the others; nothing routes yet
+        elif released == MANUAL_HOLD and _held_from_stock(lot):
+            # Stock held by hand goes back to what it was, not through receiving again.
+            inventory.restore_after_hold(lot, _held_from_stock(lot))
         elif released == "WHOLE_LOT_REJECT_REQUESTED" or receiving_execution(lot) is not None:
             # Back to the SAME inspection: a declined whole-lot request, or a lot held
             # mid-inspection (its supplier suspended). Routing it again opened a second

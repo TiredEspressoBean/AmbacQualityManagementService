@@ -86,6 +86,15 @@ class SubstepSerializer(SecureModelMixin):
     # required=False to match the model's blank=True/default=list -- what
     # ModelSerializer inferred before this field was declared explicitly.
     body_blocks = TipTapDocumentField(required=False)
+    # The rule behind `sampling_rule`, so the editor can show it (B7, 2026-10-28).
+    sampling_rule_info = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_sampling_rule_info(self, obj):
+        rule = obj.sampling_rule
+        if rule is None:
+            return None
+        return {'rule_type': rule.rule_type, 'value': rule.value}
 
     class Meta:
         model = Substep
@@ -104,6 +113,7 @@ class SubstepSerializer(SecureModelMixin):
             'expected_duration',
             'scope',
             'sampling_rule',
+            'sampling_rule_info',
             'source_library_substep_id',
             'source_library_version',
             'is_editable',

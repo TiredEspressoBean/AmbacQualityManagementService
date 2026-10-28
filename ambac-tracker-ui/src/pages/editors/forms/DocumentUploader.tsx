@@ -24,9 +24,11 @@ import {
 import { useCreateDocument } from "@/hooks/useCreateDocument";
 import { useRetrieveContentTypes } from "@/hooks/useRetrieveContentTypes";
 import { schemas } from "@/lib/api/generated.ts";
+import { DOCUMENT_MAX_BYTES, DOCUMENT_MAX_LABEL } from "@/lib/upload-limits";
 
 const formSchema = z.object({
-    file: z.instanceof(File),
+    file: z.instanceof(File).refine((f) => f.size <= DOCUMENT_MAX_BYTES,
+        `File too large — documents can be up to ${DOCUMENT_MAX_LABEL}.`),
     classification: schemas.ClassificationEnum,
 });
 

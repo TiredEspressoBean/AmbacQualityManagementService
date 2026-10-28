@@ -1060,6 +1060,15 @@ class OrdersCSVImportSerializer(BaseCSVImportSerializer):
 
         return result
 
+    def update_instance(self, instance, data):
+        """An import that moves the promised date counts as a move, as a form edit does:
+        the first promise is kept for on-time scoring (user decision 2026-10-28, B14)."""
+        from Tracker.services.mes.orders import note_completion_change
+        previous = instance.estimated_completion
+        instance = super().update_instance(instance, data)
+        note_completion_change(instance, previous)
+        return instance
+
 
 class WorkOrderCSVImportSerializer(BaseCSVImportSerializer):
     """CSV import serializer for WorkOrders.

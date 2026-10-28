@@ -32,6 +32,9 @@ import { Label } from "@/components/ui/label";
 import { ShipDialog } from "@/components/shipping/ShipDialog";
 import { useWorkUnit } from "@/hooks/useWorkUnit";
 import { apiErrorBody, apiErrorField } from "@/lib/api/describeApiError";
+import { api } from "@/lib/api/generated";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import type { Schema } from "@/lib/api/types";
 
 type WorkOrderCore = NonNullable<Schema<"WorkOrder">["cores"]>[number];
@@ -61,6 +64,12 @@ export function WorkOrderCoresCard(
     const release = useReleaseCore();
     const lifecycle = useCoreLifecycleAction();
     const bulk = useBulkCoreAuthorisation();
+    // A unit's decisions are the lead / planner tier (B4/B5, 2026-10-28); operators see
+    // the unit and work it, and the server refuses the rest anyway.
+    const { has } = usePermissionSet();
+    const canRequest = has("request_core_authorisation");
+    const canRelease = has("release_core");
+    const canOverrideTeardown = has("complete_disassembly");
     // Teardown and rebuild are worked in the DWI operator runtime, at the step the unit
     // is at — a core is a part, so it opens like any part's work.
     const { workUnit, pending: opening } = useWorkUnit();
@@ -182,7 +191,7 @@ export function WorkOrderCoresCard(
                                 <>
                                     <ReportButton reportType="over_and_above_scope_lot"
                                         params={{ core_ids: pickedIds }} label="Scope for customer" />
-                                    {pickedStatus.has("IN_REBUILD") && (
+                                    {pickedStatus.has("IN_REBUILD") && canRequest && (
                                         <Button size="sm" variant="outline" disabled={bulk.isPending}
                                             onClick={() => bulk.mutate({ action: "request", coreIds: pickedIds }, {
                                                 onSuccess: () => onBulkDone(`${picked.length} units sent for authorisation`),
@@ -286,28 +295,23 @@ export function WorkOrderCoresCard(
                                                     </Button>
                                                 )}
                                                 {core.status === "IN_DISASSEMBLY" ? (
-                                                    // Closing the teardown is what makes a unit's exit
-                                                    // decidable — every release, authorisation and
-                                                    // return downstream needs DISASSEMBLED.
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <span>
-                                                                <Button
-                                                                    size="sm" variant="outline" disabled={busy}
-                                                                    onClick={() => act(core,
-                                                                        { id, action: "complete_disassembly" },
-                                                                        "teardown complete — ready for its exit")}
-                                                                >
-                                                                    <PackageCheck className="mr-1 h-4 w-4" />
-                                                                    {busy ? "Closing…" : "Complete teardown"}
-                                                                </Button>
-                                                            </span>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            Everything worth keeping is off the unit. This is
-                                                            what opens its exit — rebuild, or harvest to stock.
-                                                        </TooltipContent>
-                                                    </Tooltip>
+                                                    // Finishing the teardown route closes it on its own;
+                                                    // this is the override, by a lead, with a reason.
+                                                    canOverrideTeardown ? (
+                                                        <ReasonActionButton
+                                                            label="Complete teardown"
+                                                            title={`Complete ${core.core_number}'s teardown by hand`}
+                                                            description={<>Finishing the teardown route closes it on its own. Closing it
+                                                                here instead opens the unit&rsquo;s exit — rebuild, or harvest to stock —
+                                                                now. Your reason is kept on the core.</>}
+                                                            placeholder="Why — e.g. remaining steps don't apply to this unit"
+                                                            done={`${core.core_number} — teardown complete, ready for its exit`}
+                                                            run={(reason) => api.api_Cores_complete_disassembly_create(
+                                                                { reason }, { params: { id } })}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">In teardown</span>
+                                                    )
                                                 ) : core.status === "IN_REBUILD" ? (
                                                     <span className="inline-flex gap-1">
                                                         <Button size="sm" variant="outline" asChild>
@@ -347,6 +351,8 @@ export function WorkOrderCoresCard(
                                                         <Truck className="mr-1 h-4 w-4" />
                                                         Return
                                                     </Button>
+                                                ) : ready && !canRelease ? (
+                                                    <span className="text-sm text-muted-foreground">A lead releases it</span>
                                                 ) : ready && core.returns_to_customer ? (
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>

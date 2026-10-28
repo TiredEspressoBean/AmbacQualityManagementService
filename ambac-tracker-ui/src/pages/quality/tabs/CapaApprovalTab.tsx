@@ -162,7 +162,7 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                 <Clock className="h-4 w-4" />
                                 <AlertTitle>Awaiting Approval</AlertTitle>
                                 <AlertDescription>
-                                    Waiting for a QA Manager or Production Manager to approve the plan. Containment can be worked now; corrective and preventive actions and the root-cause analysis wait until it's approved.
+                                    Waiting for a QA Manager to approve the plan. Containment can be worked now; corrective and preventive actions and the root-cause analysis wait until it's approved.
                                 </AlertDescription>
                             </Alert>
 
@@ -240,7 +240,7 @@ export function CapaApprovalTab({ capa }: CapaApprovalTabProps) {
                                     {hasUserResponded(currentUserId, pendingApprovalRequest.responses || [])
                                         ? "You have already submitted your response."
                                         : isRequester
-                                            ? "You requested this approval; a QA Manager or Production Manager decides it."
+                                            ? "You requested this approval; a QA Manager decides it."
                                             : "You are not assigned as an approver for this request."}
                                 </p>
                             )}
