@@ -469,9 +469,9 @@ class DemoOrdersSeeder(BaseSeeder):
             # The history has to END in the past, before the work order's due date when
             # that has passed: part.created_at is the seed's own run time (auto_now_add),
             # and starting from it put a shipped order's work tomorrow, with the open
-            # last step exiting before it entered. Count back from the end instead —
-            # each visit takes ~2h15m (record + gap), and a rework adds two more visits.
-            visits = current_step_idx + 1 + (2 if part_reworked else 0)
+            # last step exiting before it entered. Count back from the end instead, one
+            # weekday shift slot per visit (a reworked step is visited twice), so the
+            # work sits inside the seeded attendance rather than round the clock.
             history_end = self.today - timedelta(hours=2)
             due = getattr(part.work_order, 'expected_completion', None) if part.work_order_id else None
             if due is not None:
@@ -479,7 +479,10 @@ class DemoOrdersSeeder(BaseSeeder):
                     datetime.combine(due, time(17, 0)))
                 if due_at < history_end:
                     history_end = due_at - timedelta(days=1)
-            current_time = history_end - timedelta(hours=2, minutes=15) * (visits + 1)
+            reworked_steps = ('Flow Calibration', 'Flow Testing', 'Assembly', 'Reassembly')
+            visits = sum(2 if part_reworked and ordered_steps[i].name in reworked_steps else 1
+                         for i in range(current_step_idx + 1))
+            slots = iter(self._shift_slots_before(history_end, visits))
 
             # Create executions for completed steps
             for idx in range(current_step_idx + 1):
@@ -487,33 +490,53 @@ class DemoOrdersSeeder(BaseSeeder):
 
                 # Determine if this is a rework visit
                 visit_number = 1
-                if part_reworked and step.name == 'Rework':
-                    visit_number = 1
-                elif part_reworked and step.name in ['Flow Calibration', 'Flow Testing', 'Assembly', 'Reassembly']:
-                    # These steps were visited twice due to rework
-                    # Create first visit
+                if part_reworked and step.name in reworked_steps:
+                    # These steps were visited twice due to rework: the first visit
                     self._create_step_execution_record(
-                        part, step, 1, current_time, operators, step_equipment_map,
-                        equipment_map, completed=(idx < current_step_idx), result=result
+                        part, step, 1, next(slots) - timedelta(minutes=5), operators,
+                        step_equipment_map, equipment_map,
+                        completed=(idx < current_step_idx), result=result
                     )
-                    # Advance time and create second visit
-                    current_time = current_time + timedelta(hours=2, minutes=30)
                     visit_number = 2
 
-                # Create the execution record
-                current_time = self._create_step_execution_record(
-                    part, step, visit_number, current_time, operators, step_equipment_map,
-                    equipment_map, completed=(idx < current_step_idx), result=result
+                # Create the execution record (started_at = the slot)
+                self._create_step_execution_record(
+                    part, step, visit_number, next(slots) - timedelta(minutes=5), operators,
+                    step_equipment_map, equipment_map,
+                    completed=(idx < current_step_idx), result=result
                 )
-
-                # Add some time between steps (1-3 hours)
-                current_time = current_time + timedelta(hours=1, minutes=30)
 
         self.log(f"  Created {result['step_executions']} step executions")
         self.log(f"  Created {result['step_transitions']} step transitions")
         self.log(f"  Set {result['equipment_usage']} step-execution equipment attributions")
 
         return result
+
+    # Where a step's work may start on a weekday, plant time. Each run is ~45 min and
+    # the slots sit inside the seeded attendance (time_entries.py: 07:00–15:30 with a
+    # 09:00 break and 12:00 lunch), with gaps between them — so direct hours derived
+    # from these records (services/mes/labor_report.py) land on shift and leave some
+    # time unallocated, as on a real floor.
+    _SHIFT_SLOTS = ((7, 20), (9, 30), (10, 45), (13, 0), (14, 15))
+
+    def _shift_slots_before(self, end, n):
+        """The `n` latest shift slots strictly before `end` (each run finishing by
+        then), oldest first."""
+        from Tracker.services.core.clock import plant_tz
+        tz = plant_tz(self.tenant)
+        run = timedelta(minutes=50)
+        slots = []
+        day = timezone.localtime(end, tz).date()
+        while len(slots) < n:
+            if day.weekday() < 5:
+                for hh, mm in reversed(self._SHIFT_SLOTS):
+                    at = timezone.make_aware(datetime(day.year, day.month, day.day, hh, mm), tz)
+                    if at + run <= end:
+                        slots.append(at)
+                        if len(slots) == n:
+                            break
+            day -= timedelta(days=1)
+        return list(reversed(slots))
 
     def _create_step_execution_record(self, part, step, visit_number, entry_time,
                                      operators, step_equipment_map, equipment_map,
@@ -548,6 +571,11 @@ class DemoOrdersSeeder(BaseSeeder):
         step_duration = timedelta(hours=0.5, minutes=45)  # ~45 min per step
         started_at = entry_time + timedelta(minutes=5)
         exited_at = started_at + step_duration if completed else None
+        if not completed:
+            # Still running: started today. A run opened days ago and never exited
+            # counts against every shift since (labor_report), soaking up whole days
+            # of seeded attendance as "direct" time no real operator worked.
+            started_at = max(started_at, self.today - timedelta(minutes=30))
 
         # Determine next step for completed executions
         next_step = None
