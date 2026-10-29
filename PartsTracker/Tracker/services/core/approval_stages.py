@@ -9,7 +9,8 @@ flight.
 
 - **A stage is done** when every user assigned to it has approved, and each group in
   it has a member who claimed it (a user assignment at the same order, source CLAIMED)
-  — that member's approval is then part of "every user". A group stage is required.
+  — that member's approval is then part of "every user". A member named in the same
+  stage covers the group too. A group stage is required.
 - **Only the open stage acts.** The open stage is the first one not done. Approve and
   reject are refused for anyone outside it ("Not your turn — waiting on …"), as
   21 CFR 11.10(f) expects out-of-sequence steps to be blocked. A group member
@@ -73,8 +74,12 @@ def _members(group_ids) -> dict:
 
 
 def _unclaimed_groups(stage: Stage, members: dict) -> list:
-    claimed = set(stage.claimed_ids)
-    return [g for g in stage.group_ids if not (members.get(g, set()) & claimed)]
+    """Groups in the stage that no member covers yet. A member assigned to the same
+    stage — named, or claimed from the group — covers it: they must approve for the
+    stage to be done anyway, and a second member would only be asked to sign the same
+    stage twice over."""
+    present = set(stage.user_ids)
+    return [g for g in stage.group_ids if not (members.get(g, set()) & present)]
 
 
 def open_stage(request) -> Stage | None:
@@ -169,14 +174,16 @@ def assign_from_template(request, template, tenant) -> None:
     `approval_stages` gives the order. A template without stages keeps the old shape:
     its default approvers in order, its groups after them. The template's auto-assign
     role becomes one final stage — every member required under ALL_REQUIRED, any one
-    member (the role's group) otherwise.
+    member (the role's group) otherwise. A template without stages puts the role in its
+    groups' final stage instead.
     """
     from Tracker.models import (
         ApprovalFlows, ApproverAssignment, ApproverAssignmentSource, GroupApproverAssignment,
         TenantGroup, User,
     )
     raw = [s for s in (template.approval_stages or []) if (s.get('users') or s.get('groups'))]
-    if not raw:
+    legacy = not raw
+    if legacy:
         raw = [{'users': [u.id]} for u in template.default_approvers.all()]
         group_ids = list(template.default_groups.values_list('id', flat=True))
         if group_ids:
@@ -194,7 +201,10 @@ def assign_from_template(request, template, tenant) -> None:
                 assignment_source=ApproverAssignmentSource.TEMPLATE_GROUP)
 
     if template.auto_assign_by_role:
-        final = len(raw)
+        # A template without stages keeps its role in the same final stage as its groups
+        # — its role is usually one of them (a PCR's QA Manager), and a later stage of
+        # the same people would bar them from the group stage before it.
+        final = len(raw) - 1 if (legacy and raw and raw[-1].get('groups')) else len(raw)
         group = TenantGroup.objects.filter(tenant=tenant, name=template.auto_assign_by_role).first()  # tenant-safe
         if template.approval_flow_type == ApprovalFlows.ALL_REQUIRED or group is None:
             for user in User.objects.filter(user_roles__group__name=template.auto_assign_by_role,

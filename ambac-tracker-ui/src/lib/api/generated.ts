@@ -4888,19 +4888,19 @@ export type MeasurementDefinition = {
   string | undefined;
   nominal?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   upper_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   lower_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
@@ -4959,19 +4959,19 @@ export type MeasurementDefinitionRequest = {
   string | undefined;
   nominal?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   upper_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   lower_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
@@ -5016,19 +5016,19 @@ export type MeasurementDefinitionSPC = {
   string | undefined;
   nominal?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   upper_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
   lower_tol?:
     | /**
-     * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+     * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
      */
     (string | null)
     | undefined;
@@ -13603,15 +13603,15 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
    */
   unit: string;
   /**
-   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
    */
   nominal: string | null;
   /**
-   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
    */
   upper_tol: string | null;
   /**
-   * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
+   * @pattern ^-?\d{0,10}(?:\.\d{0,6})?$
    */
   lower_tol: string | null;
   type: TypeEnum;
@@ -22579,15 +22579,15 @@ const MeasurementDefinition = z.object({
   unit: z.string().max(50).optional(),
   nominal: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   upper_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   lower_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   type: TypeEnum,
   step: z.string().uuid(),
@@ -22615,15 +22615,15 @@ const MeasurementDefinitionRequest = z.object({
   unit: z.string().max(50).optional(),
   nominal: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   upper_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   lower_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   type: TypeEnum,
   step: z.string().uuid(),
@@ -22639,15 +22639,15 @@ const PatchedMeasurementDefinitionRequest = z
     unit: z.string().max(50),
     nominal: z
       .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
       .nullable(),
     upper_tol: z
       .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
       .nullable(),
     lower_tol: z
       .string()
-      .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+      .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
       .nullable(),
     type: TypeEnum,
     step: z.string().uuid(),
@@ -29256,15 +29256,15 @@ const MeasurementDefinitionSPC = z.object({
   unit: z.string().max(50).optional(),
   nominal: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   upper_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
   lower_tol: z
     .string()
-    .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
+    .regex(/^-?\d{0,10}(?:\.\d{0,6})?$/)
     .nullish(),
 });
 const SPCCapabilityResponse = z.object({

@@ -102,3 +102,48 @@ class ParallelUnchangedTests(TenantTestCase):
         submit_approval_response(req, a, "APPROVED", comments="ok")
         req.refresh_from_db()
         self.assertEqual(req.status, "APPROVED")
+
+
+class LegacyTemplateStagesTests(TenantTestCase):
+    """A sequential template with groups and an auto-assign role but no stages (the PCR
+    starter's shape): the role joins the groups' stage, so a lone QA Manager — in the
+    role and the group — can approve without deadlock."""
+
+    def test_pcr_shape_completes_with_one_qa_manager_and_one_pm(self):
+        t = self.tenant_a
+        qam = User.objects.create_user(username="qam", email="qam@a.test", password="x", tenant=t)
+        pm = User.objects.create_user(username="pm1", email="pm1@a.test", password="x", tenant=t)
+        author = User.objects.create_user(username="auth2", email="auth2@a.test", password="x", tenant=t)
+        qa_g, _ = TenantGroup.objects.get_or_create(tenant=t, name="QA Manager")
+        pm_g, _ = TenantGroup.objects.get_or_create(tenant=t, name="Production Manager")
+        UserRole.objects.filter(group__in=[qa_g, pm_g]).delete()  # only these two people
+        UserRole.objects.create(user=qam, group=qa_g)
+        UserRole.objects.create(user=pm, group=pm_g)
+        template = ApprovalTemplate.objects.create(
+            tenant=t, template_name="PCR", approval_type="PCR_APPROVAL",
+            approval_sequence="SEQUENTIAL", approval_flow_type="ALL_REQUIRED",
+            auto_assign_by_role="QA Manager")
+        template.default_groups.set([qa_g, pm_g])
+        req = create_approval_from_template(qa_g, template, author)
+        submit_approval_response(req, qam, "APPROVED", comments="ok")
+        submit_approval_response(req, pm, "APPROVED", comments="ok")
+        req.refresh_from_db()
+        self.assertEqual(req.status, "APPROVED")
+
+
+class StarterAndSpecTests(TenantTestCase):
+
+    def test_process_approval_starter_is_parallel_any(self):
+        from Tracker.services.defaults_service import APPROVAL_TEMPLATES
+        [pa] = [x for x in APPROVAL_TEMPLATES if x["approval_type"] == "PROCESS_APPROVAL"]
+        self.assertEqual((pa["approval_sequence"], pa["approval_flow_type"]), ("PARALLEL", "ANY"))
+
+    def test_a_spec_nominal_of_1800_is_storable(self):
+        from Tracker.models import MeasurementDefinition, PartTypes, Steps
+        pt = PartTypes.objects.create(tenant=self.tenant_a, name="Inj", ID_prefix="I")
+        step = Steps.objects.create(tenant=self.tenant_a, part_type=pt, name="Pop test", step_type="TASK")
+        md = MeasurementDefinition.objects.create(tenant=self.tenant_a, step=step, label="Opening pressure",
+                                                  type="NUMERIC", unit="bar", nominal="1800",
+                                                  upper_tol="25", lower_tol="25")
+        md.refresh_from_db()
+        self.assertEqual(str(md.nominal), "1800.000000")

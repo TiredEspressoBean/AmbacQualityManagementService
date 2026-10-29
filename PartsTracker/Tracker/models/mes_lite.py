@@ -522,9 +522,9 @@ class MeasurementDefinition(SecureModel):
         choices=MEASUREMENT_TYPE_CHOICES,
     )
     unit = models.CharField(max_length=50, blank=True)  # e.g. "mm", "psi"
-    nominal = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
-    upper_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
-    lower_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=9)
+    nominal = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=16)
+    upper_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=16)
+    lower_tol = models.DecimalField(null=True, blank=True, decimal_places=6, max_digits=16)
     required = models.BooleanField(default=True)
 
     # SPC opt-in (tenant configurable per measurement)

@@ -224,9 +224,11 @@ APPROVAL_TEMPLATES = [
         "template_name": "Process Approval",
         "approval_type": "PROCESS_APPROVAL",
         "auto_assign_by_role": "QA Manager",
-        "approval_flow_type": "ALL_REQUIRED",
+        # Either group's first approval decides it (user decision 2026-10-29) — since
+        # sequential approvals became stages, SEQUENTIAL here would need both groups.
+        "approval_flow_type": "ANY",
         "delegation_policy": "OPTIONAL",
-        "approval_sequence": "SEQUENTIAL",
+        "approval_sequence": "PARALLEL",
         "allow_self_approval": False,
         "default_due_days": 7,
         "escalation_days": 3,

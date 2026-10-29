@@ -44,9 +44,11 @@ type Props = {
     value: ApproverRequirementsValue;
     onChange: (next: ApproverRequirementsValue) => void;
     disabled?: boolean;
+    /** Used inside a sequential stage card: the help line speaks to the stage. */
+    inStage?: boolean;
 };
 
-export function RequiredApproversField({ value, onChange, disabled }: Props) {
+export function RequiredApproversField({ value, onChange, disabled, inStage }: Props) {
     const [userOpen, setUserOpen] = useState(false);
     const [groupOpen, setGroupOpen] = useState(false);
 
@@ -237,9 +239,9 @@ export function RequiredApproversField({ value, onChange, disabled }: Props) {
             </div>
 
             <p className="text-xs text-muted-foreground">
-                Specific people and role groups can both be configured at once.
-                Everyone here is asked at the same time; for an approval in order, set the
-                Sequence to Sequential and arrange the stages.
+                {inStage
+                    ? "Everyone named here must approve; for a group, any one member."
+                    : "Specific people and role groups can both be configured at once. Everyone here is asked at the same time; for an approval in order, set the Sequence to Sequential and arrange the stages."}
             </p>
         </div>
     );

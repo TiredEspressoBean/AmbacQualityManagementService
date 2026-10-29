@@ -62188,17 +62188,17 @@ components:
         nominal:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         type:
           $ref: '#/components/schemas/TypeEnum'
@@ -62288,17 +62288,17 @@ components:
         nominal:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         type:
           $ref: '#/components/schemas/TypeEnum'
@@ -62349,17 +62349,17 @@ components:
         nominal:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
       required:
       - id
@@ -69749,17 +69749,17 @@ components:
         nominal:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         upper_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         lower_tol:
           type: string
           format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,6})?$
+          pattern: ^-?\d{0,10}(?:\.\d{0,6})?$
           nullable: true
         type:
           $ref: '#/components/schemas/TypeEnum'

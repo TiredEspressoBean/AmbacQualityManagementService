@@ -54,6 +54,7 @@ export function ApprovalStagesField({ value, onChange, disabled }: Props) {
                         value={{ approvers: stage.users, groups: stage.groups }}
                         onChange={(next) => set(stages.map((s, j) => j === i ? { users: next.approvers, groups: next.groups } : s))}
                         disabled={disabled}
+                        inStage
                     />
                 </div>
             ))}
