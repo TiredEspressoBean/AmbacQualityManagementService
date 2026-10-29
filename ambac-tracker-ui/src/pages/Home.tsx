@@ -37,8 +37,8 @@ function HomeForUser({ user }: { user: NonNullable<ReturnType<typeof useAuthUser
     }
 
     // Operators land on the kiosk-tile operator home (design doc §6): a full
-    // task surface, not the generic block stack. Currently a preview shell —
-    // Scan + In progress are live, the rest is dimmed until its backend lands.
+    // task surface, not the generic block stack. Most tiles are live; the few still
+    // dimmed are listed in OperatorHomePage's header.
     if (persona === "Operator") {
         return <OperatorHomePage user={user} />;
     }

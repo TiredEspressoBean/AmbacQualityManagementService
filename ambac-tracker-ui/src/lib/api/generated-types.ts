@@ -13045,6 +13045,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/StepExecutions/my_day/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in operator's day: steps they completed today and quality reports
+         *     they raised today (plant clock), plus their last completed step for the undo
+         *     strip (services/mes/operator_day.py).
+         */
+        get: operations["api_StepExecutions_my_day_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/StepExecutions/my_workload/": {
         parameters: {
             query?: never;
@@ -26962,6 +26983,11 @@ export interface components {
             rippled_count: number;
             rippled_task_ids: string[];
         };
+        MyDay: {
+            completed_today: number;
+            flagged_today: number;
+            last_finished: components["schemas"]["MyLastFinished"] | null;
+        };
         MyHours: {
             /** Format: date */
             week_start: string;
@@ -26972,6 +26998,18 @@ export interface components {
             /** Format: double */
             rework_hours: number;
             awaiting_approval: number;
+        };
+        MyLastFinished: {
+            /** Format: uuid */
+            execution_id: string;
+            step_name: string;
+            /** Format: uuid */
+            part_id: string | null;
+            part_erp_id: string | null;
+            /** Format: uuid */
+            work_order_id: string | null;
+            /** Format: date-time */
+            finished_at: string;
         };
         NcrAgingResponse: {
             data: {
@@ -63901,6 +63939,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
+    api_StepExecutions_my_day_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyDay"];
                 };
             };
         };

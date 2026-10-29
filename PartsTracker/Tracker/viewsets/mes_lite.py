@@ -3783,6 +3783,28 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
         serializer = StepExecutionListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(responses={200: inline_serializer(
+        name="MyDay",
+        fields={
+            "completed_today": serializers.IntegerField(),
+            "flagged_today": serializers.IntegerField(),
+            "last_finished": inline_serializer(name="MyLastFinished", allow_null=True, fields={
+                "execution_id": serializers.UUIDField(),
+                "step_name": serializers.CharField(),
+                "part_id": serializers.UUIDField(allow_null=True),
+                "part_erp_id": serializers.CharField(allow_null=True),
+                "work_order_id": serializers.UUIDField(allow_null=True),
+                "finished_at": serializers.DateTimeField(),
+            }),
+        })})
+    @action(detail=False, methods=['get'])
+    def my_day(self, request):
+        """The signed-in operator's day: steps they completed today and quality reports
+        they raised today (plant clock), plus their last completed step for the undo
+        strip (services/mes/operator_day.py)."""
+        from Tracker.services.mes.operator_day import my_day
+        return Response(my_day(self.tenant, request.user))
+
     @extend_schema(
         responses={200: StepExecutionSerializer(many=True)},
         description="Get visit history for a part at a specific step"

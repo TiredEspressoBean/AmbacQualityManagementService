@@ -5076,6 +5076,19 @@ export type Milestone = {
    */
   boolean | undefined;
 };
+export type MyDay = {
+  completed_today: number;
+  flagged_today: number;
+  last_finished: MyLastFinished;
+};
+export type MyLastFinished = {
+  execution_id: string;
+  step_name: string;
+  part_id: string | null;
+  part_erp_id: string | null;
+  work_order_id: string | null;
+  finished_at: string;
+};
 export type OperatorHoursReport = {
   rows: Array<OperatorHoursRow>;
 };
@@ -25499,6 +25512,19 @@ const StepDurationStats = z.object({
   max_duration_seconds: z.number(),
   completed_count: z.number().int(),
 });
+const MyLastFinished = z.object({
+  execution_id: z.string().uuid(),
+  step_name: z.string(),
+  part_id: z.string().uuid().nullable(),
+  part_erp_id: z.string().nullable(),
+  work_order_id: z.string().uuid().nullable(),
+  finished_at: z.string().datetime({ offset: true }),
+});
+const MyDay = z.object({
+  completed_today: z.number().int(),
+  flagged_today: z.number().int(),
+  last_finished: MyLastFinished.nullable(),
+});
 const PaginatedStepExecutionList = z.object({
   count: z.number().int(),
   next: z.string().url().nullish(),
@@ -30244,6 +30270,8 @@ export const schemas = {
   CaptureDraftResponse,
   CaptureDraftError,
   StepDurationStats,
+  MyLastFinished,
+  MyDay,
   PaginatedStepExecutionList,
   TrainingOverrideRow,
   WIPSummary,
@@ -55361,6 +55389,16 @@ logged on the execution&#x27;s &#x60;training_authorization&#x60; snapshot.`,
   },
   {
     method: "get",
+    path: "/api/StepExecutions/my_day/",
+    alias: "api_StepExecutions_my_day_retrieve",
+    description: `The signed-in operator&#x27;s day: steps they completed today and quality reports
+they raised today (plant clock), plus their last completed step for the undo
+strip (services/mes/operator_day.py).`,
+    requestFormat: "json",
+    response: MyDay,
+  },
+  {
+    method: "get",
     path: "/api/StepExecutions/my_workload/",
     alias: "api_StepExecutions_my_workload_list",
     description: `Get current operator&#x27;s assigned work`,
@@ -56058,7 +56096,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepOverrides/:id/",
@@ -56073,10 +56114,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepOverrides/:id/approve/",
@@ -61224,7 +61262,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: PaginatedUserList,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/User/",
@@ -61239,10 +61280,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/:id/",

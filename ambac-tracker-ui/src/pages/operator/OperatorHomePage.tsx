@@ -8,18 +8,17 @@
  *  LIVE:    greeting · Scan (real WO/part resolve → WO detail) · In progress
  *           (my open StepExecutions via /api/StepExecutions/my_workload/;
  *           Resume → the operator runtime for that run) · clock cluster
- *           (TimeEntry clock_in/out; Break/Lunch pause labor as BREAK/LUNCH entries) ·
- *           Notifications (the in-app feed; "Got it" = mark-read) · Shift notes ·
- *           UP NEXT + THEN (server-ranked WO×step rows from /api/WorkQueue/,
- *           filtered by kind=PRODUCTION and the user's WorkCenter memberships;
- *           Start navigates to WO detail — the operator work surface) ·
- *           station-scope combobox (memberships → picked station persists
- *           per-user in localStorage; retires the pre-Phase-2 unscoped calls).
- *  PREVIEW: dimmed tiles — Report a problem / Can't run this (need the blocker aggregate);
- *           clock state / Break / Clock out (TimeEntry has clock_in/out but no
- *           clean "am I clocked in" read yet). Each renders its prototype mock
- *           content behind a blur+disable via <PreviewLock>, so the planned
- *           surface is legible without pretending it's wired.
+ *           (TimeEntry clock_in/out; Break/Lunch pause labor as BREAK/LUNCH entries)
+ *           and My hours this week · Notifications (the in-app feed; "Got it" =
+ *           mark-read) · Shift notes · UP NEXT + THEN (server-ranked WO×step rows
+ *           from /api/WorkQueue/, filtered by kind=PRODUCTION and the user's
+ *           WorkCenter memberships; Start navigates to WO detail — the operator work
+ *           surface) · station-scope combobox (memberships → picked station persists
+ *           per-user in localStorage) · day recap (StepExecutions/my_day).
+ *  PREVIEW: dimmed tiles, by decision — Call my lead; Can't run this? and Your flags
+ *           (blocker routing not built, 10/21); the job branch of Report a problem.
+ *           Each renders placeholder content behind a blur+disable via <PreviewLock>,
+ *           so the planned surface is legible without pretending it's wired.
  *
  * As each backend lands (queue aggregate first), swap the matching PreviewLock
  * for real data.
@@ -60,6 +59,14 @@ const myWorkloadOptions = (scopedWcIds: string[]) =>
         }),
     });
 
+/** My day: completions + flags today, and my last completed step (the undo strip). */
+const myDayOptions = () =>
+    queryOptions({
+        queryKey: ["step-executions", "my-day"],
+        queryFn: () => api.api_StepExecutions_my_day_retrieve(),
+        refetchInterval: 60_000,
+    });
+
 /** Clock state: my one open time entry (end_time is null). */
 const openTimeEntryOptions = (userPk: AuthUser["pk"]) =>
     queryOptions({
@@ -91,7 +98,6 @@ const MOCK = {
     ] as MyFlag[],
     // Undo window after Complete (Toast recall) — fearless big-button taps.
     lastFinished: { step: "<step>", part: "<serial>", ago: "—" },
-    today: { completed: "—", flagged: "—" },
 };
 
 // Blocker reasons double as the routing table (reason → owner queue).
@@ -183,6 +189,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const queryClient = useQueryClient();
     const { data: openEntryPage, isSuccess: clockKnown } = useQuery(openTimeEntryOptions(user.pk));
     const { data: myHours } = useMyHours();
+    const { data: myDay } = useQuery(myDayOptions());
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
@@ -410,7 +417,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) are live.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) and the <b className="text-foreground">day recap</b> are live.
                 Dimmed tiles show the planned layout; they light up as the blocker model and other pieces land.
             </p>
 
@@ -715,15 +722,12 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 </p>
             </PreviewLock>
 
-            {/* Day recap — needs the per-operator day aggregate. Preview. */}
-            <PreviewLock className="mx-auto w-fit">
-                <button
-                    className="block text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    onClick={() => say("Would open your day recap — per-job list with times and flags")}
-                >
-                    Today: <b>{MOCK.today.completed}</b> parts completed · <b>{MOCK.today.flagged}</b> flagged for QA
-                </button>
-            </PreviewLock>
+            {/* Day recap — LIVE: steps I completed today and quality reports I raised
+                today, on the plant clock (StepExecutions/my_day). */}
+            <p className="mx-auto w-fit text-center text-sm text-muted-foreground">
+                Today: <b className="text-foreground">{myDay?.completed_today ?? "—"}</b> step{myDay?.completed_today === 1 ? "" : "s"} completed
+                {" · "}<b className="text-foreground">{myDay?.flagged_today ?? "—"}</b> flagged for QA
+            </p>
 
             {/* Preview dialogs — triggers live under glass, so these never open in
                 the shell; kept so the planned flow stays visible in the source. */}

@@ -31622,6 +31622,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
+  /api/StepExecutions/my_day/:
+    get:
+      operationId: api_StepExecutions_my_day_retrieve
+      description: |-
+        The signed-in operator's day: steps they completed today and quality reports
+        they raised today (plant clock), plus their last completed step for the undo
+        strip (services/mes/operator_day.py).
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyDay'
+          description: ''
   /api/StepExecutions/my_workload/:
     get:
       operationId: api_StepExecutions_my_workload_list
@@ -62507,6 +62526,21 @@ components:
       - id
       - rippled_count
       - rippled_task_ids
+    MyDay:
+      type: object
+      properties:
+        completed_today:
+          type: integer
+        flagged_today:
+          type: integer
+        last_finished:
+          allOf:
+          - $ref: '#/components/schemas/MyLastFinished'
+          nullable: true
+      required:
+      - completed_today
+      - flagged_today
+      - last_finished
     MyHours:
       type: object
       properties:
@@ -62530,6 +62564,35 @@ components:
       - on_shift_hours
       - rework_hours
       - week_start
+    MyLastFinished:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        step_name:
+          type: string
+        part_id:
+          type: string
+          format: uuid
+          nullable: true
+        part_erp_id:
+          type: string
+          nullable: true
+        work_order_id:
+          type: string
+          format: uuid
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+      required:
+      - execution_id
+      - finished_at
+      - part_erp_id
+      - part_id
+      - step_name
+      - work_order_id
     NcrAgingResponse:
       type: object
       properties:
