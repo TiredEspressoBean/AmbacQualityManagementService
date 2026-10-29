@@ -72,11 +72,11 @@ notified; they see the request in their **Inbox**.
 Templates define:
 
 - Who needs to approve
-- Whether approvers are asked all at once (parallel) or one at a time (sequential)
+- Whether approvers are asked all at once (parallel) or in stages, in order
+  (sequential)
 - Number of approvals required
 
-A template cannot fix the order of a sequential approval — see [Approval
-Templates](../../admin/setup/approval-templates.md#sequence).
+See [Approval Templates](../../admin/setup/approval-templates.md#sequence).
 
 ## Under Review
 
@@ -202,9 +202,11 @@ Signatures](../../compliance/signatures.md).
 For documents requiring multiple approvals:
 
 ### Sequential Approval
-One required approver is shown as pending at a time. The order is not set by
-the template, and an assigned approver may respond before their turn; the
-document is approved once every required approver has approved.
+The template's stages answer in turn. Only the open stage can approve or
+reject — anyone in a later stage is refused *"Not your turn — waiting on
+&lt;names or groups&gt;."* A group in a stage is answered by any one member. The
+document is approved once every stage is done; a rejection at any stage ends
+the request.
 
 ### Parallel Approval
 All approvers can act simultaneously:

@@ -40,15 +40,16 @@ Approval Templates define:
 | **Escalation Days** | Days before it escalates |
 | **Escalation Target** | Who it escalates to |
 
-Add approvers with **Add Person** and **Add Role**, then click **Create
-Template**.
+Add approvers — with **Add Person** and **Add Role** for a **Parallel**
+template, or in **stages** for a **Sequential** one (see [Sequence](#sequence))
+— then click **Create Template**.
 
 ## Who approves
 
-!!! note "Templates have no named steps"
-    A template does not contain a list of steps with their own names and
-    approver sets. It has **one** set of approvers, plus a flow and a sequence
-    that decide how their responses are counted.
+A **Parallel** template has one set of approvers, all asked at once. A
+**Sequential** template has numbered **stages** — *Stage 1*, *Stage 2* … — each
+with its own people and groups, answered in turn. Stages are numbered, not
+named.
 
 ### Approver Selection
 
@@ -58,30 +59,46 @@ Template**.
 | **Add Role** | A group whose members may each respond. The group itself is not a required approver |
 | **Auto-assign to Group** | Every member of the named group, assigned to each request as a **required** approver |
 
-!!! warning "A role added with Add Role is not required"
-    **Add Role** makes a group's members *eligible* to respond; it does not make
-    anyone *required*. Only named people (**Add Person**) and the members brought
-    in by **Auto-assign to Group** count as required approvers — so under **All
-    Required** or **Sequential**, a template whose approvers are roles only
-    closes on the first approval from any member.
+!!! warning "On a Parallel template, a role added with Add Role is not required"
+    **Add Role** makes a group's members *eligible* to respond; on a **Parallel**
+    template it does not make anyone *required*. Only named people (**Add
+    Person**) and the members brought in by **Auto-assign to Group** count as
+    required approvers — so under **All Required**, a Parallel template whose
+    approvers are roles only closes on the first approval from any member.
 
     To require every member of a group, name it in **Auto-assign to Group**. To
-    require one specific person, add them with **Add Person**.
+    require one specific person, add them with **Add Person**. On a
+    **Sequential** template a group *is* required — see below.
 
 ## Sequence
 
-**Parallel** asks all of the approvers at once. **Sequential** names one pending
-approver at a time from the **required** approvers — the people added with **Add
-Person** and those brought in by **Auto-assign to Group**. Roles added with **Add
-Role** are not part of the sequence.
+**Parallel** asks everyone at once. **Sequential** runs in **stages**, each
+answering only after the one before is done.
 
-!!! note "You cannot set the order"
-    The template stores no order. The list on the form is presentational — as
-    the form says, *"sequential signature collection follows responder order,
-    not list order."* An assigned approver may respond before their turn; a
-    Sequential request closes when every required approver has approved,
-    whatever order they did it in. Nothing in a template guarantees that one
-    person signs before another.
+Setting **Sequence** to **Sequential** replaces the approvers list with stage
+cards. Each stage takes people and groups; **Move up**, **Move down** and
+**Remove** reorder and drop stages, and **Add stage** adds one. As the form
+says: *"Each stage answers in turn — a later stage can't approve or reject
+until every earlier one is done. Everyone named in a stage must approve; for a
+group, any one member. The auto-assign group, if set, is a final stage after
+these."*
+
+The order is enforced, not just suggested:
+
+- **Only the open stage can answer.** Anyone in a later stage who tries to
+  approve or reject is refused — *"Not your turn — waiting on &lt;names or
+  groups&gt;."* Only the open stage is notified; the next stage is notified when
+  it opens.
+- **A stage is done** when everyone named in it has approved and each of its
+  groups has been answered by one member. A group in a stage is **required**.
+- **A rejection at any stage ends the request.** Later stages are never asked;
+  starting again means a new request, from stage 1.
+- **A response can be withdrawn only while its stage is still open.** Once a
+  later stage has answered, it is refused — *"A later stage has already
+  answered, so this response stands."*
+- **Each request keeps the stages it was created with.** Editing the template
+  changes only requests raised afterwards.
+- A delegated approval keeps its place in the order.
 
 !!! note "No mixed flow"
     A template is either Parallel or Sequential — the two cannot be combined
@@ -98,10 +115,12 @@ how many responses close the request:
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
-Under **Sequential**, the flow is not used: the request closes only when every
-required approver has approved. **Threshold** and **Any** apply to **Parallel**
-requests, and count approvals from anyone eligible — named people, auto-assigned
-members, and members of a role added with **Add Role**.
+Under **Sequential**, the request closes when every stage is done, as described
+above. The flow matters only for the **Auto-assign to Group** stage at the end:
+under **All Required** every member of that group must approve; otherwise any
+one member answers for it. **Threshold** and **Any** otherwise apply to
+**Parallel** requests, and count approvals from anyone eligible — named people,
+auto-assigned members, and members of a role added with **Add Role**.
 
 ## The types the system looks up by name
 
@@ -154,15 +173,15 @@ Two more types have starter templates that nothing uses:
 
 ## Template Examples
 
-These are illustrative shapes, not shipped templates. Each is **one** template
-with one set of approvers — there are no named steps to list.
+These are illustrative shapes, not shipped templates.
 
 ### Document approval
 
-Sequence **Sequential**, flow **All Required**, two approvers added with **Add
-Person** — the engineering lead and the QA manager. The request names one of them
-as pending at a time, and closes when both have approved. Which of them is asked
-first is not something the template sets.
+Sequence **Sequential**: stage 1 the engineering lead (a person), stage 2 the
+**QA Manager** group, stage 3 the production manager (a person). The engineering
+lead answers first; then any one QA Manager; then the production manager. Until
+stage 1 has approved, a QA Manager trying to approve is told *"Not your turn —
+waiting on &lt;engineering lead&gt;."*
 
 ### CAPA authorisation
 

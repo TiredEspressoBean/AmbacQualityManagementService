@@ -101,8 +101,11 @@ Two independent settings:
 **Sequence** — the order approvers are asked:
 
 - **Parallel** — everyone is asked at once
-- **Sequential** — one required approver is shown as pending at a time. The
-  template sets no order, and an assigned approver may respond before their turn
+- **Sequential** — in stages, set on the template. Only the open stage can
+  answer; anyone later is refused *"Not your turn — waiting on &lt;names or
+  groups&gt;."* A stage is done when everyone named in it has approved and each of
+  its groups has been answered by one member. A request appears under your
+  pending approvals only when it is your turn
 
 **Approval Flow** — how many responses close it:
 
@@ -112,14 +115,15 @@ Two independent settings:
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
-The **required** approvers are the people assigned by name and the members
-assigned by the template's **Auto-assign to Group**. A group assigned as a whole
-lets any member respond but is not itself required — so a request routed only
-to groups closes on the first approval under any flow.
+On a **Parallel** request, the **required** approvers are the people assigned by
+name and the members assigned by the template's **Auto-assign to Group**. A
+group assigned as a whole lets any member respond but is not itself required —
+so a Parallel request routed only to groups closes on the first approval.
 
-Under **Sequential**, the flow is not used: the request closes only when every
-required approver has approved. **Threshold** and **Any** apply to **Parallel**
-requests. See [Approval Templates](../../admin/setup/approval-templates.md#sequence).
+Under **Sequential**, the request closes when every stage is done; a group in a
+stage is required, answered by any one member. A rejection at any stage ends the
+request. **Threshold** and **Any** apply to **Parallel** requests. See
+[Approval Templates](../../admin/setup/approval-templates.md#sequence).
 
 ## Responding
 
