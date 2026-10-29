@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { MakeupPanel } from "@/components/workorders/MakeupPanel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useWorkOrder,
   useUpdateWorkOrder,
@@ -32,6 +33,9 @@ import {
 type Props = { workOrderId: string | null; onOpenChange: (o: boolean) => void };
 
 const dstr = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "");
+
+const PRIORITY_LABEL: Record<number, string> = { 1: "Urgent", 2: "High", 3: "Normal", 4: "Low" };
+const priorityName = (p: number) => PRIORITY_LABEL[p] ?? String(p);
 
 export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   const { data, isLoading } = useWorkOrder(workOrderId);
@@ -76,6 +80,9 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
   const [earliestStart, setEarliestStart] = useState("");
   const [due, setDue] = useState("");
   const [quantity, setQuantity] = useState("");
+  // The server refuses a priority change without a reason (it's recorded with the
+  // change), so the dialog asks for one as the work order form does.
+  const [priorityReason, setPriorityReason] = useState("");
 
   useEffect(() => {
     if (!wo) return;
@@ -83,21 +90,31 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
     setEarliestStart(dstr(wo.expected_start));
     setDue(dstr(wo.expected_completion));
     setQuantity(wo.quantity != null ? String(wo.quantity) : "");
+    setPriorityReason("");
   }, [wo]);
+
+  const priorityChanged = !!wo && priority.trim() !== "" && Number(priority) !== wo.priority;
 
   const save = () => {
     if (!workOrderId || !wo) return;
     const patch: Record<string, unknown> = {};
-    if (priority.trim() !== "" && Number(priority) !== wo.priority) patch.priority = Number(priority);
+    if (priorityChanged) {
+      patch.priority = Number(priority);
+      patch.priority_reason = priorityReason.trim();
+    }
     patch.expected_start = earliestStart || null;
     patch.expected_completion = due || null;
-    update.mutate({ id: workOrderId, ...patch });
-
-    const q = Number(quantity);
-    if (Number.isFinite(q) && q >= 0 && q !== wo.quantity) {
-      setQty.mutate({ id: workOrderId, quantity: q });
-    }
-    onOpenChange(false);
+    // Close only once the save lands: a refusal toasts, and closing straight away made
+    // it easy to miss that nothing was saved.
+    update.mutate({ id: workOrderId, ...patch }, {
+      onSuccess: () => {
+        const q = Number(quantity);
+        if (Number.isFinite(q) && q >= 0 && q !== wo.quantity) {
+          setQty.mutate({ id: workOrderId, quantity: q });
+        }
+        onOpenChange(false);
+      },
+    });
   };
 
   return (
@@ -134,6 +151,19 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
               <Label className="text-xs">Due date</Label>
               <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
+            {priorityChanged && (
+              <div className="col-span-2 grid gap-1">
+                <Label className="text-xs" htmlFor="priority-reason">
+                  Why change priority from {priorityName(wo.priority ?? 3)} to {priorityName(Number(priority))}?
+                </Label>
+                <Textarea id="priority-reason" value={priorityReason}
+                          placeholder="e.g. Customer line down — committed delivery moved up"
+                          onChange={(e) => setPriorityReason(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  Recorded with the change, so the reason is on file when someone asks later.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -260,7 +290,7 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button onClick={save} disabled={isLoading || !wo || update.isPending || setQty.isPending}>
+          <Button onClick={save} disabled={isLoading || !wo || update.isPending || setQty.isPending || (priorityChanged && !priorityReason.trim())}>
             {update.isPending || setQty.isPending ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

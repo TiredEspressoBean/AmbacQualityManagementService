@@ -27,6 +27,7 @@ import { useRetrieveStepWithSamplingRules } from "@/hooks/useRetrieveStepWithSam
 import { useUpdateStep } from "@/hooks/useUpdateStep"
 import { Link, useParams } from "@tanstack/react-router"
 import SamplingRulesEditor from "@/components/SamplingRulesEditor.tsx";
+import { usePermissionSet } from "@/hooks/useMyPermissions";
 import {useUpdateStepSamplingRules} from "@/hooks/useUpdateStepSamplingRules.ts";
 import {DocumentUploader} from "@/pages/editors/forms/DocumentUploader.tsx";
 import MeasurementDefinitionsManager from "@/components/measurement-definitions-manager";
@@ -109,6 +110,9 @@ export default function StepFormPage() {
     const createStep = useCreateStep()
     const updateStep = useUpdateStep()
     const updateSamplingRules = useUpdateStepSamplingRules()
+    // The sampling save is gated on these (update_sampling_rules, 2026-10-29).
+    const perms = usePermissionSet()
+    const canAuthorSampling = perms.has("add_samplingruleset") && perms.has("change_samplingruleset")
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues>,
@@ -172,6 +176,12 @@ export default function StepFormPage() {
     }
 
     function onSubmit(values: z.infer<typeof formSchema>) {
+        // Sampling is saved separately, behind the sampling permissions (QA). Only send
+        // it when it changed and the user may author it — sending it on every save made
+        // each save by anyone else report "rules failed".
+        const dirty = form.formState.dirtyFields as Record<string, unknown>;
+        const samplingChanged = ["rules", "fallback_rules", "tighten_after", "fallback_duration"]
+            .some((k) => k in dirty);
         const {
             rules,
             fallback_rules,
@@ -188,6 +198,10 @@ export default function StepFormPage() {
                 { id: stepId, data: stepData },
                 {
                     onSuccess: () => {
+                        if (!(samplingChanged && canAuthorSampling)) {
+                            toast.success("Step updated.");
+                            return;
+                        }
                         updateSamplingRules.mutate(
                             {
                                 id: stepId,
@@ -218,7 +232,8 @@ export default function StepFormPage() {
                 onSuccess: (createdStep) => {
                     toast.success("Step created.");
 
-                    if (createdStep?.id) {
+                    if (createdStep?.id && canAuthorSampling
+                        && (normalizedRules.length > 0 || normalizedFallbackRules.length > 0)) {
                         updateSamplingRules.mutate(
                             {
                                 id: createdStep.id,
@@ -376,10 +391,15 @@ export default function StepFormPage() {
                         <FormDescription>
                             Define rules for when quality checks should occur during this step.
                         </FormDescription>
-                        <SamplingRulesEditor name="rules"/>
+                        <SamplingRulesEditor name="rules" readOnly={!canAuthorSampling}/>
                     </div>
 
-                    <SamplingRulesEditor name="fallback_rules" label="Fallback Rules"/>
+                    <SamplingRulesEditor name="fallback_rules" label="Fallback Rules" readOnly={!canAuthorSampling}/>
+                    {!canAuthorSampling && (
+                        <p className="text-xs text-muted-foreground">
+                            Sampling is set by QA — you need the sampling rule permissions to change it.
+                        </p>
+                    )}
 
                     {mode === "edit" && stepId && (
                         <div className="space-y-4">
