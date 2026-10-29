@@ -82,6 +82,38 @@ Status](order-status.md#part-status) for all eighteen statuses.
 A part's own page carries its activity history, its traveller and what was
 recorded against it. See [Part History](../tracking/part-history.md).
 
+## Creating or Editing a Single Part
+
+**Data Management** > **Parts** lists every part. **New Parts** opens the part
+form (`/editor/parts/new`), and a row's edit action opens the same form for that
+part (`/editor/parts/<id>/edit`). Adding parts through a work order, above, is
+the normal route; the form is for one-off corrections.
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| **ERP Id** | Yes | *The part's ID in your ERP* |
+| **Status** | No | The part's status — see the refusals below |
+| **Order** | No | The customer order it counts toward |
+| **Part Type** | Yes | |
+| **Process (for filtering steps)** | No | Narrows the **Step** list only. It is not saved: *the process is determined automatically from the selected step* |
+| **Step** | Yes | Where the part is |
+| **Work Order** | No | |
+| **Archived** | No | Takes the part out of lists, with its history kept |
+
+Click **Submit**. A refused save shows the server's reason.
+
+!!! important "What the form won't do"
+    Some changes have their own actions, which record why, so the form refuses
+    them:
+
+    - **A part with an open disposition**: its status changes through that
+      disposition — *"&lt;part&gt; has an open disposition (&lt;number&gt;); its
+      status changes through that disposition."*
+    - **Moving a part onto a rework step**: *"Send it to rework instead — that
+      records why and opens the disposition QA reviews."*
+    - **A reman core**: it is put on a work order by planning its teardown, and
+      scrapped from the core so its stage records it — the form refuses both.
+
 ## Removing Parts
 
 On the order page, the **Parts on this order** card lists each part with its
