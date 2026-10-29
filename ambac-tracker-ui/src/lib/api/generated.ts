@@ -474,6 +474,10 @@ export type ApprovalTemplate = {
   delegation_policy_display: string;
   approval_sequence?: ApprovalSequenceEnum | undefined;
   approval_sequence_display: string;
+  approval_stages?: /**
+   * Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel.
+   */
+  Array<{}> | undefined;
   allow_self_approval?: /**
    * Allow requesters to approve their own requests (requires justification)
    */
@@ -528,6 +532,10 @@ export type ApprovalTemplateRequest = {
   approval_flow_type?: ApprovalFlowTypeEnum | undefined;
   delegation_policy?: DelegationPolicyEnum | undefined;
   approval_sequence?: ApprovalSequenceEnum | undefined;
+  approval_stages?: /**
+   * Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel.
+   */
+  Array<{}> | undefined;
   allow_self_approval?: /**
    * Allow requesters to approve their own requests (requires justification)
    */
@@ -12701,6 +12709,10 @@ export type PatchedApprovalTemplateRequest = Partial<{
   delegation_policy: DelegationPolicyEnum;
   approval_sequence: ApprovalSequenceEnum;
   /**
+   * Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel.
+   */
+  approval_stages: Array<{}>;
+  /**
    * Allow requesters to approve their own requests (requires justification)
    */
   allow_self_approval: boolean;
@@ -19054,6 +19066,7 @@ const ApprovalTemplate = z.object({
   delegation_policy_display: z.string(),
   approval_sequence: ApprovalSequenceEnum.optional(),
   approval_sequence_display: z.string(),
+  approval_stages: z.array(z.object({}).partial().passthrough()).optional(),
   allow_self_approval: z.boolean().optional(),
   default_due_days: z
     .number()
@@ -19090,6 +19103,7 @@ const ApprovalTemplateRequest = z.object({
   approval_flow_type: ApprovalFlowTypeEnum.optional(),
   delegation_policy: DelegationPolicyEnum.optional(),
   approval_sequence: ApprovalSequenceEnum.optional(),
+  approval_stages: z.array(z.object({}).partial().passthrough()).optional(),
   allow_self_approval: z.boolean().optional(),
   default_due_days: z
     .number()
@@ -19118,6 +19132,7 @@ const PatchedApprovalTemplateRequest = z
     approval_flow_type: ApprovalFlowTypeEnum,
     delegation_policy: DelegationPolicyEnum,
     approval_sequence: ApprovalSequenceEnum,
+    approval_stages: z.array(z.object({}).partial().passthrough()),
     allow_self_approval: z.boolean(),
     default_due_days: z.number().int().gte(-2147483648).lte(2147483647),
     escalation_days: z

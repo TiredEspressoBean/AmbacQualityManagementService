@@ -808,7 +808,7 @@ class ApprovalTemplateSerializer(SecureModelMixin):
             'default_threshold', 'auto_assign_by_role',
             'approval_flow_type', 'approval_flow_type_display',
             'delegation_policy', 'delegation_policy_display',
-            'approval_sequence', 'approval_sequence_display',
+            'approval_sequence', 'approval_sequence_display', 'approval_stages',
             'allow_self_approval',
             'default_due_days', 'escalation_days', 'escalate_to', 'escalate_to_info',
             'change_description',
@@ -819,6 +819,31 @@ class ApprovalTemplateSerializer(SecureModelMixin):
     # Fields whose edits are soft-delete / metadata only and should NOT
     # trigger a new version.
     _NON_VERSIONING_FIELDS = frozenset({'archived'})
+
+    approval_stages = serializers.ListField(
+        child=serializers.DictField(), required=False,
+        help_text="Ordered stages for a sequential template: "
+                  "[{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel.")
+
+    def validate_approval_stages(self, value):
+        """Each stage names at least one user or group, all of this tenant."""
+        from Tracker.models import TenantGroup, User
+        request = self.context.get('request')
+        tenant = getattr(request, 'tenant', None)
+        cleaned = []
+        for i, stage in enumerate(value or [], start=1):
+            users = [int(u) for u in (stage.get('users') or [])]
+            groups = [str(g) for g in (stage.get('groups') or [])]
+            if not users and not groups:
+                raise serializers.ValidationError(f"Stage {i} has no approvers.")
+            if tenant is not None:
+                found_u = set(User.objects.filter(id__in=users, tenant=tenant).values_list('id', flat=True))
+                found_g = {str(g) for g in TenantGroup.objects.filter(  # tenant-safe: filtered by tenant
+                    id__in=groups, tenant=tenant).values_list('id', flat=True)}
+                if set(users) - found_u or set(groups) - found_g:
+                    raise serializers.ValidationError(f"Stage {i} names someone outside this organization.")
+            cleaned.append({'users': users, 'groups': groups})
+        return cleaned
 
     @extend_schema_field(serializers.ListField())
     def get_default_groups_info(self, obj):

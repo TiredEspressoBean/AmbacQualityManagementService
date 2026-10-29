@@ -2471,6 +2471,11 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
                            if not self_approval_permitted(a, user)]
         if own_undecidable:
             pending_approvals = pending_approvals.exclude(pk__in=own_undecidable)
+        # A sequential request is yours only when your stage is the open one.
+        not_yet = [a.pk for a in pending_approvals.filter(sequence_type='SEQUENTIAL')
+                   if not a.can_approve(user)]
+        if not_yet:
+            pending_approvals = pending_approvals.exclude(pk__in=not_yet)
 
         page = self.paginate_queryset(pending_approvals)
         if page is not None:

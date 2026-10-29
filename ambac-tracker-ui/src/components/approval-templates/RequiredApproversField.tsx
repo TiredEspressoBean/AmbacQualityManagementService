@@ -31,9 +31,9 @@ import { useTenantGroups } from "@/hooks/useTenantGroups";
  * pool. If a tenant later needs "2 of QA + 1 of PM" semantics, that's
  * a follow-up adding a `GroupApproverRequirement` through-table.
  *
- * Visual order is presentational only — no row index is persisted, so
- * reload returns rows in the order users + groups happen to come back
- * from the API.
+ * Row order isn't stored: these are the approvers of a PARALLEL template.
+ * A SEQUENTIAL template orders its approvers as stages instead
+ * (ApprovalStagesField, `approval_stages`), one of these per stage.
  */
 export type ApproverRequirementsValue = {
     approvers: number[];
@@ -238,8 +238,8 @@ export function RequiredApproversField({ value, onChange, disabled }: Props) {
 
             <p className="text-xs text-muted-foreground">
                 Specific people and role groups can both be configured at once.
-                Order shown is presentational; sequential signature collection
-                follows responder order, not list order.
+                Everyone here is asked at the same time; for an approval in order, set the
+                Sequence to Sequential and arrange the stages.
             </p>
         </div>
     );

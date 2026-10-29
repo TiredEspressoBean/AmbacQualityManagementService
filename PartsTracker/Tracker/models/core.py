@@ -2852,9 +2852,9 @@ class ApprovalRequest(SecureModel):
         ).select_related('user').order_by('sequence_order', 'assigned_at')
 
         if self.sequence_type == SequenceTypes.SEQUENTIAL:
-            # Return only the first (next) pending approver
-            first_assignment = assignments.first()
-            return [first_assignment.user] if first_assignment else []
+            # Only the open stage — its named users and its unclaimed groups' members.
+            from Tracker.services.core.approval_stages import pending_users
+            return pending_users(self)
 
         return [a.user for a in assignments]
 
@@ -2868,7 +2868,16 @@ class ApprovalRequest(SecureModel):
         return timezone.now() > self.due_date
 
     def can_approve(self, user):
-        """Check if user is authorized to approve"""
+        """Check if user is authorized to approve. A SEQUENTIAL request lets only its
+        open stage act (services/core/approval_stages.turn)."""
+        if self.sequence_type == SequenceTypes.SEQUENTIAL and self.status == 'PENDING':
+            from Tracker.services.core.approval_stages import turn
+            return turn(self, user)[0]
+        return self.is_eligible_somewhere(user)
+
+    def is_eligible_somewhere(self, user):
+        """Whether `user` is an approver on this request at any stage — assigned, or in
+        an assigned group — whatever the turn."""
         # Check if user is assigned as approver (required or optional)
         if self.approver_assignments.filter(user=user).exists():
             return True
@@ -3019,6 +3028,16 @@ class ApprovalTemplate(SecureModel):
     approval_flow_type = models.CharField(max_length=20, choices=ApprovalFlows.choices, default=ApprovalFlows.ALL_REQUIRED)
     delegation_policy = models.CharField(max_length=20, choices=ApprovalDelegation.choices, default=ApprovalDelegation.DISABLED)
     approval_sequence = models.CharField(max_length=20, choices=SequenceTypes.choices, default=SequenceTypes.PARALLEL)
+    # The order a SEQUENTIAL approval goes in: stages, each a set of named users and/or
+    # groups — [{"users": [user ids], "groups": [group ids]}, ...]. A stage is done when
+    # every named user has approved and one member of each group has. Copied into
+    # sequence_order on the request's assignments when a request is made, so editing
+    # the template never re-orders one in flight. Ignored for PARALLEL. (User decision
+    # 2026-10-29; services/core/approval_stages.py.)
+    approval_stages = models.JSONField(
+        default=list, blank=True,
+        help_text="Ordered approval stages for a sequential template: "
+                  "[{\"users\": [ids], \"groups\": [ids]}, ...].")
     allow_self_approval = models.BooleanField(default=False, help_text="Allow requesters to approve their own requests (requires justification)")
 
     # SLA

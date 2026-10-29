@@ -50691,6 +50691,13 @@ components:
         approval_sequence_display:
           type: string
           readOnly: true
+        approval_stages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Ordered stages for a sequential template: [{''users'': [user
+            ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)
@@ -50782,6 +50789,13 @@ components:
           $ref: '#/components/schemas/DelegationPolicyEnum'
         approval_sequence:
           $ref: '#/components/schemas/ApprovalSequenceEnum'
+        approval_stages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Ordered stages for a sequential template: [{''users'': [user
+            ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)
@@ -68138,6 +68152,13 @@ components:
           $ref: '#/components/schemas/DelegationPolicyEnum'
         approval_sequence:
           $ref: '#/components/schemas/ApprovalSequenceEnum'
+        approval_stages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Ordered stages for a sequential template: [{''users'': [user
+            ids], ''groups'': [group ids]}, ...]. Ignored when parallel.'
         allow_self_approval:
           type: boolean
           description: Allow requesters to approve their own requests (requires justification)

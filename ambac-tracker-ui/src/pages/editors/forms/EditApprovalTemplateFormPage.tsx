@@ -38,6 +38,7 @@ import { schemas } from "@/lib/api/generated";
 import { isFieldRequired } from "@/lib/zod-config";
 import { RequiredApproversField } from "@/components/approval-templates/RequiredApproversField";
 import { EscalationTargetField } from "@/components/approval-templates/EscalationTargetField";
+import { ApprovalStagesField, type ApprovalStage } from "@/components/approval-templates/ApprovalStagesField";
 
 // Pull enum options from generated schema
 const APPROVAL_TYPES = schemas.ApprovalTypeEnum.options;
@@ -69,6 +70,8 @@ const formSchema = schemas.ApprovalTemplateRequest.pick({
     default_approvers: z.array(z.number()).default([]),
     default_groups: z.array(z.string()).default([]),
     escalate_to: z.number().nullable().default(null),
+    // Ordered stages, used when the sequence is SEQUENTIAL.
+    approval_stages: z.array(z.object({ users: z.array(z.number()), groups: z.array(z.string()) })).default([]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -149,6 +152,7 @@ export default function ApprovalTemplateFormPage() {
             auto_assign_by_role: null,
             default_approvers: [],
             default_groups: [],
+            approval_stages: [],
             escalate_to: null,
         },
     });
@@ -160,7 +164,14 @@ export default function ApprovalTemplateFormPage() {
                 default_approvers?: number[];
                 default_groups?: string[];
                 escalate_to?: number | null;
+                approval_stages?: ApprovalStage[];
             };
+            // A sequential template saved before stages existed: one stage per named
+            // person in their order, then its groups — the order requests already used.
+            const legacyStages: ApprovalStage[] = [
+                ...(t.default_approvers ?? []).map((u) => ({ users: [u], groups: [] })),
+                ...((t.default_groups ?? []).length ? [{ users: [], groups: t.default_groups ?? [] }] : []),
+            ];
             form.reset({
                 template_name: t.template_name || "",
                 approval_type: t.approval_type,
@@ -175,6 +186,7 @@ export default function ApprovalTemplateFormPage() {
                 default_approvers: t.default_approvers ?? [],
                 default_groups: t.default_groups ?? [],
                 escalate_to: t.escalate_to ?? null,
+                approval_stages: (t.approval_stages && t.approval_stages.length) ? t.approval_stages : legacyStages,
             });
         }
     }, [mode, template, form]);
@@ -183,8 +195,17 @@ export default function ApprovalTemplateFormPage() {
     const updateTemplate = useUpdateApprovalTemplate();
 
     function onSubmit(values: FormValues) {
+        const sequential = values.approval_sequence === "SEQUENTIAL";
+        const stages = (values.approval_stages ?? []).filter((st) => st.users.length || st.groups.length);
         const submitData = {
             ...values,
+            // Sequential: the stages decide; the flat lists carry everyone in them so
+            // any reader of "who approves" still sees the full set.
+            approval_stages: sequential ? stages : [],
+            ...(sequential ? {
+                default_approvers: [...new Set(stages.flatMap((st) => st.users))],
+                default_groups: [...new Set(stages.flatMap((st) => st.groups))],
+            } : {}),
             escalation_days: values.escalation_days || null,
             default_threshold: values.default_threshold || null,
             auto_assign_by_role: values.auto_assign_by_role || null,
@@ -329,7 +350,14 @@ export default function ApprovalTemplateFormPage() {
                                 state advances.
                             </p>
                         </div>
-                        <ApproversFormBridge form={form} />
+                        {form.watch("approval_sequence") === "SEQUENTIAL" ? (
+                            <ApprovalStagesField
+                                value={form.watch("approval_stages") ?? []}
+                                onChange={(next) => form.setValue("approval_stages", next, { shouldDirty: true })}
+                            />
+                        ) : (
+                            <ApproversFormBridge form={form} />
+                        )}
                     </div>
 
                     {/* Workflow Rules */}
@@ -386,7 +414,8 @@ export default function ApprovalTemplateFormPage() {
                                             </SelectContent>
                                         </Select>
                                         <FormDescription>
-                                            Parallel or sequential approval
+                                            Parallel: everyone at once. Sequential: in stages, each
+                                            answering only after the one before is done.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>

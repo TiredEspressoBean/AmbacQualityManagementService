@@ -143,6 +143,15 @@ def claim_approval(request: ApprovalRequest, user) -> ApproverAssignment:
     if request.status != Approval_Status_Type.PENDING:
         raise ValidationError("Only pending approvals can be claimed.")
 
+    if request.sequence_type == SequenceTypes.SEQUENTIAL:
+        # A group stage is claimed by its member when it is the open stage.
+        from Tracker.services.core.approval_stages import claim_for_turn, turn
+        may, group_id, refusal = turn(request, user)
+        if not may or group_id is None:
+            raise ValidationError(refusal or "You're already an approver at this stage.")
+        claim_for_turn(request, user, group_id)
+        return request.approver_assignments.get(user=user)
+
     user_groups = user.get_tenant_groups() if hasattr(user, 'get_tenant_groups') else []
     if not request.group_assignments.filter(group_id__in=[g.id for g in user_groups]).exists():
         raise PermissionDenied("You are not in any group eligible for this approval.")
@@ -210,6 +219,13 @@ def create_approval_from_template(
         escalate_to=template.escalate_to,
         due_date=timezone.now() + timedelta(days=template.default_due_days),
     )
+
+    if template.approval_sequence == SequenceTypes.SEQUENTIAL:
+        # Ordered stages, copied onto the request (services/core/approval_stages.py).
+        from Tracker.services.core.approval_stages import assign_from_template
+        assign_from_template(approval, template, tenant)
+        notify_approvers(approval)
+        return approval
 
     set_approvers(
         approval,
@@ -286,18 +302,11 @@ def check_approval_status(request: ApprovalRequest):
 
 
 def _check_sequential_status(request: ApprovalRequest, approvals):
-    """In sequential mode, only the next unapproved assignee may proceed."""
-    assignments = request.approver_assignments.filter(
-        is_required=True,
-    ).order_by('sequence_order', 'assigned_at')
-
-    approved_by = set(approvals.values_list('approver_id', flat=True))
-
-    for assignment in assignments:
-        if assignment.user_id not in approved_by:
-            return (Approval_Status_Type.PENDING, [assignment.user])
-
-    return (Approval_Status_Type.APPROVED, [])
+    """Sequential: approved once every stage is done (services/core/approval_stages)."""
+    from Tracker.services.core.approval_stages import open_stage, pending_users
+    if open_stage(request) is None:
+        return (Approval_Status_Type.APPROVED, [])
+    return (Approval_Status_Type.PENDING, pending_users(request))
 
 
 def update_approval_status(request: ApprovalRequest) -> ApprovalRequest:
@@ -592,7 +601,20 @@ def submit_approval_response(
             (or insufficient justification), a rejection without a reason, a
             missing signature, or password verification failed or throttled.
     """
-    if not approval_request.can_approve(approver):
+    sequential = approval_request.sequence_type == SequenceTypes.SEQUENTIAL
+    claim_group = None
+    stage_before = None
+    if sequential and decision in (ApprovalDecision.APPROVED, ApprovalDecision.REJECTED):
+        # Out-of-sequence approval or rejection is refused, not just discouraged
+        # (21 CFR 11.10(f); user decision 2026-10-29).
+        from Tracker.services.core.approval_stages import open_stage, turn
+        may, claim_group, refusal = turn(approval_request, approver)
+        if not may:
+            if approval_request.is_eligible_somewhere(approver):
+                raise ValidationError(refusal)
+            raise PermissionDenied("You are not authorized to approve this request")
+        stage_before = open_stage(approval_request)
+    elif not approval_request.can_approve(approver):
         raise PermissionDenied("You are not authorized to approve this request")
 
     existing = ApprovalResponse.objects.filter(  # tenant-safe: scoped by the request FK
@@ -638,6 +660,11 @@ def submit_approval_response(
         verification_method = VerificationMethod.PASSWORD
         verified_at = timezone.now()
 
+    if claim_group is not None:
+        # A group member answering the open stage claims it in the same act.
+        from Tracker.services.core.approval_stages import claim_for_turn
+        claim_for_turn(approval_request, approver, claim_group)
+
     fields = dict(
         decision=decision,
         comments=comments,
@@ -672,6 +699,13 @@ def submit_approval_response(
             decision_date=when, created_at=when, **fields)
 
     update_approval_status(approval_request)
+    if (sequential and decision == ApprovalDecision.APPROVED
+            and approval_request.status == Approval_Status_Type.PENDING):
+        # The next stage hears about it only when it opens.
+        from Tracker.services.core.approval_stages import open_stage
+        stage_after = open_stage(approval_request)
+        if stage_after is not None and (stage_before is None or stage_after.order != stage_before.order):
+            notify_approvers(approval_request)
     return response
 
 
@@ -701,6 +735,11 @@ def withdraw_response(response: ApprovalResponse, user, reason: str) -> Approval
                                   "a decided request's responses stand.")
         if response.decision not in (ApprovalDecision.APPROVED, ApprovalDecision.REJECTED):
             raise ValidationError("There is no answer here to withdraw.")
+        if request.sequence_type == SequenceTypes.SEQUENTIAL:
+            from Tracker.services.core.approval_stages import withdraw_refusal
+            refusal = withdraw_refusal(request, response.approver_id)
+            if refusal:
+                raise ValidationError(refusal)
         RecordEdit.objects.create(
             tenant=response.tenant, content_type=ContentType.objects.get_for_model(ApprovalResponse),
             object_id=response.id, field_name='decision', old_value=response.decision,

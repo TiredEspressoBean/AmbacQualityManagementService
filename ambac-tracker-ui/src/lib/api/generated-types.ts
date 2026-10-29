@@ -21453,6 +21453,10 @@ export interface components {
             readonly delegation_policy_display: string;
             approval_sequence?: components["schemas"]["ApprovalSequenceEnum"];
             readonly approval_sequence_display: string;
+            /** @description Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel. */
+            approval_stages?: {
+                [key: string]: unknown;
+            }[];
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */
@@ -21489,6 +21493,10 @@ export interface components {
             approval_flow_type?: components["schemas"]["ApprovalFlowTypeEnum"];
             delegation_policy?: components["schemas"]["DelegationPolicyEnum"];
             approval_sequence?: components["schemas"]["ApprovalSequenceEnum"];
+            /** @description Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel. */
+            approval_stages?: {
+                [key: string]: unknown;
+            }[];
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */
@@ -30053,6 +30061,10 @@ export interface components {
             approval_flow_type?: components["schemas"]["ApprovalFlowTypeEnum"];
             delegation_policy?: components["schemas"]["DelegationPolicyEnum"];
             approval_sequence?: components["schemas"]["ApprovalSequenceEnum"];
+            /** @description Ordered stages for a sequential template: [{'users': [user ids], 'groups': [group ids]}, ...]. Ignored when parallel. */
+            approval_stages?: {
+                [key: string]: unknown;
+            }[];
             /** @description Allow requesters to approve their own requests (requires justification) */
             allow_self_approval?: boolean;
             /** @description Days until due date */
