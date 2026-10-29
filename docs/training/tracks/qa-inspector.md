@@ -139,6 +139,12 @@ reading.
 calibration this morning. A gauge that failed calibration can't be named on an
 inspection; pick an in-service one.
 
+**A reading that holds the part.** On `WO-QA-OOS-01`, *Opening Pressure Check* has
+**Block on out-of-spec measurement** on. `NOZ-OOS-001` was measured at 26.5 MPa
+against 28.0 ± 1.0, and it can't move on: *Cannot advance: One or more measurements
+are out of specification.* `NOZ-OOS-002` waits untouched; measure it in spec and it
+moves.
+
 ---
 
 ## 4. What arrives — 09:30

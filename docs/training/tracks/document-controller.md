@@ -36,6 +36,7 @@ hasn't finished by then, reload the page later rather than pressing it again.
 |---------------|------|
 | **Lisa Park**, Document Controller, `lisa.docs@demo.ambac.com` | Every module except 3 |
 | **Maria Santos**, QA Manager, `maria.qa@demo.ambac.com` | Module 3, to approve |
+| **Jennifer Walsh**, Production Manager, `jennifer.mgr@demo.ambac.com` | Module 3, the approval in order |
 
 Every password is `demo123`.
 
@@ -95,6 +96,26 @@ approved it, when, and that it was really them.
 Answered too soon? While the request is still open, the approver can use **Change my
 response**, with a reason. Their answer is taken back and they're asked again. Once
 the request is decided, its responses stand.
+
+### An approval in order
+
+Some documents are signed in stages. `DWG-1001` *Body bore detail* is a **Controlled
+Drawing**, and that type routes through its own sequential template: the engineer
+first, then any one QA Manager, then the production manager. The engineer has already
+approved.
+
+1. Log in as Jennifer and open `DWG-1001`'s **Approval** tab. **Assigned Approvers**
+   lists Jordan Reyes *Approved*, the **QA Manager** group, and Jennifer *Pending*.
+   **Submit Response** and try to approve. It's refused: *Not your turn — waiting on
+   QA Manager.* It isn't in her pending approvals either; a request shows there only
+   when it's your turn.
+2. Log in as Maria and approve it: the QA Manager stage is done.
+3. Log in as Jennifer again. Now she can approve, and the drawing is *Approved*.
+
+**Exercise 3.1.** The Approval tab doesn't number the stages: the order is the
+template's. Open **Data Management** > **Approval Templates** > *Drawing Release
+(sequential)* and say who answers each stage, and which one the drawing is waiting
+on.
 
 ---
 
