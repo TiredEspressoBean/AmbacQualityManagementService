@@ -119,7 +119,11 @@ export default function LoginPreview() {
         // permissions above all. Refreshing only `authUser` left the previous user's
         // effective permissions in place, so on a shared terminal the sidebar showed
         // the last person's sections until a reload (Receiving walk 2026-10-21).
-        queryClient.clear()
+        // Reset rather than clear: clear() dropped the cache but left mounted queries
+        // showing what they had — the organization fetched before sign-in (none, on a
+        // shared address), so the sidebar read the app's default name for up to five
+        // minutes. Reset empties every query too, and refetches the mounted ones.
+        void queryClient.resetQueries()
         router.navigate({ to: "/" })
     }
 
