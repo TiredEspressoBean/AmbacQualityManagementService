@@ -58,10 +58,25 @@ Once narrowed, the pickers follow:
     when someone picks a customer. On a shop with a long company list that is the
     difference between a usable picker and a scroll.
 
-!!! warning "Turning a switch off does not remove existing links"
-    The switches decide what is **offered** next time someone picks. Orders,
-    lots and qualifications already recorded against the company stay exactly as
-    they are. Narrowing is a tidying action, not a way to undo a relationship.
+!!! warning "Turning a switch off keeps existing links, but some actions then refuse"
+    Orders, lots and qualifications already recorded against the company stay
+    exactly as they are — narrowing does not undo a relationship. But a few
+    actions check the switch when they run, not only when they offer the
+    company:
+
+    - **Shipping** to a company with **Customer** off is refused — *"&lt;company&gt;
+      isn't set up as a customer."* — even for an order already recorded against
+      it.
+    - **Importing cores**: a customer's core from it is refused the same way, and
+      a purchased core from a company with **Supplier** off is refused with
+      *"&lt;company&gt; isn't set up as a supplier, so a core can't be bought from
+      it."*
+    - **Importing stock** owned by it is refused while **Customer** is off.
+    - Saving it as a part type's **preferred supplier** in the sourcing dialog is
+      refused while **Supplier** is off — *"&lt;company&gt; isn't set up as a
+      supplier."*
+
+    So turn **Customer** off only for a company you will not ship to again.
 
 ## Outside contacts
 
@@ -97,8 +112,8 @@ For customer companies:
 
 | Field | Description |
 |-------|-------------|
-| **Default core fulfilment mode** | **Exchange** or **Repair &amp; return** — the customer's standing arrangement for cores they send in. See the warning below. |
-| **Requires CoC on shipment** | Print a Certificate of Conformance with every shipment to this customer. |
+| **Core fulfilment arrangement** | **Not recorded**, **Exchange**, or **Repair &amp; return** — the customer's standing arrangement for cores they send in. See the warning below. |
+| **CoC with every shipment** | Print a Certificate of Conformance with the packing list each time you ship to this customer. |
 
 !!! warning "Core fulfilment is a contract, not a per-unit decision"
     This decides whether a customer gets **their own unit back** (repair &amp; return)
@@ -122,7 +137,7 @@ For customer companies:
 
 | Field | Description |
 |-------|-------------|
-| **Default outside-process turnaround (days)** | Calendar days the scheduler reserves for subcontract work when this company is a step's outside-process vendor and the step sets no lead time of its own. |
+| **Outside-process turnaround (days)** | Calendar days the scheduler reserves for subcontract work when this company is a step's outside-process vendor and the step sets no lead time of its own. |
 
 ## Supplier Information
 

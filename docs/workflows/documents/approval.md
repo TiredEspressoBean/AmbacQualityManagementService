@@ -72,12 +72,11 @@ notified; they see the request in their **Inbox**.
 Templates define:
 
 - Who needs to approve
-- Approval order (sequential/parallel)
+- Whether approvers are asked all at once (parallel) or one at a time (sequential)
 - Number of approvals required
 
-Example template: "Engineering Approval"
-- Requires: 1 Engineering approval, 1 QA approval
-- Order: Sequential (Engineering first)
+A template cannot fix the order of a sequential approval — see [Approval
+Templates](../../admin/setup/approval-templates.md#sequence).
 
 ## Under Review
 
@@ -166,20 +165,20 @@ assigned when a request is raised:
 
 | Template setting | Effect |
 |------------------|--------|
-| **Default approvers** | Specific users assigned every time |
-| **Default groups** | The group is assigned as a whole; any member may respond |
-| **Auto-assign by role** | Assigns every member of the named group individually, as a required approver, e.g. `QA Manager` |
+| **Add Person** | Specific users assigned every time, as required approvers |
+| **Add Role** | The group is assigned as a whole; any member may respond |
+| **Auto-assign to Group** | Assigns every member of the named group individually, as a required approver, e.g. `QA Manager` |
 
 The starter **Document Release Approval** template names no individual default
-approvers, but it auto-assigns by role **QA Manager** and seeds two default
-groups: **QA Manager** and **Document Controller**. When a request is raised,
+approvers, but it auto-assigns the group **QA Manager** and adds two roles:
+**QA Manager** and **Document Controller**. When a request is raised,
 every QA Manager is added as a required approver and both groups may respond,
 so a Document Controller *can* respond — but the release is approved only once
 every QA Manager has approved.
 
 !!! tip "To let another role approve"
-    Change the template, not the permissions — add the group to **Default
-    groups**. See
+    Change the template, not the permissions — add the group with **Add
+    Role**. See
     [Approval Templates](../../admin/setup/approval-templates.md).
 
 Templates also control the flow: how many approvals are required, whether they
@@ -203,16 +202,16 @@ Signatures](../../compliance/signatures.md).
 For documents requiring multiple approvals:
 
 ### Sequential Approval
-Approvers act in order:
-1. First approver reviews and approves
-2. Second approver is notified
-3. Continue until all approve
+One required approver is shown as pending at a time. The order is not set by
+the template, and an assigned approver may respond before their turn; the
+document is approved once every required approver has approved.
 
 ### Parallel Approval
 All approvers can act simultaneously:
-1. All approvers notified at once
+1. All individually assigned approvers are notified at once
 2. Each reviews independently
-3. Complete when all approve (or threshold met)
+3. Complete when the template's flow is satisfied — every required approver,
+   the threshold, or any one approval
 
 ## Approval Thresholds
 

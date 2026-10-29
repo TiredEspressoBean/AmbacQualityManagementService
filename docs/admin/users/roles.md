@@ -23,7 +23,7 @@ Three separate things decide what a person can do, and they are often confused:
 | What | Where it lives | What it decides |
 |------|----------------|-----------------|
 | **User type** | On the user — `INTERNAL` or `PORTAL`, and only those two | Whether they are one of your people or a customer using the portal |
-| **Groups** | Membership in one or more of the 15 built-in groups below | Everything they can actually *do* |
+| **Groups** | Membership in one or more of the built-in groups below, or a custom group | Everything they can actually *do* |
 | **Superuser** | A Django flag, off for nearly everyone | Bypasses permission checks entirely |
 
 **There is no "role type" field offering Admin / Staff / Auditor / Customer.**
@@ -34,9 +34,11 @@ isn't one: set the user type when you create them, then put them in groups.
 
 ## Built-in Groups
 
-There are **15** built-in group presets. Each one's name below is exactly what
-appears in the Groups editor — **with the spaces**, which matters (see the warning
-at the end of this section).
+There are **15** built-in group presets. **14** of them are created in every
+organisation and appear in the Groups editor, named exactly as below — **with the
+spaces**, which matters (see the warning at the end of this section). The
+fifteenth, **System Admin**, is for the platform team and is not created in an
+organisation.
 
 !!! note "Permission counts are not listed here on purpose"
     A group's permission count changes whenever anyone adds a permission anywhere in
@@ -46,7 +48,7 @@ at the end of this section).
 
 | Group | What it is for |
 |-------|----------------|
-| **System Admin** | Platform administrator — manages all tenants and system settings |
+| **System Admin** | Platform administrator — manages all tenants and system settings. Not created in an organisation |
 | **Tenant Admin** | Full access within one organization |
 | **QA Manager** | Quality management, approvals, CAPA control |
 | **QA Inspector** | Perform inspections, create quality reports, initiate CAPAs |
@@ -63,10 +65,9 @@ at the end of this section).
 | **Customer** | External portal — their own orders only |
 
 !!! warning "Group names have no underscores"
-    Older documentation used underscored names — "Production_Operator",
-    "QA_Manager", "Document_Controller" and similar. **Those names do not
-    exist.** The real names are as written above: plain words with spaces, and
-    the floor role is **Operator**, not "Production Operator".
+    Names such as "Production_Operator", "QA_Manager" or "Document_Controller"
+    **do not exist.** The real names are as written above: plain words with
+    spaces, and the floor role is **Operator**, not "Production Operator".
 
     There is also no "Supplier_Quality" group. That work is split: the buyer
     side is [Purchasing](../../roles/purchasing.md), and approving a supplier
@@ -75,8 +76,10 @@ at the end of this section).
 !!! note "A permission count is a size, not a ranking"
     If you compare counts in the Groups editor, read them carefully: a bigger
     number is not a more senior role. **Auditor** holds a large set and can
-    change **nothing** — they are all `view_` permissions. **Operator** holds
-    more still, because the shared staff base is broad.
+    change **nothing** — they are `view_` permissions, plus `view_auditlog`
+    (browse the audit trail), `export_data` (export lists and reports) and
+    `full_tenant_access` (see every record, not only those linked to them).
+    **Operator** holds more still, because the shared staff base is broad.
 
     What separates the roles is a short list of specific authorities, not
     volume — see [Role Comparison](../../roles/index.md#what-tells-the-roles-apart).
@@ -84,23 +87,18 @@ at the end of this section).
 For what each group can actually *do*, see the [Role Guides](../../roles/index.md).
 
 !!! danger "Group names are matched exactly, spaces and all"
-    Anywhere a group is referred to **by name** rather than picked from a list, the
-    match is exact. The real names have spaces — `QA Manager`, `Production Manager`,
-    `Document Controller`. An older convention used underscores (`QA_Manager`), it
-    still appears in places, and it **does not match anything**.
+    Anywhere a group is referred to **by name** rather than by reference, the
+    match is exact. The real names have spaces — `QA Manager`, `Production
+    Manager`, `Document Controller`. An underscored form (`QA_Manager`) **does
+    not match anything**.
 
-    This matters most on **approval templates**. A template's *auto-assign by role*
-    and *default groups* are matched against the group name character for character,
-    and a name that matches nothing assigns **nobody** — without an error, because a
-    filter returning no rows is not a failure. The approval simply sits there with no
-    one to action it, and the first you hear of it is someone asking why their
-    approval never arrived.
-
-    So: copy the name from the Groups editor rather than typing it, and after saving
-    a template, check it actually resolves to people.
-
-    (The field's own help text currently suggests `'QA_Manager'`. Ignore it — that
-    is the old form and it is being corrected.)
+    This matters most on **approval templates**. A template's **Auto-assign to
+    Group** keeps the group's name, and a name that matches nothing assigns
+    **nobody** — without an error, because a filter returning no rows is not a
+    failure. The approval simply sits there with no one to action it. Renaming
+    a group does this to every template that auto-assigns it; pick the group
+    again on those templates. See [Approval
+    Templates](../setup/approval-templates.md).
 
 ## Creating Custom Groups
 
@@ -113,6 +111,14 @@ For what each group can actually *do*, see the [Role Guides](../../roles/index.m
 5. Click **Save**
 6. Add permissions (next step)
 
+### Deleting a group
+
+The Groups editor has no delete button; a group is deleted through the
+[API](../../integrations/api.md), by someone holding `change_tenantgroup`. A
+group that still has members is refused — *"Cannot delete group with members.
+Remove all members first."* — so empty it on its **Members** tab first. The
+delete is permanent: a group is not archived, and cannot be restored.
+
 ### Naming Conventions
 
 Use clear, descriptive names:
@@ -124,11 +130,14 @@ Use clear, descriptive names:
 
 ### From Group Detail
 
-1. Open the group
-2. Go to **Permissions** tab
-3. Search/browse available permissions
-4. Check permissions to add
-5. Save
+1. Open the group (**View** on its row)
+2. Go to the **Permissions** tab
+3. Search the permissions
+4. Click a permission under **Available** to grant it, or one under
+   **Granted** to revoke it
+
+Each click takes effect at once — there is no Save. The tab says so: *"Click a
+permission to grant or revoke it"*.
 
 ### Permission Categories
 
@@ -138,10 +147,10 @@ Permissions are organized by model:
 |----------|----------|
 | **Orders** | view_orders, add_orders, change_orders |
 | **Parts** | view_parts, change_parts, delete_parts |
-| **Quality** | add_qualityreport, approve_disposition |
-| **Documents** | view_document, respond_to_approval |
+| **Quality** | add_qualityreports, approve_disposition |
+| **Documents** | view_documents, respond_to_approval |
 | **CAPA** | add_capa, initiate_capa, verify_capa |
-| **Admin** | view_user, change_settings |
+| **Admin** | view_user, change_tenantgroup |
 
 ### Permission Naming Convention
 
@@ -164,8 +173,9 @@ tells you which group a given permission came from. Work it out group by group:
 
 !!! note "Groups do not nest"
     There is no parent group and no inheritance. A user's permissions are the
-    union of the groups they are in, full stop — so making someone "a Manager"
-    does not confer what Supervisor or Operator hold.
+    union of the groups they are in, full stop — so putting someone in
+    **Production Manager** does not confer what **Shift Lead** or **Operator**
+    hold.
 
 ## Next Steps
 

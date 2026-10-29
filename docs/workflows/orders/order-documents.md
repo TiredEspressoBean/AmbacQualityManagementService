@@ -123,8 +123,8 @@ The requirements that *are* enforced live elsewhere:
 
 | Requirement | Where it is set | What it does |
 |-------------|-----------------|--------------|
-| **Requires CoC on shipment** | The customer's company record | A Certificate of Conformance is printed with every shipment to them |
-| **Requires CoC** / **Requires heat number** | The part type | A *received lot* is held until its certificate or heat number is in |
+| **CoC with every shipment** | The customer's company record | A Certificate of Conformance is printed with every shipment to them |
+| **Requires a certificate of conformance** / **Requires a heat number** | The part type | A *received lot* is held until its certificate or heat number is in |
 
 ## Searching Documents
 

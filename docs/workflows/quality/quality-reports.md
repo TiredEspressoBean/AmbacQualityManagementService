@@ -24,22 +24,39 @@ substep marked an **inspection point** writes a quality report from what the
 operator captures. See [Authoring Work
 Instructions](../dwi/authoring.md).
 
+An operator's Home offers a third route: beside the step they last finished,
+**Flag** opens this form with the **Part** and **Process Step** filled in and
+**Detected By** set to them. See [Operator](../../roles/operator.md).
+
 !!! note "No scan-to-report flow"
-    There is no barcode-scan shortcut that opens a pre-filled report.
+    Scanning a barcode does not open a report. The pre-filled report comes only
+    from **Flag** on the operator's Home.
 
 ## Quality Report Form
 
 | Field | Required | Description |
 |-------|:--------:|-------------|
-| **Status** | Yes | Where the report stands, e.g. Pending Review |
+| **Status** | Yes | **Pending Review**, **Pass**, **Fail (NCR)**, or **Needs repair (rebuild checks only)** — the last is refused except on a core in rebuild at a check with planned repairs |
 | **Part** | No | The affected part |
 | **Process Step** | No | Where it was found |
 | **Machine/Equipment** | No | Equipment involved |
-| **Description** | No | Explanation of the issue |
+| **Description** | No | Explanation of the issue, up to 300 characters |
 | **Detected By** | No | Who found it |
 | **Verified By** | No | Who verified it |
 | **First Piece Inspection** | No | A flag marking *this* report as the first-piece inspection. It does not link to a separate FPI record. |
-| **Archived** | No | Archive the report |
+| **Archived** | No | Archive the report — only while it is still Pending |
+
+!!! important "A result is final"
+    A report can be edited, archived or deleted only while it is **Pending
+    Review**. Once it is saved as Pass, Fail or Needs repair it is the recorded
+    result, and every edit or delete is refused:
+
+    > &lt;report&gt; is recorded as a result, so it can't be edited or deleted.
+
+    So moving a Pending report to **Fail** is one-way — there is no editing it
+    back. A mistaken FAIL is closed as **Not a nonconformance**; see [When the
+    finding was wrong](dispositions.md#when-the-finding-was-wrong-not-a-nonconformance)
+    and [Putting a Mistake Right](../fixing-mistakes.md).
 
 !!! note "Defects are added separately"
     **Error types are not fields on the report.** Each defect is its own entry
@@ -220,7 +237,7 @@ Severity-based routing, assignment alerts and closure notices are not seeded.
 |------------|--------|
 | `view_qualityreports` | View reports |
 | `add_qualityreports` | Create reports |
-| `change_qualityreports` | Edit reports |
+| `change_qualityreports` | Edit reports that are still Pending Review |
 
 !!! note "A quality report is not approved"
     There is no approval step on a report and no approval type for one, so

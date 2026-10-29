@@ -90,7 +90,7 @@ An annotation has to belong to a **quality report**: the annotator asks you to
 
 ### Where
 
-- **In the step player**, where a substep carries a **Part annotation** capture
+- **In the step player**, where a substep carries a **Defect annotation (3D)** capture
 - **On the work order page**, from the **3D** tab of the QA panel on the right
   when a part is selected
 - **In the Annotator** (`/annotator`), which a disposition waiting on

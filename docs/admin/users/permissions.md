@@ -35,9 +35,9 @@ void_substepcompletion - Can void a recorded substep completion
 
 ## Assigning via Groups
 
-**Start by assigning an existing group, not by building one.** All fifteen built-in
+**Start by assigning an existing group, not by building one.** Fourteen built-in
 groups are seeded into every organisation already — QA Inspector, Operator, Planner
-and the rest. They are not examples to copy; they are the groups people should be in.
+and the rest (the fifteenth preset, System Admin, is for the platform team only). They are not examples to copy; they are the groups people should be in.
 
 1. Open the person in **User Management**
 2. Put them in the group that matches their job
@@ -173,7 +173,7 @@ or export-control status is what needs looking at.
 | Permission | Allows |
 |------------|--------|
 | `view_auditlog` | Browse the audit trail across records. By default held by Tenant Admin, QA Manager, Document Controller and Auditor. A record's own history needs only `view_logentry` |
-| `change_tenant` | Modify organization settings |
+| `change_tenantgroup` | Edit groups and their permissions — and, because it is the tenant-administrator check, open and change organization settings |
 | `add_user`, `change_user` | Create and edit users |
 
 ## Checking User Permissions

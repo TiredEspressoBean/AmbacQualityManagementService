@@ -185,8 +185,9 @@ Many list pages support export. Click the **Export** menu and choose:
 - **Export as CSV** - plain data
 
 Exports respect the filters, search, and sorting currently applied to the
-table. Import templates are in the **Import** dialog, not the Export menu — see
-[Import & Export](../admin/data/import-export.md).
+table. For a model that can be imported, the same menu has **Import Template**
+(**Excel Template**, **CSV Template**), and the **Import** dialog offers them too
+— see [Import & Export](../admin/data/import-export.md#templates).
 
 ## Keyboard Shortcuts
 

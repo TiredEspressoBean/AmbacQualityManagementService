@@ -50,10 +50,17 @@ separate things:
 A part type can have several processes — a manufacturing routing and one or more
 teardowns — and the work order picks which runs.
 
+**Remanufactured** is the **Remanufacturing** switch, on the New Process dialog
+and in the flow editor's **Process Settings**. **Category** and **Disassembly**
+have no control in the product; they are set through the API
+(`/api/Processes/`).
+
 ### Expected scrap
 
 A process carries a **default scrap rate**, a fraction from 0 to 1, which its
-steps inherit unless they set their own.
+steps inherit unless they set their own. A step's own rate is its **Expected
+scrap (%)** in the flow editor; the process default has no control in the
+product and is set through the API (`/api/Processes/`).
 
 !!! tip "This is what makes a work order release 11 to ship 10"
     The rate grosses up the started quantity so the job still finishes the number
@@ -71,6 +78,11 @@ place:
 | **Pending approval** | Submitted, waiting on its approvers |
 | **Approved** | Locked, and what new work orders use |
 | **Deprecated** | Still works for the jobs already running it, hidden from new ones |
+
+When a revision is approved, the version it replaces keeps its **Approved**
+status but is no longer the current version, so new work orders stop picking it.
+**Deprecated** is a separate, deliberate action (**Process Actions** >
+**Deprecate**) on an approved process.
 
 !!! important "Deprecated is not deleted, and that is the point"
     A job that started on last year's routing finishes on last year's routing.
@@ -124,21 +136,24 @@ rather than a stripped one.
 | Where | What you can change |
 |-------|--------------------|
 | **Process flow editor**, on a draft | Everything: name, description, inspection, measurements, sampling, training, substeps |
-| **Step form** (standalone) | **Timing** and **Machines** only — scheduling data shared by every version |
+| **Step form** (standalone) | **Timing** and **Machines** only — scheduling data on the step row, so a change there reaches every version that uses that row |
 | **Steps list** | Nothing directly. Its row action is *Edit in process*, which opens the flow editor with the step selected |
 
 The standalone step form is **read-only for step content** when the step belongs
-to a process, with a banner offering *Edit in [process] vN*. The API refuses the
-same edits, so it holds however you reach it:
+to a process, with a banner offering *Edit in &lt;process&gt; · v&lt;n&gt;*.
+Through the API, a change to a step's measurement definitions, training
+requirements or sampling rules is refused while any process using the step is
+out of draft:
 
 > This step is part of an approved process version. Open it from a draft of the
 > process to change it; the draft gets its own copy.
 
 !!! tip "Why timing and machines are the exception"
     They are not statements about *how the work is done* — they are statements
-    about how long it takes and what it runs on, which every version shares.
-    Editing them from anywhere is safe, and is why those two sections stay live
-    on a form that is otherwise read-only.
+    about how long it takes and what it runs on. Changed on the step form, they
+    apply to the step row itself, and so to every version still sharing it; a
+    draft that has taken its own copy has its own timing and machines, edited
+    from the flow editor like the rest of its content.
 
 ## Process Approval
 
@@ -186,11 +201,11 @@ Data collection requirements per step.
 See [Measurement Definitions](measurements.md).
 
 ### Requirements
-What's needed to complete a step:
-- Training requirements
-- Equipment requirements
-- Document requirements
-- Approval requirements
+What a step asks of the people and machines working it:
+- Required training
+- Machines that can run it
+- Documents, for reference
+- QA signoff
 
 ### Branching
 Conditional paths through a process, built on the
@@ -205,15 +220,33 @@ Conditional paths through a process, built on the
 
 ### Process List
 
-The processes list is at `/editor/processes`, reached through **Data
-Management**. It is the CRUD list — name, part type, version and status — and
-its row actions open the process form (`/editor/processes/$id/edit`) for the
-record's own fields.
+The processes list is at `/editor/processes`, reached from the sidebar
+(**Production** > **Processes**) or through **Data Management**. Its columns are
+**Name**, **Status**, **Updated At**, **Number of Steps** and **Reman Process**.
+Each row has:
+
+- **View** — the process's record view
+- **Edit Process** — opens it in **Process Flow**, below
+- **Delete Process** — see [Deleting a process](#deleting-a-process)
+
+**New Process** opens a dialog for the name and part type, then opens the new
+process in Process Flow. See [Creating Processes](creating.md#creating-a-new-process).
 
 !!! tip "The list is not where you build a routing"
-    The form edits what the process *is*. The steps and the order they run in
-    are **Process Flow**, below. Looking for steps on the process form will not
-    find them.
+    The steps, the order they run in, and the process's own settings are all
+    edited in **Process Flow**.
+
+### Deleting a process
+
+**Delete Process** works only on a **draft**. Once a process is out of draft it
+is refused:
+
+> &lt;process&gt; is out of draft, so it can't be edited or deleted.
+
+Deleting archives the process
+rather than erasing it: its history is kept, and it can be restored from **Data
+Management**. An approved process leaves new work through **Deprecate** or a
+newer version instead.
 
 ### Process Flow
 
@@ -250,9 +283,9 @@ See [Step Configuration](steps.md).
 |------------|--------|
 | `view_processes` | View processes |
 | `add_processes` | Create processes |
-| `change_processes` | Edit processes |
+| `change_processes` | Edit processes. **Edit Mode** in Process Flow needs `change_steps` as well |
 | `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
-| `delete_processes` | Remove processes |
+| `delete_processes` | Delete (archive) a draft process |
 
 ## Next Steps
 

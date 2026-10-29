@@ -13,9 +13,10 @@ The import/export system provides:
 
 ## What supports it, and where the buttons are
 
-**The buttons appear only where the model actually supports them.** If a list's
-toolbar has no **Import**, that model cannot be imported — it is not a
-permissions problem and not a bug to report.
+**The buttons appear only where the model actually supports them, and Import only
+for someone who can add its records.** If a list's toolbar has no **Import**,
+either that model cannot be imported or you don't hold `add_<model>` for it —
+check the table below before reporting it.
 
 1. Navigate to a data editor (e.g., **Admin** > **Data Management** > **Parts**)
 2. The toolbar shows **Import** and **Export** where they apply
@@ -25,17 +26,21 @@ permissions problem and not a bug to report.
 
 | Area | Models |
 |------|--------|
-| **Production** | Parts, Orders, Work Orders, Part Types |
+| **Production** | Parts, Orders, Work Orders, Part Types, Cores |
 | **Materials & tooling** | Material, Fixture |
 | **Calendars** | Plant calendar exceptions (holidays/closures), labour calendar blocks (a person's leave), overtime windows |
 | **Capacity** | Work centres, Shifts |
 | **Training** | Job roles, Training types, Training requirements, **Training records** (added, never rewritten) |
 | **Calibration** | Calibration records (**create only** — no update) |
 | **Equipment** | Equipment, Equipment types, Companies |
-| **Quality reference** | Error types (the defect catalogue), Measurement definitions, Part-type life limits, External contacts, Repair codes |
+| **Quality reference** | Error types (the defect catalogue), Measurement definitions, Sampling rules, Life limit definitions, Part-type life limits, External contacts, Repair codes |
 | **Scheduling setup** | Step timings, Step equipment affinities, Work-centre changeovers |
 | **Structure** | Bills of material — see [Bills of material](#bills-of-material) |
 | **Inventory** | Storage locations |
+
+**Sampling rules** import as rules, each naming its rule set; rule sets themselves
+have no Import. **Order milestones** have no Import button on any page — load them
+through the [Master workbook](#loading-a-whole-plant-the-master-workbook).
 
 ### Where to find the buttons
 
@@ -109,10 +114,10 @@ For fields that link to other records (e.g., Part Type, Order), the export inclu
 
 ```
 Sheet: PartTypes
-| ID                                   | Name                  |
-|--------------------------------------|-----------------------|
-| 019cc953-b91b-7f31-8ed3-d04d30485eb1 | Common Rail Injector  |
-| 019cc953-bded-7750-8cbd-775594e5918e | Injector Body         |
+| ID             | Name             |
+|----------------|------------------|
+| <part type id> | <part type name> |
+| <part type id> | <part type name> |
 ```
 
 #### Dropdown Validation
@@ -123,13 +128,16 @@ Columns with constrained values have dropdown lists:
 - **Status fields**: Select from valid statuses (e.g., PENDING, IN_PROGRESS, COMPLETE)
 - **Boolean fields**: Select True or False
 
-#### Auto-Calculated ID Fields
+#### Linked records: an ID and a name
 
-When you select a name from a dropdown, the corresponding ID column automatically updates using an Excel formula. These columns are marked with `(auto)` in the header and highlighted in light green.
+A field that links to another record exports as two columns side by side: the
+linked record's **ID**, stored as a plain value, and its **name**, which carries
+the dropdown. Nothing on the sheet is a formula.
 
-Example:
-- Select "Common Rail Injector" from the **Part Type Name** dropdown
-- The **Part Type (auto)** column automatically fills with the UUID
+On import, the **name decides**. Change the name to point the row at a different
+record; leave it alone and the row keeps the exact record its ID names — which
+matters for versioned records, where a name on its own finds the current version
+and the ID keeps a link to an older one where it was.
 
 #### Required Fields
 
@@ -154,9 +162,9 @@ This allows you to export subsets like:
 
 | Mode | Creates New | Updates Existing | Deletes Missing |
 |------|-------------|-----------------|-----------------|
-| **Create** | Yes | No (error if exists) | No |
-| **Update** | No (error if not found) | Yes | No |
-| **Upsert** (default) | Yes | Yes | No |
+| **Create or Update (Recommended)** — the default | Yes | Yes | No |
+| **Create Only** | Yes | No (error if it exists) | No |
+| **Update Only** | No (error if not found) | Yes | No |
 
 !!! warning "Import Does Not Delete"
     Records that exist in the database but are NOT in your import file are left untouched. Import only creates and/or updates - it never deletes records.
@@ -238,8 +246,13 @@ For files with 100+ rows:
 
 ### Downloading Templates
 
-Templates are in the **Import** dialog, not the Export menu: *Download template:
-**Excel (.xlsx)** | **CSV***.
+Two places offer the same templates:
+
+- the **Import** dialog: *Download template: **Excel (.xlsx)** | **CSV***
+- the **Export** menu, under **Import Template**: **Excel Template** or **CSV
+  Template** — on list pages and on [Data Management](data-management.md), for
+  any model that can be imported. This one needs no add permission, so it is
+  there even when **Import** is not.
 
 A template carries all importable columns, reference sheets and dropdown
 validation (Excel only). Columns that genuinely need an answer are marked `*` —
@@ -485,7 +498,9 @@ Excel export to see what is valid for a column.
 
 ### Boolean fields
 
-`True` / `False`, and also `true`, `false`, `1`, `0`, `yes`, `no`.
+`True` / `False` in any case, and also `1` / `0`, `yes` / `no`, `y` / `n` and
+`on` / `off`. A blank cell is skipped, like any blank cell: a new record gets the
+field's default and an existing one keeps its value.
 
 ### Text fields
 
@@ -497,11 +512,12 @@ Plain text. Watch for leading and trailing spaces; special characters are fine.
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| "Required field missing" | Required column empty | Fill in the required value |
-| "Invalid choice" | Value not in allowed list | Use dropdown or check valid values |
-| "Related object not found" | FK reference doesn't exist | Check reference sheet for valid IDs |
-| "Duplicate key" | Record already exists (create mode) | Use upsert mode or update existing |
-| "Record not found" | ID doesn't exist (update mode) | Use upsert mode or check ID |
+| "This field is required" | A new record's required column is empty | Fill in the required value |
+| "No &lt;record type&gt; matches '&lt;value&gt;'." | The name, code or ID names no record | Check the reference sheet for valid values |
+| "'&lt;value&gt;' matches more than one &lt;record type&gt; by &lt;field&gt;. Use its ID to say which." | Two records share that name | Give the record's ID instead |
+| "Record already exists (matched by lookup fields)" | **Create Only**, and the row matches an existing record | Use **Create or Update**, or remove the row |
+| "Record not found (no match for lookup fields)" | **Update Only**, and the row matches nothing | Use **Create or Update**, or check the ID or key |
+| "Can't be imported — the API doesn't accept this field." | The column names no field the record accepts — usually a typo in the header — or tries to change a system field | Fix the header, or skip the column in the mapping step |
 
 ### Export Issues
 
@@ -509,15 +525,20 @@ Plain text. Watch for leading and trailing spaces; special characters are fine.
 |-------|----------|
 | Export is empty | Check your filters - may be too restrictive |
 | Missing columns | Not all fields are exported by default |
-| Formulas show errors | Reference data may be empty |
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `view_[model]` | Export data |
-| `add_[model]` | Import with create mode |
-| `change_[model]` | Import with update/upsert mode |
+| `view_[model]` | Export data, and download a template from the Export menu |
+| `add_[model]` | See the **Import** button, and import with **Create Only** |
+| `add_[model]` + `change_[model]` | Import with **Create or Update** or **Update Only** |
+
+Without `change_[model]`, an update or create-or-update import is refused before
+any row is read:
+
+> Mode '&lt;mode&gt;' updates existing records, which needs the
+> '&lt;permission&gt;' permission. Use mode 'create' to add new ones only.
 
 ## API Access
 

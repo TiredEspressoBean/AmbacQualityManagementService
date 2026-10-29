@@ -310,7 +310,7 @@ whether the part goes back in, gets reconditioned, or has to be replaced. See
     it is checked server-side. Strict is opt-in per capture, so not every
     teardown will hold you to it — record it properly either way.
 
-### Component install — rebuild
+### Components installed — rebuild
 
 One row per slot, naming what you actually fitted:
 

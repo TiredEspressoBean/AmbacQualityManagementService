@@ -286,7 +286,7 @@ inspected at Body Inspection and `INJ-QA-INSPECT-002` wasn't.
 **Tighten a plan:** after the burr found at Body Inspection, you want every second
 body inspected, not every fourth.
 
-2. **Data Management** > **Sampling Rules**: open **Standard Inspection - Body** with
+2. **Data Management** > **Sampling Rule Sets**: open **Standard Inspection - Body** with
    the edit button on its row. Change the **Every Nth part** rule's N from 4 to 2. Rule changes save as
    you make them, and the next parts at Body Inspection are sampled under the new
    rule.

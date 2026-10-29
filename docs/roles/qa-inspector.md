@@ -214,7 +214,7 @@ An annotation belongs to a **quality report**, so choose the report first:
 
 1. On the work order's page, select the part — the **QA panel** on the right
    shows its model; or open the **Annotator** (`/annotator`) and pick the
-   report; or use the step's **Part annotation** capture if it has one
+   report; or use the step's **Defect annotation (3D)** capture if it has one
 2. Click the location of the defect on the model
 3. Fill in **Error Type**, **Severity Level** and **Notes**
 4. Save

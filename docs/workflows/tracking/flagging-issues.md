@@ -21,6 +21,7 @@ found and where you are standing when you find it.
 | Situation | Route |
 |-----------|-------|
 | You're working the step and the substep asks for a result | Record it **in the step player** |
+| You just finished the step and then saw the problem | **Flag** beside your last finished step on Home — it opens a [quality report](../quality/quality-reports.md#creating-a-quality-report) with the part, step and you filled in |
 | The part is already past that step, or you're not the one running it | **Quarantine** it from the parts list |
 | A machine or resource is down | **Report…** downtime on the work order |
 | The problem is the process or the whole lot | Raise a **disposition** or a **CAPA** — **Report…** links to both |
@@ -197,7 +198,7 @@ See [Dispositions](../quality/dispositions.md) for disposition workflow.
 |------------|--------|
 | `add_qualityreports` | Create quality reports |
 | `view_qualityreports` | View existing reports |
-| `change_qualityreports` | Edit quality reports |
+| `change_qualityreports` | Edit quality reports that are still Pending Review |
 
 ## Next Steps
 

@@ -138,8 +138,8 @@ columns are **Repair**, **Code**, **At check**, **Approval** and **Because**:
 
 | Repair | Code | At check | Approval | Because |
 |--------|------|----------|----------|---------|
-| Nozzle Recondition | NZL-RECON | Nozzle Inspection | Goes ahead | Injector Nozzle Assembly: Grade C, from this unit |
-| Nozzle Replacement | NZL-REPLACE | Nozzle Inspection | Needs approval | Injector Nozzle Assembly: scrapped at the bench |
+| &lt;repair name&gt; | &lt;repair code&gt; | &lt;check step&gt; | Goes ahead | &lt;position&gt;: Grade C, from this unit |
+| &lt;repair name&gt; | &lt;repair code&gt; | &lt;check step&gt; | Needs approval | &lt;position&gt;: scrapped at the bench |
 
 !!! important "These are branches, not the route"
     **Every operation on the route runs.** The rebuild route is one approved
@@ -250,7 +250,7 @@ reman-specific parts:
 
 | Capture | Records |
 |---------|---------|
-| **Component install** | What actually went into each slot |
+| **Components installed** | What actually went into each slot |
 | **Rebuild finding** | A component found worse than teardown graded it |
 
 Install capture is what closes the loop: the plan proposed an individual for a

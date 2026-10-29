@@ -2,23 +2,18 @@
 
 Manage production equipment, machines, and measurement instruments.
 
-!!! example "Demo Equipment"
-    In demo mode, these equipment items are configured:
-
-    - **Flow Test Stand #1** (FTS-001): Primary injector flow testing, calibration current
-    - **Flow Test Stand #2** (FTS-002): Secondary flow testing station
-    - **Ultrasonic Cleaner UC-100**: Parts cleaning, 40 kHz frequency
-    - **Torque Wrench TW-25**: Assembly torquing, **calibration overdue** (demonstrates alert)
-    - **Coordinate Measuring Machine CMM-001**: Dimensional inspection, Zeiss model
-    - **Spray Pattern Analyzer SPA-01**: Visual spray pattern verification
-
 ## What is Equipment?
 
 Equipment records represent:
 
 - **Production machines** - CNC, presses, assembly stations
-- **Measurement instruments** - CMMs, calipers, gauges
-- **Tools** - Fixtures, molds, dies
+- **Measurement instruments** - CMMs, calipers, gauges, torque tools
+
+!!! note "Fixtures, cutting tools, dies and NC programs are Tooling, not equipment"
+    Shared tooling has its own editor — **Data Management** > **Tooling**
+    (`/editor/tooling`) — with a kind (Fixture, Cutting tool, Die / mold, NC
+    program, Other), a quantity, and the steps that require it. The scheduler
+    holds back operations that need a tool while every one of it is in use.
 
 !!! note "Equipment does not belong to a work centre"
     A **work centre** groups **steps**, not machines — it is a property of the
@@ -44,7 +39,7 @@ Equipment records represent:
 | **Schedulable resource** | Whether the scheduler may plan work onto it | No |
 | **Batch capacity** | How many jobs or parts it handles at once. `1` — the default — is an ordinary one-at-a-time machine. Above 1 makes it a batch resource, and then **batch mode** decides how it behaves. | No |
 | **Batch mode** | Only meaningful above a capacity of 1. **Concurrent** — that many independent jobs run side by side, like a bank of wash tanks. **Cycle** — one load at a time of up to that many parts, like a furnace or oven. | No |
-| **Runs unattended** | Whether it runs lights-out between staffed shifts. Left unset it inherits the facility default; set explicitly it overrides that for this machine. | No |
+| **Lights-out (unattended running)** | Whether it keeps running between staffed shifts: **Use facility default**, **Lights-out (runs 24/7)**, or **Attended (on shift only)**. The default follows the shop-wide scheduling setting; the other two override it for this machine. | No |
 | **Notes** | Free text | No |
 
 !!! note "Batch capacity above 1 changes how work is planned onto it"
@@ -54,13 +49,11 @@ Equipment records represent:
     worked — either four ovens that do not exist, or one wash tank where there are
     four.
 
-Submit with **Create Equipment**.
+4. Click **Create Equipment**
 
 !!! tip "Schedulable resource"
     Only equipment marked schedulable is planned onto by the scheduler. A gauge
     or hand tool is usually not schedulable; a test stand or press is.
-
-4. Save
 
 ## Equipment Types
 
@@ -81,12 +74,12 @@ torque wrench inherits it.
 |-------|-------------|
 | **Name** | The category |
 | **Description** | Free text |
-| **Requires calibration** | Whether items of this type are calibrated at all. Off by default |
-| **Default calibration interval (days)** | How often, unless an item overrides it |
+| **Requires Calibration** | Whether items of this type are calibrated at all. Off by default |
+| **Default Calibration Interval (days)** | How often, unless an item overrides it |
 | **Portable** | Recorded, but nothing reads it |
-| **Track downtime** | Off for a type that is not a production resource — handhelds, torque tools. Downtime cannot be recorded against equipment of that type; uqmes refuses the event. Equipment with no type is treated as tracked |
+| **Track Downtime** | Off for a type that is not a production resource — handhelds, torque tools. Downtime cannot be recorded against equipment of that type; uqmes refuses the event. Equipment with no type is treated as tracked |
 
-4. Save
+4. Click **Create Equipment Type**
 
 ## Equipment Fields
 
@@ -132,7 +125,7 @@ Counts](../../workflows/supply/locations.md).
 | Field | Description |
 |-------|-------------|
 | **Schedulable resource** | Whether the scheduler plans work onto it |
-| **Runs unattended** | Can run without an operator present |
+| **Lights-out (unattended running)** | Can run without an operator present |
 | **Batch mode** and **batch capacity** | Whether it processes a batch, and how large |
 | **Operating shifts** | Which shifts it runs |
 
@@ -180,8 +173,9 @@ A calibration record's status is derived, not chosen:
 A calibration is its own record, written from **Quality** > **Calibrations**, not
 from the machine:
 
-1. Go to **Quality** > **Calibrations** and open **Records**
-2. Click **Record a calibration**
+1. Go to **Quality** > **Calibrations**
+2. Click **Record New Calibration** (or, from **View All Calibration Records**,
+   **New Calibration Records**)
 3. Pick the equipment and fill in:
 
     | Field | Notes |
@@ -194,7 +188,7 @@ from the machine:
     | **As-Found Status** | Whether it was *in* tolerance when it arrived |
     | **Adjustments made** | Whether it was adjusted |
 
-4. Save
+4. Click **Create Calibration Record**
 
 The machine's own form carries a **Calibration** card showing its latest records
 read-only, with a link through to record a new one. The next due date comes from
@@ -269,7 +263,7 @@ resolves it from the exceptions list. The categories are:
 for material** · **Quality issue** · **Other**
 
 Open events show on the work order control pages and on the operator's home.
-Equipment whose type has **Track downtime** off is not offered in the dialog,
+Equipment whose type has **Track Downtime** off is not offered in the dialog,
 and uqmes refuses an event against it from anywhere else.
 
 **Recorded it wrong?** The wrong machine, category or times: **Correct…** on the

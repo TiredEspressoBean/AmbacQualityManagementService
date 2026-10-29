@@ -121,7 +121,7 @@ See [Export Controls](../../compliance/export-controls.md).
     number, revision, inspection level, or critical-dimension field on a part
     type, and no country of origin.
 
-    There *is* a **purchase unit**, but it describes how the part is bought and
+    There *is* a purchase unit — **Bought and counted by** — but it describes how the part is bought and
     counted at receiving rather than acting as a general unit of measure — see
     [Receiving and recovery](#receiving-and-recovery) below.
 
@@ -131,13 +131,13 @@ See [Export Controls](../../compliance/export-controls.md).
 |-------|-------------|
 | **Can be recovered** | A used one of these can be recovered from a torn-down core and put back into service. This is the MRO classification — rotable and repairable items can, expendables cannot. Leave it off and the type will not appear as something a teardown can yield. |
 | **Default disassembly process** | Preselected in the operator's bulk-teardown dialog. Optional; without it the picker simply starts with nothing chosen. |
-| **Purchase unit** | How the part is **bought and counted at receiving** — stock unit, box, or pound. |
-| **Units per purchase unit** | Stock units in one purchase unit, so pieces per box or pieces per pound. Not used when the purchase unit is already the stock unit. |
-| **Requires CoC** | Hold each received lot until its certificate of conformance is uploaded. |
-| **Requires heat number** | Hold each received lot until its heat / melt number is entered. |
+| **Bought and counted by** | How the part is **bought and counted at receiving** — the stock unit, **Box**, or **Pound (weighed)**. |
+| **&lt;stock unit&gt; per box** / **per pound** | Stock units in one box or one pound. Shown only when the part is bought by the box or by the pound. |
+| **Requires a certificate of conformance** | Hold each received lot until its certificate of conformance is uploaded. |
+| **Requires a heat number** | Hold each received lot until its heat / melt number is entered. |
 
 !!! note "The four 'requires' flags are holds, not warnings"
-    Requires CoC, requires heat number, requires supplier qualification and
+    Requires a certificate of conformance, requires a heat number, requires supplier qualification and
     requires part approval each **hold a received lot** until the condition is met.
     If someone asks why received stock cannot be used yet, these are the first
     things to check — the lot is not lost, it is held.
@@ -188,19 +188,18 @@ different numbers for the same part type.
 
 ## Retiring a part type
 
-!!! warning "There is no active / inactive flag"
-    A part type cannot be deactivated. It is either there or deleted, and
-    delete is a real delete — nothing archives it.
+!!! warning "Delete archives the part type"
+    The **delete** icon on the part types list asks *"Archive this part type?"*
+    and, on **Archive**, takes the type out of the active lists. Nothing is
+    removed: its history is kept, and it can be restored from
+    [Data Management](../data/data-management.md).
 
-    What protects you is that **a part type with steps cannot be deleted at
-    all**: the database refuses while any step references it, which in practice
-    means any type that has ever had a process authored against it. So a type
-    that has been used is effectively permanent, and a type that was created by
-    mistake can be removed.
+    Archiving is not refused because processes, parts or BOM lines still refer
+    to the type — those records keep pointing at it. There is no separate
+    active / inactive flag and no retirement status.
 
-    To stop a finished type being bought, turn **Purchased** off — that removes
-    it from BOM buy lines and expected receipts. There is no equivalent for
-    production, and no retirement status.
+    To stop a type being bought while keeping it in use, turn **Purchased** off
+    — that removes it from BOM buy lines and expected receipts.
 
 ## Permissions
 
@@ -210,7 +209,7 @@ different numbers for the same part type.
 | `add_parttypes` | Create part types |
 | `change_parttypes` | Edit part types |
 | `change_parttype_sourcing` | Edit **only** preferred supplier, lead time and safety stock |
-| `delete_parttypes` | Delete a part type, where nothing references it |
+| `delete_parttypes` | Archive a part type |
 
 ## Next Steps
 

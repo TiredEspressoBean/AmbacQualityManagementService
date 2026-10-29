@@ -3,9 +3,11 @@
 Sampling allows inspecting a subset of parts rather than 100%, based on statistical rules. This guide covers sampling configuration and use.
 
 !!! note "Rule sets follow the operation"
-    A rule set is scoped by **step and part type**. A receiving step's set can
-    also name a supplier, so one supplier can be inspected tighter than the
-    rest; in-process sets apply to everything running through the step.
+    A rule set is scoped by **step**. Its part type and process are recorded but
+    not matched on, so in-process sets apply to every part running through the
+    step. A receiving step's set can also name a supplier, so one supplier can be
+    inspected tighter than the rest. See [Where a rule set
+    applies](../../admin/setup/sampling-rules.md#where-a-rule-set-applies).
 
 ## What is Sampling?
 
@@ -88,14 +90,17 @@ Random selection — deliberately not reproducible:
 
 ## Sampling Rules Configuration
 
-Sampling rules are authored by **QA** — see [Permissions](#permissions) below:
+Sampling rules are authored by **QA** — see [Permissions](#permissions) below —
+on the rule set's page, in the flow editor's step **Sampling** dialog, or on the
+step form. See [Creating Sampling
+Rules](../../admin/setup/sampling-rules.md#creating-sampling-rules).
 
 ### Rule Components
 
 | Component | Description |
 |-----------|-------------|
 | **Rule Type** | How parts are selected — nine types, streaming or lot-acceptance |
-| **Rule Set** | The set the rule belongs to; the set carries the scope (part type, process, step, supplier) |
+| **Rule Set** | The set the rule belongs to; the set carries the scope (its step, and for receiving its supplier) |
 | **Value** | The N value (interval, percentage, count) |
 | **Order** | Position when a set holds several rules |
 | **Fallback Rule Set** | Tighter sampling switched to when quality degrades |
@@ -331,7 +336,10 @@ result is not in the log; it is on the part's quality report.
 !!! note "This is a quality decision, not an administrative one"
     Sampling rules are **not** configured by whoever administers the system.
     How much gets inspected is a quality judgement, so authoring sits with QA —
-    including the **QA Inspector**, which surprises people.
+    including the **QA Inspector**, which surprises people. It holds on every
+    surface: the flow editor's step **Sampling** dialog needs
+    `add_samplingruleset` and `change_samplingruleset`, and opens read-only
+    without them.
 
     Production Manager, Shift Lead and Engineering do **not** hold it, even
     though Engineering authors the step the rule hangs off and owns SPC control

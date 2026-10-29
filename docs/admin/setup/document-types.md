@@ -76,13 +76,11 @@ Each is identified by a short **code**. A few, to show the shape:
 | **Requires Approval** | Whether documents need approval before release |
 | **Approval Template** | Which approval flow to use when approval is required |
 
-Submit with **Create Document Type**.
+4. Click **Create Document Type**
 
 !!! tip "Review period drives the review queue"
     **Review Period** is what populates **Due for review** on **Home**. A type
     with no review period never prompts a review.
-
-4. Save
 
 ## Document Type Settings
 

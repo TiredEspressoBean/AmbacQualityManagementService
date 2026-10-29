@@ -8,10 +8,17 @@ See [Approvals](../../workflows/approvals/overview.md) for how requests are
 raised, routed, and closed.
 
 Approval Templates define:
+
 - **Who** needs to approve
 - **How many** approvals required
-- **Order** of approvals
-- **Rules** for routing
+- **Sequence** — everyone at once, or one at a time
+
+!!! important "One current template per approval type"
+    An organisation has **one** current template for each approval type — a
+    second template of the same type is refused. To change how a type is
+    approved, edit its template: saving creates a new version, and requests
+    raised after that use it. A request already open keeps the approvers it was
+    created with.
 
 ## Creating Approval Templates
 
@@ -43,21 +50,38 @@ Template**.
     approver sets. It has **one** set of approvers, plus a flow and a sequence
     that decide how their responses are counted.
 
-    To model "Engineering review, then QA release", use **Sequential** with the
-    approvers in order, or use two approval types.
-
 ### Approver Selection
 
 | Option | Description |
 |--------|-------------|
-| **Add Person** | Named individuals |
-| **Add Role** | Anyone holding that role |
-| **Auto-assign to Group** | Every member of the group, assigned automatically |
+| **Add Person** | A named individual, assigned to every request as a **required** approver |
+| **Add Role** | A group whose members may each respond. The group itself is not a required approver |
+| **Auto-assign to Group** | Every member of the named group, assigned to each request as a **required** approver |
+
+!!! warning "A role added with Add Role is not required"
+    **Add Role** makes a group's members *eligible* to respond; it does not make
+    anyone *required*. Only named people (**Add Person**) and the members brought
+    in by **Auto-assign to Group** count as required approvers — so under **All
+    Required** or **Sequential**, a template whose approvers are roles only
+    closes on the first approval from any member.
+
+    To require every member of a group, name it in **Auto-assign to Group**. To
+    require one specific person, add them with **Add Person**.
 
 ## Sequence
 
-**Sequential** asks the approvers one at a time, in order — each is approached
-only once the one before has responded. **Parallel** asks all of them at once.
+**Parallel** asks all of the approvers at once. **Sequential** names one pending
+approver at a time from the **required** approvers — the people added with **Add
+Person** and those brought in by **Auto-assign to Group**. Roles added with **Add
+Role** are not part of the sequence.
+
+!!! note "You cannot set the order"
+    The template stores no order. The list on the form is presentational — as
+    the form says, *"sequential signature collection follows responder order,
+    not list order."* An assigned approver may respond before their turn; a
+    Sequential request closes when every required approver has approved,
+    whatever order they did it in. Nothing in a template guarantees that one
+    person signs before another.
 
 !!! note "No mixed flow"
     A template is either Parallel or Sequential — the two cannot be combined
@@ -70,54 +94,55 @@ how many responses close the request:
 
 | Flow | Closes when |
 |------|-------------|
-| **All Required** | Every assigned approver has approved |
+| **All Required** | Every required approver has approved |
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
 Under **Sequential**, the flow is not used: the request closes only when every
-required approver has approved, in turn. **Threshold** and **Any** apply to
-**Parallel** requests.
-
-!!! warning "Some older field names were never real"
-    An earlier version of this page described a **Required Count** field, a
-    **Backup Approvers** list, and an **Auto-Approval** setting. None of them
-    exists. The nearest real fields are:
-
-    - **Threshold** — the count for a Threshold flow (not "Required Count")
-    - **Escalation Target** — who it goes to after **Escalation Days** (not a
-      backup approver list)
-    - **Allow Self-Approval** — whether a requester may approve their own
-      request, which is not auto-approval
+required approver has approved. **Threshold** and **Any** apply to **Parallel**
+requests, and count approvals from anyone eligible — named people, auto-assigned
+members, and members of a role added with **Add Role**.
 
 ## The types the system looks up by name
 
-Some workflows fetch a template **by its approval type** and refuse to proceed
-without it. These are not optional configuration — if the template is missing,
-the action fails with a message naming the type:
+Some workflows fetch the template **by its approval type** and refuse to
+proceed without it — the action fails with a message naming the type:
 
-| Approval type | Requested when | Default approver |
-|---------------|----------------|------------------|
-| `DOCUMENT_RELEASE` | A document is routed for release | QA Manager |
+| Approval type | Requested when | Starter template assigns |
+|---------------|----------------|--------------------------|
+| `DOCUMENT_RELEASE` | A document is routed for release and its document type has no approval template of its own | QA Manager |
 | `PROCESS_APPROVAL` | A process is submitted for approval | QA Manager |
 | `PCR_APPROVAL` | A process change request is submitted | QA Manager |
-| `PCO_APPROVAL` | A process change order is submitted | Production Manager |
-| `PCN_RELEASE` | A process change notice is released | Document Controller |
-| `CAPA_CRITICAL` | A **Critical** CAPA is created, or its approval requested | QA Manager |
-| `CAPA_MAJOR` | A **Major** CAPA is created, or its approval requested | QA Manager |
-| `CAPA_APPROVAL` | Any other CAPA approval request, and the fallback when the two above are missing | QA Manager |
-| `TRAINING_CERT` | Reserved for certifying training | QA Manager |
+| `PCO_APPROVAL` | A process change order is submitted for its own approval (Regulated change control) | Production Manager |
 
 !!! warning "A missing template stops the workflow"
     Submitting a process change request without a `PCR_APPROVAL` template
     returns *"PCR_APPROVAL approval template not found. Please configure
-    approval templates."* The three change-control types are the ones most often
-    absent on an older tenant.
+    approval templates."* The other three refuse with the same message naming
+    their own type.
 
-!!! danger "Group names must match exactly"
-    **Auto-assign to group** and the default-group list are matched against the
-    group name character for character. `QA_Manager` does **not** match the group
-    **QA Manager** — and a name that matches nothing assigns **nobody**,
-    silently, because a search that finds no one is not an error.
+The CAPA types are looked up too, but a missing one does not stop a CAPA being
+created — see [Severity chooses the CAPA template](#capa-authorisation) below:
+
+| Approval type | Requested when | Starter template assigns |
+|---------------|----------------|--------------------------|
+| `CAPA_CRITICAL` | A **Critical** CAPA is created, or its approval requested | QA Manager |
+| `CAPA_MAJOR` | A **Major** CAPA is created, or its approval requested | QA Manager |
+| `CAPA_APPROVAL` | Any other CAPA approval request, and the fallback when the two above are missing | QA Manager |
+
+Two more types have starter templates that nothing uses:
+
+- `PCN_RELEASE` — releasing a process change notice raises no approval; the
+  template is never looked up.
+- `TRAINING_CERT` — nothing raises a training certification approval.
+
+!!! danger "Auto-assign to Group stores the group's name"
+    **Auto-assign to Group** keeps the group's **name**, and each new request
+    matches it against group names character for character. If that group is
+    later renamed, the template matches nobody and assigns **nobody** —
+    silently, because a search that finds no one is not an error. Pick the group
+    again after renaming one. (Roles added with **Add Role** are held by
+    reference and follow a rename.)
 
     The real names have spaces and no underscores: **QA Manager**, **Production
     Manager**, **Document Controller**, **Tenant Admin**, **Shift Lead**,
@@ -134,9 +159,10 @@ with one set of approvers — there are no named steps to list.
 
 ### Document approval
 
-Sequence **Sequential**, flow **All Required**, approvers in order: the document
-owner, the Engineering role, then QA Manager. Each is asked once the one before
-has responded.
+Sequence **Sequential**, flow **All Required**, two approvers added with **Add
+Person** — the engineering lead and the QA manager. The request names one of them
+as pending at a time, and closes when both have approved. Which of them is asked
+first is not something the template sets.
 
 ### CAPA authorisation
 
@@ -169,9 +195,11 @@ with; editing a template changes only the requests raised after it.
 
 ### Process change
 
-Sequence **Parallel**, flow **All Required**, approvers QA Manager and
-Production Manager — both asked at once, and the request closes when both have
-approved.
+Sequence **Parallel**, flow **All Required**, with the QA manager and the
+production manager each added with **Add Person** — both asked at once, and the
+request closes when both have approved. Adding the **QA Manager** and
+**Production Manager** roles with **Add Role** instead would close it on the
+first approval from either group, because a role is never a required approver.
 
 !!! tip "Use Threshold when any two of several will do"
     For "any 2 of 3 engineers", set flow **Threshold** with Threshold 2 and add
@@ -180,7 +208,7 @@ approved.
 ## Applying Templates
 
 Templates are matched by **approval type**, not chosen at the moment of
-submitting. There are two places the binding is made:
+submitting. There are three places the binding is made:
 
 ### By approval type (the default)
 
@@ -201,6 +229,13 @@ document can route to different approvers.
     override. Someone routing a document for release chooses nothing — the type
     decides. If the wrong people are being asked, the fix is on the document
     type or the template, not on the document.
+
+### Per sampling rule set (a quality gate)
+
+A sampling rule set whose gate includes **Require approval** names its own
+**Approval template**. When the gate trips, the approval is raised from that
+template, whatever its approval type. See [Gates: reacting to bad
+results](sampling-rules.md#gates-reacting-to-bad-results).
 
 ## Permissions
 

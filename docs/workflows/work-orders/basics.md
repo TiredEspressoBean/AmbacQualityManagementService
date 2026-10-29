@@ -45,13 +45,30 @@ An order may have multiple work orders if:
 
 | Field | Description | Required |
 |-------|-------------|----------|
-| **Status** | Pending when left empty. Locked once the work order exists | No |
+| **Status** | **Pending** is the only choice: *"A new work order starts Pending. Hold, cancel or complete it from its page afterwards."* Locked once the work order exists | No |
 | **Priority** | Urgent, High, Normal, or Low. Normal when left empty | No |
 | **ERP ID** | The work order's number in the system that owns it | Yes |
 | **Notes** | Instructions or comments | No |
 | **Related Order** | The customer order, if there is one | No |
-| **Process** | Manufacturing workflow to follow | No |
+| **Process** | Manufacturing workflow to follow. Only **approved** processes **in force** are offered | No |
 | **Expected Completion Date** | Target completion | Yes |
+
+!!! note "Created Pending, and nothing else"
+    Any other status on a new work order is refused: *"A new work order starts as
+    Pending. Hold, cancel or complete it afterwards with its own action."* In
+    Progress and Completed follow the work; holds and cancels have their own
+    buttons.
+
+!!! note "The process must be one new work may run"
+    A draft, a superseded version or a temporary change's version is refused —
+    the picker leaves them out, and the server refuses them if sent anyway.
+
+!!! note "No quantity on this form"
+    A work order created here has a quantity of **1** and no parts. Set the
+    quantity from the schedule's **Edit work order** dialog, which adds parts for
+    an increase and cancels unstarted ones for a decrease. **Add Parts** on the
+    WO Control Center adds parts without changing the quantity. A work order planned from the schedule
+    or an order line gets its quantity and parts when it is planned.
 
 !!! note "A work order need not be tied to a customer order"
     **Related Order** is optional — stock builds, internal work and rework all
@@ -94,6 +111,16 @@ Priority affects:
 
 - Queue position
 - Dashboard highlighting
+
+### Changing priority needs a reason
+
+Editing an existing work order and changing **Priority** adds a required field,
+*Why change priority from &lt;old&gt; to &lt;new&gt;?* — *"Recorded with the change,
+so the reason is on file when someone asks later."* Saving without one is
+refused: *"Say why the priority is changing."*
+
+The form's **Priority changes** box lists the most recent changes: from and to,
+who, when, and the reason.
 
 ## Parts and Steps
 

@@ -149,8 +149,8 @@ capture types do the reman-specific parts:
 
 | Capture | Where | Records |
 |---------|-------|---------|
-| **Harvested component** | Teardown | Which components came out, and their grade |
-| **Component install** | Rebuild | What went into each slot of the rebuild plan — see [Rebuild](rebuild.md) |
+| **Harvested components** | Teardown | Which components came out, and their grade |
+| **Components installed** | Rebuild | What went into each slot of the rebuild plan — see [Rebuild](rebuild.md) |
 | **Rebuild finding** | Rebuild | A component found worse than teardown graded it |
 
 See [Running Work Instructions](../dwi/running.md).

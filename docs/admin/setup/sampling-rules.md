@@ -23,8 +23,10 @@ incoming lot.
 
 A rule set can name a **fallback ruleset** — a stricter set that takes over when
 a [gate](#gates-reacting-to-bad-results) fires. Getting back to the primary set
-is automatic, and governed by **Number of good parts required before reverting**
-on the primary:
+is automatic, and governed by the primary's return count — **Return after**
+*N* *consecutive passes* in the flow editor's step **Sampling** dialog (beside
+**Escalate after** *N* *consecutive failures*, under **Escalation Rules**), or
+**Fallback Duration (number of correct parts)** on the step form:
 
 - Each passing part counts towards the run
 - **A failure resets the count to zero** — the run has to be *consecutive*
@@ -83,29 +85,37 @@ Inspect every part:
 
 ## Creating Sampling Rules
 
-1. Navigate to **Data Management** > **Sampling Rules**
-2. Click **New Sampling Rules**
-3. Fill in details:
-
-| Field | Description |
-|-------|-------------|
-| **Rule Set** *(required)* | The rule set this rule belongs to |
-| **Rule Type** *(required)* | How parts are selected (below) |
-| **Sampling Rule Value** *(required)* | The rule's number — N, a percentage, or a count |
-| **Order** | Position when a set holds several rules |
-
-Submit with **Create Sampling Rule**.
-
 !!! important "Rules live inside a rule set"
     A sampling rule is not standalone and carries no name or scope of its own.
     It belongs to a **Sampling Rule Set**, and the set is what decides *where*
-    the sampling applies — its part type, process, step, or supplier — along
-    with AQL, inspection level, severity, strategy, and fallback behaviour.
+    the sampling applies — its step, and for receiving its supplier — along
+    with AQL, inspection level, severity and strategy.
 
-    Create the rule set first, then add rules to it.
+    There is no form for a rule on its own: you add rules on the rule set's
+    page. The **Sampling Rules** list (`/editor/sampling-rules`) shows every
+    rule; its edit button, *Edit in its rule set*, opens the set.
 
-4. Configure rule parameters
-5. Save
+Three places author sampling:
+
+| Where | What you get |
+|-------|--------------|
+| **Data Management** > **Sampling Rule Sets** (`/editor/sampling-rule-sets`) | The full rule set: scope, method, rules, acceptance plan and gate |
+| The flow editor's step panel, **Sampling Rules** | The step's **Sampling** dialog: primary rules, **Escalation Rules** and the escalate/return counts, or a lot-acceptance plan |
+| The step form (`/editor/steps/$id/edit`) | **Sampling Rules**, **Fallback Rules**, **Fallback Threshold** and **Fallback Duration (number of correct parts)** |
+
+### On the rule set page
+
+1. **Data Management** > **Sampling Rule Sets** — the page is titled *Sampling
+   Rules* — and click **New Sampling Rules** (`/editor/sampling-rule-sets/new`,
+   *Create New Rule Set*)
+2. Give it a **Name** and a **Step**, the two required fields, plus anything
+   else from [Where a rule set applies](#where-a-rule-set-applies)
+3. Choose the **Sampling method**: **Per-part streaming** or **Lot acceptance**
+4. Click **Submit** — *"Rule set created — add sampling rules below"* — and you
+   land on its edit page
+5. Under **Sampling rules**, pick a **Rule type**, give its **Value** where it
+   takes one, and click **Add rule**. Each rule is added after the last, and
+   *"Changes save immediately."*
 
 ## Rule Types
 
@@ -235,17 +245,19 @@ on one bad reading.
 ## Where a rule set applies
 
 Scope lives on the **rule set**, not on the things it covers. You do not go to a
-part type, a step or a supplier and attach sampling to it — there is no such
-field on any of them. You create the rule set and tell it what it covers:
+part type or a supplier and attach sampling to it — there is no such field on
+either. You create the rule set and tell it what it covers:
 
 | Scope field | Effect |
 |-------------|--------|
-| **Part type** | The product this set governs |
-| **Process** | Optional context, because a step can appear in several processes |
-| **Step** | The inspection point it applies at |
-| **Supplier** | For receiving acceptance sampling. Blank = all suppliers. |
+| **Step** *(required)* | The inspection point it applies at — and the only thing production sampling matches on |
+| **Part type** | Records which product the set was written for. Not used to match: every part at the step is sampled by it |
+| **Process** | Context only, because a step can appear in several processes. Not used to match |
+| **Supplier** | Receiving acceptance sampling only. A lot from a supplier uses that supplier's set at the step if there is one, otherwise the set with no supplier (*All suppliers*) |
 
-Leave a field blank to widen the scope rather than narrow it.
+!!! note "One set per step, whatever part runs through it"
+    A step shared by several processes, or a duplicated process's step, is
+    sampled by the same rule set for every part that reaches it.
 
 !!! note "What a step itself carries"
     A step has only **Sampling required** and a **minimum sampling rate** — a
@@ -322,6 +334,13 @@ rather than with every staff role — the same tier as SPC baselines.
 | `delete_samplingrule` / `delete_samplingruleset` | Remove them | QA Manager, Tenant Admin |
 
 *Held by* is the groups that hold it when an organisation is created. Group permissions can be changed, so check your own in [Roles & Groups](../users/roles.md).
+
+The same permissions apply wherever sampling is authored. The flow editor's step
+**Sampling** dialog saves through one call that needs both
+`add_samplingruleset` and `change_samplingruleset`; without them it opens
+read-only, even for someone who can edit the process. The step form saves its
+sampling rules through the same call, so for someone without them the step saves
+and the rules are refused — *"Step updated, but rules failed."*
 
 !!! note "Engineering does not author sampling by default"
     A step's **Sampling required** flag is Engineering's, because it is part of

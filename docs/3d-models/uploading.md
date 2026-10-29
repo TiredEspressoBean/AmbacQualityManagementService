@@ -140,18 +140,18 @@ intermediate state.
       (`/annotator`) both use a model that has finished converting, preferring
       the part type's general model (one with no step); among several, the one
       that comes first alphabetically.
-    - **A work-instruction substep** uses the model its **Part annotation**
-      capture was authored with.
+    - **A work-instruction substep** uses the model its **Defect annotation
+      (3D)** capture was authored with.
 
     With more than one general model on a type, name the one you want annotated
     so it sorts first, and archive models you no longer use.
 
 ## Model Versioning
 
-To replace a model's file, open it from the **3D Models** list (**Edit 3D
-Model**), choose the new file under **3D Model File** and **Save Changes**. That
-creates a new version of the model, which is converted again like a fresh
-upload.
+To change a model, open it from the **3D Models** list (**Edit 3D Model**) and
+**Save Changes**. Any change saved there — its **Model Name**, **Part Type**,
+**Step**, or a new file under **3D Model File** — creates a new version of the
+model, which is converted again like a fresh upload.
 
 The **3D Models** list shows only the current version of each model, and the
 heat map, the QA panel and the Annotator use the current version. Annotations

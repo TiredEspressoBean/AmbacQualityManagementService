@@ -98,12 +98,15 @@ Many data editors support bulk import and export — **but not all of them**.
 - **Export**: Download filtered data as CSV or Excel
 - **Import**: Upload CSV or Excel files to create/update records
 
-!!! note "A missing Import button is the answer, not a fault"
-    The buttons appear only where the model actually supports them. If a list's
-    toolbar has no **Import**, that model cannot be imported — it is not a
-    permissions problem and not a bug to report.
+!!! note "A missing Import button has two possible answers"
+    The buttons appear only where the model actually supports them, and
+    **Import** only for someone who holds the model's add permission. No
+    **Import** means that model cannot be imported, or that you can't add its
+    records — the [import table](data/import-export.md#what-can-be-imported-and-exported)
+    says which.
 
-Excel exports include reference sheets for lookups, dropdown validation, and auto-calculated ID fields.
+Excel exports include reference sheets for lookups and dropdown validation; a
+linked record exports as its ID beside its name, as plain values.
 
 See [Import & Export Guide](data/import-export.md) for detailed instructions.
 

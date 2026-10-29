@@ -10,8 +10,11 @@ A step represents a single operation in a process:
 |----------|-------------|
 | **Name** | Display name (e.g., "CNC Machining") |
 | **Description** | Detailed description |
-| **Sequence** | Order in process |
 | **Step Type** | Category of operation |
+
+There is no sequence number: the connections drawn between steps in the flow
+editor are the routing. See [How steps are
+ordered](creating.md#how-steps-are-ordered).
 
 ## Step Types
 
@@ -26,11 +29,13 @@ A step represents a single operation in a process:
 | **Receiving Inspection** | Incoming acceptance |
 | **Repair** | A reman repair node, reached only when its repair code is raised |
 
+The type is picked from the **Step Type** menu under **Add Step** when the step
+is added.
+
 !!! note "Step type is a flow marker, not a work category"
     It sets how the step reads in the flow editor and, for Decision, Terminal
     and Repair, how it behaves. There is no *Production*, *Assembly*,
-    *Packaging*, *Shipping*, *Hold* or *Complete* type — older lists on this
-    and other pages named categories that do not exist.
+    *Packaging*, *Shipping*, *Hold* or *Complete* type.
 
 !!! important "A step belongs to a part type — or, if it is Receiving Inspection, to a material"
     This is enforced in the database, not just in the form, and it is the one
@@ -49,24 +54,26 @@ A step represents a single operation in a process:
 Steps are edited on the **Process Flow** viewer, in the context of the process
 graph — not from a standalone step form.
 
-1. Go to **Production** > **Processes** and open the process, or open
-   **Process Flow** directly
+1. Go to **Production** > **Processes** and use the process's **Edit Process**
+   row action, or open **Process Flow** directly
 2. Turn on **Edit Mode**
 3. Click a step to open its properties panel
 4. Click **Advanced** for the full settings
+5. Click **Save** to store the changes — steps are saved with the process,
+   never one at a time
 
-**Add Step** creates a new step in the flow; **Delete Step** removes the
-selected one. Connections between steps are drawn on the graph itself, which is
-why this is the right surface — a step's routing and its properties are edited
-together.
+**Add Step** creates a new step in the flow; **Delete Step**, at the foot of the
+properties panel, takes the selected one out of it. Connections between steps
+are drawn on the graph itself, which is why this is the right surface — a step's
+routing and its properties are edited together.
 
 !!! note "The standalone step form"
     `/editor/steps/{id}/edit` exposes a reduced set of fields, and is read-only
     for step content when the step belongs to a process — use the Process Flow
     editor for that. **Timing** and **Machines** stay editable there, because
-    they are scheduling data every version shares.
-
-    The old `/StepForm/edit/{id}` redirects to it for now.
+    they are scheduling data on the step row rather than its controlled
+    content; a change there reaches every process version still sharing the
+    row.
 
 ## Step Properties
 
@@ -101,11 +108,15 @@ The properties panel covers:
 | **Terminal step** | The routing ends here |
 | **Expected duration** | Planned duration |
 | **Max visits (rework limit)** | How many times a part may revisit the step |
-| **QA sign-off** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). Whoever did the step's own work is always refused, at every level. |
+| **QA signoff** | Whether a lot needs QA to release it off this step, and how firmly that release is signed — *Not required*, *Check off* (recorded under their login), or *Signature + password* (they re-enter their own password). Whoever did the step's own work is always refused, at every level. |
 | **Sampling required** | Sampling applies at this step |
+| **Min sampling rate (%)** | Shown once sampling is required: the minimum percentage of parts sampled at this step |
 | **Requires first-piece inspection** | FPI gates the step |
+| **FPI scope** | Shown once FPI is required: what one first piece releases — see [FPI Scope](#fpi-scope) |
+| **Block on quarantine** | *A quarantined part can't move on from this step until its quarantine is decided.* **Off by default** |
+| **Sequencing** | The order the step's substeps are worked in — *Sequential* or *Free order*. See [Sequencing](../../workflows/dwi/authoring.md#sequencing) |
 | **Move lot as a unit** | Parts advance as a cohort rather than individually |
-| **Block on quarantine** | A quarantined part cannot advance off this step. **Off by default** |
+| **Batch ready threshold (% of lot ready to advance)** | Shown once **Move lot as a unit** is on — see [Moving a lot as a unit](#moving-a-lot-as-a-unit) |
 
 !!! warning "Block on quarantine is off unless you set it"
     This is the setting people assume is global behaviour. A quarantined part
@@ -142,12 +153,12 @@ level** (1–4), and is scoped to exactly one of:
 | **Equipment type** | Required to operate that equipment |
 | **Job role** | Part of a role's competence profile |
 
-!!! note "Not editable on the step form"
-    The step edit form has no training section — it covers the step's name,
-    operation number, description, part type, first-piece inspection, sampling,
-    measurements, fallback, and documents. Training requirements are managed
-    from the training surfaces under **Quality** > **Training**, and through
-    the API.
+!!! note "Where a step's training is set"
+    In the flow editor, the step panel's **Configuration** > **Required
+    Training** opens *Required Training — "&lt;step&gt;"*, the competencies an
+    operator must hold for the operation. Like the step's other dialogs, it is
+    editable on a draft with **Edit Mode** on. The standalone step form has no
+    training section.
 
 !!! tip "This is what gates operator dispatch"
     Scheduling only assigns an operator to a step they are qualified for, at
@@ -171,13 +182,14 @@ Equipment relates to a step in two distinct ways:
 
 | Mechanism | Purpose |
 |-----------|---------|
-| **Step equipment affinity** | Which equipment this step prefers or requires — used by scheduling |
+| **Machines** | The machines that can run this step, and how well — used by scheduling, which only places the step on machines listed here |
 | **Equipment + roles capture** | What equipment was *actually* used, recorded by the operator on a substep |
 
-!!! note "Not editable on the step form"
-    The step edit form has no equipment section. Affinities are configured
-    through the work-center and scheduling surfaces; the capture is configured
-    when [authoring work instructions](../../workflows/dwi/authoring.md).
+!!! note "Where each is set"
+    **Machines** is in the flow editor's step panel (**Configuration** >
+    **Machines**), and is also the **Machines** card on the standalone step
+    form. The capture is configured when [authoring work
+    instructions](../../workflows/dwi/authoring.md).
 
 Used for:
 - Equipment utilization tracking
@@ -186,14 +198,12 @@ Used for:
 
 ### Document Requirements
 
-Link work instructions and references:
+Attach work instructions, SOPs, drawings and specs to a step from the step
+panel's **Configuration** > **Documents**, or under **Attach Documents** on the
+standalone step form.
 
-1. Open the step in the editor
-2. Use **Attach Documents**
-3. Select the document(s)
-4. Save
-
-Required documents must be attached/accessed to proceed.
+Attached documents are reference for the people working the step. They do not
+gate it: nothing checks that a document was opened before a part moves on.
 
 ## Step Controls
 
@@ -201,7 +211,8 @@ Required documents must be attached/accessed to proceed.
 
 Enable FPI for this step:
 
-1. Toggle **Requires First Piece Inspection**
+1. Switch on **Requires first-piece inspection** in the step's **Advanced**
+   settings
 2. First part must pass FPI
 3. Remaining parts held until FPI passes
 
@@ -222,7 +233,7 @@ See [First Piece Inspection](../../workflows/work-orders/fpi.md).
 
 Require QA approval to advance:
 
-1. Set **QA sign-off** to *Check off* or *Signature + password* (it is a three-way choice, not a toggle)
+1. Set **QA signoff** to *Check off* or *Signature + password* (it is a three-way choice, not a toggle)
 2. QA inspector must approve via QaApproval
 3. Parts wait for approval before advancing
 
@@ -230,8 +241,9 @@ Require QA approval to advance:
 
 Tick **Move lot as a unit** in the step's Advanced settings. Parts then advance
 as a cohort rather than individually: the lot moves once enough of it is ready,
-which is what **Pass threshold** sets — the fraction of the cohort that must be
-READY before the batch goes.
+which is what **Batch ready threshold (% of lot ready to advance)** sets — the
+share of the lot that must be READY before the batch goes. It is not a pass/fail
+threshold. It defaults to 100%, the whole lot.
 
 !!! note "The field is named differently underneath"
     The stored field is `requires_batch_completion`. If you meet that name in
@@ -267,22 +279,25 @@ sending parts out and receiving them back.
 ### Settings that are enforced but have no control
 
 These are real properties of a step, and the advancement gate honours them — but
-**the step editor has no control for them**, so you cannot see or change them
-from the product. They are set through the Django admin.
+**nothing in the product sets them**: the step editor has no control for them,
+the API does not expose them, and there is no admin screen for steps. Every step
+runs on the defaults below unless they are changed directly in the database.
 
 | Setting | Effect | Default |
 |---------|--------|---------|
 | **Block on measurement failure** | Parts cannot advance if any measurement is out of spec | Off |
 | **Block on SPC violation** | Parts cannot advance if an SPC-enabled measurement is out of control | Off |
 | **Override expiry hours** | How long an override stays good before it must be re-approved | 24 |
-| **Undo window minutes** | How long after completing a step it can still be undone | 15 |
+| **Undo window minutes** | How long after completing a step it can be undone without approval | 15 |
 | **Rollback requires approval** | Whether rolling a part back needs supervisor approval | On |
 
 !!! warning "You can be held by a setting you cannot see"
     If parts are blocked at a step and nothing in the editor explains why, one
     of these may be on. The undo window and rollback rule in particular are
-    enforced at runtime and produce refusals — *"Undo window expired (15
-    minutes)"* — that read as bugs when you don't know the setting exists.
+    enforced at runtime. A rollback inside the window still needs approval while
+    **Rollback requires approval** is on (*"Rollback requires approval"*); past
+    the window it is sent for approval rather than refused — *"Past the 15-minute
+    undo window — the rollback needs approval"*.
 
 **Auto-advance** is different again: it lives on the step's place *in a
 particular process*, not on the step, and defaults to **on**. It is settable
@@ -290,115 +305,64 @@ through the API but has no control in the editor either.
 
 ## Sampling Configuration
 
-Apply sampling rules at inspection steps:
-
-1. Go to **Sampling** section
-2. Select sampling rule or rule set
-3. Sampling applies to parts at this step
+Apply sampling rules at inspection steps from the step panel's
+**Configuration** > **Sampling Rules**. Authoring them takes the sampling
+permissions, not only the step ones.
 
 See [Sampling Rules](../setup/sampling-rules.md).
 
 ## Step Transitions
 
-### Normal Flow
+Parts follow the connections drawn between steps on the graph. There is no
+separate sequence to maintain.
 
-Default: parts advance to next step in sequence.
+### Decision points
 
-### Conditional Transitions
+A **Decision** step, or any step with **Decision point** on, branches on an
+outcome. Its **Decision type** says how the outcome is decided:
 
-If branching enabled:
-- Define conditions for different paths
-- Route based on measurement results
-- Route based on part attributes
+- *Based on QA Pass/Fail*
+- *Based on Measurement Threshold*
+- *Manual Operator Selection*
+- *Based on Quality Gate (aggregate signal)*
 
-### Rework Routing
+Where rejected items go is a connection: draw it on the graph, or pick a step
+under **Route rejected items to…** and click **Add**.
 
-Configure rework destination:
-1. When part fails, where does it go?
-2. Set rework step in configuration
-3. Parts automatically route
+### Rework limit
 
-## Time Tracking
-
-Configure time tracking:
-
-| Option | Description |
-|--------|-------------|
-| **Track Duration** | Log time at step |
-| **Expected Duration** | Target time for planning |
-| **Alert Threshold** | Notify if exceeds time |
-
-## Step Attributes
-
-### Visual Indicators
-
-Configure display:
-- **Color** - For Tracker display
-- **Icon** - Visual identifier
-- **Priority Display** - How urgency shows
-
-### Capacity
-
-For planning:
-- **Capacity** - How many parts at once
-- **Equipment slots** - Available machines
-- **Operator requirements** - Staffing
+A **Rework** step's **Max visits before escalation** — **Max visits (rework
+limit)** under **Advanced** on other steps — caps how many times a part may come
+back to the step. Blank is unlimited.
 
 ## Copying Steps
 
-!!! note "Planned Feature"
-    There is no step-level copy. A whole process can be duplicated from the
-    process flow editor with **Duplicate as Template**; copying the
-    configuration of a single step between processes is not available.
+There is no step-level copy, and no step templates. A whole process can be
+duplicated from the process flow editor with **Duplicate as Template**; copying
+the configuration of a single step between processes is not available.
 
-## Step Templates
+## Removing a Step
 
-Create reusable step templates:
+In **Edit Mode**, select the step and click **Delete Step** at the foot of its
+properties panel, then **Save**. The step is taken out of this process only; the
+step row itself is kept, because other versions of the process may share it.
 
-1. Configure a standard step
-2. Save as template
-3. When adding steps, start from template
-4. Customize as needed
-
-## Ordering Steps
-
-### Reorder Steps
-
-1. Open process
-2. Go to Steps list
-3. Drag and drop to reorder
-4. Or edit sequence numbers
-5. Save
-
-### Insert Step
-
-1. Add new step
-2. Set sequence between existing steps
-3. Other steps maintain relative order
-
-### Remove Step
-
-1. Select step
-2. Click **Remove**
-3. Confirm
-4. Parts at that step need handling
+A step that parts have already been worked at can't be removed. The save is
+refused — *"Cannot remove steps with execution history: &lt;steps&gt;."* — and
+the editor shows *Failed to save process*.
 
 ## Step History
 
-View step changes:
-- When created/modified
-- Who made changes
-- What changed
-
-Part of process version history.
+A step's changes — when, who and what — are on the **History** card of the
+standalone step form.
 
 ## Permissions
 
 | Permission | Allows |
 |------------|--------|
-| `change_steps` | Create/edit steps |
-| `delete_steps` | Remove steps |
 | `view_steps` | View step configuration |
+| `change_steps` | Editing steps in Process Flow. **Edit Mode** needs `change_processes` as well, because the steps are saved with the process |
+| `delete_steps` | Archive a step that belongs to no process, from the standalone step form. Taking a step out of a process is **Delete Step** in Process Flow, which needs only the editing permissions |
 
 ## Troubleshooting
 

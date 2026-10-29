@@ -30,21 +30,21 @@ and the kind of capture determines what the operator sees:
 | Capture | Operator records |
 |---------|------------------|
 | **Measurement** | A numeric value, evaluated against its specification |
-| **Text** | Free text |
+| **Text input** | Free text |
 | **Choice** | One option from a list |
 | **Photo** | An image, from the device camera or a file |
 | **Scan** | A barcode or QR code |
 | **File** | An uploaded file of any kind — the way to attach a video |
 | **Timer** | A countdown or stopwatch reading |
 | **Computed** | A value derived by formula from other captures |
-| **Attestation** | A confirmation or signature |
+| **Sign-off** | A confirmation or signature |
 | **Quality status** | PASS / FAIL / PENDING |
-| **Equipment / Personnel** | Which equipment and people were involved |
+| **Equipment + roles** / **Personnel + roles** | Which equipment and people were involved |
 | **Inspection signatures** | Detected-by and verified-by signatures |
-| **Defects** | Defect findings against error types |
+| **Defect findings** | Defects, picked from error types |
 | **Defect annotation (3D)** | Defects marked on the part's 3D model |
 | **Harvested components** | Components recovered during teardown, with their grades (reman) |
-| **Component install** | Which components went into the unit — its as-built record |
+| **Components installed** | Which components went into the unit — its as-built record |
 | **Rebuild finding** | A component found worse than its teardown grade, for a lead to decide (reman) |
 
 Not every substep asks for something. Callouts, document links, embedded

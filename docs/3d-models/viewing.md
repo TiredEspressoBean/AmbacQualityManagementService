@@ -82,7 +82,7 @@ its defaults.
     To get back to a view you lost, reload the page.
 
 !!! tip "Authors can save a starting view"
-    In a work instruction's **Part annotation** capture, the author can use
+    In a work instruction's **Defect annotation (3D)** capture, the author can use
     **Save view** to set the framing the operator's model opens at. That is
     the only place a view is saved.
 

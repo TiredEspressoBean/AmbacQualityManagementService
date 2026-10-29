@@ -17,8 +17,8 @@ Every rule belongs to one of three scopes, shown as tabs:
 
 | Scope | Authored by | Fires for |
 |-------|-------------|-----------|
-| **Tenant-wide** | Administrators | Any matching event across the organization |
-| **Customer-scoped** | Administrators | Events concerning one specific customer |
+| **Tenant-wide** | Tenant Admin, QA Manager, Production Manager | Any matching event across the organization |
+| **Customer-scoped** | Tenant Admin, QA Manager, Production Manager | Events concerning one specific customer |
 | **Personal** | The individual user | That user's own notifications |
 
 All three are evaluated for a given event, so a tenant rule and someone's
@@ -30,13 +30,15 @@ personal rule can both fire on the same thing.
 |-------|--------------|
 | **Name** | How the rule appears in the list |
 | **Event** | Which event it listens for |
-| **When** | An optional condition — `always`, or an expression tested against the event |
+| **Condition** | An optional condition tested against the event — shown in the list's **When** column, as `always` when there is none |
 | **Recipients** | Users, groups, or (customer scope only) external contacts |
 | **Channels** | Where the notification goes — for example in-app, email |
 | **Active** | Whether it fires at all |
 
-Rules also carry a **priority** and a **minimum gap**, which suppresses repeat
-notifications from the same rule inside a time window — useful for noisy events.
+A rule also stores a **priority** and a **minimum gap** (which suppresses repeat
+notifications from the same rule inside a time window), but the rule editor has
+no control for either. A rule created here, and every starter rule, has a
+minimum gap of 0 — no suppression.
 
 ### Conditions
 
@@ -77,10 +79,13 @@ groups — this is where rules like *First Piece Waiting* and *Unapproved Part
 Receipt* come from. An event that declares no defaults gets **no rule at all**,
 and so notifies nobody until someone writes one.
 
-!!! note "Re-seeding restores a deleted starter rule"
-    Rules are matched by name, so a starter rule you delete comes back the
-    next time seeding runs. To retire one for good, disable it or rename it
-    rather than deleting it.
+!!! note "Re-seeding restores a renamed starter rule"
+    Seeding skips a starter rule when a rule with the same event and the same
+    name already exists — and a deleted rule still counts, because delete
+    archives it rather than removing it. So deleting or disabling a starter rule
+    retires it for good. **Renaming** one does not: the next time seeding runs,
+    the original name is missing and the starter rule is created again beside
+    yours.
 
 !!! tip "Backfilling existing tenants"
     Tenants created before the starter set existed can be backfilled by an
@@ -92,13 +97,13 @@ and so notifies nobody until someone writes one.
 2. Choose the scope tab you're authoring in
 3. Click **New rule**
 4. Pick the event, set any condition, choose recipients and channels
-5. Save
+5. Click **Create rule**
 
 ## Schedules
 
 The **Schedules** tab handles recurring digests rather than event reactions —
-a weekly or monthly summary sent on a timetable. Schedules are scoped the same way
-rules are.
+a weekly or monthly summary sent on a timetable. Schedules have two scope tabs,
+**Tenant-wide** and **Customer-scoped** — there are no personal schedules.
 
 !!! note "Schedules don't deliver reports"
     Notification schedules send notification digests. They do not generate or

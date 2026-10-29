@@ -127,11 +127,16 @@ For multiple orders:
 2. Click **New Work Orders**
 3. Fill in:
    - **ERP ID** — the work order's number in the system that owns it (required)
-   - **Process** (required)
-   - **Priority** (required)
-   - **Due date** (required)
-   - **Order** — the customer order, if there is one (optional)
-4. Save
+   - **Expected Completion Date** (required)
+   - **Process** — only approved processes in force are offered (optional)
+   - **Priority** — Normal when left empty (optional)
+   - **Related Order** — the customer order, if there is one (optional)
+4. Click **Submit**
+
+The work order starts **Pending**, with a quantity of 1 and no parts — the form
+has no quantity field. See [Creating a Work
+Order](../workflows/work-orders/basics.md#creating-a-work-order) for where the
+quantity and parts are set.
 
 !!! note "ERP ID is required and easy to miss"
     The save fails without it. It is the work order's identifier in whatever
@@ -345,7 +350,7 @@ material for one.
 |------|-------|
 | Create order | Data Management > Orders → **New Orders** → Order Name → **Create Order** |
 | Add parts | Production > WO Control Center → tick one → **Add Parts** → Start Step, Quantity, ERP ID Start |
-| Create work order | Data Management > Work Orders → **New Work Orders** → ERP ID, process, priority, due date → Save |
+| Create work order | Data Management > Work Orders → **New Work Orders** → ERP ID, expected completion date, process, priority → **Submit** (starts Pending) |
 | Change priority | Open work order → change priority → **give a reason** → Save |
 | Check status | Production > Work Orders → Find work order → View progress |
 | Close a job short | Work order → **Short-close** → decide each unfinished unit, give a reason, answer the quantity questions |

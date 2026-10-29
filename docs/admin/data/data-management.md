@@ -29,7 +29,10 @@ because they are worked on continuously.
 ## What a row tells you
 
 Each table shows a **row count** and the actions you hold permission for —
-**Add**, **Import**, **Export**.
+**Add**, **Import**, **Export**. **Add** and **Import** need the table's add
+permission; **Export** needs only view, and its menu also carries the **Import
+Template** downloads. A table that can't be imported has no **Import** for
+anyone.
 
 | Marker | Means |
 |--------|-------|

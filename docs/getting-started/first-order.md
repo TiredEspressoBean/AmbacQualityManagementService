@@ -45,12 +45,14 @@ adding parts.
 | Field | Description | Required |
 |-------|-------------|----------|
 | **ERP ID** | The work order's number in the system that owns it | **Yes** |
-| **Process** | The manufacturing workflow to run | **Yes** |
-| **Priority** | Urgent, High, Normal, or Low | **Yes** |
-| **Due Date** | Target completion | **Yes** |
-| **Order** | The order you just made | No |
+| **Expected Completion Date** | Target completion | **Yes** |
+| **Process** | The manufacturing workflow to run — only approved processes in force are offered | No |
+| **Priority** | Urgent, High, Normal, or Low — Normal when left empty | No |
+| **Related Order** | The order you just made | No |
 
-4. Click **Save**
+4. Click **Submit**
+
+The work order starts **Pending** — the only status a new one can have.
 
 !!! warning "ERP ID is required and easy to miss"
     The save fails without it. Priority lives here, not on the order — orders

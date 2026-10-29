@@ -8,15 +8,13 @@ Error Types categorize defects for:
 
 - **Classification** - What kind of problem
 - **Analysis** - Pareto and trending
-- **Routing** - Different handling by type
 - **Reporting** - Consistent categorization
 
 ## Suggested starting categories
 
 **A new organisation has no error types — you create all of them.** Nothing is
 seeded, so an empty list is the expected state rather than a sign something went
-wrong. (A demo tenant is the exception: it carries defect types for its own
-example parts.)
+wrong.
 
 There is no category field on an error type, so the list below is a prompt for
 what to create and what to call it, not a set of options to pick from:
@@ -45,7 +43,7 @@ what to create and what to call it, not a set of options to pick from:
 | **Part Type** | Scope this error type to one part type, or leave blank for all | No |
 | **Requires 3D Annotation** | The defect must be marked on the part's 3D model | No |
 
-Submit with **Create Error Type**.
+4. Click **Create Error Type**
 
 !!! tip "Requires 3D Annotation"
     Error types with this set appear in the **Part Annotator**, where the
@@ -54,8 +52,6 @@ Submit with **Create Error Type**.
 
     It is a **gate**, not a hint: a disposition linked to a report carrying one
     of these errors cannot be completed until that report has an annotation.
-
-4. Save
 
 ## Error Type Hierarchy
 
@@ -81,10 +77,7 @@ There is no code, description, parent, severity, colour, or icon field.
 
 ## Error Type Rules
 
-Configure automatic behavior:
-
-### Default Severity
-!!! note "Planned Feature"
+!!! note "Error types carry no rules"
     Error types carry no rules of their own — no default severity, no
     auto-quarantine, and no automatic CAPA trigger.
 
@@ -117,11 +110,10 @@ list written here** — start at
 [Data Management](../data/data-management.md), which carries the Import and
 Export links for the defect catalogue, and export first to get the real header.
 
-!!! warning "Older examples showed a hierarchy that does not exist"
-    An earlier version of this page demonstrated a CSV with `code`,
-    `description` and `parent_code` columns. None of those are fields. Error
-    types are a flat list with the fields above, and the naming convention in
-    *Grouping without a hierarchy* is how you get the grouping effect.
+!!! note "There are no code or parent columns"
+    Error types are a flat list with the fields above — no `code`,
+    `description` or parent column. The naming convention in [Error Type
+    Hierarchy](#error-type-hierarchy) is how you get the grouping effect.
 
 See [Import & Export](../data/import-export.md).
 
@@ -132,7 +124,7 @@ See [Import & Export](../data/import-export.md).
 | `view_qualityerrorslist` | View error types |
 | `add_qualityerrorslist` | Create error types |
 | `change_qualityerrorslist` | Edit error types |
-| `delete_qualityerrorslist` | Deactivate error types |
+| `delete_qualityerrorslist` | Archive error types |
 
 ## Next Steps
 

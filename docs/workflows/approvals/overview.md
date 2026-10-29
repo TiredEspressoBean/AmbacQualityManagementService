@@ -101,19 +101,25 @@ Two independent settings:
 **Sequence** — the order approvers are asked:
 
 - **Parallel** — everyone is asked at once
-- **Sequential** — each is asked in turn
+- **Sequential** — one required approver is shown as pending at a time. The
+  template sets no order, and an assigned approver may respond before their turn
 
 **Approval Flow** — how many responses close it:
 
 | Flow | Closes when |
 |------|-------------|
-| **All Required** | Every assigned approver approves |
+| **All Required** | Every required approver approves |
 | **Threshold** | The configured number of approvals is reached |
 | **Any** | Any one approver approves |
 
+The **required** approvers are the people assigned by name and the members
+assigned by the template's **Auto-assign to Group**. A group assigned as a whole
+lets any member respond but is not itself required — so a request routed only
+to groups closes on the first approval under any flow.
+
 Under **Sequential**, the flow is not used: the request closes only when every
-required approver has approved, in turn. **Threshold** and **Any** apply to
-**Parallel** requests.
+required approver has approved. **Threshold** and **Any** apply to **Parallel**
+requests. See [Approval Templates](../../admin/setup/approval-templates.md#sequence).
 
 ## Responding
 

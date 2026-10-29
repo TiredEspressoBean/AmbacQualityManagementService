@@ -14,21 +14,24 @@ Before creating in uqmes:
 
 ## Creating a New Process
 
-### From Process Editor
+### From the processes list
 
-1. Go to **Data Management** > **Processes** (`/editor/processes`)
-2. Click **New Process**
-3. Fill in basic information:
+1. Go to **Production** > **Processes** (`/editor/processes`), or **Processes**
+   in **Data Management**
+2. Click **New Process**. A dialog opens:
 
 | Field | Description | Required |
 |-------|-------------|----------|
 | **Name** | Descriptive name | Yes |
 | **Part Type** | What this process makes, rebuilds or tears down | **Yes** |
-| **Category** | Manufacturing, Quality, Maintenance, NPI, or Document Control | No — defaults to Manufacturing |
-| **Remanufactured** / **Disassembly** | What kind of work this is. See [Process Overview](overview.md#what-kind-of-process-it-is) | No |
-| **Default scrap rate** | Expected loss, 0–1, inherited by steps that set none | No |
+| **Remanufacturing** | *Process handles used or core parts.* See [Process Overview](overview.md#what-kind-of-process-it-is) | No |
 
-4. Click **Save**
+3. Click **Create & open**. The process is created and opened in the **Process
+   Flow** editor.
+
+**Category**, **Disassembly** and the **default scrap rate** are not on the
+dialog and have no control elsewhere in the product; they are set through the
+API. See [Process Overview](overview.md#what-kind-of-process-it-is).
 
 !!! note "You do not choose a version number"
     Versioning is handled for you — a new version is created when the process
@@ -45,26 +48,29 @@ Flow** editor (`/process-flow`):
 2. **Add Step** for each operation
 3. Draw the connections between steps on the graph
 4. Click a step to set its properties, and **Advanced** for its gates
+5. Click **Save** (shown once there are unsaved changes)
 
 This is the surface to use — a step's routing and its properties are edited
-together, which is not possible from the legacy step form.
+together, which is not possible from the standalone step form.
 
 ## Adding Steps
 
 ### Sequential Steps
 
 1. Open the process in the **Process Flow** editor and turn on **Edit Mode**
-2. Click **Add Step**
+2. Click **Add Step** and pick the step's type from its **Step Type** menu (see
+   [Step Types](steps.md#step-types))
 3. Click the new step to open its properties and enter its details:
 
 | Field | Description |
 |-------|-------------|
 | **Name** | Step name (e.g., "Machining") |
+| **Operation number** | Op number within the routing |
 | **Description** | What happens at this step |
-| **Step Type** | See [Step Types](steps.md#step-types) |
 
-4. Save step
-5. Repeat for each step
+4. Repeat for each step
+5. Click **Save**. There is no save per step: the process's **Save** stores
+   every step and connection together
 
 ### How steps are ordered
 
@@ -201,7 +207,8 @@ What you can check before submitting:
 2. Open each step's properties and confirm its measurements, training, sampling
    and documents
 3. Confirm the steps that should block a quarantined part have **Block on
-   quarantine** set — it is off by default
+   quarantine** switched on in the step panel's **Advanced** settings — it is
+   off by default
 4. Check **BOM allocation** on any step that consumes material, especially after
    a step copy, which does not carry it
 
@@ -210,17 +217,24 @@ work order *is* the trial; plan for that rather than expecting a sandbox.
 
 ## Versioning
 
-### Creating New Version
+### Revising an approved process
 
-1. Open current process
-2. Click **Create New Version**
-3. Draft copy created
-4. Make changes
-5. Submit for approval
-6. On approval:
-   - The new version becomes **Approved**
-   - The old one becomes **Deprecated**
-   - Work already running continues on the old version
+An approved process is locked; it is revised through a process change request.
+
+1. Open the approved process in **Process Flow**
+2. **Process Actions** > **Propose Change** (*File a PCR + fork an editable
+   draft*). This creates the change request and a draft of the next version, and
+   opens the draft
+3. Turn on **Edit Mode**, make the changes, and **Save**
+4. **Submit for approval** on the draft's change-request banner
+5. When the change is approved and implemented:
+   - The new version becomes **Approved** and current
+   - The previous version stays **Approved** but is no longer current, so new
+     work orders stop picking it
+   - Work orders already running stay on the previous version unless the
+     change's migration policy moves them
+
+See [Change Control](../../workflows/change-control/overview.md).
 
 ### Version Tracking
 
@@ -234,9 +248,9 @@ Parts record which process version they used:
 | Permission | Allows |
 |------------|--------|
 | `add_processes` | Create new processes |
-| `change_processes` | Edit process configuration |
+| `change_processes` | Edit process configuration. **Edit Mode** in Process Flow needs `change_steps` as well |
 | `respond_to_approval` | Respond to a process approval request (eligibility also set by the approval template) |
-| `delete_processes` | Remove processes |
+| `delete_processes` | Delete (archive) a draft process |
 
 ## Next Steps
 

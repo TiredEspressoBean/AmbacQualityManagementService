@@ -61,7 +61,7 @@ Annotator** — with its reports already selected.
 
 ### Method 3: As a substep capture
 
-A step can include a **Part annotation** capture, so the operator marks the
+A step can include a **Defect annotation (3D)** capture, so the operator marks the
 model as part of the work instructions. There the report is already the
 substep's own. See [Authoring Work Instructions](../workflows/dwi/authoring.md).
 

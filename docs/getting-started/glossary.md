@@ -236,7 +236,7 @@ A disposition decision to return non-conforming material to the supplier.
 Inspecting a subset of parts rather than 100%, based on statistical rules (e.g., AQL sampling).
 
 ### Sampling Rule
-A configuration defining when and how sampling applies, based on part type, history, or other criteria.
+A rule in a sampling rule set that decides which parts, or how much of a lot, are inspected. The rule set names the step it applies at — and, at receiving, optionally a supplier.
 
 ### Serial Number
 A unique identifier for an individual part, used for full traceability.
