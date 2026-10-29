@@ -15,7 +15,7 @@ resource, in what order, and whether the plant can absorb what's been promised.
 | **Calendar** | When the plant is *not* working |
 | **[Capacity Planning](capacity.md)** | Can we absorb the next 12 months of demand? |
 | **Staging List** | What to put at each bench before the operator arrives |
-| **Operator Hours** | Attendance and time clocked onto jobs |
+| **Operator Hours** | Attendance, and the job time on operators' step records |
 | **Requirements** | What to buy, build, and procure to hit the schedule |
 
 The Gantt is the board everything else supports. The calendar feeds it working
@@ -89,20 +89,55 @@ empty table.
 
 ## Operator Hours
 
-**Shop hours per operator — on-shift attendance and time clocked onto jobs.**
-Covers shop-floor operators only (Operator and Shift Lead).
+**Shop hours per operator — on-shift attendance, and the time on their step
+records.** Covers shop-floor operators only (Operator and Shift Lead).
 
-Shows total **on-shift hours** against total **direct (job) hours** for a date
-range, per operator. The gap between the two is time at work but not clocked
-onto a job.
+For a date range, per operator:
 
-Exports to **CSV** and **PDF**.
+| Column | Is |
+|--------|----|
+| **On-shift hrs** | Time clocked in, less breaks and lunch |
+| **Direct hrs** | Time working at steps, counted only while on shift |
+| **Rework hrs** | The part of direct time spent on rework — included in direct, not added to it |
+| **Unallocated hrs** | On-shift minus direct: at work, but not at a step |
+
+Four cards above the table give the totals. The page, its **CSV** and its **PDF**
+all use the same figures.
+
+### Where direct time comes from
+
+Nobody clocks onto a job. Direct time is worked out from the step records an
+operator already makes by starting and completing work:
+
+- A step's time runs from when the operator started it until the part left the
+  step — or until now, while it is still running. It is credited to the operator
+  who claimed it, or to whoever completed it.
+- It counts only while that operator was **on shift**: no clock-in, no direct
+  time; breaks and lunch are excluded.
+- Work running at the same time is **shared, not added**. A lot at one step is
+  one stretch of time, not one per part; two jobs at once split the time in
+  proportion to their parts.
+- Time while the work order was **on hold**, or the part was **out for outside
+  processing**, is left out.
+- **Rework** is a repeat visit to a step, or a rework step.
+- Setup and run time are not separated.
+
+### By work order
+
+Below the table, **By work order** splits the same direct time by work order
+and operator, with rework — *for costing in the system that prices it*. Its
+**CSV** and **Excel** exports need `export_data`, and each export is recorded.
+The same figures for one job are on the work order's **Labor** tab — see
+[Work Order Basics](../work-orders/basics.md).
 
 ### Approving time
 
-The **Awaiting approval** card lists finished time entries in the page's date
-range that nobody has approved yet, with operator, type, work order, start and
-hours. **Approve** one at a time, or **Approve all (N)**.
+The **Awaiting approval** card lists finished attendance entries — shift,
+break and lunch — in the page's date range that nobody has approved yet, with
+operator, type, start and hours. **Approve** one at a time, or **Approve all
+(N)**. Job time is not approved line by line: it follows from the step records
+and from the attendance it is clipped to, so correcting a clock time corrects
+the direct hours too.
 
 You can't approve your own time: your entries read *Your time*, with no button.
 An entry still running can't be approved until it ends. Approving needs

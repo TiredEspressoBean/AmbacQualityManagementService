@@ -350,6 +350,8 @@ material for one.
 | Check status | Production > Work Orders → Find work order → View progress |
 | Close a job short | Work order → **Short-close** → decide each unfinished unit, give a reason, answer the quantity questions |
 | Approve time | Operator Hours → **Awaiting approval** → **Approve** |
+| Labour on a job | Work order → **Labor** tab — actual direct and rework hours against planned |
+| Labour for costing | Operator Hours → **By work order** → **CSV** or **Excel** |
 
 ## If you got something wrong
 

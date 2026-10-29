@@ -133,8 +133,22 @@ View progress on:
 ## Work Order Detail View
 
 The work order detail page (`/workorder/$workOrderId`) has a header with status,
-priority and badges, and three tabs: **Overview**, **Parts** and **Materials**.
-See [Work Order Detail](progress.md#work-order-detail).
+priority and badges, and four tabs: **Overview**, **Parts**, **Materials** and
+**Labor**. See [Work Order Detail](progress.md#work-order-detail).
+
+### Labor
+
+**Labor** shows the operator time on this job to date:
+
+| Card | Is |
+|------|----|
+| **Actual direct hrs** | Operators' time at this job's steps, while on shift. Turns amber when it exceeds planned |
+| **of which rework** | The part spent on rework — repeat visits and rework steps |
+| **Planned hrs** | The route's operator time for the work order quantity, from the steps' time standards; rework steps aren't planned. *No time standards on the route* when no step has one |
+
+Below the cards, a table gives each operator's direct and rework hours, or *No
+work started on this job yet.* The hours are worked out from the step records,
+the same way as [Operator Hours](../scheduling/overview.md#where-direct-time-comes-from).
 
 ## Linking Documents
 

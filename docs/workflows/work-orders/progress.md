@@ -93,13 +93,14 @@ the schedule is marked stale so the next solve picks them up.
 cancelled), and **N at outside process** when parts are out at a vendor — that
 badge links to the control page, where send-out and receive-back live.
 
-Below, three tabs:
+Below, four tabs:
 
 | Tab | Shows |
 |-----|-------|
 | **Overview** | Customer, due date, quantity, and **QA Progress** — completed, total parts, need rework — with the digital traveler and notes |
 | **Parts** | The parts on the job, filterable by status |
 | **Materials** | Material for the job |
+| **Labor** | Actual direct and rework hours per operator, against the route's planned hours — see [Labor](basics.md#labor) |
 
 ### On the Home page
 

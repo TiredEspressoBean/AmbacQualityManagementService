@@ -68,6 +68,11 @@ reads *On break*, with **End break** to come back. **Clock out** ends the shift.
 step of yours is still running it asks first, because clocking out leaves it open for
 the next shift, so finish or hand it over before you go. Your lead approves your hours.
 
+On a large screen the clock also shows your week so far: *This week: … on shift · …
+on jobs*, with rework and entries awaiting approval when there are any. You don't
+clock onto jobs — time on jobs comes from the steps you start and complete, while
+you're clocked in. If a clock time is wrong, your lead corrects it.
+
 ---
 
 ## 2. What's next

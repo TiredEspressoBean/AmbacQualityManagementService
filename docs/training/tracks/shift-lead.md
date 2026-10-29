@@ -197,14 +197,15 @@ Open `/production/shift-notes`. It isn't in the sidebar, so bookmark it.
 
 A note is not a quality record: a part that looked wrong goes in a quality report.
 
-Then approve the shift's hours: **Scheduling** > **Operator Hours**. It shows on-shift
-and direct (job) hours per operator, and **Awaiting approval** lists each finished
-entry: shift, break, lunch, or production against a work order. **Approve** one, or
-**Approve all**. Your own entries read *Your time*: someone else approves those.
+Then approve the shift's hours: **Scheduling** > **Operator Hours**. It shows each
+operator's on-shift, direct, rework and unallocated hours. Nobody clocks onto a job:
+direct time comes from the steps they worked, counted while they were on shift.
+**Awaiting approval** lists each finished shift, break and lunch entry. **Approve** one,
+or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours
-recalculate. Approve the hours only once they're right: an approved entry can't be
+recalculate — direct hours too, since they only count while the operator was on shift. Approve the hours only once they're right: an approved entry can't be
 corrected here.
 
 ---
