@@ -92,7 +92,8 @@ shows everything.
 Above the tiles, an orange line for each **first piece** of yours waiting on QA:
 *&lt;step&gt; · &lt;part&gt; · first piece sent … ago*, with *Not seen yet* or *Seen by
 &lt;name&gt;*. Once QA decides, it turns grey and reads *Passed by*, *Failed by* or
-*Waived by*, until the end of the day. You don't have to walk over and ask.
+*Waived by*, until the end of the day. Three show at a time, waiting ones first;
+**+N more** opens the rest. You don't have to walk over and ask.
 
 Under the tiles, **Today** counts the steps you've completed and the parts you've
 flagged for QA — failed or sent for repair — since the start of the day.

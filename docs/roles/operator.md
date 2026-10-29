@@ -50,7 +50,8 @@ wants a **Got it** before you start; it is how the last shift talks to you.
 Home also keeps you posted without asking anyone:
 
 - **Your first pieces** — one line each while QA has it (*Not seen yet* or *Seen
-  by*), then *Passed by*, *Failed by* or *Waived by* for the rest of the day.
+  by*), then *Passed by*, *Failed by* or *Waived by* for the rest of the day. Three
+  show at a time, waiting ones first; **+N more** opens the rest.
 - **Today** — the steps you've completed and the parts you've flagged for QA.
 - **This week** — beside the clock: hours on shift, on jobs (and rework), and
   entries awaiting a lead's approval.
