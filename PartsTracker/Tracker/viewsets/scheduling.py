@@ -73,6 +73,12 @@ def _not_on_crew(operator, tenant) -> str | None:
     return (f"{operator.get_full_name() or operator.username} isn't on the crew — only "
             "active shop-floor operators rostered to a shift can be assigned work.")
 
+HOURS_RANGE_PARAMS = [
+    OpenApiParameter('start', OpenApiTypes.DATE, description="Range start (inclusive). Default: 7 days ago."),
+    OpenApiParameter('end', OpenApiTypes.DATE, description="Range end (inclusive). Default: today."),
+]
+
+
 class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
     """Run the solver / dispatch and read the active schedule."""
     queryset = ScheduleResult.unscoped.all()
@@ -91,6 +97,8 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         # Undo writes task positions, so it is the same authority as making the edit
         # it reverses. `violations` is a read and needs no action gate.
         'undo': ['change_scheduledtask'],
+        # Every report is behind export_data (decision 10/27).
+        'work_order_hours_export': ['export_data'],
     }
     crud_exempt_actions = {
         'run_dispatch', 'commit', 'discard', 'restore_previous', 'config', 'plan_work_order',
@@ -430,35 +438,12 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
         from Tracker.services.scheduling.data import get_dispatchable_operators
         return Response({"user_ids": sorted(o.user_id for o in get_dispatchable_operators(self.tenant))})
 
-    @extend_schema(
-        parameters=[
-            OpenApiParameter('start', OpenApiTypes.DATE, description="Range start (inclusive). Default: 7 days ago."),
-            OpenApiParameter('end', OpenApiTypes.DATE, description="Range end (inclusive). Default: today."),
-        ],
-        responses={200: inline_serializer(
-            name="OperatorHoursReport",
-            fields={
-                "rows": inline_serializer(
-                    name="OperatorHoursRow",
-                    fields={
-                        "user_id": serializers.IntegerField(),
-                        "name": serializers.CharField(),
-                        "on_shift_hours": serializers.FloatField(),
-                        "direct_hours": serializers.FloatField(),
-                    },
-                    many=True,
-                ),
-            },
-        )},
-    )
-    @action(detail=False, methods=['get'], url_path='operator_hours')
-    def operator_hours(self, request):
-        """Shop hours worked per operator over a date range, from TimeEntry —
-        `on_shift_hours` (attendance) and `direct_hours` (clocked onto jobs). Scoped to
-        shop-floor operators (Operator / Shift Lead groups)."""
+    def _hours_range(self, request):
+        """(start_date, end_date, start_dt, end_dt) for the hours reports, from ?start /
+        ?end. The range is plant days: "today" and each day's midnight bounds are on the
+        plant's clock, so a shift clocked at 7 pm in a UTC-5 plant counts today."""
         from datetime import date, datetime, time, timedelta
         from django.utils import timezone
-        from Tracker.services.mes.labor_report import operator_hours as _report
         from Tracker.services.core.clock import plant_tz, tenant_today
 
         def _parse(s, default):
@@ -469,15 +454,116 @@ class ScheduleViewSet(TenantScopedMixin, viewsets.GenericViewSet):
             except ValueError:
                 return default
 
-        # The range is plant days: "today" and each day's midnight bounds are on the
-        # plant's clock, so a shift clocked at 7 pm in a UTC-5 plant counts today.
         tz = plant_tz(self.tenant)
         today = tenant_today(self.tenant)
         start_d = _parse(request.query_params.get('start'), today - timedelta(days=7))
         end_d = _parse(request.query_params.get('end'), today)
         start_dt = timezone.make_aware(datetime.combine(start_d, time.min), tz)
         end_dt = timezone.make_aware(datetime.combine(end_d + timedelta(days=1), time.min), tz)
+        return start_d, end_d, start_dt, end_dt
+
+    @extend_schema(
+        parameters=HOURS_RANGE_PARAMS,
+        responses={200: inline_serializer(
+            name="OperatorHoursReport",
+            fields={
+                "rows": inline_serializer(
+                    name="OperatorHoursRow",
+                    fields={
+                        "user_id": serializers.IntegerField(),
+                        "name": serializers.CharField(),
+                        "on_shift_hours": serializers.FloatField(),
+                        "direct_hours": serializers.FloatField(),
+                        "rework_hours": serializers.FloatField(),
+                        "unallocated_hours": serializers.FloatField(),
+                    },
+                    many=True,
+                ),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='operator_hours')
+    def operator_hours(self, request):
+        """Shop hours per operator over a date range — on-shift from the attendance clock;
+        direct and rework derived from the step records (services/mes/labor_report.py).
+        Scoped to shop-floor operators (Operator / Shift Lead groups)."""
+        from Tracker.services.mes.labor_report import operator_hours as _report
+        _, _, start_dt, end_dt = self._hours_range(request)
         return Response({'rows': _report(self.tenant, start_dt, end_dt)})
+
+    @extend_schema(
+        parameters=HOURS_RANGE_PARAMS,
+        responses={200: inline_serializer(
+            name="WorkOrderHoursReport",
+            fields={
+                "rows": inline_serializer(
+                    name="WorkOrderHoursRow",
+                    fields={
+                        "user_id": serializers.IntegerField(),
+                        "name": serializers.CharField(),
+                        "work_order_id": serializers.CharField(allow_null=True),
+                        "work_order": serializers.CharField(),
+                        "direct_hours": serializers.FloatField(),
+                        "rework_hours": serializers.FloatField(),
+                    },
+                    many=True,
+                ),
+            },
+        )},
+    )
+    @action(detail=False, methods=['get'], url_path='work_order_hours')
+    def work_order_hours(self, request):
+        """Operator × work order × direct/rework hours over a date range — the labour
+        hand-off for costing in the system that prices it. Same allocation as Operator
+        Hours, so the per-operator totals agree."""
+        from Tracker.services.mes.labor_report import work_order_hours as _report
+        _, _, start_dt, end_dt = self._hours_range(request)
+        return Response({'rows': _report(self.tenant, start_dt, end_dt)})
+
+    @extend_schema(
+        parameters=HOURS_RANGE_PARAMS,
+        responses={(200, 'text/csv'): OpenApiTypes.BINARY,
+                   (200, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'): OpenApiTypes.BINARY},
+    )
+    @action(detail=False, methods=['get'], url_path=r'work_order_hours/export/(?P<export_format>csv|xlsx)')
+    def work_order_hours_export(self, request, export_format: str):
+        """The work-order hours as CSV or Excel. Behind export_data like every report,
+        and recorded as an export."""
+        import io
+        import pandas as pd
+        from django.http import HttpResponse
+        from Tracker.models import StepExecution
+        from Tracker.services.core.access_log import record_access
+        from Tracker.services.mes.labor_report import work_order_hours as _report
+        from Tracker.services.spreadsheet_safety import csv_safe
+        from Tracker.throttling import get_client_ip
+
+        start_d, end_d, start_dt, end_dt = self._hours_range(request)
+        rows = _report(self.tenant, start_dt, end_dt)
+        columns = ['Work order', 'Operator', 'Direct hours', 'Rework hours']
+        df = pd.DataFrame([{
+            'Work order': r['work_order'], 'Operator': r['name'],
+            'Direct hours': r['direct_hours'], 'Rework hours': r['rework_hours'],
+        } for r in rows], columns=columns)
+        filename = f"work_order_hours_{start_d}_{end_d}.{export_format}"
+        if export_format == 'csv':
+            content = df.map(csv_safe).to_csv(index=False).encode('utf-8-sig')
+            content_type = 'text/csv'
+        else:
+            buf = io.BytesIO()
+            df.map(csv_safe).to_excel(buf, index=False, sheet_name='Work order hours')
+            content = buf.getvalue()
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        record_access(
+            obj=StepExecution, user=request.user, action_type='bulk_export',
+            object_repr=f'Export {export_format}: Work order hours ({len(rows)} rows)',
+            remote_addr=get_client_ip(request),
+            payload={'export_format': export_format, 'row_count': len(rows),
+                     'filename': filename, 'start': str(start_d), 'end': str(end_d)},
+        )
+        return response
 
     @extend_schema(responses={200: inline_serializer(
         name="SourcingRequirements",

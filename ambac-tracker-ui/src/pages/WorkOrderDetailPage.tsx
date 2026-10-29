@@ -17,6 +17,7 @@ import { WorkOrderStatusActions } from "@/components/work-order-status-actions";
 import { StartWorkDialog } from "@/components/workorder/StartWorkDialog";
 import { WorkOrderPartsTable } from "@/components/work-order-parts-table";
 import { WorkOrderMaterialsPanel } from "@/components/workorder/WorkOrderMaterialsPanel";
+import { WorkOrderLaborPanel } from "@/components/workorder/WorkOrderLaborPanel";
 import { WorkOrderDocuments } from "@/components/reports/WorkOrderDocuments";
 import { StatusBadge } from "@/components/flow/overlays/StatusBadge";
 import { cn } from "@/lib/utils";
@@ -215,10 +216,11 @@ export function WorkOrderDetailPage() {
                 {/* Left Panel - Work Order Info & Forms */}
                 <ResizablePanel defaultSize={40} minSize={30} className="p-6">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="overview">Overview</TabsTrigger>
                             <TabsTrigger value="parts">Parts</TabsTrigger>
                             <TabsTrigger value="materials">Materials</TabsTrigger>
+                            <TabsTrigger value="labor">Labor</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="mt-6 h-full overflow-auto">
@@ -242,6 +244,10 @@ export function WorkOrderDetailPage() {
 
                         <TabsContent value="materials" className="mt-6 h-full overflow-auto">
                             <WorkOrderMaterialsPanel workOrderId={workOrderId} />
+                        </TabsContent>
+
+                        <TabsContent value="labor" className="mt-6 h-full overflow-auto">
+                            <WorkOrderLaborPanel workOrderId={workOrderId} />
                         </TabsContent>
                     </Tabs>
                 </ResizablePanel>

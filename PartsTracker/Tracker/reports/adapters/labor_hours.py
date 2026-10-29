@@ -1,7 +1,8 @@
 """Operator Hours adapter.
 
 A payroll-facing labor report: per shop-floor operator, hours worked over a date range —
-on-shift (attendance) and direct (job) hours — from TimeEntry. Reuses the same
+on-shift (attendance, from the clock), direct and rework (derived from the step records) and
+unallocated hours. Reuses the same
 `services.mes.labor_report.operator_hours` logic the on-screen report uses, so the PDF and
 the screen never diverge.
 
@@ -23,6 +24,8 @@ class LaborHoursRow(BaseModel):
     name: str
     on_shift_hours: float
     direct_hours: float
+    rework_hours: float
+    unallocated_hours: float
 
 
 class LaborHoursContext(BaseModel):
@@ -33,6 +36,8 @@ class LaborHoursContext(BaseModel):
     rows: list[LaborHoursRow] = Field(default_factory=list)
     total_on_shift: float
     total_direct: float
+    total_rework: float
+    total_unallocated: float
 
 
 class LaborHoursParamsSerializer(serializers.Serializer):
@@ -70,7 +75,8 @@ class LaborHoursAdapter(ReportAdapter):
 
         rows_raw = operator_hours(tenant, start_dt, end_dt)
         rows = [LaborHoursRow(name=r["name"], on_shift_hours=r["on_shift_hours"],
-                              direct_hours=r["direct_hours"]) for r in rows_raw]
+                              direct_hours=r["direct_hours"], rework_hours=r["rework_hours"],
+                              unallocated_hours=r["unallocated_hours"]) for r in rows_raw]
         return LaborHoursContext(
             generated_date=tenant_today(tenant),
             start_date=start_d, end_date=end_d,
@@ -78,6 +84,8 @@ class LaborHoursAdapter(ReportAdapter):
             rows=rows,
             total_on_shift=round(sum(r.on_shift_hours for r in rows), 2),
             total_direct=round(sum(r.direct_hours for r in rows), 2),
+            total_rework=round(sum(r.rework_hours for r in rows), 2),
+            total_unallocated=round(sum(r.unallocated_hours for r in rows), 2),
         )
 
     def get_filename(self, validated_params) -> str:

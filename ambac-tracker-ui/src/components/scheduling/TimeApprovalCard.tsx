@@ -21,6 +21,9 @@ const pendingTimeOptions = (start: string, end: string) =>
             queries: {
                 approved: false,
                 end_time__isnull: false,
+                // Attendance only: job time is derived from the step records, which
+                // aren't edited, so it has no lines to approve.
+                entry_type__in: ["SHIFT", "BREAK", "LUNCH"],
                 start_time__gte: new Date(`${start}T00:00:00`).toISOString(),
                 start_time__lt: dayAfter(end),
                 ordering: "start_time",
@@ -30,7 +33,8 @@ const pendingTimeOptions = (start: string, end: string) =>
     });
 
 /**
- * Finished time entries in the period that nobody has approved yet, for a shift lead or
+ * Finished attendance entries (shift, break, lunch) in the period that nobody has
+ * approved yet, for a shift lead or
  * production manager to sign off (`approve_timeentry`). Your own entries are listed but
  * can't be approved by you — someone else signs your time.
  */

@@ -45,6 +45,7 @@ import { useNotificationFeed, useMarkNotificationRead } from "@/hooks/notificati
 import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/hooks/shiftNotes";
 import { useWorkQueue, type WorkQueueRow } from "@/hooks/workQueue";
 import { matchKey } from "@/lib/query-filters";
+import { useMyHours } from "@/hooks/useScheduling";
 
 /** The operator's own open runs, scoped to production surface + station. */
 const myWorkloadOptions = (scopedWcIds: string[]) =>
@@ -181,6 +182,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // LIVE — clock state: my one open time entry (end_time is null).
     const queryClient = useQueryClient();
     const { data: openEntryPage, isSuccess: clockKnown } = useQuery(openTimeEntryOptions(user.pk));
+    const { data: myHours } = useMyHours();
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
@@ -197,7 +199,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     // The clock as a one-open-entry state machine (TimeEntry is the labor-costing
     // record): clock in → SHIFT; Break/Lunch close the open entry then open a
     // BREAK/LUNCH pause; End break resumes SHIFT; Clock out closes and reopens
-    // nothing. Clocking onto an actual job (a PRODUCTION entry) happens in the
+    // nothing. Job time isn't clocked: it's derived from the step records the operator
+    // works (services/mes/labor_report.py), so the clock is attendance only.
     // Must-acknowledge shift notes are read at clock-in (audit row 11): clocking in
     // opens them, and the dialog closes once each is acknowledged.
     const [ackAtClockIn, setAckAtClockIn] = useState(false);
@@ -210,7 +213,6 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
             "Clocking out leaves it open for the next shift to pick up. Clock out anyway?")) return;
         clockAction.mutate({ kind: "clockout" });
     };
-    // runtime when the operator Starts/Resumes work.
     const clockAction = useMutation({
         mutationFn: async (
             action:
@@ -232,6 +234,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
         },
         onSuccess: (_data, action) => {
             queryClient.invalidateQueries(matchKey(["time-entries", "open", user.pk]));
+            queryClient.invalidateQueries({ queryKey: ["operator-hours", "mine"] });
             if (action.kind === "clockin") {
                 toast.success("Clocked in.");
                 setAckAtClockIn(true);
@@ -356,6 +359,17 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 />
                 {/* Clock cluster — LIVE: TimeEntry clock_in/out; Break/Lunch pause labor. */}
                 <div className="flex shrink-0 items-center gap-3">
+                    {/* My hours this week — the same figures a lead sees on Operator Hours.
+                        Read-only; a wrong clock time is corrected by a lead. */}
+                    {myHours && (
+                        <span className="hidden text-xs text-muted-foreground lg:inline"
+                            title="This week, from your clock and your step records — the same numbers your lead sees on Operator Hours. Ask a lead to correct a clock time.">
+                            This week: <b className="text-foreground tabular-nums">{myHours.on_shift_hours.toFixed(1)}</b> on shift
+                            {" · "}<b className="text-foreground tabular-nums">{myHours.direct_hours.toFixed(1)}</b> on jobs
+                            {myHours.rework_hours > 0 && <> ({myHours.rework_hours.toFixed(1)} rework)</>}
+                            {myHours.awaiting_approval > 0 && <>{" · "}{myHours.awaiting_approval} awaiting approval</>}
+                        </span>
+                    )}
                     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" /> {clockText}
                     </span>

@@ -75,15 +75,17 @@ class OperatorHoursReportTests(TenantContextMixin, TestCase):
             tenant=self.tenant, user=user, entry_type=kind,
             start_time=start, end_time=start + timedelta(hours=hours))
 
-    def test_on_shift_and_direct_hours(self):
+    def test_on_shift_excludes_breaks_and_clocked_job_time_is_not_direct(self):
+        # Direct is derived from step records (2026-10-29), so a PRODUCTION entry no
+        # longer counts; see test_labor_derived_1029 for the derived figure.
         base = timezone.now() - timedelta(days=1)
         self._entry(self.op, "SHIFT", base, 8)
         self._entry(self.op, "PRODUCTION", base + timedelta(hours=1), 3)
         self._entry(self.op, "BREAK", base + timedelta(hours=4), 0.5)  # excluded
         rows = operator_hours(self.tenant, base - timedelta(days=1), timezone.now())
         row = next(r for r in rows if r['user_id'] == self.op.id)
-        self.assertAlmostEqual(row['on_shift_hours'], 8, delta=0.1)
-        self.assertAlmostEqual(row['direct_hours'], 3, delta=0.1)
+        self.assertAlmostEqual(row['on_shift_hours'], 7.5, delta=0.1)
+        self.assertEqual(row['direct_hours'], 0)
 
     def test_non_operator_excluded(self):
         User = get_user_model()

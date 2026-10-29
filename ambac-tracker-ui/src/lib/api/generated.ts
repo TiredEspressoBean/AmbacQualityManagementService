@@ -5084,6 +5084,8 @@ export type OperatorHoursRow = {
   name: string;
   on_shift_hours: number;
   direct_hours: number;
+  rework_hours: number;
+  unallocated_hours: number;
 };
 export type OptimizationConfig = {
   id: string;
@@ -18620,6 +18622,29 @@ export type WorkOrderBulkAddPartsInputRequest = {
    */
   number | undefined;
 };
+export type WorkOrderHoursReport = {
+  rows: Array<WorkOrderHoursRow>;
+};
+export type WorkOrderHoursRow = {
+  user_id: number;
+  name: string;
+  work_order_id: string | null;
+  work_order: string;
+  direct_hours: number;
+  rework_hours: number;
+};
+export type WorkOrderLabor = {
+  rows: Array<WorkOrderLaborRow>;
+  direct_hours: number;
+  rework_hours: number;
+  planned_hours: number | null;
+};
+export type WorkOrderLaborRow = {
+  user_id: number;
+  name: string;
+  direct_hours: number;
+  rework_hours: number;
+};
 export type WorkOrderMaterialRequirements = {
   rows: Array<WorkOrderMaterialRequirementRow>;
 };
@@ -25017,6 +25042,8 @@ const OperatorHoursRow = z.object({
   name: z.string(),
   on_shift_hours: z.number(),
   direct_hours: z.number(),
+  rework_hours: z.number(),
+  unallocated_hours: z.number(),
 });
 const OperatorHoursReport = z.object({ rows: z.array(OperatorHoursRow) });
 const PlanWorkOrderInputRequest = z.object({
@@ -25142,6 +25169,15 @@ const UnscheduledDiagnosis = z.object({
   lapsing: z.array(LapsingInHorizon),
   work_orders: z.array(UnscheduledWorkOrder),
 });
+const WorkOrderHoursRow = z.object({
+  user_id: z.number().int(),
+  name: z.string(),
+  work_order_id: z.string().nullable(),
+  work_order: z.string(),
+  direct_hours: z.number(),
+  rework_hours: z.number(),
+});
+const WorkOrderHoursReport = z.object({ rows: z.array(WorkOrderHoursRow) });
 const WorkingWindow = z.object({
   start: z.string().datetime({ offset: true }),
   end: z.string().datetime({ offset: true }),
@@ -26838,6 +26874,13 @@ const ClockInRequest = z.object({
   work_center: z.string().uuid().nullish(),
   notes: z.string().optional().default(""),
 });
+const MyHours = z.object({
+  week_start: z.string(),
+  on_shift_hours: z.number(),
+  direct_hours: z.number(),
+  rework_hours: z.number(),
+  awaiting_approval: z.number().int(),
+});
 const OrderViewerInfo = z.object({
   name: z.string(),
   invitation_type: z.string(),
@@ -27656,6 +27699,18 @@ const WorkOrderCreateMakeupResponse = z.object({
   good: z.number().int(),
   scrapped: z.number().int(),
   shortfall: z.number().int(),
+});
+const WorkOrderLaborRow = z.object({
+  user_id: z.number().int(),
+  name: z.string(),
+  direct_hours: z.number(),
+  rework_hours: z.number(),
+});
+const WorkOrderLabor = z.object({
+  rows: z.array(WorkOrderLaborRow),
+  direct_hours: z.number(),
+  rework_hours: z.number(),
+  planned_hours: z.number().nullable(),
 });
 const WorkOrderMakeupStatus = z.object({
   target_good: z.number().int(),
@@ -30145,6 +30200,8 @@ export const schemas = {
   LapsingInHorizon,
   UnscheduledWorkOrder,
   UnscheduledDiagnosis,
+  WorkOrderHoursRow,
+  WorkOrderHoursReport,
   WorkingWindow,
   WorkingWindows,
   ShiftNotePriorityEnum,
@@ -30306,6 +30363,7 @@ export const schemas = {
   PatchedTimeEntryRequest,
   ClockOutInputRequest,
   ClockInRequest,
+  MyHours,
   OrderViewerInfo,
   TrackerShipment,
   CustomerOrder,
@@ -30395,6 +30453,8 @@ export const schemas = {
   WorkOrderBulkAddPartsResponse,
   WorkOrderClearHoldInputRequest,
   WorkOrderCreateMakeupResponse,
+  WorkOrderLaborRow,
+  WorkOrderLabor,
   WorkOrderMakeupStatus,
   WorkOrderMaterialRequirementRow,
   WorkOrderMaterialRequirements,
@@ -53132,9 +53192,9 @@ pegged component WOs offset the requirement, so re-running is idempotent.`,
     method: "get",
     path: "/api/Schedules/operator_hours/",
     alias: "api_Schedules_operator_hours_retrieve",
-    description: `Shop hours worked per operator over a date range, from TimeEntry —
-&#x60;on_shift_hours&#x60; (attendance) and &#x60;direct_hours&#x60; (clocked onto jobs). Scoped to
-shop-floor operators (Operator / Shift Lead groups).`,
+    description: `Shop hours per operator over a date range — on-shift from the attendance clock;
+direct and rework derived from the step records (services/mes/labor_report.py).
+Scoped to shop-floor operators (Operator / Shift Lead groups).`,
     requestFormat: "json",
     parameters: [
       {
@@ -53305,6 +53365,54 @@ otherwise see until the next solve quietly undoes something they thought they ha
 decided.`,
     requestFormat: "json",
     response: z.object({}).partial().passthrough(),
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/work_order_hours/",
+    alias: "api_Schedules_work_order_hours_retrieve",
+    description: `Operator × work order × direct/rework hours over a date range — the labour
+hand-off for costing in the system that prices it. Same allocation as Operator
+Hours, so the per-operator totals agree.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "end",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "start",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: WorkOrderHoursReport,
+  },
+  {
+    method: "get",
+    path: "/api/Schedules/work_order_hours/export/:export_format/",
+    alias: "api_Schedules_work_order_hours_export_retrieve",
+    description: `The work-order hours as CSV or Excel. Behind export_data like every report,
+and recorded as an export.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "end",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "export_format",
+        type: "Path",
+        schema: z.string().regex(/^csv|xlsx$/),
+      },
+      {
+        name: "start",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "get",
@@ -55958,7 +56066,10 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: StepOverride,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "post",
     path: "/api/StepOverrides/:id/approve/",
@@ -55998,10 +56109,7 @@ Supports rollback requests, measurement failures, QA signoff bypasses, etc.`,
       },
     ],
     response: z.object({}).partial().passthrough(),
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepOverrides/metadata/",
@@ -59643,6 +59751,11 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
           .optional(),
       },
       {
+        name: "entry_type__in",
+        type: "Query",
+        schema: z.array(z.string()).optional(),
+      },
+      {
         name: "limit",
         type: "Query",
         schema: z.number().int().optional(),
@@ -59844,6 +59957,16 @@ Creates a new tenant and admin user. Only available in SaaS mode.`,
       },
     ],
     response: z.instanceof(File),
+  },
+  {
+    method: "get",
+    path: "/api/TimeEntries/my_hours/",
+    alias: "api_TimeEntries_my_hours_retrieve",
+    description: `The signed-in person&#x27;s hours this plant week (Monday to now), from the same
+labour logic Operator Hours uses, so the operator sees what the lead sees; plus
+how many of their finished attendance entries this week await approval. Read-only.`,
+    requestFormat: "json",
+    response: MyHours,
   },
   {
     method: "get",
@@ -61109,7 +61232,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/User/:id/",
@@ -61164,10 +61290,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: User,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "delete",
     path: "/api/User/:id/",
@@ -62706,6 +62829,23 @@ route&#x27;s first step to cover the shortfall, and flag the schedule for re-sol
       },
     ],
     response: WorkOrderCreateMakeupResponse,
+  },
+  {
+    method: "get",
+    path: "/api/WorkOrders/:id/labor/",
+    alias: "api_WorkOrders_labor_retrieve",
+    description: `Actual direct and rework hours on this job to date, per operator, derived from
+the step records, beside the route&#x27;s planned operator hours where its steps have
+time standards (services/mes/labor_report.work_order_labor).`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "id",
+        type: "Path",
+        schema: z.string().uuid(),
+      },
+    ],
+    response: WorkOrderLabor,
   },
   {
     method: "get",

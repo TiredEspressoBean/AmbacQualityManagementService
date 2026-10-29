@@ -345,10 +345,12 @@ export function useWorkOrder(id: string | null) {
   return useQuery(workOrderOptions(id));
 }
 
-/** Operator shop-hours over a date range — on-shift (attendance) + direct (job) hours,
- *  from TimeEntry, scoped to shop-floor operators. */
+/** Operator shop-hours over a date range — on-shift from the attendance clock; direct and
+ *  rework derived from the step records (rework is part of direct); unallocated =
+ *  on-shift − direct. Scoped to shop-floor operators. */
 export type OperatorHoursRow = {
   user_id: number; name: string; on_shift_hours: number; direct_hours: number;
+  rework_hours: number; unallocated_hours: number;
 };
 export const operatorHoursOptions = (start: string, end: string) =>
   queryOptions({
@@ -361,6 +363,42 @@ export const operatorHoursOptions = (start: string, end: string) =>
 
 export function useOperatorHours(start: string, end: string) {
   return useQuery(operatorHoursOptions(start, end));
+}
+
+/** Operator × work order × hours over a date range — the labour hand-off for costing. */
+export const workOrderHoursOptions = (start: string, end: string) =>
+  queryOptions({
+    queryKey: ["operator-hours", "by-work-order", start, end],
+    queryFn: async () =>
+      (await api.api_Schedules_work_order_hours_retrieve({ queries: { start, end } })).rows ?? [],
+  });
+
+export function useWorkOrderHours(start: string, end: string) {
+  return useQuery(workOrderHoursOptions(start, end));
+}
+
+/** Actual direct / rework hours on one work order to date, per operator, beside the
+ *  route's planned operator hours (null when no step has a time standard). */
+export const workOrderLaborOptions = (id: string | null) =>
+  queryOptions({
+    queryKey: ["work-order", "labor", id],
+    queryFn: id ? () => api.api_WorkOrders_labor_retrieve({ params: { id } }) : skipToken,
+  });
+
+export function useWorkOrderLabor(id: string | null) {
+  return useQuery(workOrderLaborOptions(id));
+}
+
+/** The signed-in person's hours this plant week — same logic as Operator Hours. */
+export const myHoursOptions = () =>
+  queryOptions({
+    queryKey: ["operator-hours", "mine"],
+    queryFn: () => api.api_TimeEntries_my_hours_retrieve(),
+    staleTime: 60_000,
+  });
+
+export function useMyHours() {
+  return useQuery(myHoursOptions());
 }
 
 /** Sourcing & production requirements — what open demand needs bought (source) or built

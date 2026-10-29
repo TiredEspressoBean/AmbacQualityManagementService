@@ -4,9 +4,23 @@
   "end_date": "2026-08-27",
   "tenant_name": "Demo Company",
   "rows": [
-    {"name": "Alex Operator", "on_shift_hours": 38.5, "direct_hours": 31.2},
-    {"name": "Sam Machinist", "on_shift_hours": 40.0, "direct_hours": 35.8}
+    {
+      "name": "Alex Operator",
+      "on_shift_hours": 38.5,
+      "direct_hours": 31.2,
+      "rework_hours": 2.1,
+      "unallocated_hours": 7.3
+    },
+    {
+      "name": "Sam Machinist",
+      "on_shift_hours": 40.0,
+      "direct_hours": 35.8,
+      "rework_hours": 0.0,
+      "unallocated_hours": 4.2
+    }
   ],
   "total_on_shift": 78.5,
-  "total_direct": 67.0
+  "total_direct": 67.0,
+  "total_rework": 2.1,
+  "total_unallocated": 11.5
 }

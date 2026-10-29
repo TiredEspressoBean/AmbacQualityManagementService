@@ -2902,6 +2902,28 @@ class WorkOrderViewSet(TenantScopedMixin, ListMetadataMixin, CSVImportMixin, Dat
         from Tracker.services.mes.requirements import work_order_material_requirements
         return Response(work_order_material_requirements(self.get_object()))
 
+    @extend_schema(responses={200: inline_serializer(
+        name="WorkOrderLabor",
+        fields={
+            "rows": inline_serializer(name="WorkOrderLaborRow", many=True, fields={
+                "user_id": serializers.IntegerField(),
+                "name": serializers.CharField(),
+                "direct_hours": serializers.FloatField(),
+                "rework_hours": serializers.FloatField(),
+            }),
+            "direct_hours": serializers.FloatField(),
+            "rework_hours": serializers.FloatField(),
+            # Null when no step on the route carries a time standard.
+            "planned_hours": serializers.FloatField(allow_null=True),
+        })})
+    @action(detail=True, methods=["get"], url_path="labor")
+    def labor(self, request, pk=None):
+        """Actual direct and rework hours on this job to date, per operator, derived from
+        the step records, beside the route's planned operator hours where its steps have
+        time standards (services/mes/labor_report.work_order_labor)."""
+        from Tracker.services.mes.labor_report import work_order_labor
+        return Response(work_order_labor(self.get_object()))
+
     @extend_schema(
         request=inline_serializer(
             name="WorkOrderBulkPlaceOnHoldInput",

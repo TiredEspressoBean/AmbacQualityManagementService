@@ -16,6 +16,8 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import viewsets, status, serializers, parsers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
+
+from Tracker.filters import TimeEntryFilter
 from rest_framework.response import Response
 
 from django.db import transaction
@@ -1600,17 +1602,7 @@ class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet
     )
     serializer_class = TimeEntrySerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    # end_time__isnull exposes "my open entry" as a clean server query (the clock
-    # state read the operator home needs), without a client-side history scan.
-    filterset_fields = {
-        'user': ['exact'],
-        'entry_type': ['exact'],
-        'work_order': ['exact'],
-        'approved': ['exact'],
-        'end_time': ['isnull'],
-        # The approval queue reads a pay period.
-        'start_time': ['gte', 'lt'],
-    }
+    filterset_class = TimeEntryFilter
     ordering_fields = ['start_time', 'end_time', 'entry_type']
     ordering = ['-start_time']
     action_permissions = {'approve': ['approve_timeentry']}
@@ -1668,6 +1660,42 @@ class TimeEntryViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet
             entry.notes = request.data['notes']
         entry.save()
         return Response(TimeEntrySerializer(entry, context={'request': request}).data)
+
+    @extend_schema(responses={200: inline_serializer(
+        name="MyHours",
+        fields={
+            "week_start": serializers.DateField(),
+            "on_shift_hours": serializers.FloatField(),
+            "direct_hours": serializers.FloatField(),
+            "rework_hours": serializers.FloatField(),
+            "awaiting_approval": serializers.IntegerField(),
+        })})
+    @action(detail=False, methods=['get'], url_path='my_hours')
+    def my_hours(self, request):
+        """The signed-in person's hours this plant week (Monday to now), from the same
+        labour logic Operator Hours uses, so the operator sees what the lead sees; plus
+        how many of their finished attendance entries this week await approval. Read-only."""
+        from datetime import datetime, time, timedelta
+        from Tracker.services.core.clock import plant_tz, tenant_today
+        from Tracker.services.mes.labor_report import ATTENDANCE_TYPES, operator_hours
+
+        today = tenant_today(self.tenant)
+        week_start = today - timedelta(days=today.weekday())
+        start_dt = timezone.make_aware(datetime.combine(week_start, time.min), plant_tz(self.tenant))
+        end_dt = start_dt + timedelta(days=7)
+        rows = operator_hours(self.tenant, start_dt, end_dt, user_ids={request.user.id})
+        row = rows[0] if rows else {}
+        pending = TimeEntry.objects.filter(
+            tenant=self.tenant, user=request.user, archived=False, approved=False,
+            end_time__isnull=False, entry_type__in=ATTENDANCE_TYPES,
+            start_time__gte=start_dt, start_time__lt=end_dt).count()
+        return Response({
+            'week_start': week_start,
+            'on_shift_hours': row.get('on_shift_hours', 0.0),
+            'direct_hours': row.get('direct_hours', 0.0),
+            'rework_hours': row.get('rework_hours', 0.0),
+            'awaiting_approval': pending,
+        })
 
     @extend_schema(
         request=inline_serializer(name="ApproveTimeInput", fields={}),

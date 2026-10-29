@@ -12011,9 +12011,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Shop hours worked per operator over a date range, from TimeEntry —
-         *     `on_shift_hours` (attendance) and `direct_hours` (clocked onto jobs). Scoped to
-         *     shop-floor operators (Operator / Shift Lead groups).
+         * @description Shop hours per operator over a date range — on-shift from the attendance clock;
+         *     direct and rework derived from the step records (services/mes/labor_report.py).
+         *     Scoped to shop-floor operators (Operator / Shift Lead groups).
          */
         get: operations["api_Schedules_operator_hours_retrieve"];
         put?: never;
@@ -12208,6 +12208,47 @@ export interface paths {
          *     decided.
          */
         get: operations["api_Schedules_violations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/work_order_hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Operator × work order × direct/rework hours over a date range — the labour
+         *     hand-off for costing in the system that prices it. Same allocation as Operator
+         *     Hours, so the per-operator totals agree.
+         */
+        get: operations["api_Schedules_work_order_hours_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/Schedules/work_order_hours/export/{export_format}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The work-order hours as CSV or Excel. Behind export_data like every report,
+         *     and recorded as an export.
+         */
+        get: operations["api_Schedules_work_order_hours_export_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -15286,6 +15327,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/TimeEntries/my_hours/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The signed-in person's hours this plant week (Monday to now), from the same
+         *     labour logic Operator Hours uses, so the operator sees what the lead sees; plus
+         *     how many of their finished attendance entries this week await approval. Read-only.
+         */
+        get: operations["api_TimeEntries_my_hours_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/TrackerOrders/": {
         parameters: {
             query?: never;
@@ -16977,6 +17039,27 @@ export interface paths {
          *     route's first step to cover the shortfall, and flag the schedule for re-solve.
          */
         post: operations["api_WorkOrders_create_makeup_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/WorkOrders/{id}/labor/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Actual direct and rework hours on this job to date, per operator, derived from
+         *     the step records, beside the route's planned operator hours where its steps have
+         *     time standards (services/mes/labor_report.work_order_labor).
+         */
+        get: operations["api_WorkOrders_labor_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -26879,6 +26962,17 @@ export interface components {
             rippled_count: number;
             rippled_task_ids: string[];
         };
+        MyHours: {
+            /** Format: date */
+            week_start: string;
+            /** Format: double */
+            on_shift_hours: number;
+            /** Format: double */
+            direct_hours: number;
+            /** Format: double */
+            rework_hours: number;
+            awaiting_approval: number;
+        };
         NcrAgingResponse: {
             data: {
                 [key: string]: unknown;
@@ -26957,6 +27051,10 @@ export interface components {
             on_shift_hours: number;
             /** Format: double */
             direct_hours: number;
+            /** Format: double */
+            rework_hours: number;
+            /** Format: double */
+            unallocated_hours: number;
         };
         /**
          * @description The tenant's solver knobs — read + PATCH from the scheduling settings dialog.
@@ -40046,6 +40144,36 @@ export interface components {
             cleared_at: string;
             cleared_by_name: string | null;
             clear_notes: string;
+        };
+        WorkOrderHoursReport: {
+            rows: components["schemas"]["WorkOrderHoursRow"][];
+        };
+        WorkOrderHoursRow: {
+            user_id: number;
+            name: string;
+            work_order_id: string | null;
+            work_order: string;
+            /** Format: double */
+            direct_hours: number;
+            /** Format: double */
+            rework_hours: number;
+        };
+        WorkOrderLabor: {
+            rows: components["schemas"]["WorkOrderLaborRow"][];
+            /** Format: double */
+            direct_hours: number;
+            /** Format: double */
+            rework_hours: number;
+            /** Format: double */
+            planned_hours: number | null;
+        };
+        WorkOrderLaborRow: {
+            user_id: number;
+            name: string;
+            /** Format: double */
+            direct_hours: number;
+            /** Format: double */
+            rework_hours: number;
         };
         /** @description Lightweight serializer for work order list views - avoids N+1 queries. */
         WorkOrderList: {
@@ -62248,6 +62376,57 @@ export interface operations {
             };
         };
     };
+    api_Schedules_work_order_hours_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Range end (inclusive). Default: today. */
+                end?: string;
+                /** @description Range start (inclusive). Default: 7 days ago. */
+                start?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderHoursReport"];
+                };
+            };
+        };
+    };
+    api_Schedules_work_order_hours_export_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Range end (inclusive). Default: today. */
+                end?: string;
+                /** @description Range start (inclusive). Default: 7 days ago. */
+                start?: string;
+            };
+            header?: never;
+            path: {
+                export_format: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+        };
+    };
     api_Schedules_working_windows_retrieve: {
         parameters: {
             query?: never;
@@ -67855,6 +68034,8 @@ export interface operations {
                  *     * `LUNCH` - Lunch
                  */
                 entry_type?: "BREAK" | "DOWNTIME" | "INDIRECT" | "LUNCH" | "PRODUCTION" | "REWORK" | "SETUP" | "SHIFT";
+                /** @description Multiple values may be separated by commas. */
+                entry_type__in?: string[];
                 /** @description Number of results to return per page. */
                 limit?: number;
                 /** @description The initial index from which to return the results. */
@@ -68105,6 +68286,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_TimeEntries_my_hours_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyHours"];
                 };
             };
         };
@@ -71452,6 +71652,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkOrderCreateMakeupResponse"];
+                };
+            };
+        };
+    };
+    api_WorkOrders_labor_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A UUID string identifying this Work Order. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderLabor"];
                 };
             };
         };

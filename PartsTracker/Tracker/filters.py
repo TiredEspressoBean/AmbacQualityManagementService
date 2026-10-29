@@ -5,7 +5,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from django.db.models import Q
 import django_filters
 
-from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies, Documents
+from .models import Parts, Orders, Steps, PartTypes, WorkOrder, User, Companies, Documents, TimeEntry
 
 
 class CharInFilter(BaseInFilter, CharFilter):
@@ -244,3 +244,24 @@ class DocumentFilter(TenantFilterMixin, django_filters.FilterSet):
             queryset = queryset.filter(object_id=str(oid))
 
         return queryset
+
+
+class TimeEntryFilter(django_filters.FilterSet):
+    """TimeEntry list filters. `entry_type__in` takes repeated values (the client sends
+    arrays as `?entry_type__in=SHIFT&entry_type__in=BREAK`) — the approval card reads
+    attendance only."""
+    entry_type__in = CharInFilter(field_name='entry_type', lookup_expr='in',
+                                  widget=QueryArrayWidget())
+
+    class Meta:
+        model = TimeEntry
+        fields = {
+            'user': ['exact'],
+            'entry_type': ['exact'],
+            'work_order': ['exact'],
+            'approved': ['exact'],
+            # "My open entry" — the clock-state read the operator home needs.
+            'end_time': ['isnull'],
+            # The approval queue reads a pay period.
+            'start_time': ['gte', 'lt'],
+        }

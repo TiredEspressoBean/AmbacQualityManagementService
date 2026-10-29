@@ -5,8 +5,9 @@ realistic prior work week: for each shop-floor user (Operator / Shift Lead
 groups), each workday gets the clock state machine's shape —
   SHIFT   07:00–11:30 and 12:00–15:30  (attendance, split around lunch)
   LUNCH   11:30–12:00
-  PRODUCTION blocks inside the shift    (time clocked onto live WOs at the
-                                         user's primary station's steps)
+Attendance only: direct (job) hours are derived from the step records, never clocked
+(services/mes/labor_report.py), so no PRODUCTION entries — the demo shows what a real
+shop gets.
 Deterministic per (user, day) and idempotent via get_or_create on
 (tenant, user, entry_type, start_time).
 """
@@ -14,7 +15,7 @@ from datetime import datetime, timedelta
 
 from django.utils import timezone
 
-from Tracker.models import TimeEntry, User, WorkOrder
+from Tracker.models import TimeEntry, User
 
 from ..base import BaseSeeder
 
@@ -22,7 +23,7 @@ _FLOOR_GROUPS = ("Operator", "Shift Lead")
 
 
 class DemoTimeEntrySeeder(BaseSeeder):
-    """Seeds a prior work week of SHIFT/LUNCH/PRODUCTION entries for floor staff."""
+    """Seeds a prior work week of SHIFT/BREAK/LUNCH entries for floor staff."""
 
     def seed(self):
         self.log("Creating demo labor time entries (prior work week)...")
@@ -36,10 +37,6 @@ class DemoTimeEntrySeeder(BaseSeeder):
             u for u in User.objects.filter(tenant=self.tenant)
             if set(u.get_tenant_group_names(tenant=self.tenant) or []) & set(_FLOOR_GROUPS)
         ]
-        live_wos = list(
-            WorkOrder.objects.filter(tenant=self.tenant, workorder_status='IN_PROGRESS')
-            .select_related('process')[:6]
-        )
         if not floor_users:
             self.log("  Warning: no floor users, skipping time entries", warning=True)
             return {'entries': 0}
@@ -66,19 +63,15 @@ class DemoTimeEntrySeeder(BaseSeeder):
 
         created = 0
 
-        def entry(user, etype, start, end, **ctx):
+        def entry(user, etype, start, end):
             nonlocal created
             _, was_created = TimeEntry.objects.get_or_create(
                 tenant=self.tenant, user=user, entry_type=etype, start_time=start,
-                defaults={'end_time': end, **ctx},
+                defaults={'end_time': end},
             )
             created += int(was_created)
 
         for idx, user in enumerate(sorted(floor_users, key=lambda u: u.username)):
-            # A user's primary station steps drive the PRODUCTION context.
-            membership = user.work_center_memberships.filter(is_primary=True).first()
-            wc = membership.work_center if membership else None
-            step = wc.steps.filter(is_current_version=True).first() if wc else None
             for di, day in enumerate(days):
                 # One user is out one day (PTO-shaped gap keeps totals uneven).
                 if idx == 1 and di == 3:
@@ -91,17 +84,6 @@ class DemoTimeEntrySeeder(BaseSeeder):
                 entry(user, 'SHIFT', at(day, 9, 15), at(day, 12, 0))
                 entry(user, 'LUNCH', at(day, 12, 0), at(day, 12, 30))
                 entry(user, 'SHIFT', at(day, 12, 30), at(day, 15, 30))
-                # Direct time: production blocks on live jobs (~realistic
-                # utilization), staggered per user/day.
-                if live_wos:
-                    wo_a = live_wos[(idx + di) % len(live_wos)]
-                    wo_b = live_wos[(idx + di + 1) % len(live_wos)]
-                    entry(user, 'PRODUCTION', at(day, 7, 15), at(day, 8, 55),
-                          work_order=wo_a, step=step, work_center=wc)
-                    entry(user, 'PRODUCTION', at(day, 9, 20), at(day, 11, 45),
-                          work_order=wo_a, step=step, work_center=wc)
-                    entry(user, 'PRODUCTION', at(day, 12, 40), at(day, 14, 30 + (idx % 3) * 10),
-                          work_order=wo_b, step=step, work_center=wc)
 
         self.log(f"  Time entries: {created} created for {len(floor_users)} floor users over {len(days)} days")
         return {'entries': created, 'users': len(floor_users)}

@@ -29332,9 +29332,9 @@ paths:
     get:
       operationId: api_Schedules_operator_hours_retrieve
       description: |-
-        Shop hours worked per operator over a date range, from TimeEntry —
-        `on_shift_hours` (attendance) and `direct_hours` (clocked onto jobs). Scoped to
-        shop-floor operators (Operator / Shift Lead groups).
+        Shop hours per operator over a date range — on-shift from the attendance clock;
+        direct and rework derived from the step records (services/mes/labor_report.py).
+        Scoped to shop-floor operators (Operator / Shift Lead groups).
       parameters:
       - in: query
         name: end
@@ -29622,6 +29622,80 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/Schedules/work_order_hours/:
+    get:
+      operationId: api_Schedules_work_order_hours_retrieve
+      description: |-
+        Operator × work order × direct/rework hours over a date range — the labour
+        hand-off for costing in the system that prices it. Same allocation as Operator
+        Hours, so the per-operator totals agree.
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: 'Range end (inclusive). Default: today.'
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: 'Range start (inclusive). Default: 7 days ago.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderHoursReport'
+          description: ''
+  /api/Schedules/work_order_hours/export/{export_format}/:
+    get:
+      operationId: api_Schedules_work_order_hours_export_retrieve
+      description: |-
+        The work-order hours as CSV or Excel. Behind export_data like every report,
+        and recorded as an export.
+      parameters:
+      - in: query
+        name: end
+        schema:
+          type: string
+          format: date
+        description: 'Range end (inclusive). Default: today.'
+      - in: path
+        name: export_format
+        schema:
+          type: string
+          pattern: ^csv|xlsx$
+        required: true
+      - in: query
+        name: start
+        schema:
+          type: string
+          format: date
+        description: 'Range start (inclusive). Default: 7 days ago.'
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/Schedules/working_windows/:
     get:
@@ -37675,6 +37749,15 @@ paths:
           * `SHIFT` - On Shift
           * `BREAK` - Break
           * `LUNCH` - Lunch
+      - in: query
+        name: entry_type__in
+        schema:
+          type: array
+          items:
+            type: string
+        description: Multiple values may be separated by commas.
+        explode: false
+        style: form
       - name: limit
         required: false
         in: query
@@ -37989,6 +38072,25 @@ paths:
                 type: string
                 format: binary
                 description: File download
+          description: ''
+  /api/TimeEntries/my_hours/:
+    get:
+      operationId: api_TimeEntries_my_hours_retrieve
+      description: |-
+        The signed-in person's hours this plant week (Monday to now), from the same
+        labour logic Operator Hours uses, so the operator sees what the lead sees; plus
+        how many of their finished attendance entries this week await approval. Read-only.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyHours'
           description: ''
   /api/TrackerOrders/:
     get:
@@ -42299,6 +42401,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkOrderCreateMakeupResponse'
+          description: ''
+  /api/WorkOrders/{id}/labor/:
+    get:
+      operationId: api_WorkOrders_labor_retrieve
+      description: |-
+        Actual direct and rework hours on this job to date, per operator, derived from
+        the step records, beside the route's planned operator hours where its steps have
+        time standards (services/mes/labor_report.work_order_labor).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this Work Order.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkOrderLabor'
           description: ''
   /api/WorkOrders/{id}/makeup_status/:
     get:
@@ -62378,6 +62507,29 @@ components:
       - id
       - rippled_count
       - rippled_task_ids
+    MyHours:
+      type: object
+      properties:
+        week_start:
+          type: string
+          format: date
+        on_shift_hours:
+          type: number
+          format: double
+        direct_hours:
+          type: number
+          format: double
+        rework_hours:
+          type: number
+          format: double
+        awaiting_approval:
+          type: integer
+      required:
+      - awaiting_approval
+      - direct_hours
+      - on_shift_hours
+      - rework_hours
+      - week_start
     NcrAgingResponse:
       type: object
       properties:
@@ -62556,10 +62708,18 @@ components:
         direct_hours:
           type: number
           format: double
+        rework_hours:
+          type: number
+          format: double
+        unallocated_hours:
+          type: number
+          format: double
       required:
       - direct_hours
       - name
       - on_shift_hours
+      - rework_hours
+      - unallocated_hours
       - user_id
     OptimizationConfig:
       type: object
@@ -87657,6 +87817,80 @@ components:
       - placed_at
       - placed_by_name
       - reason
+    WorkOrderHoursReport:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderHoursRow'
+      required:
+      - rows
+    WorkOrderHoursRow:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        name:
+          type: string
+        work_order_id:
+          type: string
+          nullable: true
+        work_order:
+          type: string
+        direct_hours:
+          type: number
+          format: double
+        rework_hours:
+          type: number
+          format: double
+      required:
+      - direct_hours
+      - name
+      - rework_hours
+      - user_id
+      - work_order
+      - work_order_id
+    WorkOrderLabor:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderLaborRow'
+        direct_hours:
+          type: number
+          format: double
+        rework_hours:
+          type: number
+          format: double
+        planned_hours:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - direct_hours
+      - planned_hours
+      - rework_hours
+      - rows
+    WorkOrderLaborRow:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        name:
+          type: string
+        direct_hours:
+          type: number
+          format: double
+        rework_hours:
+          type: number
+          format: double
+      required:
+      - direct_hours
+      - name
+      - rework_hours
+      - user_id
     WorkOrderList:
       type: object
       description: Lightweight serializer for work order list views - avoids N+1 queries.
