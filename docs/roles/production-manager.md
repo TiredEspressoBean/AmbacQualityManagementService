@@ -8,11 +8,11 @@ production operations in uqmes.
     are covered in the [Planner Guide](planner.md). This guide covers the
     production side.
 
-!!! tip "Demo Account"
-    In demo mode, log in as **Jennifer Walsh** (jennifer.mgr@demo.ambac.com).
+!!! tip "Your Home"
     Home opens on what is at risk — jobs going late, parts in quarantine, CAPAs
     pending verification, first pass yield, supplier qualifications expiring and
-    competency coverage.
+    competency coverage. To practise against a practice shop, follow the
+    [Production Manager training track](../training/tracks/production-manager.md).
 
     Orders, work orders and approvals move with every reseed and every
     walkthrough, so read the numbers Home gives you rather than looking for a

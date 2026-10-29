@@ -59,8 +59,8 @@ An external company or organization that places orders. Customers can have porta
 A system seeded with a **demonstration dataset** — sample orders, parts, work
 orders, quality records and user accounts — so the product can be explored and
 training exercises performed against realistic data. Record numbers quoted in
-the documentation (`ORD-2024-0042`, `INJ-0042-017`, `CAPA-2024-003`) come from
-it, and exist only where it has been loaded. See
+the training material (`ORD-2024-0042`, `INJ-0042-017`, `CAPA-2024-003`) come
+from it, and exist only where it has been loaded. See
 [Training Data Setup](../training/running-training/training-data-setup.md).
 
 ### Digital Work Instructions (DWI)

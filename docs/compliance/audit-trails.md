@@ -2,7 +2,7 @@
 
 Comprehensive audit logging for regulatory compliance.
 
-!!! example "Demo: following one record"
+!!! example "Following one record"
     Open **Admin > Audit Log** and filter to a CAPA to see what a complete
     history looks like — who raised it, every field change with its before and
     after values, task assignments, the RCA, and the approval responses, each

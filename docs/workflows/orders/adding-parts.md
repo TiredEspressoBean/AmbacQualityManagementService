@@ -44,8 +44,8 @@ ERP ID = <work order ERP ID>-<part type's ID prefix><counter padded to 4 digits>
 ```
 
 The counter starts at the **ERP ID Start** you entered and increments by one per
-part. On work order `WO-2024-0038-A`, a part type with prefix `WA` and an ERP ID
-Start of 1 gives `WO-2024-0038-A-WA0001`, `WO-2024-0038-A-WA0002`, and so on. A
+part. On work order `WO-1234`, a part type with prefix `WA` and an ERP ID
+Start of 1 gives `WO-1234-WA0001`, `WO-1234-WA0002`, and so on. A
 part type with no prefix configured falls back to `P`.
 
 You do not type the prefix — set it on the part type.

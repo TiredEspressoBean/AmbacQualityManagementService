@@ -36,13 +36,11 @@ defense, aerospace, automotive and general manufacturing.
     **ISO 13485**, **EU MDR** — are not design goals, and no conformance with
     them is claimed or assessed anywhere in this documentation.
 
-!!! tip "Demo: Compliance Evidence"
-    In demo mode, you can see compliance features in action:
-
-    - **Audit trail**: View CAPA-2024-003's complete history with user attribution and timestamps
-    - **Approval workflows**: APR-2024-0015 shows multi-step approval with electronic signatures
-    - **RBAC enforcement**: Customer Tom Bradley can only view Midwest Fleet orders (tenant isolation)
-    - **Training compliance**: Dave Wilson blocked from Flow Testing due to expired certification
+!!! tip "Compliance evidence you can show"
+    - **Audit trail**: any record's complete history, with who changed what and when
+    - **Approval workflows**: an approval request's responses, each with its signer, time and signature
+    - **Access control**: a customer user sees only the orders they are the customer or a viewer of, and what hangs off them
+    - **Training compliance**: an operator whose certification has lapsed is stopped at the step that needs it, unless a supervisor authorises it with a reason
     - **Calibration**: a gauge that is out of service or whose calibration
       **failed** is refused on every path that records a reading; one merely
       **overdue** records the reading and warns —

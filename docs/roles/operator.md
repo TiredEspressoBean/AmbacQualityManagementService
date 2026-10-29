@@ -2,13 +2,9 @@
 
 This guide is for production floor operators who move parts through manufacturing steps and record production data in uqmes.
 
-!!! tip "Demo Account"
-    In demo mode, log in as **Mike Rodriguez** (mike.ops@demo.ambac.com) to work
-    the operator surface against a seeded queue.
-
-    Which parts are waiting, and at which steps, changes every time the demo is
-    reseeded or anyone walks it — so follow what Home actually shows you rather
-    than looking for a particular serial.
+!!! tip "Practising"
+    To work the operator surface against a practice shop, follow the
+    [Operator training track](../training/tracks/operator.md).
 
 ## Your Role
 
