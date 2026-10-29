@@ -199,7 +199,9 @@ A note is not a quality record: a part that looked wrong goes in a quality repor
 
 Then approve the shift's hours: **Scheduling** > **Operator Hours**. It shows each
 operator's on-shift, direct, rework and unallocated hours. Nobody clocks onto a job:
-direct time comes from the steps they worked, counted while they were on shift.
+direct time comes from the steps they worked, counted while they were on shift. A
+step someone left running stops counting at their next clock-out, so a run left open
+overnight isn't charged to the next shift.
 **Awaiting approval** lists each finished shift, break and lunch entry. **Approve** one,
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 

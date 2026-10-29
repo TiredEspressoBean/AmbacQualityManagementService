@@ -66,7 +66,8 @@ Log in as Mike. Your home page says *Not clocked in*.
 **Break**, **Lunch** and **Clock out** are beside the clock. On a break the clock
 reads *On break*, with **End break** to come back. **Clock out** ends the shift. If a
 step of yours is still running it asks first, because clocking out leaves it open for
-the next shift, so finish or hand it over before you go. Your lead approves your hours.
+the next shift, so finish or hand it over before you go. Its time on the job stops
+counting when you clock out. Your lead approves your hours.
 
 On a large screen the clock also shows your week so far: *This week: … on shift · …
 on jobs*, with rework and entries awaiting approval when there are any. You don't
@@ -253,6 +254,17 @@ had cooled. The reading needs taking again.
 
 A completed record is evidence: only quality can void one, and the original stays on
 file.
+
+Two things on your home page are yours, and neither voids anything:
+
+- **The step you just finished needs doing again.** Home shows your last one:
+  *Finished … ago: &lt;step&gt; · &lt;part&gt;*. **Undo** sends the part back to that step,
+  with your reason, until someone finishes the next step. Past that, or where the
+  step needs approval, it reads **Undo (needs approval)**: **Send for approval** asks
+  QA, and the part moves back once they approve. What you recorded stays on file
+  either way; voiding it is still QA's.
+- **Something's wrong with a part.** **Flag** beside it opens a new quality report
+  with the part, the step and you as **Detected By** already filled in.
 
 ---
 

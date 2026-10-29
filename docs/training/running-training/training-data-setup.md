@@ -360,11 +360,10 @@ including the instance's whole audit log, so only on a training instance.
 
 ### Option B: Reset Specific Records
 
-For targeted reset:
-
-1. Delete completed exercises (orders, quality reports)
-2. Reset part statuses to earlier steps
-3. Reopen closed CAPAs
+There isn't one. Exercises write evidence, and evidence can't be put back: a recorded
+quality report is final, a closed CAPA can't be edited or reopened by hand, and a
+part with an open disposition changes status only through it. Regenerate (Option A)
+instead.
 
 ### Option C: Database Restore
 
