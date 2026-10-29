@@ -70,7 +70,7 @@ export function EditTrainingRecordActionCell({ recordId }: Props) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Training Record?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. The training record will be permanently deleted.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

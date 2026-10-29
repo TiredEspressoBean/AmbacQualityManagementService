@@ -70,7 +70,7 @@ export function EditCalibrationRecordActionCell({ recordId }: Props) {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Calibration Record?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management. The calibration record will be permanently deleted.
+                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

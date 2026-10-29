@@ -69,8 +69,8 @@ export function EditProcessActionsCell({processId}: Props) {
                         Delete this process?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                        It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
-                        The process will be removed.
+                        It&rsquo;s archived, not erased: its history is kept, but it leaves the process list and
+                        can&rsquo;t be brought back from there. To retire a routing that&rsquo;s in use, deprecate it instead.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

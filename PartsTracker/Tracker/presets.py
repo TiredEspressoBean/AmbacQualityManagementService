@@ -362,7 +362,7 @@ AUTHORING_PERMISSIONS = [
     'add_documenttype', 'change_documenttype', 'delete_documenttype',
     # Approval workflow authoring
     'add_approvaltemplate', 'change_approvaltemplate', 'delete_approvaltemplate',
-    'create_approval_template', 'manage_approval_workflow',
+    'create_approval_template',
     # Training program definitions
     'add_trainingtype', 'change_trainingtype', 'delete_trainingtype',
     'add_trainingrequirement', 'change_trainingrequirement', 'delete_trainingrequirement',

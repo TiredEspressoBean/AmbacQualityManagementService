@@ -3034,7 +3034,6 @@ class ApprovalTemplate(SecureModel):
         verbose_name_plural = 'Approval Templates'
         permissions = [
             ("create_approval_template", "Can create approval templates"),
-            ("manage_approval_workflow", "Can manage approval workflows"),
         ]
         constraints = [
             models.UniqueConstraint(

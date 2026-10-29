@@ -87,8 +87,9 @@ export function EditDocumentsActionsCell({ documentId }: Props) {
                             Delete Document #{documentId}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            It&rsquo;s archived, not erased: its history is kept and it can be restored from Data Management.
-                            The document will be removed from the associated process.
+                            It&rsquo;s archived, not erased: its history is kept, but it leaves the document list and
+                            whatever it&rsquo;s attached to, and can&rsquo;t be brought back from the list. To retire a
+                            document that&rsquo;s in effect, make it obsolete instead.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
