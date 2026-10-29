@@ -112,6 +112,9 @@ operator already makes by starting and completing work:
 - A step's time runs from when the operator started it until the part left the
   step — or until now, while it is still running. It is credited to the operator
   who claimed it, or to whoever completed it.
+- A step left running stops counting at that operator's **first clock-out**
+  after it started, so a run left open overnight doesn't count against the next
+  shift. Going on break or lunch is a pause, not a clock-out.
 - It counts only while that operator was **on shift**: no clock-in, no direct
   time; breaks and lunch are excluded.
 - Work running at the same time is **shared, not added**. A lot at one step is
