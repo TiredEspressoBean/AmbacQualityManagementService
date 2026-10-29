@@ -155,6 +155,17 @@ class ApprovalResponseTriggerTests(_ApprovalFixture):
             with transaction.atomic():
                 ApprovalResponse.objects.filter(pk=self.response.pk).update(decision="REJECTED")
 
+    def test_a_past_decision_is_dated_as_it_is_recorded(self):
+        """What the seeds do: no UPDATE afterward, so the trigger never sees one."""
+        from django.utils import timezone
+        from Tracker.services.core.approval import submit_approval_response
+        when = timezone.now() - datetime.timedelta(days=10)
+        second = User.objects.get(username="ce-approver-2")
+        response = submit_approval_response(self.request_, second, "APPROVED", decided_at=when)
+        response.refresh_from_db()
+        self.assertEqual(response.decision_date, when)
+        self.assertEqual(response.created_at, when)
+
     def test_a_response_is_not_deleted(self):
         with self.assertRaisesMessage(DatabaseError, "COMPLIANCE VIOLATION"):
             with transaction.atomic():

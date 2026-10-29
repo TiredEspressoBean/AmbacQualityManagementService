@@ -574,6 +574,7 @@ def submit_approval_response(
     password: str | None = None,
     ip_address: str | None = None,
     require_signature: bool = False,
+    decided_at=None,
 ) -> ApprovalResponse:
     """Record an approval decision with signature capture + password
     re-auth. After creating the response, recomputes the parent
@@ -582,7 +583,8 @@ def submit_approval_response(
     A rejection always needs its reason. `require_signature` makes an approval
     need a drawn signature and the approver's password: the API passes it, since a
     person approving through it signs. In-process callers (seeds) record what they
-    did, which is NONE when no password was given.
+    did, which is NONE when no password was given. `decided_at` is for seeds
+    recording a past decision; the API never passes it.
 
     Raises:
         PermissionDenied: approver is not authorized for this request.
@@ -660,12 +662,14 @@ def submit_approval_response(
             edited_by=approver)
         for k, v in fields.items():
             setattr(existing, k, v)
-        existing.decision_date = timezone.now()
+        existing.decision_date = decided_at or timezone.now()
         existing.save()
         response = existing
     else:
+        when = decided_at or timezone.now()
         response = ApprovalResponse.objects.create(
-            approval_request=approval_request, approver=approver, **fields)
+            approval_request=approval_request, approver=approver,
+            decision_date=when, created_at=when, **fields)
 
     update_approval_status(approval_request)
     return response

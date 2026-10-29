@@ -603,19 +603,19 @@ class TrainingExercisesSeeder(BaseSeeder):
         herself — allowed for a CAPA when nobody else is eligible, with the comment as
         her justification, and flagged self-approved on the record."""
         from datetime import timedelta
-        from Tracker.models import ApprovalRequest, ApprovalDecision, ApprovalResponse, User
+        from Tracker.models import ApprovalRequest, ApprovalDecision, User
         from Tracker.services.core.approval import submit_approval_response
         request = ApprovalRequest.objects.filter(object_id=str(capa.id), status='PENDING').first()
         approver = User.objects.filter(email='maria.qa@demo.ambac.com').first()
         if request is None or approver is None or not request.can_approve(approver):
             self.log(f"  Warning: no go-ahead given for {capa.capa_number}", warning=True)
             return
-        response = submit_approval_response(
+        from django.utils import timezone
+        # Dated as it is recorded: the response is immutable once written.
+        when = timezone.now() - timedelta(days=10)
+        submit_approval_response(
             request, approver, ApprovalDecision.APPROVED,
             comments='Tooling plan and containment are adequate; proceed.',
-            signature_meaning='Approved')
-        from django.utils import timezone
-        when = timezone.now() - timedelta(days=10)
-        ApprovalResponse.objects.filter(pk=response.pk).update(decision_date=when, created_at=when)
+            signature_meaning='Approved', decided_at=when)
         ApprovalRequest.objects.filter(pk=request.pk).update(completed_at=when)
         CAPA.objects.filter(pk=capa.pk).update(approved_at=when)

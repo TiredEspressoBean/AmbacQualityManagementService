@@ -2944,7 +2944,10 @@ class ApprovalResponse(SecureModel):
     approver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='approval_responses')
 
     decision = models.CharField(max_length=20, choices=ApprovalDecision.choices)
-    decision_date = models.DateTimeField(auto_now_add=True)
+    # Set at insert and never updated afterward (the immutability trigger refuses
+    # that). A default rather than auto_now_add, so a seed can record a past
+    # decision as it's made.
+    decision_date = models.DateTimeField(default=timezone.now, editable=False)
     comments = models.TextField(null=True, blank=True)
 
     # Delegation

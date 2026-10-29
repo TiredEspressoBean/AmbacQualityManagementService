@@ -332,13 +332,14 @@ class DemoDocumentsSeeder(BaseSeeder):
                 object_id=str(capa.id), status='PENDING').first() if capa else None
             if request is None or approver is None:
                 continue
-            response = submit_approval_response(
+            # Dated as it is recorded: the response is immutable once written.
+            when = self.today - timedelta(days=go_ahead['days_ago'])
+            submit_approval_response(
                 request, approver, ApprovalDecision.APPROVED,
                 comments='Plan and containment are adequate; proceed.',
                 signature_meaning='Approved',
+                decided_at=when,
             )
-            when = self.today - timedelta(days=go_ahead['days_ago'])
-            ApprovalResponse.objects.filter(pk=response.pk).update(decision_date=when, created_at=when)
             ApprovalRequest.objects.filter(pk=request.pk).update(completed_at=when)
             CAPA.objects.filter(pk=capa.pk).update(approved_at=when)
 
@@ -635,9 +636,10 @@ class DemoDocumentsSeeder(BaseSeeder):
                     decision_str = resp_data['decision'].upper()
                     decision = getattr(ApprovalDecision, decision_str, ApprovalDecision.APPROVED)
 
-                    # Use update_or_create since (approval_request, approver) is unique
-                    # EXPLICITLY set ALL fields
-                    response, _ = ApprovalResponse.objects.update_or_create(
+                    # (approval_request, approver) is unique. get_or_create, not
+                    # update_or_create: a response on record is immutable (the
+                    # trigger refuses even a no-op UPDATE), so a re-run keeps it.
+                    response, _ = ApprovalResponse.objects.get_or_create(
                         tenant=self.tenant,
                         approval_request=ar,
                         approver=approver,
