@@ -40,9 +40,12 @@ class SamplingFallbackApplier:
             context_info = "Using fallback ruleset"
             ruleset_type = "FALLBACK"
         else:
+            # Keyed by the step alone. A step row is shared by every process that uses
+            # it — a duplicate's included — and its rule set carries the part type the
+            # step was authored for. Matching on the part's type too dropped sampling,
+            # silently, for a copy moved to another part type (user decision 2026-10-29).
             ruleset = SamplingRuleSet.objects.filter(archived=False,
                 step=self.step,
-                part_type=self.part_type,
                 active=True,
                 is_fallback=False
             ).order_by("version").last()

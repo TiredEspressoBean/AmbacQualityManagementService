@@ -12,6 +12,7 @@ import {Button} from "@/components/ui/button";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
 import {Checkbox} from "@/components/ui/checkbox";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {
@@ -86,6 +87,10 @@ const formSchema = schemas.PartTypesRequest.pick({
     ERP_id: true,
     can_make: true,
     can_buy: true,
+    can_recover: true,
+    requires_supplier_qualification: true,
+    requires_part_approval: true,
+    default_disassembly_process: true,
     purchase_lead_time_days: true,
     safety_stock: true,
     itar_controlled: true,
@@ -94,6 +99,8 @@ const formSchema = schemas.PartTypesRequest.pick({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const NO_PROCESS = "__none__";
 
 // Pre-compute required fields for labels
 const required = {
@@ -119,6 +126,10 @@ export default function PartTypeFormPage() {
             ERP_id: "",
             can_make: true,
             can_buy: false,
+            can_recover: false,
+            requires_supplier_qualification: false,
+            requires_part_approval: false,
+            default_disassembly_process: null,
             purchase_lead_time_days: null,
             safety_stock: null,
             itar_controlled: false,
@@ -143,6 +154,10 @@ export default function PartTypeFormPage() {
                 ERP_id: partType.ERP_id ?? "",
                 can_make: (partType as { can_make?: boolean }).can_make ?? true,
                 can_buy: (partType as { can_buy?: boolean }).can_buy ?? false,
+                can_recover: partType.can_recover ?? false,
+                requires_supplier_qualification: partType.requires_supplier_qualification ?? false,
+                requires_part_approval: partType.requires_part_approval ?? false,
+                default_disassembly_process: partType.default_disassembly_process ?? null,
                 purchase_lead_time_days:
                     (partType as { purchase_lead_time_days?: number | null }).purchase_lead_time_days ?? null,
                 safety_stock: partType.safety_stock ?? null,
@@ -155,6 +170,14 @@ export default function PartTypeFormPage() {
             setReceiving(receivingControlsOf(partType as Partial<ReceivingControls>));
         }
     }, [mode, partType, form]);
+
+    // Teardown processes for this part type, for the default-disassembly picker.
+    const {data: disassemblyPage} = useQuery({
+        queryKey: ["Processes", "list", {part_type: partTypeId, is_disassembly: true}],
+        queryFn: () => api.api_Processes_list({queries: {part_type: partTypeId!, is_disassembly: true, limit: 100}}),
+        enabled: mode === "edit" && !!partTypeId,
+    });
+    const disassemblyProcesses = (disassemblyPage?.results ?? []) as Array<{ id: string; name: string; version?: number }>;
 
     const createPartType = useCreatePartType();
     const updatePartType = useUpdatePartType();
@@ -275,6 +298,21 @@ export default function PartTypeFormPage() {
                                 </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="can_recover"
+                            render={({field}) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}/>
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Can be recovered</FormLabel>
+                                        <FormDescription>A used one can be recovered from a torn-down core and put back into service (rotable / repairable). Leave off for expendables — seals, gaskets, lockwire</FormDescription>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
                     </div>
                     {form.watch("can_buy") && (
                         <div className="grid grid-cols-2 gap-4">
@@ -334,9 +372,65 @@ export default function PartTypeFormPage() {
                             <div className="col-span-2">
                                 <ReceivingControlsFields value={receiving} onChange={setReceiving} />
                             </div>
+                            <FormField
+                                control={form.control}
+                                name="requires_supplier_qualification"
+                                render={({field}) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                        <FormControl>
+                                            <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}/>
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>Requires supplier qualification</FormLabel>
+                                            <FormDescription>A received lot is held unless its supplier has an approved qualification</FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="requires_part_approval"
+                                render={({field}) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                        <FormControl>
+                                            <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange}/>
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>Requires part approval</FormLabel>
+                                            <FormDescription>A received lot is held unless this part from that supplier has an active part approval (PPAP / FAI)</FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
                         </div>
                     )}
                 </div>
+
+                {mode === "edit" && disassemblyProcesses.length > 0 && (
+                    <FormField
+                        control={form.control}
+                        name="default_disassembly_process"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Default disassembly process</FormLabel>
+                                <Select value={field.value ? String(field.value) : NO_PROCESS}
+                                        onValueChange={(v) => field.onChange(v === NO_PROCESS ? null : v)}>
+                                    <FormControl>
+                                        <SelectTrigger className="w-[320px]"><SelectValue/></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value={NO_PROCESS}>None — the operator picks</SelectItem>
+                                        {disassemblyProcesses.map((p) => (
+                                            <SelectItem key={p.id} value={String(p.id)}>{p.name} · v{p.version}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>Preselected in the teardown dialog for this part type</FormDescription>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                )}
 
                 <FormField
                     control={form.control}

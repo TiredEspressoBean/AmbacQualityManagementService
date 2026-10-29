@@ -27,6 +27,8 @@ import { useRetrieveDocumentType } from "@/hooks/useRetrieveDocumentType";
 import { useCreateDocumentType } from "@/hooks/useCreateDocumentType";
 import { useUpdateDocumentType } from "@/hooks/useUpdateDocumentType";
 import { schemas } from "@/lib/api/generated";
+import { useRetrieveApprovalTemplates } from "@/hooks/useRetrieveApprovalTemplates";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isFieldRequired } from "@/lib/zod-config";
 
 // Use generated schema with custom regex for code field (frontend UX requirement)
@@ -35,6 +37,7 @@ const formSchema = schemas.DocumentTypeRequest.pick({
     code: true,
     description: true,
     requires_approval: true,
+    approval_template: true,
     default_review_period_days: true,
     default_retention_days: true,
 }).extend({
@@ -46,6 +49,8 @@ const formSchema = schemas.DocumentTypeRequest.pick({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const NO_TEMPLATE = "__default__";
 
 // Pre-compute required fields for labels
 const required = {
@@ -74,6 +79,7 @@ export default function DocumentTypeFormPage() {
             code: "",
             description: "",
             requires_approval: true,
+            approval_template: null,
             default_review_period_days: undefined,
             default_retention_days: undefined,
         },
@@ -87,11 +93,16 @@ export default function DocumentTypeFormPage() {
                 code: documentType.code || "",
                 description: documentType.description || "",
                 requires_approval: documentType.requires_approval ?? true,
+                approval_template: documentType.approval_template ?? null,
                 default_review_period_days: documentType.default_review_period_days ?? undefined,
                 default_retention_days: documentType.default_retention_days ?? undefined,
             });
         }
     }, [mode, documentType, form]);
+
+    // The template a document of this type is routed through for approval.
+    const { data: approvalTemplates } = useRetrieveApprovalTemplates({ limit: 200 });
+    const templates = ((approvalTemplates as { results?: Array<{ id: string; template_name?: string }> } | undefined)?.results ?? []);
 
     const createDocumentType = useCreateDocumentType();
     const updateDocumentType = useUpdateDocumentType();
@@ -288,6 +299,34 @@ export default function DocumentTypeFormPage() {
                             </FormItem>
                         )}
                     />
+
+                    {form.watch("requires_approval") && (
+                        <FormField
+                            control={form.control}
+                            name="approval_template"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Approval template</FormLabel>
+                                    <Select value={field.value ? String(field.value) : NO_TEMPLATE}
+                                            onValueChange={(v) => field.onChange(v === NO_TEMPLATE ? null : v)}>
+                                        <FormControl>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value={NO_TEMPLATE}>The default document approval</SelectItem>
+                                            {templates.map((t) => (
+                                                <SelectItem key={t.id} value={String(t.id)}>{t.template_name || t.id}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                        Who approves a document of this type, and how. Leave on the default to use the document approval template.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
 
                     <div className="flex gap-4">
                         <Button

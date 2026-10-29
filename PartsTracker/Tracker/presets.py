@@ -245,7 +245,6 @@ STAFF_OPERATIONAL_WRITE = [
     'add_assemblyusage', 'change_assemblyusage',
     # Equipment & Calibration
     'add_equipments', 'change_equipments',
-    'add_equipmenttype', 'change_equipmenttype',
     # (Calibration records are CALIBRATION_RECORD_WRITE — evidence, not equipment config.)
     # Scheduling & time. NOT here: work-centers (routing master data → AUTHORING;
     # changing a WC's kind re-routes whole surfaces) and shifts (solver working
@@ -262,7 +261,6 @@ STAFF_OPERATIONAL_WRITE = [
     'add_lifetracking', 'change_lifetracking',
     # Quality records
     'add_qualityreports', 'change_qualityreports',
-    'add_qualityerrorslist', 'change_qualityerrorslist',
     'add_qualityreportdefect', 'change_qualityreportdefect',
     'add_quarantinedisposition', 'change_quarantinedisposition',
     # Supplier quality / part approval (records managed by QA; delete is opted
@@ -313,7 +311,6 @@ STAFF_OPERATIONAL_WRITE = [
     'add_processchangerequest', 'change_processchangerequest',
     # (Training records are TRAINING_RECORD_WRITE — qualification evidence, not operational.)
     # Master data & config (not compliance-shaped)
-    'add_companies', 'change_companies',
     'add_externalapiorderidentifier', 'change_externalapiorderidentifier',
     'add_facility', 'change_facility',
     'add_archivereason', 'change_archivereason',
@@ -579,6 +576,15 @@ MANAGER_DELETE_PERMISSIONS = [
     'delete_facility', 'delete_archivereason',
 ]
 
+# Shared master data — customers/suppliers, equipment types, the defect list — is
+# manager-tier to add or change, the same groups that hold its delete (user decision
+# 2026-10-29). It used to sit in the staff base, so every staff role could edit it.
+MASTER_DATA_WRITE = [
+    'add_companies', 'change_companies',
+    'add_equipmenttype', 'change_equipmenttype',
+    'add_qualityerrorslist', 'change_qualityerrorslist',
+]
+
 # Access administration: who can see which orders, who joins the team.
 # Manager tier (QA + Production) + Tenant Admin.
 TEAM_ACCESS_ADMIN_PERMISSIONS = [
@@ -716,6 +722,7 @@ GROUP_PRESETS = {
             *AUTHORING_PERMISSIONS,
             *SOD_APPROVAL_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
+            *MASTER_DATA_WRITE,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
             *COMPLIANCE_PERMISSIONS,
@@ -771,6 +778,7 @@ GROUP_PRESETS = {
             *AUTHORING_PERMISSIONS,
             *SOD_APPROVAL_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
+            *MASTER_DATA_WRITE,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
@@ -851,6 +859,7 @@ GROUP_PRESETS = {
             *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
+            *MASTER_DATA_WRITE,
             *TEAM_ACCESS_ADMIN_PERMISSIONS,
             *NOTIFICATION_ADMIN_PERMISSIONS,
             # Resolve (close) NCR dispositions
@@ -947,6 +956,7 @@ GROUP_PRESETS = {
             *TRAINING_RECORD_WRITE,
             *AUTHORING_PERMISSIONS,
             *MANAGER_DELETE_PERMISSIONS,
+            *MASTER_DATA_WRITE,
             *COMPLIANCE_PERMISSIONS,
             # Full tenant visibility (sees all data, not just relationship-filtered)
             'full_tenant_access',

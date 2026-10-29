@@ -811,7 +811,7 @@ class ApprovalTemplateSerializer(SecureModelMixin):
             'approval_sequence', 'approval_sequence_display',
             'allow_self_approval',
             'default_due_days', 'escalation_days', 'escalate_to', 'escalate_to_info',
-            'deactivated_at', 'change_description',
+            'change_description',
             'created_at', 'updated_at', 'archived', 'version',
         )
         read_only_fields = ('created_at', 'updated_at', 'version')

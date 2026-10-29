@@ -2,7 +2,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { ModelEditorPage, createColumnHelper } from "@/pages/editors/ModelEditorPage";
 import { useRetrieveApprovalTemplates, approvalTemplatesOptions, approvalTemplatesMetadataOptions } from "@/hooks/useRetrieveApprovalTemplates";
 import { EditApprovalTemplateActionsCell } from "@/components/edit-approval-template-action-cell";
-import { Badge } from "@/components/ui/badge";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Schema } from "@/lib/api/types";
 
@@ -63,14 +62,6 @@ export function ApprovalTemplatesEditorPage() {
                 col({ header: "Type", renderCell: (item) => item.approval_type_display || item.approval_type }),
                 col({ header: "Flow", renderCell: (item) => item.approval_flow_type_display || item.approval_flow_type }),
                 col({ header: "Due Days", renderCell: (item) => item.default_due_days }),
-                col({
-                    header: "Status",
-                    renderCell: (item) => (
-                        <Badge variant={item.deactivated_at ? "secondary" : "default"}>
-                            {item.deactivated_at ? "Inactive" : "Active"}
-                        </Badge>
-                    ),
-                }),
             ]}
             renderActions={(item) => <EditApprovalTemplateActionsCell templateId={item.id} />}
             onCreate={() => navigate({ to: "/editor/approval-templates/new" })}

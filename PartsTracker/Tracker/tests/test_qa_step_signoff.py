@@ -77,6 +77,18 @@ class QaStepSignoffTests(TestCase):
         with self.assertRaisesRegex(ValueError, "Segregation of duties"):
             sign_off_step(self.wo, self.step_a, self.operator)
 
+    def test_whoever_ran_the_step_cannot_sign_it_even_without_substeps(self):
+        """D6 (2026-10-29): the open visit's assignee is barred too, not only substep
+        signers."""
+        from Tracker.models import StepExecution
+        self._submit()
+        lead = User.objects.create_user(username="lead", email="lead@x.test", password="x",
+                                        tenant=self.tenant)
+        StepExecution.objects.filter(part=self.part, step=self.step_a, exited_at__isnull=True
+                                     ).update(assigned_to=lead)
+        with self.assertRaisesRegex(ValueError, "Segregation of duties"):
+            sign_off_step(self.wo, self.step_a, lead)
+
     def test_fpi_gated_steps_are_left_to_their_buy_off(self):
         self.step_a.requires_first_piece_inspection = True
         self.step_a.save(update_fields=["requires_first_piece_inspection"])

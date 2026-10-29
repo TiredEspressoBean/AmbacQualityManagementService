@@ -1194,54 +1194,6 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/ApprovalTemplates/{id}/activate/:
-    post:
-      operationId: api_ApprovalTemplates_activate_create
-      description: Reactivate an approval template
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Approval Template.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalTemplateActivateResponse'
-          description: ''
-  /api/ApprovalTemplates/{id}/deactivate/:
-    post:
-      operationId: api_ApprovalTemplates_deactivate_create
-      description: Deactivate an approval template
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-          format: uuid
-        description: A UUID string identifying this Approval Template.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - tokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApprovalTemplateDeactivateResponse'
-          description: ''
   /api/ApprovalTemplates/{id}/revisions/:
     post:
       operationId: api_ApprovalTemplates_revisions_create
@@ -50761,11 +50713,6 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
-        deactivated_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Null = currently active
         created_at:
           type: string
           format: date-time
@@ -50793,20 +50740,6 @@ components:
       - template_name
       - updated_at
       - version
-    ApprovalTemplateActivateResponse:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-      - status
-    ApprovalTemplateDeactivateResponse:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-      - status
     ApprovalTemplateRequest:
       type: object
       description: |-
@@ -50866,11 +50799,6 @@ components:
         escalate_to:
           type: integer
           nullable: true
-        deactivated_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Null = currently active
         change_description:
           type: string
           writeOnly: true
@@ -57066,6 +56994,24 @@ components:
           readOnly: true
           description: 'Days between calibrations: the gauge''s own interval, else
             its type''s.'
+        calibration_interval_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Calibration interval in days. Overrides equipment type default
+            if set.
+        requires_calibration_override:
+          type: boolean
+          nullable: true
+          description: Overrides the type's Requires calibration for this item; null
+            follows the type.
+        operating_shifts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Shifts this machine runs; empty follows the plant's shift calendar.
         is_schedulable:
           type: boolean
           description: Whether the scheduler treats this asset as a finite resource
@@ -57155,6 +57101,24 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        calibration_interval_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Calibration interval in days. Overrides equipment type default
+            if set.
+        requires_calibration_override:
+          type: boolean
+          nullable: true
+          description: Overrides the type's Requires calibration for this item; null
+            follows the type.
+        operating_shifts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Shifts this machine runs; empty follows the plant's shift calendar.
         is_schedulable:
           type: boolean
           description: Whether the scheduler treats this asset as a finite resource
@@ -67401,6 +67365,12 @@ components:
           type: boolean
           description: This part can be purchased from a supplier. May be True alongside
             can_make for dual-sourced parts.
+        can_recover:
+          type: boolean
+          description: Whether a used one of these can be recovered from a torn-down
+            core and put back into service. The MRO classification — rotable and repairable
+            items can; expendables (seals, gaskets, lockwire, most springs) are fitted
+            once and discarded.
         purchase_lead_time_days:
           type: integer
           maximum: 2147483647
@@ -67537,6 +67507,12 @@ components:
           type: boolean
           description: This part can be purchased from a supplier. May be True alongside
             can_make for dual-sourced parts.
+        can_recover:
+          type: boolean
+          description: Whether a used one of these can be recovered from a torn-down
+            core and put back into service. The MRO classification — rotable and repairable
+            items can; expendables (seals, gaskets, lockwire, most springs) are fitted
+            once and discarded.
         purchase_lead_time_days:
           type: integer
           maximum: 2147483647
@@ -68179,11 +68155,6 @@ components:
         escalate_to:
           type: integer
           nullable: true
-        deactivated_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Null = currently active
         change_description:
           type: string
           writeOnly: true
@@ -69113,6 +69084,24 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/EquipmentsStatusEnum'
+        calibration_interval_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+          description: Calibration interval in days. Overrides equipment type default
+            if set.
+        requires_calibration_override:
+          type: boolean
+          nullable: true
+          description: Overrides the type's Requires calibration for this item; null
+            follows the type.
+        operating_shifts:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Shifts this machine runs; empty follows the plant's shift calendar.
         is_schedulable:
           type: boolean
           description: Whether the scheduler treats this asset as a finite resource
@@ -70262,6 +70251,12 @@ components:
           type: boolean
           description: This part can be purchased from a supplier. May be True alongside
             can_make for dual-sourced parts.
+        can_recover:
+          type: boolean
+          description: Whether a used one of these can be recovered from a torn-down
+            core and put back into service. The MRO classification — rotable and repairable
+            items can; expendables (seals, gaskets, lockwire, most springs) are fitted
+            once and discarded.
         purchase_lead_time_days:
           type: integer
           maximum: 2147483647

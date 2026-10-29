@@ -42,6 +42,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MachineEligibilityTable } from "@/components/scheduling/MachineEligibilityTable";
 import { ChangeoversTable } from "@/components/scheduling/ChangeoversTable";
 import { EquipmentCalibrationHistory } from "@/components/equipment/EquipmentCalibrationHistory";
+import { useShifts } from "@/hooks/useScheduling";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const EQUIPMENT_STATUS_OPTIONS = schemas.EquipmentsStatusEnum.options;
 
@@ -59,6 +61,9 @@ const formSchema = schemas.EquipmentsRequest.pick({
     batch_capacity: true,
     batch_mode: true,
     notes: true,
+    calibration_interval_days: true,
+    requires_calibration_override: true,
+    operating_shifts: true,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -105,6 +110,9 @@ export default function EquipmentFormPage() {
             batch_capacity: 1,
             batch_mode: "concurrent",
             notes: "",
+            calibration_interval_days: null,
+            requires_calibration_override: null,
+            operating_shifts: [],
         },
     });
 
@@ -124,9 +132,15 @@ export default function EquipmentFormPage() {
                 batch_capacity: equipment.batch_capacity ?? 1,
                 batch_mode: equipment.batch_mode ?? "concurrent",
                 notes: equipment.notes ?? "",
+                calibration_interval_days: equipment.calibration_interval_days ?? null,
+                requires_calibration_override: equipment.requires_calibration_override ?? null,
+                operating_shifts: equipment.operating_shifts ?? [],
             });
         }
     }, [mode, equipment, form]);
+
+    const { data: shiftsPage } = useShifts();
+    const shifts = (shiftsPage?.results ?? []) as Array<{ id: string; name: string }>;
 
     const createEquipment = useCreateEquipment();
     const updateEquipment = useUpdateEquipment();
@@ -145,6 +159,9 @@ export default function EquipmentFormPage() {
             batch_capacity: values.batch_capacity ?? 1,
             batch_mode: values.batch_mode || "concurrent",
             notes: values.notes || undefined,
+            calibration_interval_days: values.calibration_interval_days ?? null,
+            requires_calibration_override: values.requires_calibration_override ?? null,
+            operating_shifts: values.operating_shifts ?? [],
         };
 
         if (mode === "edit" && equipmentId) {
@@ -376,6 +393,86 @@ export default function EquipmentFormPage() {
 
                     {form.watch("is_schedulable") && (
                         <>
+                            <FormField
+                                control={form.control}
+                                name="requires_calibration_override"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Requires calibration</FormLabel>
+                                        <Select
+                                            value={field.value === true ? "yes" : field.value === false ? "no" : "inherit"}
+                                            onValueChange={(v) => field.onChange(v === "yes" ? true : v === "no" ? false : null)}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="inherit">Follow the equipment type</SelectItem>
+                                                <SelectItem value="yes">Yes — this item is calibrated</SelectItem>
+                                                <SelectItem value="no">No — not for this item</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormDescription>
+                                            Overrides the type's setting for this one item.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="calibration_interval_days"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Calibration interval (days)</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" min={1} placeholder="Type's default"
+                                                value={field.value ?? ""}
+                                                onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Blank uses the equipment type's default interval.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {shifts.length > 0 && (
+                                <FormField
+                                    control={form.control}
+                                    name="operating_shifts"
+                                    render={({ field }) => {
+                                        const picked = new Set((field.value ?? []).map(String));
+                                        return (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel>Operating shifts</FormLabel>
+                                                <div className="flex flex-wrap gap-4">
+                                                    {shifts.map((sh) => (
+                                                        <label key={sh.id} className="flex items-center gap-2 text-sm">
+                                                            <Checkbox
+                                                                checked={picked.has(String(sh.id))}
+                                                                onCheckedChange={(c) => {
+                                                                    const next = new Set(picked);
+                                                                    if (c === true) next.add(String(sh.id)); else next.delete(String(sh.id));
+                                                                    field.onChange([...next]);
+                                                                }}
+                                                            />
+                                                            {sh.name}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <FormDescription>
+                                                    The shifts this machine runs. None ticked follows the plant's shift calendar.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        );
+                                    }}
+                                />
+                            )}
+
                             <FormField
                                 control={form.control}
                                 name="runs_unattended"

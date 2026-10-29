@@ -2150,68 +2150,14 @@ class ApprovalTemplateViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetada
     search_fields = ['template_name', 'approval_type']
     ordering_fields = ['template_name', 'created_at', 'updated_at']
     ordering = ['template_name']
-    action_permissions = {
-        'activate': ['manage_approval_workflow'],
-        'deactivate': ['manage_approval_workflow'],
-    }
+    # No deactivate / activate (user decision 2026-10-29): lookups never honoured a
+    # deactivated template, so the switch promised a control that did nothing. A
+    # template changes by editing it (a new version) or is archived.
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return ApprovalTemplate.objects.none()
-
-        # Apply tenant scoping first, then user-level filtering
-        queryset = super().get_queryset()
-
-        # Filter for active templates (deactivated_at is null)
-        active_only = self.request.query_params.get('active', 'true').lower() == 'true'
-        if active_only:
-            queryset = queryset.filter(deactivated_at__isnull=True)
-
-        return queryset.select_related().prefetch_related('default_approvers', 'default_groups')
-
-    # request=None: acts on the template named in the path, reads no body.
-    # Undeclared, the body fell back to ApprovalTemplateRequest (the whole
-    # template) and the response to ApprovalTemplate, while this returns
-    # `{status}`. That combination fails AFTER the toggle has already been
-    # written — the worst shape for a state-changing action, since a user
-    # retrying the "failure" flips it back.
-    @extend_schema(
-        request=None,
-        responses={200: inline_serializer(
-            name='ApprovalTemplateDeactivateResponse',
-            fields={'status': serializers.CharField()},
-        )},
-    )
-    @action(detail=True, methods=['post'], url_path='deactivate')
-    def deactivate(self, request, pk=None):
-        """Deactivate an approval template"""
-        # `manage_approval_workflow` enforced declaratively via action_permissions.
-        template = self.get_object()
-        template.deactivated_at = timezone.now()
-        template.save(update_fields=['deactivated_at'])
-        return Response({'status': 'Template deactivated'})
-
-    # request=None: acts on the template named in the path, reads no body.
-    # Undeclared, the body fell back to ApprovalTemplateRequest (the whole
-    # template) and the response to ApprovalTemplate, while this returns
-    # `{status}`. That combination fails AFTER the toggle has already been
-    # written — the worst shape for a state-changing action, since a user
-    # retrying the "failure" flips it back.
-    @extend_schema(
-        request=None,
-        responses={200: inline_serializer(
-            name='ApprovalTemplateActivateResponse',
-            fields={'status': serializers.CharField()},
-        )},
-    )
-    @action(detail=True, methods=['post'], url_path='activate')
-    def activate(self, request, pk=None):
-        """Reactivate an approval template"""
-        # `manage_approval_workflow` enforced declaratively via action_permissions.
-        template = self.get_object()
-        template.deactivated_at = None
-        template.save(update_fields=['deactivated_at'])
-        return Response({'status': 'Template activated'})
+        return super().get_queryset().select_related().prefetch_related('default_approvers', 'default_groups')
 
     @extend_schema(
         description=(

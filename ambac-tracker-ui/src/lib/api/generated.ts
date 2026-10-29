@@ -496,12 +496,6 @@ export type ApprovalTemplate = {
     | undefined;
   escalate_to?: (number | null) | undefined;
   escalate_to_info: {};
-  deactivated_at?:
-    | /**
-     * Null = currently active
-     */
-    (string | null)
-    | undefined;
   created_at: string;
   updated_at: string;
   archived?: boolean | undefined;
@@ -555,12 +549,6 @@ export type ApprovalTemplateRequest = {
     (number | null)
     | undefined;
   escalate_to?: (number | null) | undefined;
-  deactivated_at?:
-    | /**
-     * Null = currently active
-     */
-    (string | null)
-    | undefined;
   change_description?: /**
    * Reason for edit (audit trail). Defaults to a generic descriptor when omitted.
    */
@@ -3049,6 +3037,25 @@ export type Equipments = {
    * Days between calibrations: the gauge's own interval, else its type's.
    */
   calibration_interval_effective: number | null;
+  calibration_interval_days?:
+    | /**
+     * Calibration interval in days. Overrides equipment type default if set.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  requires_calibration_override?:
+    | /**
+     * Overrides the type's Requires calibration for this item; null follows the type.
+     */
+    (boolean | null)
+    | undefined;
+  operating_shifts?: /**
+   * Shifts this machine runs; empty follows the plant's shift calendar.
+   */
+  Array<string> | undefined;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
@@ -3123,6 +3130,25 @@ export type EquipmentsRequest = {
   string | undefined;
   location?: (string | null) | undefined;
   status?: EquipmentsStatusEnum | undefined;
+  calibration_interval_days?:
+    | /**
+     * Calibration interval in days. Overrides equipment type default if set.
+     *
+     * @minimum 0
+     * @maximum 2147483647
+     */
+    (number | null)
+    | undefined;
+  requires_calibration_override?:
+    | /**
+     * Overrides the type's Requires calibration for this item; null follows the type.
+     */
+    (boolean | null)
+    | undefined;
+  operating_shifts?: /**
+   * Shifts this machine runs; empty follows the plant's shift calendar.
+   */
+  Array<string> | undefined;
   is_schedulable?: /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
@@ -7161,6 +7187,10 @@ export type PartTypes = {
   boolean | undefined;
   can_buy?: /**
    * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
+   */
+  boolean | undefined;
+  can_recover?: /**
+   * Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded.
    */
   boolean | undefined;
   purchase_lead_time_days?:
@@ -12504,6 +12534,10 @@ export type PartTypesRequest = {
    * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
    */
   boolean | undefined;
+  can_recover?: /**
+   * Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded.
+   */
+  boolean | undefined;
   purchase_lead_time_days?:
     | /**
      * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
@@ -12677,10 +12711,6 @@ export type PatchedApprovalTemplateRequest = Partial<{
    */
   escalation_days: number | null;
   escalate_to: number | null;
-  /**
-   * Null = currently active
-   */
-  deactivated_at: string | null;
   /**
    * Reason for edit (audit trail). Defaults to a generic descriptor when omitted.
    */
@@ -13190,6 +13220,21 @@ export type PatchedEquipmentsRequest = Partial<{
   model_number: string;
   location: string | null;
   status: EquipmentsStatusEnum;
+  /**
+   * Calibration interval in days. Overrides equipment type default if set.
+   *
+   * @minimum 0
+   * @maximum 2147483647
+   */
+  calibration_interval_days: number | null;
+  /**
+   * Overrides the type's Requires calibration for this item; null follows the type.
+   */
+  requires_calibration_override: boolean | null;
+  /**
+   * Shifts this machine runs; empty follows the plant's shift calendar.
+   */
+  operating_shifts: Array<string>;
   /**
    * Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units.
    */
@@ -13834,6 +13879,10 @@ export type PatchedPartTypesRequest = Partial<{
    * This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts.
    */
   can_buy: boolean;
+  /**
+   * Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded.
+   */
+  can_recover: boolean;
   /**
    * Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time).
    *
@@ -18991,7 +19040,6 @@ const ApprovalTemplate = z.object({
   escalation_days: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
   escalate_to: z.number().int().nullish(),
   escalate_to_info: z.object({}).partial().passthrough().nullable(),
-  deactivated_at: z.string().datetime({ offset: true }).nullish(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   archived: z.boolean().optional(),
@@ -19027,7 +19075,6 @@ const ApprovalTemplateRequest = z.object({
     .optional(),
   escalation_days: z.number().int().gte(-2147483648).lte(2147483647).nullish(),
   escalate_to: z.number().int().nullish(),
-  deactivated_at: z.string().datetime({ offset: true }).nullish(),
   change_description: z.string().optional(),
   archived: z.boolean().optional(),
 });
@@ -19056,13 +19103,10 @@ const PatchedApprovalTemplateRequest = z
       .lte(2147483647)
       .nullable(),
     escalate_to: z.number().int().nullable(),
-    deactivated_at: z.string().datetime({ offset: true }).nullable(),
     change_description: z.string(),
     archived: z.boolean(),
   })
   .partial();
-const ApprovalTemplateActivateResponse = z.object({ status: z.string() });
-const ApprovalTemplateDeactivateResponse = z.object({ status: z.string() });
 const VersionSummary = z.object({
   id: z.string(),
   version: z.number().int(),
@@ -20895,6 +20939,9 @@ const Equipments = z.object({
   calibration_status: z.string().nullable(),
   requires_calibration: z.boolean(),
   calibration_interval_effective: z.number().int().nullable(),
+  calibration_interval_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  requires_calibration_override: z.boolean().nullish(),
+  operating_shifts: z.array(z.string().uuid()).optional(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
@@ -20919,6 +20966,9 @@ const EquipmentsRequest = z.object({
   model_number: z.string().max(100).optional(),
   location: z.string().uuid().nullish(),
   status: EquipmentsStatusEnum.optional(),
+  calibration_interval_days: z.number().int().gte(0).lte(2147483647).nullish(),
+  requires_calibration_override: z.boolean().nullish(),
+  operating_shifts: z.array(z.string().uuid()).optional(),
   is_schedulable: z.boolean().optional(),
   runs_unattended: z.boolean().nullish(),
   batch_capacity: z.number().int().gte(0).lte(2147483647).optional(),
@@ -20995,6 +21045,14 @@ const PatchedEquipmentsRequest = z
     model_number: z.string().max(100),
     location: z.string().uuid().nullable(),
     status: EquipmentsStatusEnum,
+    calibration_interval_days: z
+      .number()
+      .int()
+      .gte(0)
+      .lte(2147483647)
+      .nullable(),
+    requires_calibration_override: z.boolean().nullable(),
+    operating_shifts: z.array(z.string().uuid()),
     is_schedulable: z.boolean(),
     runs_unattended: z.boolean().nullable(),
     batch_capacity: z.number().int().gte(0).lte(2147483647),
@@ -23167,6 +23225,7 @@ const PartTypes = z.object({
   requires_part_approval: z.boolean().optional(),
   can_make: z.boolean().optional(),
   can_buy: z.boolean().optional(),
+  can_recover: z.boolean().optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   preferred_supplier_name: z.string().nullable(),
@@ -23206,6 +23265,7 @@ const PartTypesRequest = z.object({
   requires_part_approval: z.boolean().optional(),
   can_make: z.boolean().optional(),
   can_buy: z.boolean().optional(),
+  can_recover: z.boolean().optional(),
   purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullish(),
   preferred_supplier: z.string().uuid().nullish(),
   safety_stock: z
@@ -23236,6 +23296,7 @@ const PatchedPartTypesRequest = z
     requires_part_approval: z.boolean(),
     can_make: z.boolean(),
     can_buy: z.boolean(),
+    can_recover: z.boolean(),
     purchase_lead_time_days: z.number().int().gte(0).lte(2147483647).nullable(),
     preferred_supplier: z.string().uuid().nullable(),
     safety_stock: z
@@ -29582,8 +29643,6 @@ export const schemas = {
   PaginatedApprovalTemplateList,
   ApprovalTemplateRequest,
   PatchedApprovalTemplateRequest,
-  ApprovalTemplateActivateResponse,
-  ApprovalTemplateDeactivateResponse,
   VersionSummary,
   AssemblyUsage,
   PaginatedAssemblyUsageList,
@@ -31679,36 +31738,6 @@ POST: Executes the query.`,
       },
     ],
     response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/api/ApprovalTemplates/:id/activate/",
-    alias: "api_ApprovalTemplates_activate_create",
-    description: `Reactivate an approval template`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.object({ status: z.string() }),
-  },
-  {
-    method: "post",
-    path: "/api/ApprovalTemplates/:id/deactivate/",
-    alias: "api_ApprovalTemplates_deactivate_create",
-    description: `Deactivate an approval template`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string().uuid(),
-      },
-    ],
-    response: z.object({ status: z.string() }),
   },
   {
     method: "post",
@@ -35647,10 +35676,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "post",
     path: "/api/CustomerShipments/:id/void/",
@@ -35685,7 +35711,10 @@ const endpoints1 = makeApi([
       },
     ],
     response: DeliveryPerformance,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "get",
     path: "/api/CustomerShipments/export/:export_format/",
@@ -40783,10 +40812,7 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -40844,7 +40870,10 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: PaginatedJobRoleList,
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "post",
     path: "/api/JobRoles/",
@@ -45049,10 +45078,7 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -45081,7 +45107,10 @@ Permissioned on &#x60;view_orders&#x60; (TenantModelPermissions derives it from 
 queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60;for_user&#x60;).`,
     requestFormat: "json",
     response: OrderBook,
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderLines/",
@@ -50564,10 +50593,7 @@ Usage:
       },
     ],
     response: QualityReports,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "get",
     path: "/api/QualityReports/export/:export_format/",
@@ -50605,7 +50631,10 @@ const endpoints4 = makeApi([
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/QuarantineDispositions/",
@@ -55528,10 +55557,7 @@ they raised today (plant clock), plus their last completed step for the undo
 strip (services/mes/operator_day.py).`,
     requestFormat: "json",
     response: MyDay,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "get",
     path: "/api/StepExecutions/my_workload/",
@@ -55775,7 +55801,10 @@ const endpoints5 = makeApi([
       },
     ],
     response: PaginatedStepExecutionList,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/training-overrides/",
@@ -61164,10 +61193,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/TrainingTypes/:id/version-history/",
@@ -61227,7 +61253,10 @@ const endpoints6 = makeApi([
       },
     ],
     response: z.instanceof(File),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "post",
     path: "/api/TrainingTypes/import-preview/",

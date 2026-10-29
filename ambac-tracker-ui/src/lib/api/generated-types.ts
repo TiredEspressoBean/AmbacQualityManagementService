@@ -318,40 +318,6 @@ export interface paths {
         patch: operations["api_ApprovalTemplates_partial_update"];
         trace?: never;
     };
-    "/api/ApprovalTemplates/{id}/activate/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Reactivate an approval template */
-        post: operations["api_ApprovalTemplates_activate_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/ApprovalTemplates/{id}/deactivate/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Deactivate an approval template */
-        post: operations["api_ApprovalTemplates_deactivate_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/ApprovalTemplates/{id}/revisions/": {
         parameters: {
             query?: never;
@@ -21497,23 +21463,12 @@ export interface components {
             readonly escalate_to_info: {
                 [key: string]: unknown;
             } | null;
-            /**
-             * Format: date-time
-             * @description Null = currently active
-             */
-            deactivated_at?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             archived?: boolean;
             readonly version: number;
-        };
-        ApprovalTemplateActivateResponse: {
-            status: string;
-        };
-        ApprovalTemplateDeactivateResponse: {
-            status: string;
         };
         /**
          * @description Approval template serializer.
@@ -21541,11 +21496,6 @@ export interface components {
             /** @description Days before escalation triggers */
             escalation_days?: number | null;
             escalate_to?: number | null;
-            /**
-             * Format: date-time
-             * @description Null = currently active
-             */
-            deactivated_at?: string | null;
             /** @description Reason for edit (audit trail). Defaults to a generic descriptor when omitted. */
             change_description?: string;
             archived?: boolean;
@@ -24487,6 +24437,12 @@ export interface components {
             readonly requires_calibration: boolean;
             /** @description Days between calibrations: the gauge's own interval, else its type's. */
             readonly calibration_interval_effective: number | null;
+            /** @description Calibration interval in days. Overrides equipment type default if set. */
+            calibration_interval_days?: number | null;
+            /** @description Overrides the type's Requires calibration for this item; null follows the type. */
+            requires_calibration_override?: boolean | null;
+            /** @description Shifts this machine runs; empty follows the plant's shift calendar. */
+            operating_shifts?: string[];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
             /** @description Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag. */
@@ -24526,6 +24482,12 @@ export interface components {
             /** Format: uuid */
             location?: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            /** @description Calibration interval in days. Overrides equipment type default if set. */
+            calibration_interval_days?: number | null;
+            /** @description Overrides the type's Requires calibration for this item; null follows the type. */
+            requires_calibration_override?: boolean | null;
+            /** @description Shifts this machine runs; empty follows the plant's shift calendar. */
+            operating_shifts?: string[];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
             /** @description Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag. */
@@ -29750,6 +29712,8 @@ export interface components {
             can_make?: boolean;
             /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
             can_buy?: boolean;
+            /** @description Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded. */
+            can_recover?: boolean;
             /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
             /**
@@ -29823,6 +29787,8 @@ export interface components {
             can_make?: boolean;
             /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
             can_buy?: boolean;
+            /** @description Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded. */
+            can_recover?: boolean;
             /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
             /**
@@ -30094,11 +30060,6 @@ export interface components {
             /** @description Days before escalation triggers */
             escalation_days?: number | null;
             escalate_to?: number | null;
-            /**
-             * Format: date-time
-             * @description Null = currently active
-             */
-            deactivated_at?: string | null;
             /** @description Reason for edit (audit trail). Defaults to a generic descriptor when omitted. */
             change_description?: string;
             archived?: boolean;
@@ -30656,6 +30617,12 @@ export interface components {
             /** Format: uuid */
             location?: string | null;
             status?: components["schemas"]["EquipmentsStatusEnum"];
+            /** @description Calibration interval in days. Overrides equipment type default if set. */
+            calibration_interval_days?: number | null;
+            /** @description Overrides the type's Requires calibration for this item; null follows the type. */
+            requires_calibration_override?: boolean | null;
+            /** @description Shifts this machine runs; empty follows the plant's shift calendar. */
+            operating_shifts?: string[];
             /** @description Whether the scheduler treats this asset as a finite resource to reserve (CNC, Keyence, CMM). Off for plentiful/handheld equipment (calipers) — those are still tracked on step executions, just never scheduled. Capacity for a type = the count of its schedulable units. */
             is_schedulable?: boolean;
             /** @description Whether this machine runs lights-out (unattended) between staffed shifts. NULL (default): inherit the facility default (OptimizationConfig.default_machine_unattended). True: the Layer-1 scheduler runs it 24/7, gated only by downtime — a lot-operation can span nights/weekends. False: its work is confined to the shift calendar (an operator must be present). Operator presence for the attended portions is handled by Layer-2 dispatch regardless of this flag. */
@@ -31322,6 +31289,8 @@ export interface components {
             can_make?: boolean;
             /** @description This part can be purchased from a supplier. May be True alongside can_make for dual-sourced parts. */
             can_buy?: boolean;
+            /** @description Whether a used one of these can be recovered from a torn-down core and put back into service. The MRO classification — rotable and repairable items can; expendables (seals, gaskets, lockwire, most springs) are fitted once and discarded. */
+            can_recover?: boolean;
             /** @description Days to source this part from a supplier when bought — drives the order-by date in the sourcing report (order-by = need-by − lead time). */
             purchase_lead_time_days?: number | null;
             /**
@@ -41522,50 +41491,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalTemplate"];
-                };
-            };
-        };
-    };
-    api_ApprovalTemplates_activate_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Approval Template. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalTemplateActivateResponse"];
-                };
-            };
-        };
-    };
-    api_ApprovalTemplates_deactivate_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A UUID string identifying this Approval Template. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApprovalTemplateDeactivateResponse"];
                 };
             };
         };

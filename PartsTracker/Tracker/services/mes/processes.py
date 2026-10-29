@@ -476,15 +476,25 @@ def duplicate_process(
     Copies the process header, all ProcessStep records (referencing the
     same Step nodes), and all StepEdge records. The copy starts in DRAFT.
 
+    Carries the process's own settings — category, disassembly, default scrap rate —
+    and its current attached documents (user decision 2026-10-29: the copy had only
+    the name, part type and remanufactured flag).
+
     Use create_new_version() instead when modifying an approved process.
     """
+    from Tracker.services.core.documents import clone_current_documents
+
     new_process = Processes.objects.create(
         name=f"{process.name}{name_suffix}",
         part_type=process.part_type,
         is_remanufactured=process.is_remanufactured,
+        is_disassembly=process.is_disassembly,
+        category=process.category,
+        default_scrap_rate=process.default_scrap_rate,
         status=ProcessStatus.DRAFT,
         # No previous_version — standalone copy
     )
+    clone_current_documents(source=process, target=new_process)
 
     # Re-anchor each Step reference to its current version. The source
     # process may point at stale Step rows if it predates the

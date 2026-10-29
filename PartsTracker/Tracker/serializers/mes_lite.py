@@ -14,7 +14,7 @@ from Tracker.models import (
     Steps, PartTypes, Processes, StepExecution, ProcessStep, StepEdge, EdgeType,
     OutsideProcessShipment,
     # MES Standard models
-    EquipmentType, Equipments, TimeEntry, MaterialUsage,
+    EquipmentType, Equipments, TimeEntry, MaterialUsage, Shift,
     # QMS models
     QualityReports, MeasurementResult, QuarantineDisposition,
     # Core models
@@ -1610,6 +1610,15 @@ class StepsSerializer(SecureModelMixin):
         process = self._resolve_editing_process()
         if process is not None:
             version_kwargs['process'] = process
+        elif set(validated_data) - self._NON_VERSIONING_FIELDS and instance.process_memberships.filter(
+                process__archived=False).exists():
+            # Refused as the step form refuses it (user decision 2026-10-29): with no
+            # process to version for, the edit minted a new current row that no process
+            # used. A step in a process changes in that process — a draft, or a PCR.
+            raise serializers.ValidationError(
+                "This step is part of a process. Its content is edited there, so every other "
+                "version of the process keeps the step as it was. Timing and machines can "
+                "still be changed here.")
         updated = apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
@@ -1962,8 +1971,11 @@ class PartTypesSerializer(SecureModelMixin):
     # Fields whose edits should NOT trigger a new version: archiving, and the buy-side
     # planning figures — a new lead time from the supplier isn't a new revision of the
     # part (auditlog still records it).
+    # The default disassembly process is the teardown picker's preselection, not part of
+    # the part's definition.
     _NON_VERSIONING_FIELDS = frozenset({
-        'archived', 'preferred_supplier', 'purchase_lead_time_days', 'safety_stock'})
+        'archived', 'preferred_supplier', 'purchase_lead_time_days', 'safety_stock',
+        'default_disassembly_process'})
 
     preferred_supplier_name = serializers.CharField(
         source='preferred_supplier.name', read_only=True, allow_null=True)
@@ -1974,7 +1986,7 @@ class PartTypesSerializer(SecureModelMixin):
             'id', 'tenant', 'external_id', 'created_at', 'updated_at', 'archived',
             'name', 'ID_prefix', 'ERP_id',
             'requires_supplier_qualification', 'requires_part_approval',
-            'can_make', 'can_buy', 'purchase_lead_time_days',
+            'can_make', 'can_buy', 'can_recover', 'purchase_lead_time_days',
             'preferred_supplier', 'preferred_supplier_name', 'safety_stock',
             'purchase_unit', 'units_per_purchase_unit', 'requires_coc', 'requires_heat_number',
             'itar_controlled', 'eccn', 'usml_category',
@@ -1983,6 +1995,11 @@ class PartTypesSerializer(SecureModelMixin):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'version',
                             'is_current_version', 'previous_version']
+
+    def validate_default_disassembly_process(self, value):
+        if value is not None and not value.is_disassembly:
+            raise serializers.ValidationError(f"{value.name} isn't a disassembly process.")
+        return value
 
     def update(self, instance, validated_data):
         """Route content edits through `create_new_version`; let
@@ -2186,6 +2203,15 @@ class EquipmentsSerializer(SecureModelMixin):
     requires_calibration = serializers.BooleanField(read_only=True)
     calibration_interval_effective = serializers.SerializerMethodField(
         help_text="Days between calibrations: the gauge's own interval, else its type's.")
+    # Per-item overrides of the type's calibration defaults, and the machine's own
+    # operating shifts (user decision 2026-10-29: these had no control anywhere).
+    # Null override = follow the type.
+    requires_calibration_override = serializers.BooleanField(
+        source='_requires_calibration_override', allow_null=True, required=False,
+        help_text="Overrides the type's Requires calibration for this item; null follows the type.")
+    operating_shifts = TenantScopedPrimaryKeyRelatedField(
+        queryset=Shift.unscoped.all(), many=True, required=False,
+        help_text="Shifts this machine runs; empty follows the plant's shift calendar.")
 
     @extend_schema_field(serializers.IntegerField(allow_null=True))
     def get_calibration_interval_effective(self, obj):
@@ -2197,6 +2223,7 @@ class EquipmentsSerializer(SecureModelMixin):
             "id", "name", "equipment_type", "equipment_type_name",
             "serial_number", "manufacturer", "model_number", "location", "location_name", "status",
             "calibration_status", "requires_calibration", "calibration_interval_effective",
+            "calibration_interval_days", "requires_calibration_override", "operating_shifts",
             "is_schedulable", "runs_unattended", "batch_capacity", "batch_mode", "notes",
             "created_at", "updated_at", "archived", "version",
         ]
@@ -2207,6 +2234,8 @@ class EquipmentsSerializer(SecureModelMixin):
     # config content — a plain save, not a new version.
     _NON_VERSIONING_FIELDS = frozenset(
         {'archived', 'status', 'is_schedulable', 'runs_unattended', 'batch_capacity', 'batch_mode'})
+    # Operating shifts are a scheduling calendar (M2M), written onto whichever row the
+    # update returns — a version fork returns a new one.
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -2222,11 +2251,15 @@ class EquipmentsSerializer(SecureModelMixin):
         """Route content edits through `create_new_version`; let
         archive and status changes through as a plain save."""
         from Tracker.services.core.versioning import apply_versioned_update
-        return apply_versioned_update(
+        shifts = validated_data.pop('operating_shifts', None)
+        updated = apply_versioned_update(
             instance, validated_data,
             non_versioning_fields=self._NON_VERSIONING_FIELDS,
             default_update=super().update,
         )
+        if shifts is not None:
+            updated.operating_shifts.set(shifts)
+        return updated
 
 
 class EquipmentSerializer(SecureModelMixin):

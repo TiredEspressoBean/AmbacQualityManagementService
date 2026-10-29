@@ -72,7 +72,8 @@ def sign_off_step(work_order, step, user, *, password: str = '', ip_address=None
     the signer did the work, or the step asks for a password and it isn't theirs."""
     from django.db import transaction
     from django.utils import timezone
-    from Tracker.models import QaApproval, SubstepCompletion
+    from django.db.models import Q
+    from Tracker.models import QaApproval, StepExecution, SubstepCompletion
     from Tracker.services.core.second_person import verify_own_password
     from Tracker.services.mes.advancement import try_advance_lot
 
@@ -83,8 +84,13 @@ def sign_off_step(work_order, step, user, *, password: str = '', ip_address=None
     if QaApproval.objects.filter(step=step, work_order=work_order, archived=False).exists():  # tenant-safe: scoped FKs
         raise ValueError(f"{step.name} is already signed off for {work_order.ERP_id}.")
     # Segregation of duties, as for FPI buy-off: whoever signed this step's
-    # substeps on this work order can't also sign it off.
-    if SubstepCompletion.objects.filter(  # tenant-safe: scoped FKs
+    # substeps on this work order can't also sign it off — nor whoever ran the step
+    # (an open visit assigned to or completed by them), substeps or not (user
+    # decision 2026-10-29).
+    ran_it = StepExecution.objects.filter(  # tenant-safe: scoped FKs
+        part__work_order=work_order, step=step, exited_at__isnull=True,
+    ).filter(Q(assigned_to=user) | Q(completed_by=user)).exists()
+    if ran_it or SubstepCompletion.objects.filter(  # tenant-safe: scoped FKs
             step_execution__part__work_order=work_order, step_execution__step=step,
             step_execution__exited_at__isnull=True, completed_by=user, is_voided=False).exists():
         raise ValueError("Segregation of duties: you completed work on this step — a different "
