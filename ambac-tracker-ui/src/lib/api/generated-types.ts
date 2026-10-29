@@ -27038,12 +27038,16 @@ export interface components {
             execution_id: string;
             step_name: string;
             /** Format: uuid */
+            step_id: string;
+            /** Format: uuid */
             part_id: string | null;
             part_erp_id: string | null;
             /** Format: uuid */
             work_order_id: string | null;
             /** Format: date-time */
             finished_at: string;
+            undoable: boolean;
+            undo_needs_approval: boolean;
         };
         NcrAgingResponse: {
             data: {
@@ -36545,6 +36549,7 @@ export interface components {
             readonly part_erp_id: string | null;
             readonly part_status: string | null;
             readonly work_order: string | null;
+            readonly work_order_erp_id: string | null;
             /**
              * Format: uuid
              * @description The step being executed

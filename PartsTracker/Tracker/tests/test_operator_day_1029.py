@@ -102,3 +102,55 @@ class MyFirstPiecesTests(TenantTestCase):
                   inspected_at=timezone.now() - timedelta(days=3))
         rows = self._mine()
         self.assertEqual([r['status'] for r in rows], ["PASSED"])
+
+
+class UndoStateTests(TenantTestCase):
+    """last_finished.undoable: offered only while the part hasn't moved past my step."""
+
+    def setUp(self):
+        super().setUp()
+        t = self.tenant_a
+        self.pt = PartTypes.objects.create(tenant=t, name="Body", ID_prefix="B")
+        self.turn = Steps.objects.create(tenant=t, part_type=self.pt, name="Turn", step_type="TASK")
+        self.grind = Steps.objects.create(tenant=t, part_type=self.pt, name="Grind", step_type="TASK",
+                                          undo_window_minutes=15, rollback_requires_approval=False)
+        self.wash = Steps.objects.create(tenant=t, part_type=self.pt, name="Wash", step_type="TASK")
+        self.wo = WorkOrder.objects.create(tenant=t, ERP_id="WO-UNDO", quantity=1)
+        self.part = Parts.objects.create(tenant=t, ERP_id="B-5", part_type=self.pt, work_order=self.wo,
+                                         step=self.grind)
+        self.grant_tenant_permissions(self.user_a, t, ['view_stepexecution', 'full_tenant_access'])
+        self.authenticate_as(self.user_a, t)
+
+    def _visit(self, step, nxt, minutes_ago, user):
+        when = timezone.now() - timedelta(minutes=minutes_ago)
+        return StepExecution.objects.create(
+            tenant=self.tenant_a, part=self.part, step=step, status="COMPLETED", next_step=nxt,
+            started_at=when - timedelta(minutes=5), exited_at=when, completed_by=user)
+
+    def _last(self):
+        return self.client.get('/api/StepExecutions/my_day/').json()['last_finished']
+
+    def test_my_step_just_finished_is_undoable_inside_the_window(self):
+        mine = self._visit(self.turn, self.grind, 2, self.user_a)
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.grind,
+                                     status="PENDING")
+        last = self._last()
+        self.assertEqual((last['execution_id'], last['step_id']), (str(mine.id), str(self.turn.id)))
+        self.assertTrue(last['undoable'])
+        self.assertFalse(last['undo_needs_approval'])
+
+    def test_past_the_window_it_goes_for_approval(self):
+        self._visit(self.turn, self.grind, 60, self.user_a)
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.grind,
+                                     status="PENDING")
+        last = self._last()
+        self.assertTrue(last['undoable'])
+        self.assertTrue(last['undo_needs_approval'])
+
+    def test_once_the_part_has_moved_on_it_is_not_offered(self):
+        self._visit(self.turn, self.grind, 10, self.user_a)
+        self._visit(self.grind, self.wash, 5, self.user_b)   # someone else finished the next step
+        Parts.objects.filter(pk=self.part.pk).update(step=self.wash)
+        StepExecution.objects.create(tenant=self.tenant_a, part=self.part, step=self.wash,
+                                     status="PENDING")
+        self.assertFalse(self._last()['undoable'])

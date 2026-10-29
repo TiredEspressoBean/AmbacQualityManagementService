@@ -62682,6 +62682,9 @@ components:
           format: uuid
         step_name:
           type: string
+        step_id:
+          type: string
+          format: uuid
         part_id:
           type: string
           format: uuid
@@ -62696,12 +62699,19 @@ components:
         finished_at:
           type: string
           format: date-time
+        undoable:
+          type: boolean
+        undo_needs_approval:
+          type: boolean
       required:
       - execution_id
       - finished_at
       - part_erp_id
       - part_id
+      - step_id
       - step_name
+      - undo_needs_approval
+      - undoable
       - work_order_id
     NcrAgingResponse:
       type: object
@@ -80509,6 +80519,10 @@ components:
           type: string
           readOnly: true
           nullable: true
+        work_order_erp_id:
+          type: string
+          readOnly: true
+          nullable: true
         step:
           type: string
           format: uuid
@@ -80563,6 +80577,7 @@ components:
       - step_name
       - step_order
       - work_order
+      - work_order_erp_id
     StepExecutionMeasurement:
       type: object
       description: Serializer for step execution measurements.

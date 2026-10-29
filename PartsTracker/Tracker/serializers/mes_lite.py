@@ -1823,6 +1823,10 @@ class StepExecutionListSerializer(SecureModelMixin):
     # The run's work order, so Resume can open a batch step with its batch panel (it
     # needs the work order; without it the operator was stuck — walk 2026-10-22).
     work_order = serializers.CharField(source='part.work_order_id', read_only=True, allow_null=True)
+    # Its number, for pickers that offer the run's work order (the operator home's
+    # machine-problem dialog).
+    work_order_erp_id = serializers.CharField(source='part.work_order.ERP_id', read_only=True,
+                                              allow_null=True)
     step_name = serializers.CharField(source='step.name', read_only=True)
     step_order = serializers.SerializerMethodField()
     assigned_to_name = serializers.SerializerMethodField()
@@ -1830,7 +1834,7 @@ class StepExecutionListSerializer(SecureModelMixin):
     class Meta:
         model = StepExecution
         fields = (
-            'id', 'part', 'part_erp_id', 'part_status', 'work_order',
+            'id', 'part', 'part_erp_id', 'part_status', 'work_order', 'work_order_erp_id',
             'step', 'step_name', 'step_order', 'visit_number',
             'entered_at', 'started_at', 'exited_at', 'status',
             'assigned_to', 'assigned_to_name', 'decision_result'

@@ -108,6 +108,13 @@ export const CalibrationRecordNewSearch = z.object({
     equipment: z.string().uuid().optional().catch(undefined),
 });
 
+/** New quality report — `?part=&step=` opens it on that part at that step (the operator
+ *  home's "Flag" on the step they just finished). */
+export const QualityReportNewSearch = z.object({
+    part: z.string().uuid().optional().catch(undefined),
+    step: z.string().uuid().optional().catch(undefined),
+});
+
 /** Capacity — `?tab=simulator&part_type=&quantity=&due=` opens "Could we take this
  *  order?" prefilled (from an order line's Check capacity). */
 /** Documents list — `?needsMyApproval=true` opens it on what waits for the viewer, as

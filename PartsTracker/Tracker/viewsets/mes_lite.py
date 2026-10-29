@@ -3791,10 +3791,15 @@ class StepExecutionViewSet(TenantScopedMixin, ListMetadataMixin, SecondPersonMix
             "last_finished": inline_serializer(name="MyLastFinished", allow_null=True, fields={
                 "execution_id": serializers.UUIDField(),
                 "step_name": serializers.CharField(),
+                "step_id": serializers.UUIDField(),
                 "part_id": serializers.UUIDField(allow_null=True),
                 "part_erp_id": serializers.CharField(allow_null=True),
                 "work_order_id": serializers.UUIDField(allow_null=True),
                 "finished_at": serializers.DateTimeField(),
+                # The part hasn't moved past it, so the Parts rollback would undo it.
+                "undoable": serializers.BooleanField(),
+                # Past the undo window, or the step always wants approval.
+                "undo_needs_approval": serializers.BooleanField(),
             }),
         })})
     @action(detail=False, methods=['get'])

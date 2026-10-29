@@ -61,6 +61,8 @@ type Props = {
     /** Prefill from the reason the operator tapped. */
     initialCategory?: DowntimeCategory;
     initialReason?: string;
+    /** Preselect this work order (one of `workOrders`) — the job the machine was running. */
+    initialWorkOrderId?: string;
 };
 
 export function ReportExceptionDialog({
@@ -73,6 +75,7 @@ export function ReportExceptionDialog({
     equipmentIds,
     initialCategory,
     initialReason,
+    initialWorkOrderId,
 }: Props) {
     const [kind, setKind] = useState<ExceptionItem["kind"]>("DOWNTIME");
     const [equipmentId, setEquipmentId] = useState("");
@@ -88,8 +91,16 @@ export function ReportExceptionDialog({
         setCategory(initialCategory ?? "UNPLANNED");
         setReason(initialReason ?? "");
         setDescription("");
-        setWorkOrderId(NO_WORK_ORDER);
+        setWorkOrderId(initialWorkOrderId ?? NO_WORK_ORDER);
     }, [open]);
+
+    // The station's machines can arrive after the dialog opens: preselect the only one
+    // then, unless the user has already picked.
+    const stationKey = equipmentIds?.join(",") ?? "";
+    useEffect(() => {
+        if (open && equipmentIds?.length === 1) setEquipmentId((cur) => cur || equipmentIds[0]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, stationKey]);
 
     const { data: equipmentData } = useRetrieveEquipments({ limit: 500 }, undefined, { enabled: open });
     const { data: typeData } = useRetrieveEquipmentTypes({ limit: 500 }, undefined, { enabled: open });
@@ -105,7 +116,8 @@ export function ReportExceptionDialog({
             .filter((e) => !e.equipment_type || !untracked.has(e.equipment_type))
             .filter((e) => !station || station.has(e.id))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [equipmentData, typeData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [equipmentData, typeData, stationKey]);
 
     const queryClient = useQueryClient();
     const recordDowntime = useMutation({

@@ -16,7 +16,8 @@
  *           surface) · station-scope combobox (memberships → picked station persists
  *           per-user in localStorage) · day recap (StepExecutions/my_day) ·
  *           first-piece strip (FPIRecords/mine) · Report a problem → machine (the
- *           downtime dialog, my station's machines).
+ *           downtime dialog, my station's machines) · undo strip (my last finished
+ *           step: Undo = Parts rollback, Flag = a new quality report on that part).
  *  PREVIEW: dimmed tiles, by decision — Call my lead; Can't run this? and Your flags
  *           (blocker routing not built, 10/21); the job branch of Report a problem.
  *           Each renders placeholder content behind a blur+disable via <PreviewLock>,
@@ -28,7 +29,7 @@
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,8 @@ import { useWorkQueue, type WorkQueueRow } from "@/hooks/workQueue";
 import { matchKey } from "@/lib/query-filters";
 import { useMyHours } from "@/hooks/useScheduling";
 import { ReportExceptionDialog } from "@/pages/workorders/ReportExceptionDialog";
+import { ReasonActionButton } from "@/components/common/ReasonActionButton";
+import { getCookie } from "@/lib/utils";
 
 /** The operator's own open runs, scoped to production surface + station. */
 const myWorkloadOptions = (scopedWcIds: string[]) =>
@@ -113,8 +116,6 @@ const MOCK = {
     myFlags: [
         { id: "f0", label: "<reason>", wo: "<work order>", owner: "your lead", elapsed: "—", seenBy: null },
     ] as MyFlag[],
-    // Undo window after Complete (Toast recall) — fearless big-button taps.
-    lastFinished: { step: "<step>", part: "<serial>", ago: "—" },
 };
 
 // Blocker reasons double as the routing table (reason → owner queue).
@@ -209,7 +210,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const { data: workCenters } = useQuery({
         queryKey: ["work-centers", "for-downtime"],
         queryFn: () => api.api_WorkCenters_list({ queries: { limit: 500 } }),
-        enabled: downtime !== null,
+        // Loaded with the page, so the station's machines are ready when the dialog opens.
+        staleTime: 5 * 60_000,
     });
     const stationEquipmentIds = useMemo(() => {
         const wcs = (workCenters?.results ?? []).filter((w) => scopedWcIds.includes(String(w.id)));
@@ -226,6 +228,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const { data: openEntryPage, isSuccess: clockKnown } = useQuery(openTimeEntryOptions(user.pk));
     const { data: myHours } = useMyHours();
     const { data: myDay } = useQuery(myDayOptions());
+    const lastFinished = myDay?.last_finished ?? null;
     const { data: firstPieces = [] } = useQuery(myFirstPiecesOptions());
     // Server order: pending (oldest first), then decided (newest first).
     const [showAllFirstPieces, setShowAllFirstPieces] = useState(false);
@@ -311,6 +314,23 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
         limit: 20,
     });
     const readyRows = queueRows.filter((r) => r.readiness === "ready");
+    // Work orders the machine may have been running: my open runs first, then my
+    // station's queue. With exactly one open run, its work order is preselected.
+    const downtimeWorkOrders = useMemo(() => {
+        const seen = new Map<string, string>();
+        for (const r of runs) {
+            if (r.work_order && !seen.has(String(r.work_order))) {
+                seen.set(String(r.work_order), r.work_order_erp_id ?? String(r.work_order));
+            }
+        }
+        for (const r of queueRows) {
+            if (r.work_order && !seen.has(String(r.work_order))) {
+                seen.set(String(r.work_order), r.work_order_erp_id ?? String(r.work_order));
+            }
+        }
+        return [...seen].map(([id, erp_id]) => ({ id, erp_id }));
+    }, [runs, queueRows]);
+    const runWorkOrders = [...new Set(runs.map((r) => r.work_order).filter(Boolean).map(String))];
     const heroRow: WorkQueueRow | undefined = readyRows[0];
     const thenRows = readyRows.slice(1, 7);
     const blockedRows = queueRows.filter((r) => r.readiness === "blocked");
@@ -456,7 +476,7 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) the <b className="text-foreground">day recap</b>, the <b className="text-foreground">first-piece strip</b> and <b className="text-foreground">Report a problem</b> (machine) are live.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) the <b className="text-foreground">day recap</b>, the <b className="text-foreground">first-piece strip</b>, <b className="text-foreground">Report a problem</b> (machine) and the <b className="text-foreground">undo strip</b> are live.
                 Dimmed tiles show the planned layout; they light up as the blocker model and other pieces land.
             </p>
 
@@ -778,15 +798,44 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 </PreviewLock>
             )}
 
-            {/* Undo window — needs completion events. Preview. */}
-            <PreviewLock>
-                <p className="text-center text-xs text-muted-foreground">
-                    Finished {MOCK.lastFinished.ago} ago: {MOCK.lastFinished.step} · <span className="font-mono">{MOCK.lastFinished.part}</span>
-                    <button className="ml-2 underline-offset-4 hover:underline" onClick={() => say("Would reopen that run (undo window)")}>Undo</button>
-                    <span className="mx-1">·</span>
-                    <button className="underline-offset-4 hover:underline" onClick={() => say("Would flag that part for QA")}>Flag</button>
-                </p>
-            </PreviewLock>
+            {/* Undo strip — LIVE: my last completed step (StepExecutions/my_day). Undo is
+                the Parts rollback: inside the step's undo window it's done at once; past
+                it (or where the step always wants approval) it goes for approval (10/26).
+                Offered only while the part hasn't moved past that step. Flag opens a new
+                quality report on that part at that step. */}
+            {lastFinished && (
+                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-muted-foreground">
+                    <span>
+                        Finished {formatDistanceToNow(new Date(lastFinished.finished_at))} ago: {lastFinished.step_name}
+                        {lastFinished.part_erp_id ? <> · <span className="font-mono">{lastFinished.part_erp_id}</span></> : null}
+                    </span>
+                    {lastFinished.undoable && lastFinished.part_id && (
+                        <ReasonActionButton
+                            label={lastFinished.undo_needs_approval ? "Undo (needs approval)" : "Undo"}
+                            variant="ghost"
+                            title={`Undo ${lastFinished.step_name}?`}
+                            description={lastFinished.undo_needs_approval
+                                ? "This is past the step's undo window, so the undo is sent to your lead for approval. Say why it needs undoing."
+                                : "The part goes back to this step so it can be done again. Say why; the reason is kept."}
+                            confirmLabel={lastFinished.undo_needs_approval ? "Send for approval" : "Undo"}
+                            done={(result) => (result as { requires_approval?: boolean })?.requires_approval
+                                ? "Sent for approval"
+                                : `Undone — ${lastFinished.part_erp_id ?? "the part"} is back at ${lastFinished.step_name}`}
+                            run={(reason) => api.api_Parts_rollback_create(
+                                { reason },
+                                { params: { id: lastFinished.part_id! }, headers: { "X-CSRFToken": getCookie("csrftoken") ?? "" } },
+                            )}
+                        />
+                    )}
+                    {lastFinished.part_id && (
+                        <Button asChild size="sm" variant="ghost">
+                            <Link to="/editor/quality-reports/new" search={{ part: lastFinished.part_id, step: lastFinished.step_id }}>
+                                Flag
+                            </Link>
+                        </Button>
+                    )}
+                </div>
+            )}
 
             {/* Day recap — LIVE: steps I completed today and the findings (FAIL / REPAIR reports) I raised
                 today, on the plant clock (StepExecutions/my_day). */}
@@ -881,6 +930,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                 equipmentIds={stationEquipmentIds.length ? stationEquipmentIds : undefined}
                 initialCategory={downtime?.category}
                 initialReason={downtime?.label}
+                workOrders={downtimeWorkOrders}
+                initialWorkOrderId={runs.length === 1 && runWorkOrders.length === 1 ? runWorkOrders[0] : undefined}
             />
         </div>
     );

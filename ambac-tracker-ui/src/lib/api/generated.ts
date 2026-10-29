@@ -5084,10 +5084,13 @@ export type MyDay = {
 export type MyLastFinished = {
   execution_id: string;
   step_name: string;
+  step_id: string;
   part_id: string | null;
   part_erp_id: string | null;
   work_order_id: string | null;
   finished_at: string;
+  undoable: boolean;
+  undo_needs_approval: boolean;
 };
 export type OperatorHoursReport = {
   rows: Array<OperatorHoursRow>;
@@ -9920,6 +9923,7 @@ export type StepExecutionList = {
   part_erp_id: string | null;
   part_status: string | null;
   work_order: string | null;
+  work_order_erp_id: string | null;
   /**
    * The step being executed
    */
@@ -25413,6 +25417,7 @@ const StepExecutionList = z.object({
   part_erp_id: z.string().nullable(),
   part_status: z.string().nullable(),
   work_order: z.string().nullable(),
+  work_order_erp_id: z.string().nullable(),
   step: z.string().uuid(),
   step_name: z.string(),
   step_order: z.number().int().nullable(),
@@ -25525,10 +25530,13 @@ const StepDurationStats = z.object({
 const MyLastFinished = z.object({
   execution_id: z.string().uuid(),
   step_name: z.string(),
+  step_id: z.string().uuid(),
   part_id: z.string().uuid().nullable(),
   part_erp_id: z.string().nullable(),
   work_order_id: z.string().uuid().nullable(),
   finished_at: z.string().datetime({ offset: true }),
+  undoable: z.boolean(),
+  undo_needs_approval: z.boolean(),
 });
 const MyDay = z.object({
   completed_today: z.number().int(),

@@ -3,7 +3,7 @@ import { OperatorRuntimeSearch } from "@/lib/routes/operator-runtime-search"
 import {
     ApprovalsHistorySearch, CapaListSearch, CreateCapaSearch, DispositionSearch,
     ProcessFlowSearch, SignupSearch, WorkOrderControlSearch, AnnotatorSearch, WorkOrderDetailSearch, CalibrationRecordNewSearch, CapacitySearch,
-    DocumentsListSearch,
+    DocumentsListSearch, QualityReportNewSearch,
 } from "@/lib/routes/search-params"
 import type { QueryClient } from "@tanstack/react-query"
 
@@ -728,6 +728,7 @@ export const qualityReportsEditorRoute = createRoute({
 
 export const qualityReportCreateRoute = createRoute({
     getParentRoute: () => rootRoute, path: '/editor/quality-reports/new',
+    validateSearch: QualityReportNewSearch,
     component: lazyRouteComponent(() => import("@/pages/editors/forms/EditQualityReportFormPage")),
 });
 

@@ -11,8 +11,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useParams } from "@tanstack/react-router"
-import { useInfiniteQuery, infiniteQueryOptions } from "@tanstack/react-query"
+import { useParams, useSearch } from "@tanstack/react-router"
+import { useInfiniteQuery, infiniteQueryOptions, useQuery } from "@tanstack/react-query"
 
 import { api, schemas, type PaginatedUserSelectList } from "@/lib/api/generated"
 import { useRetrieveQualityReport } from "@/hooks/useRetrieveQualityReport"
@@ -81,6 +81,8 @@ const employeeOptionsInfinite = () =>
 export default function EditQualityReportFormPage() {
     const params = useParams({ strict: false });
     const mode = params.id ? "edit" : "create";
+    // `?part=&step=` prefill a new report (the operator home's "Flag").
+    const prefill = useSearch({ strict: false }) as { part?: string; step?: string };
     const qualityReportId = params.id;
 
     // Fetch quality report data if in edit mode
@@ -100,16 +102,34 @@ export default function EditQualityReportFormPage() {
     const { data: stepsData } = useRetrieveSteps({ limit: 100, search: stepSearch });
     const { data: equipmentData } = useRetrieveEquipments({ limit: 100, search: machineSearch });
 
-    const parts = partsData?.results ?? [];
-    const steps = stepsData?.results ?? [];
+    // A prefilled part / step may be outside the first page of options; fetch it so the
+    // picker shows its name rather than a blank.
+    const { data: prefillPart } = useQuery({
+        queryKey: ["parts", "detail", prefill.part],
+        queryFn: () => api.api_Parts_retrieve({ params: { id: prefill.part! } }),
+        enabled: mode === "create" && !!prefill.part,
+    });
+    const { data: prefillStep } = useQuery({
+        queryKey: ["steps", "detail", prefill.step],
+        queryFn: () => api.api_Steps_retrieve({ params: { id: prefill.step! } }),
+        enabled: mode === "create" && !!prefill.step,
+    });
+    const parts = [
+        ...(prefillPart && !(partsData?.results ?? []).some((x) => x.id === prefillPart.id) ? [prefillPart] : []),
+        ...(partsData?.results ?? []),
+    ];
+    const steps = [
+        ...(prefillStep && !(stepsData?.results ?? []).some((x) => x.id === prefillStep.id) ? [prefillStep] : []),
+        ...(stepsData?.results ?? []),
+    ];
     const equipment = equipmentData?.results ?? [];
 
 
     const form = useForm<FormValues, any, FormValues>({
         resolver: zodResolver(formSchema) as Resolver<FormValues, any, FormValues>,
         defaultValues: {
-            part: "",
-            step: "",
+            part: mode === "create" ? prefill.part ?? "" : "",
+            step: mode === "create" ? prefill.step ?? "" : "",
             status: "PENDING",
             description: "",
             is_first_piece: false,
