@@ -102,13 +102,17 @@ export const QaProgressSection = memo(function QaProgressSection({ workOrder, pa
                         </div>
                     </div>
 
-                    {/* Quantity */}
+                    {/* Order quantity (good parts owed, set when planned) vs parts started
+                        (moves as parts are added, made up or cancelled). */}
                     <div className="flex items-start gap-3">
                         <Package className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="space-y-1">
-                            <p className="text-sm font-medium">Quantity</p>
+                            <p className="text-sm font-medium">Order quantity</p>
                             <p className="text-sm text-muted-foreground">
-                                {workOrder.quantity || "Not specified"}
+                                {workOrder.target_good_quantity ?? workOrder.quantity ?? "Not specified"}
+                                {workOrder.quantity != null && (
+                                    <span> · {workOrder.quantity} part{workOrder.quantity === 1 ? "" : "s"} started</span>
+                                )}
                             </p>
                         </div>
                     </div>

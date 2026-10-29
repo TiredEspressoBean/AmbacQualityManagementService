@@ -129,7 +129,7 @@ export default function QaWorkOrdersPage() {
                             <TableHead>Order</TableHead>
                             <TableHead>Company</TableHead>
                             <TableHead>Parts Needing QA</TableHead>
-                            <TableHead>Quantity</TableHead>
+                            <TableHead>Parts started</TableHead>
                             <TableHead>Due Date</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -292,7 +292,7 @@ export default function QaWorkOrdersPage() {
                                 <p><strong>Order:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_info)?.name || "N/A"}</p>
                                 <p><strong>Company:</strong> {asOrderDetailInfo(selectedWorkOrder.related_order_info)?.company_name || "N/A"}</p>
                                 <p><strong>Status:</strong> {selectedWorkOrder.workorder_status?.replace('_', ' ') || 'Unknown'}</p>
-                                <p><strong>Quantity:</strong> {selectedWorkOrder.quantity}</p>
+                                <p><strong>Parts started:</strong> {selectedWorkOrder.quantity}</p>
                                 {selectedWorkOrder.notes && (
                                     <p><strong>Notes:</strong> {selectedWorkOrder.notes}</p>
                                 )}

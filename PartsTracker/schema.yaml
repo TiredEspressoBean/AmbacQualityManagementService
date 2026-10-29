@@ -87719,6 +87719,14 @@ components:
           type: integer
           maximum: 2147483647
           minimum: -2147483648
+        target_good_quantity:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: The number of GOOD parts this work order owes (the ordered
+            quantity, before yield gross-up). `quantity` is what was started to hit
+            it. Make-up planning tops parts back up to this when actual scrap outruns
+            the expected gross-up. Null on legacy WOs (falls back to `quantity`).
         related_order:
           type: string
           format: uuid
@@ -87904,6 +87912,7 @@ components:
       - split_at
       - split_reason
       - start_refusal
+      - target_good_quantity
       - updated_at
     WorkOrderBulkAddPartsInputRequest:
       type: object

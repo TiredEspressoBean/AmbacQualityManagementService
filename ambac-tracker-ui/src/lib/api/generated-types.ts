@@ -40161,6 +40161,8 @@ export interface components {
              */
             priority?: components["schemas"]["WorkOrderPriorityEnum"];
             quantity?: number;
+            /** @description The number of GOOD parts this work order owes (the ordered quantity, before yield gross-up). `quantity` is what was started to hit it. Make-up planning tops parts back up to this when actual scrap outruns the expected gross-up. Null on legacy WOs (falls back to `quantity`). */
+            readonly target_good_quantity: number | null;
             /** Format: uuid */
             related_order?: string | null;
             /**

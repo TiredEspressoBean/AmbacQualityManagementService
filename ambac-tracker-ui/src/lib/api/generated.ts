@@ -18590,6 +18590,10 @@ export type WorkOrder = {
    * @maximum 2147483647
    */
   number | undefined;
+  /**
+   * The number of GOOD parts this work order owes (the ordered quantity, before yield gross-up). `quantity` is what was started to hit it. Make-up planning tops parts back up to this when actual scrap outruns the expected gross-up. Null on legacy WOs (falls back to `quantity`).
+   */
+  target_good_quantity: number | null;
   related_order?: (string | null) | undefined;
   order_line?:
     | /**
@@ -27731,6 +27735,7 @@ const WorkOrder = z.object({
   workorder_status: WorkOrderStatusEnum.optional(),
   priority: WorkOrderPriorityEnum.optional(),
   quantity: z.number().int().gte(-2147483648).lte(2147483647).optional(),
+  target_good_quantity: z.number().int().nullable(),
   related_order: z.string().uuid().nullish(),
   order_line: z.string().uuid().nullish(),
   related_order_info: z.object({}).partial().passthrough().nullable(),

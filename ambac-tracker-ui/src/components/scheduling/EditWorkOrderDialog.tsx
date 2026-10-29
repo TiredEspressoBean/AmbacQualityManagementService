@@ -123,8 +123,9 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Edit work order{wo?.ERP_id ? ` · ${wo.ERP_id}` : ""}</DialogTitle>
           <DialogDescription>
-            Changes apply to the plan and take effect on the next Solve. Quantity changes
-            add parts (increase) or cancel unstarted parts (decrease).
+            Changes apply to the plan and take effect on the next Solve. Changing parts
+            started adds parts (increase) or cancels unstarted parts (decrease); the order
+            quantity{wo?.target_good_quantity != null ? ` (${wo.target_good_quantity})` : ""} stays as planned.
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +138,7 @@ export function EditWorkOrderDialog({ workOrderId, onOpenChange }: Props) {
               <Input type="number" value={priority} onChange={(e) => setPriority(e.target.value)} />
             </div>
             <div className="grid gap-1">
-              <Label className="text-xs">Quantity</Label>
+              <Label className="text-xs" title="Parts started on this work order">Parts started</Label>
               <Input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </div>
             <div className="grid gap-1">

@@ -1134,7 +1134,8 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
     class Meta:
         model = WorkOrder
         fields = (
-        'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'related_order', 'order_line', 'related_order_info', 'related_order_detail',
+        'id', 'ERP_id', 'workorder_status', 'priority', 'quantity', 'target_good_quantity',
+        'related_order', 'order_line', 'related_order_info', 'related_order_detail',
         'process', 'process_info', 'expected_start', 'expected_completion', 'expected_duration', 'true_completion', 'true_duration',
         'notes', 'parts_summary', 'current_hold', 'hold_history',
         'released_at', 'released_by', 'release_override_reason',
@@ -1152,7 +1153,10 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
             'parent_workorder_id', 'split_reason', 'split_at', 'child_count',
             # Short-close is its own action (scrap or move every unfinished unit).
             'short_closed', 'short_close_reason', 'short_closed_by', 'short_closed_at',
-            'short_close_returned_quantity', 'start_refusal')
+            'short_close_returned_quantity', 'start_refusal',
+            # The order quantity (good parts owed), set when the job is planned; shown
+            # beside `quantity`, the parts started. Read-only here — not a new behaviour.
+            'target_good_quantity')
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_start_refusal(self, obj):

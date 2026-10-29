@@ -91,7 +91,7 @@ export function NewWorkOrderDialog({ open, onOpenChange }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1">
-              <Label className="text-xs">Quantity</Label>
+              <Label className="text-xs" title="Good parts the work order owes">Order quantity</Label>
               <Input type="number" min="1" value={quantity}
                 onChange={(e) => setQuantity(e.target.value)} />
             </div>
