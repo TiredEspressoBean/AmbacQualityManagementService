@@ -362,7 +362,7 @@ completion](../workflows/dwi/running.md#voiding-a-completion).
   a rollback request to QA, and the part moves back once it's approved. This moves the part back; it doesn't erase what you
   recorded — that is still a void, above.
 - **Something's wrong with that part** — **Flag** beside it opens a new quality
-  report with the part and step filled in.
+  report with the part, the step and you as **Detected By** filled in.
 - A part moved on too soon **after someone else's step**, the **wrong part loaded
   into a cycle**, or **your clock times are wrong**: tell your shift lead. Those
   corrections are theirs.
