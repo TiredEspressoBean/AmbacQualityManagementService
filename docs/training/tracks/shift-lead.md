@@ -203,10 +203,14 @@ direct time comes from the steps they worked, counted while they were on shift.
 **Awaiting approval** lists each finished shift, break and lunch entry. **Approve** one,
 or **Approve all**. Your own entries read *Your time*: someone else approves those.
 
+In the demo week, each operator has some **Unallocated** time — on shift, but not at a
+step — and Mike and you show a little **Rework**: INJ-0042-016 failed Flow Calibration,
+was reworked, and went back through. Rework is part of direct time, not extra to it.
+
 Someone clocked out late, or forgot to clock in on time? **Correct times** on their
 entry, before you approve it. Change the clock-in or clock-out, say why, and the hours
-recalculate — direct hours too, since they only count while the operator was on shift. Approve the hours only once they're right: an approved entry can't be
-corrected here.
+recalculate — direct hours too, since they only count while the operator was on shift.
+Approve the hours only once they're right: an approved entry can't be corrected here.
 
 ---
 

@@ -280,6 +280,17 @@ month fits.
 **Exercise 11.1.** Say which two skills only one person can do, and what you'd do
 about it before someone's away.
 
+Once work is under way, a job's **Labor** tab asks *is it taking what we planned?*
+Open `WO-2024-0042-A`: its actual direct hours sit under the planned hours from the
+route's time standards. Then open `WO-SHOWCASE-01`: actual is over planned, and turns
+amber. The table under the cards says who the hours belong to.
+
+For costing, **Scheduling** > **Operator Hours** > **By work order** gives the same
+hours per job and operator, to export for the system that prices the work.
+
+**Exercise 11.2.** Say which of the two jobs is over plan, by roughly how much, and
+whose hours make it up.
+
 ---
 
 ## Final task — observed
