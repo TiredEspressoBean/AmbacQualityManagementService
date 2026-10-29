@@ -19,8 +19,9 @@ and every record it names is one the training seed creates.
 
 The password is `demo123`.
 
-Alex holds view permissions across the whole shop and nothing else: the pages show
-what's recorded, without the buttons for changing it.
+Alex holds view permissions across the whole shop, plus the audit log and report
+downloads, and nothing that changes a record: the pages show what's recorded,
+without the buttons for changing it.
 
 ---
 
@@ -61,9 +62,9 @@ is a copy of it on the day you printed it.
 
 **You will:** check the two things a reading depends on.
 
-1. **Quality** > **Training** > **Matrix**. Hover a cell for the person, the skill,
+1. **Quality** > **Training** > **Training Matrix**. Hover a cell for the skill,
    the level and its expiry (*Dimensional Inspection Certification: Trainee —
-   expires 2026-10-29*).
+   expires …*, a week after the shop was set up); the person is the row.
 2. **Calibration records**. The micrometer `MIC-2` failed its check this morning.
    Open that record's exposure: **What Micrometer MIC-2 measured** lists every
    report it was used for since it last passed, `INJ-QA-INSPECT-013`'s bore among

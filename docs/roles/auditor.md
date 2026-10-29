@@ -7,8 +7,11 @@ You see the whole tenant's production record. You do **not** see the classified
 document tiers — that exclusion is real and is described below, so agree what
 you need access to before the audit rather than during it.
 
-!!! info "The whole permission set is 'view'"
-    Auditor holds the staff **view** permissions and full-tenant visibility. It
+!!! info "Read-only: view, browse the audit log, export"
+    Auditor holds the staff **view** permissions (including `export_data`, so
+    reports and page exports work), audit-log browsing, and full-tenant
+    visibility. Exporting the audit log itself takes `export_auditlog`, which
+    Auditor doesn't hold by default. It
     holds no write permission of any kind — not a comment, not a status, not a
     note. There is nothing an auditor can touch that would later need explaining.
 
@@ -31,11 +34,12 @@ document permissions, so the documents you can read are the **Public** and
 **Internal** ones. Confidential, Restricted and Secret are all closed to you.
 
 !!! warning "Export control is not a group permission"
-    ITAR and EAR access is decided by the **US person** flag on *your own user
-    record*, not by which groups you are in. An auditor flagged as a US person
-    **will** see export-controlled documents, and no change to the Auditor group
-    will alter that either way. If an auditor should not see controlled
-    technical data, that flag on their user is what to check. See [Export
+    ITAR access is decided by the **US person** (or ITAR authorization) flag on
+    *your own user record*, and EAR access by the citizenship and EAR
+    authorization on it, not by which groups you are in. An auditor flagged as a
+    US person **will** see ITAR-controlled documents, and no change to the Auditor
+    group will alter that either way. If an auditor should not see controlled
+    technical data, the flags on their user are what to check. See [Export
     Controls](../compliance/export-controls.md).
 
 !!! note "This can look like a gap, and isn't"
