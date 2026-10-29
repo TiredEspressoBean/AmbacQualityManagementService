@@ -15,6 +15,11 @@ direct figure was always 0 on a real shop.
       3. *Not while waiting.* Time the part's work order sat on hold
          (`WorkOrderHold`), or the part was out for outside processing (the
          execution's `outside_process_shipment`, shipped → returned), is left out.
+      4. *Stops at the next clock-out.* A step left running when its operator clocks
+         out stops counting there (user decision 2026-10-29); otherwise it soaked up
+         every later shift until someone closed it. A break isn't a clock-out — the
+         clock closes the SHIFT entry for a break too, so a SHIFT end with a BREAK or
+         LUNCH starting at the same moment is a pause, not a clock-out.
   - **Rework** = the part of direct spent on a re-visit (visit_number > 1) or at a
     REWORK step. Shown beside direct; it is included in it.
   - **Unallocated** = on-shift − direct.
@@ -116,9 +121,37 @@ def _attendance(tenant, start, cap, user_ids=None) -> dict:
     return {uid: _subtract(iv, breaks.get(uid, [])) for uid, iv in shifts.items()}
 
 
+def _clock_outs(tenant, since, cap, user_ids) -> dict:
+    """{user_id: sorted clock-out times in (since, cap)} — SHIFT entries that ended
+    without a BREAK/LUNCH starting at that moment (the clock opens the pause entry as it
+    closes the shift, so the two share a timestamp; a minute's slack covers the gap
+    between the two writes)."""
+    from datetime import timedelta
+    from Tracker.models import TimeEntry
+
+    qs = TimeEntry.objects.filter(archived=False, tenant=tenant, end_time__isnull=False,
+                                  end_time__gt=since, start_time__lt=cap)
+    if user_ids is not None:
+        qs = qs.filter(user_id__in=user_ids)
+    ends, pauses = defaultdict(list), defaultdict(list)
+    for e in qs.values('user_id', 'entry_type', 'start_time', 'end_time'):
+        if e['entry_type'] == _ATTENDANCE:
+            ends[e['user_id']].append(e['end_time'])
+        elif e['entry_type'] in _BREAKS:
+            pauses[e['user_id']].append(e['start_time'])
+    slack = timedelta(minutes=1)
+    out = {}
+    for uid, times in ends.items():
+        starts = pauses.get(uid, [])
+        out[uid] = sorted(t for t in times if t < cap
+                          and not any(abs((p - t).total_seconds()) <= slack.total_seconds() for p in starts))
+    return out
+
+
 def _work_intervals(tenant, start, cap, user_ids=None) -> dict:
     """{user_id: [(start, end, work_order_id, is_rework), ...]} — each execution's worked
-    time inside [start, cap], with hold and outside-processing time removed."""
+    time inside [start, cap], ended at its operator's next clock-out, with hold and
+    outside-processing time removed."""
     from django.db.models import Q
     from Tracker.models import StepExecution, WorkOrderHold
 
@@ -136,6 +169,9 @@ def _work_intervals(tenant, start, cap, user_ids=None) -> dict:
         'outside_process_shipment__shipped_at', 'outside_process_shipment__returned_at',
     ))
 
+    clock_outs = _clock_outs(tenant, min((r['started_at'] for r in rows), default=start), cap,
+                             user_ids) if rows else {}
+
     wo_ids = {r['part__work_order_id'] for r in rows if r['part__work_order_id']}
     holds = defaultdict(list)
     for h in (WorkOrderHold.objects.filter(tenant=tenant, work_order_id__in=wo_ids,
@@ -150,6 +186,10 @@ def _work_intervals(tenant, start, cap, user_ids=None) -> dict:
             continue
         s = max(r['started_at'], start)
         e = min(r['exited_at'] or cap, cap)
+        outs = clock_outs.get(uid, [])
+        i = bisect_right(outs, r['started_at'])
+        if i < len(outs):
+            e = min(e, outs[i])  # stops counting at the operator's next clock-out
         if e <= s:
             continue
         cuts = list(holds.get(r['part__work_order_id'], []))

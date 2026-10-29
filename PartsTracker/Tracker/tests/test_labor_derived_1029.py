@@ -133,6 +133,23 @@ class AllocationTests(_Base):
                                      placed_at=self.at(8), cleared_at=self.at(9), is_voided=True)
         self.assertAlmostEqual(self.alloc()['direct'] / H, 2.0)
 
+    def test_a_step_left_running_stops_counting_at_the_next_clock_out(self):
+        # Clocked out at 15:00 with the step still open; back in the next day.
+        self.shift(self.at(7), self.at(15))
+        self.shift(self.at(7) + timedelta(days=1), self.at(15) + timedelta(days=1))
+        self.execution(self.wo_a, self.at(9), None, user=self.user_a)
+        a = allocate(self.tenant_a, self.at(0), self.at(23) + timedelta(days=1))[self.user_a.id]
+        self.assertAlmostEqual(a['direct'] / H, 6.0)   # 9:00-15:00 on day one only
+
+    def test_a_break_is_not_a_clock_out(self):
+        # The clock closes SHIFT for a break and reopens it after.
+        self.shift(self.at(7), self.at(10))
+        self.shift(self.at(10), self.at(10, 15), kind="BREAK")
+        self.shift(self.at(10, 15), self.at(15))
+        self.execution(self.wo_a, self.at(9), None, user=self.user_a)
+        a = allocate(self.tenant_a, self.at(0), self.at(23))[self.user_a.id]
+        self.assertAlmostEqual(a['direct'] / H, 5.75)  # 9:00-15:00 less the break
+
     def test_operator_hours_rows_carry_rework_and_unallocated(self):
         self.shift(self.at(7), self.at(15))
         self.execution(self.wo_a, self.at(8), self.at(10), user=self.user_a, visit=2)
