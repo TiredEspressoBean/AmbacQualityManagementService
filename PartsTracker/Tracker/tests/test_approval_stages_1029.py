@@ -80,6 +80,23 @@ class SequentialStagesTests(TenantTestCase):
         self._approve(self.qa1)
         self.assertIn(str(self.req.id), ids())
 
+    def test_the_api_says_not_your_turn_rather_than_403(self):
+        self.grant_tenant_permissions(self.mgr, self.tenant_a, [
+            'view_approvalrequest', 'respond_to_approval', 'full_tenant_access'])
+        self.authenticate_as(self.mgr, self.tenant_a)
+        r = self.client.post(f"/api/ApprovalRequests/{self.req.id}/submit-response/",
+                             {"decision": "APPROVED", "comments": "ok"}, format="json")
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("Not your turn", r.content.decode())
+        outsider = User.objects.create_user(username="out", email="out@a.test", password="x",
+                                            tenant=self.tenant_a)
+        self.grant_tenant_permissions(outsider, self.tenant_a, [
+            'view_approvalrequest', 'respond_to_approval', 'full_tenant_access'])
+        self.authenticate_as(outsider, self.tenant_a)
+        r = self.client.post(f"/api/ApprovalRequests/{self.req.id}/submit-response/",
+                             {"decision": "APPROVED", "comments": "ok"}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)
+
     def test_template_edits_dont_reorder_a_request_in_flight(self):
         self.template.approval_stages = [{"users": [self.mgr.id]}]
         self.template.save(update_fields=["approval_stages"])

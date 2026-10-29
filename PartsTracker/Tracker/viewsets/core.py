@@ -2403,8 +2403,10 @@ class ApprovalRequestViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMix
         # template-binding logic that depends on the specific approval row.
         approval = self.get_object()
 
-        # Check if user is an assigned approver
-        if not approval.can_approve(request.user):
+        # Check if user is an approver here at all. Whether it's their turn (a
+        # sequential request's stage) is the service's to say, with who it's waiting
+        # on — can_approve answers both at once and turned "not yet" into a 403.
+        if not approval.is_eligible_somewhere(request.user):
             return Response(
                 {'detail': 'You are not assigned as an approver for this request'},
                 status=status.HTTP_403_FORBIDDEN
