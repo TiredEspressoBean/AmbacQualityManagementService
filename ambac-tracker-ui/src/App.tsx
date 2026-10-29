@@ -35,8 +35,13 @@ export default function App() {
 
                     // Handle 401 Unauthorized - session expired or not logged in
                     if (status === 401) {
-                        // Clear any cached user data
-                        queryClient.clear();
+                        // Drop any cached user data — but keep the organization query.
+                        // It's branding, readable signed out, and TenantProvider sits
+                        // above the router observing it: clear() removed it from under
+                        // that observer, so the login page's burst of 401s left the
+                        // provider on a detached pre-login "no organization", and
+                        // sign-in's reset had nothing to refetch (sidebar read "uqmes").
+                        queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== "tenant" });
 
                         // Only redirect if not already on login/signup pages
                         const publicPaths = ['/login', '/signup', '/password-reset-request', '/reset-password'];
