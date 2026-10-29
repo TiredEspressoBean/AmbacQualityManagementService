@@ -191,6 +191,11 @@ export default function ApprovalTemplateFormPage() {
         }
     }, [mode, template, form]);
 
+    // Subscribed (not read once) so the stage cards follow the loaded template and the
+    // Sequence select.
+    const sequence = useWatch({ control: form.control, name: "approval_sequence" });
+    const stagesValue = useWatch({ control: form.control, name: "approval_stages" });
+
     const createTemplate = useCreateApprovalTemplate();
     const updateTemplate = useUpdateApprovalTemplate();
 
@@ -350,9 +355,9 @@ export default function ApprovalTemplateFormPage() {
                                 state advances.
                             </p>
                         </div>
-                        {form.watch("approval_sequence") === "SEQUENTIAL" ? (
+                        {sequence === "SEQUENTIAL" ? (
                             <ApprovalStagesField
-                                value={form.watch("approval_stages") ?? []}
+                                value={stagesValue ?? []}
                                 onChange={(next) => form.setValue("approval_stages", next, { shouldDirty: true })}
                             />
                         ) : (
@@ -371,7 +376,7 @@ export default function ApprovalTemplateFormPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel required={required.approval_flow_type}>Approval Flow</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                        <Select key={`approval_flow_type-${field.value ?? "empty"}`} onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue />
@@ -399,7 +404,7 @@ export default function ApprovalTemplateFormPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel required={required.approval_sequence}>Sequence</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                        <Select key={`approval_sequence-${field.value ?? "empty"}`} onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue />
@@ -430,7 +435,7 @@ export default function ApprovalTemplateFormPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel required={required.delegation_policy}>Delegation</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                        <Select key={`delegation_policy-${field.value ?? "empty"}`} onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue />

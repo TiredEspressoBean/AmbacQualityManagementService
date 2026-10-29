@@ -26835,8 +26835,11 @@ export interface components {
         /**
          * @description Measurement definition serializer with versioning support.
          *
-         *     Content edits (label, type, unit, nominal, tolerances, required,
-         *     spc_enabled) create a new version via `create_new_version`.
+         *     Content edits (label, type, unit, nominal, tolerances, spc_enabled) create a
+         *     new version via `create_new_version`.
+         *
+         *     `required` is not exposed (user decision 2026-10-29): nothing reads it — whether a
+         *     value must be captured is the work instruction's required node. The column stays.
          *     Archive-only updates go through a plain save.
          */
         MeasurementDefinition: {
@@ -26851,7 +26854,6 @@ export interface components {
             upper_tol?: string | null;
             /** Format: decimal */
             lower_tol?: string | null;
-            required?: boolean;
             type: components["schemas"]["TypeEnum"];
             /** Format: uuid */
             step: string;
@@ -26882,8 +26884,11 @@ export interface components {
         /**
          * @description Measurement definition serializer with versioning support.
          *
-         *     Content edits (label, type, unit, nominal, tolerances, required,
-         *     spc_enabled) create a new version via `create_new_version`.
+         *     Content edits (label, type, unit, nominal, tolerances, spc_enabled) create a
+         *     new version via `create_new_version`.
+         *
+         *     `required` is not exposed (user decision 2026-10-29): nothing reads it — whether a
+         *     value must be captured is the work instruction's required node. The column stays.
          *     Archive-only updates go through a plain save.
          */
         MeasurementDefinitionRequest: {
@@ -26895,7 +26900,6 @@ export interface components {
             upper_tol?: string | null;
             /** Format: decimal */
             lower_tol?: string | null;
-            required?: boolean;
             type: components["schemas"]["TypeEnum"];
             /** Format: uuid */
             step: string;
@@ -30992,8 +30996,11 @@ export interface components {
         /**
          * @description Measurement definition serializer with versioning support.
          *
-         *     Content edits (label, type, unit, nominal, tolerances, required,
-         *     spc_enabled) create a new version via `create_new_version`.
+         *     Content edits (label, type, unit, nominal, tolerances, spc_enabled) create a
+         *     new version via `create_new_version`.
+         *
+         *     `required` is not exposed (user decision 2026-10-29): nothing reads it — whether a
+         *     value must be captured is the work instruction's required node. The column stays.
          *     Archive-only updates go through a plain save.
          */
         PatchedMeasurementDefinitionRequest: {
@@ -31005,7 +31012,6 @@ export interface components {
             upper_tol?: string | null;
             /** Format: decimal */
             lower_tol?: string | null;
-            required?: boolean;
             type?: components["schemas"]["TypeEnum"];
             /** Format: uuid */
             step?: string;

@@ -71,3 +71,12 @@ class WorkOrderPriorityTests(TenantTestCase):
             }, format="json")
             self.assertEqual(r.status_code, 400, (status, r.content))
             self.assertIn("workorder_status", r.json())
+
+    def test_a_work_order_made_without_parts_starts_at_zero_parts_started(self):
+        """2026-10-29: the model default of 1 read '1 part started' with no parts."""
+        r = self.client.post("/api/WorkOrders/", {
+            "ERP_id": "WO-EMPTY", "workorder_status": "PENDING",
+            "process": str(self.wo.process_id), "priority": 3,
+        }, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.json()["quantity"], 0)

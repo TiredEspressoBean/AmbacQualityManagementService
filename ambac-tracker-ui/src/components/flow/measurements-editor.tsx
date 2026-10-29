@@ -151,9 +151,6 @@ export function MeasurementsEditor({ stepId, stepName, open, onOpenChange, readO
                           <Badge variant="secondary" className="text-xs">
                             {measurement.type === 'NUMERIC' ? 'Numeric' : 'Pass/Fail'}
                           </Badge>
-                          {measurement.required && (
-                            <Badge variant="outline" className="text-xs">Required</Badge>
-                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {formatTolerance(measurement)}

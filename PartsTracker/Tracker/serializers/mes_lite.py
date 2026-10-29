@@ -1111,6 +1111,10 @@ class WorkOrderSerializer(SecureModelMixin, BulkOperationsMixin):
 
     def create(self, validated_data):
         validated_data.pop('priority_reason', None)  # a new job's first priority isn't a change
+        # `quantity` is parts started, and a work order made here has none yet — the
+        # model's default of 1 read "1 part started" with no parts. Parts added later
+        # raise it (Add Parts, make-up).
+        validated_data.setdefault('quantity', 0)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):

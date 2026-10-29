@@ -142,11 +142,6 @@ export default function MeasurementDefinitionCard({
         )}
 
         <div className="flex flex-wrap gap-2">
-          {definition.required && (
-            <Badge variant="default" className="text-xs">
-              Required
-            </Badge>
-          )}
         </div>
       </CardContent>
     </Card>

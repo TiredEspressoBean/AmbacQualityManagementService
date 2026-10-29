@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateMeasurementDefinition } from "@/hooks/useCreateMeasurementDefinition";
 import { useUpdateMeasurementDefinition } from "@/hooks/useUpdateMeasurementDefinition";
@@ -58,7 +57,6 @@ const formSchema = schemas.MeasurementDefinitionRequest.pick({
   nominal: true,
   upper_tol: true,
   lower_tol: true,
-  required: true,
   characteristic_number: true,
   default_equipment: true,
   backup_equipment: true,
@@ -81,7 +79,6 @@ interface MeasurementDefinitionFormProps {
     nominal?: string | null;
     upper_tol?: string | null;
     lower_tol?: string | null;
-    required?: boolean;
     characteristic_number?: string | null;
     default_equipment?: string | null;
     backup_equipment?: string | null;
@@ -107,7 +104,6 @@ export default function MeasurementDefinitionForm({
       nominal: existingDefinition?.nominal || null,
       upper_tol: existingDefinition?.upper_tol || null,
       lower_tol: existingDefinition?.lower_tol || null,
-      required: existingDefinition?.required ?? true,
       characteristic_number: existingDefinition?.characteristic_number || null,
       default_equipment: existingDefinition?.default_equipment || null,
       backup_equipment: existingDefinition?.backup_equipment || null,
@@ -361,24 +357,6 @@ export default function MeasurementDefinitionForm({
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="required"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Required</FormLabel>
-                <FormDescription>
-                  Must be measured to complete step
-                </FormDescription>
-              </div>
-            </FormItem>
-          )}
-        />
 
         <div className="flex justify-end space-x-2">
           {onCancel && (

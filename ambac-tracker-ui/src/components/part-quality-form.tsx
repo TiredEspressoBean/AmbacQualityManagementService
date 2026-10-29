@@ -507,9 +507,6 @@ export function PartQualityForm({ part, onClose }: { part: any; onClose?: () => 
                                                     <FormLabel className="text-base flex items-center gap-2">
                                                         {def.label}
                                                         {def.unit && <span className="text-muted-foreground">({def.unit})</span>}
-                                                        {def.required && (
-                                                            <span className="text-xs text-destructive">*</span>
-                                                        )}
                                                     </FormLabel>
                                                     {def.nominal !== null && def.nominal !== undefined && (
                                                         <p className="text-xs text-muted-foreground">

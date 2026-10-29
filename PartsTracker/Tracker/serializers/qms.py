@@ -78,8 +78,11 @@ class ErrorTypeSerializer(SecureModelMixin):
 class MeasurementDefinitionSerializer(SecureModelMixin):
     """Measurement definition serializer with versioning support.
 
-    Content edits (label, type, unit, nominal, tolerances, required,
-    spc_enabled) create a new version via `create_new_version`.
+    Content edits (label, type, unit, nominal, tolerances, spc_enabled) create a
+    new version via `create_new_version`.
+
+    `required` is not exposed (user decision 2026-10-29): nothing reads it — whether a
+    value must be captured is the work instruction's required node. The column stays.
     Archive-only updates go through a plain save.
     """
     step_name = serializers.SerializerMethodField()
@@ -100,7 +103,7 @@ class MeasurementDefinitionSerializer(SecureModelMixin):
         model = MeasurementDefinition
         fields = [
             "id", "label", "step_name", "unit", "nominal",
-            "upper_tol", "lower_tol", "required", "type", "step",
+            "upper_tol", "lower_tol", "type", "step",
             "spc_enabled", "archived", "characteristic_number",
             "default_equipment", "default_equipment_name", "default_equipment_status",
             "backup_equipment", "backup_equipment_name", "backup_equipment_status",

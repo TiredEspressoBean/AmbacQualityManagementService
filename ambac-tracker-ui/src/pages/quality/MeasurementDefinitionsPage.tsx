@@ -178,7 +178,6 @@ export function MeasurementDefinitionsPage() {
                     priority: 3,
                     renderCell: (m) => (
                         <div className="flex gap-1">
-                            {m.required && <Badge variant="outline">Required</Badge>}
                             {m.spc_enabled && <Badge variant="outline">SPC</Badge>}
                         </div>
                     ),

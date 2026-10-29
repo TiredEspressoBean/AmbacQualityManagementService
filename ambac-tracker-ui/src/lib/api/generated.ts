@@ -4904,7 +4904,6 @@ export type MeasurementDefinition = {
      */
     (string | null)
     | undefined;
-  required?: boolean | undefined;
   type: TypeEnum;
   step: string;
   spc_enabled?: /**
@@ -4976,7 +4975,6 @@ export type MeasurementDefinitionRequest = {
      */
     (string | null)
     | undefined;
-  required?: boolean | undefined;
   type: TypeEnum;
   step: string;
   spc_enabled?: /**
@@ -13616,7 +13614,6 @@ export type PatchedMeasurementDefinitionRequest = Partial<{
    * @pattern ^-?\d{0,3}(?:\.\d{0,6})?$
    */
   lower_tol: string | null;
-  required: boolean;
   type: TypeEnum;
   step: string;
   /**
@@ -22592,7 +22589,6 @@ const MeasurementDefinition = z.object({
     .string()
     .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
     .nullish(),
-  required: z.boolean().optional(),
   type: TypeEnum,
   step: z.string().uuid(),
   spc_enabled: z.boolean().optional(),
@@ -22629,7 +22625,6 @@ const MeasurementDefinitionRequest = z.object({
     .string()
     .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
     .nullish(),
-  required: z.boolean().optional(),
   type: TypeEnum,
   step: z.string().uuid(),
   spc_enabled: z.boolean().optional(),
@@ -22654,7 +22649,6 @@ const PatchedMeasurementDefinitionRequest = z
       .string()
       .regex(/^-?\d{0,3}(?:\.\d{0,6})?$/)
       .nullable(),
-    required: z.boolean(),
     type: TypeEnum,
     step: z.string().uuid(),
     spc_enabled: z.boolean(),
