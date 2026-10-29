@@ -133,10 +133,10 @@ For multiple orders:
    - **Related Order** — the customer order, if there is one (optional)
 4. Click **Submit**
 
-The work order starts **Pending**, with a quantity of 1 and no parts — the form
-has no quantity field. See [Creating a Work
+The work order starts **Pending**, with 0 parts started — the form has no
+quantity field. See [Creating a Work
 Order](../workflows/work-orders/basics.md#creating-a-work-order) for where the
-quantity and parts are set.
+order quantity and parts are set.
 
 !!! note "ERP ID is required and easy to miss"
     The save fails without it. It is the work order's identifier in whatever

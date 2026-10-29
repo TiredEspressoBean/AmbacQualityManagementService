@@ -72,8 +72,8 @@ An order may have multiple work orders if:
     ones for a decrease. The work order page shows both: *Order quantity ·
     &lt;n&gt; parts started*.
 
-    A work order created on this form has 1 part started and no parts yet, and
-    no order quantity of its own. A work order planned from the schedule or an
+    A work order created on this form starts with 0 parts started and no order
+    quantity of its own. A work order planned from the schedule or an
     order line gets both when it is planned.
 
 !!! note "A work order need not be tied to a customer order"

@@ -80,8 +80,7 @@ Orders need work orders to track production:
 2. Enter the **ERP ID** and **Expected Completion Date** — both required
 3. Pick your order as the **Related Order**
 4. Choose the **Process** to apply — only approved processes in force are offered
-5. Click **Submit**. The work order starts **Pending**, with a quantity of 1 and
-   no parts
+5. Click **Submit**. The work order starts **Pending**, with 0 parts started
 
 See [Creating a Work Order](../work-orders/basics.md#creating-a-work-order) for
 every field, and for how its quantity and parts are set.

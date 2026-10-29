@@ -122,8 +122,8 @@ Custom units can be added.
 
 ## Required vs Optional
 
-The definition's **Required** checkbox (*Must be measured to complete step*) is
-recorded, but nothing reads it: it does not stop a part moving on.
+A measurement definition has no required flag. Two settings elsewhere decide
+what a reading means for the part:
 
 - **Whether a reading must be taken** is set where it is captured — the step's
   [work instructions](../../workflows/dwi/authoring.md). A substep can't be

@@ -115,7 +115,8 @@ Add measurements to inspection steps:
 | **Upper Tolerance** | How far above nominal is acceptable, as a positive amount |
 | **Lower Tolerance** | How far below nominal is acceptable, as a positive amount |
 | **Unit** | Unit of measure |
-| **Required** | Recorded on the definition; it does not block the step. Whether a reading must be taken is set in the step's work instructions |
+
+Whether a reading must be taken is set in the step's work instructions.
 
 See [Measurement Definitions](measurements.md) for details.
 
