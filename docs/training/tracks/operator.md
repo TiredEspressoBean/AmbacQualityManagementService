@@ -181,8 +181,15 @@ Missing material, a broken fixture, a part you think is bad, or anything else th
 stops the job: **go to your lead** and tell them. Don't work around it, and don't
 leave a part half-done without saying so.
 
-The **Can't run this?** and **Report a problem** buttons on your home page aren't in
-use yet. Don't rely on them.
+**Can't run this?** on your home page isn't in use yet, and neither is **Call my
+lead**. Don't rely on them.
+
+A machine that stops is different: report it yourself, so the schedule knows.
+**Report a problem** → **Machine problem**, then what's wrong — *Machine down /
+fault*, *Needs maintenance*, *Setup / changeover issue* or *Other*. The form opens
+with your station's machine and the job you're running already picked, and the
+reason filled in. Add a description and **Record downtime**: the machine is down
+from now until it's back. Then tell your lead.
 
 ---
 

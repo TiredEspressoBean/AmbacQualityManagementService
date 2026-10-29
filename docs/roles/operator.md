@@ -184,8 +184,10 @@ you find it:
   the step player. That writes the quality record for you.
 - **Part already past the step** — tick it in the work order's parts list and
   click **Quarantine**.
-- **A machine is down** — open the work order and click **Report…**, then
-  **Downtime**.
+- **A machine is down** — on Home, **Report a problem** → **Machine problem**,
+  then what's wrong. Your station's machine and your current job are picked for
+  you; **Record downtime** marks it down from now. (From a work order:
+  **Report…** → **Downtime**.)
 - **Bigger than one part** — raise a disposition or a CAPA; **Report…** links
   to both forms.
 
@@ -194,8 +196,9 @@ procedure and when to use each.
 
 ### If you can't run the job at all
 
-**Can't run this?** on Home isn't in use yet. Missing material, a broken fixture
-or anything else that stops the job: go to your lead and tell them.
+**Can't run this?** and **Call my lead** on Home aren't in use yet. Missing
+material, a broken fixture or anything else that stops the job: go to your lead
+and tell them.
 
 ### When to Flag
 
@@ -339,7 +342,7 @@ These are the default groups an organisation starts with. Group permissions can 
 
 ### If you recorded something wrong
 
-**You cannot undo your own completion, and that is deliberate** — performing the
+**You cannot void what you recorded, and that is deliberate** — performing the
 work and adjudicating the record are different jobs.
 
 - **Before you finish the step**, the review list is the last easy place to fix
@@ -351,8 +354,18 @@ work and adjudicating the record are different jobs.
 Nothing is deleted — the original record and the void both stay. See [Voiding a
 completion](../workflows/dwi/running.md#voiding-a-completion).
 
-- **A part moved on too soon**, the **wrong part loaded into a cycle**, or **your
-  clock times are wrong**: tell your shift lead. Those corrections are theirs.
+- **The step you just finished needs doing again** — Home shows your last one:
+  *Finished … ago: &lt;step&gt; · &lt;part&gt;*. **Undo** sends the part back to that
+  step so it can be done again, with your reason kept. It is offered only until
+  someone finishes the next step. Past the step's undo window, or where the step
+  needs approval, it reads **Undo (needs approval)**: **Send for approval** sends
+  a rollback request to QA, and the part moves back once it's approved. This moves the part back; it doesn't erase what you
+  recorded — that is still a void, above.
+- **Something's wrong with that part** — **Flag** beside it opens a new quality
+  report with the part and step filled in.
+- A part moved on too soon **after someone else's step**, the **wrong part loaded
+  into a cycle**, or **your clock times are wrong**: tell your shift lead. Those
+  corrections are theirs.
 
 Everything that can be put right, and who does it, is on [Putting a Mistake
 Right](../workflows/fixing-mistakes.md).
