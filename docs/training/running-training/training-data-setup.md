@@ -406,7 +406,9 @@ data goes into it, and it is reset by regenerating the demo data. See the
 
 ### Parts won't move
 
-1. Check required measurements are defined
+1. Check the step's work instruction: a required field left empty keeps the step
+   from completing, and a step with **Block on out-of-spec measurement** on holds a
+   part whose reading is out of specification
 2. Verify FPI requirements
 3. Confirm user has permissions
 
