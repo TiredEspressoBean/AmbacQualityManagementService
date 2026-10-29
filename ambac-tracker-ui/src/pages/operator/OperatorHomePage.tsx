@@ -15,7 +15,8 @@
  *           WorkCenter memberships; Start navigates to WO detail — the operator work
  *           surface) · station-scope combobox (memberships → picked station persists
  *           per-user in localStorage) · day recap (StepExecutions/my_day) ·
- *           first-piece strip (FPIRecords/mine).
+ *           first-piece strip (FPIRecords/mine) · Report a problem → machine (the
+ *           downtime dialog, my station's machines).
  *  PREVIEW: dimmed tiles, by decision — Call my lead; Can't run this? and Your flags
  *           (blocker routing not built, 10/21); the job branch of Report a problem.
  *           Each renders placeholder content behind a blur+disable via <PreviewLock>,
@@ -46,6 +47,7 @@ import { useActiveShiftNotes, useAcknowledgeShiftNote, type ShiftNote } from "@/
 import { useWorkQueue, type WorkQueueRow } from "@/hooks/workQueue";
 import { matchKey } from "@/lib/query-filters";
 import { useMyHours } from "@/hooks/useScheduling";
+import { ReportExceptionDialog } from "@/pages/workorders/ReportExceptionDialog";
 
 /** The operator's own open runs, scoped to production surface + station. */
 const myWorkloadOptions = (scopedWcIds: string[]) =>
@@ -75,6 +77,8 @@ const myFirstPiecesOptions = () =>
         queryFn: () => api.api_FPIRecords_mine_list(),
         refetchInterval: 30_000,
     });
+
+const FIRST_PIECE_ROWS = 3;
 
 const FPI_VERDICT: Record<string, { label: string; className: string }> = {
     PASSED: { label: "Passed", className: "font-medium text-emerald-700 dark:text-emerald-400" },
@@ -121,7 +125,13 @@ const BLOCK_REASONS = [
     { key: "other", label: "Something else", owner: "your lead" },
 ] as const;
 
-const MACHINE_REASONS = ["Machine down / fault", "Needs maintenance", "Setup / changeover issue", "Other"] as const;
+// The machine branch's quick reasons, each opening the downtime dialog prefilled.
+const MACHINE_REASONS = [
+    { label: "Machine down / fault", category: "UNPLANNED" },
+    { label: "Needs maintenance", category: "UNPLANNED" },
+    { label: "Setup / changeover issue", category: "CHANGEOVER" },
+    { label: "Other", category: "OTHER" },
+] as const;
 
 const say = (msg: string) => toast.info(msg, { description: "Preview — this tile isn't wired to live data yet." });
 
@@ -193,6 +203,19 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
         return [activeWcId];
     }, [memberships, activeWcId]);
 
+    // Machine problem → the downtime dialog, limited to my station's machines (all my
+    // stations when scoped to "all"; none known → any machine).
+    const [downtime, setDowntime] = useState<(typeof MACHINE_REASONS)[number] | null>(null);
+    const { data: workCenters } = useQuery({
+        queryKey: ["work-centers", "for-downtime"],
+        queryFn: () => api.api_WorkCenters_list({ queries: { limit: 500 } }),
+        enabled: downtime !== null,
+    });
+    const stationEquipmentIds = useMemo(() => {
+        const wcs = (workCenters?.results ?? []).filter((w) => scopedWcIds.includes(String(w.id)));
+        return [...new Set(wcs.flatMap((w) => (w.equipment ?? []).map(String)))];
+    }, [workCenters, scopedWcIds]);
+
     // LIVE — the operator's own open runs, scoped to production surface + station.
     const { data: workload } = useQuery(myWorkloadOptions(scopedWcIds));
     const runs = workload?.results ?? [];
@@ -204,6 +227,8 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
     const { data: myHours } = useMyHours();
     const { data: myDay } = useQuery(myDayOptions());
     const { data: firstPieces = [] } = useQuery(myFirstPiecesOptions());
+    // Server order: pending (oldest first), then decided (newest first).
+    const [showAllFirstPieces, setShowAllFirstPieces] = useState(false);
     const openEntry = openEntryPage?.results?.[0] ?? null;
     const onLunch = openEntry?.entry_type === "LUNCH";
     const paused = openEntry?.entry_type === "BREAK" || onLunch;
@@ -431,15 +456,17 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
 
             {/* Orient the viewer: what's real vs. planned. */}
             <p className="text-xs text-muted-foreground">
-                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) the <b className="text-foreground">day recap</b> and the <b className="text-foreground">first-piece strip</b> are live.
+                Preview build — <b className="text-foreground">Up next</b>, <b className="text-foreground">Then</b>, <b className="text-foreground">Scan</b>, <b className="text-foreground">In progress</b>, <b className="text-foreground">Notifications</b>, <b className="text-foreground">Shift notes</b>, the <b className="text-foreground">station-scope</b> combobox, and the <b className="text-foreground">clock</b> (in/out/break/lunch) the <b className="text-foreground">day recap</b>, the <b className="text-foreground">first-piece strip</b> and <b className="text-foreground">Report a problem</b> (machine) are live.
                 Dimmed tiles show the planned layout; they light up as the blocker model and other pieces land.
             </p>
 
             {/* FIRST-PIECE loop — LIVE: first pieces from my runs, open or decided today
-                (FPIRecords/mine): sent → seen by QA → the verdict. Hidden when none. */}
+                (FPIRecords/mine): sent → seen by QA → the verdict. Hidden when none.
+                At most three rows, pending first, "+N more" for the rest (user decision
+                10/29), so a busy day doesn't push Up next off a kiosk screen. */}
             {firstPieces.length > 0 && (
                 <div className="space-y-1">
-                    {firstPieces.map((f) => {
+                    {(showAllFirstPieces ? firstPieces : firstPieces.slice(0, FIRST_PIECE_ROWS)).map((f) => {
                         const pending = f.status === "PENDING";
                         const verdict = FPI_VERDICT[f.status];
                         return (
@@ -460,6 +487,14 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             </div>
                         );
                     })}
+                    {firstPieces.length > FIRST_PIECE_ROWS && (
+                        <button
+                            className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                            onClick={() => setShowAllFirstPieces((v) => !v)}
+                        >
+                            {showAllFirstPieces ? "Show fewer" : `+${firstPieces.length - FIRST_PIECE_ROWS} more`}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -699,18 +734,18 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     </div>
                 </Tile>
 
-                {/* PROBLEM + LEAD — need the blocker aggregate + downtime dialog. Preview. */}
-                <PreviewLock>
-                    <Tile className="h-full flex items-stretch p-0">
-                        <button
-                            onClick={() => { setProblemBranch(null); setProblemOpen(true); }}
-                            className="flex w-full flex-col items-center justify-center gap-2 rounded-xl p-4 transition-colors hover:bg-accent"
-                        >
-                            <AlertTriangle className="h-8 w-8 text-amber-600" />
-                            <span className="text-sm font-medium">Report a problem</span>
-                        </button>
-                    </Tile>
-                </PreviewLock>
+                {/* REPORT A PROBLEM — LIVE for a machine (the downtime dialog, my station's
+                    machines); the job branch stays Preview (blocker routing, 10/21).
+                    CALL MY LEAD stays Preview by decision. */}
+                <Tile className="h-full flex items-stretch p-0">
+                    <button
+                        onClick={() => { setProblemBranch(null); setProblemOpen(true); }}
+                        className="flex w-full flex-col items-center justify-center gap-2 rounded-xl p-4 transition-colors hover:bg-accent"
+                    >
+                        <AlertTriangle className="h-8 w-8 text-amber-600" />
+                        <span className="text-sm font-medium">Report a problem</span>
+                    </button>
+                </Tile>
                 <PreviewLock>
                     <Tile className="h-full flex items-stretch p-0">
                         <button
@@ -814,14 +849,15 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                             </Button>
                             <Button size="lg" variant="outline" className="h-16 justify-start text-base" onClick={() => setProblemBranch("job")}>
                                 <XCircle className="mr-3 h-5 w-5 text-muted-foreground" /> Can't run a job
+                                <Badge variant="secondary" className="ml-auto gap-1 text-[10px]"><Lock className="h-3 w-3" /> Preview</Badge>
                             </Button>
                         </div>
                     ) : problemBranch === "machine" ? (
                         <div className="grid grid-cols-1 gap-2">
                             {MACHINE_REASONS.map((r) => (
-                                <Button key={r} size="lg" variant="outline" className="h-14 justify-start text-base"
-                                    onClick={() => { setProblemOpen(false); setProblemBranch(null); say(`Would open a downtime event: "${r}" (maintenance notified)`); }}>
-                                    {r}
+                                <Button key={r.label} size="lg" variant="outline" className="h-14 justify-start text-base"
+                                    onClick={() => { setProblemOpen(false); setProblemBranch(null); setDowntime(r); }}>
+                                    {r.label}
                                 </Button>
                             ))}
                         </div>
@@ -837,6 +873,15 @@ export function OperatorHomePage({ user }: { user: AuthUser }) {
                     )}
                 </DialogContent>
             </Dialog>
+
+            <ReportExceptionDialog
+                open={downtime !== null}
+                onOpenChange={(v) => { if (!v) setDowntime(null); }}
+                downtimeOnly
+                equipmentIds={stationEquipmentIds.length ? stationEquipmentIds : undefined}
+                initialCategory={downtime?.category}
+                initialReason={downtime?.label}
+            />
         </div>
     );
 }

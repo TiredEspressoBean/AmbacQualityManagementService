@@ -54,6 +54,13 @@ type Props = {
     scopedWorkOrderErpId?: string;
     /** Offered as an optional link when the dialog is not scoped to one WO */
     workOrders?: { id: string; erp_id: string }[];
+    /** Downtime only (the operator home's "machine problem"): no Type picker. */
+    downtimeOnly?: boolean;
+    /** Limit the machine list to these (the operator's station); one is preselected. */
+    equipmentIds?: string[];
+    /** Prefill from the reason the operator tapped. */
+    initialCategory?: DowntimeCategory;
+    initialReason?: string;
 };
 
 export function ReportExceptionDialog({
@@ -62,6 +69,10 @@ export function ReportExceptionDialog({
     scopedWorkOrderId,
     scopedWorkOrderErpId,
     workOrders = [],
+    downtimeOnly = false,
+    equipmentIds,
+    initialCategory,
+    initialReason,
 }: Props) {
     const [kind, setKind] = useState<ExceptionItem["kind"]>("DOWNTIME");
     const [equipmentId, setEquipmentId] = useState("");
@@ -73,9 +84,9 @@ export function ReportExceptionDialog({
     useEffect(() => {
         if (!open) return;
         setKind("DOWNTIME");
-        setEquipmentId("");
-        setCategory("UNPLANNED");
-        setReason("");
+        setEquipmentId(equipmentIds?.length === 1 ? equipmentIds[0] : "");
+        setCategory(initialCategory ?? "UNPLANNED");
+        setReason(initialReason ?? "");
         setDescription("");
         setWorkOrderId(NO_WORK_ORDER);
     }, [open]);
@@ -89,8 +100,10 @@ export function ReportExceptionDialog({
         const untracked = new Set(
             (typeData?.results ?? []).filter((t) => t.track_downtime === false).map((t) => t.id),
         );
+        const station = equipmentIds?.length ? new Set(equipmentIds) : null;
         return (equipmentData?.results ?? [])
             .filter((e) => !e.equipment_type || !untracked.has(e.equipment_type))
+            .filter((e) => !station || station.has(e.id))
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [equipmentData, typeData]);
 
@@ -124,16 +137,17 @@ export function ReportExceptionDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <CircleAlert className="h-4 w-4" />
-                        Report exception
+                        {downtimeOnly ? "Machine problem" : "Report exception"}
                     </DialogTitle>
                     <DialogDescription>
-                        Records an event that blocks or risks production. Downtime is recorded here;
-                        a quarantine or a CAPA is raised on its own form.
+                        {downtimeOnly
+                            ? "Records the machine as down from now, so the schedule and your lead see it."
+                            : "Records an event that blocks or risks production. Downtime is recorded here; a quarantine or a CAPA is raised on its own form."}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-3">
-                    <div className="space-y-1">
+                    <div className={downtimeOnly ? "hidden" : "space-y-1"}>
                         <Label>Type</Label>
                         <Select value={kind} onValueChange={(v) => setKind(v as ExceptionItem["kind"])}>
                             <SelectTrigger>
@@ -228,7 +242,9 @@ export function ReportExceptionDialog({
                                 </div>
                             )}
                             <p className="text-xs text-muted-foreground">
-                                Starts now. Resolve it from the exceptions list when the machine is back.
+                                {downtimeOnly
+                                    ? "Starts now. It's closed when the machine is back."
+                                    : "Starts now. Resolve it from the exceptions list when the machine is back."}
                             </p>
                         </>
                     ) : kind === "QUARANTINE" ? (
