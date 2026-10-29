@@ -27,6 +27,7 @@ import { useRetrieveDocuments } from '@/hooks/useRetrieveDocuments';
 import { useContentTypeMapping } from '@/hooks/useContentTypes';
 import { MeasurementsEditor } from './measurements-editor';
 import { StepSamplingEditor } from './step-sampling-editor';
+import { usePermissionSet } from '@/hooks/useMyPermissions';
 import { StepDocumentsEditor } from './step-documents-editor';
 import { StepTrainingRequirementsEditor } from './step-training-requirements-editor';
 import { StepMachinesEditor } from './step-machines-editor';
@@ -139,6 +140,8 @@ type StepNodeData = {
   fpiScope?: string;
   /** Substep order for the operator: 'sequential' (default) or 'free_order'. */
   sequencingMode?: string;
+  /** Parts can't advance from this step while quarantined. */
+  blockOnQuarantine?: boolean;
   samplingRequired?: boolean;
   minSamplingRate?: number;
   passThreshold?: number;
@@ -166,6 +169,10 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
   const navigate = useNavigate();
   const [rejectTarget, setRejectTarget] = useState<string>('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Sampling is QA's (the update_sampling_rules gate): editing the process doesn't
+  // grant it, so the dialog is read-only without the sampling permissions.
+  const perms = usePermissionSet();
+  const canAuthorSampling = perms.has('add_samplingruleset') && perms.has('change_samplingruleset');
 
   // Type-driven relevance: the step's node type decides which sections matter,
   // so we don't dump every possible setting on every step. Settings implied by
@@ -1225,6 +1232,28 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               </div>
             )}
 
+            {/* Block on quarantine — the advancement gate refuses to move a quarantined
+                part off this step. Saved with the process like the settings around it. */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="block-on-quarantine" className="text-sm font-normal">Block on quarantine</Label>
+                {editable ? (
+                  <Switch
+                    id="block-on-quarantine"
+                    checked={data.blockOnQuarantine || false}
+                    onCheckedChange={(checked) => onUpdate(node.id, { block_on_quarantine: checked })}
+                  />
+                ) : (
+                  <Badge variant={data.blockOnQuarantine ? 'default' : 'secondary'}>
+                    {data.blockOnQuarantine ? 'Yes' : 'No'}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A quarantined part can't move on from this step until its quarantine is decided.
+              </p>
+            </div>
+
             {/* Sequencing — the order the operator works this step's substeps in. */}
             <div className="space-y-1.5">
               <Label htmlFor="sequencing-mode" className="text-sm font-normal">Sequencing</Label>
@@ -1304,7 +1333,7 @@ export function StepEditorPanel({ node, onUpdate, onDelete, onClose, editable, p
               stepName={data.label || 'Step'}
               open={samplingOpen}
               onOpenChange={setSamplingOpen}
-              readOnly={!editable}
+              readOnly={!editable || !canAuthorSampling}
             />
             <StepDocumentsEditor
               stepId={stepId}

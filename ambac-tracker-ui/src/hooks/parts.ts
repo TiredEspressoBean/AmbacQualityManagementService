@@ -301,14 +301,18 @@ export const bulkSetStatusPartsMutationOptions = (queryClient: QueryClient) =>
 // Mutation hooks — thin wrappers over the factories.
 // =============================================================================
 
-export const useCreatePart = () => {
+/** `handlesErrors`: the caller toasts the server's reason itself, so the global error
+ *  toast is skipped (it showed the same message twice). */
+export const useCreatePart = (opts?: { handlesErrors?: boolean }) => {
     const queryClient = useQueryClient();
-    return useMutation(createPartMutationOptions(queryClient));
+    const options = createPartMutationOptions(queryClient);
+    return useMutation(opts?.handlesErrors ? { ...options, meta: { ...options.meta, suppressGlobalError: true } } : options);
 };
 
-export const useUpdatePart = () => {
+export const useUpdatePart = (opts?: { handlesErrors?: boolean }) => {
     const queryClient = useQueryClient();
-    return useMutation(updatePartMutationOptions(queryClient));
+    const options = updatePartMutationOptions(queryClient);
+    return useMutation(opts?.handlesErrors ? { ...options, meta: { ...options.meta, suppressGlobalError: true } } : options);
 };
 
 export function usePartIncrementMutation() {

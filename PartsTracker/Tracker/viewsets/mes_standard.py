@@ -637,7 +637,7 @@ _RAISE_SCAR_RESPONSE = inline_serializer(name="RaiseScarResponse", fields={
         ),
     ]),
 )
-class MaterialLotViewSet(TenantScopedMixin, DataExportMixin, viewsets.ModelViewSet):
+class MaterialLotViewSet(TenantScopedMixin, ListMetadataMixin, DataExportMixin, viewsets.ModelViewSet):
     """Material lot tracking with split capability"""
     queryset = MaterialLot.unscoped.select_related(
         'material_type', 'material', 'supplier', 'owner', 'parent_lot', 'received_by'

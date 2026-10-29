@@ -135,7 +135,7 @@ class _PartTypeLifeLimitImport(BaseCSVImportSerializer):
                 transformed[field] = old
 
 
-class PartTypeLifeLimitViewSet(ReviveOnCreateMixin, TenantScopedMixin, CSVImportMixin,
+class PartTypeLifeLimitViewSet(ReviveOnCreateMixin, TenantScopedMixin, ListMetadataMixin, CSVImportMixin,
                                DataExportMixin, viewsets.ModelViewSet):
     """
     Links life limit definitions to part types.
@@ -160,7 +160,7 @@ class PartTypeLifeLimitViewSet(ReviveOnCreateMixin, TenantScopedMixin, CSVImport
     ordering = ['part_type__name']
 
 
-class LifeTrackingViewSet(TenantScopedMixin, viewsets.ModelViewSet):
+class LifeTrackingViewSet(TenantScopedMixin, ListMetadataMixin, viewsets.ModelViewSet):
     """
     Life tracking record management.
 

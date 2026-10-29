@@ -3242,6 +3242,11 @@ class StepsViewSet(VersionHistoryMixin, TenantScopedMixin, ListMetadataMixin, Da
     search_fields = ["part_type__name", "material__name", "name"]
     ordering_fields = ["part_type__name", "material__name", "name"]
     ordering = ["name"]
+    # Sampling is a quality decision (presets SAMPLING_RULE_WRITE, 2026-10-06): the
+    # sampling perms gate it, not add_steps (POST's default) — which let Engineering /
+    # Production Manager / Document Controller author sampling and kept QA Inspector out.
+    action_permissions = {'update_sampling_rules': ['add_samplingruleset', 'change_samplingruleset']}
+    crud_exempt_actions = {'update_sampling_rules'}
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

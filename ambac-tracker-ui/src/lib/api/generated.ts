@@ -35380,6 +35380,14 @@ committed to rebuilding — which is also what lets the same call answer
     response: z.array(CoreLot),
   },
   {
+    method: "get",
+    path: "/api/Cores/metadata/",
+    alias: "api_Cores_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
     method: "post",
     path: "/api/Cores/plan_teardown/",
     alias: "api_Cores_plan_teardown_create",
@@ -35639,7 +35647,10 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  },
+  }
+]);
+
+const endpoints1 = makeApi([
   {
     method: "post",
     path: "/api/CustomerShipments/:id/void/",
@@ -35659,10 +35670,7 @@ fields) or retracted by &#x60;void&#x60; — never deleted.`,
       },
     ],
     response: CustomerShipment,
-  }
-]);
-
-const endpoints1 = makeApi([
+  },
   {
     method: "get",
     path: "/api/CustomerShipments/delivery-performance/",
@@ -36659,6 +36667,14 @@ Response:
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/api/DisassemblyBOMLines/metadata/",
+    alias: "api_DisassemblyBOMLines_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -40186,6 +40202,14 @@ Components are created during core disassembly, then either:
   },
   {
     method: "get",
+    path: "/api/HarvestedComponents/metadata/",
+    alias: "api_HarvestedComponents_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/HeatMapAnnotation/",
     alias: "api_HeatMapAnnotation_list",
     description: `List heatmap annotations with filtering and search capabilities`,
@@ -40759,7 +40783,10 @@ Scoped to the request user&#x27;s tenant. Admin/staff only.`,
       },
     ],
     response: z.object({ status: z.string() }),
-  },
+  }
+]);
+
+const endpoints2 = makeApi([
   {
     method: "get",
     path: "/api/integrations/catalog/",
@@ -40832,10 +40859,7 @@ Adding a new adapter to INTEGRATION_ADAPTERS automatically makes it appear here.
       },
     ],
     response: JobRole,
-  }
-]);
-
-const endpoints2 = makeApi([
+  },
   {
     method: "get",
     path: "/api/JobRoles/:id/",
@@ -41864,6 +41888,14 @@ Query params:
   },
   {
     method: "get",
+    path: "/api/LifeTracking/metadata/",
+    alias: "api_LifeTracking_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
+  },
+  {
+    method: "get",
     path: "/api/LifeTracking/warnings/",
     alias: "api_LifeTracking_warnings_retrieve",
     description: `Get all tracking records at warning level`,
@@ -42742,6 +42774,14 @@ so the lot lands ON_ORDER with a generated placeholder lot number.`,
 work orders whose BOM calls for the item.`,
     requestFormat: "json",
     response: z.array(LateDelivery),
+  },
+  {
+    method: "get",
+    path: "/api/MaterialLots/metadata/",
+    alias: "api_MaterialLots_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -45009,7 +45049,10 @@ field metadata).`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints3 = makeApi([
   {
     method: "get",
     path: "/api/OrderBook/:id/",
@@ -45123,10 +45166,7 @@ queryset&#x27;s model). Every figure is scoped to what the viewer may see (&#x60
       },
     ],
     response: OrderLine,
-  }
-]);
-
-const endpoints3 = makeApi([
+  },
   {
     method: "put",
     path: "/api/OrderLines/:id/",
@@ -47743,6 +47783,14 @@ and whether tracking is required when creating parts.`,
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/PartTypeLifeLimits/metadata/",
+    alias: "api_PartTypeLifeLimits_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "get",
@@ -50516,7 +50564,10 @@ Usage:
       },
     ],
     response: QualityReports,
-  },
+  }
+]);
+
+const endpoints4 = makeApi([
   {
     method: "get",
     path: "/api/QualityReports/export/:export_format/",
@@ -50804,10 +50855,7 @@ Usage:
       },
     ],
     response: QuarantineDisposition,
-  }
-]);
-
-const endpoints4 = makeApi([
+  },
   {
     method: "patch",
     path: "/api/QuarantineDispositions/:id/",
@@ -51889,6 +51937,14 @@ cross-record listing; that is the audit trail&#x27;s job.`,
         schema: z.unknown(),
       },
     ],
+  },
+  {
+    method: "get",
+    path: "/api/RepairCodes/metadata/",
+    alias: "api_RepairCodes_metadata_retrieve",
+    description: `Return searchable/filterable/orderable field information with filter options.`,
+    requestFormat: "json",
+    response: ListMetadataResponse,
   },
   {
     method: "post",
@@ -55472,7 +55528,10 @@ they raised today (plant clock), plus their last completed step for the undo
 strip (services/mes/operator_day.py).`,
     requestFormat: "json",
     response: MyDay,
-  },
+  }
+]);
+
+const endpoints5 = makeApi([
   {
     method: "get",
     path: "/api/StepExecutions/my_workload/",
@@ -56154,10 +56213,7 @@ parts, newest first: who authorised it, for whom, on which step and part, why.`,
       },
     ],
     response: PaginatedStepOverrideList,
-  }
-]);
-
-const endpoints5 = makeApi([
+  },
   {
     method: "post",
     path: "/api/StepOverrides/",
@@ -61108,7 +61164,10 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
       },
     ],
     response: z.void(),
-  },
+  }
+]);
+
+const endpoints6 = makeApi([
   {
     method: "get",
     path: "/api/TrainingTypes/:id/version-history/",
@@ -61248,10 +61307,7 @@ Creates user if doesn&#x27;t exist, sends invitation email via Celery.`,
     description: `Return searchable/filterable/orderable field information with filter options.`,
     requestFormat: "json",
     response: ListMetadataResponse,
-  }
-]);
-
-const endpoints6 = makeApi([
+  },
   {
     method: "get",
     path: "/api/User/",

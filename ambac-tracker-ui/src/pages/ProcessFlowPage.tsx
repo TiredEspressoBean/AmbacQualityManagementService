@@ -189,6 +189,7 @@ export default function ProcessFlowPage() {
         requires_first_piece_inspection: step.requires_first_piece_inspection as boolean | undefined,
         fpi_scope: step.fpi_scope as string | undefined,
         sequencing_mode: step.sequencing_mode as string | undefined,
+        block_on_quarantine: step.block_on_quarantine as boolean | undefined,
         is_outside_process: step.is_outside_process as boolean | undefined,
         outside_supplier: step.outside_supplier as string | null,
         outside_supplier_name: step.outside_supplier_name as string | null,
@@ -419,6 +420,7 @@ export default function ProcessFlowPage() {
           requiresFirstPieceInspection: updatedStep.requires_first_piece_inspection,
           fpiScope: updatedStep.fpi_scope,
           sequencingMode: updatedStep.sequencing_mode,
+          blockOnQuarantine: updatedStep.block_on_quarantine,
           isOutsideProcess: updatedStep.is_outside_process,
           outsideSupplier: updatedStep.outside_supplier,
           outsideSupplierName: updatedStep.outside_supplier_name,
@@ -496,6 +498,7 @@ export default function ProcessFlowPage() {
         requires_first_piece_inspection: step.requires_first_piece_inspection || false,
         fpi_scope: step.fpi_scope || 'PER_WORKORDER',
         sequencing_mode: step.sequencing_mode || 'sequential',
+        block_on_quarantine: step.block_on_quarantine || false,
         is_outside_process: step.is_outside_process || false,
         // FK by id — the graph-save applies node keys to the Step directly.
         outside_supplier_id: step.outside_supplier || null,
@@ -830,8 +833,13 @@ export default function ProcessFlowPage() {
   // Allow editing in template mode (both demo and real DRAFT processes).
   // Status alone isn't enough: editing writes Steps/Processes (authoring tier),
   // so a viewer without change_steps gets the read-only surface even on a DRAFT.
+  // The save is a PUT to processes_with_steps, which needs change_processes — without
+  // it the editor opened and then every save failed.
   const canEdit =
-    (demoMode === 'template' || !isDemo) && isProcessEditable && hasPerm('change_steps');
+    (demoMode === 'template' || !isDemo) && isProcessEditable
+    && hasPerm('change_steps') && hasPerm('change_processes');
+  // Approve / submit / deprecate are POST actions on the process: add_processes.
+  const canManageProcess = hasPerm('add_processes');
 
   // Compute validation for the current process flow
   const validation = useMemo((): ValidationResult => {
@@ -1197,7 +1205,7 @@ export default function ProcessFlowPage() {
 
                     {/* Approve (Simplified) / Submit for approval (Regulated) — only for a
                         draft that isn't a change request's: that one goes through its PCR. */}
-                    {processStatus === 'DRAFT' && !linkedPcr && (
+                    {canManageProcess && processStatus === 'DRAFT' && !linkedPcr && (
                       <DropdownMenuItem
                         onClick={() => setApproveConfirmOpen(true)}
                         disabled={approveProcess.isPending || submitProcess.isPending
@@ -1220,7 +1228,7 @@ export default function ProcessFlowPage() {
                     )}
 
                     {/* Deprecate - only for approved */}
-                    {processStatus === 'APPROVED' && (
+                    {canManageProcess && processStatus === 'APPROVED' && (
                       <DropdownMenuItem
                         onClick={handleDeprecate}
                         disabled={deprecateProcess.isPending}

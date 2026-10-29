@@ -10,6 +10,8 @@ export const useCreateQualityReport = () => {
     const queryClient = useQueryClient();
 
     return useMutation<CreateQualityReportResponse, unknown, CreateQualityReportInput>({
+        // The form page toasts the server's reason itself; skip the global toast.
+        meta: { suppressGlobalError: true },
         mutationFn: (data) =>
             api.api_QualityReports_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },

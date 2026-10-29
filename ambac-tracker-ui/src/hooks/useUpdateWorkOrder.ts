@@ -15,6 +15,8 @@ export const useUpdateWorkOrder = () => {
     const queryClient = useQueryClient();
 
     return useMutation<UpdateWorkOrderResponse, unknown, UpdateWorkOrderVariables>({
+        // The form page toasts the server's reason itself; skip the global toast.
+        meta: { suppressGlobalError: true },
         mutationFn: ({ id, data }) =>
             api.api_WorkOrders_partial_update(data, {
                 params: { id },

@@ -936,7 +936,7 @@ export function StepSamplingEditor({ stepId, stepName, open, onOpenChange, readO
                           <SelectContent>
                             <SelectItem value={NONE}>—</SelectItem>
                             {((approvalTemplates as { results?: any[] } | undefined)?.results ?? []).map((t: any) => (
-                              <SelectItem key={t.id} value={String(t.id)}>{t.name ?? t.title ?? t.id}</SelectItem>
+                              <SelectItem key={t.id} value={String(t.id)}>{(t as { template_name?: string }).template_name || t.id}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

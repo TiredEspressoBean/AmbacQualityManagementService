@@ -15,6 +15,8 @@ export const useUpdateQualityReport = () => {
     const queryClient = useQueryClient();
 
     return useMutation<UpdateQualityReportResponse, unknown, UpdateQualityReportVariables>({
+        // The form page toasts the server's reason itself; skip the global toast.
+        meta: { suppressGlobalError: true },
         mutationFn: ({ id, data }) =>
             api.api_QualityReports_partial_update(data, {
                 params: { id },

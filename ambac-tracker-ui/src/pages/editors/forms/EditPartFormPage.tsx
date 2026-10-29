@@ -141,8 +141,8 @@ export default function PartFormPage() {
         setSelectedProcess(undefined);
     }, [selectedPartType]);
 
-    const createPart = useCreatePart();
-    const updatePart = useUpdatePart();
+    const createPart = useCreatePart({ handlesErrors: true });
+    const updatePart = useUpdatePart({ handlesErrors: true });
 
     function onSubmit(values: FormValues) {
         if (mode === "edit" && partId) {

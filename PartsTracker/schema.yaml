@@ -6792,6 +6792,23 @@ paths:
                 items:
                   $ref: '#/components/schemas/CoreLot'
           description: ''
+  /api/Cores/metadata/:
+    get:
+      operationId: api_Cores_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/Cores/plan_teardown/:
     post:
       operationId: api_Cores_plan_teardown_create
@@ -7827,6 +7844,23 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/DisassemblyBOMLines/metadata/:
+    get:
+      operationId: api_DisassemblyBOMLines_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/DocumentTypes/:
     get:
       operationId: api_DocumentTypes_list
@@ -13051,6 +13085,23 @@ paths:
                 format: binary
                 description: File download
           description: ''
+  /api/HarvestedComponents/metadata/:
+    get:
+      operationId: api_HarvestedComponents_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/HeatMapAnnotation/:
     get:
       operationId: api_HeatMapAnnotation_list
@@ -15212,6 +15263,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/LifeTracking'
           description: ''
+  /api/LifeTracking/metadata/:
+    get:
+      operationId: api_LifeTracking_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
+          description: ''
   /api/LifeTracking/warnings/:
     get:
       operationId: api_LifeTracking_warnings_retrieve
@@ -16648,6 +16716,23 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LateDelivery'
+          description: ''
+  /api/MaterialLots/metadata/:
+    get:
+      operationId: api_MaterialLots_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/MaterialLots/receipts-export/:
     get:
@@ -21124,6 +21209,23 @@ paths:
                 type: string
                 format: binary
                 description: Template file download
+          description: ''
+  /api/PartTypeLifeLimits/metadata/:
+    get:
+      operationId: api_PartTypeLifeLimits_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/PartTypes/:
     get:
@@ -27152,6 +27254,23 @@ paths:
                 type: string
                 format: binary
                 description: Template file download
+          description: ''
+  /api/RepairCodes/metadata/:
+    get:
+      operationId: api_RepairCodes_metadata_retrieve
+      description: Return searchable/filterable/orderable field information with filter
+        options.
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetadataResponse'
           description: ''
   /api/Sampling-rule-sets/:
     get:

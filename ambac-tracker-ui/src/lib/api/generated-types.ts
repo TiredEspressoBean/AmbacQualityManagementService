@@ -2226,6 +2226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/Cores/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_Cores_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/Cores/plan_teardown/": {
         parameters: {
             query?: never;
@@ -2657,6 +2674,23 @@ export interface paths {
         head?: never;
         /** @description Disassembly BOM line management (expected yields from cores) */
         patch: operations["api_DisassemblyBOMLines_partial_update"];
+        trace?: never;
+    };
+    "/api/DisassemblyBOMLines/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_DisassemblyBOMLines_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/DocumentTypes/": {
@@ -4888,6 +4922,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/HarvestedComponents/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_HarvestedComponents_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/HeatMapAnnotation/": {
         parameters: {
             query?: never;
@@ -5768,6 +5819,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/LifeTracking/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_LifeTracking_metadata_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/LifeTracking/warnings/": {
         parameters: {
             query?: never;
@@ -6475,6 +6543,23 @@ export interface paths {
          *     work orders whose BOM calls for the item.
          */
         get: operations["api_MaterialLots_late_deliveries_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/MaterialLots/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_MaterialLots_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8383,6 +8468,23 @@ export interface paths {
         };
         /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
         get: operations["api_PartTypeLifeLimits_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/PartTypeLifeLimits/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_PartTypeLifeLimits_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10906,6 +11008,23 @@ export interface paths {
         };
         /** @description Download an import template with headers, hints, and FK lookups (Excel only). */
         get: operations["api_RepairCodes_import_template_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/RepairCodes/metadata/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return searchable/filterable/orderable field information with filter options. */
+        get: operations["api_RepairCodes_metadata_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45693,6 +45812,25 @@ export interface operations {
             };
         };
     };
+    api_Cores_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_Cores_plan_teardown_create: {
         parameters: {
             query?: never;
@@ -46535,6 +46673,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DisassemblyBOMLine"];
+                };
+            };
+        };
+    };
+    api_DisassemblyBOMLines_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -50289,6 +50446,25 @@ export interface operations {
             };
         };
     };
+    api_HarvestedComponents_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_HeatMapAnnotation_list: {
         parameters: {
             query?: {
@@ -51995,6 +52171,25 @@ export interface operations {
             };
         };
     };
+    api_LifeTracking_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
+                };
+            };
+        };
+    };
     api_LifeTracking_warnings_retrieve: {
         parameters: {
             query?: never;
@@ -53144,6 +53339,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateDelivery"][];
+                };
+            };
+        };
+    };
+    api_MaterialLots_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -56536,6 +56750,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_PartTypeLifeLimits_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };
@@ -60578,6 +60811,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+        };
+    };
+    api_RepairCodes_metadata_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMetadataResponse"];
                 };
             };
         };

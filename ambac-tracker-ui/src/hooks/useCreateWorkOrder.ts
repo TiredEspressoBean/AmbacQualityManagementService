@@ -10,6 +10,8 @@ export const useCreateWorkOrder = () => {
     const queryClient = useQueryClient();
 
     return useMutation<CreateWorkOrderResponse, unknown, CreateWorkOrderInput>({
+        // The form page toasts the server's reason itself; skip the global toast.
+        meta: { suppressGlobalError: true },
         mutationFn: (data) =>
             api.api_WorkOrders_create(data, {
                 headers: { "X-CSRFToken": getCookie("csrftoken") },
