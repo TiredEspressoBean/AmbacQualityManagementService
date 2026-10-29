@@ -53,13 +53,13 @@ For self-hosted installations, use the management command to generate training d
 
 - Database access
 - Django management command access
-- Superuser or admin permissions
+- The database user must be a **PostgreSQL superuser**: clearing the demo data
+  first (the default) needs it
 
-!!! warning "Seed before the audit triggers are installed"
-    The demo seed writes historical approval responses, which the database's
-    audit triggers refuse once they are installed. Run `seed_demo` before
-    `setup_audit_triggers` (which `setup_database` runs), or on an instance
-    where the triggers aren't installed yet.
+!!! danger "Only on a training or demo instance"
+    Clearing before a reseed also clears the audit log for **every**
+    organization on the instance, not just the demo one. Run `seed_demo` only
+    on an instance that holds no real company's data.
 
 ### Running the Command
 
@@ -355,7 +355,8 @@ python manage.py seed_demo
 python manage.py seed_all
 ```
 
-This clears existing data (except platform admin) and recreates fresh.
+This clears existing data (except platform admin) and recreates fresh —
+including the instance's whole audit log, so only on a training instance.
 
 ### Option B: Reset Specific Records
 
