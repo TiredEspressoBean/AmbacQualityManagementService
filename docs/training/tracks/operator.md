@@ -89,6 +89,14 @@ shows everything.
 - **In progress**: a job you started and haven't finished. **Resume** takes you back.
 - **Scan**: type or scan a work order, serial, lot or location.
 
+Above the tiles, an orange line for each **first piece** of yours waiting on QA:
+*&lt;step&gt; · &lt;part&gt; · first piece sent … ago*, with *Not seen yet* or *Seen by
+&lt;name&gt;*. Once QA decides, it turns grey and reads *Passed by*, *Failed by* or
+*Waived by*, until the end of the day. You don't have to walk over and ask.
+
+Under the tiles, **Today** counts the steps you've completed and the parts you've
+flagged for QA — failed or sent for repair — since the start of the day.
+
 **Exercise 2.1.** Switch the station to **Machine Shop**. Say what's up next and why
 it's ahead of `WO-OPS-01`, which waits under **Then**.
 
@@ -191,7 +199,9 @@ use yet. Don't rely on them.
 
 Body Inspection holds the run for a **first piece** check: the first body's
 inspection is bought off by an inspector before the rest go through. That's the
-inspector's job, in the [QA Inspector](qa-inspector.md) track.
+inspector's job, in the [QA Inspector](qa-inspector.md) track. Your home page shows
+where it stands: Mike's has first pieces *Not seen yet* and others *Passed by Sarah
+Chen*.
 
 ---
 

@@ -47,6 +47,14 @@ not start from the Work Orders page.
 Shift notes and notifications land here too. A note marked **MUST ACKNOWLEDGE**
 wants a **Got it** before you start; it is how the last shift talks to you.
 
+Home also keeps you posted without asking anyone:
+
+- **Your first pieces** — one line each while QA has it (*Not seen yet* or *Seen
+  by*), then *Passed by*, *Failed by* or *Waived by* for the rest of the day.
+- **Today** — the steps you've completed and the parts you've flagged for QA.
+- **This week** — beside the clock: hours on shift, on jobs (and rework), and
+  entries awaiting a lead's approval.
+
 ### 2. Find Your Work Order
 
 **Fastest: use the scan box on Home.** It reads *"Scan or type a work order,
