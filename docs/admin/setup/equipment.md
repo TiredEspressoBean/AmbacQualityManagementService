@@ -36,9 +36,9 @@ Equipment records represent:
 | **Model Number** | Model | No |
 | **Location** | Where it is — a location record, from the picker | No |
 | **Status** | Operational status | No |
-| **Schedulable resource** | Whether the scheduler may plan work onto it. Turning it on reveals the fields below, down to **Batch mode** | No |
-| **Requires calibration** | **Follow the equipment type**, **Yes — this item is calibrated** or **No — not for this item**. *Overrides the type's setting for this one item.* | No |
-| **Calibration interval (days)** | Blank uses the equipment type's default interval | No |
+| **Schedulable resource** | Whether the scheduler may plan work onto it. Turning it on reveals the scheduling fields below, from **Operating shifts** down to **Batch mode** | No |
+| **Requires calibration** | **Follow the equipment type**, **Yes — this item is calibrated** or **No — not for this item**. *Overrides the type's setting for this one item.* Always shown | No |
+| **Calibration interval (days)** | Blank uses the equipment type's default interval. Always shown | No |
 | **Operating shifts** | *The shifts this machine runs. None ticked follows the plant's shift calendar.* Shown only once shifts exist | No |
 | **Batch capacity** | How many jobs or parts it handles at once. `1` — the default — is an ordinary one-at-a-time machine. Above 1 makes it a batch resource, and then **batch mode** decides how it behaves. | No |
 | **Batch mode** | Only meaningful above a capacity of 1. **Concurrent** — that many independent jobs run side by side, like a bank of wash tanks. **Cycle** — one load at a time of up to that many parts, like a furnace or oven. | No |
@@ -145,12 +145,6 @@ Configure per equipment:
 | **Requires calibration** | Set on the **equipment type**. Each item inherits it — **Follow the equipment type** — and can override it either way with **Yes — this item is calibrated** or **No — not for this item** |
 | **Default calibration interval** | Days, set on the equipment type |
 | **Calibration interval (days)** | Per-item override of the type's interval; blank uses the type's |
-
-!!! note "The item's calibration fields sit under Schedulable resource"
-    On the equipment form, **Requires calibration** and **Calibration interval
-    (days)** are shown only while **Schedulable resource** is on. To override
-    either on a gauge the scheduler should not plan onto, turn it on, set the
-    override, and turn it off again before saving — the override is kept.
 
 !!! tip "Set the rule on the type, the exception on the item"
     Both calibration settings work the same way: the type carries the policy for
