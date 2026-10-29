@@ -211,6 +211,14 @@ class DemoScenario(BaseSeeder):
         self.log("\n--- Phase 7: Documents and Approvals ---")
         result['documents'] = self._seed_documents(result['users'])
 
+        # After the documents phase: the starter DOCUMENT_RELEASE template must exist
+        # first, so the drawing template doesn't become the type's default.
+        self.log("\n--- Phase 7b: Sequential Approval in Stages ---")
+        from .sequential_approval import DemoSequentialApprovalSeeder
+        seq = DemoSequentialApprovalSeeder(self.stdout, self.style, self.tenant, scale=self.scale)
+        seq._verbose = self._verbose
+        result['sequential_approval'] = seq.seed(result['users'])
+
         # Phase 8: Training Exercise Data (TRAIN-* objects)
         self.log("\n--- Phase 8: Training Exercise Data ---")
         result['training_exercises'] = self._seed_training_exercises(

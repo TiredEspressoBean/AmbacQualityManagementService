@@ -38,7 +38,6 @@ PART_TYPE = {'name': 'Nozzle Tip', 'ID_prefix': 'NOZ', 'ERP_id': 'NOZ-100'}
 PROCESS_NAME = 'Nozzle Bench Check'
 CHECK_STEP = 'Opening Pressure Check'
 RELEASE_STEP = 'Release'
-# MPa, not bar: a measurement's values are numeric(9, 6), so under 1000.
 MEASUREMENT = {'label': 'Opening Pressure', 'unit': 'MPa',
                'nominal': 28.0, 'upper_tol': 1.0, 'lower_tol': 1.0}
 OUT_OF_SPEC_READING = 26.5
@@ -141,7 +140,7 @@ class DemoOutOfSpecBlockSeeder(DemoQaWalkSeeder):
             tenant=self.tenant, step=check, label=MEASUREMENT['label'],
             defaults={'type': 'NUMERIC', 'unit': MEASUREMENT['unit'],
                       'nominal': MEASUREMENT['nominal'], 'upper_tol': MEASUREMENT['upper_tol'],
-                      'lower_tol': MEASUREMENT['lower_tol'], 'required': True,
+                      'lower_tol': MEASUREMENT['lower_tol'],
                       'default_equipment': self.equipment},
         )
         substep, _ = Substep.objects.update_or_create(
